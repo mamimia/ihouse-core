@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Tuple
 
 from core.db.config import db_path
 from core.db.rebuild import rebuild
-
+from core.db.sqlite import Sqlite
 MATERIALIZED_TABLES = [
     "bookings",
     "conflict_tasks",
@@ -40,9 +40,8 @@ def _table_fingerprint(conn: sqlite3.Connection, table: str) -> Dict[str, Any]:
 
 
 def snapshot_fingerprints() -> List[Dict[str, Any]]:
-    conn = sqlite3.connect(db_path())
+    conn = Sqlite(path=db_path()).connect()
     try:
-        conn.row_factory = sqlite3.Row
         return [_table_fingerprint(conn, t) for t in MATERIALIZED_TABLES]
     finally:
         conn.close()
