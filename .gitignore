@@ -24,3 +24,6 @@ PR_METADATA.txt
 # IDE
 .vscode/
 .idea/
+
+# Local agent skills
+.agent/skills/
