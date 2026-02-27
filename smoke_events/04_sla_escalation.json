@@ -1,0 +1,29 @@
+{
+  "kind": "SLA_ESCALATION",
+  "idempotency": { "request_id": "smoke_sla_escalation_001" },
+  "actor": { "actor_id": "ops_1", "role": "ops" },
+  "payload": {
+    "idempotency": { "request_id": "smoke_sla_escalation_001" },
+    "actor": { "actor_id": "ops_1", "role": "ops" },
+    "context": {
+      "run_id": "smoke_run_002",
+      "timers_utc": {
+        "now_utc": "2026-02-26T13:45:00Z",
+        "task_ack_due_utc": "2026-02-26T13:40:00Z",
+        "task_completed_due_utc": "2026-02-26T13:44:00Z"
+      }
+    },
+    "task": {
+      "task_id": "t_maint_001",
+      "property_id": "villa_9",
+      "task_type": "maintenance",
+      "state": "InProgress",
+      "priority": "High",
+      "ack_state": "Unacked"
+    },
+    "policy": {
+      "notify_ops_on": ["ACK_SLA_BREACH", "COMPLETION_SLA_BREACH"],
+      "notify_admin_on": ["ACK_SLA_BREACH", "COMPLETION_SLA_BREACH"]
+    }
+  }
+}

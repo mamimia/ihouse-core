@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import subprocess
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, Dict, Tuple
+from urllib.parse import urlparse
+
+
+HOST = "127.0.0.1"
+PORT = 8000
+
+ROUTE = "event_router"
+EVENT_ROUTER_PATH = ".agent/system/event_router.py"
+
+
+def _json_bytes(obj: Dict[str, Any]) -> bytes:
+    return json.dumps(obj, ensure_ascii=False).encode("utf-8")
+
+
+def _read_body(handler: BaseHTTPRequestHandler) -> bytes:
+    length = int(handler.headers.get("Content-Length", "0") or "0")
+    if length <= 0:
+        return b""
+    return handler.rfile.read(length)
+
+
+def _run_event_router(stdin_bytes: bytes) -> Tuple[int, bytes, bytes]:
+    p = subprocess.Popen(
+        ["python3", EVENT_ROUTER_PATH],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, err = p.communicate(input=stdin_bytes)
+    return p.returncode, out, err
+
+
+INDEX_HTML = r"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>iHouse Core v1</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }
+    .row { display: flex; gap: 16px; align-items: flex-start; }
+    .col { flex: 1; min-width: 320px; }
+    textarea { width: 100%; height: 320px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; padding: 12px; }
+    pre { background: #f6f7f9; padding: 12px; border-radius: 10px; overflow: auto; min-height: 320px; }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+    button:hover { background: #f3f4f6; }
+    .meta { color: #666; font-size: 13px; margin-bottom: 10px; }
+    .ok { color: #0a7; font-weight: 600; }
+    .bad { color: #c00; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h2>iHouse Core v1</h2>
+  <div class="meta">
+    POST <code>/event</code> with an envelope. This page is a debug view, not the real UI.
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <button id="sendBtn">Send Event</button>
+    <button id="healthBtn">Health</button>
+    <span id="status" style="margin-left:10px;"></span>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <div class="meta">Envelope JSON</div>
+      <textarea id="input"></textarea>
+    </div>
+    <div class="col">
+      <div class="meta">Response</div>
+      <pre id="output"></pre>
+    </div>
+  </div>
+
+<script>
+const sample = {
+  kind: "STATE_TRANSITION",
+  idempotency: { request_id: "ui_req_001" },
+  actor: { actor_id: "admin_1", role: "admin" },
+  payload: {
+    actor: { actor_id: "admin_1", role: "admin" },
+    entity: { entity_type: "booking", entity_id: "booking_123" },
+    current: { current_state: "PENDING", current_version: 1 },
+    requested: { requested_state: "CONFIRMED", reason_code: "MANUAL", request_id: "ui_req_001" },
+    context: {
+      priority_stack: [
+        { rules: [
+          { id: "allow_pending_to_confirmed", match: { from: "PENDING", to: "CONFIRMED" }, effect: { action: "allow", terminal: true } }
+        ]}
+      ],
+      invariants: []
+    },
+    time: { now_utc: "2026-02-26T13:45:00Z" }
+  }
+};
+
+const inputEl = document.getElementById("input");
+const outputEl = document.getElementById("output");
+const statusEl = document.getElementById("status");
+
+function setStatus(ok, txt) {
+  statusEl.className = ok ? "ok" : "bad";
+  statusEl.textContent = txt;
+}
+
+inputEl.value = JSON.stringify(sample, null, 2);
+outputEl.textContent = "";
+
+document.getElementById("healthBtn").onclick = async () => {
+  try {
+    const r = await fetch("/health");
+    const t = await r.text();
+    outputEl.textContent = t;
+    setStatus(r.ok, r.ok ? "health ok" : "health failed");
+  } catch (e) {
+    outputEl.textContent = String(e);
+    setStatus(false, "health error");
+  }
+};
+
+document.getElementById("sendBtn").onclick = async () => {
+  outputEl.textContent = "";
+  setStatus(true, "sending...");
+  let body;
+  try {
+    body = JSON.stringify(JSON.parse(inputEl.value));
+  } catch (e) {
+    outputEl.textContent = "Input JSON invalid";
+    setStatus(false, "bad input");
+    return;
+  }
+
+  try {
+    const r = await fetch("/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+    const t = await r.text();
+    outputEl.textContent = t;
+    setStatus(r.ok, r.ok ? "ok" : "failed");
+  } catch (e) {
+    outputEl.textContent = String(e);
+    setStatus(false, "request error");
+  }
+};
+</script>
+</body>
+</html>
+"""
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _send_json(self, code: int, obj: Dict[str, Any]) -> None:
+        body = _json_bytes(obj)
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_html(self, code: int, html: str) -> None:
+        body = html.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:
+        path = urlparse(self.path).path
+
+        if path == "/health":
+            self._send_json(200, {"ok": True, "service": "ihouse-http-adapter"})
+            return
+
+        if path == "/":
+            self._send_html(200, INDEX_HTML)
+            return
+
+        self._send_json(404, {"ok": False, "error": "NOT_FOUND"})
+
+    def do_POST(self) -> None:
+        path = urlparse(self.path).path
+
+        if path != "/event":
+            self._send_json(404, {"ok": False, "error": "NOT_FOUND"})
+            return
+
+        body = _read_body(self)
+        if not body:
+            self._send_json(400, {"ok": False, "error": "EMPTY_BODY"})
+            return
+
+        try:
+            json.loads(body.decode("utf-8"))
+        except Exception:
+            self._send_json(400, {"ok": False, "error": "INPUT_NOT_JSON"})
+            return
+
+        rc, out, err = _run_event_router(body)
+
+        if rc != 0:
+            self._send_json(
+                500,
+                {
+                    "ok": False,
+                    "route": ROUTE,
+                    "error": "EVENT_ROUTER_FAILED",
+                    "stderr": err.decode("utf-8", errors="replace"),
+                },
+            )
+            return
+
+        try:
+            decoded = out.decode("utf-8")
+            json.loads(decoded)
+        except Exception:
+            self._send_json(
+                500,
+                {
+                    "ok": False,
+                    "route": ROUTE,
+                    "error": "ROUTER_OUTPUT_NOT_JSON",
+                    "raw": out.decode("utf-8", errors="replace"),
+                },
+            )
+            return
+
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(out)))
+        self.end_headers()
+        self.wfile.write(out)
+
+
+def main() -> int:
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    print(f"ihouse-http-adapter listening on http://{HOST}:{PORT}")
+    server.serve_forever()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

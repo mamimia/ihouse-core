@@ -1,0 +1,29 @@
+{
+  "kind": "TASK_COMPLETION",
+  "idempotency": { "request_id": "smoke_task_completion_001" },
+  "actor": { "actor_id": "ops_1", "role": "ops" },
+  "payload": {
+    "idempotency": { "request_id": "smoke_task_completion_001" },
+    "actor": { "actor_id": "ops_1", "role": "ops" },
+    "context": {
+      "run_id": "smoke_run_001",
+      "timers_utc": {
+        "now_utc": "2026-02-26T13:45:00Z",
+        "task_ack_due_utc": "2026-02-26T13:00:00Z",
+        "task_completed_due_utc": "2026-02-26T13:30:00Z"
+      }
+    },
+    "task": {
+      "task_id": "t_clean_001",
+      "property_id": "villa_7",
+      "task_type": "cleaning",
+      "state": "InProgress",
+      "priority": "High",
+      "ack_state": "Unacked"
+    },
+    "policy": {
+      "notify_ops_on": ["ACK_SLA_BREACH", "COMPLETION_SLA_BREACH"],
+      "notify_admin_on": ["COMPLETION_SLA_BREACH"]
+    }
+  }
+}

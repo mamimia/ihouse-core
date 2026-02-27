@@ -1,0 +1,30 @@
+{
+  "kind": "STATE_TRANSITION",
+  "idempotency": { "request_id": "smoke_state_transition_001" },
+  "actor": { "actor_id": "admin_1", "role": "admin" },
+  "payload": {
+    "actor": { "actor_id": "admin_1", "role": "admin" },
+    "entity": { "entity_type": "booking", "entity_id": "booking_123" },
+    "current": { "current_state": "PENDING", "current_version": 1 },
+    "requested": {
+      "requested_state": "CONFIRMED",
+      "reason_code": "MANUAL",
+      "request_id": "smoke_state_transition_001"
+    },
+    "context": {
+      "priority_stack": [
+        {
+          "rules": [
+            {
+              "id": "allow_pending_to_confirmed",
+              "match": { "from": "PENDING", "to": "CONFIRMED" },
+              "effect": { "action": "allow", "terminal": true }
+            }
+          ]
+        }
+      ],
+      "invariants": []
+    },
+    "time": { "now_utc": "2026-02-26T13:45:00Z" }
+  }
+}
