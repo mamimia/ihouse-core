@@ -60,4 +60,11 @@ if [ "$fail" -ne 0 ]; then
   exit 1
 fi
 
+echo "http smoke: OK"
+echo
+
+echo "deterministic rebuild validation:"
+python3 -m core.db.validate_rebuild
+echo
+
 echo "smoke: OK"
