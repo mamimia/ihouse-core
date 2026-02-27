@@ -1,0 +1,25 @@
+name: CI Invariants
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PR metadata gate
+        run: scripts/ci/check_pr_metadata.sh PR_METADATA.txt
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test deps
+        run: python3 -m pip install -U pytest
+
+      - name: Run invariant suite
+        run: python3 -m pytest -q

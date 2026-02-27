@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual envs
+.venv/
+venv/
+
+# OS
+.DS_Store
+
+# Local data
+.data/
+*.sqlite
+*.sqlite3
+*.db
+*-wal
+*-shm
+
+# Local scratch
+PUT_DB_PATH_HERE
+PR_METADATA.txt
+
+# IDE
+.vscode/
+.idea/
