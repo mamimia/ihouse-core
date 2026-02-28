@@ -25,4 +25,9 @@ PR_METADATA.txt
 .vscode/
 .idea/
 
+# Local environment variables
+.env
+.env.local
+.env.*.local
+
 # Local agent skills
