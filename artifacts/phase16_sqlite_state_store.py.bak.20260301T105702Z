@@ -1,0 +1,155 @@
+from __future__ import annotations
+
+import json
+import sqlite3
+import time
+from typing import Any, Dict, Mapping, Optional, Sequence
+
+from .state_store import BookingState, StateStore
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+class SqliteStateStore(StateStore):
+    """
+    Phase 13B minimal state store.
+    - Single table booking_state
+    - Optimistic version bump per commit
+    - No projections framework
+    """
+
+    def __init__(self, *, db_path: str) -> None:
+        self._db_path = db_path
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self._db_path, timeout=30)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON;")
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=FULL;")
+        conn.execute("PRAGMA busy_timeout=5000;")
+        return conn
+
+    def ensure_schema(self) -> None:
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS booking_state (
+                  booking_id TEXT PRIMARY KEY,
+                  version INTEGER NOT NULL,
+                  state_json TEXT NOT NULL,
+                  updated_at_ms INTEGER NOT NULL
+                )
+                """
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_booking(self, booking_id: str) -> Optional[BookingState]:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT booking_id, version, state_json FROM booking_state WHERE booking_id=?",
+                (booking_id,),
+            ).fetchone()
+            if not row:
+                return None
+            data = json.loads(row["state_json"])
+            if not isinstance(data, dict):
+                data = {"_raw": data}
+            return BookingState(
+                booking_id=str(row["booking_id"]),
+                version=int(row["version"]),
+                data=data,
+            )
+        finally:
+            conn.close()
+
+    def commit(self, *, envelope_id: str, events: Sequence[Mapping[str, Any]]) -> None:
+        """
+        Minimal semantics for 13B:
+        - If events contain a booking snapshot/upsert-like payload, store it.
+        - Version increments by 1 for any commit that writes.
+        - No dedupe table yet; dedupe can be layered later (13B/13C) using event_log.
+        """
+        # naive extraction: look for booking_id + booking_record dict
+        booking_record: Optional[Dict[str, Any]] = None
+        booking_id: Optional[str] = None
+
+        for ev in events:
+            if not isinstance(ev, Mapping):
+                continue
+            payload = ev.get("payload", ev)
+            if isinstance(payload, Mapping):
+                br = payload.get("booking_record")
+                if isinstance(br, Mapping) and br.get("booking_id"):
+                    booking_record = dict(br)
+                    booking_id = str(br.get("booking_id"))
+                    break
+
+        if not booking_id or booking_record is None:
+            return
+
+        conn = self._connect()
+        try:
+            with conn:
+                row = conn.execute(
+                    "SELECT version, last_envelope_id FROM booking_state WHERE booking_id=?",
+                    (booking_id,),
+                ).fetchone()
+                if row and row["last_envelope_id"] == envelope_id:
+                    return
+
+                next_v = (int(row["version"]) + 1) if row else 1
+
+                conn.execute(
+                    """
+                    INSERT INTO booking_state(booking_id, version, state_json, updated_at_ms, last_envelope_id)
+                    VALUES(?, ?, ?, ?, ?)
+                    ON CONFLICT(booking_id) DO UPDATE SET
+                      version=excluded.version,
+                      state_json=excluded.state_json,
+                      updated_at_ms=excluded.updated_at_ms,
+                      last_envelope_id=excluded.last_envelope_id
+                    """,
+                    (
+                        booking_id,
+                        next_v,
+                        json.dumps(booking_record, ensure_ascii=False, separators=(",", ":")),
+                        _now_ms(),
+                        envelope_id,
+                    ),
+                )
+        finally:
+            conn.close()
+
+    def list_bookings(self, *, limit: int = 50):
+        import sqlite3, json
+        from .state_store import BookingState
+
+        conn = sqlite3.connect(self._db_path, timeout=30)
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT booking_id, version, state_json FROM booking_state ORDER BY updated_at_ms DESC LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+
+            out = []
+            for r in rows:
+                data = json.loads(r["state_json"])
+                out.append(
+                    BookingState(
+                        booking_id=str(r["booking_id"]),
+                        version=int(r["version"]),
+                        data=data,
+                    )
+                )
+            return out
+        finally:
+            conn.close()
+

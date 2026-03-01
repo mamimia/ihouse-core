@@ -1,0 +1,17 @@
+Phase 16 audit outputs
+
+1) suspect_calls_20260301T105134Z.txt
+Possible nondeterminism or IO inside core.
+
+2) payload_access_20260301T105134Z.txt
+Direct payload coupling surfaces.
+
+3) state_mutation_20260301T105134Z.txt
+Potential mutation or implicit writes.
+
+4) skill_surfaces_20260301T105134Z.txt
+Entry points and locations to review.
+
+Next step:
+We will classify each hit into: Pure, Mostly Pure, Coupled
+Then define minimal refactors that remove coupling without adding new execution surfaces.

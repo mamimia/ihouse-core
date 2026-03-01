@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional, List
 
+from core.ports import EventLogPort
+
 
 @dataclass(frozen=True)
 class QueryResult:
@@ -17,7 +19,7 @@ _ALLOWED_QUERIES = {
 
 
 class QueryAPI:
-    def __init__(self, *, db: Any) -> None:
+    def __init__(self, *, db: EventLogPort) -> None:
         self._db = db
 
     def fetch(

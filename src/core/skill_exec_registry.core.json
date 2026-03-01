@@ -1,0 +1,7 @@
+{
+  "booking-conflict-resolver": "core.skills.booking_conflict_resolver.skill",
+  "booking-sync-ingest": "core.skills.booking_sync_ingest.skill",
+  "sla-escalation-engine": "core.skills.sla_escalation_engine.skill",
+  "state-transition-guard": "core.skills.state_transition_guard.skill",
+  "task-completion-validator": "core.skills.task_completion_validator.skill"
+}

@@ -1,38 +1,27 @@
 import os
 import logging
 import uuid
+from datetime import datetime, timezone
+
 from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 from dotenv import load_dotenv
 
-from core.api import CoreAPI
-from core.db.sqlite import Sqlite
-from core.db.config import db_path
-from app.db_adapter import SqliteAdapter
+from core.runtime import build_core
 
-
-# ----------------------------
-# Logging Configuration
-# ----------------------------
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
-
 logger = logging.getLogger("ihouse-api")
 
 
-# ----------------------------
-# Load Environment
-# ----------------------------
-
-load_dotenv()
+load_dotenv(dotenv_path=".env")
 
 API_KEY = os.getenv("IHOUSE_API_KEY")
-
 if not API_KEY:
     raise RuntimeError("IHOUSE_API_KEY must be set in environment")
 
@@ -42,37 +31,30 @@ def verify_api_key(x_api_key: str = Header(...)):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
-# ----------------------------
-# HTTP Event Contract
-# ----------------------------
+class Actor(BaseModel):
+    actor_id: str = Field(..., min_length=1)
+    role: str = Field(..., min_length=1)
 
-class EventEnvelope(BaseModel):
-    type: str = Field(..., description="Domain event type")
-    version: int = Field(..., ge=1)
+
+class Idempotency(BaseModel):
+    request_id: str = Field(..., min_length=1)
+
+
+class CoreEnvelope(BaseModel):
+    type: str = Field(..., min_length=1)
+    idempotency: Idempotency
+    actor: Actor
     payload: Dict[str, Any]
-    idempotency_key: str = Field(..., description="Required idempotency key")
 
 
-# ----------------------------
-# Composition Root
-# ----------------------------
-
-sqlite = Sqlite(path=db_path())
-adapter = SqliteAdapter(sqlite)
-core = CoreAPI(db=adapter)
-
+core = build_core()
 app = FastAPI()
 
-
-# ----------------------------
-# Middleware – Request ID
-# ----------------------------
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())
     request.state.request_id = request_id
-
     logger.info(f"[{request_id}] Incoming {request.method} {request.url.path}")
 
     try:
@@ -81,36 +63,62 @@ async def add_request_id(request: Request, call_next):
         return response
     except Exception:
         logger.exception(f"[{request_id}] Unhandled error")
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error"},
-        )
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
-
-# ----------------------------
-# Endpoints
-# ----------------------------
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 
+def _ensure_actor(payload: Dict[str, Any], actor_id: str, role: str) -> None:
+    a = payload.get("actor")
+    if not isinstance(a, dict):
+        payload["actor"] = {"actor_id": actor_id, "role": role}
+        return
+    if not isinstance(a.get("actor_id"), str) or not a.get("actor_id"):
+        a["actor_id"] = actor_id
+    if not isinstance(a.get("role"), str) or not a.get("role"):
+        a["role"] = role
+
+
+def _ensure_idempotency(payload: Dict[str, Any], request_id: str) -> None:
+    idem = payload.get("idempotency")
+    if not isinstance(idem, dict):
+        payload["idempotency"] = {"request_id": request_id}
+        return
+    if not isinstance(idem.get("request_id"), str) or not idem.get("request_id"):
+        idem["request_id"] = request_id
+
+
 @app.post("/events", dependencies=[Depends(verify_api_key)])
-def append_event(event: EventEnvelope, request: Request):
+def append_event(envelope: CoreEnvelope, request: Request):
+    occurred_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    payload = dict(envelope.payload)
+    _ensure_actor(payload, envelope.actor.actor_id, envelope.actor.role)
+    _ensure_idempotency(payload, envelope.idempotency.request_id)
+
     try:
         result = core.ingest.append_event(
             {
-                "type": event.type,
-                "version": event.version,
-                "payload": event.payload,
+                "type": envelope.type,
+                "idempotency": {"request_id": envelope.idempotency.request_id},
+                "actor": {"actor_id": envelope.actor.actor_id, "role": envelope.actor.role},
+                "payload": payload,
+                "occurred_at": occurred_at,
             },
-            idempotency_key=event.idempotency_key,
+            idempotency_key=envelope.idempotency.request_id,
         )
         return {"event_id": result.event_id}
-    except Exception:
-        logger.exception(f"[{request.state.request_id}] Event append failed")
-        raise HTTPException(status_code=400, detail="Invalid event")
+    except ValueError as e:
+        msg = str(e) or "Invalid event"
+        logger.warning(f"[{request.state.request_id}] Event rejected detail={msg}")
+        raise HTTPException(status_code=400, detail=msg)
+    except Exception as e:
+        msg = f"{type(e).__name__}:{str(e) or 'NO_MESSAGE'}"
+        logger.exception(f"[{request.state.request_id}] Event append failed detail={msg}")
+        raise HTTPException(status_code=400, detail=msg)
 
 
 @app.get("/query/{name}", dependencies=[Depends(verify_api_key)])
@@ -118,8 +126,8 @@ def query(name: str, request: Request):
     try:
         result = core.query.fetch(name, {})
         return {"rows": result.rows}
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid query")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e) or "Invalid query")
     except Exception:
         logger.exception(f"[{request.state.request_id}] Query failed")
         raise HTTPException(status_code=500, detail="Internal error")

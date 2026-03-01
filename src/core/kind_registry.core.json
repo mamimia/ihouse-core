@@ -1,0 +1,7 @@
+{
+  "STATE_TRANSITION": "state-transition-guard",
+  "BOOKING_CONFLICT": "booking-conflict-resolver",
+  "TASK_COMPLETION": "task-completion-validator",
+  "SLA_ESCALATION": "sla-escalation-engine",
+  "BOOKING_SYNC_INGEST": "booking-sync-ingest"
+}

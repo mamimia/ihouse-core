@@ -1,0 +1,79 @@
+import json
+import uuid
+import sqlite3
+from typing import Any, Dict, List, Literal, Optional
+
+Kind = str
+
+def _eid() -> str:
+    return str(uuid.uuid4())
+
+def apply_result(
+    conn: sqlite3.Connection,
+    envelope: Dict[str, Any],
+    skill_result: Dict[str, Any],
+) -> Literal["APPLIED", "ALREADY_APPLIED"]:
+    """
+    Phase 13A minimal SQLite event log applier.
+
+    Guarantees:
+      - append-only writes to event_log
+      - single atomic transaction per envelope execution
+      - idempotency via UNIQUE(envelope_id) WHERE kind='envelope_received'
+      - no updates, no deletes
+
+    Required envelope fields:
+      - envelope_id: str
+      - occurred_at: str (ISO8601)
+      - payload: Any (original input) OR entire envelope will be logged
+
+    skill_result expected shape:
+      - emitted_events: List[{"kind": str, "payload": Any}]
+        If missing, treated as [].
+    """
+    envelope_id = envelope["envelope_id"]
+    occurred_at = envelope["occurred_at"]
+    emitted: List[Dict[str, Any]] = skill_result.get("emitted_events", [])
+
+    cur = conn.cursor()
+    try:
+        cur.execute("BEGIN IMMEDIATE")
+
+        # 1) envelope_received (idempotent)
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO event_log(event_id, envelope_id, kind, occurred_at, payload_json)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (_eid(), envelope_id, "envelope_received", occurred_at, json.dumps(envelope, separators=(",", ":"))),
+        )
+
+        # if no insert happened -> already applied
+        cur.execute("SELECT changes()")
+        if cur.fetchone()[0] == 0:
+            cur.execute("ROLLBACK")
+            return "ALREADY_APPLIED"
+
+        # 2) emitted events
+        for ev in emitted:
+            kind_val = ev.get("kind") or ev.get("type")
+if not isinstance(kind_val, str) or not kind_val:
+    raise CoreExecutionError("EMITTED_EVENT_KIND_REQUIRED")
+kind: Kind = kind_val
+            payload = ev.get("payload", ev)
+            cur.execute(
+                """
+                INSERT INTO event_log(event_id, envelope_id, kind, occurred_at, payload_json)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (_eid(), envelope_id, kind, occurred_at, json.dumps(payload, separators=(",", ":"))),
+            )
+
+        cur.execute("COMMIT")
+        return "APPLIED"
+    except Exception:
+        try:
+            cur.execute("ROLLBACK")
+        except Exception:
+            pass
+        raise

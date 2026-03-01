@@ -1,0 +1,17 @@
+{
+  "type": "BOOKING_SYNC_INGEST",
+  "occurred_at": "2026-03-01T10:00:00Z",
+  "actor": { "actor_id": "test", "role": "system" },
+  "idempotency": { "request_id": "phase16-test-0002" },
+  "payload": {
+    "provider": "airbnb",
+    "external_booking_id": "abc124",
+    "property_id": "p_001",
+    "provider_payload": {
+      "status": "confirmed",
+      "start_date": "2026-04-01",
+      "end_date": "2026-04-05",
+      "guest_name": "Alice"
+    }
+  }
+}

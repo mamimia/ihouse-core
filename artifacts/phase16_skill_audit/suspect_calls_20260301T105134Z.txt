@@ -1,0 +1,109 @@
+src/core/supabase_state_store.py:10:    return int(time.time() * 1000)
+src/core/supabase_state_store.py:13:class SupabaseStateStore(StateStore):
+src/core/supabase_event_log.py:8:class SupabaseEventLog:
+src/core/supabase_event_log.py:20:            envelope_id = f"anon_{uuid.uuid4().hex}"
+src/core/supabase_event_log.py:24:            occurred_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+src/core/db/rebuild.py:7:from core.db.sqlite import Sqlite
+src/core/db/rebuild.py:66:    db = Sqlite(db_path())
+src/core/db/rebuild.py:67:    conn = db.connect()
+src/core/runtime.py:11:from core.db.sqlite_event_log_adapter import SqliteEventLogAdapter
+src/core/runtime.py:12:from core.sqlite_event_log import SqliteEventLog
+src/core/runtime.py:13:from core.sqlite_state_store import SqliteStateStore
+src/core/runtime.py:22:    adapter_type = os.getenv("DB_ADAPTER", "sqlite").strip().lower()
+src/core/runtime.py:24:    if adapter_type == "supabase":
+src/core/runtime.py:25:        from supabase import create_client
+src/core/runtime.py:26:        from core.supabase_event_log import SupabaseEventLog
+src/core/runtime.py:27:        from core.supabase_state_store import SupabaseStateStore
+src/core/runtime.py:29:        supabase_url = os.getenv("SUPABASE_URL")
+src/core/runtime.py:30:        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+src/core/runtime.py:31:        if not supabase_url or not supabase_key:
+src/core/runtime.py:32:            raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+src/core/runtime.py:34:        sb = create_client(supabase_url, supabase_key)
+src/core/runtime.py:36:        db_port: Any = SupabaseEventLog(client=sb)
+src/core/runtime.py:37:        state_store = SupabaseStateStore(client=sb)
+src/core/runtime.py:39:        logger.info("Using Supabase adapter (log-only mode)")
+src/core/runtime.py:46:    # SQLite canonical Phase 14 wiring
+src/core/runtime.py:49:    db_port = SqliteEventLogAdapter(dbp)
+src/core/runtime.py:50:    applier = SqliteEventLog(db_path=dbp)
+src/core/runtime.py:51:    state_store = SqliteStateStore(db_path=dbp)
+src/core/runtime.py:53:    logger.info("Using SQLite adapter (canonical executor enabled)")
+src/core/db/projector.py:5:import sqlite3
+src/core/db/projector.py:10:    return int(time.time() * 1000)
+src/core/db/projector.py:14:    conn: sqlite3.Connection,
+src/core/db/projector.py:44:    conn: sqlite3.Connection,
+src/core/db/projector.py:121:    conn: sqlite3.Connection,
+src/core/db/projector.py:242:    conn: sqlite3.Connection,
+src/core/db/projector.py:288:    conn: sqlite3.Connection,
+src/core/db/migrate.py:6:from core.db.sqlite import Sqlite, applied_versions, apply_migration
+src/core/db/migrate.py:17:    db = Sqlite(db_path)
+src/core/db/migrate.py:18:    conn = db.connect()
+src/core/sqlite_event_log.py:3:import sqlite3
+src/core/sqlite_event_log.py:7:from .effects.sqlite_event_log import apply_result
+src/core/sqlite_event_log.py:10:class SqliteEventLog(EventLog):
+src/core/sqlite_event_log.py:15:        conn = sqlite3.connect(self._db_path, timeout=30)
+src/core/sqlite_event_log.py:18:            conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='event_log'")
+src/core/sqlite_event_log.py:28:        conn = sqlite3.connect(self._db_path, timeout=30)
+src/core/db/replay.py:4:import sqlite3
+src/core/db/replay.py:8:    from core.db.sqlite import Sqlite
+src/core/db/replay.py:9:    conn = Sqlite(path=db_file).connect()
+src/core/db/replay.py:23:    ap.add_argument("--db", default=".data/ihouse.sqlite3")
+src/core/db/outbox_worker.py:4:import sqlite3
+src/core/db/outbox_worker.py:11:from core.db.sqlite import Sqlite
+src/core/db/outbox_worker.py:15:    return int(time.time() * 1000)
+src/core/db/outbox_worker.py:34:        return int(os.getenv("IHOUSE_OUTBOX_MAX_ATTEMPTS", "8"))
+src/core/db/outbox_worker.py:41:        return int(os.getenv("IHOUSE_OUTBOX_LEASE_MS", "30000"))
+src/core/db/outbox_worker.py:47:    rule = (os.getenv("IHOUSE_OUTBOX_SMOKE_FAIL", "") or "").strip()
+src/core/db/outbox_worker.py:58:    conn: sqlite3.Connection,
+src/core/db/outbox_worker.py:63:) -> List[sqlite3.Row]:
+src/core/db/outbox_worker.py:119:    worker_id = os.getenv("IHOUSE_WORKER_ID", "") or f"w_{uuid.uuid4().hex}"
+src/core/db/outbox_worker.py:121:    db = Sqlite(path)
+src/core/db/outbox_worker.py:122:    conn = db.connect()
+src/core/db/outbox_worker.py:124:        conn.row_factory = sqlite3.Row
+src/core/effects/sqlite_event_log.py:3:import sqlite3
+src/core/effects/sqlite_event_log.py:9:    return str(uuid.uuid4())
+src/core/effects/sqlite_event_log.py:12:    conn: sqlite3.Connection,
+src/core/effects/sqlite_event_log.py:17:    Phase 13A minimal SQLite event log applier.
+src/core/db/audit_read.py:5:import sqlite3
+src/core/db/audit_read.py:9:from core.db.sqlite import Sqlite
+src/core/db/audit_read.py:10:def _connect() -> sqlite3.Connection:
+src/core/db/audit_read.py:11:    return Sqlite(path=db_path()).connect()
+src/core/db/audit_read.py:48:    conn = _connect()
+src/core/db/audit_read.py:89:    p = argparse.ArgumentParser(description="Read iHouse audit events from SQLite.")
+src/core/db/sqlite_event_log_adapter.py:10:class SqliteEventLogAdapter:
+src/core/sqlite_state_store.py:4:import sqlite3
+src/core/sqlite_state_store.py:12:    return int(time.time() * 1000)
+src/core/sqlite_state_store.py:15:class SqliteStateStore(StateStore):
+src/core/sqlite_state_store.py:26:    def _connect(self) -> sqlite3.Connection:
+src/core/sqlite_state_store.py:27:        conn = sqlite3.connect(self._db_path, timeout=30)
+src/core/sqlite_state_store.py:28:        conn.row_factory = sqlite3.Row
+src/core/sqlite_state_store.py:36:        conn = self._connect()
+src/core/sqlite_state_store.py:53:        conn = self._connect()
+src/core/sqlite_state_store.py:97:        conn = self._connect()
+src/core/sqlite_state_store.py:131:        import sqlite3, json
+src/core/sqlite_state_store.py:134:        conn = sqlite3.connect(self._db_path, timeout=30)
+src/core/sqlite_state_store.py:135:        conn.row_factory = sqlite3.Row
+src/core/db/sqlite.py:4:import sqlite3
+src/core/db/sqlite.py:11:class Sqlite:
+src/core/db/sqlite.py:14:    def connect(self) -> sqlite3.Connection:
+src/core/db/sqlite.py:15:        # timeout=30 here is sqlite3's built-in busy handler (seconds)
+src/core/db/sqlite.py:16:        conn = sqlite3.connect(self.path, timeout=30)
+src/core/db/sqlite.py:17:        conn.row_factory = sqlite3.Row
+src/core/db/sqlite.py:30:    return int(time.time() * 1000)
+src/core/db/sqlite.py:33:def ensure_schema(conn: sqlite3.Connection) -> None:
+src/core/db/sqlite.py:44:def applied_versions(conn: sqlite3.Connection) -> set[int]:
+src/core/db/sqlite.py:50:def apply_migration(conn: sqlite3.Connection, version: int, sql: str) -> None:
+src/core/db/sqlite.py:61:    conn: sqlite3.Connection,
+src/core/db/config.py:5:    p = os.getenv("IHOUSE_DB_PATH", ".data/ihouse.sqlite3")
+src/core/db/outbox_healthcheck.py:4:import sqlite3
+src/core/db/outbox_healthcheck.py:8:from core.db.sqlite import Sqlite
+src/core/db/outbox_healthcheck.py:12:    return int(time.time() * 1000)
+src/core/db/outbox_healthcheck.py:16:    threshold_ms = int(os.getenv("IHOUSE_OUTBOX_STUCK_MS", str(10 * 60 * 1000)))  # 10 min default
+src/core/db/outbox_healthcheck.py:19:    db = Sqlite(db_path())
+src/core/db/outbox_healthcheck.py:20:    conn = db.connect()
+src/core/db/validate_rebuild.py:4:import sqlite3
+src/core/db/validate_rebuild.py:9:from core.db.sqlite import Sqlite
+src/core/db/validate_rebuild.py:18:def _table_fingerprint(conn: sqlite3.Connection, table: str) -> Dict[str, Any]:
+src/core/db/validate_rebuild.py:43:    conn = Sqlite(path=db_path()).connect()
+src/core/db/outbox_daemon.py:36:                    time.sleep(0.5)
+src/core/db/outbox_daemon.py:40:                time.sleep(self.interval)
+src/core/db/outbox_daemon.py:48:        interval = int(os.getenv("IHOUSE_OUTBOX_INTERVAL_SEC", "5"))

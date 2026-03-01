@@ -1,0 +1,159 @@
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Optional
+
+from core.event_log import ApplyStatus, EventLog
+from core.ports import EventLogPort, StateStorePort
+from core.skill_shim import legacy_dict_to_skill_output
+
+
+class CoreExecutionError(Exception):
+    pass
+
+
+def _core_dir() -> Path:
+    return Path(__file__).resolve().parent
+
+
+def _load_json_map(path: Path) -> Dict[str, str]:
+    raw = path.read_text(encoding="utf-8")
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise CoreExecutionError(f"REGISTRY_INVALID path={path.name}")
+    out: Dict[str, str] = {}
+    for k, v in parsed.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+            raise CoreExecutionError(f"REGISTRY_SCHEMA_INVALID path={path.name}")
+        out[k] = v
+    return out
+
+
+def _run_skill(module_path: str, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    import importlib
+
+    mod = importlib.import_module(module_path)
+    fn = getattr(mod, "run", None)
+    if not callable(fn):
+        raise CoreExecutionError(f"SKILL_RUN_MISSING module={module_path}")
+    out = fn(dict(payload))
+    if not isinstance(out, dict):
+        raise CoreExecutionError(f"SKILL_OUTPUT_INVALID module={module_path}")
+    return out
+
+
+def _normalize_emitted_events(skill_out: Dict[str, Any]) -> List[Dict[str, Any]]:
+    emitted: List[Dict[str, Any]] = []
+
+    ete = skill_out.get("events_to_emit")
+    if isinstance(ete, list):
+        for x in ete:
+            if not isinstance(x, dict):
+                continue
+            kind = x.get("kind") or x.get("event_type")
+            if isinstance(kind, str) and kind:
+                emitted.append({"kind": kind, "payload": x})
+
+    br = skill_out.get("booking_record")
+    if isinstance(br, dict) and br.get("booking_id"):
+        emitted.append({"kind": "StateUpsert", "payload": {"booking_record": br}})
+
+    return emitted
+
+
+@dataclass(frozen=True)
+class ExecuteResult:
+    envelope_id: str
+    apply_status: Optional[ApplyStatus]
+    emitted_events: List[Dict[str, Any]]
+    skill_result: Dict[str, Any]
+
+
+@dataclass
+class CoreExecutor:
+    """
+    Phase 14 canonical executor shell.
+
+    Commit policy (enforced when wired):
+    - commit only after apply_status == "APPLIED"
+    - never commit when replay_mode is True
+    - no adapter-level state writes
+    """
+
+    event_log_port: EventLogPort
+    event_log_applier: Optional[EventLog]
+    state_store: Optional[StateStorePort]
+    replay_mode: bool = False
+
+    def execute(
+        self,
+        *,
+        envelope: Mapping[str, Any],
+        idempotency_key: Optional[str] = None,
+    ) -> ExecuteResult:
+        env = dict(envelope)
+
+        envelope_id = self.event_log_port.append_event(
+            envelope=env,
+            idempotency_key=str(idempotency_key or ""),
+        )
+
+        if self.event_log_applier is None:
+            return ExecuteResult(
+                envelope_id=envelope_id,
+                apply_status=None,
+                emitted_events=[],
+                skill_result={"warning": "NO_APPLIER"},
+            )
+
+        typ = env.get("type")
+        if not isinstance(typ, str) or not typ:
+            raise CoreExecutionError("ENVELOPE_TYPE_REQUIRED")
+
+        payload = env.get("payload")
+        if not isinstance(payload, dict):
+            raise CoreExecutionError("ENVELOPE_PAYLOAD_REQUIRED")
+
+        occurred_at = env.get("occurred_at")
+        if not isinstance(occurred_at, str) or not occurred_at:
+            raise CoreExecutionError("ENVELOPE_OCCURRED_AT_REQUIRED")
+
+        core_dir = _core_dir()
+        kind_map = _load_json_map(core_dir / "kind_registry.core.json")
+        exec_map = _load_json_map(core_dir / "skill_exec_registry.core.json")
+
+        if typ not in kind_map:
+            raise CoreExecutionError(f"NO_ROUTE type={typ}")
+
+        skill_name = kind_map[typ]
+        if skill_name not in exec_map:
+            raise CoreExecutionError(f"NO_SKILL_EXEC kind={skill_name}")
+
+        skill_out = _run_skill(exec_map[skill_name], payload)
+        skill_decision = legacy_dict_to_skill_output(skill_out)
+        emitted = _normalize_emitted_events(skill_out)
+
+        apply_env: Dict[str, Any] = dict(env)
+        apply_env["envelope_id"] = envelope_id
+
+        apply_status = self.event_log_applier.append_envelope_result(
+            envelope=apply_env,
+            emitted_events=emitted,
+        )
+
+        if apply_status == "APPLIED" and not self.replay_mode and self.state_store is not None:
+            self.state_store.ensure_schema()
+            if hasattr(self.state_store, "commit_upserts") and getattr(skill_decision, "state_upserts", None):
+                upserts = [{"key": u.key, "value": u.value, "expected_last_envelope_id": u.expected_last_envelope_id} for u in skill_decision.state_upserts]
+                self.state_store.commit_upserts(envelope_id=envelope_id, upserts=upserts)
+            else:
+                self.state_store.commit(envelope_id=envelope_id, events=emitted)
+
+        return ExecuteResult(
+            envelope_id=envelope_id,
+            apply_status=apply_status,
+            emitted_events=emitted,
+            skill_result=skill_out,
+        )

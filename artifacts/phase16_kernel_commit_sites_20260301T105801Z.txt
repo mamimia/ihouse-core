@@ -1,0 +1,41 @@
+Searching state_store.commit call sites...
+
+src/core/executor.py:146:            self.state_store.commit(envelope_id=envelope_id, events=emitted)
+
+Context (±25 lines) for each hit:
+
+==== src/core/executor.py:146 ====
+
+        core_dir = _core_dir()
+        kind_map = _load_json_map(core_dir / "kind_registry.core.json")
+        exec_map = _load_json_map(core_dir / "skill_exec_registry.core.json")
+
+        if typ not in kind_map:
+            raise CoreExecutionError(f"NO_ROUTE type={typ}")
+
+        skill_name = kind_map[typ]
+        if skill_name not in exec_map:
+            raise CoreExecutionError(f"NO_SKILL_EXEC kind={skill_name}")
+
+        skill_out = _run_skill(exec_map[skill_name], payload)
+        emitted = _normalize_emitted_events(skill_out)
+
+        apply_env: Dict[str, Any] = dict(env)
+        apply_env["envelope_id"] = envelope_id
+
+        apply_status = self.event_log_applier.append_envelope_result(
+            envelope=apply_env,
+            emitted_events=emitted,
+        )
+
+        if apply_status == "APPLIED" and not self.replay_mode and self.state_store is not None:
+            self.state_store.ensure_schema()
+            self.state_store.commit(envelope_id=envelope_id, events=emitted)
+
+        return ExecuteResult(
+            envelope_id=envelope_id,
+            apply_status=apply_status,
+            emitted_events=emitted,
+            skill_result=skill_out,
+        )
+

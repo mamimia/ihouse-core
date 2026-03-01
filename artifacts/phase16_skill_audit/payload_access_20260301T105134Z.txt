@@ -1,0 +1,12 @@
+src/core/supabase_state_store.py:28:            booking_id = payload.get("booking_id")
+src/core/skills/booking_sync_ingest/skill.py:18:    provider = _as_str(payload.get("provider")).strip()
+src/core/skills/booking_sync_ingest/skill.py:19:    external_booking_id = _as_str(payload.get("external_booking_id")).strip()
+src/core/skills/booking_sync_ingest/skill.py:20:    property_id = _as_str(payload.get("property_id")).strip()
+src/core/skills/booking_sync_ingest/skill.py:21:    provider_payload = payload.get("provider_payload")
+src/core/skills/booking_sync_ingest/skill.py:26:    status = _as_str(provider_payload.get("status")).strip().lower()
+src/core/skills/booking_sync_ingest/skill.py:34:    start_date = _as_str(provider_payload.get("start_date")).strip()
+src/core/skills/booking_sync_ingest/skill.py:35:    end_date = _as_str(provider_payload.get("end_date")).strip()
+src/core/skills/booking_sync_ingest/skill.py:36:    guest_name = _as_str(provider_payload.get("guest_name")).strip()
+src/core/skills/booking_sync_ingest/skill.py:39:        return {"error": "INPUT_INVALID", "missing": ["payload.start_date", "payload.end_date"]}
+src/core/skills/state_transition_guard/skill.py:112:    invariants = payload.get("context", {}).get("invariants")
+src/core/sqlite_state_store.py:88:                br = payload.get("booking_record")
