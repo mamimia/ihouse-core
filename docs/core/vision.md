@@ -1,58 +1,31 @@
 # iHouse Core – Vision
 
 ## Version
-Phase 16C – Financial-Grade Deterministic Direction
+Phase 17 – Operational Hardening and Canonical Governance
 
 Last closed:
-Phase 16B – Deterministic Core Alignment
-
----
+Phase 16C – Hard Idempotency Gate
 
 ## What iHouse Is
-
 iHouse is a deterministic domain execution kernel.
-
-It is not an automation wrapper.
-It is not a skill runner.
-
-It is a domain state engine driven exclusively by canonical business events.
-
----
+External interface is business events only.
 
 ## Core Principle
-
-All state transitions originate from canonical domain events.
-
-Internal mechanics are hidden.
-
-External contract remains stable and business-only.
-
----
-
-## Determinism
-
-Given the same ordered canonical event log,
-the system must produce identical state.
-
-Always.
-
----
-
-## Financial-Grade Objective
-
-No duplicate envelope writes.
-No double execution.
-No state drift.
-Replayable truth.
-
-Phase 16C implements atomic idempotency enforcement.
-
----
-
-## Direction
-
 State is derived.
 Events are canonical.
 Execution is internal.
 Truth is replayable.
 
+## Determinism
+Given the same ordered canonical event log, the system produces identical state.
+
+## Financial Grade Objective
+No duplicate application of the same envelope.
+No double execution that mutates canonical truth.
+Hard idempotency is enforced at the Supabase boundary.
+
+## Phase 17 Direction
+Turn the kernel into an operationally safe SaaS foundation:
+tighten runtime composition and governance
+remove ambiguity and remaining legacy surfaces
+add operational observability and audit discipline

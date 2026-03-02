@@ -2,56 +2,31 @@
 
 ## Phase
 Current:
-Phase 16C – Hard Idempotency Gate
+Phase 17 – Operational Hardening and Canonical Governance
 
 Last closed:
-Phase 16B – Deterministic Core Alignment
-
----
+Phase 16C – Hard Idempotency Gate
 
 ## Runtime Mode
-
-DB_ADAPTER must be:
-
-supabase
-
-Startup fails if DB_ADAPTER != supabase in production.
-
----
+Production runtime must use Supabase.
+Any production configuration that allows SQLite writes is invalid.
 
 ## Canonical Flow
-
-External Input
-→ Canonical Domain Event
-→ Dispatcher
-→ Internal Handler
-→ EventLogPort (Supabase)
-→ StateStorePort
-→ Deterministic Commit
-
----
+External request
+→ IngestAPI
+→ CoreExecutor
+→ EventLogPort append_event (ingest envelope id)
+→ apply_envelope RPC (atomic canonical apply)
+→ StateStore commit only when APPLIED
 
 ## HTTP API
+POST /events is the canonical ingest path.
 
-POST /events
+Unknown event types are rejected.
 
-Accepts canonical domain events only.
+## Idempotency
+Hard idempotency enforced via apply_envelope.
+Replay of same envelope_id must not mutate the canonical log.
 
-Unknown types cause immediate rejection.
-
----
-
-## Idempotency Requirement
-
-No duplicate envelope_id may be written.
-
-Idempotency must be enforced before event_log mutation.
-
-Phase 16C implements atomic write gate.
-
----
-
-## Replay
-
-Rebuild derives state exclusively from Supabase public.event_log.
-
+## Replay and Rebuild
+Replay and rebuild derive from Supabase event_log only.

@@ -1,58 +1,44 @@
 # iHouse Core – Construction Log
 
 ## Phase 16
-Canonical Domain Event Migration
-
-System migrated from execution-primitive-based events
-to canonical business domain events.
-
-Supabase declared single source of truth.
-SQLite forbidden in production runtime.
-
----
+Canonical Domain Event Migration and Financial Grade Enforcement.
 
 ### Phase 16A – Canonical Schema Lock (Closed)
-
-DB schema locked to canonical at database level.
-
 Completed:
-- event_kind ENUM enforced
-- event_log.kind converted to enum
-- Legacy indexes removed
-- booking_state.last_event_id exists
-- FK to event_log(event_id) enforced
-- Concurrency enforced via expected_last_event_id
+event_log.kind enforced as event_kind enum
+indexes and constraints aligned
+booking_state concurrency and last_envelope_id semantics enforced
 
 Outcome:
-Database layer canonical and constrained.
-
----
+DB layer constrained and deterministic.
 
 ### Phase 16B – Deterministic Core Alignment (Closed)
-
 Completed:
-- Canonical routing registry active
-- Unknown event types rejected
-- Internal handlers aligned
-- Supabase enforced runtime mode
-- Enum values synchronized with runtime
-- Deterministic execution flow validated
+canonical routing registry active
+unknown event types rejected
+Supabase enforced as the operational runtime mode
+commit policy aligned:
+commit only after apply_status == APPLIED
+no commit during replay
 
-Remaining limitation discovered:
-Idempotency occurs after initial envelope write.
+Limitation discovered:
+idempotency must be enforced before any duplicate application can mutate the canonical log.
 
----
+### Phase 16C – Hard Idempotency Gate (Closed)
+Completed:
+atomic gate added at Supabase boundary via apply_envelope RPC
+envelope_received is the idempotency marker
+apply_envelope returns:
+APPLIED on first application
+ALREADY_APPLIED on replay of same envelope_id
+no SQLite fallback write path in production ingest surface
 
-### Phase 16C – Hard Idempotency Gate (Open)
+Outcome:
+financial grade idempotency at the canonical event store boundary.
 
-Goal:
-Financial-grade enforcement of envelope idempotency.
-
-Requirements:
-- Unique constraint or upsert on envelope_id
-- No duplicate envelope_received writes
-- Idempotency validated before event_log mutation
-- Atomic write gate
-
-Phase 16 not considered financially complete until Phase 16C closes.
-
+## Phase 17 – Operational Hardening and Canonical Governance (Open)
+Goals:
+remove remaining ambiguity and legacy drift
+tighten runtime composition rules
+add observability and audit invariants
+document the canonical operational playbook

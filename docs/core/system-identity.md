@@ -2,49 +2,30 @@
 
 ## Phase
 Current:
-Phase 16C – Hard Idempotency Gate
+Phase 17 – Operational Hardening and Canonical Governance
 
 Last closed:
-Phase 16B – Deterministic Core Alignment
-
----
+Phase 16C – Hard Idempotency Gate
 
 ## System Type
-
 Deterministic Domain Event Execution Kernel.
 
-Not skill-driven.
-Not function-triggered.
-Not execution-primitive-based.
-
-All execution originates from canonical business events.
-
----
+Not skill driven as an external contract.
+Skills are internal implementation.
 
 ## Event Authority
-
-Only canonical business events allowed externally.
-
-Internal handlers are implementation details.
-
-Unknown event types cause hard rejection.
-
----
+Only canonical business events are allowed externally.
+Unknown event types are rejected.
 
 ## Persistence Authority
+Supabase is canonical:
+public.event_log
+public.booking_state
 
-Supabase is the single source of truth.
+SQLite is not an allowed production write path.
 
-SQLite not allowed in production runtime.
-
----
-
-## Financial-Grade Direction
-
-System moving toward financial-grade guarantees:
-
-- Hard idempotency
-- Atomic envelope gate
-- Deterministic replay
-- Strict concurrency enforcement
-
+## Financial Grade Guarantees
+Hard idempotency at the canonical event store boundary
+Atomic apply gate
+Commit only after APPLIED
+No commit during replay

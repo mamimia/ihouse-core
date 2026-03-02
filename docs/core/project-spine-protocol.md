@@ -1,88 +1,33 @@
 # Project Spine Protocol
 
 ## Trigger Word
-
-The canonical session trigger is:
-
 SPINE
 
 SPINE is incomplete without terminal output confirmation.
 
-If SPINE is invoked, the assistant must:
+## Authority
+Repository state is canonical.
+Chat memory is not authoritative.
 
-1. Explicitly request terminal commands.
-2. Wait for pasted terminal output.
-3. Not proceed without real repository output.
-
-If no terminal output is provided, execution is invalid.
-
----
-
-## Goal
-
-Build projects with a single source of truth, zero drift, and deterministic context loading for any new chat session.
-
----
+## SPINE Reload Commands
+sed -n '1,260p' docs/core/current-snapshot.md
+sed -n '1,260p' docs/core/system-identity.md
+sed -n '1,260p' docs/core/canonical-event-architecture.md
+sed -n '1,260p' docs/core/construction-log.md
 
 ## Core Rules
-
-1. Repo is the only source of truth.
-2. Docs evolve with architecture.
-3. Terminal-first workflow.
-4. Read full file before modifying.
-5. Overwrite full files, never patch blindly.
-6. Limit commands per step.
-7. Backup and Git sync before structural changes.
-8. Every session must be reloadable deterministically.
-
----
-
-## Required Core Documents
-
-vision.md
-system-identity.md
-live-system.md
-current-snapshot.md
-construction-log.md
-canonical-event-architecture.md
-collaboration-rules.md
-behavioral-calibration.md
-session-anchor.md
-project-spine-protocol.md
-execution-continuity.md
-
----
+Read full file before modifying.
+Overwrite full files only.
+Prefer terminal execution.
+Backup and git sync before structural changes.
+Docs must evolve with code and DB.
 
 ## Phase Completion Protocol
-
-A phase is not closed unless:
-
-1. Backup created
-2. git status clean
-3. git add .
-4. git commit with phase label
-5. git push
-6. Docs updated to reflect reality
-7. Deterministic validation executed
-8. Phase closure written in construction-log.md
-
----
-
-## SPINE Session Reload Procedure
-
-The assistant must request:
-
-sed -n '1,200p' docs/core/current-snapshot.md
-sed -n '1,200p' docs/core/system-identity.md
-sed -n '1,200p' docs/core/canonical-event-architecture.md
-sed -n '1,200p' docs/core/construction-log.md
-
-And must wait for output before continuing.
-
----
-
-## Operating Principle
-
-Chat memory is not authoritative.
-Repository state is canonical.
-No repository output = No execution.
+Backup created
+git status clean
+git add
+git commit with phase label
+git push
+Docs updated
+Deterministic validation executed
+Phase closure recorded in construction-log.md
