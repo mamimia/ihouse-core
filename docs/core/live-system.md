@@ -1,19 +1,21 @@
 # iHouse Core – Live System
 
 ## Phase
-Phase 16 – Canonical Domain Event Migration
+Current:
+Phase 16C – Hard Idempotency Gate
+
+Last closed:
+Phase 16B – Deterministic Core Alignment
 
 ---
 
-## Runtime Modes
+## Runtime Mode
 
-DB_ADAPTER must be set to:
+DB_ADAPTER must be:
 
 supabase
 
-SQLite is not allowed in production runtime.
-
-Startup must fail if DB_ADAPTER != supabase in production.
+Startup fails if DB_ADAPTER != supabase in production.
 
 ---
 
@@ -21,8 +23,8 @@ Startup must fail if DB_ADAPTER != supabase in production.
 
 External Input
 → Canonical Domain Event
-→ Domain Dispatcher
-→ Internal Handlers
+→ Dispatcher
+→ Internal Handler
 → EventLogPort (Supabase)
 → StateStorePort
 → Deterministic Commit
@@ -35,28 +37,17 @@ POST /events
 
 Accepts canonical domain events only.
 
-Event types must match canonical registry.
-
 Unknown types cause immediate rejection.
 
 ---
 
-## Disabled Surfaces
+## Idempotency Requirement
 
-No execution-primitive-based event types.
-No direct skill invocation.
-No alternate runtime paths.
+No duplicate envelope_id may be written.
 
-FastAPI is the only execution entrypoint.
+Idempotency must be enforced before event_log mutation.
 
----
-
-## Persistence
-
-Supabase public.event_log
-Supabase public.booking_state
-
-Single source of truth.
+Phase 16C implements atomic write gate.
 
 ---
 
@@ -64,21 +55,3 @@ Single source of truth.
 
 Rebuild derives state exclusively from Supabase public.event_log.
 
-State hash validation required for deterministic proof.
-
----
-
-## Invariants
-
-Event order strictly preserved.
-Idempotency enforced.
-Single commit point.
-No hidden state writes.
-
----
-
-## Operational Rule
-
-Code, event registry, and documentation must remain synchronized.
-
-Drift is considered architectural violation.

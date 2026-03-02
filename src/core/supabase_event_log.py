@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping
 
 
 class SupabaseEventLog:
@@ -24,17 +24,19 @@ class SupabaseEventLog:
         if not isinstance(occurred_at, str) or not occurred_at:
             occurred_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
+        kind = envelope.get("type")
+        if not isinstance(kind, str) or not kind:
+            raise ValueError("Missing event type")
+
         row: Dict[str, Any] = {
             "event_id": envelope_id,
             "envelope_id": envelope_id,
-            "kind": "envelope_received",
+            "kind": kind,
             "occurred_at": occurred_at,
             "payload_json": dict(envelope),
         }
 
-        self._client.table("event_log") \
-            .upsert(row, on_conflict="event_id") \
-            .execute()
+        self._client.table("event_log").upsert(row, on_conflict="event_id").execute()
 
         return envelope_id
 
@@ -43,8 +45,8 @@ class SupabaseEventLog:
         self,
         envelope: Mapping[str, Any],
         result: Mapping[str, Any],
-    emitted_events=None,
-    ) -> str:
+        emitted_events=None,
+    ):
         emitted = emitted_events if emitted_events is not None else result.get("emitted_events", [])
 
         response = self._client.rpc(

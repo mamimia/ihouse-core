@@ -1,9 +1,11 @@
 {
+  "BOOKING_CREATED": "booking-created-noop",
   "BOOKING_CONFLICT": "booking-conflict-resolver",
   "BOOKING_SYNC_INGEST": "booking-sync-ingest",
   "SLA_ESCALATION": "sla-escalation-engine",
   "STATE_TRANSITION": "state-transition-guard",
   "TASK_COMPLETION": "task-completion-validator",
+  "booking-created-noop": "BOOKING_CREATED",
   "booking-conflict-resolver": "BOOKING_CONFLICT",
   "booking-sync-ingest": "BOOKING_SYNC_INGEST",
   "booking_conflict_resolver": "BOOKING_CONFLICT",

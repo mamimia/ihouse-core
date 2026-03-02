@@ -1,7 +1,13 @@
 # iHouse Core – Canonical Event Architecture
 
 ## Status
-Authoritative – Phase 16
+Authoritative – Phase 16B Closed
+
+Last closed:
+Phase 16B – Deterministic Execution Core Alignment
+
+Next:
+Phase 16C – Hard Idempotency Gate (Financial-Grade Enforcement)
 
 ---
 
@@ -13,7 +19,7 @@ This document replaces all previous execution-primitive-based event routing.
 
 ---
 
-## Canonical Business Event Types
+## Canonical Business Event Types (External)
 
 BOOKING_CREATED
 BOOKING_UPDATED
@@ -24,34 +30,44 @@ BOOKING_SYNC_ERROR
 AVAILABILITY_UPDATED
 RATE_UPDATED
 
-No additional event types are allowed without registry update and startup validation.
+No additional external event types are allowed without registry update and startup validation.
 
 ---
 
-## Event Contract
+## Internal Emitted Event Types (Not External Contract)
 
-Each canonical event must contain:
+STATE_UPSERT
 
-- event_id (UUID)
+STATE_UPSERT exists for deterministic internal state commit.
+It must never be accepted from the public API.
+
+---
+
+## Event Contract (External)
+
+Each canonical external event must contain:
+
+- event_id (string, UUID format)
 - tenant_id
 - occurred_at (ISO8601)
 - source
 - entity_id
 - payload (object)
 
-No technical fields allowed in external contract.
+No technical orchestration fields allowed in external contract.
 
 ---
 
 ## Enforcement Rules
 
-1. Unknown event types are rejected at runtime.
-2. Canonical registry is validated at startup.
-3. Every event type must map to an internal handler.
-4. No handler may exist without a canonical event type.
-5. No reverse mapping allowed.
-6. No aliasing allowed.
-7. No lowercase or kebab-case event types allowed.
+1. Unknown external event types are rejected at runtime.
+2. Canonical registry validated at startup.
+3. Every external event must map to an internal handler.
+4. No handler may exist without canonical event mapping.
+5. No aliasing allowed.
+6. Event types must be SCREAMING_SNAKE_CASE.
+7. STATE_UPSERT cannot be externally invoked.
+8. Idempotency must be enforced before any state mutation.
 
 ---
 
@@ -69,7 +85,7 @@ SQLite fallback is forbidden in production runtime.
 
 Rebuild must produce identical state hash across runs.
 
-Phase 16 is not closed without deterministic rebuild validation.
+Phase 16C will enforce financial-grade idempotency before write.
 
 ---
 
@@ -78,5 +94,4 @@ Phase 16 is not closed without deterministic rebuild validation.
 Domain Events → Dispatcher → Internal Handlers → Deterministic Commit
 
 Skills are internal mechanics.
-
 Business events are the only external contract.

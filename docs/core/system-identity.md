@@ -1,7 +1,11 @@
 # iHouse Core – System Identity
 
 ## Phase
-Phase 16 – Canonical Domain Event Migration
+Current:
+Phase 16C – Hard Idempotency Gate
+
+Last closed:
+Phase 16B – Deterministic Core Alignment
 
 ---
 
@@ -17,64 +21,30 @@ All execution originates from canonical business events.
 
 ---
 
-## Event Model
+## Event Authority
 
-External contract accepts only canonical domain events.
+Only canonical business events allowed externally.
 
 Internal handlers are implementation details.
 
-Event types represent business transitions only.
-
-Technical orchestration is never exposed as an event type.
+Unknown event types cause hard rejection.
 
 ---
 
-## Canonical Event Authority
-
-Only events defined in the canonical registry are allowed.
-
-Event types must be:
-
-- SCREAMING_SNAKE_CASE
-- Unique
-- Business meaningful
-
-Any unknown event type causes hard runtime rejection.
-
----
-
-## Execution Model
-
-Canonical Event
-→ Domain Dispatcher
-→ Internal Handlers
-→ Deterministic State Commit
-→ Supabase Event Log
-
----
-
-## Persistence
+## Persistence Authority
 
 Supabase is the single source of truth.
 
-SQLite is no longer allowed in production runtime.
-
-Startup fails if DB_ADAPTER != supabase in production mode.
+SQLite not allowed in production runtime.
 
 ---
 
-## Replay
+## Financial-Grade Direction
 
-Rebuild must derive identical state from:
+System moving toward financial-grade guarantees:
 
-Supabase public.event_log only.
+- Hard idempotency
+- Atomic envelope gate
+- Deterministic replay
+- Strict concurrency enforcement
 
-Deterministic state hash validation required for Phase 16 closure.
-
----
-
-## Structural Rule
-
-Code and identity must evolve together.
-
-Any architectural change requires synchronized documentation update.

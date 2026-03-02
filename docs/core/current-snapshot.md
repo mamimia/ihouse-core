@@ -1,7 +1,11 @@
 # iHouse Core – Current Snapshot
 
 ## Phase
-Phase 16 – Canonical Domain Event Migration
+Current:
+Phase 16C – Hard Idempotency Gate
+
+Last closed:
+Phase 16B – Deterministic Core Alignment
 
 ---
 
@@ -10,11 +14,11 @@ Phase 16 – Canonical Domain Event Migration
 Deterministic Domain Event Execution Kernel.
 
 Business events only.
-No execution-primitive events exposed.
+No execution-primitive exposure.
 
 ---
 
-## Canonical Event Types
+## Canonical Business Event Types
 
 BOOKING_CREATED
 BOOKING_UPDATED
@@ -25,17 +29,13 @@ BOOKING_SYNC_ERROR
 AVAILABILITY_UPDATED
 RATE_UPDATED
 
-Event types must be SCREAMING_SNAKE_CASE.
-No aliases allowed.
-No lowercase allowed.
-
 ---
 
 ## Execution Flow
 
 Canonical Domain Event
-→ Domain Dispatcher
-→ Internal Handlers
+→ Dispatcher
+→ Internal Handler
 → Deterministic Apply
 → Supabase Event Log
 → Supabase State Store
@@ -44,31 +44,25 @@ Canonical Domain Event
 
 ## Persistence
 
-Supabase is the single source of truth.
+Supabase public.event_log
+Supabase public.booking_state
 
-SQLite not allowed in production.
+Single source of truth.
+
+---
+
+## Idempotency Status
+
+Soft idempotency exists at execution level.
+
+Phase 16C introduces:
+Hard idempotency gate before any envelope write.
 
 ---
 
 ## Determinism
 
-Rebuild must derive identical state from:
+Rebuild derives state exclusively from Supabase public.event_log.
 
-Supabase public.event_log only.
+State hash validation required for deterministic guarantee.
 
-State hash validation required for Phase 16 closure.
-
----
-
-## Enforcement Status
-
-Documentation updated.
-Canonical contract defined.
-Migration to domain event layer in progress.
-
-Phase 16 not closed until:
-
-- Startup registry validation implemented
-- Runtime rejection verified
-- Supabase hard enforcement implemented
-- Deterministic rebuild hash validated

@@ -19,7 +19,17 @@ logger = logging.getLogger("ihouse-api")
 def build_core() -> CoreAPI:
     load_dotenv(dotenv_path=".env")
 
-    adapter_type = os.getenv("DB_ADAPTER", "supabase").strip().lower()
+    env = os.getenv("IHOUSE_ENV", "dev").strip().lower()
+    is_prod = env in ("prod", "production")
+
+    adapter_raw = os.getenv("DB_ADAPTER", "supabase").strip()
+    adapter_type = adapter_raw.lower()
+
+    if adapter_type not in ("supabase", "sqlite"):
+        raise RuntimeError(f"Invalid DB_ADAPTER: {adapter_raw}")
+
+    if is_prod and adapter_type != "supabase":
+        raise RuntimeError("Production requires DB_ADAPTER=supabase")
 
     if adapter_type == "supabase":
         from supabase import create_client
@@ -43,7 +53,7 @@ def build_core() -> CoreAPI:
             state_store=state_store,
         )
 
-    # SQLite canonical Phase 14 wiring
+    # SQLite canonical Phase 14 wiring (non-production only)
     dbp = db_path()
 
     db_port = SqliteEventLogAdapter(dbp)
