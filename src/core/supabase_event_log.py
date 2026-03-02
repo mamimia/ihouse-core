@@ -1,42 +1,27 @@
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, Mapping
+from typing import Any, Mapping
 
 
 class SupabaseEventLog:
     def __init__(self, *, client: Any) -> None:
         self._client = client
 
-    # --- Step 1: envelope append (ingest only) ---
+    # --- Step 1: envelope id selection (NO DB write) ---
     def append_event(
         self,
         envelope: Mapping[str, Any],
         *,
         idempotency_key: str,
     ) -> str:
-        envelope_id = str(idempotency_key or "")
+        envelope_id = str(idempotency_key or "").strip()
         if not envelope_id:
-            envelope_id = f"anon_{uuid.uuid4().hex}"
+            raise ValueError("envelope_id is required (idempotency_key missing)")
 
         occurred_at = envelope.get("occurred_at")
         if not isinstance(occurred_at, str) or not occurred_at:
-            occurred_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-        kind = envelope.get("type")
-        if not isinstance(kind, str) or not kind:
-            raise ValueError("Missing event type")
-
-        row: Dict[str, Any] = {
-            "event_id": envelope_id,
-            "envelope_id": envelope_id,
-            "kind": kind,
-            "occurred_at": occurred_at,
-            "payload_json": dict(envelope),
-        }
-
-        self._client.table("event_log").upsert(row, on_conflict="event_id").execute()
+            _ = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         return envelope_id
 
