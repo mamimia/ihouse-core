@@ -44,12 +44,27 @@ def _run_skill(module_path: str, payload: Mapping[str, Any]) -> Any:
 
 def _normalize_emitted_events(skill_out: Any) -> List[Dict[str, Any]]:
     decision: SkillOutput = legacy_dict_to_skill_output(skill_out)
-
     emitted: List[Dict[str, Any]] = []
     for ev in decision.events_to_emit:
         emitted.append({"type": ev.type, "payload": dict(ev.payload)})
-
     return emitted
+
+
+def _state_upserts_to_state_events(skill_decision: SkillOutput) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    upserts = getattr(skill_decision, "state_upserts", None) or []
+    for u in upserts:
+        out.append(
+            {
+                "kind": "StateUpsert",
+                "payload": {
+                    "booking_id": u.key,
+                    "state_json": u.value,
+                    "expected_last_envelope_id": u.expected_last_envelope_id,
+                },
+            }
+        )
+    return out
 
 
 @dataclass(frozen=True)
@@ -63,9 +78,9 @@ class ExecuteResult:
 @dataclass
 class CoreExecutor:
     """
-    Phase 14 canonical executor shell.
+    Canonical executor shell.
 
-    Commit policy (enforced when wired):
+    Commit policy:
     commit only after apply_status == "APPLIED"
     never commit when replay_mode is True
     no adapter-level state writes
@@ -121,25 +136,43 @@ class CoreExecutor:
             raise CoreExecutionError(f"NO_SKILL_EXEC kind={skill_name}")
 
         skill_out = _run_skill(exec_map[skill_name], payload)
-        skill_decision = legacy_dict_to_skill_output(skill_out)
+        skill_decision: SkillOutput = legacy_dict_to_skill_output(skill_out)
         emitted = _normalize_emitted_events(skill_out)
 
         apply_env: Dict[str, Any] = dict(env)
         apply_env["envelope_id"] = envelope_id
 
+        apply_result: Dict[str, Any] = {
+            "apply_result": getattr(skill_decision, "apply_result", None),
+            "reason": getattr(skill_decision, "reason", None),
+            "domain_effects": getattr(skill_decision, "domain_effects", None),
+            "skill_result": skill_out,
+        }
+
         apply_status = self.event_log_applier.append_envelope_result(
             envelope=apply_env,
+            result=apply_result,
             emitted_events=emitted,
         )
 
-        if apply_status == "APPLIED" and not self.replay_mode and self.state_store is not None:
+        if apply_status == "APPLIED" and (not self.replay_mode) and self.state_store is not None:
             self.state_store.ensure_schema()
-            if hasattr(self.state_store, "commit_upserts") and getattr(skill_decision, "state_upserts", None):
-                upserts = [
-                    {"key": u.key, "value": u.value, "expected_last_envelope_id": u.expected_last_envelope_id}
-                    for u in skill_decision.state_upserts
-                ]
-                self.state_store.commit_upserts(envelope_id=envelope_id, upserts=upserts)
+
+            has_state_upserts = bool(getattr(skill_decision, "state_upserts", None))
+            if has_state_upserts:
+                if hasattr(self.state_store, "commit_upserts"):
+                    upserts = [
+                        {
+                            "key": u.key,
+                            "value": u.value,
+                            "expected_last_envelope_id": u.expected_last_envelope_id,
+                        }
+                        for u in skill_decision.state_upserts
+                    ]
+                    self.state_store.commit_upserts(envelope_id=envelope_id, upserts=upserts)
+                else:
+                    state_events = _state_upserts_to_state_events(skill_decision)
+                    self.state_store.commit(envelope_id=envelope_id, events=state_events)
             else:
                 self.state_store.commit(envelope_id=envelope_id, events=emitted)
 

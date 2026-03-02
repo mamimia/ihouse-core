@@ -1,7 +1,11 @@
 {
-  "STATE_TRANSITION": "state-transition-guard",
   "BOOKING_CONFLICT": "booking-conflict-resolver",
-  "TASK_COMPLETION": "task-completion-validator",
+  "BOOKING_SYNC_INGEST": "booking-sync-ingest",
   "SLA_ESCALATION": "sla-escalation-engine",
-  "BOOKING_SYNC_INGEST": "booking-sync-ingest"
+  "STATE_TRANSITION": "state-transition-guard",
+  "TASK_COMPLETION": "task-completion-validator",
+  "booking-conflict-resolver": "BOOKING_CONFLICT",
+  "booking-sync-ingest": "BOOKING_SYNC_INGEST",
+  "booking_conflict_resolver": "BOOKING_CONFLICT",
+  "booking_sync_ingest": "BOOKING_SYNC_INGEST"
 }

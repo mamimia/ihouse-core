@@ -27,7 +27,7 @@ echo
 echo "POST /events"
 curl -sS -X POST "http://127.0.0.1:8000/events" \
   -H "Content-Type: application/json" \
-  -H "IHOUSE-API-KEY: ${KEY}" \
+  -H "x-api-key: " \
   -d @- | tee artifacts/phase16_post_events_response.json <<'JSON'
 {
   "type": "booking_sync_ingest",

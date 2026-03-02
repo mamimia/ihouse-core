@@ -19,7 +19,7 @@ logger = logging.getLogger("ihouse-api")
 def build_core() -> CoreAPI:
     load_dotenv(dotenv_path=".env")
 
-    adapter_type = os.getenv("DB_ADAPTER", "sqlite").strip().lower()
+    adapter_type = os.getenv("DB_ADAPTER", "supabase").strip().lower()
 
     if adapter_type == "supabase":
         from supabase import create_client
@@ -39,7 +39,7 @@ def build_core() -> CoreAPI:
         logger.info("Using Supabase adapter (log-only mode)")
         return CoreAPI(
             db=db_port,
-            event_log_applier=None,
+            event_log_applier=db_port,
             state_store=state_store,
         )
 

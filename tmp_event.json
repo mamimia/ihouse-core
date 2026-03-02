@@ -1,11 +1,11 @@
 {
-  "type": "BOOKING_SYNC_INGEST",
-  "occurred_at": "2026-03-01T10:00:00Z",
+  "type": "booking-sync-ingest",
+  "occurred_at": "2026-03-01T00:00:00Z",
   "actor": { "actor_id": "test", "role": "system" },
-  "idempotency": { "request_id": "phase16-test-0002" },
+  "idempotency": { "request_id": "phase16-test-0003" },
   "payload": {
     "provider": "airbnb",
-    "external_booking_id": "abc124",
+    "external_booking_id": "abc123",
     "property_id": "p_001",
     "provider_payload": {
       "status": "confirmed",

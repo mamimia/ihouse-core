@@ -1,0 +1,73 @@
+# iHouse Core – Current Snapshot
+
+System Type:
+Deterministic Event-Driven Execution Engine.
+
+Core Loop:
+Ingest → Deterministic Execute → Emit → Commit
+Idempotent envelopes.
+Deterministic replay.
+Single canonical commit point.
+
+Persistence Modes:
+SQLite (baseline determinism)
+Supabase (cloud operational mode)
+
+Runtime selected via DB_ADAPTER.
+
+Important:
+Supabase is operational but NOT architecturally canonical.
+SQLite fallback still exists.
+Canonical Event Architecture (Phase 16 target) is NOT implemented.
+
+Schema:
+SQLite tables:
+event_log
+booking_state
+
+Supabase tables:
+public.event_log
+public.booking_state
+
+HTTP Layer:
+FastAPI (app.main:app)
+API key protected by IHOUSE_API_KEY using x-api-key header.
+POST /events verified end-to-end.
+
+Architecture (Stabilized through Phase 15):
+Single root package: src/core
+Explicit adapter contracts:
+EventLogPort
+StateStorePort
+Composition root:
+core.runtime.build_core()
+
+Determinism Guarantees (Phase 14):
+Replay stable
+No version inflation
+Idempotent commit logic
+last_envelope_id enforced
+StateStore commit only after apply_result == APPLIED
+No StateStore commit during replay
+No hidden state writes from agent harness during API runtime
+
+Execution Authority (Phase 15):
+Only FastAPI runtime is supported for execution.
+Legacy agent HTTP server removed.
+Agent router and runner disabled.
+POST /events is the canonical ingest path into CoreExecutor.
+
+What Is NOT Yet Implemented:
+No canonical event registry.
+No enforced business event type locking.
+No normalization layer for external providers.
+Supabase is not yet declared as the single source of truth.
+Event log is operational, but not canonicalized.
+
+Operational Verification:
+POST /events returns event_id.
+Idempotency verified by resubmitting the same request_id.
+
+Status:
+Phase 15 locked.
+Phase 16 architecture defined as future direction only.
