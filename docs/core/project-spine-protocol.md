@@ -6,7 +6,15 @@ The canonical session trigger is:
 
 SPINE
 
-If context is unclear or drift is suspected, type SPINE and reload context from the repository.
+SPINE is incomplete without terminal output confirmation.
+
+If SPINE is invoked, the assistant must:
+
+1. Explicitly request terminal commands.
+2. Wait for pasted terminal output.
+3. Not proceed without real repository output.
+
+If no terminal output is provided, execution is invalid.
 
 ---
 
@@ -41,6 +49,7 @@ collaboration-rules.md
 behavioral-calibration.md
 session-anchor.md
 project-spine-protocol.md
+execution-continuity.md
 
 ---
 
@@ -61,14 +70,14 @@ A phase is not closed unless:
 
 ## SPINE Session Reload Procedure
 
-Run:
+The assistant must request:
 
 sed -n '1,200p' docs/core/current-snapshot.md
 sed -n '1,200p' docs/core/system-identity.md
 sed -n '1,200p' docs/core/canonical-event-architecture.md
 sed -n '1,200p' docs/core/construction-log.md
 
-Then continue from the latest locked Phase.
+And must wait for output before continuing.
 
 ---
 
@@ -76,3 +85,4 @@ Then continue from the latest locked Phase.
 
 Chat memory is not authoritative.
 Repository state is canonical.
+No repository output = No execution.
