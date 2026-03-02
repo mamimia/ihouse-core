@@ -32,6 +32,22 @@ The system is built as a global SaaS product.
 
 ---
 
+## Context Discipline
+
+When opening a new chat, or when drift is suspected, type:
+
+SPINE
+
+Then load:
+
+docs/core/current-snapshot.md
+docs/core/system-identity.md
+docs/core/canonical-event-architecture.md
+
+No reliance on chat memory.
+
+---
+
 ## Phase Discipline
 
 A Phase cannot be closed unless:
@@ -51,24 +67,6 @@ A Phase cannot be closed unless:
 
 1. Automatic backup at end of every Phase.
 2. Mandatory backup before structural changes.
-
----
-
-## Context Discipline
-
-When opening a new chat:
-
-Type:
-
-PHASE_CONTEXT_LOAD
-
-Then load:
-
-docs/core/current-snapshot.md
-docs/core/system-identity.md
-docs/core/canonical-event-architecture.md
-
-No reliance on chat memory.
 
 ---
 
