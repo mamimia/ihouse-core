@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
-from core.executor import CoreExecutor, CoreExecutionError
+from core.executor import CoreExecutionError, CoreExecutor
 from core.ports import EventLogPort
 
 
@@ -14,8 +14,11 @@ class IngestResult:
 
 class IngestAPI:
     """
-    Phase 14:
-    Canonical execution runs via CoreExecutor when wired.
+    Canonical ingest surface.
+
+    Rule:
+    - In production runtime, ingest MUST run via CoreExecutor.
+    - No fallback writes are allowed (no SQLite / no direct event_log writes).
     """
 
     def __init__(
@@ -33,18 +36,14 @@ class IngestAPI:
         *,
         idempotency_key: Optional[str] = None,
     ) -> IngestResult:
-        if self._executor is not None:
-            try:
-                res = self._executor.execute(
-                    envelope=envelope,
-                    idempotency_key=idempotency_key,
-                )
-                return IngestResult(event_id=res.envelope_id)
-            except CoreExecutionError as e:
-                raise ValueError(str(e)) from e
+        if self._executor is None:
+            raise RuntimeError("INGEST_EXECUTOR_REQUIRED (no fallback allowed)")
 
-        event_id = self._db.append_event(
-            envelope=envelope,
-            idempotency_key=idempotency_key,
-        )
-        return IngestResult(event_id=event_id)
+        try:
+            res = self._executor.execute(
+                envelope=envelope,
+                idempotency_key=idempotency_key,
+            )
+            return IngestResult(event_id=res.envelope_id)
+        except CoreExecutionError as e:
+            raise ValueError(str(e)) from e
