@@ -5,7 +5,7 @@ from typing import Dict, Any, Set
 
 from core.dev_sqlite.config import db_path
 from core.dev_sqlite.sqlite import Sqlite
-from core.db.projector import project_event
+from core.dev_sqlite.projector import project_event
 
 
 MATERIALIZED_TABLES = [

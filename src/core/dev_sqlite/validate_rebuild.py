@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Mapping
 from dotenv import load_dotenv
 
 from core.dev_sqlite.config import db_path
-from core.db.rebuild import rebuild
+from core.dev_sqlite.rebuild import rebuild
 from core.dev_sqlite.sqlite import Sqlite
 
 
