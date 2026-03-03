@@ -1,7 +1,5 @@
-import os
-from pathlib import Path
+from __future__ import annotations
 
-def db_path() -> str:
-    p = os.getenv("IHOUSE_DB_PATH", ".data/ihouse.sqlite3")
-    Path(p).parent.mkdir(parents=True, exist_ok=True)
-    return p
+# Shim for legacy imports used by tests and scripts.
+# The canonical dev SQLite config lives under core.dev_sqlite.
+from core.dev_sqlite.config import *  # noqa: F401,F403

@@ -1,10 +1,5 @@
-import sys
-from pathlib import Path
+import os
+import runpy
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT))
-
-from core.db.rebuild import rebuild
-
-if __name__ == "__main__":
-    rebuild()
+os.environ.setdefault("IHOUSE_ALLOW_SQLITE", "1")
+runpy.run_path("scripts/dev/run_sqlite_rebuild.py", run_name="__main__")

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional, List
 
-from core.db.config import db_path
+from core.dev_sqlite.config import db_path
 
 
 @dataclass
