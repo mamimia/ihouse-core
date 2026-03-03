@@ -1,0 +1,48 @@
+name: ihouse-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create venv
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Enforce no direct pytest usage
+        run: |
+          if grep -R --exclude-dir=.venv -n "pytest " .; then
+            echo "Direct pytest usage detected. Use canonical runner."
+            exit 1
+          fi
+
+      - name: Enforce no Hebrew in repo
+        run: |
+          if grep -R -P "[\x{0590}-\x{05FF}]" --exclude-dir=.venv .; then
+            echo "Hebrew detected in repo. English only."
+            exit 1
+          fi
+
+      - name: Ensure canonical scripts exist
+        run: |
+          test -f scripts/run_api.sh
+          test -f scripts/dev/smoke_http.sh
+          test -f scripts/dev/curl_event.sh
+
+      - name: Run canonical test suite
+        run: |
+          source .venv/bin/activate
+          PYTHONPATH=src python -m pytest -q

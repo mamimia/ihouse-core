@@ -148,3 +148,14 @@ def validate() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(validate())
+
+
+# ---------------------------------------------------------------------------
+# Canonical snapshot_fingerprints (test entrypoint)
+# ---------------------------------------------------------------------------
+
+def snapshot_fingerprints():
+    adapter = os.getenv("DB_ADAPTER", "supabase").strip().lower()
+    if adapter == "supabase":
+        return snapshot_fingerprints_supabase()
+    return snapshot_fingerprints_sqlite()

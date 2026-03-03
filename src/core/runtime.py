@@ -5,65 +5,44 @@ import logging
 from typing import Any
 
 from dotenv import load_dotenv
-
 from core.api import CoreAPI
-from core.db.config import db_path
-from core.db.sqlite_event_log_adapter import SqliteEventLogAdapter
-from core.sqlite_event_log import SqliteEventLog
-from core.sqlite_state_store import SqliteStateStore
-
 
 logger = logging.getLogger("ihouse-api")
 
 
 def build_core() -> CoreAPI:
+    """
+    Phase 17A – Supabase-only canonical runtime.
+
+    Invariants:
+    - Single composition root
+    - Supabase is the only event + state backend
+    - Fail fast if required env vars are missing
+    """
+
     load_dotenv(dotenv_path=".env")
 
-    env = os.getenv("IHOUSE_ENV", "dev").strip().lower()
-    is_prod = env in ("prod", "production")
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-    adapter_raw = os.getenv("DB_ADAPTER", "supabase").strip()
-    adapter_type = adapter_raw.lower()
-
-    if adapter_type not in ("supabase", "sqlite"):
-        raise RuntimeError(f"Invalid DB_ADAPTER: {adapter_raw}")
-
-    if is_prod and adapter_type != "supabase":
-        raise RuntimeError("Production requires DB_ADAPTER=supabase")
-
-    if adapter_type == "supabase":
-        from supabase import create_client
-        from core.supabase_event_log import SupabaseEventLog
-        from core.supabase_state_store import SupabaseStateStore
-
-        supabase_url = os.getenv("SUPABASE_URL")
-        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-        if not supabase_url or not supabase_key:
-            raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
-
-        sb = create_client(supabase_url, supabase_key)
-
-        db_port: Any = SupabaseEventLog(client=sb)
-        state_store = SupabaseStateStore(client=sb)
-
-        logger.info("Using Supabase adapter (log-only mode)")
-        return CoreAPI(
-            db=db_port,
-            event_log_applier=db_port,
-            state_store=state_store,
+    if not supabase_url or not supabase_key:
+        raise RuntimeError(
+            "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set"
         )
 
-    # SQLite canonical Phase 14 wiring (non-production only)
-    dbp = db_path()
+    from supabase import create_client
+    from core.supabase_event_log import SupabaseEventLog
+    from core.supabase_state_store import SupabaseStateStore
 
-    db_port = SqliteEventLogAdapter(dbp)
-    applier = SqliteEventLog(db_path=dbp)
-    state_store = SqliteStateStore(db_path=dbp)
+    sb = create_client(supabase_url, supabase_key)
 
-    logger.info("Using SQLite adapter (canonical executor enabled)")
+    db_port: Any = SupabaseEventLog(client=sb)
+    state_store = SupabaseStateStore(client=sb)
+
+    logger.info("Using Supabase canonical runtime")
 
     return CoreAPI(
         db=db_port,
-        event_log_applier=applier,
+        event_log_applier=db_port,
         state_store=state_store,
     )

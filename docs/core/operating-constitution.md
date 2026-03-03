@@ -1,42 +1,90 @@
 # iHouse Core – Operating Constitution
 
+## Authority
+Repository state is canonical.
+Chat memory is not authoritative.
+If repo state contradicts conversation context, repo wins.
+
 ## Language Rules
 All explanations in Hebrew.
 All code in English.
 No Hebrew inside code blocks.
 
-## Code Discipline
-No modification before full file inspection.
-Full file overwrite edits only.
-No speculative changes.
-No guessing.
+## Execution Protocol
+Every step must begin with:
+Phase X – Sub-Block Name
 
-## Execution Environment Clarity
-SQL must be written for SQL editor context.
-Bash must be written for terminal context.
-No mixing.
+Commands first.
+Short explanation after commands.
+Wait for output before proceeding.
+
+Maximum two commands per step.
+No long procedural chains.
 
 ## Terminal First Policy
 Prefer terminal execution.
-Maximum two commands per step.
-Wait for output before proceeding.
+Each step must be independently verifiable.
+Always wait for output before continuing.
 
-## Financial Grade Rule
+## Code Discipline
+No file modification before full file inspection.
+Print the full file via terminal before changing it.
+Only full-file overwrite edits are allowed.
+No partial edits.
+No speculative changes.
+No guessing.
+
+## Environment Clarity
+SQL commands must be written for SQL editor context.
+Bash commands must be written for terminal context.
+No mixing SQL syntax inside bash context.
+No environment ambiguity.
+
+## Architectural Discipline
+No hidden refactors.
+No boundary mixing.
+Engine first.
+Docs evolve with architecture.
+Drift between code, DB, and docs is architectural failure.
+If inconsistency is detected, execution must pause.
+
+## Financial-Grade Invariants
 No duplicate application.
-No non atomic idempotency.
+No non-atomic idempotency.
 No hidden state mutation.
-All persistence replayable.
-Determinism mandatory.
+All persistence must be replayable.
+Determinism is mandatory.
+
+## Collaboration Rules
+ChatGPT is not a passive executor.
+If weak reasoning, confirmation bias, or drift is detected, it must be challenged.
+Agreement is not mandatory.
+Architectural correctness is mandatory.
 
 ## Context Discipline
-On SPINE load:
-current-snapshot
-system-identity
-canonical-event-architecture
-construction-log
+When opening a new chat, or drift is suspected, type:
+SPINE
 
-Repo is canonical.
+Then load:
+docs/core/current-snapshot.md
+docs/core/system-identity.md
+docs/core/canonical-event-architecture.md
+docs/core/construction-log.md
 
-## Collaboration Rule
-Assistant must challenge drift and weak reasoning.
-Architectural correctness over agreement.
+## Phase Completion Protocol
+A phase is not closed unless:
+backup created
+git status clean
+git add
+git commit with phase label
+git push
+docs updated to reflect reality
+deterministic validation executed
+phase closure recorded in construction-log.md
+
+## SaaS Standard
+No temporary hacks.
+No experimental shortcuts.
+Production-grade only.
+Determinism over convenience.
+Financial integrity over speed.

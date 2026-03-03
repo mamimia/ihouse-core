@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install test deps
-        run: python3 -m pip install -U pytest
+        run: # pytest provided by venv
 
       - name: Run invariant suite
-        run: python3 -m pytest -q
+        run: PYTHONPATH=src python3 -m pytest -q
