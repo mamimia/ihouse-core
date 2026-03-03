@@ -58,7 +58,7 @@ jobs:
         run: |
           source .venv/bin/activate
           export PYTHONPATH=src
-          export IHOUSE_API_KEY="super-secret-dev-key"
+          export IHOUSE_API_KEY="${{ secrets.IHOUSE_API_KEY }}"
 
           ./scripts/run_api.sh > api.log 2>&1 &
           API_PID=$!
