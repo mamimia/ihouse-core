@@ -5,7 +5,7 @@ import sqlite3
 import time
 
 from core.dev_sqlite.config import db_path
-from core.db.sqlite import Sqlite
+from core.dev_sqlite.sqlite import Sqlite
 
 
 def _now_ms() -> int:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Tuple
 
-from core.db.sqlite import Sqlite, applied_versions, apply_migration
+from core.dev_sqlite.sqlite import Sqlite, applied_versions, apply_migration
 
 def _load_migrations() -> List[Tuple[int, str]]:
     migrations_dir = Path(__file__).resolve().parents[1] / 'db' / 'migrations'

@@ -6,7 +6,7 @@ import sqlite3
 from typing import Any, Dict, Optional
 
 from core.dev_sqlite.config import db_path
-from core.db.sqlite import Sqlite
+from core.dev_sqlite.sqlite import Sqlite
 def _connect() -> sqlite3.Connection:
     return Sqlite(path=db_path()).connect()
 

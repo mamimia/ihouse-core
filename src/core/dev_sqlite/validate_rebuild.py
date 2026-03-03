@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from core.dev_sqlite.config import db_path
 from core.db.rebuild import rebuild
-from core.db.sqlite import Sqlite
+from core.dev_sqlite.sqlite import Sqlite
 
 
 MATERIALIZED_TABLES = [

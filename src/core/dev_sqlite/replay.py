@@ -5,7 +5,7 @@ import sqlite3
 from typing import Dict, Any, List, Tuple
 
 def replay(db_file: str, limit: int) -> Dict[str, Any]:
-    from core.db.sqlite import Sqlite
+    from core.dev_sqlite.sqlite import Sqlite
     conn = Sqlite(path=db_file).connect()
     try:
         last = conn.execute("SELECT COALESCE(MAX(row_id), 0) AS m FROM events").fetchone()["m"]
