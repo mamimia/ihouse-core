@@ -1,5 +1,4 @@
 from __future__ import annotations
-from . import _dev_guard
 
 import os
 import sqlite3
