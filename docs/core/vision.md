@@ -1,10 +1,10 @@
 # iHouse Core – Vision
 
 ## Version
-Phase 17 – Operational Hardening and Canonical Governance
+Phase 17B – Canonical Governance Completion
 
 Last closed:
-Phase 16C – Hard Idempotency Gate
+Phase 17A – Operational Runner, Secrets, CI, and Smoke Hardening
 
 ## What iHouse Is
 iHouse is a deterministic domain execution kernel.
@@ -24,8 +24,8 @@ No duplicate application of the same envelope.
 No double execution that mutates canonical truth.
 Hard idempotency is enforced at the Supabase boundary.
 
-## Phase 17 Direction
-Turn the kernel into an operationally safe SaaS foundation:
-tighten runtime composition and governance
-remove ambiguity and remaining legacy surfaces
-add operational observability and audit discipline
+## SaaS Direction
+Make the kernel operationally safe and repeatable:
+canonical runtime wiring
+strict governance and CI enforcement
+no hidden drift between code, DB, and docs

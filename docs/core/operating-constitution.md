@@ -7,8 +7,11 @@ If repo state contradicts conversation context, repo wins.
 
 ## Language Rules
 All explanations in Hebrew.
+Render Hebrew right-to-left.
+If RTL rendering is unreliable, prefix each Hebrew line with the RLM mark (U+200F).
 All code in English.
 No Hebrew inside code blocks.
+No Hebrew inside repo content.
 
 ## Execution Protocol
 Every step must begin with:
@@ -54,6 +57,12 @@ No non-atomic idempotency.
 No hidden state mutation.
 All persistence must be replayable.
 Determinism is mandatory.
+
+## Testing Discipline
+Never run pytest directly.
+Always run tests via:
+source .venv/bin/activate
+PYTHONPATH=src python -m pytest -q
 
 ## Collaboration Rules
 ChatGPT is not a passive executor.

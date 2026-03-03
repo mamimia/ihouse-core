@@ -25,6 +25,11 @@ Engine first.
 Docs evolve with architecture.
 Backups and git sync are mandatory.
 
+## Language and Formatting
+When writing Hebrew, render right-to-left.
+If RTL rendering is unreliable, prefix each Hebrew line with the RLM mark (U+200F).
+Never place Hebrew text inside repo files that are enforced as English-only.
+
 ## Long Term Objective
 Production grade global SaaS platform
 deterministic domain execution

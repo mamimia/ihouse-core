@@ -4,14 +4,15 @@
 Authoritative
 
 Last closed:
-Phase 16C – Hard Idempotency Gate
+Phase 17A – Operational Runner, Secrets, CI, and Smoke Hardening
 
 Current:
-Phase 17 – Operational Hardening and Canonical Governance
+Phase 17B – Canonical Governance Completion
 
 ## Purpose
 Define the single allowed external business event surface.
 Define the single canonical persistence contract.
+Define the single canonical operational apply path.
 
 ## Canonical Business Event Types
 BOOKING_CREATED
@@ -25,6 +26,11 @@ RATE_UPDATED
 
 No additional external event types are allowed without registry update and validation.
 
+## External Event Sources
+Any external producer must emit canonical business events only.
+This includes user self-booking and manual bookings.
+All external sources must flow through the canonical Supabase apply gate.
+
 ## Internal Events
 Internal events may exist as implementation detail.
 They are never accepted from the public API.
@@ -32,7 +38,6 @@ They are never accepted from the public API.
 ## External Envelope Contract
 An external envelope must contain:
 type
-occurred_at
 payload
 idempotency.request_id
 

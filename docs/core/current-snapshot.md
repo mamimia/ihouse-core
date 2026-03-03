@@ -2,10 +2,10 @@
 
 ## Phase
 Current:
-Phase 17 – Operational Hardening and Canonical Governance
+Phase 17B – Canonical Governance Completion
 
 Last closed:
-Phase 16C – Hard Idempotency Gate
+Phase 17A – Operational Runner, Secrets, CI, and Smoke Hardening
 
 ## System Type
 Deterministic Domain Event Execution Kernel.
@@ -22,6 +22,14 @@ BOOKING_CHECKED_OUT
 BOOKING_SYNC_ERROR
 AVAILABILITY_UPDATED
 RATE_UPDATED
+
+## External Event Sources
+External producers include:
+channel managers
+internal admin tools
+user self-booking and manual bookings
+
+All sources must emit canonical business events through the same canonical path.
 
 ## Execution Flow
 Ingest envelope
@@ -46,9 +54,18 @@ This prevents duplicate envelope application.
 Rebuild and replay must derive truth from Supabase event_log only.
 Given the same ordered event_log, state must be identical.
 
-## Phase 17 Focus
-Operational hardening and governance:
-runtime wiring validation
-schema and migration discipline
-observability and audit queries
-removal of remaining legacy paths and ambiguity
+## Operational Canon
+Local API runner:
+scripts/run_api.sh
+
+Dev smoke:
+scripts/dev/smoke_http.sh
+scripts/dev/curl_event.sh
+
+CI governance:
+no direct pytest invocation
+English-only repo content
+boot API then run HTTP smoke
+
+Secrets:
+IHOUSE_API_KEY is provided via GitHub Actions secret in CI.

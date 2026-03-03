@@ -11,5 +11,5 @@ Do not restart architecture discussion.
 Do not redesign canonical structures.
 Proceed in deterministic implementation mode.
 
-If Phase 17 is active:
-continue operational hardening and canonical governance tasks.
+If Phase 17B is active:
+continue canonical governance completion tasks only.
