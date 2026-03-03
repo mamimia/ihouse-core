@@ -5,33 +5,40 @@ on:
   pull_request:
 
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.12"
 
       - name: Create venv
         run: |
           python -m venv .venv
-          source .venv/bin/activate
-          pip install -r requirements.txt
 
-      - name: Enforce no direct pytest usage
+      - name: Install deps
         run: |
-          if grep -R --exclude-dir=.venv -n "pytest " .; then
+          source .venv/bin/activate
+          python -m pip install -U pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          fi
+          python -m pip install -U pytest
+
+      - name: Enforce no direct pytest invocation
+        run: |
+          if grep -R --exclude-dir=.venv -nE '(^|[[:space:]])pytest([[:space:]]|$)' scripts .github; then
             echo "Direct pytest usage detected. Use canonical runner."
             exit 1
           fi
 
-      - name: Enforce no Hebrew in repo
+      - name: Enforce English-only repo (no Hebrew)
         run: |
-          if grep -R -P "[\x{0590}-\x{05FF}]" --exclude-dir=.venv .; then
+          if grep -R -P --exclude-dir=.venv -n "[\x{0590}-\x{05FF}]" .; then
             echo "Hebrew detected in repo. English only."
             exit 1
           fi
@@ -42,7 +49,27 @@ jobs:
           test -f scripts/dev/smoke_http.sh
           test -f scripts/dev/curl_event.sh
 
-      - name: Run canonical test suite
+      - name: Run canonical unit tests
         run: |
           source .venv/bin/activate
           PYTHONPATH=src python -m pytest -q
+
+      - name: Boot API and run HTTP smoke
+        run: |
+          source .venv/bin/activate
+          export PYTHONPATH=src
+          export IHOUSE_API_KEY="super-secret-dev-key"
+
+          ./scripts/run_api.sh > api.log 2>&1 &
+          API_PID=$!
+
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          BASE_URL=http://127.0.0.1:8000 IHOUSE_API_KEY="$IHOUSE_API_KEY" ./scripts/dev/smoke_http.sh
+
+          kill $API_PID
