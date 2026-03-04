@@ -1,9 +1,7 @@
-# iHouse Core – Construction Log
+# iHouse Core — Construction Log
 
-## Governance Rule – Phase Timeline Synchronization
-
+## Governance Rule — Phase Timeline Synchronization
 At the completion of every Phase:
-
 1. Construction Log must be updated.
 2. docs/core/phase-timeline/phase-timeline.md must be appended.
 3. Phase Timeline is strictly append-only.
@@ -12,46 +10,9 @@ At the completion of every Phase:
 
 ---
 
-## Phase 16
-Canonical Domain Event Migration and Financial Grade Enforcement.
+## Phase 17 — Operational Hardening and Canonical Governance
 
-### Phase 16A – Canonical Schema Lock (Closed)
-Completed:
-event_log.kind enforced as event_kind enum
-indexes and constraints aligned
-booking_state concurrency and last_envelope_id semantics enforced
-
-Outcome:
-DB layer constrained and deterministic.
-
-### Phase 16B – Deterministic Core Alignment (Closed)
-Completed:
-canonical routing registry active
-unknown event types rejected
-Supabase enforced as the operational runtime mode
-commit policy aligned:
-commit only after apply_status == APPLIED
-no commit during replay
-
-Limitation discovered:
-idempotency must be enforced before any duplicate application can mutate the canonical log.
-
-### Phase 16C – Hard Idempotency Gate (Closed)
-Completed:
-atomic gate added at Supabase boundary via apply_envelope RPC
-envelope_received is the idempotency marker
-apply_envelope returns:
-APPLIED on first application
-ALREADY_APPLIED on replay of same envelope_id
-no SQLite fallback write path in production ingest surface
-
-Outcome:
-financial grade idempotency at the canonical event store boundary.
-
-## Phase 17
-Operational Hardening and Canonical Governance.
-
-### Phase 17A – Operational Runner, Secrets, CI, and Smoke Hardening (Closed)
+### Phase 17A — Operational Runner, Secrets, CI, and Smoke Hardening (Closed)
 Completed:
 canonical local API runner scripts/run_api.sh
 dev smoke scripts:
@@ -67,8 +28,46 @@ GitHub Actions secret used for IHOUSE_API_KEY
 Outcome:
 operationally repeatable local and CI runtime with enforced governance.
 
-### Phase 17B – Canonical Governance Completion (Open)
-Goals:
-finish documentation alignment and remove remaining ambiguity
-ensure user self-booking is treated as an external event source through canonical Supabase apply gate
-tighten operational playbook and invariants
+### Phase 17B — Canonical Governance Completion (Closed)
+Completed:
+apply_envelope verified as the single atomic write authority into Supabase
+ALREADY_APPLIED replay behavior validated against live duplicate envelope re-apply
+STATE_UPSERT formalized as DB-generated internal event
+booking_state.last_envelope_id verified and treated as invariant
+event_log unique constraint on event_id verified
+booking_state primary key uniqueness on booking_id verified
+booking_state.last_event_id foreign key integrity to event_log verified
+end-to-end determinism revalidated via canonical event_log replay semantics
+user self-booking and manual bookings treated as external event sources through canonical apply gate
+
+Outcome:
+database is the single source of mutation truth
+application layer cannot fabricate state
+financial-grade idempotency includes zero duplicate state mutation
+
+### Phase 17C — Overlap Rules, Business Dedup, Read Model Inquiry (Closed)
+Completed:
+overlap invariant enforced for (tenant_id, property_id) using half-open ranges [check_in, check_out)
+business dedup enforced on (tenant_id, source, reservation_ref, property_id)
+read-model inquiry enabled for booking lookup and state inspection
+cancellation path validated as deterministic state transition
+
+Outcome:
+property availability integrity enforced at the canonical DB boundary
+stable booking identity prevents duplicate creates
+state inspection supported without introducing alternate mutation paths
+
+---
+
+## Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants (Closed)
+Completed:
+availability canon locked as Option B: active iff status IS DISTINCT FROM 'canceled' (NULL treated as active for legacy)
+forward-only writes: BOOKING_CREATED writes status='active', BOOKING_CANCELED sets status='canceled' and bumps version
+STATE_UPSERT event_id uniqueness enforced per envelope and event type (no collisions across created/canceled paths)
+last_event_id always points to an existing event_log row for applied envelopes
+docs synchronized to prevent code-doc drift on availability predicate and overlap semantics
+
+Outcome:
+legacy compatibility preserved without backfill
+availability semantics are single-source-of-truth and query-stable
+event_log and booking_state remain consistent under idempotent replay

@@ -1,15 +1,27 @@
-# Execution Continuity Directive
+# iHouse Core — Execution Continuity
 
-After SPINE reload, the assistant must:
-
-1. Identify the latest locked Phase from construction-log.md.
-2. Confirm current state from current-snapshot.md.
-3. Identify which Phase block is open.
-4. Continue execution strictly from that boundary.
-
-Do not restart architecture discussion.
-Do not redesign canonical structures.
+## Principle
+Continue from the latest closed Phase boundary.
+Do not restart architecture discussions.
 Proceed in deterministic implementation mode.
 
-If Phase 17B is active:
-continue canonical governance completion tasks only.
+## Reload Steps
+1. Read docs/core/construction-log.md to identify latest closed Phase.
+2. Confirm current state in docs/core/current-snapshot.md.
+3. Validate invariants in docs/core/canonical-event-architecture.md.
+4. Continue only within the declared open/active scope.
+
+## Hard Rules
+Docs must match code and DB semantics.
+No semantic drift between queries, indexes, and docs.
+All production mutations must flow through Supabase apply_envelope.
+
+## Availability Canon
+Active predicate:
+status IS DISTINCT FROM 'canceled'
+
+Overlap scope:
+tenant_id + property_id
+
+Range semantics:
+[check_in, check_out)

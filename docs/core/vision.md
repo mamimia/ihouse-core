@@ -1,10 +1,10 @@
-# iHouse Core – Vision
+# iHouse Core — Vision
 
 ## Version
-Phase 17B – Canonical Governance Completion
+Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants (Closed)
 
 Last closed:
-Phase 17A – Operational Runner, Secrets, CI, and Smoke Hardening
+Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants
 
 ## What iHouse Is
 iHouse is a deterministic domain execution kernel.
@@ -24,8 +24,18 @@ No duplicate application of the same envelope.
 No double execution that mutates canonical truth.
 Hard idempotency is enforced at the Supabase boundary.
 
+Database-level canonical mutation authority.
+No application-layer truth fabrication.
+Hard idempotency with zero duplicate state mutation.
+
 ## SaaS Direction
 Make the kernel operationally safe and repeatable:
 canonical runtime wiring
 strict governance and CI enforcement
 no hidden drift between code, DB, and docs
+
+## Availability Canon (Phase 18)
+Availability is enforced for (tenant_id, property_id).
+Bookings use half-open ranges [check_in, check_out).
+Active predicate is legacy tolerant:
+status IS DISTINCT FROM 'canceled'

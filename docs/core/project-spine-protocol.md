@@ -31,3 +31,4 @@ git push
 Docs updated
 Deterministic validation executed
 Phase closure recorded in construction-log.md
+Phase Timeline appended (append-only)

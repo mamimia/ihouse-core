@@ -121,7 +121,58 @@ English-only repo policy
 Secret-based API key
 CI HTTP smoke validation
 
-## Phase 17B – Canonical Governance Completion (Open)
+## Phase 17B – Canonical Governance Completion 
 Finalize documentation alignment.
 Treat user self-booking as canonical external event source.
 Tighten operational invariants.
+
+## Phase 17B – Canonical Governance Completion (Closed)
+apply_envelope validated as single atomic write authority.
+ALREADY_APPLIED replay validated with zero duplicate state mutation.
+STATE_UPSERT formalized as DB-generated internal event.
+booking_state last_envelope_id invariant validated.
+Unique constraints and foreign keys verified live.
+End-to-end determinism revalidated.
+User self-booking confirmed as canonical external event source.
+
+## Phase 17C – Overlap Rules, Business Dedup, Read Model Inquiry (Open)
+Introduce overlap invariants.
+Introduce business dedup keys.
+Introduce stable read model inquiry API.
+
+## Phase 17C — Overlap Rules, Business Dedup, Read Model Inquiry (Closed)
+Completed:
+- booking_state.check_in and booking_state.check_out added (date).
+- Overlap gate enforced on BOOKING_CREATED using half-open range [check_in, check_out).
+- Business identity dedup enforced for BOOKING_CREATED on (tenant_id, source, reservation_ref, property_id).
+- Read model inquiry functions added:
+  - read_booking_by_id(booking_id)
+  - read_booking_by_business_key(tenant_id, source, reservation_ref, property_id)
+
+Outcome:
+- Deterministic, forward-only booking creation gate with overlap prevention and stable identity dedup.
+- Read model inquiry is DB-backed and consistent.
+
+## Phase 18 – Cancellation-aware Overlap (Closed)
+Introduce cancellation-aware availability semantics and status-based booking lifecycle.
+
+Canonical availability predicate:
+- A booking is considered active for overlap checks iff status IS DISTINCT FROM 'canceled'.
+- This intentionally treats NULL as active for legacy rows (forward-only, no backfill).
+
+Forward-only write rules:
+- On BOOKING_CREATED: always write status = 'active' for new rows.
+- On BOOKING_CANCELED: set status = 'canceled' and bump version under row lock; update last_event_id and last_envelope_id.
+
+Completed:
+- booking_state.status column introduced.
+- BOOKING_CANCELED branch implemented inside apply_envelope.
+- Cancellation updates booking_state under row lock.
+- Overlap gate modified to ignore canceled bookings using the canonical predicate.
+- Canceling a booking allows a new overlapping booking to be created afterward.
+
+Outcome:
+- Cancellation removes bookings from availability checks without deleting historical data.
+- Legacy rows with NULL status remain valid and are treated as active.
+- Availability remains deterministic using half-open ranges [check_in, check_out).
+- Booking lifecycle transitions remain forward-only and replay safe.

@@ -1,16 +1,16 @@
-# iHouse Core – System Identity
+# iHouse Core — System Identity
 
 ## Phase
 Current:
-Phase 17B – Canonical Governance Completion
+Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants (Closed)
 
 Last closed:
-Phase 17A – Operational Runner, Secrets, CI, and Smoke Hardening
+Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants
 
 ## System Type
 Deterministic Domain Event Execution Kernel.
 
-Not skill driven as an external contract.
+Not skill-driven as an external contract.
 Skills are internal implementation.
 
 ## Event Authority
@@ -31,15 +31,16 @@ Atomic apply gate
 Commit only after APPLIED
 No commit during replay
 
-## Operational Governance
-Canonical local runner:
-scripts/run_api.sh
+State mutation authority resides exclusively in Supabase apply_envelope.
+Application layer cannot fabricate internal state events.
+Duplicate envelopes never mutate state.
 
-CI enforces:
-no direct pytest usage
-English-only repo content
-canonical scripts exist
-boot API then run HTTP smoke
+## Availability Canon
+Active predicate:
+status IS DISTINCT FROM 'canceled'
 
-Secrets:
-IHOUSE_API_KEY provided via GitHub Actions secrets.
+Overlap scope:
+tenant_id + property_id
+
+Range semantics:
+[check_in, check_out)

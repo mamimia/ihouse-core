@@ -38,7 +38,7 @@ class SupabaseEventLog:
             "apply_envelope",
             {
                 "p_envelope": dict(envelope),
-                "p_emitted": emitted,
+                "p_emit": emitted,
             },
         ).execute()
 

@@ -58,6 +58,10 @@ No hidden state mutation.
 All persistence must be replayable.
 Determinism is mandatory.
 
+Database is the single mutation authority:
+apply_envelope is the only canonical write gate.
+Duplicate envelope replay returns ALREADY_APPLIED and must not mutate state.
+
 ## Testing Discipline
 Never run pytest directly.
 Always run tests via:

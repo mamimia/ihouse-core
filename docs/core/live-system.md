@@ -1,11 +1,11 @@
-# iHouse Core – Live System
+# iHouse Core — Live System
 
 ## Phase
 Current:
-Phase 17B – Canonical Governance Completion
+Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants (Closed)
 
 Last closed:
-Phase 17A – Operational Runner, Secrets, CI, and Smoke Hardening
+Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants
 
 ## Runtime Mode
 Production runtime must use Supabase.
@@ -15,8 +15,9 @@ Any production configuration that allows SQLite writes is invalid.
 External request
 → IngestAPI
 → CoreExecutor
-→ EventLogPort append_event (ingest envelope id)
 → apply_envelope RPC (atomic canonical apply)
+→ event_log appended exactly once per envelope_id
+→ booking_state materialized by DB-generated internal events
 → StateStore commit only when APPLIED
 
 ## HTTP API
@@ -25,15 +26,18 @@ Unknown event types are rejected.
 
 ## Idempotency
 Hard idempotency enforced via apply_envelope.
-Replay of same envelope_id must not mutate the canonical log.
+Replay of same envelope_id must not mutate the canonical log or booking_state.
+apply_envelope returns ALREADY_APPLIED on duplicate envelope.
 
-## Replay and Rebuild
-Replay and rebuild derive from Supabase event_log only.
+## Availability Contract
+Scope:
+tenant_id + property_id
 
-## Operational Runner
-Use scripts/run_api.sh for local API boot.
-CI boots the API and runs HTTP smoke.
+Range:
+[check_in, check_out)
 
-## Secrets
-CI obtains IHOUSE_API_KEY from GitHub Actions secrets.
-Do not hardcode secrets in repo.
+Overlap predicate:
+existing.check_in < new.check_out AND new.check_in < existing.check_out
+
+Active predicate (Option B):
+status IS DISTINCT FROM 'canceled'

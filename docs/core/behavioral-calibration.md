@@ -1,4 +1,4 @@
-# iHouse Core – Behavioral Calibration
+# iHouse Core — Behavioral Calibration
 
 ## Working Profile
 Owner preferences:
@@ -25,13 +25,25 @@ Engine first.
 Docs evolve with architecture.
 Backups and git sync are mandatory.
 
-## Language and Formatting
-When writing Hebrew, render right-to-left.
-If RTL rendering is unreliable, prefix each Hebrew line with the RLM mark (U+200F).
-Never place Hebrew text inside repo files that are enforced as English-only.
+## Canonical Execution Mindset
+Treat the database as the mutation authority.
+Do not invent truth in the application layer.
+Prefer live verification:
+event_log rows
+booking_state rows
+apply_envelope status codes
 
-## Long Term Objective
-Production grade global SaaS platform
-deterministic domain execution
-strong architectural integrity
-zero semantic drift
+## Closure Discipline
+A Phase is not closed until:
+phase timeline is appended
+core docs are updated to match the locked behavior
+no code-doc semantic drift remains
+
+## Locked Semantic Rule (Phase 18)
+Canonical availability predicate:
+A booking is considered active for overlap checks iff status IS DISTINCT FROM 'canceled'.
+NULL is intentionally treated as active for legacy rows (forward-only, no backfill).
+
+Forward-only writes:
+BOOKING_CREATED always writes status = 'active'
+BOOKING_CANCELED sets status = 'canceled' and bumps version under row lock
