@@ -28,7 +28,7 @@ Optional, only when needed:
 1. docs/core/live-system.md
 2. docs/core/operating-constitution.md
 3. docs/core/behavioral-calibration.md
-4. docs/core/phase-timeline.md and docs/core/phase-timeline.md
+4. docs/core/phase-timeline.md
 
 ## Deterministic Continuation Rule
 Continue from the latest closed Phase boundary.
