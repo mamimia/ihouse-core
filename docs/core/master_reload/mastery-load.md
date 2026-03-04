@@ -22,7 +22,7 @@ Loads authority, current phase, and invariants before any edits.
 8) docs/core/construction-log.md
 9) docs/core/operating-constitution.md
 10) docs/core/project-spine-protocol.md
-11) docs/core/phase-timeline/phase-timeline.md
+11) docs/core/phase-timeline.md
 
 ## What To Confirm During Reload
 1) Canonical event source is Supabase public.event_log

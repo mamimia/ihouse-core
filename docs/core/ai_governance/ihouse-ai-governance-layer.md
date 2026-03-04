@@ -19,7 +19,7 @@ An assistant must:
 1) Prefer minimal, explicit changes.
 2) Overwrite full files only.
 3) Append-only files must never be rewritten:
-   - docs/core/phase-timeline/phase-timeline.md
+   - docs/core/phase-timeline.md
 
 ## Hard Stop Conditions
 Stop and resolve before editing anything if:

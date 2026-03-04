@@ -94,7 +94,7 @@ git push
 docs updated to reflect reality
 deterministic validation executed
 phase closure recorded in construction-log.md
-docs/core/phase-timeline/phase-timeline.md appended (append-only rule enforced)
+docs/core/phase-timeline.md appended (append-only rule enforced)
 
 Phase Timeline is strictly append-only.
 No historical entry may ever be edited or deleted.

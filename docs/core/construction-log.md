@@ -3,7 +3,7 @@
 ## Governance Rule — Phase Timeline Synchronization
 At the completion of every Phase:
 1. Construction Log must be updated.
-2. docs/core/phase-timeline/phase-timeline.md must be appended.
+2. docs/core/phase-timeline.md must be appended.
 3. Phase Timeline is strictly append-only.
 4. No historical entry in Phase Timeline may ever be modified or deleted.
 5. A Phase is not considered closed until the Phase Timeline has been updated.

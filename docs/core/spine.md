@@ -28,7 +28,7 @@ Optional, only when needed:
 1. docs/core/live-system.md
 2. docs/core/operating-constitution.md
 3. docs/core/behavioral-calibration.md
-4. docs/core/phase-timeline.md and docs/core/phase-timeline/phase-timeline.md
+4. docs/core/phase-timeline.md and docs/core/phase-timeline.md
 
 ## Deterministic Continuation Rule
 Continue from the latest closed Phase boundary.
@@ -80,7 +80,7 @@ sed -n '1,260p' docs/core/vision.md
 ## Phase Closure Protocol
 1. Ensure deterministic validation completed.
 2. Update docs/core/construction-log.md
-3. Append a new section to docs/core/phase-timeline/phase-timeline.md
+3. Append a new section to docs/core/phase-timeline.md
 4. git status is clean except intended changes
 5. git add
 6. git commit with Phase label
