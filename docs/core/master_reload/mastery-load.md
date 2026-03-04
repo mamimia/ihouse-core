@@ -37,3 +37,6 @@ Loads authority, current phase, and invariants before any edits.
 1) Identify latest closed phase in construction-log.md
 2) Confirm current open phase in current-snapshot.md
 3) Continue work only inside that open phase scope
+
+## Future Phases
+See docs/core/roadmap.md.

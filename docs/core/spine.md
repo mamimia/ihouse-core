@@ -90,3 +90,6 @@ sed -n '1,260p' docs/core/vision.md
 If Phase 17C is active:
 Only overlap rules, business dedup, and read model inquiry work is allowed.
 All other lifecycle expansions are out of scope unless a new Phase is opened and recorded.
+
+## Forward Roadmap
+See docs/core/roadmap.md for upcoming phases.

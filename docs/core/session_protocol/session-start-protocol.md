@@ -44,3 +44,6 @@ apply_envelope status codes
 3) phase-timeline.md appended (no edits to old sections)
 4) current-snapshot.md updated to next open phase
 5) Any other core docs updated only if needed to prevent drift
+
+## Future Phases Reference
+See docs/core/roadmap.md.
