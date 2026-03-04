@@ -71,3 +71,36 @@ Outcome:
 legacy compatibility preserved without backfill
 availability semantics are single-source-of-truth and query-stable
 event_log and booking_state remain consistent under idempotent replay
+
+---
+
+## Phase 19 – Event Version Discipline + DB Gate Validation (Closed)
+
+Completed:
+
+- Introduced deterministic event validation at the DB apply gate.
+- Added canonical rejection for unknown event kinds before enum cast.
+- Introduced event_version discipline with transitional compatibility.
+
+Version policy:
+
+- Missing event_version defaults to v1 only for external allowlisted kinds.
+- Missing event_version for internal events is rejected with EVENT_VERSION_REQUIRED.
+- Unsupported versions are rejected with UNSUPPORTED_EVENT_VERSION.
+
+Validation tests:
+
+T3.1 missing_version → APPLIED (external allowlisted)
+T3.2 unsupported_version → UNSUPPORTED_EVENT_VERSION
+T3.3 unknown_kind → UNKNOWN_EVENT_KIND
+T3.4 internal_missing_version → EVENT_VERSION_REQUIRED
+
+Outcome:
+
+- Deterministic DB gate validation established.
+- Unknown event kinds rejected safely before enum cast.
+- Transitional compatibility preserved for legacy external events.
+
+Deferred to Phase 20:
+
+event_id identity collision possible when multiple emitted events share the same type inside a single envelope.

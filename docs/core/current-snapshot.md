@@ -1,11 +1,11 @@
-# iHouse Core — Current Snapshot
+# iHouse Core – Current Snapshot
 
 ## Phase
 Current:
-Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants (Closed)
+Phase 20 – Envelope Event Identity Hardening + Replay Safety (Open)
 
 Last closed:
-Phase 18 — Legacy-Tolerant Availability Canon + DB Invariants
+Phase 19 – Event Version Discipline + DB Gate Validation (Closed)
 
 ## System Type
 Deterministic Domain Event Execution Kernel.
@@ -22,6 +22,7 @@ SQLite is not an allowed production write path.
 
 ## Canonical Apply Gate
 apply_envelope RPC is the single atomic write authority into event_log.
+
 It writes envelope_received once per envelope_id and returns ALREADY_APPLIED on replay.
 
 booking_state is materialized by DB-generated internal events (STATE_UPSERT).
