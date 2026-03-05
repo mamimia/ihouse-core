@@ -211,3 +211,54 @@ Outcome:
 - Evidence recorded: Supabase function definitions exported to artifacts/supabase/Functions.sql.
 - Legacy compatibility policy: NULL status tolerated and treated as active for availability; future backfill deferred.
 
+
+## Future Improvements (Deferred Architecture Work)
+
+### Event Time vs System Time Separation
+
+Future improvement for distributed ingestion sources (OTA channels — Online Travel Agencies such as Booking.com, Airbnb, Expedia).
+
+Introduce explicit separation between:
+
+- occurred_at → the time when the business event actually happened in the external system
+- recorded_at → the time when the event entered the canonical system ledger
+
+Rationale:
+External systems may deliver delayed or out-of-order events.
+Separating business event time from system ingestion time preserves auditability,
+supports correct replay behavior, and improves debugging of distributed integrations.
+
+Status:
+Deferred for a future phase.
+
+Note:
+When implemented, event_log should store both timestamps and the system should
+use recorded_at for ordering guarantees while preserving occurred_at for business history.
+
+
+### Dead Letter Queue for External Event Failures
+
+Future improvement for handling invalid or failed external events.
+
+Context:
+When integrating external systems (OTA — Online Travel Agencies such as Booking.com, Airbnb, Expedia), the system may receive events that cannot be applied due to validation errors or missing state.
+
+Instead of losing these events, the system should store them in a dedicated table.
+
+Proposed mechanism:
+dead_letter_events table that records:
+
+- envelope_id
+- event_type
+- payload_json
+- failure_reason
+- recorded_at
+
+Purpose:
+- preserve failed events for investigation
+- allow manual correction and replay
+- maintain auditability of external integrations
+
+Status:
+Deferred to a future phase once OTA integrations are introduced.
+
