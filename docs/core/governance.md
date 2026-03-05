@@ -135,3 +135,29 @@ This must update:
 - artifacts/supabase/schema.hash.txt
 - artifacts/supabase/registries.sql (if registry tables exist)
 
+
+## Work Context Protocol
+
+The file `docs/core/work-context.md` captures the current active work state
+inside an open phase.
+
+Rules:
+
+- It is **not** an architectural document.
+- It represents temporary execution context for the current phase.
+- It may be overwritten during the phase.
+- When a phase is closed, the file must be reset.
+
+The purpose of this file is to allow a new chat session to resume work
+without reconstructing the entire conversation history.
+
+Authority:
+
+work-context.md never overrides canonical documents.
+
+Canonical authority remains:
+
+vision.md  
+system-identity.md  
+canonical-event-architecture.md  
+current-snapshot.md

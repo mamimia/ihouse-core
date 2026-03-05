@@ -1,0 +1,21 @@
+public.booking_state
+  booking_id text
+  version integer
+  state_json jsonb
+  updated_at_ms bigint
+  last_event_id text
+  last_envelope_id text
+  tenant_id text
+  source text
+  reservation_ref text
+  property_id text
+  check_in date
+  check_out date
+  status text
+
+public.event_log
+  event_id text
+  kind public.event_kind
+  occurred_at timestamp with time zone
+  payload_json jsonb
+  envelope_id text

@@ -20,6 +20,7 @@ This file is the only context you should need at the start of a new chat.
 
 ### Layer C — Current State (editable, tightly scoped)
 - docs/core/current-snapshot.md
+4. docs/core/work-context.md (if present)
 - docs/core/live-system.md
 - docs/core/roadmap.md
 
@@ -33,6 +34,7 @@ Always read in this order:
 1. Layer A (Immutable Core)
 2. docs/core/governance.md
 3. docs/core/current-snapshot.md
+4. docs/core/work-context.md (if present)
 4. docs/core/live-system.md
 5. docs/core/phase-timeline.md (only the latest section)
 6. docs/core/construction-log.md (only the latest section)
@@ -53,7 +55,8 @@ Always read in this order:
 Do these in order:
 1. Append a new "Phase X — Closed" section to docs/core/phase-timeline.md (append only).
 2. Append a short "Phase X closure" entry to docs/core/construction-log.md (append only).
-3. Update docs/core/current-snapshot.md:
+3. Update docs/core/current-snapshot.md
+4. docs/core/work-context.md (if present):
    - set Current Phase
    - set Last Closed Phase
    - update only the minimal invariants / pointers that actually changed

@@ -81,9 +81,9 @@ class CoreExecutor:
     Canonical executor shell.
 
     Commit policy:
-    commit only after apply_status == "APPLIED"
-    never commit when replay_mode is True
-    no adapter-level state writes
+    - commit only after apply_status == "APPLIED"
+    - never commit when replay_mode is True
+    - no adapter-level state writes in Supabase runtime
     """
 
     event_log_port: EventLogPort
@@ -155,7 +155,12 @@ class CoreExecutor:
             emitted_events=emitted,
         )
 
-        if apply_status == "APPLIED" and (not self.replay_mode) and self.state_store is not None:
+        # IMPORTANT:
+        # In Supabase runtime, booking_state is written only by apply_envelope.
+        # We keep this hook for dev adapters that explicitly opt into writes.
+        write_enabled = bool(getattr(self.state_store, "write_enabled", True)) if self.state_store is not None else False
+
+        if apply_status == "APPLIED" and (not self.replay_mode) and self.state_store is not None and write_enabled:
             self.state_store.ensure_schema()
 
             has_state_upserts = bool(getattr(skill_decision, "state_upserts", None))

@@ -202,3 +202,12 @@ Outcome:
 - Unknown kinds are rejected deterministically, not via enum cast failure.
 - Legacy external producers remain compatible under Transitional policy.
 
+
+## Phase 20 — Envelope Event Identity Hardening + Replay Safety (Closed)
+
+- Canonical write gate reaffirmed: apply_envelope is the single atomic write authority.
+- Projection discipline locked: booking_state is a read model; STATE_UPSERT is internal only.
+- Replay safety verified: duplicate envelope replays do not create new events and do not mutate booking_state.
+- Evidence recorded: Supabase function definitions exported to artifacts/supabase/Functions.sql.
+- Legacy compatibility policy: NULL status tolerated and treated as active for availability; future backfill deferred.
+

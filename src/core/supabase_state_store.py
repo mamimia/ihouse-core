@@ -18,43 +18,10 @@ class SupabaseStateStore(StateStore):
         return
 
     def commit(self, *, envelope_id: str, events: List[Dict[str, Any]]) -> None:
-        for ev in events:
-            if ev.get("kind") != "StateUpsert":
-                continue
-            payload = ev.get("payload", {})
-            if not isinstance(payload, dict):
-                continue
-
-            booking_id = payload.get("booking_id")
-            if not booking_id:
-                continue
-
-            existing = (
-                self._client.table("booking_state")
-                .select("version,last_envelope_id")
-                .eq("booking_id", booking_id)
-                .limit(1)
-                .execute()
-            )
-
-            if existing.data:
-                last_env = existing.data[0].get("last_envelope_id")
-                if last_env == envelope_id:
-                    continue
-                cur_v = int(existing.data[0].get("version") or 0)
-                new_v = cur_v + 1
-            else:
-                new_v = 1
-
-            row = {
-                "booking_id": str(booking_id),
-                "version": int(new_v),
-                "state_json": payload,
-                "updated_at_ms": _now_ms(),
-                "last_envelope_id": str(envelope_id),
-            }
-
-            self._client.table("booking_state").upsert(row, on_conflict="booking_id").execute()
+        raise RuntimeError(
+            "SupabaseStateStore.commit() is disabled. "
+            "booking_state must be written only by apply_envelope RPC."
+        )
 
     def get_booking(self, *, booking_id: str) -> Optional[BookingState]:
         r = (
