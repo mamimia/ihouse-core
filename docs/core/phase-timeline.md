@@ -262,3 +262,305 @@ Purpose:
 Status:
 Deferred to a future phase once OTA integrations are introduced.
 
+
+## Future Improvements — Architecture Backlog
+
+The following improvements are intentionally deferred to later phases.
+They represent common SaaS architecture patterns but are not required
+for the current system maturity.
+
+### Event Time vs System Time
+Separate business event time from ingestion time.
+
+occurred_at  → time the event happened in the external system  
+recorded_at  → time the event entered the canonical ledger
+
+This becomes important when ingesting delayed OTA events.
+
+---
+
+### Dead Letter Queue
+Introduce a table for failed external events.
+
+dead_letter_events
+
+Fields:
+
+- envelope_id
+- payload_json
+- failure_reason
+- recorded_at
+
+Purpose:
+Preserve invalid events for inspection and manual replay.
+
+---
+
+### Event Ordering Protection
+External integrations may send events out of order.
+
+Future system should detect and handle:
+
+- out-of-order events
+- missing events
+- delayed events
+
+---
+
+### OTA Rate Limiting
+Introduce rate limiting per tenant to protect the ingestion API.
+
+Example:
+events per tenant per minute.
+
+---
+
+### Idempotency Monitoring
+Add metrics and monitoring for duplicate envelope detection.
+
+Purpose:
+detect integration bugs and retry storms.
+
+---
+
+### Multi Projection Support
+Future projections beyond booking_state.
+
+Examples:
+
+- availability_projection
+- revenue_projection
+- analytics_projection
+
+---
+
+### Replay Snapshot Optimization
+When the event log becomes large, introduce snapshots to speed up rebuild.
+
+---
+
+### External Event Signature Validation
+Support webhook signature validation for OTA integrations.
+
+Example mechanisms:
+
+- HMAC signatures
+- API key verification
+
+
+## Future Improvements — OTA Integration Learnings
+
+### OTA Out-of-Order Event Handling
+
+External booking channels may deliver events out of order.
+
+Example:
+reservation.modified may arrive before reservation.created.
+
+Future versions of the system may introduce a pending event buffer
+or reconciliation mechanism to safely handle out-of-order events.
+
+---
+
+### OTA Retry Idempotency
+
+External systems frequently retry the same webhook multiple times.
+
+The ingestion layer must tolerate repeated events without mutating
+the canonical ledger more than once.
+
+---
+
+### Channel Semantic Normalization
+
+Different OTA channels use different event semantics.
+
+Future work may introduce a dedicated normalization layer
+for channel-specific payload mapping.
+
+---
+
+### Reservation Identity Normalization
+
+External reservation identifiers are not always stable or uniform.
+
+Future phases may introduce identity normalization
+for external reservation references.
+
+---
+
+### Event Ordering Strategy
+
+OTA events may contain business timestamps that differ from
+system ingestion time.
+
+Future improvements may formalize the separation between:
+
+occurred_at (business event time)
+recorded_at (system ingestion time).
+
+
+## Phase 19 – Event Version Discipline + DB Gate Validation (Closed)
+
+Outcome:
+- External event_version discipline enforced by DB gate validation.
+- Transitional missing-version policy locked to external allowlist (default v1).
+- Deterministic rejection codes returned for invalid kinds/versions/payloads.
+- Replay safety preserved: ALREADY_APPLIED must not mutate booking_state.
+
+## Phase 20 — Envelope Event Identity Hardening + Replay Safety (Closed)
+
+Completed:
+- Confirmed apply_envelope RPC is the single write gate into event_log.
+- Confirmed booking_state is projection-only and materialized via DB-generated STATE_UPSERT.
+- Confirmed duplicate envelope replay inserts no new events and does not mutate booking_state.
+- Supabase truth pack captured under artifacts/supabase/ for reference.
+
+Operational notes:
+- Legacy booking_state rows may have NULL business fields and/or legacy state_json shapes; forward-only tolerance remains.
+
+## Phase 21 — External Ingestion Boundary Definition (Closed)
+
+Goal:
+Define the canonical boundary for external OTA ingestion without violating the canonical write gate.
+
+Decisions:
+- External systems never write directly to event_log or booking_state.
+- All external events must pass through an ingestion adapter that emits canonical envelopes.
+- The adapter performs normalization, validation, and dedup before calling apply_envelope.
+
+Canonical pipeline:
+External Source
+→ Ingestion API
+→ Normalization Layer
+→ Validation Layer
+→ apply_envelope RPC
+→ event_log
+→ projection (booking_state)
+
+Security and integrity rules:
+- Authentication required (JWT or equivalent).
+- Idempotency enforced via envelope_id and business dedup key.
+- External event kinds must be allowlisted.
+- Unsupported OTA events are rejected rather than approximated.
+
+Supported external kinds for Phase 21:
+- BOOKING_CREATED
+- BOOKING_CANCELED
+
+Outcome:
+The external boundary is defined without introducing a second write path, preserving replay safety and canonical event discipline.
+
+---
+
+## Future Improvements — OTA Integration Learnings
+
+### OTA Out-of-Order Event Handling
+
+External booking channels may deliver events out of order.
+
+Example:
+reservation.modified may arrive before reservation.created.
+
+Future versions of the system may introduce a pending event buffer
+or reconciliation mechanism to safely handle out-of-order events.
+
+### Business Identity Enforcement
+
+Current business identity:
+
+tenant_id + source + reservation_ref + property_id
+
+Future improvements may enforce stricter constraints and unique indexes
+to guarantee deterministic booking identity across retries and OTA updates.
+
+### Business Idempotency Layer
+
+Envelope idempotency protects against transport retries.
+
+Future versions may introduce a dedicated business idempotency registry
+to protect against duplicate external events that carry different envelope_ids.
+
+### OTA Schema Normalization
+
+External channels often use different semantics for fields such as:
+
+timezone  
+currency  
+guest counts  
+reservation modifications
+
+Future phases may introduce channel-specific normalization modules
+to guarantee canonical event payload consistency.
+
+### External Event Ordering Guards
+
+Future versions may introduce tolerant state machines or buffering strategies
+to safely process external events that arrive out of order.
+
+### OTA Integration Hardening
+
+Future phases may add:
+
+rate limiting  
+webhook replay protection  
+audit logging  
+channel-specific authentication policies
+
+
+## Phase 22 — OTA Ingestion Boundary (Closed)
+
+Goal:
+Introduce a strict ingestion boundary between external booking systems
+and the canonical event kernel.
+
+Completed:
+
+- Implemented adapter layer for external channel integrations.
+- Introduced normalization pipeline converting external payloads into canonical events.
+- Implemented validation pipeline prior to canonical envelope submission.
+- Ensured idempotency propagation from external request IDs.
+- Integrated adapter service with canonical ingest API.
+
+Canonical ingestion pipeline:
+
+External Channel
+→ Adapter Layer
+→ Normalized Event
+→ Validation
+→ Canonical Envelope
+→ apply_envelope
+→ event_log
+
+Outcome:
+
+External systems are now isolated from the internal event model.
+
+The deterministic event kernel remains protected while enabling
+future integrations with OTA channels, channel managers,
+admin tools, and manual booking systems.
+
+## Phase 23 — External Event Semantics Hardening (Closed)
+
+Implemented deterministic semantic classification for OTA events before
+canonical envelope creation.
+
+New component:
+src/adapters/ota/semantics.py
+
+Pipeline:
+
+normalize
+→ validate_normalized_event
+→ classify_normalized_event
+→ validate_classified_event
+→ to_canonical_envelope
+→ validate_canonical_envelope
+→ append_event
+
+Result:
+
+OTA provider payload semantics are validated before entering the canonical
+event model while preserving the DB gate as the sole authority for identity,
+deduplication, and overlap rules.
+

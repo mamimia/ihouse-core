@@ -1,10 +1,6 @@
 # iHouse Core — System Identity
 
-Current:
-Phase 20 — Envelope Event Identity Hardening + Replay Safety (Closed)
 
-Last closed:
-Phase 20 — Envelope Event Identity Hardening + Replay Safety (Closed)
 
 ## System Type
 Deterministic Domain Event Execution Kernel.
@@ -39,6 +35,20 @@ No commit during replay.
 State mutation authority resides exclusively in Supabase apply_envelope.
 Application layer cannot fabricate internal state events.
 Duplicate envelopes never mutate state.
+
+## External Ingestion Boundary
+External producers must never write directly to event_log or booking_state.
+
+All external ingestion must pass through a canonical adapter boundary that:
+normalizes external payloads,
+validates them against canonical rules,
+and submits canonical envelopes through apply_envelope only.
+
+Supported external ingestion kinds in the current hardening phase:
+BOOKING_CREATED
+BOOKING_CANCELED
+
+Unsupported external event types must be rejected rather than approximated.
 
 ## Availability Canon
 Active predicate:

@@ -1,10 +1,5 @@
 # iHouse Core — Vision
 
-Current:
-Phase 20 – Envelope Event Identity Hardening + Replay Safety (Open)
-
-Last closed:
-Phase 19 – Event Version Discipline + DB Gate Validation (Closed)
 
 ## What iHouse Is
 iHouse is a deterministic domain execution kernel.

@@ -62,3 +62,73 @@ Operational decision:
 - Legacy rows with NULL status remain tolerated for availability checks (treated as active) to preserve forward compatibility.
 - Future hardening: backfill and strict non-NULL status enforcement may be scheduled in a later phase.
 
+
+## Phase 21 — External Ingestion Boundary Definition (Closed)
+
+Defined the canonical OTA ingestion boundary.
+
+Key architectural decisions:
+- External payloads must be normalized into canonical envelopes before entering the system.
+- Only apply_envelope may write to event_log.
+- booking_state remains projection-only.
+- External event ingestion limited to allowlisted kinds.
+
+Result:
+External integration surface defined without compromising replay safety or canonical event authority.
+
+## Phase 22 — OTA Ingestion Boundary (Closed)
+
+Implemented:
+- Introduced dedicated OTA ingestion adapter layer under src/adapters/ota.
+- External channel payloads normalized into canonical booking events.
+- Validation pipeline implemented prior to canonical envelope creation.
+- Canonical envelope conversion enforced before calling apply_envelope.
+- Idempotency key propagation from external payload into canonical envelope_id.
+- Deterministic ingestion responses: APPLIED / DUPLICATE / REJECTED.
+
+Architecture outcome:
+External systems can now integrate with iHouse Core through a strict
+anti-corruption boundary that preserves the deterministic event kernel.
+
+External payload semantics are isolated from the canonical event model,
+ensuring replay safety and preventing external schema drift from leaking
+into the core domain.
+## Phase 23 — External Event Semantics Hardening (Closed)
+
+Implemented:
+
+- Added deterministic OTA semantic classification layer.
+- Introduced src/adapters/ota/semantics.py.
+- OTA events are now explicitly classified into semantic kinds:
+  - CREATE
+  - CANCEL
+
+Validation pipeline updated:
+
+normalize
+-> validate_normalized_event
+-> classify_normalized_event
+-> validate_classified_event
+-> to_canonical_envelope
+-> validate_canonical_envelope
+-> append_event
+
+Responsibilities of the new layer:
+
+- Deterministic classification of normalized OTA provider events.
+- Semantic self-consistency validation of OTA events before envelope creation.
+- Deterministic rejection codes for invalid provider semantics.
+
+Architectural invariants preserved:
+
+- No read-side booking lookup added.
+- No duplicate detection implemented in application layer.
+- No new persistence tables.
+- No change to canonical event schema.
+- No change to apply_envelope DB gate behavior.
+
+Result:
+
+External OTA payload semantics are now hardened before canonical envelope creation,
+while the canonical database gate remains the sole authority for booking identity
+and duplicate enforcement.
