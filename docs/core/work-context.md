@@ -1,58 +1,99 @@
 # iHouse Core – Work Context
 
-Current Phase
-Phase 25 – OTA Modification Resolution Rules
+Current Phase  
+Phase 28 – OTA External Surface Decision
 
-Last Closed Phase
-Phase 24 – OTA Modification Semantics
-
-
-System State
-
-The canonical event system is fully operational.
-
-Key invariants:
-
-- apply_envelope RPC remains the only authority allowed to mutate booking_state
-- event_log is append-only
-- booking_state is projection-only
-- OTA payloads are normalized and validated before canonical envelope creation
+Last Closed Phase  
+Phase 27 – Multi-OTA Adapter Architecture
 
 
-Completed Phases
+## Phase 28 Objective
 
-Phase 21
-Defined canonical OTA ingestion boundary.
+Decide whether the current OTA external ingestion surface should
+remain a single canonical envelope kind:
 
-Phase 22
-Implemented OTA adapter layer and normalization pipeline.
+BOOKING_SYNC_INGEST
 
-Phase 23
-Introduced deterministic semantic classification and semantic validation
-for OTA events before envelope creation.
+or be split into more explicit deterministic external kinds aligned
+with OTA semantic outcomes.
 
-Phase 24
-Introduced explicit semantic recognition for OTA modification events.
+This phase is a contract decision phase.
 
-The system now recognizes OTA modification events using the intermediate
-semantic kind:
+It must not introduce reconciliation logic or modify the DB gate.
+
+
+## Phase 27 Closed Result
+
+Phase 27 introduced the shared multi-OTA adapter architecture.
+
+Completed:
+
+- shared OTA orchestration pipeline added
+- service layer reduced to entrypoint behavior
+- provider registry now supports multiple providers
+- Booking.com remains the concrete provider implementation
+- Expedia scaffold adapter added to validate provider extensibility
+
+Meaning:
+
+The architecture is now multi-provider, but not all target OTA
+providers are fully implemented yet.
+
+
+## Architectural Constraints
+
+The following invariants remain unchanged:
+
+- apply_envelope remains the only authority allowed to mutate booking_state
+- event_log remains append-only
+- booking_state remains projection-only
+- adapters must not perform booking_state lookup
+- adapters must not reconcile booking history
+- adapters must not mutate canonical state
+- adapters must not bypass the canonical database gate
+
+
+## Canonical OTA Event Surface
+
+Current external envelope kind:
+
+BOOKING_SYNC_INGEST
+
+OTA modification notifications remain classified as:
 
 MODIFY
 
-Modification events are allowed through semantic classification but must
-be rejected deterministically at the adapter boundary when they cannot be
-resolved safely from payload semantics.
+Current rule:
+
+MODIFY  
+→ deterministic reject-by-default
 
 
-Current Objective
+## Phase 28 Scope
 
-Phase 25 defines deterministic resolution rules for OTA modification events.
+This phase must decide whether the external OTA surface remains:
 
-Adapters must only resolve modification events if their canonical meaning
-can be determined strictly from payload semantics.
+single kind:
+BOOKING_SYNC_INGEST
 
-If deterministic resolution is not possible, the event must be rejected
-before canonical envelope creation.
+or becomes a more explicit external canonical surface aligned with
+deterministic CREATE / CANCEL outcomes.
 
-This preserves the deterministic ingestion contract while enabling future
-support for safe modification handling.
+This phase may update:
+
+- adapter contract
+- validator contract
+- external canonical surface documentation
+
+This phase must not update:
+
+- booking_state mutation authority
+- apply_envelope write authority
+- reconciliation rules
+- modification handling rules
+
+
+## Expected Outcome
+
+A clear canonical decision about the OTA external surface that can
+support future provider additions without ambiguity or semantic drift.

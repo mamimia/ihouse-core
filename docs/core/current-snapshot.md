@@ -1,21 +1,40 @@
 # iHouse Core – Current Snapshot
 
 System Version  
-Phase 24 – OTA Modification Semantics (Active)
+Phase 28 – OTA External Surface Decision (Active)
 
 Last Closed Phase  
-Phase 23 – External Event Semantics Hardening
+Phase 27 – Multi-OTA Adapter Architecture
 
 
 ## System Status
 
-The deterministic event architecture is fully operational.
+The deterministic event architecture remains fully operational.
 
 The canonical database gate (`apply_envelope`) remains the only authority
 allowed to mutate booking_state.
 
 External systems interact with iHouse Core exclusively through the OTA
 ingestion boundary.
+
+
+## Phase 27 Result
+
+Phase 27 introduced the shared multi-OTA adapter architecture.
+
+Completed architectural outcomes:
+
+- shared OTA orchestration pipeline introduced
+- service layer reduced to entrypoint behavior
+- provider registry extended to support multiple OTA adapters
+- Booking.com retained as the concrete provider adapter
+- Expedia scaffold adapter added to prove multi-provider extensibility
+
+Result:
+
+A new provider can now be added through the shared OTA adapter contract
+without changing the canonical database gate or the shared orchestration
+flow.
 
 
 ## Canonical Invariants
@@ -33,61 +52,50 @@ Write Authority
 
 Replay Safety
 - duplicate envelopes must not create new events
-- duplicate envelopes must not mutate booking_state
+- duplicate ingestion must remain idempotent
 
 
-## OTA Ingestion Pipeline
+## OTA Boundary Status
 
-External OTA payload
+OTA adapters perform:
 
-↓ adapter normalization
+- provider resolution
+- payload normalization
+- semantic classification
+- semantic validation
+- canonical envelope creation
+- canonical envelope validation
 
-↓ validate_normalized_event
+Current provider status:
 
-↓ classify_normalized_event        (added in Phase 23)
-
-↓ validate_classified_event        (added in Phase 23)
-
-↓ to_canonical_envelope
-
-↓ validate_canonical_envelope
-
-↓ append_event
-
-↓ apply_envelope (database gate)
-
-
-## OTA Adapters
-
-Current adapters
-
-- Booking.com
-
-Responsibilities
-
-Adapters must:
-
-- normalize external payloads
-- classify OTA event semantics
-- validate semantic consistency
-- produce canonical envelopes
-
-Adapters must not:
-
-- perform booking lookups
-- perform duplicate detection
-- mutate booking_state
-- bypass the canonical database gate
+- Booking.com implemented
+- Expedia scaffold added for architectural validation
+- Airbnb not implemented
+- Agoda not implemented
+- Trip.com not implemented
 
 
-## Current Focus
+## Current Architectural Question
 
-Phase 24 introduces deterministic handling of OTA modification events.
+The OTA external ingestion surface currently uses a single external
+envelope kind:
 
-Certain OTA providers emit events such as `reservation_modified`
-which do not map directly to canonical CREATE or CANCEL events.
+BOOKING_SYNC_INGEST
 
-Phase 24 introduces explicit semantic mapping rules for these events
-while preserving the canonical database gate as the sole authority
-for booking identity and duplicate enforcement.
+Phase 28 will decide whether this single surface remains sufficient
+for multi-provider scale or whether the external canonical surface
+must be split into more explicit deterministic kinds.
 
+
+## Future Improvements
+
+OTA Sync Recovery Layer
+
+A future reconciliation system capable of:
+
+- detecting modification notifications
+- triggering provider reservation re-fetch
+- comparing OTA state with local state
+- emitting deterministic canonical events
+
+This layer must remain outside the canonical ingestion pipeline.

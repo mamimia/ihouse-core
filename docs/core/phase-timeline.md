@@ -603,3 +603,329 @@ Constraint:
 
 Multi-envelope outcomes such as CANCEL + CREATE remain out of scope
 unless the adapter contract is explicitly expanded in a later phase.
+
+
+---------------------------------------------------------------------
+
+Future Improvements — OTA Sync Recovery Layer
+
+(possible future feature name: Channel Reconciliation Engine)
+
+Background
+
+Certain OTA providers (for example Booking.com) emit modification
+notifications that do not represent a deterministic lifecycle event.
+These notifications often indicate that a reservation may have changed,
+but the payload alone does not prove the semantic meaning of the change.
+
+Typical examples include:
+
+reservation_modified
+reservation_updated
+reservation_changed
+
+In many OTA ecosystems these events function only as change
+notifications and require a follow-up reservation retrieval in order
+to determine the true semantic meaning of the change.
+
+This creates a mismatch with the iHouse canonical event model, which
+requires that every event entering the canonical pipeline has a
+deterministic meaning.
+
+
+Architectural Principle
+
+The canonical event model must only accept deterministic facts.
+
+The canonical system must never interpret ambiguous OTA modification
+notifications as lifecycle transitions such as UPDATE, CREATE, or CANCEL
+unless the provider payload alone proves the meaning unambiguously.
+
+For this reason, unresolved OTA modification events are rejected at the
+adapter boundary.
+
+
+Phase 25 Outcome
+
+The system retains explicit recognition of OTA modification events
+through the semantic class:
+
+MODIFY
+
+However, unless a deterministic interpretation can be proven from the
+provider payload alone, modification events are rejected by default.
+
+MODIFY
+→ deterministic reject
+
+
+Future Direction
+
+A future architectural layer may be introduced outside the canonical
+event ingestion boundary.
+
+This layer is referred to as the OTA Sync Recovery Layer
+(possible future product name: Channel Reconciliation Engine).
+
+
+Purpose
+
+The OTA Sync Recovery Layer provides a controlled mechanism to handle
+provider change notifications that require external context or
+reservation re-fetch operations.
+
+This layer operates outside the canonical event model and must never
+mutate canonical booking state directly.
+
+
+Possible Responsibilities
+
+The OTA Sync Recovery Layer may perform operations such as:
+
+- detecting OTA modification notifications
+- triggering reservation re-fetch operations
+- retrieving updated reservation snapshots
+- comparing OTA snapshots with local state
+- producing deterministic reconciliation outcomes
+
+
+Canonical Safety Rule
+
+Any reconciliation result must produce a deterministic canonical event
+before entering the canonical ingestion pipeline.
+
+The recovery layer itself must not bypass the canonical apply gate.
+
+
+Example Flow
+
+OTA notification received:
+
+reservation_modified
+
+
+Recovery workflow:
+
+notification
+→ fetch reservation from OTA
+→ compare with local snapshot
+→ determine deterministic change
+
+
+Possible canonical outcomes:
+
+UPDATE
+CANCEL
+or
+no canonical change
+
+
+Only the deterministic outcome may enter the canonical pipeline.
+
+
+Goal
+
+This design preserves the integrity of the canonical event model while
+allowing the system to safely integrate OTA ecosystems that rely on
+synchronization-based change notifications rather than deterministic
+lifecycle events.
+
+
+
+---------------------------------------------------------------------
+
+Phase 25 – OTA Modification Resolution Rules (Closed)
+
+The system introduced explicit semantic recognition for OTA
+modification events using the semantic event class MODIFY.
+
+Inspection of provider payload structures demonstrated that OTA
+modification notifications cannot be deterministically interpreted
+without external state context.
+
+To preserve the deterministic event model the canonical ingestion rule
+remains:
+
+MODIFY
+→ deterministic reject-by-default
+
+
+Phase 26 – OTA Provider Verification (Active)
+
+This phase verifies whether OTA providers expose deterministic payload
+signals capable of supporting safe payload-only interpretation of
+modification events.
+
+No canonical behavior changes are introduced in this phase.
+
+
+## Phase 26 — OTA Provider Verification (Closed)
+
+Verified OTA provider payload schemas to determine whether
+modification events expose deterministic semantic subtypes.
+
+Providers inspected:
+
+Booking.com  
+Expedia  
+Airbnb  
+Agoda  
+Trip.com
+
+Result
+
+No deterministic payload-only modification subtype exists.
+
+Canonical rule confirmed:
+
+MODIFY  
+→ deterministic reject-by-default
+
+
+## Phase 27 — Multi-OTA Adapter Architecture (Active)
+
+Introduce a scalable adapter architecture for multiple OTA providers
+while preserving the deterministic ingestion pipeline and canonical
+database gate authority.
+
+## Phase 27 — Multi-OTA Adapter Architecture (Closed)
+
+Goal:
+Introduce a scalable adapter architecture for multiple OTA providers
+while preserving the deterministic ingestion pipeline and canonical
+database gate authority.
+
+Completed:
+
+- Added a shared OTA orchestration pipeline:
+  - src/adapters/ota/pipeline.py
+- Refactored src/adapters/ota/service.py so the service acts as an
+  entrypoint and delegates orchestration to the shared pipeline
+- Extended src/adapters/ota/registry.py to support multiple providers
+- Preserved provider-isolated adapter modules
+- Added an Expedia scaffold adapter to validate multi-provider
+  extensibility without changing the shared pipeline or DB gate
+
+Validation:
+
+- Existing test suite remained green after the refactor
+- Multi-provider adapter registration now works without modifying
+  semantics.py, validator.py, or apply_envelope behavior
+
+Result:
+
+The OTA adapter architecture is now multi-provider at the shared
+pipeline and registry level.
+
+Important precision:
+
+- Booking.com remains the concrete provider implementation
+- Expedia was added as an architectural scaffold adapter
+- Airbnb, Agoda, and Trip.com were not implemented in this phase
+
+Architectural invariants preserved:
+
+- apply_envelope remains the only write authority
+- booking_state remains projection-only
+- MODIFY remains deterministic reject-by-default
+- provider-specific logic remains isolated from the shared pipeline
+
+
+## Future Improvements — OTA External Surface Hardening
+
+Background
+
+The OTA boundary currently emits a single external canonical envelope
+kind:
+
+BOOKING_SYNC_INGEST
+
+This may be sufficient for the current architecture, but as additional
+providers are added it may become too implicit and allow semantic
+ambiguity to accumulate in payload structure rather than in the
+external canonical surface itself.
+
+Future Direction
+
+A later hardening phase should explicitly decide whether the OTA
+external surface remains a single external kind or is split into more
+explicit deterministic kinds aligned with semantic outcomes such as:
+
+CREATE
+CANCEL
+
+Architectural rule
+
+This decision must occur before large scale provider expansion.
+
+It should be resolved before implementing multiple real providers
+beyond the current architectural scaffold stage.
+
+Constraints
+
+Any future surface split must preserve:
+
+- apply_envelope as the single write gate
+- booking_state as projection-only
+- deterministic replay behavior
+- provider isolation
+- MODIFY → deterministic reject-by-default
+
+
+## Future Improvements — OTA Retry Business Idempotency
+
+Background
+
+Envelope idempotency protects transport-level retries, but future OTA
+integrations may send repeated business events with different request
+identifiers.
+
+Future Direction
+
+A later hardening phase may introduce a dedicated business idempotency
+layer or registry for OTA-originated events.
+
+This should occur before high volume production OTA traffic.
+
+
+## Future Improvements — OTA Out-of-Order Event Handling
+
+Background
+
+Distributed OTA integrations may deliver deterministic events out of
+order.
+
+Examples include cancellation notifications arriving before creation
+notifications or delayed delivery of older business events.
+
+Future Direction
+
+A later phase may introduce controlled handling such as buffering,
+guarded state machines, or recovery workflows.
+
+This must occur after the external surface decision is resolved and
+must remain outside the current adapter contract unless formally
+promoted into a new canonical layer.
+
+
+## Future Improvements — OTA Sync Recovery Layer
+
+Background
+
+Certain OTA providers emit state synchronization signals rather than
+deterministic lifecycle facts.
+
+Typical examples include modification notifications that require
+provider snapshot retrieval and state comparison.
+
+Future Direction
+
+A later architectural layer may introduce a controlled OTA Sync
+Recovery Layer outside the canonical ingestion boundary.
+
+Constraints
+
+The recovery layer must never mutate canonical state directly.
+
+Any reconciliation result must still enter the system only through the
+canonical apply gate after becoming a deterministic canonical fact.

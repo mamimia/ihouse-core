@@ -166,3 +166,109 @@ Result:
 The system now explicitly recognizes OTA modification events while preserving
 the deterministic ingestion contract and rejecting unresolved modification
 semantics before canonical envelope creation.
+
+
+---------------------------------------------------------------------
+
+Phase 25 – OTA Modification Resolution Rules (Closed)
+
+The system introduced explicit semantic recognition for OTA
+modification events through the canonical event class MODIFY.
+
+Provider payload inspection demonstrated that OTA modification
+notifications cannot be deterministically interpreted from payload
+alone without state lookup.
+
+To preserve canonical determinism the system retains the rule:
+
+MODIFY
+→ deterministic reject-by-default
+
+Future handling of OTA modification notifications may occur through a
+separate synchronization or recovery layer outside the canonical event
+ingestion boundary.
+
+
+## Phase 26 — OTA Provider Verification (Closed)
+
+Objective
+
+Verify whether OTA providers expose deterministic modification signals
+in their payload schemas.
+
+Providers inspected:
+
+Booking.com  
+Expedia  
+Airbnb  
+Agoda  
+Trip.com
+
+Findings
+
+OTA providers emit modification notifications but do not expose
+deterministic modification subtypes that can be interpreted without
+booking_state lookup.
+
+Most providers follow a model:
+
+notification → fetch reservation snapshot
+
+This model requires state comparison and therefore violates the
+canonical adapter contract.
+
+Result
+
+No deterministic payload-only subset for:
+
+MODIFY → UPDATE
+
+could be proven.
+
+Architectural decision
+
+The canonical rule remains:
+
+MODIFY  
+→ deterministic reject-by-default
+
+
+## Phase 27 — Multi-OTA Adapter Architecture (Closed)
+
+Implemented:
+
+- Added shared OTA orchestration pipeline:
+  - src/adapters/ota/pipeline.py
+- Refactored src/adapters/ota/service.py so the service delegates
+  orchestration to the shared pipeline
+- Preserved provider-isolated adapters behind the shared pipeline
+- Extended src/adapters/ota/registry.py to support multiple providers
+- Added an Expedia scaffold adapter:
+  - src/adapters/ota/expedia.py
+
+Validation outcome:
+
+- Existing test suite remained green after the refactor
+- Multi-provider adapter registration now works without changing:
+  - semantics.py
+  - validator.py
+  - canonical DB gate behavior
+
+Architectural result:
+
+The system now supports multi-provider OTA extension through a shared
+ingestion pipeline and provider registry.
+
+Important precision:
+
+- Booking.com remains the concrete provider implementation
+- Expedia was introduced as an architectural scaffold adapter used to
+  validate multi-provider extensibility
+- Airbnb, Agoda, and Trip.com were not implemented in this phase
+
+Invariants preserved:
+
+- apply_envelope remains the only write authority
+- booking_state remains projection-only
+- MODIFY remains deterministic reject-by-default
+- provider semantics remain isolated from the shared pipeline

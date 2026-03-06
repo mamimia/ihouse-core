@@ -19,8 +19,20 @@ External sources send envelopes.
 
 The envelope enters the system through:
 
-Supabase RPC  
-apply_envelope
+OTA adapter boundary  
+→ shared OTA pipeline  
+→ Supabase RPC  
+→ apply_envelope
+
+The shared OTA pipeline performs:
+
+- provider registry resolution
+- adapter normalization
+- structural validation
+- semantic classification
+- semantic validation
+- canonical envelope construction
+- canonical envelope validation
 
 The RPC validates:
 
@@ -49,7 +61,20 @@ public.booking_state
 - deterministic state rebuild
 - strict event validation
 - single canonical write gate
+- provider semantics isolated from core state mutation
+
+## Current OTA Adapter Status
+
+Implemented:
+- Booking.com
+- Expedia scaffold for architectural validation
+
+Not yet implemented:
+- Airbnb
+- Agoda
+- Trip.com
 
 ## Future Evolution
 
-Additional projections and domain modules may be added without breaking the canonical ledger model.
+Additional adapters, projections, and domain modules may be added
+without breaking the canonical ledger model.

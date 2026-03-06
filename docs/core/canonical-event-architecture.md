@@ -3,17 +3,17 @@
 
 ## Version
 
-Phase 24 – OTA Modification Semantics
+Phase 27 – Multi-OTA Adapter Architecture (Locked)
 
 Last Closed Phase  
-Phase 23 – External Event Semantics Hardening
+Phase 27 – Multi-OTA Adapter Architecture
 
 
 ## Purpose
 
 Define the single canonical event contract.
 
-Define the signal allowed external business event surface.
+Define the allowed external business event surface.
 
 Ensure the database gate remains the single authority
 for booking identity, deduplication, and state mutation.
@@ -39,13 +39,15 @@ Event processing pipeline:
 
 External OTA
 
+↓ provider registry resolution
+
 ↓ adapter normalization
 
 ↓ structural validation
 
-↓ semantic classification         (added in Phase 23)
+↓ semantic classification
 
-↓ semantic validation             (added in Phase 23)
+↓ semantic validation
 
 ↓ canonical envelope creation
 
@@ -58,21 +60,28 @@ External OTA
 ↓ state projection (`booking_state`)
 
 
-## OTA Semantic Layer (Phase 23)
+## OTA Semantic Layer
 
-Phase 23 introduced a semantic classification layer for OTA events.
+The OTA ingestion layer classifies normalized provider events into
+deterministic semantic kinds before envelope creation.
 
-Purpose
+Supported semantic kinds:
+
+CREATE  
+CANCEL  
+MODIFY
+
+Purpose:
 
 Prevent ambiguous OTA payloads from entering the canonical event model.
 
-Responsibilities
+Responsibilities:
 
 - classify normalized OTA events into semantic kinds
 - validate semantic consistency of OTA payloads
 - deterministically reject invalid OTA events
 
-Constraints
+Constraints:
 
 - no booking_state lookup
 - no duplicate detection
@@ -81,13 +90,16 @@ Constraints
 
 ## Canonical Authority Boundary
 
-Application Layer
+
+### Application Layer
 
 Allowed:
 
+- provider registry resolution
 - payload normalization
 - structural validation
 - semantic classification
+- semantic validation
 - envelope construction
 
 Not allowed:
@@ -95,9 +107,11 @@ Not allowed:
 - booking_state mutation
 - booking identity decisions
 - duplicate detection
+- state reconciliation
+- bypassing apply_envelope
 
 
-Database Gate
+### Database Gate
 
 Responsible for:
 
@@ -128,6 +142,7 @@ All external payloads must pass through the OTA ingestion boundary.
 
 The canonical event model is protected by:
 
+- provider isolation
 - normalization
 - semantic validation
 - canonical envelope validation
@@ -136,28 +151,77 @@ The canonical event model is protected by:
 
 ## OTA Modification Semantics
 
-OTA providers may emit modification events that represent changes to existing bookings rather than explicit lifecycle transitions.
+OTA providers may emit modification events representing changes to
+existing reservations rather than explicit lifecycle transitions.
 
-Example
+Example:
 
 reservation_modified
 
-The system introduces an intermediate semantic classification:
 
-MODIFY
+### Canonical Rule
 
-This classification does not represent a canonical booking lifecycle event.
+MODIFY does not represent a canonical booking lifecycle event.
 
-Instead it indicates that the adapter must attempt deterministic resolution based solely on payload semantics.
+OTA modification payloads cannot be deterministically interpreted
+without external state or OTA-specific logic.
 
-Current behavior
+Because of this, the system enforces the following invariant:
 
-If deterministic resolution is not possible, the adapter must reject the event.
+MODIFY → deterministic reject-by-default
 
-Example
+
+### Adapter Behavior
+
+When an OTA modification payload is received:
 
 reservation_modified  
 → semantic classification MODIFY  
-→ adapter rejection
+→ deterministic rejection by adapter
 
-This ensures the canonical event model remains strictly deterministic.
+Adapters are not allowed to:
+
+- perform booking_state lookups
+- infer lifecycle transitions
+- emit UPDATE events
+- split MODIFY into CANCEL + CREATE
+
+
+## Multi-OTA Adapter Architecture
+
+Phase 27 introduced a shared OTA ingestion pipeline and multi-provider
+adapter registry.
+
+Architectural result:
+
+- service layer acts as entrypoint only
+- shared pipeline performs orchestration
+- provider adapters remain isolated
+- new providers can be added without changing the canonical DB gate
+
+The architecture was validated through:
+
+- existing Booking.com adapter
+- additional Expedia scaffold adapter used to prove provider
+  extensibility through the shared pipeline
+
+This does not mean all target OTA providers are fully implemented.
+
+It means the architecture now supports multi-provider extension
+without redesigning the deterministic ingestion boundary.
+
+
+## Architectural Status
+
+The following invariants are locked:
+
+External event ingestion must remain deterministic.
+
+Only canonical lifecycle outcomes may reach the database gate.
+
+OTA modification events are rejected unless a future deterministic
+resolution strategy is formally introduced.
+
+The shared OTA pipeline must remain provider-agnostic.
+
+Provider-specific logic must remain isolated inside provider adapters.
