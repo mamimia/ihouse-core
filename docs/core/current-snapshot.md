@@ -1,76 +1,93 @@
-# iHouse Core — Current Snapshot
+# iHouse Core – Current Snapshot
 
-## Phase
+System Version  
+Phase 24 – OTA Modification Semantics (Active)
 
-Current:
-Phase 23 — External Event Semantics Hardening (Open)
+Last Closed Phase  
+Phase 23 – External Event Semantics Hardening
 
-Last closed:
-Phase 22 — OTA Ingestion Boundary (Closed)
 
-## Active Work Context
-Phase 23 active.
-See docs/core/phase-23-spec.md.
+## System Status
 
-## System Type
-Deterministic Domain Event Execution Kernel.
+The deterministic event architecture is fully operational.
 
-External contract is business events only.
-Internal mechanics remain hidden.
+The canonical database gate (`apply_envelope`) remains the only authority
+allowed to mutate booking_state.
 
-## Canonical Persistence
-Supabase is canonical:
+External systems interact with iHouse Core exclusively through the OTA
+ingestion boundary.
 
-public.event_log  
-public.booking_state
 
-SQLite is not an allowed production write path.
+## Canonical Invariants
 
-## Canonical Apply Gate
+Event Store
+- event_log is append-only
+- events are immutable
 
-apply_envelope RPC is the single atomic write authority.
+State Model
+- booking_state is projection-only
+- booking_state is derived exclusively from events
 
-Properties:
+Write Authority
+- apply_envelope RPC is the only authority allowed to mutate booking_state
 
-- Writes envelope_received once per envelope_id
-- Returns ALREADY_APPLIED on replay
-- Guarantees deterministic idempotent behavior
+Replay Safety
+- duplicate envelopes must not create new events
+- duplicate envelopes must not mutate booking_state
 
-booking_state is projection-only and must never be mutated directly by application code.
 
-## External Ingestion Boundary (Phase 22)
+## OTA Ingestion Pipeline
 
-External systems interact through an ingestion adapter layer.
+External OTA payload
 
-Pipeline:
+↓ adapter normalization
 
-External System  
-→ Adapter  
-→ Normalization  
-→ Validation  
-→ Canonical Envelope  
-→ apply_envelope RPC
+↓ validate_normalized_event
 
-External payloads never write directly to event_log.
+↓ classify_normalized_event        (added in Phase 23)
 
-Replay safety and deterministic event authority remain preserved.
+↓ validate_classified_event        (added in Phase 23)
 
-## Availability Invariants
+↓ to_canonical_envelope
 
-Scope:
-tenant_id + property_id
+↓ validate_canonical_envelope
 
-Range:
-[check_in, check_out)
+↓ append_event
 
-Overlap rule:
+↓ apply_envelope (database gate)
 
-existing.check_in < new.check_out AND new.check_in < existing.check_out
 
-Active predicate:
+## OTA Adapters
 
-status IS DISTINCT FROM 'canceled'
+Current adapters
 
-## Business Identity
+- Booking.com
 
-tenant_id + source + reservation_ref + property_id
+Responsibilities
+
+Adapters must:
+
+- normalize external payloads
+- classify OTA event semantics
+- validate semantic consistency
+- produce canonical envelopes
+
+Adapters must not:
+
+- perform booking lookups
+- perform duplicate detection
+- mutate booking_state
+- bypass the canonical database gate
+
+
+## Current Focus
+
+Phase 24 introduces deterministic handling of OTA modification events.
+
+Certain OTA providers emit events such as `reservation_modified`
+which do not map directly to canonical CREATE or CANCEL events.
+
+Phase 24 introduces explicit semantic mapping rules for these events
+while preserving the canonical database gate as the sole authority
+for booking identity and duplicate enforcement.
+
