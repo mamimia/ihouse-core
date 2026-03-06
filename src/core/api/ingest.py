@@ -10,6 +10,7 @@ from core.ports import EventLogPort
 @dataclass(frozen=True)
 class IngestResult:
     event_id: str
+    apply_status: Optional[str]
 
 
 class IngestAPI:
@@ -44,6 +45,9 @@ class IngestAPI:
                 envelope=envelope,
                 idempotency_key=idempotency_key,
             )
-            return IngestResult(event_id=res.envelope_id)
+            return IngestResult(
+                event_id=res.envelope_id,
+                apply_status=res.apply_status,
+            )
         except CoreExecutionError as e:
             raise ValueError(str(e)) from e
