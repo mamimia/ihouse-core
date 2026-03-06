@@ -1,62 +1,29 @@
 from typing import Dict, Any
 
-from core.api import IngestAPI
-
-from .schemas import IngestionContext, IngestionResult
-from .pipeline import process_provider_event
+from .pipeline import process_ota_event
+from .schemas import CanonicalEnvelope
 
 
-class OTAIngestionService:
+def ingest_provider_event(
+    provider: str,
+    payload: Dict[str, Any],
+    tenant_id: str,
+) -> CanonicalEnvelope:
+    """
+    Entry point for OTA ingestion.
 
-    def __init__(self, ingest_api: IngestAPI) -> None:
-        self._ingest = ingest_api
+    The service layer acts only as a thin wrapper around the OTA pipeline.
 
-    def ingest(
-        self,
-        *,
-        channel: str,
-        raw_payload: Dict[str, Any],
-        context: IngestionContext,
-    ) -> IngestionResult:
+    Responsibilities:
+    - accept provider webhook payload
+    - forward payload into the shared OTA ingestion pipeline
+    - return canonical envelope ready for apply_envelope
+    """
 
-        request_id = "unknown"
+    envelope = process_ota_event(
+        provider=provider,
+        payload=payload,
+        tenant_id=tenant_id,
+    )
 
-        try:
-            envelope = process_provider_event(
-                channel=channel,
-                raw_payload=raw_payload,
-                tenant_id=context.tenant_id,
-                source=context.source,
-            )
-
-            request_id = envelope.idempotency_request_id
-
-            ingest_result = self._ingest.append_event(
-                envelope={
-                    "type": envelope.type,
-                    "payload": envelope.payload,
-                    "occurred_at": envelope.occurred_at,
-                },
-                idempotency_key=envelope.idempotency_request_id,
-            )
-
-            status = "APPLIED"
-
-            if ingest_result.apply_status == "ALREADY_APPLIED":
-                status = "DUPLICATE"
-
-            return IngestionResult(
-                status=status,
-                channel=channel,
-                request_id=request_id,
-                reason=None,
-            )
-
-        except ValueError as exc:
-
-            return IngestionResult(
-                status="REJECTED",
-                channel=channel,
-                request_id=request_id,
-                reason=str(exc),
-            )
+    return envelope
