@@ -1,7 +1,11 @@
 # iHouse Core – Work Context
 
 Current Phase
+Phase 25 – OTA Modification Resolution Rules
+
+Last Closed Phase
 Phase 24 – OTA Modification Semantics
+
 
 System State
 
@@ -13,6 +17,7 @@ Key invariants:
 - event_log is append-only
 - booking_state is projection-only
 - OTA payloads are normalized and validated before canonical envelope creation
+
 
 Completed Phases
 
@@ -26,21 +31,28 @@ Phase 23
 Introduced deterministic semantic classification and semantic validation
 for OTA events before envelope creation.
 
+Phase 24
+Introduced explicit semantic recognition for OTA modification events.
+
+The system now recognizes OTA modification events using the intermediate
+semantic kind:
+
+MODIFY
+
+Modification events are allowed through semantic classification but must
+be rejected deterministically at the adapter boundary when they cannot be
+resolved safely from payload semantics.
+
+
 Current Objective
 
-Phase 24 introduces deterministic handling for OTA modification events.
+Phase 25 defines deterministic resolution rules for OTA modification events.
 
-Problem
+Adapters must only resolve modification events if their canonical meaning
+can be determined strictly from payload semantics.
 
-Certain OTA providers (Booking.com in particular) emit events such as
-reservation_modified which do not map directly to a canonical booking event.
+If deterministic resolution is not possible, the event must be rejected
+before canonical envelope creation.
 
-A modification may represent:
-
-- non-booking change (ignored)
-- booking update
-- date change requiring cancel + recreate
-
-Phase 24 will introduce explicit semantic handling rules for OTA modification
-events to prevent semantic ambiguity in the canonical model.
-
+This preserves the deterministic ingestion contract while enabling future
+support for safe modification handling.

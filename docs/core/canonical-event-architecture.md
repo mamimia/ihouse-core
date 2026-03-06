@@ -133,3 +133,31 @@ The canonical event model is protected by:
 - canonical envelope validation
 - database gate enforcement
 
+
+## OTA Modification Semantics
+
+OTA providers may emit modification events that represent changes to existing bookings rather than explicit lifecycle transitions.
+
+Example
+
+reservation_modified
+
+The system introduces an intermediate semantic classification:
+
+MODIFY
+
+This classification does not represent a canonical booking lifecycle event.
+
+Instead it indicates that the adapter must attempt deterministic resolution based solely on payload semantics.
+
+Current behavior
+
+If deterministic resolution is not possible, the adapter must reject the event.
+
+Example
+
+reservation_modified  
+→ semantic classification MODIFY  
+→ adapter rejection
+
+This ensures the canonical event model remains strictly deterministic.

@@ -564,3 +564,42 @@ OTA provider payload semantics are validated before entering the canonical
 event model while preserving the DB gate as the sole authority for identity,
 deduplication, and overlap rules.
 
+
+## Phase 24 — OTA Modification Semantics (Closed)
+
+Goal:
+Introduce explicit semantic recognition for OTA modification events
+without violating the deterministic ingestion contract.
+
+Completed:
+
+- Added intermediate OTA semantic kind: MODIFY
+- Extended Booking.com adapter support for reservation_modified
+- Prevented unresolved modification events from silently falling into
+  CREATE or CANCEL semantics
+- Enforced deterministic rejection at adapter boundary when payload-only
+  resolution is not available
+
+Outcome:
+
+The system can now recognize OTA modification events explicitly while
+preserving deterministic ingestion and canonical DB gate authority.
+
+## Phase 25 — OTA Modification Resolution Rules (Active)
+
+Goal:
+Define deterministic adapter-side rules for when OTA modification events
+may be safely resolved from payload semantics.
+
+Focus:
+
+- identify whether Booking.com payloads contain enough deterministic
+  information for safe modification resolution
+- allow only payload-deterministic single-envelope outcomes
+- reject ambiguous modification events deterministically
+- preserve the one normalized event -> one canonical envelope contract
+
+Constraint:
+
+Multi-envelope outcomes such as CANCEL + CREATE remain out of scope
+unless the adapter contract is explicitly expanded in a later phase.

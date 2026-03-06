@@ -58,6 +58,9 @@ class BookingComAdapter(OTAAdapter):
         self,
         normalized: NormalizedBookingEvent,
     ) -> CanonicalExternalEnvelopeInput:
+        if normalized.raw_event_name == "reservation_modified":
+            raise ValueError("bookingcom_modification_not_deterministically_resolvable")
+
         provider_status = "confirmed"
 
         if normalized.raw_event_name == "reservation_cancelled":
@@ -92,7 +95,11 @@ class BookingComAdapter(OTAAdapter):
         )
 
     def _classify_raw_event(self, raw_event_name: str) -> str:
-        if raw_event_name in {"reservation_created", "reservation_cancelled"}:
+        if raw_event_name in {
+            "reservation_created",
+            "reservation_cancelled",
+            "reservation_modified",
+        }:
             return "BOOKING_SYNC_INGEST"
 
         raise ValueError("unsupported_bookingcom_event")

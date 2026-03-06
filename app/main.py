@@ -22,6 +22,9 @@ logger = logging.getLogger("ihouse-api")
 load_dotenv(dotenv_path=".env")
 
 API_KEY = os.getenv("IHOUSE_API_KEY")
+TENANT_ID = os.getenv("IHOUSE_TENANT_ID")
+if not TENANT_ID:
+    raise RuntimeError("IHOUSE_TENANT_ID must be set in environment")
 if not API_KEY:
     raise RuntimeError("IHOUSE_API_KEY must be set in environment")
 

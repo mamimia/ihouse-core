@@ -93,6 +93,7 @@ anti-corruption boundary that preserves the deterministic event kernel.
 External payload semantics are isolated from the canonical event model,
 ensuring replay safety and preventing external schema drift from leaking
 into the core domain.
+
 ## Phase 23 — External Event Semantics Hardening (Closed)
 
 Implemented:
@@ -132,3 +133,36 @@ Result:
 External OTA payload semantics are now hardened before canonical envelope creation,
 while the canonical database gate remains the sole authority for booking identity
 and duplicate enforcement.
+
+## Phase 24 — OTA Modification Semantics (Closed)
+
+Implemented:
+
+- Extended OTA semantic classification with the intermediate semantic kind:
+  - MODIFY
+- Booking.com adapter now explicitly recognizes:
+  - reservation_modified
+- Modification events no longer fall through as unsupported provider events.
+- Unresolved Booking.com modification events are rejected deterministically
+  at the adapter boundary.
+
+Validation outcome:
+
+reservation_modified
+-> classify_normalized_event => MODIFY
+-> validate_classified_event => allowed
+-> to_canonical_envelope => deterministic rejection when no safe payload-only resolution exists
+
+Architectural invariants preserved:
+
+- No booking_state lookup added.
+- No duplicate detection implemented in application layer.
+- No change to canonical DB gate behavior.
+- No change to canonical event schema.
+- No hidden fallback from MODIFY into CREATE.
+
+Result:
+
+The system now explicitly recognizes OTA modification events while preserving
+the deterministic ingestion contract and rejecting unresolved modification
+semantics before canonical envelope creation.

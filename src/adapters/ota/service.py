@@ -8,6 +8,7 @@ from .validator import (
     validate_normalized_event,
     validate_canonical_envelope,
 )
+from .semantics import classify_normalized_event, validate_classified_event
 
 
 class OTAIngestionService:
@@ -33,6 +34,9 @@ class OTAIngestionService:
             )
 
             validate_normalized_event(normalized)
+
+            classified = classify_normalized_event(normalized)
+            validate_classified_event(classified)
 
             envelope = adapter.to_canonical_envelope(normalized)
 
