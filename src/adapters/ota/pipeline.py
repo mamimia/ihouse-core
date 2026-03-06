@@ -1,56 +1,40 @@
-from typing import Dict, Any
+from __future__ import annotations
 
-from .registry import get_adapter
+from .schemas import NormalizedBookingEvent, ClassifiedBookingEvent, CanonicalEnvelope
 from .validator import (
     validate_normalized_event,
+    validate_classified_event,
     validate_canonical_envelope,
 )
-from .semantics import (
-    classify_normalized_event,
-    validate_classified_event,
-)
+from .semantics import classify_normalized_event
+from .registry import get_adapter
 
 
-def process_provider_event(
-    *,
-    channel: str,
-    raw_payload: Dict[str, Any],
-    tenant_id: str,
-    source: str,
-):
+def process_ota_event(provider: str, payload: dict) -> CanonicalEnvelope:
     """
-    Canonical OTA ingestion pipeline.
+    Shared OTA ingestion pipeline.
 
-    provider payload
-        ↓
-    adapter.normalize
-        ↓
-    structural validation
-        ↓
-    semantic classification
-        ↓
-    semantic validation
-        ↓
-    canonical envelope creation
-        ↓
-    canonical envelope validation
+    Flow:
+
+        normalize provider payload
+        -> structural validation
+        -> semantic classification
+        -> semantic validation
+        -> canonical envelope creation
+        -> canonical envelope validation
     """
 
-    adapter = get_adapter(channel)
+    adapter = get_adapter(provider)
 
-    normalized = adapter.normalize(
-        raw_payload,
-        tenant_id=tenant_id,
-        source=source,
-    )
+    normalized: NormalizedBookingEvent = adapter.normalize(payload)
 
     validate_normalized_event(normalized)
 
-    classified = classify_normalized_event(normalized)
+    classified: ClassifiedBookingEvent = classify_normalized_event(normalized)
 
     validate_classified_event(classified)
 
-    envelope = adapter.to_canonical_envelope(normalized)
+    envelope: CanonicalEnvelope = adapter.to_canonical_envelope(classified)
 
     validate_canonical_envelope(envelope)
 

@@ -1,40 +1,50 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 
 @dataclass
 class NormalizedBookingEvent:
-    canonical_type: str
+    """
+    Provider payload normalized into a stable structure.
+
+    This stage represents transport normalization only.
+    It MUST NOT contain canonical business event kinds.
+    """
+
     tenant_id: str
-    source: str
-    reservation_ref: str
+    provider: str
+    external_event_id: str
+    reservation_id: str
     property_id: str
-    occurred_at: str
-    check_in: Optional[str]
-    check_out: Optional[str]
-    raw_event_name: str
-    raw_external_id: Optional[str]
-    idempotency_request_id: str
-    raw_payload: Dict[str, Any]
+    occurred_at: datetime
 
-
-@dataclass
-class CanonicalExternalEnvelopeInput:
-    type: str
     payload: Dict[str, Any]
-    occurred_at: str
-    idempotency_request_id: str
 
 
 @dataclass
-class IngestionResult:
-    status: str
-    channel: str
-    request_id: str
-    reason: Optional[str] = None
+class ClassifiedBookingEvent:
+    """
+    Semantic classification result.
+
+    semantic_kind values are defined by semantics.py
+    and represent business lifecycle meaning.
+    """
+
+    normalized: NormalizedBookingEvent
+    semantic_kind: str
 
 
 @dataclass
-class IngestionContext:
+class CanonicalEnvelope:
+    """
+    Canonical envelope that enters the core ingestion system.
+    """
+
     tenant_id: str
-    source: str
+    type: str
+    occurred_at: datetime
+    payload: Dict[str, Any]
+    idempotency_key: Optional[str] = None

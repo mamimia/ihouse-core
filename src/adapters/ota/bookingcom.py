@@ -1,118 +1,59 @@
-from typing import Dict, Any
+from __future__ import annotations
+
+from datetime import datetime
 
 from .base import OTAAdapter
 from .schemas import (
     NormalizedBookingEvent,
-    CanonicalExternalEnvelopeInput,
+    ClassifiedBookingEvent,
+    CanonicalEnvelope,
 )
 
 
 class BookingComAdapter(OTAAdapter):
-    channel_name = "bookingcom"
 
-    def normalize(
-        self,
-        raw_payload: Dict[str, Any],
-        *,
-        tenant_id: str,
-        source: str,
-    ) -> NormalizedBookingEvent:
-        raw_event_name = raw_payload.get("event_type")
-        canonical_type = self._classify_raw_event(raw_event_name)
+    provider = "bookingcom"
 
-        reservation_ref = raw_payload.get("reservation_id")
-        property_id = raw_payload.get("property_id")
-        raw_external_id = raw_payload.get("id")
-        occurred_at = (
-            raw_payload.get("occurred_at")
-            or raw_payload.get("modified_at")
-            or raw_payload.get("created_at")
-        )
-
-        check_in = raw_payload.get("check_in")
-        check_out = raw_payload.get("check_out")
-
-        request_id = self._build_request_id(
-            raw_event_name=raw_event_name,
-            reservation_ref=reservation_ref,
-            property_id=property_id,
-            raw_external_id=raw_external_id,
-        )
+    def normalize(self, payload: dict) -> NormalizedBookingEvent:
+        """
+        Convert Booking.com webhook payload into normalized structure.
+        """
 
         return NormalizedBookingEvent(
-            canonical_type=canonical_type,
-            tenant_id=tenant_id,
-            source=source,
-            reservation_ref=reservation_ref,
-            property_id=property_id,
-            occurred_at=occurred_at,
-            check_in=check_in,
-            check_out=check_out,
-            raw_event_name=raw_event_name,
-            raw_external_id=raw_external_id,
-            idempotency_request_id=request_id,
-            raw_payload=raw_payload,
+            tenant_id=payload["tenant_id"],
+            provider=self.provider,
+            external_event_id=payload["event_id"],
+            reservation_id=payload["reservation_id"],
+            property_id=payload["property_id"],
+            occurred_at=datetime.fromisoformat(payload["occurred_at"]),
+            payload=payload,
         )
 
     def to_canonical_envelope(
         self,
-        normalized: NormalizedBookingEvent,
-    ) -> CanonicalExternalEnvelopeInput:
-        if normalized.raw_event_name == "reservation_modified":
-            raise ValueError("bookingcom_modification_not_deterministically_resolvable")
+        classified: ClassifiedBookingEvent,
+    ) -> CanonicalEnvelope:
 
-        provider_status = "confirmed"
+        normalized = classified.normalized
 
-        if normalized.raw_event_name == "reservation_cancelled":
-            provider_status = "cancelled"
+        if classified.semantic_kind == "CREATE":
+            canonical_type = "BOOKING_CREATED"
 
-        provider_payload = {
-            "status": provider_status,
-        }
+        elif classified.semantic_kind == "CANCEL":
+            canonical_type = "BOOKING_CANCELED"
 
-        if normalized.check_in:
-            provider_payload["start_date"] = normalized.check_in
+        else:
+            raise ValueError("MODIFY events are not supported")
 
-        if normalized.check_out:
-            provider_payload["end_date"] = normalized.check_out
-
-        guest_name = normalized.raw_payload.get("guest_name")
-        if guest_name:
-            provider_payload["guest_name"] = guest_name
-
-        payload = {
-            "provider": normalized.source,
-            "external_booking_id": normalized.reservation_ref,
-            "property_id": normalized.property_id,
-            "provider_payload": provider_payload,
-        }
-
-        return CanonicalExternalEnvelopeInput(
-            type=normalized.canonical_type,
-            payload=payload,
+        return CanonicalEnvelope(
+            tenant_id=normalized.tenant_id,
+            type=canonical_type,
             occurred_at=normalized.occurred_at,
-            idempotency_request_id=normalized.idempotency_request_id,
+            payload={
+                "provider": self.provider,
+                "reservation_id": normalized.reservation_id,
+                "property_id": normalized.property_id,
+                "provider_payload": normalized.payload,
+            },
+            idempotency_key=normalized.external_event_id,
         )
-
-    def _classify_raw_event(self, raw_event_name: str) -> str:
-        if raw_event_name in {
-            "reservation_created",
-            "reservation_cancelled",
-            "reservation_modified",
-        }:
-            return "BOOKING_SYNC_INGEST"
-
-        raise ValueError("unsupported_bookingcom_event")
-
-    def _build_request_id(
-        self,
-        *,
-        raw_event_name: str,
-        reservation_ref: str,
-        property_id: str,
-        raw_external_id: str | None,
-    ) -> str:
-        if raw_external_id:
-            return f"bookingcom:event:{raw_external_id}"
-
-        return f"bookingcom:{raw_event_name}:{reservation_ref}:{property_id}"

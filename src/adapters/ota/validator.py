@@ -1,75 +1,70 @@
+from __future__ import annotations
+
 from .schemas import (
     NormalizedBookingEvent,
-    CanonicalExternalEnvelopeInput,
+    ClassifiedBookingEvent,
+    CanonicalEnvelope,
 )
 
 
-SUPPORTED_TYPES = {
-    "BOOKING_SYNC_INGEST",
+SUPPORTED_CANONICAL_TYPES = {
+    "BOOKING_CREATED",
+    "BOOKING_CANCELED",
 }
 
 
 def validate_normalized_event(event: NormalizedBookingEvent) -> None:
-    if event.canonical_type not in SUPPORTED_TYPES:
-        raise ValueError("unsupported_canonical_type")
+    """
+    Structural validation for normalized provider events.
+    """
 
     if not event.tenant_id:
-        raise ValueError("missing_tenant_id")
+        raise ValueError("tenant_id is required")
 
-    if not event.source:
-        raise ValueError("missing_source")
+    if not event.provider:
+        raise ValueError("provider is required")
 
-    if not event.reservation_ref:
-        raise ValueError("missing_reservation_ref")
+    if not event.external_event_id:
+        raise ValueError("external_event_id is required")
+
+    if not event.reservation_id:
+        raise ValueError("reservation_id is required")
 
     if not event.property_id:
-        raise ValueError("missing_property_id")
+        raise ValueError("property_id is required")
 
     if not event.occurred_at:
-        raise ValueError("missing_occurred_at")
+        raise ValueError("occurred_at is required")
 
-    if not event.idempotency_request_id:
-        raise ValueError("missing_idempotency_request_id")
+    if not isinstance(event.payload, dict):
+        raise ValueError("payload must be a dictionary")
 
 
-def validate_canonical_envelope(
-    envelope: CanonicalExternalEnvelopeInput,
-) -> None:
-    if envelope.type not in SUPPORTED_TYPES:
-        raise ValueError("unsupported_envelope_type")
+def validate_classified_event(event: ClassifiedBookingEvent) -> None:
+    """
+    Ensure semantic classification is supported.
+    """
 
-    if not envelope.payload:
-        raise ValueError("missing_payload")
+    if event.semantic_kind not in {"CREATE", "CANCEL", "MODIFY"}:
+        raise ValueError(f"unsupported semantic kind: {event.semantic_kind}")
+
+    if event.semantic_kind == "MODIFY":
+        raise ValueError("MODIFY events are deterministically rejected")
+
+
+def validate_canonical_envelope(envelope: CanonicalEnvelope) -> None:
+    """
+    Validate canonical envelope before entering the core ingestion system.
+    """
+
+    if not envelope.tenant_id:
+        raise ValueError("tenant_id is required")
+
+    if envelope.type not in SUPPORTED_CANONICAL_TYPES:
+        raise ValueError(f"unsupported canonical type: {envelope.type}")
 
     if not envelope.occurred_at:
-        raise ValueError("missing_occurred_at")
+        raise ValueError("occurred_at is required")
 
-    if not envelope.idempotency_request_id:
-        raise ValueError("missing_request_id")
-
-    provider = envelope.payload.get("provider")
-    external_booking_id = envelope.payload.get("external_booking_id")
-    property_id = envelope.payload.get("property_id")
-    provider_payload = envelope.payload.get("provider_payload")
-
-    if not provider:
-        raise ValueError("missing_provider")
-
-    if not external_booking_id:
-        raise ValueError("missing_external_booking_id")
-
-    if not property_id:
-        raise ValueError("missing_property_id")
-
-    if not isinstance(provider_payload, dict):
-        raise ValueError("missing_provider_payload")
-
-    status = str(provider_payload.get("status") or "").strip().lower()
-    if not status:
-        raise ValueError("missing_provider_status")
-
-    if status != "cancelled":
-        start_date = provider_payload.get("start_date")
-        end_date = provider_payload.get("end_date")
-        if not start_date or not end_date:
-            raise ValueError("missing_booking_dates")
+    if not isinstance(envelope.payload, dict):
+        raise ValueError("payload must be a dictionary")

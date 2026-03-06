@@ -1,31 +1,41 @@
-from abc import ABC, abstractmethod
-from typing import Dict, Any
+from __future__ import annotations
 
-from .schemas import NormalizedBookingEvent, CanonicalExternalEnvelopeInput
+from abc import ABC, abstractmethod
+
+from .schemas import (
+    NormalizedBookingEvent,
+    ClassifiedBookingEvent,
+    CanonicalEnvelope,
+)
 
 
 class OTAAdapter(ABC):
-    channel_name: str
+    """
+    Base interface for OTA adapters.
+
+    Each provider adapter must implement:
+
+        normalize()
+        to_canonical_envelope()
+
+    The shared pipeline performs validation and semantic classification.
+    """
+
+    provider: str
 
     @abstractmethod
-    def normalize(
-        self,
-        raw_payload: Dict[str, Any],
-        *,
-        tenant_id: str,
-        source: str
-    ) -> NormalizedBookingEvent:
+    def normalize(self, payload: dict) -> NormalizedBookingEvent:
         """
-        Convert raw OTA payload into internal normalized structure.
+        Convert provider payload into normalized structure.
         """
         raise NotImplementedError
 
     @abstractmethod
     def to_canonical_envelope(
         self,
-        normalized: NormalizedBookingEvent
-    ) -> CanonicalExternalEnvelopeInput:
+        classified: ClassifiedBookingEvent,
+    ) -> CanonicalEnvelope:
         """
-        Convert normalized object into canonical external envelope input.
+        Build canonical envelope based on semantic classification.
         """
         raise NotImplementedError
