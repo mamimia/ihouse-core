@@ -272,3 +272,59 @@ Invariants preserved:
 - booking_state remains projection-only
 - MODIFY remains deterministic reject-by-default
 - provider semantics remain isolated from the shared pipeline
+
+## Phase 28 — OTA External Surface Canonicalization (Closed)
+
+Objective
+
+Resolve the ambiguity in the OTA external ingestion surface by replacing
+the generic transport envelope `BOOKING_SYNC_INGEST` with explicit
+canonical business events.
+
+Decision
+
+The system no longer accepts a single external OTA ingestion envelope.
+
+Instead, OTA adapters must emit canonical business events that represent
+the deterministic lifecycle outcome of the OTA notification.
+
+New canonical external events:
+
+- BOOKING_CREATED
+- BOOKING_CANCELED
+
+Rationale
+
+A single ingestion envelope hides business semantics inside payload
+fields and makes the event ledger harder to reason about.
+
+Explicit canonical business events ensure that the event log represents
+clear domain facts rather than transport containers.
+
+Implementation change
+
+OTA adapters now emit canonical business events directly after semantic
+classification:
+
+CREATE  → BOOKING_CREATED  
+CANCEL  → BOOKING_CANCELED
+
+MODIFY events remain unsupported and follow the rule:
+
+MODIFY  
+→ deterministic reject-by-default
+
+Architectural invariants preserved
+
+- apply_envelope remains the only write authority
+- booking_state remains projection-only
+- event_log remains append-only
+- adapters must not read booking_state
+- adapters must not reconcile booking history
+
+Outcome
+
+The canonical external event surface now represents explicit domain
+facts instead of transport envelopes, improving auditability and
+multi-provider scalability.
+

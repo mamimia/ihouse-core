@@ -1,99 +1,77 @@
 # iHouse Core – Work Context
 
 Current Phase  
-Phase 28 – OTA External Surface Decision
+Phase 29 – OTA Ingestion Replay Harness
 
 Last Closed Phase  
-Phase 27 – Multi-OTA Adapter Architecture
+Phase 28 – OTA External Surface Canonicalization
 
 
-## Phase 28 Objective
+## Phase 28 Result
 
-Decide whether the current OTA external ingestion surface should
-remain a single canonical envelope kind:
+Phase 28 resolved the OTA external surface ambiguity.
 
-BOOKING_SYNC_INGEST
-
-or be split into more explicit deterministic external kinds aligned
-with OTA semantic outcomes.
-
-This phase is a contract decision phase.
-
-It must not introduce reconciliation logic or modify the DB gate.
-
-
-## Phase 27 Closed Result
-
-Phase 27 introduced the shared multi-OTA adapter architecture.
-
-Completed:
-
-- shared OTA orchestration pipeline added
-- service layer reduced to entrypoint behavior
-- provider registry now supports multiple providers
-- Booking.com remains the concrete provider implementation
-- Expedia scaffold adapter added to validate provider extensibility
-
-Meaning:
-
-The architecture is now multi-provider, but not all target OTA
-providers are fully implemented yet.
-
-
-## Architectural Constraints
-
-The following invariants remain unchanged:
-
-- apply_envelope remains the only authority allowed to mutate booking_state
-- event_log remains append-only
-- booking_state remains projection-only
-- adapters must not perform booking_state lookup
-- adapters must not reconcile booking history
-- adapters must not mutate canonical state
-- adapters must not bypass the canonical database gate
-
-
-## Canonical OTA Event Surface
-
-Current external envelope kind:
+The system no longer accepts the generic ingestion envelope:
 
 BOOKING_SYNC_INGEST
+
+OTA adapters must emit explicit canonical business events.
+
+Canonical external events:
+
+- BOOKING_CREATED
+- BOOKING_CANCELED
 
 OTA modification notifications remain classified as:
-
-MODIFY
-
-Current rule:
 
 MODIFY  
 → deterministic reject-by-default
 
 
-## Phase 28 Scope
+## Architectural Status
 
-This phase must decide whether the external OTA surface remains:
+The canonical database gate remains the only authority allowed to
+mutate booking_state.
 
-single kind:
-BOOKING_SYNC_INGEST
+Canonical invariants remain unchanged:
 
-or becomes a more explicit external canonical surface aligned with
-deterministic CREATE / CANCEL outcomes.
+- event_log is append-only
+- booking_state is projection-only
+- adapters must not read booking_state
+- adapters must not reconcile booking history
+- adapters must not mutate canonical state
+- adapters must not bypass apply_envelope
 
-This phase may update:
 
-- adapter contract
-- validator contract
-- external canonical surface documentation
+## Phase 29 Objective
 
-This phase must not update:
+Introduce deterministic OTA ingestion replay capability.
 
-- booking_state mutation authority
-- apply_envelope write authority
-- reconciliation rules
-- modification handling rules
+The goal of this phase is to enable safe replay of OTA event streams
+against the canonical ingestion pipeline.
+
+This allows the system to:
+
+- simulate OTA event ingestion sequences
+- validate deterministic behavior of adapters
+- verify rejection rules
+- test replay safety of the canonical event pipeline
+
+
+## Phase 29 Constraints
+
+Phase 29 must not introduce:
+
+- reconciliation logic
+- booking_state reads in adapters
+- OTA provider polling
+- modification resolution logic
+
+The phase focuses exclusively on replay tooling for the ingestion pipeline.
 
 
 ## Expected Outcome
 
-A clear canonical decision about the OTA external surface that can
-support future provider additions without ambiguity or semantic drift.
+A deterministic replay harness capable of feeding OTA event sequences
+into the ingestion pipeline and verifying canonical outcomes.
+

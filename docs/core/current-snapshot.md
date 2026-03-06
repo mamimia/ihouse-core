@@ -1,10 +1,10 @@
 # iHouse Core – Current Snapshot
 
-System Version  
-Phase 28 – OTA External Surface Decision (Active)
+Current Phase  
+Phase 29 – OTA Ingestion Replay Harness
 
 Last Closed Phase  
-Phase 27 – Multi-OTA Adapter Architecture
+Phase 28 – OTA External Surface Canonicalization
 
 
 ## System Status
@@ -18,23 +18,28 @@ External systems interact with iHouse Core exclusively through the OTA
 ingestion boundary.
 
 
-## Phase 27 Result
+## Phase 28 Result
 
-Phase 27 introduced the shared multi-OTA adapter architecture.
+Phase 28 resolved the ambiguity in the OTA external event surface.
 
-Completed architectural outcomes:
+The previous generic external envelope:
 
-- shared OTA orchestration pipeline introduced
-- service layer reduced to entrypoint behavior
-- provider registry extended to support multiple OTA adapters
-- Booking.com retained as the concrete provider adapter
-- Expedia scaffold adapter added to prove multi-provider extensibility
+BOOKING_SYNC_INGEST
 
-Result:
+is no longer considered a canonical external business event.
 
-A new provider can now be added through the shared OTA adapter contract
-without changing the canonical database gate or the shared orchestration
-flow.
+OTA adapters must now emit explicit canonical lifecycle events that
+represent the deterministic business outcome of the OTA notification.
+
+
+## Canonical External OTA Events
+
+The canonical OTA lifecycle events are now:
+
+- BOOKING_CREATED
+- BOOKING_CANCELED
+
+These events represent explicit business facts entering the system.
 
 
 ## Canonical Invariants
@@ -66,6 +71,7 @@ OTA adapters perform:
 - canonical envelope creation
 - canonical envelope validation
 
+
 Current provider status:
 
 - Booking.com implemented
@@ -75,16 +81,16 @@ Current provider status:
 - Trip.com not implemented
 
 
-## Current Architectural Question
+## Modification Handling
 
-The OTA external ingestion surface currently uses a single external
-envelope kind:
+OTA modification notifications are classified as:
 
-BOOKING_SYNC_INGEST
+MODIFY
 
-Phase 28 will decide whether this single surface remains sufficient
-for multi-provider scale or whether the external canonical surface
-must be split into more explicit deterministic kinds.
+Current rule:
+
+MODIFY  
+→ deterministic reject-by-default
 
 
 ## Future Improvements
@@ -99,3 +105,4 @@ A future reconciliation system capable of:
 - emitting deterministic canonical events
 
 This layer must remain outside the canonical ingestion pipeline.
+

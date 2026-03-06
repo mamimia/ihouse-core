@@ -929,3 +929,236 @@ The recovery layer must never mutate canonical state directly.
 
 Any reconciliation result must still enter the system only through the
 canonical apply gate after becoming a deterministic canonical fact.
+
+## Future OTA Evolution — Amendment Handling
+
+Status: Future improvement (not implemented)
+
+Current system behavior intentionally supports only two deterministic OTA lifecycle outcomes:
+
+- BOOKING_CREATED
+- BOOKING_CANCELED
+
+OTA modification events are currently classified as:
+
+MODIFY → deterministic reject
+
+This behavior is intentional and protects the canonical event model from ambiguous state mutation.
+
+The system does not yet support reservation amendments.
+
+---
+
+### Why Amendments Are Not Implemented Yet
+
+OTA providers frequently emit "modification" events representing partial reservation changes.
+
+Examples:
+
+- date change
+- price change
+- guest count change
+- room change
+- reservation correction
+- OTA-side reconciliation
+
+These events are problematic because they are often:
+
+- non-deterministic
+- partial
+- emitted out of order
+- emitted as snapshots instead of deltas
+- dependent on external state
+
+Allowing these events directly into the canonical event model would risk violating core invariants.
+
+Therefore the current system design enforces:
+
+MODIFY → deterministic reject
+
+This ensures that canonical system truth is never derived from ambiguous OTA modification signals.
+
+---
+
+### Future Goal
+
+Introduce deterministic amendment support without violating the core architectural invariants.
+
+The system may eventually introduce a new canonical lifecycle event:
+
+BOOKING_AMENDED
+
+This event would represent a deterministic modification to an existing reservation.
+
+However, amendments must only be introduced once the system can safely determine:
+
+- what changed
+- what the previous state was
+- whether the change is valid
+- whether events arrived in correct order
+- whether the modification conflicts with existing bookings
+
+---
+
+### Requirements Before Amendment Support Can Be Introduced
+
+The following architectural capabilities must exist before amendments are allowed:
+
+1. Deterministic amendment classification
+
+Adapters must be able to detect safe amendment scenarios such as:
+
+- date extension
+- date reduction
+- guest count update
+
+Ambiguous modifications must still be rejected.
+
+2. Reservation identity stability
+
+The system must be able to guarantee that an amendment references the same reservation identity.
+
+3. State-safe amendment application
+
+The core system must safely transition:
+
+previous booking state → amended booking state
+
+without violating:
+
+- availability
+- overlap rules
+- historical event integrity
+
+4. Out-of-order protection
+
+OTA systems frequently emit events out of order.
+
+The system must ensure amendments cannot corrupt booking state if events arrive late.
+
+5. Projection safety
+
+Booking projections must correctly rebuild amended reservations from event history.
+
+---
+
+### Potential Future Canonical Event
+
+Example future event:
+
+BOOKING_AMENDED
+
+Payload example:
+
+{
+  "reservation_id": "...",
+  "previous_dates": {...},
+  "new_dates": {...},
+  "amendment_reason": "date_change"
+}
+
+This event must remain deterministic and reconstructable from the event log.
+
+---
+
+### When Amendment Support Should Be Implemented
+
+Amendment support should only be considered after:
+
+- multiple OTA providers are live
+- OTA payload behavior is well understood
+- system projections are stable
+- out-of-order handling strategy is defined
+
+Until then the correct behavior remains:
+
+MODIFY → deterministic reject
+
+## Phase 28 — OTA External Surface Canonicalization (Closed)
+
+Goal
+
+Resolve the ambiguity in the OTA external ingestion surface before
+expanding real provider integrations.
+
+Background
+
+The OTA boundary previously emitted a single external envelope kind:
+
+BOOKING_SYNC_INGEST
+
+This envelope acted as a transport container and required payload
+inspection to determine the semantic meaning of the event.
+
+While functional, this design hid business semantics inside payload
+fields rather than representing them explicitly in the canonical
+event surface.
+
+Architectural Question
+
+Should the OTA ingestion boundary continue emitting a single
+transport-style envelope, or should adapters emit explicit
+canonical business events representing deterministic lifecycle facts?
+
+Decision
+
+The system adopts explicit canonical lifecycle events.
+
+OTA adapters must emit:
+
+BOOKING_CREATED  
+BOOKING_CANCELED
+
+The transport envelope:
+
+BOOKING_SYNC_INGEST
+
+is no longer considered a canonical external event surface.
+
+Rationale
+
+Explicit lifecycle events improve:
+
+- event log readability
+- auditability
+- deterministic reasoning about the ledger
+- multi-provider scalability
+
+The canonical event log must represent domain facts rather than
+integration transport containers.
+
+Implementation Impact
+
+The OTA adapter contract is updated so that semantic classification
+directly produces canonical lifecycle events.
+
+CREATE → BOOKING_CREATED  
+CANCEL → BOOKING_CANCELED
+
+OTA modification notifications continue to follow the invariant:
+
+MODIFY  
+→ deterministic reject-by-default
+
+Architectural Invariants Preserved
+
+This decision does not modify the canonical system authority model.
+
+The following invariants remain unchanged:
+
+- apply_envelope remains the single write authority
+- event_log remains append-only
+- booking_state remains projection-only
+- adapters must not read booking_state
+- adapters must not reconcile booking history
+- adapters must not mutate canonical state
+
+Outcome
+
+The external OTA ingestion surface now emits explicit canonical
+business facts rather than transport envelopes.
+
+This aligns the external integration boundary with the canonical
+event model and prepares the architecture for safe expansion to
+multiple OTA providers.
+

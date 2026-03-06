@@ -3,10 +3,10 @@
 
 ## Version
 
-Phase 27 – Multi-OTA Adapter Architecture (Locked)
+Phase 28 – OTA External Surface Canonicalization (Locked)
 
 Last Closed Phase  
-Phase 27 – Multi-OTA Adapter Architecture
+Phase 28 – OTA External Surface Canonicalization
 
 
 ## Purpose
@@ -225,3 +225,4 @@ resolution strategy is formally introduced.
 The shared OTA pipeline must remain provider-agnostic.
 
 Provider-specific logic must remain isolated inside provider adapters.
+

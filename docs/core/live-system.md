@@ -15,7 +15,7 @@ Core principles:
 
 ## Write Path
 
-External sources send envelopes.
+External sources send canonical business envelopes.
 
 The envelope enters the system through:
 
@@ -33,6 +33,16 @@ The shared OTA pipeline performs:
 - semantic validation
 - canonical envelope construction
 - canonical envelope validation
+
+The canonical external OTA events are:
+
+- BOOKING_CREATED
+- BOOKING_CANCELED
+
+OTA modification notifications are classified as:
+
+MODIFY  
+→ deterministic reject-by-default
 
 The RPC validates:
 
