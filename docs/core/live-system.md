@@ -21,7 +21,7 @@ External OTA sources enter the system through a layered canonical path:
 OTA service entry  
 → shared OTA pipeline  
 → canonical envelope  
-→ IngestAPI.ingest  
+→ IngestAPI.append_event  
 → CoreExecutor.execute  
 → Supabase RPC  
 → apply_envelope

@@ -402,3 +402,20 @@ Out of scope:
 Architectural result:
 The OTA-to-core handoff is now treated as a first-class explicit
 boundary shared by production ingest flow and replay verification.
+
+## Phase 31 — Closure
+
+Closed Phase 31 after completing contract-verification and documentation
+hardening for the OTA ingestion boundary.
+
+Completed:
+- aligned active docs to `IngestAPI.append_event`
+- clarified OTA service language from apply-facing wording to core-ingest wording
+- archived closed phase specs under `docs/archive/phases`
+- introduced `docs/core/improvements/future-improvements.md`
+
+No canonical business semantics changed.
+No alternative write path was introduced.
+
+Next active phase:
+Phase 32 – OTA Ingestion Contract Test Verification

@@ -2,18 +2,17 @@
 
 ## Status
 
-Draft Only
+Active
 
-This file defines the next intended phase after Phase 30 is closed.
-
-It does not make Phase 31 active yet.
+This file defines the active verification phase after Phase 30 closed.
 
 
 ## Depends On
 
 Phase 30 – OTA Ingestion Interface Hardening
 
-Phase 31 may begin only after Phase 30 is verified and closed.
+Phase 31 begins after Phase 30 closure and remains scoped to minimal
+contract verification and hardening only.
 
 
 ## Objective
@@ -139,15 +138,8 @@ Replay tooling must rely on the same public contract as production flow.
 
 Phase 31 is complete when:
 
-1. The runtime OTA-to-core contract is verified end to end.
-2. Any small interface drift found is corrected with minimal code change.
-3. Tests prove that OTA code cannot bypass core ingest or executor.
-4. Deterministic invariants remain unchanged.
-5. No new architectural surface is introduced.
-
-
-## Expected Outcome
-
-The documented OTA ingestion contract from Phase 30 becomes verified
-runtime truth, with minimal implementation hardening where necessary
-and stable tests guarding against future drift.
+- the live OTA-to-core runtime contract is verified against the current implementation
+- any real interface drift is corrected with minimal hardening only
+- test or reference coverage is aligned to the same public ingest contract
+- no alternate write path exists
+- no Phase 30 architectural decision is reopened

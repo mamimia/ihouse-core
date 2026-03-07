@@ -1235,3 +1235,47 @@ Outcome:
 - core ingest API remains the explicit bridge into execution
 - CoreExecutor remains the single execution boundary
 - canonical invariants remain unchanged
+
+## Documentation Rule Update — Future Improvements
+
+Future-looking improvements, deferred hardening items, and backlog notes
+are no longer to be added as new content inside this phase timeline.
+
+This file remains append-only historical phase chronology.
+
+Historical future-improvement notes remain in older entries as part of
+the permanent record.
+
+From this point forward, new future improvements must be recorded in:
+
+- docs/core/improvements/future-improvements.md
+
+## Phase 31 — Closed
+
+Status:
+Closed
+
+Summary:
+Phase 31 closed the documentation and interface-verification loop for
+the OTA ingestion contract without changing canonical business
+semantics.
+
+Confirmed runtime handoff:
+- ingest_provider_event
+- process_ota_event
+- canonical envelope
+- IngestAPI.append_event
+- CoreExecutor.execute
+- apply_envelope
+
+Outcome:
+- active docs aligned to the live runtime contract
+- contract-name drift removed from current-state documentation
+- OTA service wording clarified to core-ingest terminology
+- closed phase specs archived consistently
+- dedicated future improvements backlog introduced
+- no new write path introduced
+- canonical semantics unchanged
+
+Next phase:
+Phase 32 – OTA Ingestion Contract Test Verification

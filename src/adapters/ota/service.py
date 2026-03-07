@@ -19,7 +19,7 @@ def ingest_provider_event(
     Responsibilities:
     - accept provider webhook payload
     - forward payload into the shared OTA ingestion pipeline
-    - return canonical envelope ready for apply_envelope
+    - return canonical envelope ready for core ingest
     """
 
     envelope = process_ota_event(

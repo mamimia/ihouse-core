@@ -7,7 +7,7 @@ from typing import Any, Dict
 import pytest
 
 from adapters.ota.service import ingest_provider_event
-from core.executor import CoreExecutor
+from core.api.ingest import IngestAPI
 
 
 def _iso(dt: datetime) -> str:
@@ -91,16 +91,20 @@ def _install_executor_stubs(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(executor_module, "_run_skill", fake_run_skill)
 
 
-def _make_executor(monkeypatch: pytest.MonkeyPatch):
+def _make_ingest(monkeypatch: pytest.MonkeyPatch):
+    from core.executor import CoreExecutor
+
     _install_executor_stubs(monkeypatch)
     applier = FakeEventLogApplier()
+    event_log = FakeEventLogPort()
     executor = CoreExecutor(
-        event_log_port=FakeEventLogPort(),
+        event_log_port=event_log,
         event_log_applier=applier,
         state_store=None,
         replay_mode=True,
     )
-    return executor, applier
+    ingest = IngestAPI(db=event_log, executor=executor)
+    return ingest, applier
 
 
 def _bookingcom_payload(*, event_id: str, event_type: str) -> Dict[str, Any]:
@@ -114,7 +118,7 @@ def _bookingcom_payload(*, event_id: str, event_type: str) -> Dict[str, Any]:
 
 
 def test_replay_harness_booking_created_is_applied(monkeypatch: pytest.MonkeyPatch) -> None:
-    executor, applier = _make_executor(monkeypatch)
+    ingest, applier = _make_ingest(monkeypatch)
 
     envelope = ingest_provider_event(
         provider="bookingcom",
@@ -122,19 +126,19 @@ def test_replay_harness_booking_created_is_applied(monkeypatch: pytest.MonkeyPat
         tenant_id="tenant_001",
     )
 
-    result = executor.execute(
-        envelope=_canonical_envelope_to_core_dict(envelope),
+    result = ingest.append_event(
+        _canonical_envelope_to_core_dict(envelope),
         idempotency_key=envelope.idempotency_key,
     )
 
     assert envelope.type == "BOOKING_CREATED"
-    assert result.envelope_id == "evt_create_001"
+    assert result.event_id == "evt_create_001"
     assert result.apply_status == "APPLIED"
     assert len(applier.calls) == 1
 
 
 def test_replay_harness_booking_canceled_is_applied(monkeypatch: pytest.MonkeyPatch) -> None:
-    executor, applier = _make_executor(monkeypatch)
+    ingest, applier = _make_ingest(monkeypatch)
 
     envelope = ingest_provider_event(
         provider="bookingcom",
@@ -142,19 +146,19 @@ def test_replay_harness_booking_canceled_is_applied(monkeypatch: pytest.MonkeyPa
         tenant_id="tenant_001",
     )
 
-    result = executor.execute(
-        envelope=_canonical_envelope_to_core_dict(envelope),
+    result = ingest.append_event(
+        _canonical_envelope_to_core_dict(envelope),
         idempotency_key=envelope.idempotency_key,
     )
 
     assert envelope.type == "BOOKING_CANCELED"
-    assert result.envelope_id == "evt_cancel_001"
+    assert result.event_id == "evt_cancel_001"
     assert result.apply_status == "APPLIED"
     assert len(applier.calls) == 1
 
 
 def test_replay_harness_duplicate_replay_is_already_applied(monkeypatch: pytest.MonkeyPatch) -> None:
-    executor, applier = _make_executor(monkeypatch)
+    ingest, applier = _make_ingest(monkeypatch)
 
     envelope = ingest_provider_event(
         provider="bookingcom",
@@ -163,18 +167,54 @@ def test_replay_harness_duplicate_replay_is_already_applied(monkeypatch: pytest.
     )
     core_env = _canonical_envelope_to_core_dict(envelope)
 
-    first = executor.execute(
-        envelope=core_env,
+    first = ingest.append_event(
+        core_env,
         idempotency_key=envelope.idempotency_key,
     )
-    second = executor.execute(
-        envelope=core_env,
+    second = ingest.append_event(
+        core_env,
         idempotency_key=envelope.idempotency_key,
     )
 
     assert first.apply_status == "APPLIED"
     assert second.apply_status == "ALREADY_APPLIED"
-    assert first.envelope_id == second.envelope_id == "evt_dup_001"
+    assert first.event_id == second.event_id == "evt_dup_001"
+    assert len(applier.calls) == 2
+
+
+def test_replay_harness_same_business_fact_with_different_event_ids_is_reapplied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ingest, applier = _make_ingest(monkeypatch)
+
+    first_envelope = ingest_provider_event(
+        provider="bookingcom",
+        payload=_bookingcom_payload(event_id="evt_biz_001", event_type="created"),
+        tenant_id="tenant_001",
+    )
+    second_envelope = ingest_provider_event(
+        provider="bookingcom",
+        payload=_bookingcom_payload(event_id="evt_biz_002", event_type="created"),
+        tenant_id="tenant_001",
+    )
+
+    first_result = ingest.append_event(
+        _canonical_envelope_to_core_dict(first_envelope),
+        idempotency_key=first_envelope.idempotency_key,
+    )
+    second_result = ingest.append_event(
+        _canonical_envelope_to_core_dict(second_envelope),
+        idempotency_key=second_envelope.idempotency_key,
+    )
+
+    assert first_envelope.payload["reservation_id"] == second_envelope.payload["reservation_id"] == "res_001"
+    assert first_envelope.type == second_envelope.type == "BOOKING_CREATED"
+    assert first_envelope.idempotency_key == "evt_biz_001"
+    assert second_envelope.idempotency_key == "evt_biz_002"
+    assert first_result.apply_status == "APPLIED"
+    assert second_result.apply_status == "APPLIED"
+    assert first_result.event_id == "evt_biz_001"
+    assert second_result.event_id == "evt_biz_002"
     assert len(applier.calls) == 2
 
 

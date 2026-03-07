@@ -1,45 +1,46 @@
-# iHouse Core – Current Snapshot
+# iHouse Core — Current Snapshot
 
-Current Phase  
-Phase 30 – OTA Ingestion Interface Hardening
+## Current Phase
+Phase 33 — OTA Retry Business Idempotency Discovery
 
-Last Closed Phase  
-Phase 29 – OTA Ingestion Replay Harness
-
+## Last Closed Phase
+Phase 32 — OTA Ingestion Contract Test Verification
 
 ## System Status
 
 The deterministic event architecture remains fully operational.
 
-The canonical database gate (`apply_envelope`) remains the only
-authority allowed to mutate booking_state.
+The canonical database gate (`apply_envelope`) remains the only authority allowed to mutate booking state.
 
-External systems interact with iHouse Core through the OTA ingestion
-boundary and then the canonical core ingest path.
+External systems interact with iHouse Core through the OTA ingestion boundary and then the canonical core ingest path.
 
+## Phase 32 Result
 
-## Phase 29 Result
+Phase 32 closed the executable verification loop for the OTA ingestion runtime contract without changing canonical business semantics.
 
-Phase 29 introduced deterministic OTA replay verification.
-
-The system now includes replay tooling that validates OTA ingestion
-through the canonical execution path:
+Phase 32 verified the live runtime handoff as:
 
 ingest_provider_event  
 → process_ota_event  
 → canonical envelope  
-→ IngestAPI.ingest  
+→ IngestAPI.append_event  
 → CoreExecutor.execute  
 → apply_envelope
 
-This allows deterministic verification of:
+Phase 32 completed the following:
 
-- booking creation
-- booking cancellation
-- duplicate replay behavior
-- MODIFY rejection
-- invalid payload rejection
+- added direct tests for thin OTA service entry
+- added direct tests for ordered shared OTA pipeline responsibilities
+- added direct tests for core ingest rejection of missing executor wiring
+- aligned replay verification to the same public ingest contract
+- verified no tested OTA runtime path bypasses core ingest or CoreExecutor
+- reran relevant smoke and invariant checks successfully
 
+No canonical business semantics changed.
+
+No alternative write path was introduced.
+
+MODIFY remains deterministic reject-by-default.
 
 ## Canonical External OTA Events
 
@@ -47,9 +48,6 @@ The canonical OTA lifecycle events remain:
 
 - BOOKING_CREATED
 - BOOKING_CANCELED
-
-These events represent explicit business facts entering the system.
-
 
 ## Canonical Invariants
 
@@ -62,76 +60,54 @@ State Model
 - booking_state is derived exclusively from events
 
 Write Authority
-- apply_envelope RPC is the only authority allowed to mutate booking_state
+- apply_envelope RPC is the only authority allowed to mutate booking state
 
 Replay Safety
 - duplicate envelopes must not create new events
 - duplicate ingestion must remain idempotent
 
+## Phase 33 Focus
 
-## OTA Interface Status
+Phase 33 focuses on OTA retry business idempotency discovery.
 
-OTA service layer responsibilities:
+This phase originally existed to determine whether OTA-originated duplicate business events can arrive with different transport identifiers and whether the current system already protects against that safely.
 
-- accept provider-facing ingress inputs
-- invoke the shared OTA pipeline
-- return canonical envelope output only
+Discovery evidence gathered in this phase shows a more precise active concern:
 
-Shared OTA pipeline responsibilities:
+- the canonical Supabase apply contract already contains business-level protection for BOOKING_CREATED when canonical emitted business events reach `apply_envelope`
+- the active OTA runtime path currently appears misaligned with that canonical emitted event contract
+- the main verified discovery is therefore runtime mapping and routing alignment risk between OTA envelopes, executor skill routing, emitted business events, and the Supabase apply contract
 
-- provider resolution
-- payload normalization
-- structural validation
-- semantic classification
-- semantic validation
-- canonical envelope creation
-- canonical envelope validation
+This phase remains a discovery, evidence gathering, and minimal verification phase only.
 
-Core ingest responsibilities:
+It must not redesign the architecture.
 
-- accept canonical envelope input
-- route execution through CoreExecutor only
+It must not reopen closed semantic decisions.
 
-Core executor responsibilities:
+## Active Discovery Position
 
-- execute canonical envelopes
-- preserve commit policy
-- keep write authority behind apply_envelope
+The current strongest evidence is:
 
+- OTA adapters build transport-facing envelopes using provider-oriented fields such as `provider`, `reservation_id`, `property_id`, and transport idempotency derived from `external_event_id`
+- CoreExecutor forwards the original envelope plus emitted events to `apply_envelope`
+- `apply_envelope` performs canonical business handling from emitted events, not from the raw OTA envelope alone
+- the active runtime skill routing currently maps `BOOKING_CREATED` to a noop skill, which does not emit the canonical business event shape required by the Supabase apply contract
+- therefore the currently verified risk is not a proven failure of canonical business dedup itself, but a likely mapping and routing gap in the active OTA runtime path
 
-Current provider status:
+## Current Objective
 
-- Booking.com implemented
-- Expedia scaffold added for architectural validation
-- Airbnb not implemented
-- Agoda not implemented
-- Trip.com not implemented
+Determine whether the active OTA runtime path actually reaches the canonical emitted business event contract expected by `apply_envelope`, or whether a routing and mapping gap currently prevents canonical business identity enforcement from being applied as intended.
 
+This objective remains bounded by the same Phase 33 restrictions:
 
-## Modification Handling
+- no reconciliation
+- no amendment handling
+- no booking_state reads inside adapters
+- no direct apply_envelope calls from OTA code
+- no alternative write paths
+- no new canonical event kinds
+- no reopening closed phase decisions
 
-OTA modification notifications are classified as:
+## Next Minimal Step
 
-MODIFY
-
-Current rule:
-
-MODIFY  
-→ deterministic reject-by-default
-
-
-## Phase 30 Focus
-
-Phase 30 focuses on OTA ingestion interface hardening.
-
-This phase clarifies and stabilizes the explicit handoff between:
-
-- OTA service entry
-- shared OTA pipeline
-- canonical envelope output
-- core ingest API
-- CoreExecutor execution boundary
-- replay verification contract
-
-It must not introduce reconciliation, amendment handling, or out-of-order
-processing.
+Document the verified discovery precisely in the active docs, then define the smallest safe future hardening direction only if the active OTA runtime path is confirmed to remain misaligned with the canonical emitted business event contract.
