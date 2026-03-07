@@ -1,10 +1,10 @@
 # iHouse Core – Current Snapshot
 
 Current Phase  
-Phase 29 – OTA Ingestion Replay Harness
+Phase 30 – OTA Ingestion Interface Hardening
 
 Last Closed Phase  
-Phase 28 – OTA External Surface Canonicalization
+Phase 29 – OTA Ingestion Replay Harness
 
 
 ## System Status
@@ -18,23 +18,30 @@ External systems interact with iHouse Core exclusively through the OTA
 ingestion boundary.
 
 
-## Phase 28 Result
+## Phase 29 Result
 
-Phase 28 resolved the ambiguity in the OTA external event surface.
+Phase 29 introduced deterministic OTA replay verification.
 
-The previous generic external envelope:
+The system now includes replay tooling that validates OTA ingestion
+through the canonical execution path:
 
-BOOKING_SYNC_INGEST
+ingest_provider_event  
+→ canonical envelope  
+→ CoreExecutor.execute  
+→ apply_envelope
 
-is no longer considered a canonical external business event.
+This allows deterministic verification of:
 
-OTA adapters must now emit explicit canonical lifecycle events that
-represent the deterministic business outcome of the OTA notification.
+- booking creation
+- booking cancellation
+- duplicate replay behavior
+- MODIFY rejection
+- invalid payload rejection
 
 
 ## Canonical External OTA Events
 
-The canonical OTA lifecycle events are now:
+The canonical OTA lifecycle events remain:
 
 - BOOKING_CREATED
 - BOOKING_CANCELED
@@ -71,6 +78,8 @@ OTA adapters perform:
 - canonical envelope creation
 - canonical envelope validation
 
+Replay tooling now verifies this boundary through the core execution path.
+
 
 Current provider status:
 
@@ -93,16 +102,16 @@ MODIFY
 → deterministic reject-by-default
 
 
-## Future Improvements
+## Phase 30 Focus
 
-OTA Sync Recovery Layer
+Phase 30 focuses on OTA ingestion interface hardening.
 
-A future reconciliation system capable of:
+This phase should clarify and stabilize the explicit handoff between:
 
-- detecting modification notifications
-- triggering provider reservation re-fetch
-- comparing OTA state with local state
-- emitting deterministic canonical events
+- OTA ingestion entry
+- canonical envelope shape
+- core execution boundary
+- replay verification contract
 
-This layer must remain outside the canonical ingestion pipeline.
-
+It must not introduce reconciliation, amendment handling, or out-of-order
+processing.

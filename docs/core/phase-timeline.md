@@ -1162,3 +1162,47 @@ This aligns the external integration boundary with the canonical
 event model and prepares the architecture for safe expansion to
 multiple OTA providers.
 
+## Future Improvement – Removal of Transport Artifact
+
+Background
+
+Prior to Phase 28 the OTA boundary emitted a generic transport
+envelope called:
+
+BOOKING_SYNC_INGEST
+
+Phase 28 replaced this external surface with explicit canonical
+lifecycle events:
+
+BOOKING_CREATED
+BOOKING_CANCELED
+
+Current Status
+
+The historical transport event may still exist internally in parts
+of the OTA adapter execution pipeline.
+
+Future Direction
+
+A later cleanup phase may remove this artifact once the execution
+pipeline no longer depends on the historical transport container.
+## Phase 29 — OTA Ingestion Replay Harness (Closed)
+
+Completed:
+- Added deterministic OTA replay verification as test tooling.
+- Verified replay path through:
+  - ingest_provider_event
+  - canonical envelope creation
+  - CoreExecutor.execute
+- Added replay coverage for:
+  - BOOKING_CREATED
+  - BOOKING_CANCELED
+  - duplicate replay
+  - MODIFY rejection
+  - invalid payload rejection
+- Performed minimal OTA contract alignment required for replay execution.
+
+Outcome:
+- OTA replay behavior is now verifiable through the canonical execution path.
+- apply_envelope remains the single write authority.
+- Canonical invariants remain unchanged.

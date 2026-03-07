@@ -20,7 +20,6 @@ class NormalizedBookingEvent:
     reservation_id: str
     property_id: str
     occurred_at: datetime
-
     payload: Dict[str, Any]
 
 

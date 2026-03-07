@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Dict
+
 from .schemas import NormalizedBookingEvent, ClassifiedBookingEvent, CanonicalEnvelope
 from .validator import (
     validate_normalized_event,
@@ -10,7 +12,11 @@ from .semantics import classify_normalized_event
 from .registry import get_adapter
 
 
-def process_ota_event(provider: str, payload: dict) -> CanonicalEnvelope:
+def process_ota_event(
+    provider: str,
+    payload: Dict[str, Any],
+    tenant_id: str,
+) -> CanonicalEnvelope:
     """
     Shared OTA ingestion pipeline.
 
@@ -26,7 +32,10 @@ def process_ota_event(provider: str, payload: dict) -> CanonicalEnvelope:
 
     adapter = get_adapter(provider)
 
-    normalized: NormalizedBookingEvent = adapter.normalize(payload)
+    normalized_payload = dict(payload)
+    normalized_payload["tenant_id"] = tenant_id
+
+    normalized: NormalizedBookingEvent = adapter.normalize(normalized_payload)
 
     validate_normalized_event(normalized)
 

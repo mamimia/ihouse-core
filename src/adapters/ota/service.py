@@ -1,4 +1,6 @@
-from typing import Dict, Any
+from __future__ import annotations
+
+from typing import Any, Dict
 
 from .pipeline import process_ota_event
 from .schemas import CanonicalEnvelope

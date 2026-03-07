@@ -1,26 +1,29 @@
 # iHouse Core – Work Context
 
 Current Phase  
-Phase 29 – OTA Ingestion Replay Harness
+Phase 30 – OTA Ingestion Interface Hardening
 
 Last Closed Phase  
-Phase 28 – OTA External Surface Canonicalization
+Phase 29 – OTA Ingestion Replay Harness
 
 
-## Phase 28 Result
+## Phase 29 Result
 
-Phase 28 resolved the OTA external surface ambiguity.
+Phase 29 added deterministic OTA replay verification.
 
-The system no longer accepts the generic ingestion envelope:
+The system now verifies OTA ingestion through:
 
-BOOKING_SYNC_INGEST
+ingest_provider_event  
+→ canonical envelope  
+→ CoreExecutor.execute
 
-OTA adapters must emit explicit canonical business events.
-
-Canonical external events:
+Replay coverage includes:
 
 - BOOKING_CREATED
 - BOOKING_CANCELED
+- duplicate replay
+- MODIFY rejection
+- invalid payload rejection
 
 OTA modification notifications remain classified as:
 
@@ -43,35 +46,37 @@ Canonical invariants remain unchanged:
 - adapters must not bypass apply_envelope
 
 
-## Phase 29 Objective
+## Phase 30 Objective
 
-Introduce deterministic OTA ingestion replay capability.
+Phase 30 hardens the OTA ingestion interface.
 
-The goal of this phase is to enable safe replay of OTA event streams
-against the canonical ingestion pipeline.
+The goal of this phase is to make the handoff between OTA ingestion,
+canonical envelope execution, and replay verification fully explicit,
+stable, and testable.
 
-This allows the system to:
+This phase should clarify and lock:
 
-- simulate OTA event ingestion sequences
-- validate deterministic behavior of adapters
-- verify rejection rules
-- test replay safety of the canonical event pipeline
+- the minimal OTA entry contract
+- the canonical envelope handoff into core execution
+- the replay-oriented verification contract
+- the boundary between OTA orchestration and core execution
 
 
-## Phase 29 Constraints
+## Phase 30 Constraints
 
-Phase 29 must not introduce:
+Phase 30 must not introduce:
 
 - reconciliation logic
 - booking_state reads in adapters
 - OTA provider polling
 - modification resolution logic
-
-The phase focuses exclusively on replay tooling for the ingestion pipeline.
+- amendment handling
+- out-of-order event handling
+- cleanup of historical transport artifacts unless explicitly reopened
 
 
 ## Expected Outcome
 
-A deterministic replay harness capable of feeding OTA event sequences
-into the ingestion pipeline and verifying canonical outcomes.
-
+A hardened and explicitly documented OTA ingestion interface with stable
+contracts across service, pipeline, envelope execution, and replay
+verification.

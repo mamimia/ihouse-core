@@ -21,6 +21,8 @@ The envelope enters the system through:
 
 OTA adapter boundary  
 → shared OTA pipeline  
+→ canonical envelope  
+→ CoreExecutor.execute  
 → Supabase RPC  
 → apply_envelope
 
@@ -43,6 +45,9 @@ OTA modification notifications are classified as:
 
 MODIFY  
 → deterministic reject-by-default
+
+The replay harness verifies the OTA path through the canonical execution
+boundary without introducing a second write path.
 
 The RPC validates:
 
@@ -72,6 +77,7 @@ public.booking_state
 - strict event validation
 - single canonical write gate
 - provider semantics isolated from core state mutation
+- replay verification through the OTA ingress path
 
 ## Current OTA Adapter Status
 

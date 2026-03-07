@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
 from enum import Enum
-from typing import Dict, Any
 
 from .schemas import NormalizedBookingEvent, ClassifiedBookingEvent
 
@@ -11,7 +11,27 @@ class BookingSemanticKind(str, Enum):
     MODIFY = "MODIFY"
 
 
-def classify_booking_event(event: NormalizedBookingEvent) -> ClassifiedBookingEvent:
+def _extract_event_type(event: NormalizedBookingEvent) -> str:
+    payload = event.payload
+
+    candidates = (
+        payload.get("event_type"),
+        payload.get("type"),
+        payload.get("action"),
+        payload.get("event"),
+        payload.get("status"),
+    )
+
+    for value in candidates:
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+
+    raise ValueError("Unknown OTA event type: missing event_type in payload")
+
+
+def classify_normalized_event(
+    event: NormalizedBookingEvent,
+) -> ClassifiedBookingEvent:
     """
     Convert a normalized OTA payload into a semantic classification.
 
@@ -21,24 +41,28 @@ def classify_booking_event(event: NormalizedBookingEvent) -> ClassifiedBookingEv
     It does NOT perform reconciliation.
     """
 
-    event_type = event.event_type.lower()
+    event_type = _extract_event_type(event)
 
-    if event_type in ["reservation_created", "created", "new"]:
+    if event_type in {"reservation_created", "created", "new"}:
         semantic = BookingSemanticKind.CREATE
-
-    elif event_type in ["reservation_cancelled", "cancelled", "canceled"]:
+    elif event_type in {"reservation_cancelled", "cancelled", "canceled"}:
         semantic = BookingSemanticKind.CANCEL
-
-    elif event_type in ["reservation_modified", "modified", "amended"]:
+    elif event_type in {"reservation_modified", "modified", "amended"}:
         semantic = BookingSemanticKind.MODIFY
-
     else:
-        raise ValueError(f"Unknown OTA event type: {event.event_type}")
+        raise ValueError(f"Unknown OTA event type: {event_type}")
 
     return ClassifiedBookingEvent(
-        provider=event.provider,
-        reservation_id=event.reservation_id,
-        event_type=event.event_type,
-        semantic_kind=semantic,
-        payload=event.payload,
+        normalized=event,
+        semantic_kind=semantic.value,
     )
+
+
+def classify_booking_event(
+    event: NormalizedBookingEvent,
+) -> ClassifiedBookingEvent:
+    """
+    Backward-compatible alias for older imports.
+    """
+
+    return classify_normalized_event(event)

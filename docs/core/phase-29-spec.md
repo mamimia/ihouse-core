@@ -2,10 +2,13 @@
 
 ## Status
 
-Active Phase
+Closed
 
 Last Closed Phase  
-Phase 28 – OTA External Surface Canonicalization
+Phase 29 – OTA Ingestion Replay Harness
+
+Next Phase  
+Phase 30 – OTA Ingestion Interface Hardening
 
 
 ## Objective
@@ -60,17 +63,21 @@ provider registry resolution
 → semantic classification  
 → semantic validation  
 → canonical envelope creation  
-→ canonical envelope validation  
+→ canonical envelope validation
+
+The canonical envelope is then executed through the core execution path:
+
+CoreExecutor.execute  
+→ event append  
 → apply_envelope (DB gate)
 
-
-Replay testing must exercise this pipeline exactly as production
-ingestion would.
+Replay testing must exercise this path as production ingestion would,
+while preserving the single canonical write authority.
 
 
 ## Hard Constraints
 
-Phase 29 must preserve all canonical invariants:
+Phase 29 preserves all canonical invariants:
 
 - apply_envelope remains the only write authority
 - booking_state remains projection-only
@@ -80,7 +87,7 @@ Phase 29 must preserve all canonical invariants:
 - MODIFY remains deterministic reject-by-default
 
 
-Phase 29 must NOT introduce:
+Phase 29 does NOT introduce:
 
 - reconciliation logic
 - OTA provider polling
@@ -89,73 +96,60 @@ Phase 29 must NOT introduce:
 - amendment handling
 
 
-The replay harness must operate entirely outside the canonical
-state mutation logic.
+The replay harness operates outside the canonical state mutation logic.
+It validates the path into the write gate without creating a second
+write model.
 
 
-## Replay Harness Scope
+## Implemented Replay Scope
 
-The harness should allow controlled replay of OTA event sequences
-against the ingestion pipeline.
-
-Example usage:
-
-simulate provider webhook events
-→ feed events through pipeline
-→ observe canonical outcomes
-
-
-The harness should support testing of scenarios such as:
+The replay harness validates scenarios such as:
 
 valid booking creation  
-duplicate envelope replay  
-deterministic cancellation  
-rejection of MODIFY events  
+valid booking cancellation  
+duplicate replay  
+deterministic rejection of MODIFY  
 invalid payload rejection
 
+The harness executes the real orchestration path:
 
-## Evaluation Criteria
-
-The replay harness must allow verification of:
-
-1. Deterministic Behavior
-
-The same replay sequence must always produce the same canonical
-outcomes.
-
-2. Replay Safety
-
-Duplicate envelopes must never mutate canonical state.
-
-3. Adapter Stability
-
-Adapters must produce deterministic canonical envelopes from
-normalized OTA payloads.
-
-4. Validator Correctness
-
-Invalid events must be deterministically rejected.
+ingest_provider_event  
+→ canonical envelope  
+→ CoreExecutor.execute
 
 
-## Completion Conditions
+## Implementation Notes
 
-Phase 29 is complete when:
+During Phase 29 the OTA layer was minimally aligned so the replay path
+could be exercised consistently.
 
-1. A replay harness exists capable of feeding OTA event sequences
-   through the ingestion pipeline.
+The implementation remained within the existing architecture and did
+not reopen Phase 28 decisions.
 
-2. The harness can simulate multiple OTA scenarios.
+No cleanup of the historical internal transport artifact was performed.
 
-3. Deterministic behavior under replay is verified.
+The replay harness was added as verification tooling under the test
+suite, not as a new runtime execution surface.
 
-4. Duplicate envelope replay produces no additional state mutation.
 
-5. Canonical invariants remain unchanged.
+## Completion Result
+
+Phase 29 is complete.
+
+Completed outcomes:
+
+1. A replay harness exists for OTA ingestion verification.
+2. The harness exercises OTA ingestion through canonical envelope
+   execution.
+3. Deterministic replay scenarios are covered.
+4. Duplicate replay behavior is verified.
+5. MODIFY remains deterministically rejected.
+6. Canonical invariants remain unchanged.
 
 
 ## Non Goals
 
-Phase 29 must NOT introduce:
+Phase 29 did NOT introduce:
 
 - OTA reconciliation logic
 - amendment support
@@ -163,15 +157,13 @@ Phase 29 must NOT introduce:
 - snapshot comparison
 - booking_state inspection inside adapters
 
-Those capabilities may appear in later phases.
+Those capabilities remain deferred to later phases.
 
 
-## Expected Outcome
+## Expected Outcome Achieved
 
-A deterministic replay framework for OTA ingestion that allows safe
-testing of provider integrations without compromising the canonical
-event architecture.
+A deterministic replay framework now exists for OTA ingestion.
 
-This tooling prepares the system for future expansion to additional
-OTA providers while preserving deterministic behavior.
-
+This tooling allows safe validation of provider integrations while
+preserving the canonical event architecture and the authority of
+apply_envelope.

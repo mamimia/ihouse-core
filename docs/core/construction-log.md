@@ -328,3 +328,35 @@ The canonical external event surface now represents explicit domain
 facts instead of transport envelopes, improving auditability and
 multi-provider scalability.
 
+## Phase 29 — OTA Ingestion Replay Harness (Closed)
+
+Implemented:
+
+- Added deterministic OTA replay verification as test tooling.
+- Added replay harness coverage for:
+  - BOOKING_CREATED
+  - BOOKING_CANCELED
+  - duplicate replay
+  - MODIFY rejection
+  - invalid payload rejection
+- Verified replay through the orchestration path:
+  - ingest_provider_event
+  - canonical envelope creation
+  - CoreExecutor.execute
+- Added minimal OTA contract alignment required for replay execution:
+  - tenant_id propagation aligned across service and pipeline
+  - classification function naming aligned
+  - semantic classification aligned to normalized payload structure
+  - ClassifiedBookingEvent shape aligned to schema
+
+Validation outcome:
+
+- Existing test suite remained green after the alignment
+- Replay harness scenarios passed
+- No new write path was introduced
+- apply_envelope remained the sole canonical write authority
+
+Architectural result:
+
+The system now includes deterministic OTA replay verification across
+the ingestion-to-execution path without weakening canonical invariants.

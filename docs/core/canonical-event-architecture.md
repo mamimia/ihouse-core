@@ -226,3 +226,21 @@ The shared OTA pipeline must remain provider-agnostic.
 
 Provider-specific logic must remain isolated inside provider adapters.
 
+
+## Historical Transport Artifact
+
+Prior to Phase 28 the OTA boundary emitted a generic transport envelope:
+
+BOOKING_SYNC_INGEST
+
+Phase 28 replaced this external surface with explicit lifecycle events:
+
+BOOKING_CREATED  
+BOOKING_CANCELED
+
+The historical transport event may still appear internally inside
+the OTA adapter execution pipeline.
+
+This artifact is not considered a canonical external event and may
+be removed in a future cleanup phase once the execution pipeline
+fully transitions to lifecycle-only semantics.
