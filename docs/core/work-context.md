@@ -1,82 +1,161 @@
 # iHouse Core – Work Context
 
-Current Phase  
+## Current Active Phase
+
 Phase 30 – OTA Ingestion Interface Hardening
 
-Last Closed Phase  
+
+## Last Closed Phase
+
 Phase 29 – OTA Ingestion Replay Harness
 
 
-## Phase 29 Result
+## Current Objective
 
-Phase 29 added deterministic OTA replay verification.
+Harden the OTA ingestion interface that connects provider adapters to
+the canonical execution path.
 
-The system now verifies OTA ingestion through:
+This phase exists to make the OTA-to-core handoff explicit, stable,
+minimal, and testable.
 
-ingest_provider_event  
-→ canonical envelope  
-→ CoreExecutor.execute
+It does not change canonical business semantics.
 
-Replay coverage includes:
-
-- BOOKING_CREATED
-- BOOKING_CANCELED
-- duplicate replay
-- MODIFY rejection
-- invalid payload rejection
-
-OTA modification notifications remain classified as:
-
-MODIFY  
-→ deterministic reject-by-default
+It does not reopen previously closed architectural decisions.
 
 
-## Architectural Status
+## Locked Architectural Reality
 
-The canonical database gate remains the only authority allowed to
-mutate booking_state.
+The system remains a deterministic domain event execution kernel.
 
-Canonical invariants remain unchanged:
+System truth is derived from canonical events.
+
+booking_state is projection-only.
+
+apply_envelope is the only authority allowed to mutate state.
+
+Supabase is canonical.
+
+External systems must never bypass the canonical apply gate.
+
+
+## Permanent Invariants
 
 - event_log is append-only
-- booking_state is projection-only
+- events are immutable
+- booking_state is derived from events only
+- apply_envelope is the only write authority
 - adapters must not read booking_state
 - adapters must not reconcile booking history
 - adapters must not mutate canonical state
 - adapters must not bypass apply_envelope
+- provider-specific logic must remain isolated from the shared pipeline
+- MODIFY remains deterministic reject-by-default
 
 
-## Phase 30 Objective
+## Current OTA Runtime Boundary
 
-Phase 30 hardens the OTA ingestion interface.
+The actual runtime handoff now confirmed in code is:
 
-The goal of this phase is to make the handoff between OTA ingestion,
-canonical envelope execution, and replay verification fully explicit,
-stable, and testable.
+ingest_provider_event  
+→ process_ota_event  
+→ canonical envelope  
+→ IngestAPI.ingest  
+→ CoreExecutor.execute  
+→ apply_envelope
 
-This phase should clarify and lock:
-
-- the minimal OTA entry contract
-- the canonical envelope handoff into core execution
-- the replay-oriented verification contract
-- the boundary between OTA orchestration and core execution
+This boundary must remain explicit and singular.
 
 
-## Phase 30 Constraints
+## Layer Responsibilities
 
-Phase 30 must not introduce:
+### OTA Service Entry
 
-- reconciliation logic
-- booking_state reads in adapters
-- OTA provider polling
-- modification resolution logic
+Owns the provider-facing entrypoint.
+
+Responsibilities:
+
+- accept OTA ingress inputs
+- invoke the shared OTA pipeline
+- return canonical envelope output only
+
+Must not:
+
+- perform writes
+- call apply_envelope directly
+- infer business state
+- reconcile history
+
+### Shared OTA Pipeline
+
+Responsibilities:
+
+- adapter resolution
+- normalized payload construction
+- structural validation
+- semantic classification
+- semantic validation
+- canonical envelope creation
+- canonical envelope validation
+
+Must not:
+
+- mutate canonical state
+- read booking_state
+- execute writes
+
+### Provider Adapters
+
+Responsibilities:
+
+- provider-specific normalization
+- provider-specific envelope mapping
+
+Must remain isolated from shared execution logic.
+
+Must not:
+
+- read booking_state
+- reconcile history
+- infer amendments
+- perform writes
+
+### Core Ingest API
+
+Responsibilities:
+
+- accept canonical envelope input
+- require execution through CoreExecutor
+- reject missing executor wiring
+
+### Core Executor
+
+Responsibilities:
+
+- execute canonical envelopes
+- preserve commit policy
+- delegate state mutation only through the canonical apply path
+
+
+## What Phase 30 Is Not
+
+Phase 30 is not:
+
+- reconciliation
 - amendment handling
-- out-of-order event handling
-- cleanup of historical transport artifacts unless explicitly reopened
+- OTA snapshot fetching
+- out-of-order buffering
+- booking_state reads in adapters
+- alternative write path design
+- historical transport cleanup
 
 
-## Expected Outcome
+## Immediate Working Rule
 
-A hardened and explicitly documented OTA ingestion interface with stable
-contracts across service, pipeline, envelope execution, and replay
-verification.
+Do not redesign the architecture.
+
+Do not reopen Phase 28.
+
+Do not reopen Phase 29 replay work unless a concrete defect is found.
+
+Do only the minimum work required to harden and lock the OTA ingestion
+interface.

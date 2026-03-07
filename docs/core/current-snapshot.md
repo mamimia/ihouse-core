@@ -11,11 +11,11 @@ Phase 29 – OTA Ingestion Replay Harness
 
 The deterministic event architecture remains fully operational.
 
-The canonical database gate (`apply_envelope`) remains the only authority
-allowed to mutate booking_state.
+The canonical database gate (`apply_envelope`) remains the only
+authority allowed to mutate booking_state.
 
-External systems interact with iHouse Core exclusively through the OTA
-ingestion boundary.
+External systems interact with iHouse Core through the OTA ingestion
+boundary and then the canonical core ingest path.
 
 
 ## Phase 29 Result
@@ -26,7 +26,9 @@ The system now includes replay tooling that validates OTA ingestion
 through the canonical execution path:
 
 ingest_provider_event  
+→ process_ota_event  
 → canonical envelope  
+→ IngestAPI.ingest  
 → CoreExecutor.execute  
 → apply_envelope
 
@@ -67,18 +69,34 @@ Replay Safety
 - duplicate ingestion must remain idempotent
 
 
-## OTA Boundary Status
+## OTA Interface Status
 
-OTA adapters perform:
+OTA service layer responsibilities:
+
+- accept provider-facing ingress inputs
+- invoke the shared OTA pipeline
+- return canonical envelope output only
+
+Shared OTA pipeline responsibilities:
 
 - provider resolution
 - payload normalization
+- structural validation
 - semantic classification
 - semantic validation
 - canonical envelope creation
 - canonical envelope validation
 
-Replay tooling now verifies this boundary through the core execution path.
+Core ingest responsibilities:
+
+- accept canonical envelope input
+- route execution through CoreExecutor only
+
+Core executor responsibilities:
+
+- execute canonical envelopes
+- preserve commit policy
+- keep write authority behind apply_envelope
 
 
 Current provider status:
@@ -106,11 +124,13 @@ MODIFY
 
 Phase 30 focuses on OTA ingestion interface hardening.
 
-This phase should clarify and stabilize the explicit handoff between:
+This phase clarifies and stabilizes the explicit handoff between:
 
-- OTA ingestion entry
-- canonical envelope shape
-- core execution boundary
+- OTA service entry
+- shared OTA pipeline
+- canonical envelope output
+- core ingest API
+- CoreExecutor execution boundary
 - replay verification contract
 
 It must not introduce reconciliation, amendment handling, or out-of-order

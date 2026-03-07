@@ -37,20 +37,17 @@ BOOKING_CANCELED
 Phase 29 introduced deterministic replay verification across the OTA
 ingestion path and the core execution boundary.
 
-That work exposed an important architectural reality:
-
-The OTA layer itself stops at canonical envelope construction.
-
-The actual canonical write path continues through core execution:
+That work confirmed the actual runtime boundary:
 
 ingest_provider_event  
+→ process_ota_event  
 → canonical envelope  
+→ IngestAPI.ingest  
 → CoreExecutor.execute  
 → apply_envelope
 
 This means the interface between OTA ingestion and core execution is
-now a first-class architectural boundary and should be hardened
-explicitly.
+a first-class architectural boundary and must be hardened explicitly.
 
 
 ## Architectural Problem
@@ -62,51 +59,148 @@ Typical risks include:
 
 - inconsistent tenant propagation
 - implicit canonical envelope assumptions
-- mismatched replay harness expectations
-- hidden coupling between adapters and core execution
-- ambiguous ownership between OTA service layer and core executor
+- hidden coupling between adapters and executor internals
+- replay tooling depending on unstable implementation details
+- ambiguous ownership between OTA service, OTA pipeline, and core ingest
 
-These issues do not require architectural redesign to fix.
+These risks do not require architectural redesign.
 
 They require contract hardening.
 
 
 ## Phase 30 Scope
 
-Phase 30 should define and stabilize the minimal OTA ingestion
-interface that production code and replay tooling both rely on.
+Phase 30 defines and stabilizes the minimal OTA ingestion contract that
+production code and replay tooling both rely on.
 
 This includes clarifying:
 
 1. OTA Entry Contract
 
-What the provider-facing entrypoint accepts.
+The provider-facing OTA entrypoint remains:
 
-Expected inputs should remain explicit, minimal, and deterministic.
+ingest_provider_event(...)
+
+This entrypoint must stay thin and deterministic.
+
+It may orchestrate OTA processing, but it must not execute writes,
+mutate state, or bypass core ingest.
 
 2. Canonical Envelope Contract
 
-What shape leaves the OTA pipeline and enters the core executor.
+The shared OTA pipeline is responsible for producing a validated
+canonical envelope.
+
+The output of OTA processing is a canonical envelope ready for the
+canonical ingest path.
 
 3. Execution Handoff Contract
 
-How the canonical envelope is passed into CoreExecutor.execute and what
-is considered part of the stable execution boundary.
+The canonical envelope must enter core execution only through the
+ingest API boundary and then CoreExecutor.execute.
+
+OTA code must not call apply_envelope directly.
 
 4. Replay Verification Contract
 
-What the replay harness is allowed to assume and verify without
-becoming a second execution surface.
+Replay tooling may verify the OTA ingestion path only through the same
+public execution handoff used by production flow.
+
+Replay tooling must not become a second execution surface.
 
 5. Responsibility Split
 
-What belongs to:
-- service layer
+The responsibility boundary must remain explicit across:
+
+- OTA service entry
 - shared OTA pipeline
 - provider adapter
+- core ingest API
 - core executor
 
-The goal is to eliminate ambiguity without changing system authority.
+
+## Stable Responsibility Model
+
+### OTA Service Layer
+
+Owns the provider-facing entrypoint.
+
+Responsibilities:
+
+- accept explicit OTA ingress inputs
+- invoke the shared OTA pipeline
+- return a canonical envelope for core ingest
+
+Must not:
+
+- execute canonical writes
+- call apply_envelope directly
+- infer business state
+- reconcile history
+
+### Shared OTA Pipeline
+
+Owns shared OTA processing.
+
+Responsibilities:
+
+- adapter resolution
+- normalized payload construction
+- structural validation
+- semantic classification
+- semantic validation
+- canonical envelope creation
+- canonical envelope validation
+
+Must not:
+
+- mutate canonical state
+- read booking_state
+- execute core writes
+
+### Provider Adapter
+
+Owns provider-specific translation only.
+
+Responsibilities:
+
+- provider-specific normalization
+- provider-specific envelope mapping
+
+Must remain isolated from shared execution logic.
+
+Must not:
+
+- read booking_state
+- reconcile booking history
+- infer amendments
+- perform writes
+
+### Core Ingest API
+
+Owns the canonical ingest handoff.
+
+Responsibilities:
+
+- accept canonical envelope input
+- require execution through CoreExecutor
+- reject missing executor wiring
+
+This boundary is the explicit bridge from OTA ingestion into core
+execution.
+
+### Core Executor
+
+Owns canonical execution.
+
+Responsibilities:
+
+- execute the canonical envelope
+- preserve commit policy
+- delegate mutation only through the canonical apply path
+
+This is the only execution boundary for OTA-originated canonical
+envelopes.
 
 
 ## Hard Constraints
@@ -131,6 +225,7 @@ Phase 30 must NOT introduce:
 - out-of-order buffering
 - business-state inference in adapters
 - alternative write paths
+- direct apply_envelope calls from OTA code
 - transport cleanup unrelated to the interface contract
 
 
@@ -138,38 +233,37 @@ Phase 30 must NOT introduce:
 
 Phase 30 should end with the following outcomes.
 
-### 1. Explicit OTA Ingestion Interface
+### 1. Explicit OTA Entry Contract
 
-The project should expose a clear and stable OTA entry contract.
-
-The entrypoint must remain thin and deterministic.
+The project exposes a clear OTA entrypoint that remains thin and
+deterministic.
 
 ### 2. Explicit Envelope-to-Core Handoff
 
-The handoff from OTA envelope creation into CoreExecutor.execute
-should be documented and, where needed, minimally normalized so the
-boundary is clear.
+The handoff from OTA envelope creation into IngestAPI.ingest and
+CoreExecutor.execute is documented as a stable boundary.
 
 ### 3. Replay Harness Compatibility Lock
 
-The replay harness should rely on the same interface contract rather
-than hidden assumptions.
+Replay verification depends on the same OTA-to-core contract used by
+production flow.
 
 ### 4. Responsibility Clarification
 
-The project docs should state exactly which layer owns:
+The docs state exactly which layer owns:
 
 - provider resolution
 - normalization
 - semantic classification
 - canonical envelope creation
-- execution handoff
+- canonical ingest handoff
+- execution
 - write-gate invocation
 
 ### 5. Stability Verification
 
-Tests should confirm that the hardened interface remains stable and
-does not weaken existing deterministic behavior.
+Tests confirm that the hardened interface remains stable and does not
+weaken deterministic behavior.
 
 
 ## Non Goals
@@ -191,12 +285,13 @@ Phase 30 does NOT include:
 
 Phase 30 is complete when:
 
-1. The OTA ingress contract is explicit and stable.
-2. The canonical envelope handoff into CoreExecutor.execute is explicit.
-3. The replay harness depends on this contract cleanly.
-4. Responsibility boundaries are documented without ambiguity.
-5. Existing deterministic invariants remain unchanged.
-6. Test coverage confirms the hardened interface.
+1. The OTA entry contract is explicit and stable.
+2. The canonical envelope handoff into core ingest is explicit.
+3. The executor boundary is explicit and singular.
+4. Replay harness assumptions are aligned to this contract.
+5. Responsibility boundaries are documented without ambiguity.
+6. Existing deterministic invariants remain unchanged.
+7. Test coverage confirms the hardened interface.
 
 
 ## Expected Outcome

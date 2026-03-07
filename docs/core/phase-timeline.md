@@ -1206,3 +1206,32 @@ Outcome:
 - OTA replay behavior is now verifiable through the canonical execution path.
 - apply_envelope remains the single write authority.
 - Canonical invariants remain unchanged.
+
+## Phase 30 – OTA Ingestion Interface Hardening
+
+Status:
+Active
+
+Summary:
+Hardened the OTA ingestion interface by locking the explicit runtime
+handoff from provider-facing OTA entry through shared OTA processing,
+canonical envelope construction, IngestAPI.ingest, and
+CoreExecutor.execute, while preserving apply_envelope as the sole write
+authority and keeping MODIFY deterministic reject-by-default.
+
+Confirmed runtime handoff:
+- ingest_provider_event
+- process_ota_event
+- canonical envelope
+- IngestAPI.ingest
+- CoreExecutor.execute
+- apply_envelope
+
+Outcome:
+- OTA service entry remains thin
+- shared OTA pipeline owns normalization, validation, classification,
+  and envelope construction
+- provider adapters remain provider-specific only
+- core ingest API remains the explicit bridge into execution
+- CoreExecutor remains the single execution boundary
+- canonical invariants remain unchanged

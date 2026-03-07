@@ -360,3 +360,45 @@ Architectural result:
 
 The system now includes deterministic OTA replay verification across
 the ingestion-to-execution path without weakening canonical invariants.
+
+---
+
+## Phase 30 – OTA Ingestion Interface Hardening
+
+Status: Active
+
+Objective:
+Harden the OTA ingestion interface that connects provider adapters to
+the canonical execution path without changing canonical event
+semantics.
+
+Confirmed runtime handoff:
+ingest_provider_event
+→ process_ota_event
+→ canonical envelope
+→ IngestAPI.ingest
+→ CoreExecutor.execute
+→ apply_envelope
+
+What this phase locks:
+
+- OTA service entry remains thin
+- shared OTA pipeline owns normalization, validation, classification,
+  and envelope construction
+- provider adapters remain provider-specific only
+- core ingest API is the explicit bridge into execution
+- CoreExecutor remains the single execution boundary
+- OTA code does not call apply_envelope directly
+
+Out of scope:
+
+- reconciliation
+- amendment handling
+- OTA snapshot fetch
+- out-of-order buffering
+- historical transport cleanup
+- adapter reads from booking_state
+
+Architectural result:
+The OTA-to-core handoff is now treated as a first-class explicit
+boundary shared by production ingest flow and replay verification.
