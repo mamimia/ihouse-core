@@ -1130,3 +1130,33 @@ No canonical business semantics changed.
 No new Supabase tables or migrations.
 
 Next phase: Phase 61 — JWT Auth Middleware
+
+## Phase 61 — JWT Auth Middleware (Closed)
+
+Rationale:
+
+Phase 60 added request logging. Now tenant_id must come from a verified JWT,
+not from the OTA payload body. This closes the authorization gap.
+
+Completed:
+
+- src/api/auth.py: verify_jwt() + jwt_auth Depends
+  - HMAC-HS256 via PyJWT
+  - sub claim = tenant_id
+  - Dev mode: IHOUSE_JWT_SECRET not set → returns "dev-tenant" with warning
+  - 403 on: missing creds, malformed, wrong secret, expired, missing sub, empty sub
+- src/api/webhooks.py: tenant_id: str = Depends(jwt_auth) added to route
+  - Manual tenant_id extraction from payload removed
+- src/adapters/ota/payload_validator.py: Rule 4 (TENANT_ID_REQUIRED) removed
+  - TENANT_ID_REQUIRED constant kept for backward compat but no longer enforced
+- tests/test_auth.py: 8 contract tests (verify_jwt directly, CI-safe)
+- tests/test_payload_validator_contract.py: updated to remove TENANT_ID_REQUIRED assertions
+- tests/test_webhook_endpoint.py: test 9 updated to assert tenant_id == "dev-tenant"
+
+Result:
+
+307 tests pass (307 passed, 2 skipped).
+No canonical business semantics changed.
+No new Supabase tables or migrations.
+
+Next phase: Phase 62 — Per-tenant Rate Limiting

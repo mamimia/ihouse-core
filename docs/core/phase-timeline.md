@@ -1779,3 +1779,14 @@ Every request gets:
 Files changed: src/main.py (middleware added)
 Files added: tests/test_logging_middleware.py (7 contract tests)
 Result: 299 passed, 2 skipped.
+
+## Phase 61 — JWT Auth Middleware (Closed)
+
+tenant_id moved from OTA payload body to verified JWT Bearer token (sub claim).
+
+Files added: src/api/auth.py, tests/test_auth.py
+Files modified: src/api/webhooks.py, src/adapters/ota/payload_validator.py,
+                tests/test_payload_validator_contract.py, tests/test_webhook_endpoint.py
+
+TENANT_ID_REQUIRED removed from payload_validator (constant kept, rule removed).
+Result: 307 passed, 2 skipped.

@@ -55,9 +55,11 @@ def validate_ota_payload(
     - provider must be a non-empty string
     - payload must be a dict
     - reservation_id must be present and non-empty
-    - tenant_id must be present and non-empty
     - occurred_at must be present and parseable as ISO 8601 datetime
     - at least one of event_type / type / action / event / status must be non-empty
+
+    Note: tenant_id is no longer validated here (Phase 61).
+    tenant_id is now sourced from the verified JWT token (sub claim).
 
     All rules are evaluated independently — multiple errors can be present.
     """
@@ -88,10 +90,9 @@ def validate_ota_payload(
     if not str(reservation_id).strip():
         errors.append(RESERVATION_ID_REQUIRED)
 
-    # Rule 4: tenant_id
-    tenant_id = payload.get("tenant_id", "") or ""
-    if not str(tenant_id).strip():
-        errors.append(TENANT_ID_REQUIRED)
+    # Rule 4: tenant_id — REMOVED in Phase 61.
+    # tenant_id is now sourced from JWT token (sub claim), not from payload.
+    # TENANT_ID_REQUIRED kept as constant for backward compatibility only.
 
     # Rule 5: occurred_at parseable
     occurred_at_raw = payload.get("occurred_at", None)

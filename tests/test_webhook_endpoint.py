@@ -15,7 +15,7 @@ Coverage:
     6.  Non-JSON body → 400
     7.  Unknown provider → 403 (ValueError from signature layer)
     8.  ingest_provider_event raises unexpectedly → 500
-    9.  tenant_id from payload is propagated correctly to the service
+    9.  tenant_id from JWT (dev-mode 'dev-tenant') propagated correctly
     10. Response 200 contains correct idempotency_key value
     11. Response 400 body contains "codes" list
     12. All 5 providers accepted in path → 200 (parametrized)
@@ -228,16 +228,18 @@ def test_ingest_error_returns_500(client, monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_tenant_id_propagated(client, monkeypatch):
+    """Phase 61: tenant_id comes from JWT (dev-mode returns 'dev-tenant')."""
     monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
-    payload = {**_VALID_PAYLOAD, "tenant_id": "my-saas-tenant"}
+    monkeypatch.delenv("IHOUSE_JWT_SECRET", raising=False)  # dev-mode
     with patch(_MOCK_TARGET, return_value=_FakeEnvelope()) as mock_ingest:
         client.post(
             "/webhooks/bookingcom",
-            content=json.dumps(payload).encode(),
+            content=json.dumps(_VALID_PAYLOAD).encode(),
             headers={"Content-Type": "application/json"},
         )
     _args, kwargs = mock_ingest.call_args
-    assert kwargs.get("tenant_id") == "my-saas-tenant"
+    # In dev-mode (no JWT secret), jwt_auth returns "dev-tenant"
+    assert kwargs.get("tenant_id") == "dev-tenant"
 
 
 # ---------------------------------------------------------------------------

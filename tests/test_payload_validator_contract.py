@@ -4,14 +4,16 @@ Phase 47 — Contract tests for OTA Payload Boundary Validator.
 Verifies that:
 1. Valid payload → valid=True, errors=[]
 2. Missing reservation_id → RESERVATION_ID_REQUIRED
-3. Missing tenant_id → TENANT_ID_REQUIRED
-4. Missing/invalid occurred_at → OCCURRED_AT_INVALID
-5. Missing event_type → EVENT_TYPE_REQUIRED
-6. Empty provider → PROVIDER_REQUIRED
-7. Non-dict payload → PAYLOAD_MUST_BE_DICT
-8. Multiple errors collected at once (not fail-fast)
-9. PayloadValidationResult is frozen dataclass
-10. pipeline.py raises ValueError on invalid payload
+3. Missing/invalid occurred_at → OCCURRED_AT_INVALID
+4. Missing event_type → EVENT_TYPE_REQUIRED
+5. Empty provider → PROVIDER_REQUIRED
+6. Non-dict payload → PAYLOAD_MUST_BE_DICT
+7. Multiple errors collected at once (not fail-fast)
+8. PayloadValidationResult is frozen dataclass
+9. pipeline.py raises ValueError on invalid payload
+
+Note (Phase 61): TENANT_ID_REQUIRED is no longer enforced.
+tenant_id now comes from verified JWT token (sub claim).
 """
 from __future__ import annotations
 
@@ -99,12 +101,14 @@ class TestValidationRules:
         result = validate_ota_payload("bookingcom", payload)
         assert RESERVATION_ID_REQUIRED in result.errors
 
-    def test_missing_tenant_id(self) -> None:
+    def test_missing_tenant_id_no_longer_required(self) -> None:
+        """Phase 61: tenant_id removed from payload validation rules."""
         payload = _valid_payload()
         del payload["tenant_id"]
-        from adapters.ota.payload_validator import validate_ota_payload, TENANT_ID_REQUIRED
+        from adapters.ota.payload_validator import validate_ota_payload
         result = validate_ota_payload("bookingcom", payload)
-        assert TENANT_ID_REQUIRED in result.errors
+        # Should still be valid (tenant_id is no longer a payload requirement)
+        assert result.valid is True
 
     def test_missing_occurred_at(self) -> None:
         payload = _valid_payload()
@@ -136,17 +140,17 @@ class TestValidationRules:
         """Not fail-fast — all errors returned together."""
         bad_payload = {
             "occurred_at": "bad-date",
-            # missing reservation_id, tenant_id, event_type
+            # missing reservation_id, event_type
+            # NOTE: tenant_id no longer required (Phase 61)
         }
         from adapters.ota.payload_validator import (
             validate_ota_payload,
-            RESERVATION_ID_REQUIRED, TENANT_ID_REQUIRED,
+            RESERVATION_ID_REQUIRED,
             OCCURRED_AT_INVALID, EVENT_TYPE_REQUIRED,
         )
         result = validate_ota_payload("bookingcom", bad_payload)
         assert result.valid is False
         assert RESERVATION_ID_REQUIRED in result.errors
-        assert TENANT_ID_REQUIRED in result.errors
         assert OCCURRED_AT_INVALID in result.errors
         assert EVENT_TYPE_REQUIRED in result.errors
 

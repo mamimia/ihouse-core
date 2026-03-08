@@ -23,10 +23,9 @@ HTTP status codes (locked):
     500  INTERNAL_ERROR    — unexpected exception (never surfaces internals)
 
 Note on tenant_id:
-    Currently sourced from payload["tenant_id"] — already validated as
-    non-empty by validate_ota_payload before reaching the service call.
-    JWT-based auth is deferred to a later phase and will not require
-    changes to the ingestion logic below.
+    Phase 61: sourced from JWT Bearer token (sub claim) via verify_jwt Depends.
+    Dev mode: if IHOUSE_JWT_SECRET not set, returns 'dev-tenant' with warning.
+    JWT-based auth: missing/invalid token → 403 AUTH_FAILED.
 """
 from __future__ import annotations
 
@@ -34,8 +33,10 @@ import json
 import logging
 from typing import Any, Dict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from api.auth import jwt_auth
 
 from adapters.ota.payload_validator import validate_ota_payload
 from adapters.ota.service import ingest_provider_event
@@ -55,13 +56,18 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 @router.post("/webhooks/{provider}")
-async def receive_webhook(provider: str, request: Request) -> JSONResponse:
+async def receive_webhook(
+    provider: str,
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
     """
     Receive and ingest an OTA provider webhook event.
 
     Args:
-        provider: OTA provider slug (bookingcom, expedia, airbnb, agoda, tripcom)
-        request:  Incoming HTTP request — raw body is read before JSON parsing
+        provider:  OTA provider slug (bookingcom, expedia, airbnb, agoda, tripcom)
+        request:   Incoming HTTP request — raw body is read before JSON parsing
+        tenant_id: Extracted from verified JWT sub claim (via jwt_auth Depends)
 
     Returns:
         JSONResponse with status code and body as described in module docstring.
@@ -136,9 +142,9 @@ async def receive_webhook(provider: str, request: Request) -> JSONResponse:
         )
 
     # ------------------------------------------------------------------
-    # Step 5 — Extract tenant_id (guaranteed non-empty by validator)
+    # Step 5 — tenant_id comes from JWT Depends (already resolved above)
     # ------------------------------------------------------------------
-    tenant_id: str = str(payload["tenant_id"]).strip()
+    # tenant_id is injected by jwt_auth — no extraction from payload needed
 
     # ------------------------------------------------------------------
     # Step 6 — Ingest through the canonical OTA pipeline
