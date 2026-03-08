@@ -34,6 +34,45 @@ append-only historical records in `docs/core/phase-timeline.md`.
 
 ## Active Backlog
 
+### Financial Model Foundation — Canonical Revenue Layer
+- status: deferred (planned: Phase 65)
+- discovered_in: Phase 62 planning discussion
+- source_context: product direction — finance-aware platform
+- priority: high
+- notes: |
+    A booking is not money. These are two separate system concerns and must remain so.
+
+    Invariant (locked immediately):
+    booking_state is an operational read model only.
+    It must never contain financial calculations, payout amounts, commission,
+    or owner-net values. This invariant applies from Phase 62 forward.
+
+    Architecture direction:
+    - booking_state → operational (who, where, when, status) — EXISTS
+    - booking_financial_facts → financial projection (future) — to be introduced Phase 65+
+    - Both projections driven from the same canonical event stream (event_log)
+
+    Phase 65 scope (when adapters are next touched):
+    - OTA adapters extract and preserve financial fields already present in provider payloads
+      (currently discarded): total_price, currency, ota_commission, taxes, fees, net_to_property
+    - BookingFinancialFacts dataclass defined (immutable, validated) — no DB write yet
+    - source_confidence introduced: FULL / PARTIAL / ESTIMATED
+      (because providers do not expose the same financial picture)
+
+    Future surfaces (not in Phase 65):
+    - booking_financial_facts Supabase table (projection)
+    - owner_statement projection
+    - payout_facts projection
+    - Finance API endpoints
+    - Revenue dashboard / owner statement product layer
+
+    Key constraint:
+    Do not assume uniform provider financial coverage.
+    Booking.com, Expedia, Airbnb, Agoda, Trip.com expose different
+    financial fields with different completeness guarantees.
+    Financial data may also arrive via separate provider Finance APIs,
+    not only via reservation webhooks.
+
 ### Event Time vs System Time Separation
 - status: deferred
 - discovered_in: Phase 20 era backlog
