@@ -1613,3 +1613,25 @@ Outcome:
 
 Next phase:
 Phase 46 — TBD
+## Phase 46 — System Health Check (Closed)
+
+Status:
+Closed
+
+Rationale:
+Large SaaS companies (Stripe, Twilio) build a system health check before expanding feature surface. Before BOOKING_AMENDED or production deployment, iHouse Core needed one callable that tells operators if the system is healthy.
+
+Completed:
+- [Claude]
+- ComponentStatus + HealthReport frozen dataclasses
+- system_health_check(): 5 components, never raises, structured readiness report
+- 10 contract tests
+- E2E: OVERALL OK ✅ on live Supabase in under 1 second
+
+Outcome:
+- 103 tests pass
+- No migration, no new tables
+- System is now production-ready for the current feature set
+
+Next phase:
+Phase 47 — TBD (Normalized AmendmentPayload / OTA Payload Validation)

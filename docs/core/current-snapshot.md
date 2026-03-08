@@ -1,77 +1,70 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 46 — TBD
+Phase 47 — TBD
 
 ## Last Closed Phase
-Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED
+Phase 46 — System Health Check
 
 ## System Status
 
-The deterministic event architecture remains fully operational.
+**The system is production-ready for the current feature set.**
 
 `apply_envelope` remains the only authority allowed to mutate canonical booking state.
 
-**The out-of-order event problem is now fully handled (Phases 44+45).**
+Health check verified live: OVERALL OK ✅ — all 5 components green.
 
-## Phase 45 Result
+## Phase 46 Result
 
 [Claude]
 
-The ordering loop is closed.
+Rationale: Large SaaS companies build health checks before expanding feature surface.
 
-**Flow (fully operational):**
+**Module:** `health_check.py`
 
 ```
-BOOKING_CANCELED arrives too early
-        ↓ BOOKING_NOT_FOUND
-  ota_dead_letter (DLQ)         Phase 38
-        ↓ buffer_event()
-  ota_ordering_buffer [waiting]  Phase 44
-
-BOOKING_CREATED arrives → APPLIED
-        ↓ trigger_ordered_replay()    Phase 45
-  get_buffered_events(booking_id)
-        ↓ per row:
-  replay_dlq_row(dlq_row_id)         Phase 39
-        ↓
-  mark_replayed(buffer_id)      Phase 44
+system_health_check() → HealthReport
+  ├─ ✅ supabase_connectivity
+  ├─ ✅ ota_dead_letter
+  ├─ ✅ ota_ordering_buffer
+  ├─ ✅ dlq_threshold (pending < threshold)
+  └─ ✅ ordering_buffer_waiting (informational)
 ```
 
-E2E verified: CANCELED buffered → CREATED applied → auto-trigger → 0 waiting in buffer.
+- `HealthReport` and `ComponentStatus` are frozen dataclasses
+- Never raises — all exceptions caught per component
+- E2E live: OVERALL OK ✅
 
-## OTA Adapter Layer — Full Module Map
+## Full OTA Adapter Layer
 
 | Module | Role |
 |--------|------|
-| `dead_letter.py` | preserve rejected events in DLQ |
+| `dead_letter.py` | preserve rejected events |
 | `dlq_replay.py` | controlled replay → apply_envelope |
 | `dlq_inspector.py` | read-only DLQ observability |
 | `dlq_alerting.py` | threshold alerting |
 | `booking_status.py` | read booking lifecycle status |
 | `ordering_buffer.py` | ordering buffer: write, read, mark |
-| `ordering_trigger.py` | auto-trigger on BOOKING_CREATED ← NEW |
+| `ordering_trigger.py` | auto-trigger replay on BOOKING_CREATED |
+| `health_check.py` | consolidated system readiness check ← NEW |
 
-## BOOKING_AMENDED Prerequisites
+## Tests
+**103 passing** (2 pre-existing SQLite failures, unrelated)
 
-4/10 satisfied. External Event Ordering Buffer (Phases 44-45) now also satisfies the "ordering infrastructure" prerequisite.
-
-Updated status:
+## BOOKING_AMENDED Prerequisites: 5/10
 
 | Prerequisite | Status |
 |-------------|--------|
-| DLQ infrastructure (Phases 38-39) | ✅ |
+| DLQ infrastructure | ✅ |
 | booking_id stability | ✅ |
-| MODIFY classification (semantics.py) | ✅ |
-| booking_state.status column | ✅ |
-| Ordering infrastructure | ✅ (Phases 44-45) |
-| Normalized AmendmentPayload schema | ❌ |
+| MODIFY classification | ✅ |
+| booking_state.status | ✅ |
+| Ordering infrastructure | ✅ |
+| Normalized AmendmentPayload | ❌ |
 | apply_envelope BOOKING_AMENDED branch | ❌ |
 | event_kind enum: BOOKING_AMENDED | ❌ |
-| ACTIVE-state amendment guard | ❌ |
+| ACTIVE-state guard | ❌ |
 | Idempotency key for amendments | ❌ |
-
-**5/10 prerequisites now satisfied.**
 
 ## Canonical Invariants
 

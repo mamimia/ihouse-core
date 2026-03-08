@@ -2,64 +2,68 @@
 
 ## Current Active Phase
 
-Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED
+Phase 46 — System Health Check
 
 ## Last Closed Phase
 
-Phase 44 — OTA Ordering Buffer
+Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED
 
 ## Current Objective
 
-Connect the ordering buffer to the ingestion pipeline. After a successful BOOKING_CREATED, automatically check the ordering buffer for any events that were waiting for this booking_id, replay them through dlq_replay.py, and mark them replayed.
+Every production SaaS company (Stripe, Twilio, Airbnb) has a single callable that gives operators a complete picture of system health in under a second. Before expanding to new event kinds (BOOKING_AMENDED), iHouse Core needs exactly that.
 
-This closes the ordering loop started in Phase 44.
+Build a consolidated `system_health_check()` that verifies every component in the
+canonical pipeline: Supabase connectivity, DLQ status, ordering buffer, threshold
+alerting — and returns a structured readiness report.
 
-## Locked Architectural Reality
+## Why Now
 
-The system remains a deterministic domain event execution kernel.
+Phase 45 closed the ordering loop. The DLQ, replay, and buffer layers are now complete.
 
-System truth is derived from canonical events.
+Before adding any new event kind (BOOKING_AMENDED) or going to production:
+1. Operators need one call to verify system readiness
+2. CI/CD needs a smoke-test function it can invoke
+3. SREs need a structured report to diagnose issues in seconds
 
-booking_state is projection-only.
+## Scope
 
-apply_envelope is the only authority allowed to mutate state.
+### `src/adapters/ota/health_check.py`
 
-Supabase is canonical.
+```python
+@dataclass(frozen=True)
+class ComponentStatus:
+    name: str
+    ok: bool
+    detail: str
 
-External systems must never bypass the canonical apply gate.
+@dataclass(frozen=True)
+class HealthReport:
+    ok: bool
+    components: list[ComponentStatus]
+    dlq_pending: int
+    ordering_buffer_pending: int
+    timestamp: str
 
-## Permanent Invariants
+def system_health_check(client=None) -> HealthReport
+```
 
-- event_log is append-only
-- events are immutable
-- booking_state is derived from events only
-- apply_envelope is the only write authority
-- adapters must not read booking_state
-- adapters must not reconcile booking history
-- adapters must not mutate canonical state
-- adapters must not bypass apply_envelope
-- provider-specific logic must remain isolated from the shared pipeline
-- MODIFY remains deterministic reject-by-default
+#### Components checked:
+1. **supabase_connectivity** — can we reach the DB? (SELECT 1 via booking_state count)
+2. **dlq_table** — ota_dead_letter is accessible
+3. **ordering_buffer_table** — ota_ordering_buffer is accessible
+4. **dlq_threshold** — DLQ pending < DLQ_ALERT_THRESHOLD (from env)
+5. **ordering_buffer_waiting** — how many events are waiting in the buffer
 
-## Phase 45 Scope
+#### `ok` field:
+- True only if ALL components are ok AND dlq_threshold not exceeded
 
-1. `src/adapters/ota/ordering_trigger.py`:
-   - `trigger_ordered_replay(booking_id, client=None) → dict`
-   - Reads waiting buffer rows for booking_id
-   - For each: calls `replay_dlq_row(dlq_row_id)` → marks replayed
-   - Returns `{replayed: int, skipped: int, results: list}`
-   - Best-effort: single row replay failure logs and continues
-
-2. Integration into `service.py`:
-   - In `ingest_provider_event_with_dlq`, after a successful BOOKING_CREATED APPLIED result:
-   - Call `trigger_ordered_replay(booking_id)` non-blocking, best-effort
-
-3. Contract tests:
-   - No buffered events → empty result, no replay called
-   - One buffered event → replay called, mark_replayed called
-   - replay failure → logged, not raised (remaining rows still processed)
-   - booking_id extracted correctly from BOOKING_CREATED envelope
+### Contract tests:
+- all components healthy → ok=True
+- supabase unreachable → ok=False, component detail shows error
+- DLQ threshold exceeded → ok=False, detail shows count
+- ordering buffer with waiting events → reported but does NOT fail ok alone
+- frozen dataclass fields correct
 
 Out of scope:
-- Amendment replay ordering (future)
-- Expiry of buffer rows (future)
+- HTTP endpoint (that is infrastructure concern, not domain logic)
+- external alerting (Phase 41 already handles notifications)

@@ -704,3 +704,27 @@ Result:
 
 The ordering loop is now closed. Out-of-order events that were buffered as 'waiting' are automatically replayed when their prerequisite BOOKING_CREATED arrives.
 93 tests pass (2 pre-existing SQLite failures unrelated).
+## Phase 46 — System Health Check (Closed)
+
+Rationale:
+
+Large SaaS companies (Stripe, Twilio, Airbnb) build a single callable health check before expanding feature surface. Before introducing BOOKING_AMENDED or going to production, iHouse Core needs one call that tells operators whether the system is healthy.
+
+Completed:
+
+- [Claude]
+- implemented `src/adapters/ota/health_check.py`:
+  - ComponentStatus (frozen dataclass): name, ok, detail
+  - HealthReport (frozen dataclass): ok, components[5], dlq_pending, ordering_buffer_pending, timestamp
+  - system_health_check(client=None) → HealthReport
+  - 5 components: supabase_connectivity, ota_dead_letter, ota_ordering_buffer, dlq_threshold, ordering_buffer_waiting
+  - ok=True only if all components ok AND DLQ threshold not exceeded
+  - never raises — all exceptions caught per component
+- 10 contract tests: healthy, 5 components, frozen, supabase down, threshold exceeded, ordering buffer informational, never raises, dlq_pending in report
+- E2E live: OVERALL OK ✅ — all 5 components green, DLQ pending=5 < threshold=10
+
+Result:
+
+Operators can call system_health_check() and get a structured readiness report in under a second.
+103 tests pass (2 pre-existing SQLite failures unrelated).
+No Supabase migrations. No new tables.
