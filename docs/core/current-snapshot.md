@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 33 — OTA Retry Business Idempotency Discovery
+Phase 34 — OTA Canonical Event Emission Alignment
 
 ## Last Closed Phase
-Phase 32 — OTA Ingestion Contract Test Verification
+Phase 33 — OTA Retry Business Idempotency Discovery
 
 ## System Status
 
@@ -14,11 +14,11 @@ The canonical database gate (`apply_envelope`) remains the only authority allowe
 
 External systems interact with iHouse Core through the OTA ingestion boundary and then the canonical core ingest path.
 
-## Phase 32 Result
+## Phase 33 Result
 
-Phase 32 closed the executable verification loop for the OTA ingestion runtime contract without changing canonical business semantics.
+Phase 33 closed the discovery loop around OTA retry business idempotency without changing canonical business semantics.
 
-Phase 32 verified the live runtime handoff as:
+Phase 33 verified that the live runtime handoff remains:
 
 ingest_provider_event  
 → process_ota_event  
@@ -27,14 +27,13 @@ ingest_provider_event
 → CoreExecutor.execute  
 → apply_envelope
 
-Phase 32 completed the following:
+Phase 33 established the following:
 
-- added direct tests for thin OTA service entry
-- added direct tests for ordered shared OTA pipeline responsibilities
-- added direct tests for core ingest rejection of missing executor wiring
-- aligned replay verification to the same public ingest contract
-- verified no tested OTA runtime path bypasses core ingest or CoreExecutor
-- reran relevant smoke and invariant checks successfully
+- transport idempotency in the OTA adapter path is currently derived from provider `external_event_id`
+- canonical Supabase business handling already exists for canonical emitted business events
+- `apply_envelope` performs canonical business handling from emitted events, not from the raw OTA envelope alone
+- the active OTA runtime path currently appears misaligned with the canonical emitted business event contract expected by `apply_envelope`
+- the strongest verified risk is runtime mapping and routing misalignment, not a proven intrinsic failure of canonical Supabase business dedup logic
 
 No canonical business semantics changed.
 
@@ -66,48 +65,22 @@ Replay Safety
 - duplicate envelopes must not create new events
 - duplicate ingestion must remain idempotent
 
-## Phase 33 Focus
+## Phase 34 Focus
 
-Phase 33 focuses on OTA retry business idempotency discovery.
+Phase 34 focuses on OTA canonical event emission alignment.
 
-This phase originally existed to determine whether OTA-originated duplicate business events can arrive with different transport identifiers and whether the current system already protects against that safely.
+This phase exists to verify and align the active OTA runtime path so that OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` reach `apply_envelope` through the canonical emitted business event contract expected by Supabase.
 
-Discovery evidence gathered in this phase shows a more precise active concern:
-
-- the canonical Supabase apply contract already contains business-level protection for BOOKING_CREATED when canonical emitted business events reach `apply_envelope`
-- the active OTA runtime path currently appears misaligned with that canonical emitted event contract
-- the main verified discovery is therefore runtime mapping and routing alignment risk between OTA envelopes, executor skill routing, emitted business events, and the Supabase apply contract
-
-This phase remains a discovery, evidence gathering, and minimal verification phase only.
+This phase is narrow by design.
 
 It must not redesign the architecture.
 
-It must not reopen closed semantic decisions.
-
-## Active Discovery Position
-
-The current strongest evidence is:
-
-- OTA adapters build transport-facing envelopes using provider-oriented fields such as `provider`, `reservation_id`, `property_id`, and transport idempotency derived from `external_event_id`
-- CoreExecutor forwards the original envelope plus emitted events to `apply_envelope`
-- `apply_envelope` performs canonical business handling from emitted events, not from the raw OTA envelope alone
-- the active runtime skill routing currently maps `BOOKING_CREATED` to a noop skill, which does not emit the canonical business event shape required by the Supabase apply contract
-- therefore the currently verified risk is not a proven failure of canonical business dedup itself, but a likely mapping and routing gap in the active OTA runtime path
+It must not introduce reconciliation logic, amendment handling, adapter-side state mutation, booking_state reads inside adapters, direct OTA calls to `apply_envelope`, or alternative write paths.
 
 ## Current Objective
 
-Determine whether the active OTA runtime path actually reaches the canonical emitted business event contract expected by `apply_envelope`, or whether a routing and mapping gap currently prevents canonical business identity enforcement from being applied as intended.
-
-This objective remains bounded by the same Phase 33 restrictions:
-
-- no reconciliation
-- no amendment handling
-- no booking_state reads inside adapters
-- no direct apply_envelope calls from OTA code
-- no alternative write paths
-- no new canonical event kinds
-- no reopening closed phase decisions
+Determine exactly where the active OTA runtime path fails to emit the canonical business event shape expected by `apply_envelope`, and define the smallest safe alignment work required to restore canonical enforcement.
 
 ## Next Minimal Step
 
-Document the verified discovery precisely in the active docs, then define the smallest safe future hardening direction only if the active OTA runtime path is confirmed to remain misaligned with the canonical emitted business event contract.
+Inspect active skill routing and emitted event construction for OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED`, then define the minimum alignment change required without reopening any closed semantic decision.

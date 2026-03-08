@@ -1279,3 +1279,56 @@ Outcome:
 
 Next phase:
 Phase 32 – OTA Ingestion Contract Test Verification
+
+## Phase 32 — OTA Ingestion Contract Test Verification (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 32 closed the executable verification loop for the OTA ingestion runtime contract without changing canonical business semantics.
+
+Confirmed runtime handoff:
+- ingest_provider_event
+- process_ota_event
+- canonical envelope
+- IngestAPI.append_event
+- CoreExecutor.execute
+- apply_envelope
+
+Outcome:
+- direct tests added for thin OTA service entry
+- direct tests added for ordered shared OTA pipeline responsibilities
+- direct tests added for core ingest rejection of missing executor wiring
+- replay verification aligned to the same public ingest contract
+- no tested OTA runtime path bypasses core ingest or CoreExecutor
+- relevant smoke and invariant checks rerun successfully
+- no new write path introduced
+- canonical semantics unchanged
+
+Next phase:
+Phase 33 — OTA Retry Business Idempotency Discovery
+
+## Phase 33 — OTA Retry Business Idempotency Discovery (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 33 closed the OTA retry business idempotency discovery loop and established that the strongest verified risk is runtime routing and emitted-event alignment, not a proven intrinsic failure of canonical Supabase business dedup.
+
+Confirmed discovery outcome:
+- OTA transport idempotency currently derives from provider external_event_id
+- canonical Supabase business protection already exists for canonical emitted business events
+- apply_envelope performs canonical BOOKING_CREATED and BOOKING_CANCELED handling from emitted events
+- the active OTA runtime path currently appears misaligned with the canonical emitted business event contract expected by apply_envelope
+
+Outcome:
+- transport idempotency and canonical business identity enforcement were separated clearly
+- the active risk was narrowed to runtime mapping and routing alignment
+- no canonical business semantics changed
+- no alternative write path introduced
+- no closed semantic decision was reopened
+
+Next phase:
+Phase 34 — OTA Canonical Event Emission Alignment

@@ -419,3 +419,43 @@ No alternative write path was introduced.
 
 Next active phase:
 Phase 32 – OTA Ingestion Contract Test Verification
+
+## Phase 32 — OTA Ingestion Contract Test Verification (Closed)
+
+Completed:
+
+- added direct executable verification for thin OTA service entry
+- added direct executable verification for ordered shared OTA pipeline responsibilities
+- added direct executable verification for core ingest rejection when executor wiring is missing
+- verified that replay uses the same public ingest contract through IngestAPI.append_event
+- verified that no tested OTA runtime path bypasses core ingest or CoreExecutor
+- reran relevant smoke and invariant checks successfully
+
+Result:
+
+The OTA-to-core runtime contract locked by Phases 30 and 31 is now verified by executable evidence.
+
+No canonical business semantics changed.
+No alternative write path was introduced.
+MODIFY remains deterministic reject-by-default.
+
+## Phase 33 — OTA Retry Business Idempotency Discovery (Closed)
+
+Completed:
+
+- inspected OTA identity fields across normalized payload, canonical envelope, executor path, and canonical Supabase apply path
+- verified that OTA transport idempotency currently derives from provider external_event_id
+- verified that canonical Supabase business handling already exists for canonical emitted business events
+- verified that apply_envelope performs canonical business handling from emitted events rather than from the raw OTA envelope alone
+- verified that the active OTA runtime path currently appears misaligned with the canonical emitted business event contract expected by apply_envelope
+- documented the strongest verified risk as runtime mapping and routing misalignment rather than an intrinsic failure of canonical Supabase business dedup
+
+Result:
+
+Phase 33 did not prove an intrinsic failure of canonical Supabase business dedup.
+
+Phase 33 did establish a likely alignment gap between the active OTA runtime path and the canonical emitted business event contract enforced by apply_envelope.
+
+No canonical business semantics changed.
+No alternative write path was introduced.
+No closed semantic decision was reopened.
