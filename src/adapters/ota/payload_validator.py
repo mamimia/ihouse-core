@@ -78,8 +78,12 @@ def validate_ota_payload(
             event_type_raw=None,
         )
 
-    # Rule 3: reservation_id
-    reservation_id = payload.get("reservation_id", "") or ""
+    # Rule 3: reservation_id (or booking_ref for providers like Agoda)
+    reservation_id = (
+        payload.get("reservation_id", "") or
+        payload.get("booking_ref", "") or
+        ""
+    )
     if not str(reservation_id).strip():
         errors.append(RESERVATION_ID_REQUIRED)
 

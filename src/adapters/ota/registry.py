@@ -4,12 +4,14 @@ from .base import OTAAdapter
 from .bookingcom import BookingComAdapter
 from .expedia import ExpediaAdapter
 from .airbnb import AirbnbAdapter
+from .agoda import AgodaAdapter
 
 
 _ADAPTERS: Dict[str, OTAAdapter] = {
     "bookingcom": BookingComAdapter(),
     "expedia": ExpediaAdapter(),
     "airbnb": AirbnbAdapter(),
+    "agoda": AgodaAdapter(),
 }
 
 

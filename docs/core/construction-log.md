@@ -951,3 +951,26 @@ All 3 adapters (Booking.com, Expedia, Airbnb) now have feature parity.
 No canonical code touched. No DB changes.
 
 Next phase: Phase 55 — TBD (Agoda / Trip.com / Observability / Webhook auth)
+
+## Phase 55 — Agoda Adapter (Closed)
+
+Rationale:
+
+Add Agoda as the fourth full OTA provider adapter.
+
+Completed:
+
+- amendment_extractor.py: extract_amendment_agoda() reads modification.check_in_date/check_out_date/num_guests/reason
+- src/adapters/ota/agoda.py: new adapter — booking_ref → reservation_id mapping, CREATE/CANCEL/AMENDED branches
+- registry.py: registered AgodaAdapter
+- semantics.py: added booking.created / booking.cancelled / booking.canceled / booking.modified aliases
+- payload_validator.py: Rule 3 extended to accept booking_ref as valid alternative to reservation_id
+- tests/test_agoda_contract.py: 18 contract tests — normalize, CREATE, CANCEL, AMENDED, 4-provider cross-isolation
+
+Result:
+
+227 tests pass (CI-safe suite: 227 passed, 2 skipped).
+All 4 adapters (Booking.com, Expedia, Airbnb, Agoda) at full parity.
+No canonical code touched. No DB changes.
+
+Next phase: Phase 56 — Trip.com adapter
