@@ -82,9 +82,10 @@ Do these in order:
 - When a phase closes, the spec must already exist in the archive. Do not close a phase without it.
 
 ### ZIP protocol
-- At the end of every closed phase, create: `iHouse-Core-Docs-Phase-<N>.zip`
+- At the end of every closed phase, create: `releases/phase-zips/iHouse-Core-Docs-Phase-<N>.zip`
 - The ZIP must include the entire `docs/core/` tree — no selective inclusion.
 - Naming is always: `iHouse-Core-Docs-Phase-<N>.zip` (exact casing, no variation).
+- **Location: always `releases/phase-zips/` — never the repo root.**
 - The ZIP is committed and pushed as part of the phase closure commit.
 
 ### Tool pivot rule
@@ -95,7 +96,8 @@ Do these in order:
 
 ### Context limit — handoff protocol
 - When approaching ~80% of context window capacity, STOP all work immediately.
-- Write a `handoff_to_new_chat.md` in the artifacts directory before context is lost.
+- Write a handoff file into `releases/handoffs/` with name: `handoff_to_new_chat Phase-<N>.md`
+- **Location: always `releases/handoffs/` — never the repo root.**
 - The handoff must include: current phase, last closed phase, next objective, key files, and any in-progress state.
 - Notify the user explicitly: "Context at ~80% — writing handoff now."
 - Do NOT wait until context is exhausted. Early handoff preserves quality.
