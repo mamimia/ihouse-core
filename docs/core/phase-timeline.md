@@ -1355,3 +1355,28 @@ Outcome:
 
 Next phase:
 Phase 35 — OTA Canonical Emitted Event Alignment Implementation
+## Phase 35 — OTA Canonical Emitted Event Alignment Implementation (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 35 implemented the minimal alignment defined by Phase 34. OTA-originated BOOKING_CREATED and BOOKING_CANCELED now reach apply_envelope through the canonical emitted business event contract. The Phase 34 alignment gap is resolved.
+
+Completed:
+- [Claude]
+- booking_created skill: transforms OTA payload → canonical BOOKING_CREATED emitted event
+- booking_canceled skill: emits BOOKING_CANCELED with booking_id
+- registry updates: kind_registry and skill_exec_registry updated for both event types
+- 17 contract tests added and passing
+- E2E verified against live Supabase: BOOKING_CREATED and BOOKING_CANCELED both return status APPLIED with state_upsert_found true
+
+Outcome:
+- OTA booking lifecycle events now activate canonical Supabase business logic
+- booking_state is written by apply_envelope upon canonical emitted events
+- no canonical invariants violated
+- no architecture redesign
+- 30 tests pass (2 pre-existing SQLite failures unrelated)
+
+Next phase:
+Phase 36 — TBD

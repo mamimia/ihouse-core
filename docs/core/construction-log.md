@@ -481,3 +481,26 @@ It did not justify architecture redesign.
 No canonical business semantics changed.
 No alternative write path was introduced.
 No closed semantic decision was reopened.
+## Phase 35 — OTA Canonical Emitted Event Alignment Implementation (Closed)
+
+Completed:
+
+- [Claude]
+- implemented `booking_created` skill: transforms OTA envelope payload into canonical BOOKING_CREATED emitted event shape
+- implemented `booking_canceled` skill: emits BOOKING_CANCELED with booking_id derived from provider + reservation_id
+- updated `kind_registry.core.json`: BOOKING_CREATED → booking-created, BOOKING_CANCELED → booking-canceled
+- updated `skill_exec_registry.core.json`: routing entries for both new skills, all existing entries preserved
+- added 17 contract tests covering skill unit behavior, payload shape, executor routing alignment, and regression guards
+- verified E2E against live Supabase: BOOKING_CREATED → status APPLIED, state_upsert_found true
+- verified E2E against live Supabase: BOOKING_CANCELED → status APPLIED, state_upsert_found true
+- all 30 pytest tests pass (2 pre-existing SQLite invariant failures unrelated to this phase)
+
+Result:
+
+OTA-originated BOOKING_CREATED and BOOKING_CANCELED now reach apply_envelope through the canonical emitted business event contract.
+The alignment gap proved by Phase 34 is resolved.
+
+No canonical business semantics changed.
+No alternative write path was introduced.
+No new canonical event kinds were introduced.
+No closed semantic decision was reopened.

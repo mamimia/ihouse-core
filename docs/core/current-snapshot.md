@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 35 — OTA Canonical Emitted Event Alignment Implementation
+Phase 36 — TBD
 
 ## Last Closed Phase
-Phase 34 — OTA Canonical Event Emission Alignment
+Phase 35 — OTA Canonical Emitted Event Alignment Implementation
 
 ## System Status
 
@@ -12,20 +12,27 @@ The deterministic event architecture remains fully operational.
 
 The canonical database gate (`apply_envelope`) remains the only authority allowed to mutate booking state.
 
-External systems interact with iHouse Core through the OTA ingestion boundary and then the canonical core ingest path.
+OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` now reach `apply_envelope` through the canonical emitted business event contract. The Phase 34 alignment gap is resolved.
 
-## Phase 34 Result
+## Phase 35 Result
 
 [Claude]
 
-Phase 34 proved a routing and emitted-event alignment gap in the active OTA runtime path.
+Phase 35 implemented the minimal alignment defined by Phase 34.
 
-Phase 34 verified that `BOOKING_CREATED` currently routes to a noop skill (zero events) and `BOOKING_CANCELED` has no active route.
+Two new skills were implemented:
+- `booking_created`: transforms OTA envelope payload into canonical `BOOKING_CREATED` emitted event shape
+- `booking_canceled`: emits `BOOKING_CANCELED` with `booking_id` derived from provider + reservation_id
 
-Phase 34 established that the active OTA runtime path is misaligned with the canonical emitted business event contract expected by `apply_envelope`.
+Registry updates routed `BOOKING_CREATED` and `BOOKING_CANCELED` to the new skills.
+
+E2E verified against live Supabase:
+- `BOOKING_CREATED` → `apply_envelope` returned `status: APPLIED`, `state_upsert_found: true`
+- `BOOKING_CANCELED` → `apply_envelope` returned `status: APPLIED`, `state_upsert_found: true`
 
 No canonical business semantics changed.
-No architecture redesign was justified.
+No alternative write path was introduced.
+No new canonical event kinds were introduced.
 MODIFY remains deterministic reject-by-default.
 
 ## Canonical External OTA Events
@@ -34,3 +41,20 @@ The canonical OTA lifecycle events remain:
 
 - BOOKING_CREATED
 - BOOKING_CANCELED
+
+## Canonical Invariants
+
+Event Store
+- event_log is append-only
+- events are immutable
+
+State Model
+- booking_state is projection-only
+- booking_state is derived exclusively from events
+
+Write Authority
+- apply_envelope RPC is the only authority allowed to mutate booking state
+
+Replay Safety
+- duplicate envelopes must not create new events
+- duplicate ingestion must remain idempotent
