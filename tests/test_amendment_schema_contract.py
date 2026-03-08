@@ -179,8 +179,18 @@ class TestNormalizeAmendmentDispatcher:
 
     def test_unknown_provider_raises_value_error(self) -> None:
         from adapters.ota.amendment_extractor import normalize_amendment
+        # "tripadvisor" is not yet a supported provider
         with pytest.raises(ValueError, match="Unknown provider"):
-            normalize_amendment("airbnb", {})
+            normalize_amendment("tripadvisor", {})
+
+    def test_airbnb_dispatches_to_airbnb_extractor(self) -> None:
+        # Phase 54: airbnb is now a supported provider
+        from adapters.ota.amendment_extractor import normalize_amendment
+        payload = {
+            "alteration": {"new_check_in": "2026-10-01", "new_check_out": "2026-10-07"}
+        }
+        result = normalize_amendment("airbnb", payload)
+        assert result.new_check_in == "2026-10-01"
 
     def test_provider_is_case_insensitive(self) -> None:
         from adapters.ota.amendment_extractor import normalize_amendment

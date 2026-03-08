@@ -917,3 +917,37 @@ Expedia now has feature parity with Booking.com across all 3 event kinds.
 No canonical code touched. No DB changes. No apply_envelope changes.
 
 Next phase: Phase 54 — Airbnb adapter
+
+## Phase 54 — Airbnb Adapter (Closed)
+
+Rationale:
+
+Add Airbnb as the third full OTA provider adapter.
+
+Completed:
+
+- amendment_extractor.py (read fully before editing):
+  - Added extract_amendment_airbnb() — reads alteration.new_check_in/out/guest_count/reason
+  - Added "airbnb" to _SUPPORTED_PROVIDERS
+  - Added dispatch in normalize_amendment()
+- src/adapters/ota/airbnb.py (new file):
+  - normalize(): maps listing_id → property_id (Airbnb-specific field)
+  - to_canonical_envelope(): CREATE / CANCEL / BOOKING_AMENDED branches
+  - booking_id = airbnb_{reservation_id} — same deterministic rule
+- registry.py (read fully before editing): registered AirbnbAdapter
+- semantics.py: added Airbnb event type aliases:
+  - reservation_create → CREATE
+  - reservation_cancel → CANCEL
+  - alteration_create / alteration → BOOKING_AMENDED
+- tests/test_airbnb_contract.py: 18 contract tests
+- tests/test_amendment_schema_contract.py: updated stale "airbnb raises ValueError" test
+  - airbnb is now supported; test now uses "tripadvisor" as truly unknown provider
+  - Added positive test for airbnb dispatch
+
+Result:
+
+209 tests pass (CI-safe suite: 209 passed, 2 skipped, 0 failed).
+All 3 adapters (Booking.com, Expedia, Airbnb) now have feature parity.
+No canonical code touched. No DB changes.
+
+Next phase: Phase 55 — TBD (Agoda / Trip.com / Observability / Webhook auth)

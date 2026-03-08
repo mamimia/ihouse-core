@@ -44,11 +44,11 @@ def classify_normalized_event(
 
     event_type = _extract_event_type(event)
 
-    if event_type in {"reservation_created", "created", "new"}:
+    if event_type in {"reservation_created", "created", "new", "reservation_create"}:
         semantic = BookingSemanticKind.CREATE
-    elif event_type in {"reservation_cancelled", "cancelled", "canceled"}:
+    elif event_type in {"reservation_cancelled", "cancelled", "canceled", "reservation_cancel"}:
         semantic = BookingSemanticKind.CANCEL
-    elif event_type in {"reservation_modified", "modified", "amended"}:
+    elif event_type in {"reservation_modified", "modified", "amended", "alteration_create", "alteration"}:
         semantic = BookingSemanticKind.BOOKING_AMENDED
     else:
         raise ValueError(f"Unknown OTA event type: {event_type}")

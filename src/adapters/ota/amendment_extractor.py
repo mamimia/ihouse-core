@@ -9,7 +9,7 @@ from .schemas import AmendmentFields
 # Known providers
 # ---------------------------------------------------------------------------
 
-_SUPPORTED_PROVIDERS = {"bookingcom", "expedia"}
+_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb"}
 
 
 # ---------------------------------------------------------------------------
@@ -74,6 +74,33 @@ def extract_amendment_expedia(provider_payload: Dict[str, Any]) -> AmendmentFiel
     )
 
 
+def extract_amendment_airbnb(provider_payload: Dict[str, Any]) -> AmendmentFields:
+    """
+    Extract normalized amendment fields from an Airbnb webhook payload.
+
+    Airbnb sends amendment data under 'alteration':
+
+        {
+          "alteration": {
+            "new_check_in":  "2026-09-01",
+            "new_check_out": "2026-09-05",
+            "guest_count":   2,
+            "reason":        "guest_request"
+          }
+        }
+
+    Returns AmendmentFields with None for any missing field.
+    """
+    alteration = provider_payload.get("alteration") or {}
+
+    return AmendmentFields(
+        new_check_in=_nonempty(alteration.get("new_check_in")),
+        new_check_out=_nonempty(alteration.get("new_check_out")),
+        new_guest_count=_int_or_none(alteration.get("guest_count")),
+        amendment_reason=_nonempty(alteration.get("reason")),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -98,6 +125,8 @@ def normalize_amendment(provider: str, payload: Dict[str, Any]) -> AmendmentFiel
         return extract_amendment_bookingcom(payload)
     elif normalized_provider == "expedia":
         return extract_amendment_expedia(payload)
+    elif normalized_provider == "airbnb":
+        return extract_amendment_airbnb(payload)
     else:
         raise ValueError(
             f"Unknown provider '{provider}' — cannot extract amendment fields. "
