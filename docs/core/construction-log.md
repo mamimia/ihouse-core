@@ -1319,3 +1319,29 @@ No canonical business semantics changed. No booking_state writes.
 
 
 
+
+## Phase 68 — booking_id Stability (Closed)
+
+- [Claude]
+- New: `src/adapters/ota/booking_identity.py`
+  - `normalize_reservation_ref(provider, raw_ref) → str`
+    - Base: strip + lowercase
+    - bookingcom: strip BK- prefix
+    - agoda: strip AGD-/AG- prefix
+    - tripcom: strip TC- prefix
+    - expedia, airbnb: base normalization only
+    - Unknown provider: base normalization only
+  - `build_booking_id(source, reservation_ref) → str`
+    - Applies normalize_reservation_ref, then returns `{source}_{ref}` — locked formula unchanged
+- New: `tests/test_booking_identity_contract.py` — 30 contract tests
+  - Base normalization, per-provider rules, unknown provider, determinism, build_booking_id, idempotency
+- Modified: all 5 adapters (bookingcom, expedia, airbnb, agoda, tripcom)
+  - normalize() now calls normalize_reservation_ref() on reservation_ref before setting reservation_id
+- Modified: docs/core/improvements/future-improvements.md
+  - DLQ Controlled Replay → resolved (Phase 39)
+  - DLQ Observability and Alerting → resolved (Phase 40-41)
+  - Idempotent DLQ Replay Tracking → resolved (Phase 39)
+  - booking_id Stability → resolved (Phase 68)
+
+Result: 431 tests pass (431 passed, 2 skipped).
+No Supabase schema changes. booking_id formula unchanged.

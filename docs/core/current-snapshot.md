@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 67 — Financial Facts Query API (closed)
+Phase 68 — booking_id Stability (closed)
 
 ## Last Closed Phase
-Phase 67 — Financial Facts Query API
+Phase 68 — booking_id Stability
 
 ## System Status
 
-**Full HTTP ingestion stack complete (Phases 58–64). Financial Data Foundation complete (Phase 65). Financial Supabase projection complete (Phase 66). Financial Query API complete (Phase 67).**
+**Full HTTP ingestion stack complete (Phases 58–64). Financial Data Foundation complete (Phase 65). Financial Supabase projection complete (Phase 66). Financial Query API complete (Phase 67). booking_id Stability enforced (Phase 68).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -25,8 +25,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 65 | Financial Data Foundation — BookingFinancialFacts, 5-provider extraction | ✅ |
 | 66 | booking_financial_facts Supabase projection — write after BOOKING_CREATED APPLIED | ✅ |
 | 67 | Financial Facts Query API — GET /financial/{booking_id}, JWT auth, tenant isolation | ✅ |
+| 68 | booking_id Stability — normalize_reservation_ref, all 5 adapters, 30 contract tests | ✅ |
 
-**396 tests pass** (2 pre-existing SQLite skips, unrelated)
+**431 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -125,11 +126,19 @@ GET /financial/{booking_id}
 
 Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
+## Booking Identity Layer (Phase 68)
+
+| File | Role |
+|------|------|
+| `src/adapters/ota/booking_identity.py` | `normalize_reservation_ref(provider, raw_ref)` + `build_booking_id(source, ref)` |
+
+**Invariant (locked Phase 68):** `reservation_ref` is normalized (strip + lowercase + per-provider prefix stripping) before use in `booking_id`. Formula unchanged: `booking_id = {source}_{reservation_ref}`.
+
 ## Next Phase
 
-**Phase 68 — TBD**
+**Phase 69 — TBD**
 - See `docs/core/improvements/future-improvements.md` → Active Backlog
 
 ## Tests
 
-**320 passing** (2 pre-existing SQLite skips, unrelated)
+**431 passing** (2 pre-existing SQLite skips, unrelated)

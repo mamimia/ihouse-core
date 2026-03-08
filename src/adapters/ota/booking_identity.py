@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+"""
+booking_identity.py — Phase 68: booking_id Stability
+
+Provides deterministic normalization of reservation_ref values
+before they are used to construct booking_id.
+
+Rule: booking_id = "{source}_{reservation_ref}"  (locked Phase 36)
+This module ensures reservation_ref is stable across provider
+schema variations (capitalisation, whitespace, prefix changes).
+
+Constraints:
+- No booking_state reads
+- No database I/O
+- Deterministic: same input always produces same output
+- Unknown providers pass through with base normalization only
+"""
+
+
+# Per-provider normalization rules.
+# Each entry is a list of callables applied left-to-right.
+# The base rule (strip + lowercase) is always applied first.
+
+def _strip_bookingcom_prefix(ref: str) -> str:
+    """Booking.com sometimes prefixes refs with 'BK-' or 'bk-'."""
+    lower = ref.lower()
+    if lower.startswith("bk-"):
+        return ref[3:]
+    return ref
+
+
+def _strip_agoda_prefix(ref: str) -> str:
+    """Agoda occasionally prefixes with 'AG-' or 'AGD-'."""
+    lower = ref.lower()
+    if lower.startswith("agd-"):
+        return ref[4:]
+    if lower.startswith("ag-"):
+        return ref[3:]
+    return ref
+
+
+def _strip_tripcom_prefix(ref: str) -> str:
+    """Trip.com uses numeric order_id but occasionally adds 'TC-' prefix."""
+    lower = ref.lower()
+    if lower.startswith("tc-"):
+        return ref[3:]
+    return ref
+
+
+# Registry: provider → list of extra normalization steps after base
+_PROVIDER_RULES: dict[str, list] = {
+    "bookingcom": [_strip_bookingcom_prefix],
+    "expedia":    [],   # no extra rules — numeric IDs, stable
+    "airbnb":     [],   # no extra rules — numeric IDs, stable
+    "agoda":      [_strip_agoda_prefix],
+    "tripcom":    [_strip_tripcom_prefix],
+}
+
+
+def normalize_reservation_ref(provider: str, raw_ref: str) -> str:
+    """
+    Return a stable, canonical form of a reservation reference.
+
+    Steps applied in order:
+      1. Strip leading/trailing whitespace
+      2. Lowercase
+      3. Provider-specific prefix stripping (if any)
+
+    This function is deterministic and pure — same input always
+    returns the same output. It never reads external state.
+
+    Args:
+        provider:  OTA provider slug (e.g. "bookingcom", "airbnb")
+        raw_ref:   Raw reservation reference string from provider payload
+
+    Returns:
+        Normalized reservation ref string, safe to use in booking_id.
+
+    Example:
+        normalize_reservation_ref("bookingcom", "  BK-RES12345  ")
+        → "res12345"
+    """
+    if not raw_ref:
+        return raw_ref
+
+    # Step 1 + 2: base normalization
+    ref = raw_ref.strip().lower()
+
+    # Step 3: provider-specific rules
+    extra_rules = _PROVIDER_RULES.get(provider, [])
+    for rule_fn in extra_rules:
+        ref = rule_fn(ref)
+
+    return ref
+
+
+def build_booking_id(source: str, reservation_ref: str) -> str:
+    """
+    Build the canonical booking_id from source and reservation_ref.
+
+    Applies normalize_reservation_ref before constructing the ID.
+    Locked invariant (Phase 36): booking_id = "{source}_{reservation_ref}"
+
+    Args:
+        source:          OTA provider slug  (e.g. "bookingcom")
+        reservation_ref: Raw reservation reference from provider payload
+
+    Returns:
+        Canonical booking_id string (e.g. "bookingcom_res12345")
+    """
+    normalized_ref = normalize_reservation_ref(source, reservation_ref)
+    return f"{source}_{normalized_ref}"

@@ -11,6 +11,7 @@ from .schemas import (
 from .idempotency import generate_idempotency_key
 from .amendment_extractor import normalize_amendment
 from .financial_extractor import extract_financial_facts
+from .booking_identity import normalize_reservation_ref
 
 
 class TripComAdapter(OTAAdapter):
@@ -34,7 +35,7 @@ class TripComAdapter(OTAAdapter):
             tenant_id=payload["tenant_id"],
             provider=self.provider,
             external_event_id=payload["event_id"],
-            reservation_id=payload["order_id"],      # Trip.com uses order_id
+            reservation_id=normalize_reservation_ref(self.provider, payload["order_id"]),      # Trip.com uses order_id
             property_id=payload["hotel_id"],          # Trip.com uses hotel_id
             occurred_at=datetime.fromisoformat(payload["occurred_at"]),
             payload=payload,

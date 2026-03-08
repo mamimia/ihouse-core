@@ -1864,3 +1864,24 @@ Result: 396 passed, 2 skipped.
 
 
 
+
+## Phase 68 — booking_id Stability (Closed)
+
+Introduced `booking_identity.py` — a pure, deterministic normalization module for `reservation_ref` values.
+
+All 5 OTA adapters now call `normalize_reservation_ref(provider, raw_ref)` in `normalize()` before constructing `reservation_id`. The locked formula `booking_id = {source}_{reservation_ref}` (Phase 36) is unchanged.
+
+Files added:
+- `src/adapters/ota/booking_identity.py` — `normalize_reservation_ref` + `build_booking_id`
+- `tests/test_booking_identity_contract.py` — 30 contract tests
+
+Files modified:
+- `src/adapters/ota/bookingcom.py` — normalize() uses normalize_reservation_ref
+- `src/adapters/ota/expedia.py` — normalize() uses normalize_reservation_ref
+- `src/adapters/ota/airbnb.py` — normalize() uses normalize_reservation_ref
+- `src/adapters/ota/agoda.py` — normalize() uses normalize_reservation_ref (booking_ref)
+- `src/adapters/ota/tripcom.py` — normalize() uses normalize_reservation_ref (order_id)
+- `docs/core/improvements/future-improvements.md` — DLQ items (Phases 39-41) and booking_id Stability marked resolved
+
+Result: 431 passed, 2 skipped.
+No Supabase schema changes.

@@ -2,25 +2,32 @@
 
 ## Current Active Phase
 
-Phase 64 — Enhanced Health Check (closed)
+Phase 68 — booking_id Stability (closed)
 
 ## Last Closed Phase
 
-Phase 64 — Enhanced Health Check
+Phase 68 — booking_id Stability
 
 ## Current Objective
 
-Phase 65 — Financial Data Foundation (next phase for new chat).
-See `handoff_to_new_chat.md` and `docs/core/improvements/future-improvements.md`.
+Phase 69 — TBD.
+See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)
 
 - `apply_envelope` is the single write authority — no adapter reads/writes booking_state directly
 - `event_log` is append-only
-- `booking_id = "{source}_{reservation_ref}"` — deterministic, canonical
+- `booking_id = "{source}_{reservation_ref}"` — deterministic, canonical (Phase 36)
+- `reservation_ref` is normalized by `normalize_reservation_ref()` before use (Phase 68)
 - HTTP endpoint routes through `ingest_provider_event` → pipeline → `IngestAPI.append_event` → `CoreExecutor.execute` → `apply_envelope`
 - `tenant_id` comes from verified JWT `sub` claim, NOT from payload body (Phase 61+)
 - `booking_state` is an operational read model ONLY — must never contain financial calculations (Phase 62+ invariant)
+
+## Key Files — Booking Identity Layer (Phase 68)
+
+| File | Role |
+|------|------|
+| `src/adapters/ota/booking_identity.py` | `normalize_reservation_ref(provider, raw_ref)` + `build_booking_id(source, ref)` |
 
 ## Key Files — HTTP API Layer (Phases 58–64)
 
@@ -31,6 +38,7 @@ See `handoff_to_new_chat.md` and `docs/core/improvements/future-improvements.md`
 | `src/api/auth.py` | JWT auth dependency |
 | `src/api/rate_limiter.py` | Per-tenant rate limiting |
 | `src/api/health.py` | Dependency health checks (Phase 64) |
+| `src/api/financial_router.py` | `GET /financial/{booking_id}` (Phase 67) |
 | `src/schemas/responses.py` | OpenAPI Pydantic response models (Phase 63) |
 
 ## Environment Variables
@@ -47,4 +55,5 @@ See `handoff_to_new_chat.md` and `docs/core/improvements/future-improvements.md`
 
 ## Tests
 
-320 passing (2 pre-existing SQLite skips, unrelated)
+431 passing (2 pre-existing SQLite skips, unrelated)
+

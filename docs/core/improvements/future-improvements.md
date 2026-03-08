@@ -140,32 +140,36 @@ append-only historical records in `docs/core/phase-timeline.md`.
 
 
 ### DLQ Controlled Replay
-- status: open
+- status: resolved
 - discovered_in: Phase 38
+- resolved_in: Phase 39
 - source_context: DLQ rows are preserved but currently unactionable
 - priority: high
-- notes: [Claude] Now that ota_dead_letter exists, the next step is a safe, controlled replay mechanism that reads specific rows from ota_dead_letter and re-processes them through the canonical ingest pipeline (skill → apply_envelope). Replay must never bypass apply_envelope. Replay must be manually triggered, not automatic. Replay must be idempotent — re-running the same DLQ row must be safe. A replay_id or replay_at timestamp should be written back to the DLQ row after successful replay.
+- notes: [Claude] Phase 39 implemented replay_dlq_row: reads ota_dead_letter, resolves skill, calls apply_envelope with new idempotency key, persists replayed_at/replay_result/replay_trace_id back to row. Never bypasses apply_envelope. Idempotent — re-running APPLIED row is a no-op.
 
 ### DLQ Observability and Alerting
-- status: open
+- status: resolved
 - discovered_in: Phase 38
+- resolved_in: Phase 40 (ota_dlq_summary view, dlq_inspector.py), Phase 41 (dlq_alerting.py, DLQ_ALERT_THRESHOLD)
 - source_context: operational visibility on rejected OTA events
 - priority: medium
-- notes: [Claude] ota_dead_letter is queryable but has no alerting. Future work should add: (1) a daily summary of rejection counts by event_type and rejection_code, (2) alerting when DLQ rows exceed a threshold, (3) a read-only dashboard view on existing Supabase Studio. Must not add new write paths.
+- notes: [Claude] Phase 40 added ota_dlq_summary view (group by event_type/rejection_code, pending/replayed counts) and dlq_inspector.py (get_pending_count, get_replayed_count, get_rejection_breakdown). Phase 41 added dlq_alerting.py: check_dlq_threshold emits WARNING to stderr when pending >= threshold. Configurable via DLQ_ALERT_THRESHOLD env var (default 10).
 
 ### Idempotent DLQ Replay Tracking
-- status: open
+- status: resolved
 - discovered_in: Phase 38
+- resolved_in: Phase 39
 - source_context: safe replay from DLQ
 - priority: medium
-- notes: [Claude] When DLQ replay is implemented, the ota_dead_letter table should include: replayed_at (timestamptz), replay_result (text), replay_trace_id (text). This allows operators to see which DLQ rows have been successfully replayed and which remain pending. Must be added via a migration, not by mutating the original preserved envelope.
+- notes: [Claude] Phase 39 added replayed_at (timestamptz), replay_result (text), replay_trace_id (text) columns to ota_dead_letter (migration: 20260308174500_phase39_dlq_replay_columns.sql). Replay outcome is written back after every replay attempt.
 
 ### booking_id Stability Across Provider Schema Changes
-- status: open
+- status: resolved
 - discovered_in: Phase 36
+- resolved_in: Phase 68
 - source_context: booking_id is derived from provider-supplied fields
 - priority: medium
-- notes: [Claude] The canonical booking_id rule is {source}_{reservation_ref}. If an OTA provider changes the format of reservation_ref (e.g., strips a prefix, changes encoding), the same booking will generate a different booking_id and bypass the existing dedup. Future work should consider a stable booking identity layer that canonicalizes reservation_ref before inclusion in booking_id.
+- notes: [Claude] Phase 68 introduced booking_identity.py with normalize_reservation_ref(provider, raw_ref) — strips whitespace, lowercases, and applies per-provider prefix stripping (bookingcom: BK-, agoda: AGD-/AG-, tripcom: TC-). All 5 adapters now call normalize_reservation_ref() in normalize() before constructing reservation_id. The locked formula booking_id = {source}_{reservation_ref} (Phase 36) is unchanged. 30 contract tests cover all providers, determinism, and edge cases.
 
 ### BOOKING_AMENDED Support
 - status: open
