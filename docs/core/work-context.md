@@ -2,23 +2,19 @@
 
 ## Current Active Phase
 
-Phase 43 — booking_state Status Verification
+Phase 44 — OTA Ordering Buffer
 
 ## Last Closed Phase
 
-Phase 42 — Reservation Amendment Discovery
+Phase 43 — booking_state Status Verification
 
 ## Current Objective
 
-Phase 42 identified a gap: "booking_state has no explicit status column." Investigation revealed the column already exists in the schema and is set by apply_envelope. What was actually missing is verification and exposure.
+Introduce a minimal ordering buffer layer for OTA events that are rejected with `BOOKING_NOT_FOUND` because they arrived before the corresponding `BOOKING_CREATED`.
 
-This phase:
-1. Verifies that apply_envelope correctly sets status='active' on BOOKING_CREATED and status='canceled' on BOOKING_CANCELED (E2E)
-2. Adds a Python read function `get_booking_status(booking_id)` to expose status for future amendment guards
-3. Adds contract tests for the status read function
-4. Updates future-improvements.md and the amendment prerequisites table
+Currently those events go to `ota_dead_letter` (DLQ, Phase 38) where they sit passively. Phase 44 adds a structured buffer table that tags BOOKING_NOT_FOUND rejections as ordering-blocked and makes them queryable by booking_id — so that when BOOKING_CREATED eventually arrives, the system can find and replay them.
 
-This phase is a verification + thin read layer phase. No schema changes.
+This phase covers: buffer table + write + read. Auto-trigger on CREATED is Phase 45.
 
 ## Locked Architectural Reality
 
@@ -34,27 +30,27 @@ Supabase is canonical.
 
 External systems must never bypass the canonical apply gate.
 
-## Permanent Invariants
+## Phase 44 Scope
 
-- event_log is append-only
-- events are immutable
-- booking_state is derived from events only
-- apply_envelope is the only write authority
-- adapters must not read booking_state
-- adapters must not reconcile booking history
-- adapters must not mutate canonical state
-- adapters must not bypass apply_envelope
-- provider-specific logic must remain isolated from the shared pipeline
-- MODIFY remains deterministic reject-by-default
+1. Supabase table `ota_ordering_buffer`:
+   - References `ota_dead_letter.id`
+   - `booking_id` — the booking that needs to exist first
+   - `event_type` — the buffered event type
+   - `buffered_at` — when buffered
+   - `status`: `waiting` | `replayed` | `expired`
 
-## Phase 43 Scope
+2. `src/adapters/ota/ordering_buffer.py`:
+   - `buffer_event(dlq_row_id, booking_id, event_type, client=None)` — write buffer row
+   - `get_buffered_events(booking_id, client=None) → list[dict]` — read waiting rows for booking_id
+   - `mark_replayed(buffer_id, client=None)` — update status after replay
 
-1. E2E verification: confirm apply_envelope sets status=active/canceled correctly
-2. `src/adapters/ota/booking_status.py`: `get_booking_status(booking_id, client=None) → str | None`
-3. Contract tests: returns correct status / returns None for unknown booking / read-only guard
-4. Update amendment prerequisites in future-improvements.md
+3. Contract tests:
+   - buffer_event writes correct row
+   - get_buffered_events returns only 'waiting' rows for a booking_id
+   - mark_replayed updates status
+   - empty result for unknown booking_id
 
 Out of scope:
-- Writing to booking_state directly
-- Reading booking_state inside the ingestion path (adapters must not read state)
-- Implementing BOOKING_AMENDED
+- auto-trigger on BOOKING_CREATED (Phase 45)
+- actual replay calls from within ordering buffer (replay is dlq_replay.py)
+- TTL/expiry logic (future)

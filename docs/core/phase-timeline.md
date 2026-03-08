@@ -1570,3 +1570,25 @@ Outcome:
 
 Next phase:
 Phase 44 — TBD (Amendment prerequisite: Normalized AmendmentPayload, or external event ordering buffer)
+## Phase 44 — OTA Ordering Buffer (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 44 introduced the ordering buffer — a structured staging area for out-of-order OTA events that arrived before their prerequisite BOOKING_CREATED.
+
+Completed:
+- [Claude]
+- Migration: ota_ordering_buffer table with FK, status constraint, index, RLS
+- ordering_buffer.py: buffer_event, get_buffered_events, mark_replayed
+- 10 contract tests
+- E2E verified on live Supabase
+
+Outcome:
+- 86 tests pass
+- Ordering-blocked events now explicitly tracked by booking_id
+- Auto-trigger on BOOKING_CREATED is Phase 45
+
+Next phase:
+Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED

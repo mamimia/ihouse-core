@@ -669,3 +669,20 @@ Result:
 booking_state.status is verified. get_booking_status() is available for future amendment lifecycle guard.
 76 tests pass (2 pre-existing SQLite failures unrelated).
 No schema changes. No migration.
+## Phase 44 — OTA Ordering Buffer (Closed)
+
+Completed:
+
+- [Claude]
+- Migration: `ota_ordering_buffer` table — FK to ota_dead_letter, booking_id, event_type, status (waiting|replayed|expired), RLS, index ix_ordering_buffer_booking_waiting
+- implemented `src/adapters/ota/ordering_buffer.py`:
+  - buffer_event(dlq_row_id, booking_id, event_type, client) → int
+  - get_buffered_events(booking_id, client) → list[dict] (only 'waiting' rows)
+  - mark_replayed(buffer_id, client) → None
+- 10 contract tests — buffer write, field validation, status filter, empty result, mark_replayed table/filter/value
+- E2E: buffer → waiting read → mark_replayed → empty confirmed on live Supabase
+
+Result:
+
+Out-of-order OTA events (BOOKING_NOT_FOUND) can now be explicitly buffered by booking_id. When BOOKING_CREATED arrives (Phase 45), the buffer is queryable and ready for replay.
+86 tests pass (2 pre-existing SQLite failures unrelated).
