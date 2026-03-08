@@ -2,68 +2,68 @@
 
 ## Current Active Phase
 
-Phase 46 — System Health Check
+Phase 47 — OTA Payload Boundary Validation
 
 ## Last Closed Phase
 
-Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED
+Phase 46 — System Health Check
 
 ## Current Objective
 
-Every production SaaS company (Stripe, Twilio, Airbnb) has a single callable that gives operators a complete picture of system health in under a second. Before expanding to new event kinds (BOOKING_AMENDED), iHouse Core needs exactly that.
+Every production-grade API (Stripe, Twilio, Airbnb) validates inputs at the boundary before they touch the canonical system. Currently, malformed OTA payloads (missing reservation_id, invalid occurred_at, unknown provider) flow silently into the pipeline and fail deep inside normalize() or apply_envelope.
 
-Build a consolidated `system_health_check()` that verifies every component in the
-canonical pipeline: Supabase connectivity, DLQ status, ordering buffer, threshold
-alerting — and returns a structured readiness report.
+Phase 47 introduces an explicit, structured validation layer at the OTA boundary.
 
-## Why Now
+This is different from the existing `validator.py` (which validates semantic ClassifiedBookingEvent kinds). This validates the **raw incoming webhook payload** before normalization.
 
-Phase 45 closed the ordering loop. The DLQ, replay, and buffer layers are now complete.
+## Why This Is the Right Next Step
 
-Before adding any new event kind (BOOKING_AMENDED) or going to production:
-1. Operators need one call to verify system readiness
-2. CI/CD needs a smoke-test function it can invoke
-3. SREs need a structured report to diagnose issues in seconds
+1. Without boundary validation, any malformed payload can corrupt the pipeline silently
+2. This is a prerequisite for BOOKING_AMENDED — amendment payloads must be validated
+3. Stripe validates every webhook at the boundary before processing
+4. It creates an explicit contract between OTA providers and the system
 
 ## Scope
 
-### `src/adapters/ota/health_check.py`
+### `src/adapters/ota/payload_validator.py`
 
 ```python
 @dataclass(frozen=True)
-class ComponentStatus:
-    name: str
-    ok: bool
-    detail: str
+class PayloadValidationResult:
+    valid: bool
+    errors: list[str]
+    provider: str
+    event_type_raw: str | None
 
-@dataclass(frozen=True)
-class HealthReport:
-    ok: bool
-    components: list[ComponentStatus]
-    dlq_pending: int
-    ordering_buffer_pending: int
-    timestamp: str
-
-def system_health_check(client=None) -> HealthReport
+def validate_ota_payload(provider: str, payload: dict) -> PayloadValidationResult
 ```
 
-#### Components checked:
-1. **supabase_connectivity** — can we reach the DB? (SELECT 1 via booking_state count)
-2. **dlq_table** — ota_dead_letter is accessible
-3. **ordering_buffer_table** — ota_ordering_buffer is accessible
-4. **dlq_threshold** — DLQ pending < DLQ_ALERT_THRESHOLD (from env)
-5. **ordering_buffer_waiting** — how many events are waiting in the buffer
+#### Rules validated:
 
-#### `ok` field:
-- True only if ALL components are ok AND dlq_threshold not exceeded
+| Rule | Error |
+|------|-------|
+| provider must be non-empty string | PROVIDER_REQUIRED |
+| payload must be a dict | PAYLOAD_MUST_BE_DICT |
+| reservation_id must be present and non-empty | RESERVATION_ID_REQUIRED |
+| tenant_id must be present and non-empty | TENANT_ID_REQUIRED |
+| occurred_at must be present and parseable as ISO datetime | OCCURRED_AT_INVALID |
+| event_type/type/action must be present | EVENT_TYPE_REQUIRED |
 
-### Contract tests:
-- all components healthy → ok=True
-- supabase unreachable → ok=False, component detail shows error
-- DLQ threshold exceeded → ok=False, detail shows count
-- ordering buffer with waiting events → reported but does NOT fail ok alone
-- frozen dataclass fields correct
+#### Integration:
+
+Called at the top of `process_ota_event` in `pipeline.py`, before `normalize()`.
+If validation fails → raise `ValueError(f"OTA payload validation failed: {errors}")`.
+
+#### Contract tests:
+- valid payload → valid=True, errors=[]
+- missing reservation_id → valid=False, RESERVATION_ID_REQUIRED in errors
+- missing tenant_id → valid=False
+- invalid occurred_at → valid=False, OCCURRED_AT_INVALID
+- missing event_type → valid=False, EVENT_TYPE_REQUIRED
+- empty provider → valid=False, PROVIDER_REQUIRED
+- multiple errors collected at once (not fail-fast)
+- pipeline.py raises on invalid payload
 
 Out of scope:
-- HTTP endpoint (that is infrastructure concern, not domain logic)
-- external alerting (Phase 41 already handles notifications)
+- provider-specific field validation (Booking.com vs Expedia)
+- payload signature verification (separate phase)

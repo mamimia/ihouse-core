@@ -50,13 +50,19 @@ def test_process_ota_event_preserves_ordered_shared_pipeline(monkeypatch) -> Non
     monkeypatch.setattr(pipeline_module, "validate_classified_event", fake_validate_classified_event)
     monkeypatch.setattr(pipeline_module, "validate_canonical_envelope", fake_validate_canonical_envelope)
 
-    payload = {"event_id": "evt_001", "event_type": "created"}
+    payload = {
+        "event_id": "evt_001",
+        "event_type": "created",
+        "reservation_id": "res_001",
+        "occurred_at": "2026-03-08T10:00:00Z",
+    }
 
     result = pipeline_module.process_ota_event(
         provider="bookingcom",
         payload=payload,
         tenant_id="tenant_001",
     )
+
 
     assert result is ENVELOPE
     assert calls == [
@@ -66,6 +72,8 @@ def test_process_ota_event_preserves_ordered_shared_pipeline(monkeypatch) -> Non
             {
                 "event_id": "evt_001",
                 "event_type": "created",
+                "reservation_id": "res_001",
+                "occurred_at": "2026-03-08T10:00:00Z",
                 "tenant_id": "tenant_001",
             },
         ),

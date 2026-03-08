@@ -1635,3 +1635,25 @@ Outcome:
 
 Next phase:
 Phase 47 — TBD (Normalized AmendmentPayload / OTA Payload Validation)
+## Phase 47 — OTA Payload Boundary Validation (Closed)
+
+Status:
+Closed
+
+Rationale:
+Every production API validates inputs at the boundary before canonical processing. Phase 47 adds explicit, structured validation before normalize() — rejections now have error codes, not opaque stack traces.
+
+Completed:
+- [Claude]
+- payload_validator.py: PayloadValidationResult frozen dataclass, validate_ota_payload with 6 rules, all errors collected
+- pipeline.py: boundary validation at top of process_ota_event
+- 16 contract tests
+- Updated pre-existing pipeline test for backward compat
+
+Outcome:
+- 119 tests pass
+- BOOKING_AMENDED prerequisite: normalized validation layer now exists
+- Amendment payloads can use same validator skeleton when implemented
+
+Next phase:
+Phase 48 — TBD

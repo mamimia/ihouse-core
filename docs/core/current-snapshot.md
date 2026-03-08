@@ -1,44 +1,43 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 47 — TBD
+Phase 48 — TBD
 
 ## Last Closed Phase
-Phase 46 — System Health Check
+Phase 47 — OTA Payload Boundary Validation
 
 ## System Status
 
-**The system is production-ready for the current feature set.**
+**The system is production-hardened for the current feature set.**
 
-`apply_envelope` remains the only authority allowed to mutate canonical booking state.
+apply_envelope is the only authority allowed to mutate canonical booking state.
 
-Health check verified live: OVERALL OK ✅ — all 5 components green.
+Health check: OVERALL OK ✅
 
-## Phase 46 Result
+## Phase 47 Result
 
 [Claude]
 
-Rationale: Large SaaS companies build health checks before expanding feature surface.
+**Module:** `payload_validator.py`
 
-**Module:** `health_check.py`
+6 validation rules at the OTA boundary, before normalize():
 
-```
-system_health_check() → HealthReport
-  ├─ ✅ supabase_connectivity
-  ├─ ✅ ota_dead_letter
-  ├─ ✅ ota_ordering_buffer
-  ├─ ✅ dlq_threshold (pending < threshold)
-  └─ ✅ ordering_buffer_waiting (informational)
-```
+| Rule | Error Code |
+|------|-----------|
+| provider is non-empty | `PROVIDER_REQUIRED` |
+| payload is a dict | `PAYLOAD_MUST_BE_DICT` |
+| reservation_id present and non-empty | `RESERVATION_ID_REQUIRED` |
+| tenant_id present and non-empty | `TENANT_ID_REQUIRED` |
+| occurred_at parseable as ISO datetime | `OCCURRED_AT_INVALID` |
+| event_type / type / action / event / status present | `EVENT_TYPE_REQUIRED` |
 
-- `HealthReport` and `ComponentStatus` are frozen dataclasses
-- Never raises — all exceptions caught per component
-- E2E live: OVERALL OK ✅
+All errors collected together (not fail-fast). Integrated at top of `process_ota_event`.
 
 ## Full OTA Adapter Layer
 
 | Module | Role |
 |--------|------|
+| `payload_validator.py` | boundary validation ← NEW |
 | `dead_letter.py` | preserve rejected events |
 | `dlq_replay.py` | controlled replay → apply_envelope |
 | `dlq_inspector.py` | read-only DLQ observability |
@@ -46,12 +45,14 @@ system_health_check() → HealthReport
 | `booking_status.py` | read booking lifecycle status |
 | `ordering_buffer.py` | ordering buffer: write, read, mark |
 | `ordering_trigger.py` | auto-trigger replay on BOOKING_CREATED |
-| `health_check.py` | consolidated system readiness check ← NEW |
+| `health_check.py` | consolidated system readiness check |
 
 ## Tests
-**103 passing** (2 pre-existing SQLite failures, unrelated)
+**119 passing** (2 pre-existing SQLite failures, unrelated)
 
 ## BOOKING_AMENDED Prerequisites: 5/10
+
+(unchanged — validator skeleton now exists for amendment payloads when needed)
 
 | Prerequisite | Status |
 |-------------|--------|
@@ -67,7 +68,6 @@ system_health_check() → HealthReport
 | Idempotency key for amendments | ❌ |
 
 ## Canonical Invariants
-
 - event_log is append-only
 - events are immutable
 - booking_state is projection-only

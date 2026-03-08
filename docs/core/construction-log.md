@@ -728,3 +728,26 @@ Result:
 Operators can call system_health_check() and get a structured readiness report in under a second.
 103 tests pass (2 pre-existing SQLite failures unrelated).
 No Supabase migrations. No new tables.
+## Phase 47 — OTA Payload Boundary Validation (Closed)
+
+Rationale:
+
+Every production API (Stripe, Twilio) validates inputs at the boundary before the canonical system. Previously, malformed OTA payloads could fail deep inside pipeline with opaque errors. Phase 47 makes rejections explicit and structured at the entry point.
+
+Completed:
+
+- [Claude]
+- implemented `src/adapters/ota/payload_validator.py`:
+  - PayloadValidationResult (frozen dataclass): valid, errors, provider, event_type_raw
+  - validate_ota_payload(provider, payload) → PayloadValidationResult
+  - 6 rules: PROVIDER_REQUIRED, PAYLOAD_MUST_BE_DICT, RESERVATION_ID_REQUIRED, TENANT_ID_REQUIRED, OCCURRED_AT_INVALID, EVENT_TYPE_REQUIRED
+  - All errors collected together (not fail-fast)
+  - Accepts event_type / type / action / event / status as alternatives
+- integrated into pipeline.py at top of process_ota_event (before normalize)
+- 16 contract tests: valid payload, each rule, multi-error, frozen dataclass, alternative event_type fields, pipeline raises on invalid
+- Updated test_ota_pipeline_contract.py to include required fields (backward compat fix)
+- 119 tests pass (2 pre-existing SQLite failures unrelated)
+
+Result:
+
+Malformed OTA payloads are caught at the boundary with structured error codes before touching the canonical pipeline. This is a prerequisite for BOOKING_AMENDED support.
