@@ -1754,3 +1754,14 @@ HTTP status codes locked:
 - 500 INTERNAL_ERROR — unexpected exception (internals never surfaced)
 
 Result: 286 passed, 2 skipped.
+
+## Phase 59 — FastAPI App Entrypoint (Closed)
+
+Created src/main.py — unified production entrypoint.
+
+Files added:
+- src/main.py — FastAPI app with lifespan, GET /health, mounts webhooks router
+- tests/test_main_app.py — 6 contract tests
+
+app/main.py unchanged.
+Result: 292 passed, 2 skipped.

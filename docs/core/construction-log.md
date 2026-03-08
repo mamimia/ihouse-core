@@ -1069,3 +1069,35 @@ Also updated stale docs (not updated since Phase 51):
 - docs/core/live-system.md
 
 Next phase: Phase 59 — TBD
+
+## Phase 59 — FastAPI App Entrypoint (Closed)
+
+Rationale:
+
+Phase 58 delivered the webhook router but had no host app.
+Phase 59 creates src/main.py — the unified production entrypoint.
+
+Completed:
+
+- src/main.py: FastAPI app (title="iHouse Core", version="0.1.0")
+  - lifespan context manager (startup + shutdown logs)
+  - GET /health → 200 {"status": "ok", "version": "0.1.0", "env": "<env>"}
+  - Mounts api.webhooks.router (POST /webhooks/{provider})
+  - __main__ block: uvicorn.run with IHOUSE_ENV-aware reload
+  - No auth middleware yet (Phase 61), no logging middleware yet (Phase 60)
+- tests/test_main_app.py: 6 contract tests
+  - GET /health → 200, body fields present
+  - POST /webhooks/bookingcom routes correctly through assembled app
+  - Unknown route → 404 not 500
+  - /health requires no auth
+  - app.title == "iHouse Core"
+  - app.version == "0.1.0"
+
+Result:
+
+292 tests pass (292 passed, 2 skipped).
+No canonical business semantics changed.
+No new Supabase tables or migrations.
+app/main.py unchanged.
+
+Next phase: Phase 60 — Structured request logging middleware
