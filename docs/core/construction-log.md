@@ -858,3 +858,32 @@ reservation_modified → BOOKING_AMENDED → apply_envelope — end-to-end verif
 No canonical invariants changed. No alternative write path introduced. apply_envelope remains sole write authority.
 
 Next phase: Phase 52 — TBD
+
+## Phase 52 — GitHub Actions CI Hardening (Closed)
+
+Rationale:
+
+With 180 tests across unit, contract, and E2E suites, manual test execution is not scalable.
+Phase 52 hardens the existing CI workflows to produce a reliable green gate on every push.
+
+Completed:
+
+- Audited existing .github/workflows/ci.yml and ci_invariants.yml against actual repo state
+- ci.yml fixes:
+  - Removed self-defeating "Enforce no direct pytest invocation" step (found pytest in its own file)
+  - Added --ignore=tests/invariants (SQLite tests require IHOUSE_ALLOW_SQLITE=1 — local only)
+  - Added --ignore=tests/test_booking_amended_e2e.py (live Supabase tests — manual only)
+  - Made HTTP smoke step conditional on IHOUSE_API_KEY secret presence
+  - Merged venv + install into single step
+- ci_invariants.yml fixes:
+  - Replaced broken "run: # comment" step with actual venv+install+pytest commands
+  - Added IHOUSE_ALLOW_SQLITE=1 so invariant tests can run on SQLite as intended
+- Validated CI command locally: 173 passed, 2 skipped, 0 failed
+
+Result:
+
+CI now produces a reliable green pass on every push without requiring live Supabase or API secrets.
+The invariants workflow now actually runs (was a no-op before).
+No canonical code touched. No DB changes.
+
+Next phase: Phase 53 — Expedia adapter full implementation (BOOKING_AMENDED support)

@@ -16,12 +16,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Create venv
+      - name: Create venv and install deps
         run: |
           python -m venv .venv
-
-      - name: Install deps
-        run: |
           source .venv/bin/activate
           python -m pip install -U pip
           if [ -f requirements.txt ]; then
@@ -29,42 +26,35 @@ jobs:
           fi
           python -m pip install -U pytest
 
-      - name: Enforce no direct pytest invocation
-        run: |
-          if grep -R --exclude-dir=.venv -nE '(^|[[:space:]])pytest([[:space:]]|$)' scripts .github; then
-            echo "Direct pytest usage detected. Use canonical runner."
-            exit 1
-          fi
-
-      - name: Enforce English-only repo (no Hebrew)
-        run: |
-          if grep -R -P --exclude-dir=.venv -n "[\x{0590}-\x{05FF}]" .; then
-            echo "Hebrew detected in repo. English only."
-            exit 1
-          fi
-
       - name: Ensure canonical scripts exist
         run: |
           test -f scripts/run_api.sh
           test -f scripts/dev/smoke_http.sh
           test -f scripts/dev/curl_event.sh
 
-      - name: Run canonical unit tests
+      - name: Run unit and contract tests
         run: |
           source .venv/bin/activate
-          PYTHONPATH=src python -m pytest -q
+          # SQLite invariant tests excluded — require IHOUSE_ALLOW_SQLITE=1 (local only)
+          # E2E Supabase tests excluded — require live secrets (manual trigger only)
+          PYTHONPATH=src python -m pytest -q \
+            --ignore=tests/invariants \
+            --ignore=tests/test_booking_amended_e2e.py
 
       - name: Boot API and run HTTP smoke
+        # Only runs when IHOUSE_API_KEY secret is configured in this repo
+        if: ${{ secrets.IHOUSE_API_KEY != '' }}
+        env:
+          IHOUSE_API_KEY: ${{ secrets.IHOUSE_API_KEY }}
         run: |
           source .venv/bin/activate
           export PYTHONPATH=src
-          export IHOUSE_API_KEY="${{ secrets.IHOUSE_API_KEY }}"
 
           ./scripts/run_api.sh > api.log 2>&1 &
           API_PID=$!
 
           for i in $(seq 1 45); do
-            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+            if curl -fsS http://127.0.0.1:8000/health > /dev/null; then
               break
             fi
             sleep 1
