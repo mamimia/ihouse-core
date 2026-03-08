@@ -1477,3 +1477,25 @@ Outcome:
 
 Next phase:
 Phase 40 — TBD
+## Phase 40 — DLQ Observability (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 40 introduced a read-only inspection layer for ota_dead_letter, making DLQ state visible to operators via a Supabase view and Python utility functions.
+
+Completed:
+- [Claude]
+- Migration: ota_dlq_summary view — groups by event_type + rejection_code, counts total/pending/replayed
+- dlq_inspector.py: get_pending_count(), get_replayed_count(), get_rejection_breakdown()
+- 11 contract tests, all unit-mocked
+- E2E verified against live Supabase
+
+Outcome:
+- 54 tests pass (2 pre-existing SQLite failures unrelated)
+- No write paths added
+- No booking_state reads
+
+Next phase:
+Phase 41 — DLQ Alerting Threshold

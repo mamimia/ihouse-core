@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 40 — TBD
+Phase 41 — DLQ Alerting Threshold
 
 ## Last Closed Phase
-Phase 39 — DLQ Controlled Replay
+Phase 40 — DLQ Observability
 
 ## System Status
 
@@ -12,32 +12,33 @@ The deterministic event architecture remains fully operational.
 
 `apply_envelope` remains the only authority allowed to mutate canonical booking state.
 
-Rejected OTA events are preserved in `ota_dead_letter` and can now be replayed through `replay_dlq_row(row_id)` back through the canonical pipeline.
+The DLQ layer (Phases 38-40) is now complete:
+- rejected events preserved (`dead_letter.py`)
+- replay available (`dlq_replay.py`)
+- observability available (`dlq_inspector.py` + `ota_dlq_summary` view)
 
-## Phase 39 Result
+## Phase 40 Result
 
 [Claude]
 
-**Migration:** `replayed_at`, `replay_result`, `replay_trace_id` added to `ota_dead_letter`.
+**Migration:** `ota_dlq_summary` view created in Supabase — groups `ota_dead_letter` rows by `event_type` + `rejection_code`, with `total`, `pending`, `replayed` counts.
 
-**Module:** `src/adapters/ota/dlq_replay.py` — `replay_dlq_row(row_id)`:
-- reads specific DLQ row
-- idempotency guard: already-applied rows return previous result, no re-processing
-- new idempotency key per replay (`dlq-replay-{id}-{hex}`) — never reuses original key
-- always routes through `apply_envelope` — never bypasses canonical gate
-- writes outcome back: `replayed_at`, `replay_result`, `replay_trace_id`
+**Module:** `src/adapters/ota/dlq_inspector.py`:
+- `get_pending_count()` → int
+- `get_replayed_count()` → int
+- `get_rejection_breakdown()` → list[dict] from `ota_dlq_summary`
 
-E2E verified: BOOKING_CREATED → BOOKING_CANCELED_IN_DLQ → `replay_dlq_row` → `APPLIED` + idempotent second replay.
+E2E verified: 3 pending rows, 1 replayed, breakdown visible by provider/rejection type.
 
-No automatic retry introduced. No canonical write path bypassed.
+## DLQ Layer Summary (Phases 38-40)
 
-## DLQ Layer Summary (Phases 38-39)
-
-| Component | Where |
-|-----------|-------|
-| `ota_dead_letter` table | Supabase — append-only, RLS |
-| `dead_letter.py` | best-effort write on rejection |
-| `dlq_replay.py` | safe, idempotent, manual replay |
+| Component | Where | What |
+|-----------|-------|------|
+| `ota_dead_letter` table | Supabase | append-only, RLS |
+| `ota_dlq_summary` view | Supabase | read-only grouped summary |
+| `dead_letter.py` | `src/adapters/ota/` | best-effort write on rejection |
+| `dlq_replay.py` | `src/adapters/ota/` | safe, idempotent, manual replay |
+| `dlq_inspector.py` | `src/adapters/ota/` | read-only inspection |
 
 ## Canonical External OTA Events
 
@@ -67,9 +68,9 @@ Business Identity
 
 ## Known Open Gaps (Deferred)
 
-| Gap | Current Behavior | Priority |
-|-----|-----------------|----------|
-| Out-of-order events (CANCELED before CREATED) | Deterministic rejection → DLQ preserved → manual replay available | high |
-| DLQ Observability & Alerting | Not implemented | medium |
-| External Event Ordering Buffer | Not implemented | high |
-| booking_id Stability Across Provider Schema Changes | Not implemented | medium |
+| Gap | Status | Priority |
+|-----|--------|----------|
+| DLQ Alerting Threshold | Phase 41 next | medium |
+| External Event Ordering Buffer | deferred | high |
+| booking_id Stability Across Provider Schema Changes | deferred | medium |
+| Reservation Amendment (BOOKING_AMENDED) | blocked — discovery needed | low |

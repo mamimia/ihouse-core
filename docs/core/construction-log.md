@@ -588,3 +588,21 @@ DLQ rows are now actionable. Operators can replay specific rejected OTA events t
 No canonical business semantics changed.
 No automatic retry was introduced.
 No canonical write path was bypassed.
+## Phase 40 — DLQ Observability (Closed)
+
+Completed:
+
+- [Claude]
+- Supabase view `ota_dlq_summary` created via migration `20260308184200_phase40_dlq_summary_view.sql`
+- implemented `src/adapters/ota/dlq_inspector.py`: get_pending_count(), get_replayed_count(), get_rejection_breakdown()
+- 11 contract tests added (all unit/mocked, no live Supabase required)
+- E2E verified: inspector returned live data (3 pending, 1 replayed, breakdown by event_type + rejection_code)
+
+Result:
+
+DLQ is now observable. Operators can query pending rejections, replay history, and rejection breakdown using dlq_inspector.py or the ota_dlq_summary view directly in Supabase Studio.
+54 tests pass (2 pre-existing SQLite failures unrelated).
+
+No write paths added.
+No booking_state reads added.
+No canonical event behaviour changed.

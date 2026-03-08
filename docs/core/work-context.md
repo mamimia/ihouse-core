@@ -2,22 +2,21 @@
 
 ## Current Active Phase
 
-Phase 39 — DLQ Controlled Replay
+Phase 40 — DLQ Observability
 
 ## Last Closed Phase
 
-Phase 38 — Dead Letter Queue for Failed OTA Events
+Phase 39 — DLQ Controlled Replay
 
 ## Current Objective
 
-Implement a safe, manually-triggered, idempotent replay mechanism that reads specific rows from `ota_dead_letter` and re-processes them through the canonical ingest pipeline — without bypassing `apply_envelope`.
+Make the Dead Letter Queue visible and operational. Operators currently have no way to know how many events are in the DLQ, what types of rejections are happening, or which rows have been replayed. This phase adds a read-only inspection layer.
 
-This phase is an implementation phase.
+This phase is a read-only observability phase.
 
-It is not an automatic retry system.
-It is not a reconciliation phase.
-It is not an amendment phase.
-It must not introduce any new canonical write path.
+It must not add new write paths.
+It must not read booking_state.
+It must not modify canonical event behaviour.
 
 ## Locked Architectural Reality
 
@@ -46,42 +45,23 @@ External systems must never bypass the canonical apply gate.
 - provider-specific logic must remain isolated from the shared pipeline
 - MODIFY remains deterministic reject-by-default
 
-## Current OTA Runtime Boundary
+## DLQ State After Phase 38-39
 
-The verified runtime handoff remains:
+ota_dead_letter columns:
+- id, received_at, provider, event_type, rejection_code, rejection_msg
+- envelope_json, emitted_json, trace_id
+- replayed_at, replay_result, replay_trace_id
 
-ingest_provider_event  
-→ process_ota_event  
-→ canonical envelope  
-→ IngestAPI.append_event  
-→ CoreExecutor.execute  
-→ apply_envelope
+## Phase 40 Scope
 
-## Phase 38 Closed Finding
+1. Supabase SQL view `ota_dlq_summary` — rejection counts grouped by event_type and rejection_code
+2. Python read-only utility `src/adapters/ota/dlq_inspector.py`:
+   - `get_pending_count()` → int: rows where replay_result IS NULL or not in APPLIED set
+   - `get_replayed_count()` → int: rows where replay_result in APPLIED set
+   - `get_rejection_breakdown()` → list[dict]: grouped by event_type + rejection_code
+3. Contract tests (unit, mocked — no live Supabase required)
 
-[Claude]
-
-`ota_dead_letter` table created. Rejected OTA events are now preserved.
-
-DLQ write is best-effort, non-blocking, never bypasses apply_envelope.
-
-E2E verified: BOOKING_CANCELED before BOOKING_CREATED → BOOKING_NOT_FOUND → DLQ row written.
-
-DLQ rows are currently preserved but unactionable.
-
-## Phase 39 Scope
-
-### What this phase implements:
-
-1. **Replay migration**: add `replayed_at`, `replay_result`, `replay_trace_id` columns to `ota_dead_letter`
-2. **`replay_dlq_row(row_id)`**: Python function that reads one DLQ row, re-runs the skill, calls `apply_envelope`, and writes replay outcome back to the DLQ row
-3. **Idempotency**: if a row has already been successfully replayed, re-running must be safe (idempotent)
-4. **Contract tests**: verify replay behavior, idempotency, and outcome persistence
-
-### What this phase does NOT implement:
-
-- automatic retry scheduling
-- bulk replay without operator control
-- bypassing apply_envelope
-- reading booking_state inside the adapter
-- new canonical event kinds
+Out of scope:
+- alerting thresholds (Phase 41)
+- automatic retry
+- any write to ota_dead_letter beyond what already exists
