@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 36 — TBD
+Phase 37 — TBD
 
 ## Last Closed Phase
-Phase 35 — OTA Canonical Emitted Event Alignment Implementation
+Phase 36 — Business Identity Canonicalization
 
 ## System Status
 
@@ -12,27 +12,30 @@ The deterministic event architecture remains fully operational.
 
 The canonical database gate (`apply_envelope`) remains the only authority allowed to mutate booking state.
 
-OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` now reach `apply_envelope` through the canonical emitted business event contract. The Phase 34 alignment gap is resolved.
+OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` reach `apply_envelope` through the canonical emitted business event contract.
 
-## Phase 35 Result
+Business identity is deterministic. Business dedup is enforced by `apply_envelope`.
+
+## Phase 36 Result
 
 [Claude]
 
-Phase 35 implemented the minimal alignment defined by Phase 34.
+Phase 36 verified and formally documented the canonical `booking_id` construction rule.
 
-Two new skills were implemented:
-- `booking_created`: transforms OTA envelope payload into canonical `BOOKING_CREATED` emitted event shape
-- `booking_canceled`: emits `BOOKING_CANCELED` with `booking_id` derived from provider + reservation_id
+**Canonical booking_id rule:** `booking_id = "{source}_{reservation_ref}"`
 
-Registry updates routed `BOOKING_CREATED` and `BOOKING_CANCELED` to the new skills.
+This rule is applied consistently in `booking_created` and `booking_canceled` skills.
 
-E2E verified against live Supabase:
-- `BOOKING_CREATED` → `apply_envelope` returned `status: APPLIED`, `state_upsert_found: true`
-- `BOOKING_CANCELED` → `apply_envelope` returned `status: APPLIED`, `state_upsert_found: true`
+`apply_envelope` enforces business-level dedup in two layers:
+1. By `booking_id` — direct uniqueness check
+2. By composite `(tenant_id, source, reservation_ref, property_id)` — business identity check
+
+E2E verified: a duplicate `BOOKING_CREATED` with a different `request_id` returns `ALREADY_EXISTS` — no new booking_state row is written.
+
+No additional business-idempotency registry is required at this stage.
 
 No canonical business semantics changed.
 No alternative write path was introduced.
-No new canonical event kinds were introduced.
 MODIFY remains deterministic reject-by-default.
 
 ## Canonical External OTA Events
@@ -58,3 +61,7 @@ Write Authority
 Replay Safety
 - duplicate envelopes must not create new events
 - duplicate ingestion must remain idempotent
+
+Business Identity
+- booking_id = "{source}_{reservation_ref}" — deterministic and canonical
+- business-level dedup enforced by apply_envelope at the DB gate

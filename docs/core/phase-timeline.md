@@ -1380,3 +1380,27 @@ Outcome:
 
 Next phase:
 Phase 36 — TBD
+## Phase 36 — Business Identity Canonicalization (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 36 verified and formally documented the canonical booking_id construction rule and confirmed that apply_envelope already provides sufficient business-level duplicate protection.
+
+Confirmed:
+- [Claude]
+- booking_id rule: {source}_{reservation_ref} — deterministic and consistent across all active skills
+- apply_envelope dedup: two layers — by booking_id, and by composite (tenant_id, source, reservation_ref, property_id)
+- E2E verified: duplicate BOOKING_CREATED with different request_id returns ALREADY_EXISTS without writing a new booking_state row
+- backlog items Business Idempotency and Business Identity Enforcement marked resolved
+- Phase 33 follow-up note resolved
+
+Outcome:
+- canonical booking_id rule formally documented
+- no additional business-idempotency registry required at this stage
+- no canonical business semantics changed
+- no alternative write path introduced
+
+Next phase:
+Phase 37 — TBD

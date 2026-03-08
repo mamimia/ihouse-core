@@ -504,3 +504,24 @@ No canonical business semantics changed.
 No alternative write path was introduced.
 No new canonical event kinds were introduced.
 No closed semantic decision was reopened.
+## Phase 36 — Business Identity Canonicalization (Closed)
+
+Completed:
+
+- [Claude]
+- verified booking_id construction rule is deterministic and consistent: {source}_{reservation_ref}
+- verified apply_envelope enforces business-level dedup in two layers: by booking_id and by composite (tenant_id, source, reservation_ref, property_id)
+- E2E tested: duplicate BOOKING_CREATED with different request_id returns ALREADY_EXISTS, no new booking_state row written
+- formally documented canonical booking_id rule
+- resolved backlog items: Business Idempotency Beyond Envelope Idempotency, Business Identity Enforcement
+- resolved Phase 33 follow-up note in future-improvements.md
+
+Result:
+
+The canonical booking_id rule is: booking_id = "{source}_{reservation_ref}".
+apply_envelope already provides sufficient business-level duplicate protection for current OTA identity patterns.
+No additional business-idempotency registry is required at this stage.
+
+No canonical business semantics changed.
+No alternative write path was introduced.
+No closed semantic decision was reopened.

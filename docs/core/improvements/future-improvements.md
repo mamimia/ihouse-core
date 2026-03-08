@@ -56,18 +56,20 @@ append-only historical records in `docs/core/phase-timeline.md`.
 - notes: unify all ordering-related future work here. Covers delayed events, missing events, cancellation before creation, and guarded handling for out-of-order arrival. Must not bypass canonical ingest rules.
 
 ### Business Idempotency Beyond Envelope Idempotency
-- status: deferred
+- status: resolved
 - discovered_in: Phase 21, Phase 27
+- resolved_in: Phase 36
 - source_context: duplicate business events with different envelope identifiers
 - priority: high
-- notes: envelope idempotency covers transport retries only. Future work may add a business-idempotency registry or equivalent guard for repeated OTA-originated events that carry different envelope IDs.
+- notes: [Claude] Phase 36 verified that apply_envelope already provides two layers of business-level dedup: (1) by booking_id, (2) by composite (tenant_id, source, reservation_ref, property_id). E2E test confirmed that a duplicate BOOKING_CREATED with a different request_id returns ALREADY_EXISTS without writing a new booking_state row. No additional business-idempotency registry is required at this stage.
 
 ### Business Identity Enforcement
-- status: deferred
+- status: resolved
 - discovered_in: Phase 21
+- resolved_in: Phase 36
 - source_context: deterministic booking identity hardening
 - priority: high
-- notes: strengthen identity guarantees around tenant, source, reservation reference, and property identity so retries and OTA updates resolve to the same booking deterministically.
+- notes: [Claude] Phase 36 verified and formally documented canonical booking_id rule: booking_id = "{source}_{reservation_ref}". This rule is applied consistently in booking_created and booking_canceled skills, and apply_envelope reads booking_id from the emitted event payload. The combination of deterministic booking_id construction and apply_envelope dedup eliminates the risk of duplicate booking_state writes for the same OTA identity.
 
 ### OTA Schema / Semantic Normalization
 - status: deferred
@@ -149,8 +151,8 @@ this file instead of being added as new backlog content inside
 
 ## Follow-up from Phase 33 — OTA runtime to canonical apply alignment
 
-Phase 33 discovered that canonical Supabase business dedup already exists for canonical emitted business events, but the active OTA runtime path appears misaligned with the canonical emitted event contract expected by `apply_envelope`.
+[Claude] Resolved in Phase 34 (discovery) and Phase 35 (implementation).
 
-Future hardening must verify and align OTA skill routing and emitted event mapping so that OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` reach `apply_envelope` in the canonical business shape required for enforcement.
+Phase 34 proved the routing and emitted-event alignment gap. Phase 35 implemented the minimal fix. Phase 36 confirmed that business identity is deterministic and business dedup is enforced by apply_envelope.
 
-This follow-up is about routing and emitted-event alignment, not reconciliation, amendment handling, adapter-side state mutation, or alternative write paths.
+This follow-up is fully resolved.

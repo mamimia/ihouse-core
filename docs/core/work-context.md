@@ -2,17 +2,17 @@
 
 ## Current Active Phase
 
-Phase 35 — OTA Canonical Emitted Event Alignment Implementation
+Phase 36 — Business Identity Canonicalization
 
 ## Last Closed Phase
 
-Phase 34 — OTA Canonical Event Emission Alignment
+Phase 35 — OTA Canonical Emitted Event Alignment Implementation
 
 ## Current Objective
 
-Implement the minimal routing and emitted-event mapping changes defined by Phase 34 so that OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` reach `apply_envelope` through the canonical emitted business event contract expected by Supabase.
+Verify and document that `booking_id` is constructed deterministically and consistently across the entire active runtime path, and confirm that `apply_envelope` is protected against business-level duplicate bookings with the same identity.
 
-This phase is a minimal implementation phase only.
+This phase is a discovery and documentation phase.
 
 It is not a redesign phase.
 It is not a reconciliation phase.
@@ -56,46 +56,27 @@ ingest_provider_event
 → CoreExecutor.execute  
 → apply_envelope
 
-## Phase 34 Closed Finding
+## Phase 35 Closed Finding
 
 [Claude]
 
-Phase 34 proved a routing and emitted-event alignment gap in the active OTA runtime path.
+Phase 35 resolved the Phase 34 alignment gap.
 
-Phase 34 did not prove an intrinsic failure of canonical Supabase business dedup.
+OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` now reach `apply_envelope` through the canonical emitted business event contract.
 
-Phase 34 did not justify architecture redesign.
+E2E verified against live Supabase: both events returned `status: APPLIED`, `state_upsert_found: true`.
 
-The following evidence was verified by executable inspection:
+## Phase 36 Focus
 
-1. `BOOKING_CREATED` routes to `core.skills.booking_created_noop.skill` which emits zero business events.
+Phase 36 investigates business identity canonicalization.
 
-2. `BOOKING_CANCELED` has no entry in `kind_registry.core.json` and raises `NO_ROUTE` at execution time.
+The active `booking_id` construction rule is: `"{source}_{reservation_ref}"`.
 
-3. The noop skill returns `events_to_emit=[]`, so `apply_envelope` receives an empty `p_emit` array and never activates its canonical `BOOKING_CREATED` business logic (business dedup, overlap check, booking_state write).
+This rule was introduced in Phase 35 but was not formally documented as a canonical invariant.
 
-4. Even if routing were corrected, the OTA adapter canonical envelope payload shape does not match the canonical emitted business event payload shape required by `apply_envelope`. A payload transformation is required.
+Phase 36 must answer:
 
-5. The minimal future alignment change is:
-   - a new `booking_created` skill that transforms the OTA envelope payload into the canonical emitted event shape and emits `BOOKING_CREATED` with the required payload fields
-   - a new `booking_canceled` skill that emits `BOOKING_CANCELED` with `booking_id`
-   - registry updates to route `BOOKING_CREATED` and `BOOKING_CANCELED` to the new skills
-
-## Phase 35 Scope
-
-Implement only the minimal alignment defined by Phase 34:
-
-- new skill: `booking_created`
-- new skill: `booking_canceled`
-- registry updates: `kind_registry.core.json` and `skill_exec_registry.core.json`
-- verification tests
-
-No reconciliation, no amendment handling, no adapter-side state reads, no alternative write paths, no new canonical event kinds.
-
-## Immediate Working Rule
-
-Do not redesign the architecture.
-
-Do not reopen closed phases.
-
-Do only the minimum implementation required to align the active OTA runtime path with the canonical emitted business event contract already enforced by Supabase.
+1. Is `booking_id` construction deterministic and consistent across every active touchpoint (skills, Supabase, tests)?
+2. Does `apply_envelope` enforce uniqueness on `booking_id` at the business level (not just envelope idempotency)?
+3. What happens if the same OTA business fact arrives with a different `request_id`?
+4. Is the current protection sufficient, or is a stronger business-idempotency guard needed?
