@@ -647,3 +647,25 @@ Prerequisites for BOOKING_AMENDED: 3 of 10 satisfied.
 Next recommended phase: Phase 43 — booking_state Status Column (adds explicit ACTIVE/CANCELED status tracking as precondition for amendment lifecycle guard).
 
 MODIFY remains deterministic reject-by-default.
+## Phase 43 — booking_state Status Verification (Closed)
+
+Key correction from Phase 42:
+
+Phase 42 claimed booking_state has no status column. After reading the actual schema SQL, the column already exists and apply_envelope already sets it:
+- BOOKING_CREATED → status = 'active'
+- BOOKING_CANCELED → status = 'canceled'
+
+Completed:
+
+- [Claude]
+- E2E verified: BOOKING_CREATED → status=active, BOOKING_CANCELED → status=canceled on live Supabase ✅
+- implemented `src/adapters/ota/booking_status.py`: get_booking_status(booking_id, client=None) → str | None
+- 9 contract tests: unknown=None, active, canceled, None field, read-only guard (no insert/update/delete), table and field assertions
+- future-improvements.md: added BOOKING_AMENDED Support entry with 4/10 prerequisites satisfied
+- Amendment prerequisites updated: booking_state.status → ✅ (was ❌ in Phase 42 finding)
+
+Result:
+
+booking_state.status is verified. get_booking_status() is available for future amendment lifecycle guard.
+76 tests pass (2 pre-existing SQLite failures unrelated).
+No schema changes. No migration.

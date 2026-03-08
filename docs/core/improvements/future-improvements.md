@@ -158,6 +158,25 @@ append-only historical records in `docs/core/phase-timeline.md`.
 - priority: medium
 - notes: [Claude] The canonical booking_id rule is {source}_{reservation_ref}. If an OTA provider changes the format of reservation_ref (e.g., strips a prefix, changes encoding), the same booking will generate a different booking_id and bypass the existing dedup. Future work should consider a stable booking identity layer that canonicalizes reservation_ref before inclusion in booking_id.
 
+### BOOKING_AMENDED Support
+- status: open
+- discovered_in: Phase 42
+- source_context: Phase 42 investigated all preconditions; Phase 43 verified status column
+- priority: medium
+- prerequisites_satisfied: 4 of 10
+- notes: [Claude] Prerequisites summary:
+  ✅ DLQ infrastructure (Phases 38-39)
+  ✅ booking_id stability (Phase 36, Phase 42 Q7)
+  ✅ MODIFY classification in semantics.py (already exists)
+  ✅ booking_state.status column (already exists: 'active'/'canceled', Phase 43 E2E verified)
+  ❌ Normalized AmendmentPayload schema (provider-agnostic)
+  ❌ apply_envelope BOOKING_AMENDED branch (DDL + stored procedure)
+  ❌ event_kind enum includes BOOKING_AMENDED (DDL)
+  ❌ ACTIVE-state amendment guard in apply_envelope
+  ❌ Amendment replay ordering rule (DLQ replay exists but unordered)
+  ❌ Idempotency key structure for amendments
+  MODIFY remains deterministic reject-by-default until all 10 prerequisites are satisfied.
+
 ## Resolved / No Longer Open
 
 ### OTA External Surface Hardening

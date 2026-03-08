@@ -1545,3 +1545,28 @@ MODIFY remains deterministic reject-by-default.
 
 Next phase:
 Phase 43 — booking_state Status Column
+## Phase 43 — booking_state Status Verification (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 43 corrected a Phase 42 finding: booking_state.status already exists and is correctly managed by apply_envelope. Phase 43 verified this E2E and added a read-only status inspection utility.
+
+Key correction:
+Phase 42 incorrectly claimed status column was missing. The column was always there (status='active' on CREATED, 'canceled' on CANCELED). The gap was in exposure and verification, not in schema.
+
+Completed:
+- [Claude]
+- E2E: status=active after CREATED, status=canceled after CANCELED on live Supabase ✅
+- booking_status.py: get_booking_status(booking_id) — read-only, never used in ingestion path
+- 9 contract tests
+- future-improvements.md: BOOKING_AMENDED prerequisites updated to 4/10
+
+Outcome:
+- 76 tests pass
+- No schema changes
+- Amendment prerequisites: 4/10 satisfied
+
+Next phase:
+Phase 44 — TBD (Amendment prerequisite: Normalized AmendmentPayload, or external event ordering buffer)

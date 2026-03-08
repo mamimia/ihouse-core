@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 43 — booking_state Status Column
+Phase 44 — TBD
 
 ## Last Closed Phase
-Phase 42 — Reservation Amendment Discovery
+Phase 43 — booking_state Status Verification
 
 ## System Status
 
@@ -14,38 +14,40 @@ The deterministic event architecture remains fully operational.
 
 `MODIFY → deterministic reject-by-default` remains in place.
 
-## Phase 42 Result
+## Phase 43 Result
 
-[Claude] — Discovery only, no code.
+[Claude]
 
-Investigated all 7 preconditions for introducing `BOOKING_AMENDED`.
+**Key correction:** Phase 42 incorrectly identified `booking_state.status` as missing. The column already exists and is managed correctly by `apply_envelope`:
+- `BOOKING_CREATED` → `status = 'active'`
+- `BOOKING_CANCELED` → `status = 'canceled'`
 
-### Amendment Prerequisites: 3/10 satisfied
+**E2E verified** on live Supabase: `active → canceled` transition confirmed.
+
+**New module:** `src/adapters/ota/booking_status.py`
+- `get_booking_status(booking_id, client=None) → str | None`
+- Read-only, never used inside the ingestion path
+
+## BOOKING_AMENDED Prerequisites: 4/10
 
 | Prerequisite | Status |
 |-------------|--------|
-| DLQ infrastructure (Phases 38-39) | ✅ Done |
-| booking_id stability across events | ✅ Verified |
-| MODIFY classification in semantics.py | ✅ Exists |
-| Normalized amendment payload schema | ❌ Missing |
-| apply_envelope BOOKING_AMENDED branch | ❌ Missing |
-| event_kind enum includes BOOKING_AMENDED | ❌ Missing |
-| booking_state.status explicit column | ❌ Missing |
-| ACTIVE-state amendment guard | ❌ Missing |
-| Amendment replay ordering rule | ❌ Missing |
-| Idempotency key structure for amendments | ❌ Not defined |
-
-### Key gap identified by Phase 42
-
-`booking_state` has no explicit `status` column. Amendment lifecycle validation (`ACTIVE` required before amending) cannot be enforced without it.
-
-**Phase 43 addresses this gap next.**
+| DLQ infrastructure (Phases 38-39) | ✅ |
+| booking_id stability | ✅ |
+| MODIFY classification (semantics.py) | ✅ |
+| booking_state.status column | ✅ (Phase 43 verified) |
+| Normalized AmendmentPayload schema | ❌ |
+| apply_envelope BOOKING_AMENDED branch | ❌ |
+| event_kind enum: BOOKING_AMENDED | ❌ |
+| ACTIVE-state amendment guard | ❌ |
+| Amendment replay ordering rule | ❌ |
+| Idempotency key for amendments | ❌ |
 
 ## Canonical External OTA Events
 
 - BOOKING_CREATED
 - BOOKING_CANCELED
-- (BOOKING_AMENDED — future, blocked)
+- (BOOKING_AMENDED — future, 4/10 prerequisites met)
 
 ## Canonical Invariants
 
@@ -56,12 +58,12 @@ Investigated all 7 preconditions for introducing `BOOKING_AMENDED`.
 - booking_id = "{source}_{reservation_ref}" — deterministic and canonical
 - MODIFY → deterministic reject-by-default
 
-## Known Open Gaps (Deferred)
+## OTA Adapter Layer Summary
 
-| Gap | Status | Priority |
-|-----|--------|----------|
-| booking_state.status column | Phase 43 next | high |
-| Normalized AmendmentPayload schema | deferred | medium |
-| apply_envelope BOOKING_AMENDED branch | blocked (needs status col first) | medium |
-| External Event Ordering Buffer | deferred | high |
-| booking_id Stability Across Provider Schema Changes | deferred | medium |
+| Module | Role |
+|--------|------|
+| `dead_letter.py` | preserve rejected events |
+| `dlq_replay.py` | controlled replay → apply_envelope |
+| `dlq_inspector.py` | read-only DLQ observability |
+| `dlq_alerting.py` | threshold alerting |
+| `booking_status.py` | read booking lifecycle status (for amendment guards) |

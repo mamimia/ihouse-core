@@ -2,26 +2,23 @@
 
 ## Current Active Phase
 
-Phase 42 — Reservation Amendment Discovery
+Phase 43 — booking_state Status Verification
 
 ## Last Closed Phase
 
-Phase 41 — DLQ Alerting Threshold
+Phase 42 — Reservation Amendment Discovery
 
 ## Current Objective
 
-Discovery phase — no implementation.
+Phase 42 identified a gap: "booking_state has no explicit status column." Investigation revealed the column already exists in the schema and is set by apply_envelope. What was actually missing is verification and exposure.
 
-Investigate what it would take to safely introduce `BOOKING_AMENDED` as a canonical OTA event kind.
+This phase:
+1. Verifies that apply_envelope correctly sets status='active' on BOOKING_CREATED and status='canceled' on BOOKING_CANCELED (E2E)
+2. Adds a Python read function `get_booking_status(booking_id)` to expose status for future amendment guards
+3. Adds contract tests for the status read function
+4. Updates future-improvements.md and the amendment prerequisites table
 
-The current system rule is `MODIFY → deterministic reject-by-default`.
-
-This phase does not lift that rule.
-This phase does not introduce any new event kinds.
-This phase does not modify any database schema.
-This phase does not modify any skill.
-
-The output of this phase is a documented finding set: what we know, what gaps remain, and what must be true before implementation can begin.
+This phase is a verification + thin read layer phase. No schema changes.
 
 ## Locked Architectural Reality
 
@@ -48,18 +45,16 @@ External systems must never bypass the canonical apply gate.
 - adapters must not mutate canonical state
 - adapters must not bypass apply_envelope
 - provider-specific logic must remain isolated from the shared pipeline
-- MODIFY remains deterministic reject-by-default (until this discovery proves otherwise)
+- MODIFY remains deterministic reject-by-default
 
-## Phase 42 Discovery Questions
+## Phase 43 Scope
 
-1. How do OTA providers (Booking.com, Expedia) represent amendment events?
-2. Can amendment intent be classified deterministically at the adapter layer?
-3. What does apply_envelope need to do differently for an amendment vs a creation?
-4. What ordering guarantees are required before amendment is safe?
-5. What state must exist in booking_state before an amendment can be applied?
-6. What invariants could an amendment violate if applied out-of-order?
-7. Is booking_id stable across amendment events from the same provider?
+1. E2E verification: confirm apply_envelope sets status=active/canceled correctly
+2. `src/adapters/ota/booking_status.py`: `get_booking_status(booking_id, client=None) → str | None`
+3. Contract tests: returns correct status / returns None for unknown booking / read-only guard
+4. Update amendment prerequisites in future-improvements.md
 
-## Completion
-
-Phase 42 is complete when all seven questions have documented findings in `phase-42-spec.md`.
+Out of scope:
+- Writing to booking_state directly
+- Reading booking_state inside the ingestion path (adapters must not read state)
+- Implementing BOOKING_AMENDED
