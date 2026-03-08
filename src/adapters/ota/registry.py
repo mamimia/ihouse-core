@@ -5,6 +5,7 @@ from .bookingcom import BookingComAdapter
 from .expedia import ExpediaAdapter
 from .airbnb import AirbnbAdapter
 from .agoda import AgodaAdapter
+from .tripcom import TripComAdapter
 
 
 _ADAPTERS: Dict[str, OTAAdapter] = {
@@ -12,6 +13,7 @@ _ADAPTERS: Dict[str, OTAAdapter] = {
     "expedia": ExpediaAdapter(),
     "airbnb": AirbnbAdapter(),
     "agoda": AgodaAdapter(),
+    "tripcom": TripComAdapter(),
 }
 
 

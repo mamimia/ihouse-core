@@ -974,3 +974,26 @@ All 4 adapters (Booking.com, Expedia, Airbnb, Agoda) at full parity.
 No canonical code touched. No DB changes.
 
 Next phase: Phase 56 — Trip.com adapter
+
+## Phase 56 — Trip.com Adapter (Closed)
+
+Rationale:
+
+Add Trip.com as the fifth full OTA provider adapter.
+
+Completed:
+
+- amendment_extractor.py: extract_amendment_tripcom() reads changes.check_in/check_out/guests/remark + dispatcher
+- src/adapters/ota/tripcom.py: new adapter — order_id → reservation_id, hotel_id → property_id
+- registry.py: registered TripComAdapter
+- semantics.py: added order_created / order_cancelled / order_canceled / order_modified aliases
+- payload_validator.py: Rule 3 extended to accept order_id (Trip.com's reservation token)
+- tests/test_tripcom_contract.py: 18 contract tests + 5-provider cross-isolation
+
+Result:
+
+246 tests pass (CI-safe suite: 246 passed, 2 skipped).
+All 5 OTA adapters at full parity: Booking.com, Expedia, Airbnb, Agoda, Trip.com.
+No canonical code touched. No DB changes.
+
+Next phase: Phase 57 — Hardening (webhook auth, payload signature verification)
