@@ -1101,3 +1101,32 @@ No new Supabase tables or migrations.
 app/main.py unchanged.
 
 Next phase: Phase 60 — Structured request logging middleware
+
+## Phase 60 — Structured Request Logging Middleware (Closed)
+
+Rationale:
+
+Before adding auth (Phase 61), operators need visibility into every request.
+Logging with request_id enables correlation across distributed logs.
+
+Completed:
+
+- src/main.py: added @app.middleware("http") request_logging
+  - UUID4 request_id per request, stored in request.state.request_id
+  - → log line on entry: method + path
+  - ← log line on exit: method + path + status_code + duration_ms
+  - X-Request-ID response header set on every response (200/400/403/404/500)
+  - Unhandled exception caught, logged with traceback, returns 500 safely
+- tests/test_logging_middleware.py: 7 contract tests
+  - X-Request-ID present on 200, health, 403, 400
+  - UUID validity (uuid.UUID parse + version==4)
+  - Different requests get different IDs
+  - No interference with existing endpoints
+
+Result:
+
+299 tests pass (299 passed, 2 skipped).
+No canonical business semantics changed.
+No new Supabase tables or migrations.
+
+Next phase: Phase 61 — JWT Auth Middleware

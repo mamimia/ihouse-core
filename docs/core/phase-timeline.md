@@ -1765,3 +1765,17 @@ Files added:
 
 app/main.py unchanged.
 Result: 292 passed, 2 skipped.
+
+## Phase 60 — Structured Request Logging Middleware (Closed)
+
+Added request logging middleware to src/main.py.
+
+Every request gets:
+- UUID4 request_id (stored in request.state)
+- → entry log line (method + path)
+- ← exit log line (method + path + status + duration_ms)
+- X-Request-ID response header
+
+Files changed: src/main.py (middleware added)
+Files added: tests/test_logging_middleware.py (7 contract tests)
+Result: 299 passed, 2 skipped.
