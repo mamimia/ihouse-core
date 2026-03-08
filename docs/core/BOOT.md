@@ -92,3 +92,15 @@ Do these in order:
 - Do not retry the same approach a third time.
 - List all available alternatives (CLI, MCP, REST, Python, browser) and pick the next best one.
 - `supabase CLI` is always checked before browser automation for any DB operation.
+
+### Context limit — handoff protocol
+- When approaching ~80% of context window capacity, STOP all work immediately.
+- Write a `handoff_to_new_chat.md` in the artifacts directory before context is lost.
+- The handoff must include: current phase, last closed phase, next objective, key files, and any in-progress state.
+- Notify the user explicitly: "Context at ~80% — writing handoff now."
+- Do NOT wait until context is exhausted. Early handoff preserves quality.
+
+### Read before edit
+- For every EXISTING file: always view_file the full content before making any changes.
+- Never overwrite blindly. Understand what is currently there, then make the minimal correct change.
+- New files (create from scratch) are exempt from this rule.
