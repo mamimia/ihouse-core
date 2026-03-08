@@ -622,3 +622,28 @@ Result:
 
 Operators can now call check_dlq_threshold_default() on a schedule and receive a structured WARNING to stderr when unresolved DLQ rows accumulate above threshold.
 67 tests pass (2 pre-existing SQLite failures unrelated).
+## Phase 42 — Reservation Amendment Discovery (Closed)
+
+Type: Discovery only. No code written.
+
+Completed:
+
+- [Claude]
+- Read and analyzed: semantics.py, bookingcom.py, expedia.py, validator.py, apply_envelope SQL
+- Answered all 7 discovery questions; findings documented in phase-42-spec.md
+
+Key findings:
+
+1. MODIFY classification already exists in semantics.py and is deterministic
+2. Both adapters (Booking.com, Expedia) throw ValueError for MODIFY — by design
+3. Amendment payload fields (check_in, check_out, guests) are not normalized — only provider_payload blob
+4. apply_envelope needs: new BOOKING_AMENDED enum kind, lifecycle state guard, field merge logic
+5. booking_state has no explicit 'status' column — lifecycle state must be derived from event log
+6. DLQ layer (Phases 38-39) provides replay infrastructure but no booking-level ordering rule
+7. booking_id is stable across amendment events (Q7: ✅)
+
+Prerequisites for BOOKING_AMENDED: 3 of 10 satisfied.
+
+Next recommended phase: Phase 43 — booking_state Status Column (adds explicit ACTIVE/CANCELED status tracking as precondition for amendment lifecycle guard).
+
+MODIFY remains deterministic reject-by-default.

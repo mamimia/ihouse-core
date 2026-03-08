@@ -1521,3 +1521,27 @@ Outcome:
 
 Next phase:
 Phase 42 — Reservation Amendment Discovery
+## Phase 42 — Reservation Amendment Discovery (Closed)
+
+Status:
+Closed
+
+Type:
+Discovery only — no code, no schema changes, no new tests
+
+Summary:
+Phase 42 systematically investigated all preconditions for introducing BOOKING_AMENDED. Findings show 3 of 10 prerequisites are satisfied and 7 gaps remain.
+
+Key findings:
+- MODIFY classification already in semantics.py (deterministic, stateless)
+- Both adapters already classify MODIFY but reject at to_canonical_envelope
+- Amendment payload structure not normalized across providers
+- apply_envelope needs: BOOKING_AMENDED enum + lifecycle guard + field merge branch
+- booking_state has no explicit status column (ACTIVE/CANCELED)
+- DLQ replay exists but has no booking-level ordering constraint
+- booking_id is stable across amendment events ✅
+
+MODIFY remains deterministic reject-by-default.
+
+Next phase:
+Phase 43 — booking_state Status Column

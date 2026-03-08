@@ -2,17 +2,26 @@
 
 ## Current Active Phase
 
-Phase 41 — DLQ Alerting Threshold
+Phase 42 — Reservation Amendment Discovery
 
 ## Last Closed Phase
 
-Phase 40 — DLQ Observability
+Phase 41 — DLQ Alerting Threshold
 
 ## Current Objective
 
-Add a configurable threshold check on the DLQ pending count. When the number of unresolved DLQ rows exceeds a configured limit, emit a structured warning log. This gives operators an early signal before problems compound.
+Discovery phase — no implementation.
 
-This phase is a read-only alerting layer. No new write paths. No new Supabase tables.
+Investigate what it would take to safely introduce `BOOKING_AMENDED` as a canonical OTA event kind.
+
+The current system rule is `MODIFY → deterministic reject-by-default`.
+
+This phase does not lift that rule.
+This phase does not introduce any new event kinds.
+This phase does not modify any database schema.
+This phase does not modify any skill.
+
+The output of this phase is a documented finding set: what we know, what gaps remain, and what must be true before implementation can begin.
 
 ## Locked Architectural Reality
 
@@ -39,24 +48,18 @@ External systems must never bypass the canonical apply gate.
 - adapters must not mutate canonical state
 - adapters must not bypass apply_envelope
 - provider-specific logic must remain isolated from the shared pipeline
-- MODIFY remains deterministic reject-by-default
+- MODIFY remains deterministic reject-by-default (until this discovery proves otherwise)
 
-## Phase 41 Scope
+## Phase 42 Discovery Questions
 
-1. `src/adapters/ota/dlq_alerting.py`:
-   - `check_dlq_threshold(threshold: int, client=None) -> DLQAlertResult`
-   - `DLQAlertResult`: dataclass with `pending_count`, `threshold`, `exceeded`, `message`
-   - if `pending_count >= threshold` → `exceeded=True`, emit structured WARNING to stderr
-   - configurable default threshold via env var `DLQ_ALERT_THRESHOLD` (default: 10)
+1. How do OTA providers (Booking.com, Expedia) represent amendment events?
+2. Can amendment intent be classified deterministically at the adapter layer?
+3. What does apply_envelope need to do differently for an amendment vs a creation?
+4. What ordering guarantees are required before amendment is safe?
+5. What state must exist in booking_state before an amendment can be applied?
+6. What invariants could an amendment violate if applied out-of-order?
+7. Is booking_id stable across amendment events from the same provider?
 
-2. Contract tests:
-   - threshold not exceeded → exceeded=False, no warning
-   - threshold exceeded → exceeded=True, warning emitted to stderr
-   - threshold boundary (pending==threshold) → exceeded=True
-   - default threshold from env var
-   - zero pending → never exceeded
+## Completion
 
-Out of scope:
-- external alerting (webhook, email, Slack)
-- automatic retry
-- any writes
+Phase 42 is complete when all seven questions have documented findings in `phase-42-spec.md`.
