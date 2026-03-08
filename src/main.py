@@ -32,6 +32,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.webhooks import router as webhooks_router
+from schemas.responses import ErrorResponse, HealthResponse
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -61,10 +62,55 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 # App
 # ---------------------------------------------------------------------------
 
+_DESCRIPTION = """
+## iHouse Core — OTA Webhook Ingestion API
+
+Canonical event pipeline for property management.
+All OTA provider webhooks enter the system through this API,
+passing through signature verification, JWT auth, rate limiting,
+and payload validation before being written to the event log.
+
+### Request Flow
+
+```
+POST /webhooks/{provider}
+  → HMAC signature verification   (403)
+  → JWT auth (tenant_id from sub) (403)
+  → Per-tenant rate limiting      (429 + Retry-After)
+  → Payload validation            (400)
+  → Canonical event pipeline      (200 + idempotency_key)
+```
+
+### Authentication
+
+All webhook endpoints require a valid **Bearer JWT** token.
+The `sub` claim is used as `tenant_id`.
+In development mode (`IHOUSE_JWT_SECRET` not set), auth is bypassed.
+
+### Supported Providers
+
+`bookingcom` · `expedia` · `airbnb` · `agoda` · `tripcom`
+"""
+
+_TAGS = [
+    {"name": "ops", "description": "Operational endpoints (health, status). No authentication required."},
+    {"name": "webhooks", "description": "OTA provider webhook ingestion. JWT Bearer + HMAC signature required."},
+]
+
 app = FastAPI(
     title="iHouse Core",
     version="0.1.0",
-    description="OTA webhook ingestion and canonical event pipeline",
+    description=_DESCRIPTION,
+    contact={
+        "name": "iHouse Engineering",
+        "url": "https://github.com/mamimia/ihouse-core",
+    },
+    license_info={
+        "name": "Proprietary",
+    },
+    openapi_tags=_TAGS,
+    docs_url="/docs",
+    redoc_url="/redoc",
     lifespan=lifespan,
 )
 
@@ -73,6 +119,39 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 
 app.include_router(webhooks_router)
+
+
+# ---------------------------------------------------------------------------
+# OpenAPI — inject BearerAuth security scheme (Phase 63)
+# ---------------------------------------------------------------------------
+
+def _custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        contact=app.contact,
+        license_info=app.license_info,
+        tags=app.openapi_tags,
+        routes=app.routes,
+    )
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": (
+            "HMAC-HS256 signed JWT. The `sub` claim is used as `tenant_id`. "
+            "Set `IHOUSE_JWT_SECRET` to enable; omit for dev-mode bypass."
+        ),
+    }
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi  # type: ignore[method-assign]
 
 
 # ---------------------------------------------------------------------------
@@ -129,13 +208,19 @@ async def request_logging(request: Request, call_next):  # type: ignore[name-def
     return response
 
 
-@app.get("/health", tags=["ops"])
+@app.get(
+    "/health",
+    tags=["ops"],
+    summary="Liveness check",
+    response_model=HealthResponse,
+    responses={
+        200: {"model": HealthResponse, "description": "Service is up"},
+    },
+)
 async def health() -> JSONResponse:
     """
     Liveness check. No authentication required.
-
-    Returns:
-        200 {"status": "ok", "version": "0.1.0", "env": "<env>"}
+    Returns service version and deployment environment.
     """
     return JSONResponse(
         status_code=200,

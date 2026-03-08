@@ -51,6 +51,12 @@ from adapters.ota.signature_verifier import (
     get_signature_header_name,
     verify_webhook_signature,
 )
+from schemas.responses import (
+    ErrorResponse,
+    RateLimitErrorResponse,
+    ValidationErrorResponse,
+    WebhookAcceptedResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +67,48 @@ router = APIRouter()
 # POST /webhooks/{provider}
 # ---------------------------------------------------------------------------
 
-@router.post("/webhooks/{provider}")
+@router.post(
+    "/webhooks/{provider}",
+    tags=["webhooks"],
+    summary="Ingest OTA provider webhook event",
+    response_model=WebhookAcceptedResponse,
+    responses={
+        200: {
+            "model": WebhookAcceptedResponse,
+            "description": "Event accepted and queued for canonical processing",
+        },
+        400: {
+            "model": ValidationErrorResponse,
+            "description": "Payload validation failed — all errors returned (not fail-fast)",
+        },
+        403: {
+            "model": ErrorResponse,
+            "description": "Signature verification failed or JWT auth rejected",
+        },
+        429: {
+            "model": RateLimitErrorResponse,
+            "description": "Per-tenant rate limit exceeded — see Retry-After header",
+            "headers": {
+                "Retry-After": {
+                    "description": "Seconds to wait before retrying",
+                    "schema": {"type": "integer"},
+                }
+            },
+        },
+        500: {
+            "model": ErrorResponse,
+            "description": "Unexpected internal error — no internal details leaked",
+        },
+    },
+    openapi_extra={
+        "security": [{"BearerAuth": []}],
+        "x-provider-notes": (
+            "Signature header name is provider-specific: "
+            "X-Booking-Signature / X-Expedia-Signature / X-Airbnb-Signature / "
+            "X-Agoda-Signature / X-TripCom-Signature"
+        ),
+    },
+)
 async def receive_webhook(
     provider: str,
     request: Request,
@@ -71,14 +118,17 @@ async def receive_webhook(
     """
     Receive and ingest an OTA provider webhook event.
 
-    Args:
-        provider:  OTA provider slug (bookingcom, expedia, airbnb, agoda, tripcom)
-        request:   Incoming HTTP request — raw body is read before JSON parsing
-        tenant_id: Extracted from verified JWT sub claim (via jwt_auth Depends)
-        _:         Rate limit gate — raises 429 if tenant exceeds RPM quota
+    **Supported providers:** `bookingcom` · `expedia` · `airbnb` · `agoda` · `tripcom`
 
-    Returns:
-        JSONResponse with status code and body as described in module docstring.
+    **Authentication:** Bearer JWT token required (HMAC-HS256, `sub` claim = `tenant_id`).
+    In development mode (`IHOUSE_JWT_SECRET` not set), auth is bypassed.
+
+    **Signature verification:** Each provider uses a dedicated HMAC-SHA256 signature header.
+    Secret is read from `IHOUSE_WEBHOOK_SECRET_{PROVIDER}` env var.
+    In development mode (secret not set), verification is skipped.
+
+    **Rate limiting:** 60 req/min per tenant (configurable via `IHOUSE_RATE_LIMIT_RPM`).
+    Responds with `429` and `Retry-After` header on excess.
     """
     # ------------------------------------------------------------------
     # Step 1 — Read raw body (must happen before json.loads)

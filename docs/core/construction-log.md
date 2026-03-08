@@ -1195,3 +1195,34 @@ Phases 59-62 summary:
   60 — Request logging middleware (X-Request-ID)
   61 — JWT auth (tenant_id from sub claim)
   62 — Per-tenant rate limiting (sliding window, 429 + Retry-After)
+
+## Phase 63 — OpenAPI Docs (Closed)
+
+Rationale:
+
+External teams and tooling need a machine-readable, accurate API spec.
+FastAPI auto-generates /docs and /redoc but the content was minimal.
+Phase 63 enriches the spec to production quality.
+
+Completed:
+
+- src/schemas/__init__.py: new package
+- src/schemas/responses.py: Pydantic models for all HTTP response bodies
+  - HealthResponse, WebhookAcceptedResponse, ErrorResponse,
+    ValidationErrorResponse, RateLimitErrorResponse
+- src/main.py: full OpenAPI metadata
+  - _DESCRIPTION: markdown description of system + request flow
+  - contact, license_info, openapi_tags
+  - BearerAuth HTTPBearer security scheme injected via custom openapi()
+- src/api/webhooks.py: POST /webhooks/{provider}
+  - tags, summary, response_model
+  - responses: 200/400/403/429/500 with model + description
+  - 429 includes Retry-After header documented
+  - openapi_extra with security + x-provider-notes
+  - Docstring rewritten as markdown (rendered in /docs)
+- src/main.py: GET /health enriched with response_model and responses dict
+
+Result:
+
+313 tests pass (313 passed, 2 skipped).
+No business logic changes. /docs and /redoc now production-quality.
