@@ -772,3 +772,28 @@ Completed:
 Result:
 
 All OTA idempotency keys are now namespaced, collision-safe, and deterministic. The format is stable and ready for BOOKING_AMENDED keys when implemented.
+## Phase 49 — Normalized AmendmentPayload Schema (Closed)
+
+Rationale:
+
+Before adding BOOKING_AMENDED to apply_envelope, we need a canonical, provider-agnostic amendment payload structure. Booking.com puts amendment data in new_reservation_info, Expedia puts it in changes.dates. Phase 50 cannot know about provider-specific shapes.
+
+Completed:
+
+- [Claude]
+- Added AmendmentFields (frozen=True) to schemas.py:
+  - new_check_in: Optional[str]
+  - new_check_out: Optional[str]
+  - new_guest_count: Optional[int]
+  - amendment_reason: Optional[str]
+- implemented `src/adapters/ota/amendment_extractor.py`:
+  - extract_amendment_bookingcom(payload) → reads new_reservation_info
+  - extract_amendment_expedia(payload) → reads changes.dates, changes.guests
+  - normalize_amendment(provider, payload) → dispatcher; raises on unknown provider
+  - helpers: _nonempty, _int_or_none
+- 15 contract tests: frozen schema, both extractors, missing fields as None, coercion, unknown provider, case-insensitive dispatch, return type
+- 153 tests pass
+
+Result:
+
+The normalized AmendmentPayload schema is defined. Both adapters have a tested extraction path. Phase 50 can now implement apply_envelope BOOKING_AMENDED branch using AmendmentFields as the canonical input.

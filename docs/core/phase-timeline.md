@@ -1680,3 +1680,24 @@ Outcome:
 
 Next phase:
 Phase 49 — TBD
+## Phase 49 — Normalized AmendmentPayload Schema (Closed)
+
+Status:
+Closed
+
+Rationale:
+Before apply_envelope can handle BOOKING_AMENDED, the system needs a canonical, provider-agnostic schema for what changed in an amendment.
+
+Completed:
+- [Claude]
+- AmendmentFields frozen dataclass (schemas.py): new_check_in, new_check_out, new_guest_count, amendment_reason
+- amendment_extractor.py: Booking.com and Expedia extractors + normalize_amendment dispatcher
+- 15 contract tests
+
+Outcome:
+- 153 tests pass
+- BOOKING_AMENDED prerequisites: 7/10 (Normalized Schema ✅)
+- Phase 50 can implement apply_envelope BOOKING_AMENDED branch
+
+Next phase:
+Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch

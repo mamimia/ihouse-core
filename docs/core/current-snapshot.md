@@ -1,41 +1,64 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 49 — TBD
+Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch
 
 ## Last Closed Phase
-Phase 48 — Idempotency Key Standardization
+Phase 49 — Normalized AmendmentPayload Schema
 
 ## System Status
 
-**The system is production-hardened.**
+**The system is production-hardened and amendment-ready.**
 
 apply_envelope is the only authority for canonical state mutations.
 
-Health check: OVERALL OK ✅ on live Supabase.
+Health check: OVERALL OK ✅
 
-## Phase 48 Result
+## Phase 49 Result
 
 [Claude]
 
-**Problem:** Raw `external_event_id` as idempotency key → cross-provider collisions possible.
+**AmendmentFields** (frozen dataclass) added to `schemas.py`:
 
-**Solution:** `generate_idempotency_key(provider, event_id, event_type)` — namespaced, deterministic, lowercase.
+| Field | Type | Description |
+|-------|------|-------------|
+| `new_check_in` | `Optional[str]` | ISO date |
+| `new_check_out` | `Optional[str]` | ISO date |
+| `new_guest_count` | `Optional[int]` | integer |
+| `amendment_reason` | `Optional[str]` | provider note |
 
-**Format:** `{provider}:{event_type}:{event_id}`
+**amendment_extractor.py:**
 
-**Examples:**
-- `bookingcom:booking_created:ev_001`
-- `expedia:booking_canceled:xid-9182`
+| Function | Maps from |
+|----------|-----------|
+| `extract_amendment_bookingcom` | `new_reservation_info` |
+| `extract_amendment_expedia` | `changes.dates` / `changes.guests` |
+| `normalize_amendment` | dispatcher (raises on unknown) |
 
-Now: same `ev_001` from Booking.com and Expedia → **different keys** ✅
+## BOOKING_AMENDED Prerequisites: 7/10 ✅
+
+| Prerequisite | Status |
+|-------------|--------|
+| DLQ infrastructure | ✅ |
+| booking_id stability | ✅ |
+| MODIFY classification | ✅ |
+| booking_state.status | ✅ |
+| Ordering infrastructure | ✅ |
+| Idempotency key format | ✅ |
+| Normalized AmendmentPayload | ✅ ← Phase 49 |
+| event_kind enum: BOOKING_AMENDED | ❌ (Phase 50) |
+| apply_envelope BOOKING_AMENDED branch | ❌ (Phase 50) |
+| ACTIVE-state lifecycle guard | ❌ (Phase 50) |
+
+**3 prerequisites remain — all DDL/stored-procedure layer.**
 
 ## Full OTA Adapter Layer
 
 | Module | Role |
 |--------|------|
-| `idempotency.py` | namespaced key generation + validation ← NEW |
+| `idempotency.py` | namespaced key generation + validation |
 | `payload_validator.py` | boundary validation |
+| `amendment_extractor.py` | amendment normalization ← NEW |
 | `dead_letter.py` | preserve rejected events |
 | `dlq_replay.py` | controlled replay → apply_envelope |
 | `dlq_inspector.py` | read-only DLQ observability |
@@ -46,29 +69,4 @@ Now: same `ev_001` from Booking.com and Expedia → **different keys** ✅
 | `health_check.py` | consolidated system readiness check |
 
 ## Tests
-**138 passing** (2 pre-existing SQLite failures, unrelated)
-
-## BOOKING_AMENDED Prerequisites: 5/10 + idempotency format ✅
-
-| Prerequisite | Status |
-|-------------|--------|
-| DLQ infrastructure | ✅ |
-| booking_id stability | ✅ |
-| MODIFY classification | ✅ |
-| booking_state.status | ✅ |
-| Ordering infrastructure | ✅ |
-| Idempotency key format (now standardized) | ✅ ← Phase 48 |
-| Normalized AmendmentPayload | ❌ |
-| apply_envelope BOOKING_AMENDED branch | ❌ |
-| event_kind enum: BOOKING_AMENDED | ❌ |
-| ACTIVE-state guard | ❌ |
-
-**6/10 prerequisites now satisfied.**
-
-## Canonical Invariants
-- event_log is append-only
-- events are immutable
-- booking_state is projection-only
-- apply_envelope is the only write authority
-- booking_id = "{source}_{reservation_ref}" — deterministic and canonical
-- MODIFY → deterministic reject-by-default
+**153 passing** (2 pre-existing SQLite failures, unrelated)

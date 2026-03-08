@@ -2,54 +2,52 @@
 
 ## Current Active Phase
 
-Phase 48 — Idempotency Key Standardization
+Phase 49 — Normalized AmendmentPayload Schema
 
 ## Last Closed Phase
 
-Phase 47 — OTA Payload Boundary Validation
+Phase 48 — Idempotency Key Standardization
 
 ## Current Objective
 
-Stripe's idempotency model is one of the most studied in the industry. Their keys are:
-- Namespaced (no cross-provider collision)
-- Deterministic (same input → same key, always)
-- Validated before use
+Before adding BOOKING_AMENDED to apply_envelope (Phase 50), we need a canonical, provider-agnostic amendment payload structure. Currently, Booking.com puts amendment data in `new_reservation_info`, Expedia puts it in `changes.dates`. Phase 50 cannot know about provider-specific shapes.
 
-Currently, iHouse Core uses `external_event_id` directly as the idempotency key in both adapters. This is fragile:
-- Two providers can emit the same `event_id` string for different events
-- Booking.com `ev_001` and Expedia `ev_001` would collide
-- `event_id` from Booking.com is raw from the webhook — no namespace, no type disambiguation
+Phase 49 defines the normalized schema and builds extractor functions for each provider.
 
-Phase 48 standardizes idempotency keys across all OTA adapters.
+This is a Python-only phase. No DDL changes.
 
 ## Scope
 
-### `src/adapters/ota/idempotency.py`
+### `src/adapters/ota/schemas.py` — add `AmendmentFields`:
 
 ```python
-def generate_idempotency_key(provider: str, event_id: str, event_type: str) -> str
-    # Format: "{provider}:{event_type}:{event_id}" (lowercase, colon-separated)
-    # Example: "bookingcom:booking_created:ev_001"
-
-def validate_idempotency_key(key: str) -> bool
-    # Returns True if key matches "{string}:{string}:{string}" pattern
-    # Returns False for empty, None, or wrong format
+@dataclass(frozen=True)
+class AmendmentFields:
+    new_check_in: str | None      # ISO date string or None
+    new_check_out: str | None
+    new_guest_count: int | None
+    amendment_reason: str | None  # optional provider note
 ```
 
-### Update adapters:
+### `src/adapters/ota/amendment_extractor.py`:
 
-- `bookingcom.py` → `to_canonical_envelope()` → use `generate_idempotency_key(...)` instead of `external_event_id`
-- `expedia.py` → same
+```python
+def extract_amendment_bookingcom(provider_payload: dict) -> AmendmentFields
+def extract_amendment_expedia(provider_payload: dict) -> AmendmentFields
+def normalize_amendment(provider: str, payload: dict) -> AmendmentFields
+    # dispatches to the correct extractor by provider
+    # raises ValueError for unknown provider
+```
 
 ### Contract tests:
-- known input → expected key format
-- different providers → different keys
-- same event_id on two providers → different keys (no collision)
-- same event_id, different event_type → different keys
-- validate_idempotency_key accepts valid, rejects empty/malformed
-- adapters emit correct key format after update
+- Booking.com payload with new_reservation_info → correct AmendmentFields
+- Expedia payload with changes.dates → correct AmendmentFields
+- Missing fields → None (not raised — fields are optional)
+- Unknown provider → ValueError
+- AmendmentFields is frozen dataclass
+- normalize_amendment dispatches correctly
 
 Out of scope:
-- idempotency key TTL/expiry
-- response caching
-- cross-phase dedup check at Python layer (apply_envelope already handles this at DB level)
+- DDL changes
+- apply_envelope modifications (Phase 50)
+- BOOKING_AMENDED in event_kind enum (Phase 50)

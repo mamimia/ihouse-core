@@ -47,3 +47,27 @@ class CanonicalEnvelope:
     occurred_at: datetime
     payload: Dict[str, Any]
     idempotency_key: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class AmendmentFields:
+    """
+    Canonical, provider-agnostic amendment field container.
+
+    Represents WHAT changed in a booking amendment, independent of
+    the OTA provider's payload structure.
+
+    All fields are Optional — a provider may send only a partial
+    amendment (e.g. only dates, not guest count).
+
+    This is the normalized output of amendment_extractor.py and
+    the canonical input to apply_envelope when BOOKING_AMENDED is
+    implemented (Phase 50).
+
+    Immutable: created once, never mutated.
+    """
+
+    new_check_in: Optional[str]       # ISO date string e.g. "2026-09-01"
+    new_check_out: Optional[str]      # ISO date string e.g. "2026-09-05"
+    new_guest_count: Optional[int]    # integer guest count or None
+    amendment_reason: Optional[str]   # provider-supplied note, or None
