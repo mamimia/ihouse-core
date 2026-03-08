@@ -59,11 +59,18 @@ def ingest_provider_event_with_dlq(
         tenant_id=tenant_id,
     )
 
+    # Phase 76: recorded_at = server wall-clock at ingestion time.
+    # This is DIFFERENT from occurred_at (business event time from OTA provider).
+    # recorded_at is always set by OUR server and is never overridable by the payload.
+    from datetime import datetime, timezone as _tz
+    _recorded_at = datetime.now(_tz.utc).isoformat().replace("+00:00", "Z")
+
     envelope_dict = {
         "type": envelope.type,
         "idempotency": {"request_id": envelope.idempotency_key or ""},
         "payload": envelope.payload,
         "occurred_at": envelope.occurred_at.isoformat() if hasattr(envelope.occurred_at, "isoformat") else str(envelope.occurred_at),
+        "recorded_at": _recorded_at,
     }
 
     try:

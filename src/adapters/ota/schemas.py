@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 if TYPE_CHECKING:
     from .financial_extractor import BookingFinancialFacts
@@ -44,13 +44,21 @@ class ClassifiedBookingEvent:
 class CanonicalEnvelope:
     """
     Canonical envelope that enters the core ingestion system.
+
+    Separation (Phase 76):
+      occurred_at  — ISO datetime str from the OTA provider — business event time
+      recorded_at  — ISO datetime str set by OUR server when the event is received
+
+    recorded_at is always the server wall-clock at ingest time and is never
+    overridable by the OTA provider payload.
     """
 
     tenant_id: str
     type: str
-    occurred_at: datetime
+    occurred_at: Union[datetime, str]
     payload: Dict[str, Any]
     idempotency_key: Optional[str] = None
+    recorded_at: Optional[str] = None  # Phase 76: server ingestion timestamp (ISO UTC)
 
 
 @dataclass(frozen=True)

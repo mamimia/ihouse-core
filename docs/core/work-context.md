@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 75 — Production Hardening: API Error Standards (closed)
+Phase 76 — occurred_at vs recorded_at Separation (closed)
 
 ## Last Closed Phase
 
-Phase 75 — Production Hardening: API Error Standards
+Phase 76 — occurred_at vs recorded_at Separation
 
 ## Current Objective
 
-Phase 76 — TBD.
+Phase 77 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)

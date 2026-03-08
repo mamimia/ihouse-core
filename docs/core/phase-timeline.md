@@ -1995,3 +1995,17 @@ Files modified:
 - `tests/test_admin_router_contract.py` — code → error assertions
 
 Result: 533 passed, 2 skipped.
+
+## Phase 76 — occurred_at vs recorded_at Separation (Closed)
+
+Introduced `recorded_at` (server ingestion timestamp) distinct from `occurred_at` (OTA business event time).
+
+Files modified:
+- `src/adapters/ota/schemas.py` — CanonicalEnvelope.recorded_at: Optional[str] = None
+- `src/adapters/ota/service.py` — stamps recorded_at = utcnow() on every envelope_dict
+
+Files added:
+- `tests/test_recorded_at_separation_contract.py` — 12 contract tests
+- `docs/archive/phases/phase-76-spec.md`
+
+Result: 545 passed, 2 skipped.
