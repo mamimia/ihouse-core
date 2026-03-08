@@ -997,3 +997,36 @@ All 5 OTA adapters at full parity: Booking.com, Expedia, Airbnb, Agoda, Trip.com
 No canonical code touched. No DB changes.
 
 Next phase: Phase 57 — Hardening (webhook auth, payload signature verification)
+
+## Phase 57 — Webhook Signature Verification (Closed)
+
+Rationale:
+
+Security hardening — 5 adapters with no signature verification is a critical gap.
+Any attacker could send fake webhooks. HMAC-SHA256 closes this entirely.
+
+Completed:
+
+- src/adapters/ota/signature_verifier.py:
+  - verify_webhook_signature(provider, raw_body, signature_header) — main entry point
+  - compute_expected_signature() — test fixture helper
+  - get_signature_header_name() — utility
+  - SignatureVerificationError — raised only when secret configured + sig wrong
+  - Dev mode: secret not set → skip with warning (no CI breakage)
+  - Constant-time comparison via hmac.compare_digest() (timing attack safe)
+  - sha256= prefix stripped before comparison
+- tests/test_signature_verifier.py: 24 tests
+  - Dev-mode skip (2): no secret → no raise
+  - Correct signature (3): with prefix, without prefix, with whitespace
+  - Wrong signature (4): tampered body, wrong secret, missing header, garbage
+  - Unknown provider (1): ValueError not SignatureVerificationError
+  - All 5 providers (10): skip + verify parametrized
+  - Header names (2)
+  - compute_expected_signature (2)
+
+Result:
+
+270 tests pass (270 passed, 2 skipped).
+Pipeline not yet wired to HTTP layer — Phase 58 will integrate into FastAPI/handler.
+
+Next phase: Phase 58 — HTTP ingestion layer (FastAPI endpoint) with signature verification
