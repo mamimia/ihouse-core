@@ -26,6 +26,11 @@ Note on tenant_id:
     Phase 61: sourced from JWT Bearer token (sub claim) via verify_jwt Depends.
     Dev mode: if IHOUSE_JWT_SECRET not set, returns 'dev-tenant' with warning.
     JWT-based auth: missing/invalid token → 403 AUTH_FAILED.
+
+Rate limiting (Phase 62):
+    Per-tenant sliding window via rate_limit Depends.
+    Configurable via IHOUSE_RATE_LIMIT_RPM (default 60/min).
+    Returns 429 with Retry-After on excess.
 """
 from __future__ import annotations
 
@@ -37,6 +42,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.rate_limiter import rate_limit
 
 from adapters.ota.payload_validator import validate_ota_payload
 from adapters.ota.service import ingest_provider_event
@@ -60,6 +66,7 @@ async def receive_webhook(
     provider: str,
     request: Request,
     tenant_id: str = Depends(jwt_auth),
+    _: None = Depends(rate_limit),
 ) -> JSONResponse:
     """
     Receive and ingest an OTA provider webhook event.
@@ -68,6 +75,7 @@ async def receive_webhook(
         provider:  OTA provider slug (bookingcom, expedia, airbnb, agoda, tripcom)
         request:   Incoming HTTP request — raw body is read before JSON parsing
         tenant_id: Extracted from verified JWT sub claim (via jwt_auth Depends)
+        _:         Rate limit gate — raises 429 if tenant exceeds RPM quota
 
     Returns:
         JSONResponse with status code and body as described in module docstring.

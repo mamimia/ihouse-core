@@ -1790,3 +1790,21 @@ Files modified: src/api/webhooks.py, src/adapters/ota/payload_validator.py,
 
 TENANT_ID_REQUIRED removed from payload_validator (constant kept, rule removed).
 Result: 307 passed, 2 skipped.
+
+## Phase 62 — Per-Tenant Rate Limiting (Closed)
+
+Added sliding-window in-memory rate limiter keyed by tenant_id (from JWT).
+
+Files added: src/api/rate_limiter.py, tests/test_rate_limiter.py
+Files modified: src/api/webhooks.py (Depends(rate_limit) added)
+
+Limit: IHOUSE_RATE_LIMIT_RPM (default 60/min/tenant). Dev bypass at 0.
+429 with Retry-After header on excess.
+Result: 313 passed, 2 skipped.
+
+HTTP API layer complete (Phases 58-62):
+  58 — POST /webhooks/{provider} endpoint
+  59 — FastAPI app entrypoint
+  60 — Request logging middleware
+  61 — JWT auth
+  62 — Per-tenant rate limiting

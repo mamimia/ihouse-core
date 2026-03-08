@@ -1160,3 +1160,38 @@ No canonical business semantics changed.
 No new Supabase tables or migrations.
 
 Next phase: Phase 62 — Per-tenant Rate Limiting
+
+## Phase 62 — Per-Tenant Rate Limiting (Closed)
+
+Rationale:
+
+Phase 61 added JWT auth — tenant_id is now verified.
+Phase 62 adds the final protective layer: per-tenant rate limiting.
+
+Completed:
+
+- src/api/rate_limiter.py: InMemoryRateLimiter
+  - Sliding window per tenant (keyed by tenant_id from JWT)
+  - Configurable via IHOUSE_RATE_LIMIT_RPM (default 60/min/tenant)
+  - Dev bypass: IHOUSE_RATE_LIMIT_RPM=0 → never raises
+  - Thread-safe: threading.Lock per tenant, meta_lock for bucket map
+  - 429 with Retry-After header on excess
+  - Interface abstracted for future Redis swap
+  - Module-level singleton (shared per process)
+- src/api/webhooks.py: _: None = Depends(rate_limit) added to route
+  - After jwt_auth Depends — tenant_id is available when rate limit fires
+- tests/test_rate_limiter.py: 6 contract tests
+  - Under limit, at limit, over limit, tenant isolation,
+    window reset (1s sleep), dev bypass (rpm=0)
+
+Result:
+
+313 tests pass (313 passed, 2 skipped).
+No canonical business semantics changed.
+No new Supabase tables or migrations.
+
+Phases 59-62 summary:
+  59 — FastAPI app entrypoint (src/main.py)
+  60 — Request logging middleware (X-Request-ID)
+  61 — JWT auth (tenant_id from sub claim)
+  62 — Per-tenant rate limiting (sliding window, 429 + Retry-After)
