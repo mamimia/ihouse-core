@@ -525,3 +525,24 @@ No additional business-idempotency registry is required at this stage.
 No canonical business semantics changed.
 No alternative write path was introduced.
 No closed semantic decision was reopened.
+## Phase 37 — External Event Ordering Protection Discovery (Closed)
+
+Completed:
+
+- [Claude]
+- E2E verified: BOOKING_CANCELED before BOOKING_CREATED raises BOOKING_NOT_FOUND (P0001) from apply_envelope
+- verified: no buffering, retry, or ordering layer exists in the active OTA runtime path
+- verified: correct order (CREATED then CANCELED) returns APPLIED for both — no regression
+- classified current behavior: deterministic rejection, not silent data loss
+- updated future-improvements.md backlog item with verified behavioral description
+
+Result:
+
+When BOOKING_CANCELED arrives before BOOKING_CREATED, apply_envelope raises BOOKING_NOT_FOUND.
+The event is rejected deterministically and is lost — there is no dead-letter store or retry queue.
+This is a known open gap, classified as deferred in the backlog.
+No canonical invariants are violated by the current behavior.
+
+No canonical business semantics changed.
+No alternative write path was introduced.
+No closed semantic decision was reopened.

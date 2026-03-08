@@ -2,17 +2,17 @@
 
 ## Current Active Phase
 
-Phase 36 — Business Identity Canonicalization
+Phase 37 — External Event Ordering Protection Discovery
 
 ## Last Closed Phase
 
-Phase 35 — OTA Canonical Emitted Event Alignment Implementation
+Phase 36 — Business Identity Canonicalization
 
 ## Current Objective
 
-Verify and document that `booking_id` is constructed deterministically and consistently across the entire active runtime path, and confirm that `apply_envelope` is protected against business-level duplicate bookings with the same identity.
+Verify and document what happens when OTA events arrive out of order, specifically when `BOOKING_CANCELED` arrives before `BOOKING_CREATED`. Identify the current system behavior and determine if additional ordering protection is required.
 
-This phase is a discovery and documentation phase.
+This phase is a discovery phase only.
 
 It is not a redesign phase.
 It is not a reconciliation phase.
@@ -56,27 +56,28 @@ ingest_provider_event
 → CoreExecutor.execute  
 → apply_envelope
 
-## Phase 35 Closed Finding
+## Phase 36 Closed Finding
 
 [Claude]
 
-Phase 35 resolved the Phase 34 alignment gap.
+Canonical booking_id rule confirmed: `booking_id = "{source}_{reservation_ref}"`
 
-OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` now reach `apply_envelope` through the canonical emitted business event contract.
+apply_envelope enforces business-level dedup in two layers: by booking_id and by composite (tenant_id, source, reservation_ref, property_id).
 
-E2E verified against live Supabase: both events returned `status: APPLIED`, `state_upsert_found: true`.
+E2E verified: duplicate BOOKING_CREATED with different request_id returns ALREADY_EXISTS.
 
-## Phase 36 Focus
+## Phase 37 Focus
 
-Phase 36 investigates business identity canonicalization.
+Phase 37 investigates external event ordering protection.
 
-The active `booking_id` construction rule is: `"{source}_{reservation_ref}"`.
+The backlog item **External Event Ordering Protection** (priority: high) covers:
+- delayed events
+- missing events
+- cancellation before creation (BOOKING_CANCELED arriving before BOOKING_CREATED)
+- out-of-order arrival
 
-This rule was introduced in Phase 35 but was not formally documented as a canonical invariant.
-
-Phase 36 must answer:
-
-1. Is `booking_id` construction deterministic and consistent across every active touchpoint (skills, Supabase, tests)?
-2. Does `apply_envelope` enforce uniqueness on `booking_id` at the business level (not just envelope idempotency)?
-3. What happens if the same OTA business fact arrives with a different `request_id`?
-4. Is the current protection sufficient, or is a stronger business-idempotency guard needed?
+Phase 37 must answer:
+1. What does apply_envelope currently return when BOOKING_CANCELED arrives before BOOKING_CREATED?
+2. Is there any buffering, retry, or ordering layer in the active runtime path?
+3. Is the current behavior safe (deterministic reject), or is it an unhandled error condition?
+4. What is the minimal safe response to this gap, if any is required?

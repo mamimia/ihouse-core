@@ -51,9 +51,10 @@ append-only historical records in `docs/core/phase-timeline.md`.
 ### External Event Ordering Protection
 - status: deferred
 - discovered_in: Phase 21, Phase 27
+- verified_in: Phase 37
 - source_context: OTA events may arrive out of order
 - priority: high
-- notes: unify all ordering-related future work here. Covers delayed events, missing events, cancellation before creation, and guarded handling for out-of-order arrival. Must not bypass canonical ingest rules.
+- notes: [Claude] Phase 37 verified the current behavior. BOOKING_CANCELED before BOOKING_CREATED raises BOOKING_NOT_FOUND (code P0001) from apply_envelope — a deterministic rejection, not silent data loss. There is no buffering, retry, or ordering layer in the active OTA runtime path. The event is lost. Future work must decide whether to add a dead-letter store, a retry queue, or an ordering buffer — but must not bypass canonical ingest rules or introduce adapter-side state reads.
 
 ### Business Idempotency Beyond Envelope Idempotency
 - status: resolved

@@ -1404,3 +1404,27 @@ Outcome:
 
 Next phase:
 Phase 37 — TBD
+## Phase 37 — External Event Ordering Protection Discovery (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 37 verified the current system behavior when OTA events arrive out of order. It classified the current behavior as deterministic rejection, not silent data loss.
+
+Confirmed:
+- [Claude]
+- BOOKING_CANCELED before BOOKING_CREATED → apply_envelope raises BOOKING_NOT_FOUND (P0001) — deterministic rejection
+- no buffering, retry, or ordering layer exists in the active OTA runtime path
+- correct-order flow (CREATED then CANCELED) verified unaffected — no regression
+- E2E evidence: code P0001, message BOOKING_NOT_FOUND
+- backlog item External Event Ordering Protection updated with verified behavioral description
+
+Outcome:
+- current behavior is safe in terms of canonical invariants: no silent writes, no state corruption
+- the rejected event is lost — no dead-letter store or retry queue exists
+- this is a known open gap, remains deferred in future-improvements.md
+- priority: high for future implementation phase
+
+Next phase:
+Phase 38 — TBD

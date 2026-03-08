@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 37 — TBD
+Phase 38 — TBD
 
 ## Last Closed Phase
-Phase 36 — Business Identity Canonicalization
+Phase 37 — External Event Ordering Protection Discovery
 
 ## System Status
 
@@ -14,25 +14,22 @@ The canonical database gate (`apply_envelope`) remains the only authority allowe
 
 OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` reach `apply_envelope` through the canonical emitted business event contract.
 
-Business identity is deterministic. Business dedup is enforced by `apply_envelope`.
-
-## Phase 36 Result
+## Phase 37 Result
 
 [Claude]
 
-Phase 36 verified and formally documented the canonical `booking_id` construction rule.
+Phase 37 verified the current system behavior on out-of-order OTA event arrival.
 
-**Canonical booking_id rule:** `booking_id = "{source}_{reservation_ref}"`
+**Verified behavior:**
 
-This rule is applied consistently in `booking_created` and `booking_canceled` skills.
+- `BOOKING_CANCELED` before `BOOKING_CREATED` → `apply_envelope` raises `BOOKING_NOT_FOUND` (code `P0001`)
+- This is a **deterministic rejection** — no silent data loss, no state corruption
+- The rejected event is **lost** — there is no dead-letter store or retry queue in the active runtime path
+- No buffering, retry, or ordering layer exists between the OTA adapter and `apply_envelope`
 
-`apply_envelope` enforces business-level dedup in two layers:
-1. By `booking_id` — direct uniqueness check
-2. By composite `(tenant_id, source, reservation_ref, property_id)` — business identity check
+**Classification:** Known open gap, not a canonical invariant violation.
 
-E2E verified: a duplicate `BOOKING_CREATED` with a different `request_id` returns `ALREADY_EXISTS` — no new booking_state row is written.
-
-No additional business-idempotency registry is required at this stage.
+This remains deferred in `future-improvements.md` at priority **high** for a future implementation phase.
 
 No canonical business semantics changed.
 No alternative write path was introduced.
@@ -65,3 +62,11 @@ Replay Safety
 Business Identity
 - booking_id = "{source}_{reservation_ref}" — deterministic and canonical
 - business-level dedup enforced by apply_envelope at the DB gate
+
+## Known Open Gaps (Deferred)
+
+| Gap | Current Behavior | Priority |
+|-----|-----------------|----------|
+| Out-of-order events (CANCELED before CREATED) | Deterministic rejection — BOOKING_NOT_FOUND | high |
+| Dead-letter store for failed events | Not implemented | medium |
+| External event ordering buffer | Not implemented | high |
