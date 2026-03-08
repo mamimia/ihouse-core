@@ -83,3 +83,44 @@ def _do_write(
         "emitted_json": emitted_json,
         "trace_id": trace_id,
     }).execute()
+
+
+def write_to_dlq_returning_id(
+    *,
+    provider: str,
+    event_type: str,
+    rejection_code: str,
+    rejection_msg: Optional[str],
+    envelope_json: Dict[str, Any],
+    emitted_json: Optional[List[Dict[str, Any]]] = None,
+    trace_id: Optional[str] = None,
+) -> Optional[int]:
+    """
+    Write a DLQ entry and return its row id, or None if the write fails / env not set.
+
+    Unlike write_to_dlq, this does NOT swallow failures silently —
+    it returns None so callers can proceed without the FK.
+    Used by the ordering buffer flow (Phase 73) to link DLQ row → buffer row.
+    """
+    url = os.environ.get("SUPABASE_URL", "")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+
+    if not url or not key or create_client is None:
+        return None
+
+    try:
+        client = create_client(url, key)
+        result = client.table("ota_dead_letter").insert({
+            "provider": provider,
+            "event_type": event_type,
+            "rejection_code": rejection_code,
+            "rejection_msg": rejection_msg,
+            "envelope_json": envelope_json,
+            "emitted_json": emitted_json,
+            "trace_id": trace_id,
+        }).execute()
+        rows = result.data or []
+        return rows[0]["id"] if rows else None
+    except Exception:  # noqa: BLE001
+        return None
+

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 72 — Tenant Summary Dashboard (closed)
+Phase 73 — Ordering Buffer Auto-Route (closed)
 
 ## Last Closed Phase
-Phase 72 — Tenant Summary Dashboard
+Phase 73 — Ordering Buffer Auto-Route
 
 ## System Status
 
@@ -29,8 +29,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 69 | BOOKING_AMENDED Python Pipeline — booking_amended skill, registry wiring, 20 contract tests | ✅ |
 | 71 | Booking State Query API — GET /bookings/{booking_id}, JWT auth, tenant isolation, 16 tests | ✅ |
 | 72 | Tenant Summary Dashboard — GET /admin/summary, 7 fields, DLQ pending, amendment count, 14 tests | ✅ |
+| 73 | Ordering Buffer Auto-Route — BOOKING_NOT_FOUND → buffer auto-replay, 11 contract tests | ✅ |
 
-**481 tests pass** (2 pre-existing SQLite skips, unrelated)
+**492 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -139,9 +140,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 73 — TBD**
+**Phase 74 — TBD**
 - See `docs/core/improvements/future-improvements.md` → Active Backlog
 
 ## Tests
 
-**481 passing** (2 pre-existing SQLite skips, unrelated)
+**492 passing** (2 pre-existing SQLite skips, unrelated)

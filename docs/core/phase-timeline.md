@@ -1945,3 +1945,18 @@ Response fields: tenant_id, active_bookings, canceled_bookings, total_bookings,
 dlq_pending (global), amendment_count (tenant), last_event_at (tenant).
 DLQ count is global infra metric; all booking data is tenant-scoped.
 Result: 481 passed, 2 skipped.
+
+## Phase 73 — Ordering Buffer Auto-Route (Closed)
+
+BOOKING_NOT_FOUND → Ordering Buffer Auto-Route: bufferable events (BOOKING_CANCELED, BOOKING_AMENDED) are now automatically buffered for replay when BOOKING_CREATED fires.
+
+Files modified:
+- `src/adapters/ota/service.py` — BOOKING_NOT_FOUND branch + BUFFERED status
+- `src/adapters/ota/dead_letter.py` — `write_to_dlq_returning_id()` added
+- `src/adapters/ota/ordering_buffer.py` — `dlq_row_id` now Optional[int]
+
+Files added:
+- `tests/test_ordering_buffer_autoroute_contract.py` — 11 contract tests
+- `docs/archive/phases/phase-73-spec.md`
+
+Result: 492 passed, 2 skipped.

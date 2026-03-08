@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 72 — Tenant Summary Dashboard (closed)
+Phase 73 — Ordering Buffer Auto-Route (closed)
 
 ## Last Closed Phase
 
-Phase 72 — Tenant Summary Dashboard
+Phase 73 — Ordering Buffer Auto-Route
 
 ## Current Objective
 
-Phase 73 — TBD.
+Phase 74 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)

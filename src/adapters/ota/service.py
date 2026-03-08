@@ -94,6 +94,48 @@ def ingest_provider_event_with_dlq(
         return {"status": "REJECTED", "rejection_code": type(exc).__name__, "rejection_msg": str(exc)}
 
     status = result.get("status", "") if isinstance(result, dict) else ""
+
+    # Phase 73: BOOKING_NOT_FOUND → Ordering Buffer Auto-Route
+    #
+    # When a BOOKING_CANCELED or BOOKING_AMENDED arrives before BOOKING_CREATED,
+    # apply_envelope returns BOOKING_NOT_FOUND. Instead of sending it only to the
+    # DLQ (where it sits permanently), we also buffer it in ota_ordering_buffer so
+    # ordering_trigger can auto-replay it once BOOKING_CREATED is APPLIED.
+    #
+    # Flow:
+    #   1. write_to_dlq_returning_id → preserves event for audit (returns dlq_row_id)
+    #   2. buffer_event(dlq_row_id, booking_id, event_type) → marks it as "waiting"
+    #   3. ordering_trigger.trigger_ordered_replay fires on BOOKING_CREATED APPLIED
+    #      → replays all "waiting" buffer rows via replay_dlq_row
+    #
+    # If buffering fails (best-effort), the event is still in the DLQ.
+
+    _BUFFERABLE_TYPES = {"BOOKING_CANCELED", "BOOKING_AMENDED"}
+
+    if status == "BOOKING_NOT_FOUND" and envelope.type in _BUFFERABLE_TYPES:
+        try:
+            from .dead_letter import write_to_dlq_returning_id
+            from .ordering_buffer import buffer_event
+            booking_id_for_buffer = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            dlq_row_id = write_to_dlq_returning_id(
+                provider=provider,
+                event_type=envelope.type,
+                rejection_code="BOOKING_NOT_FOUND",
+                rejection_msg="Buffered in ordering_buffer — awaiting BOOKING_CREATED",
+                envelope_json=envelope_dict,
+                emitted_json=emitted,
+            )
+            if booking_id_for_buffer:
+                buffer_event(
+                    dlq_row_id=dlq_row_id,
+                    booking_id=booking_id_for_buffer,
+                    event_type=envelope.type,
+                )
+        except Exception:
+            pass  # best-effort — DLQ write via the original path below is the safety net
+        # Return BUFFERED — event is not dead, it will be auto-replayed
+        return {"status": "BUFFERED", "reason": "AWAITING_BOOKING_CREATED", "event_type": envelope.type}
+
     if status not in ("APPLIED", "ALREADY_APPLIED", "ALREADY_EXISTS", "ALREADY_EXISTS_BUSINESS"):
         write_to_dlq(
             provider=provider,

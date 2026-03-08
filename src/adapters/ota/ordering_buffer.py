@@ -20,19 +20,20 @@ def _get_client() -> Any:
 
 
 def buffer_event(
-    dlq_row_id: int,
+    dlq_row_id: Optional[int],
     booking_id: str,
     event_type: str,
     client: Any = None,
 ) -> int:
     """
-    Write a row to ota_ordering_buffer, marking a DLQ event as ordering-blocked.
+    Write a row to ota_ordering_buffer, marking an event as ordering-blocked.
 
-    Called when a DLQ rejection has code BOOKING_NOT_FOUND — meaning the event
-    arrived before its corresponding BOOKING_CREATED.
+    Called when an event arrives before its corresponding BOOKING_CREATED
+    (BOOKING_NOT_FOUND rejection). The event is buffered here and will be
+    automatically replayed by ordering_trigger when BOOKING_CREATED is APPLIED.
 
     Args:
-        dlq_row_id: FK to ota_dead_letter.id
+        dlq_row_id: FK to ota_dead_letter.id (Optional — None if DLQ write was not possible)
         booking_id: the booking_id the event is waiting for
         event_type: e.g. BOOKING_CANCELED
         client:     optional injected Supabase client
@@ -43,12 +44,15 @@ def buffer_event(
     if client is None:
         client = _get_client()
 
-    result = client.table("ota_ordering_buffer").insert({
-        "dlq_row_id": dlq_row_id,
+    insert_data: Dict[str, Any] = {
         "booking_id": booking_id,
         "event_type": event_type,
         "status": "waiting",
-    }).execute()
+    }
+    if dlq_row_id is not None:
+        insert_data["dlq_row_id"] = dlq_row_id
+
+    result = client.table("ota_ordering_buffer").insert(insert_data).execute()
 
     return result.data[0]["id"]
 
