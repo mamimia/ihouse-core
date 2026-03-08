@@ -2,17 +2,17 @@
 
 ## Current Active Phase
 
-Phase 34 — OTA Canonical Event Emission Alignment
+Phase 35 — OTA Canonical Emitted Event Alignment Implementation
 
 ## Last Closed Phase
 
-Phase 33 — OTA Retry Business Idempotency Discovery
+Phase 34 — OTA Canonical Event Emission Alignment
 
 ## Current Objective
 
-Determine exactly where the active OTA runtime path fails to emit the canonical business event shape expected by `apply_envelope`, and define the smallest safe alignment work required to restore canonical enforcement.
+Implement the minimal routing and emitted-event mapping changes defined by Phase 34 so that OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` reach `apply_envelope` through the canonical emitted business event contract expected by Supabase.
 
-This phase remains a discovery and alignment-definition phase only.
+This phase is a minimal implementation phase only.
 
 It is not a redesign phase.
 It is not a reconciliation phase.
@@ -56,42 +56,41 @@ ingest_provider_event
 → CoreExecutor.execute  
 → apply_envelope
 
-## Phase 33 Closed Finding
+## Phase 34 Closed Finding
 
-Phase 33 did not prove an intrinsic failure of canonical Supabase business dedup.
+[Claude]
 
-Phase 33 did verify a likely alignment gap between:
+Phase 34 proved a routing and emitted-event alignment gap in the active OTA runtime path.
 
-- OTA adapter envelope shape
-- executor skill routing
-- emitted business event shape
-- canonical Supabase apply contract
+Phase 34 did not prove an intrinsic failure of canonical Supabase business dedup.
 
-The strongest current evidence indicates that the active OTA runtime path may not currently emit the canonical business event payload required for Supabase enforcement to operate as intended.
+Phase 34 did not justify architecture redesign.
 
-## Phase 34 Scope
+The following evidence was verified by executable inspection:
 
-Allowed work:
+1. `BOOKING_CREATED` routes to `core.skills.booking_created_noop.skill` which emits zero business events.
 
-- inspect active skill routing for OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED`
-- inspect emitted event construction used by the active OTA runtime path
-- verify the exact canonical payload shape expected by `apply_envelope`
-- verify whether the active runtime path reaches that shape today
-- define the smallest safe future alignment change required if misalignment is confirmed
-- update active docs minimally if evidence justifies it
+2. `BOOKING_CANCELED` has no entry in `kind_registry.core.json` and raises `NO_ROUTE` at execution time.
 
-Disallowed work:
+3. The noop skill returns `events_to_emit=[]`, so `apply_envelope` receives an empty `p_emit` array and never activates its canonical `BOOKING_CREATED` business logic (business dedup, overlap check, booking_state write).
 
-- reconciliation
-- amendment handling
-- OTA snapshot fetching
-- out-of-order buffering
-- booking_state reads inside adapters
-- adapter-side mutation of canonical state
-- alternative write paths
-- direct apply_envelope calls from OTA code
-- new canonical event kinds
-- reopening closed phase decisions
+4. Even if routing were corrected, the OTA adapter canonical envelope payload shape does not match the canonical emitted business event payload shape required by `apply_envelope`. A payload transformation is required.
+
+5. The minimal future alignment change is:
+   - a new `booking_created` skill that transforms the OTA envelope payload into the canonical emitted event shape and emits `BOOKING_CREATED` with the required payload fields
+   - a new `booking_canceled` skill that emits `BOOKING_CANCELED` with `booking_id`
+   - registry updates to route `BOOKING_CREATED` and `BOOKING_CANCELED` to the new skills
+
+## Phase 35 Scope
+
+Implement only the minimal alignment defined by Phase 34:
+
+- new skill: `booking_created`
+- new skill: `booking_canceled`
+- registry updates: `kind_registry.core.json` and `skill_exec_registry.core.json`
+- verification tests
+
+No reconciliation, no amendment handling, no adapter-side state reads, no alternative write paths, no new canonical event kinds.
 
 ## Immediate Working Rule
 
@@ -99,16 +98,4 @@ Do not redesign the architecture.
 
 Do not reopen closed phases.
 
-Do only the minimum work required to align the active OTA runtime path with the canonical emitted business event contract already enforced by Supabase.
-
-## Exit Condition For This Phase
-
-Phase 34 is ready to close when the docs and evidence together support one precise conclusion:
-
-either
-
-- the active OTA runtime path is shown to emit canonical business events in the exact shape expected by `apply_envelope`, and no active alignment gap remains
-
-or
-
-- the active OTA runtime path is shown to remain misaligned with the canonical emitted business event contract, and the minimal future hardening change is defined precisely without changing architecture or reopening closed phases
+Do only the minimum implementation required to align the active OTA runtime path with the canonical emitted business event contract already enforced by Supabase.

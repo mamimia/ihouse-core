@@ -1332,3 +1332,26 @@ Outcome:
 
 Next phase:
 Phase 34 — OTA Canonical Event Emission Alignment
+
+## Phase 34 — OTA Canonical Event Emission Alignment (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 34 proved a routing and emitted-event alignment gap in the active OTA runtime path. It established that `BOOKING_CREATED` routes to a noop skill and `BOOKING_CANCELED` has no active route, preventing activation of canonical Supabase business logic.
+
+Confirmed discovery outcome:
+- [Claude]
+- `BOOKING_CREATED` verified routing to `booking-created-noop` (emits zero events).
+- `BOOKING_CANCELED` verified as having no active route (raises `NO_ROUTE`).
+- Payload shape mismatch verified: OTA envelope payload does not match emitted event payload expected by `apply_envelope`.
+
+Outcome:
+- Minimal alignment change defined: Two new skills + registry updates.
+- No intrinsic failure of canonical Supabase business dedup was proven.
+- No architecture redesign was justified.
+- All 5 required questions answered with evidence.
+
+Next phase:
+Phase 35 — OTA Canonical Emitted Event Alignment Implementation
