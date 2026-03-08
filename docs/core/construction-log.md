@@ -887,3 +887,33 @@ The invariants workflow now actually runs (was a no-op before).
 No canonical code touched. No DB changes.
 
 Next phase: Phase 53 — Expedia adapter full implementation (BOOKING_AMENDED support)
+
+## Phase 53 — Expedia Adapter Full Implementation (Closed)
+
+Rationale:
+
+Phase 27 introduced Expedia as a scaffold adapter. Phase 53 completes it to feature parity
+with Booking.com, including BOOKING_AMENDED support.
+
+Completed:
+
+- src/adapters/ota/expedia.py — read fully before editing:
+  - Added BOOKING_AMENDED branch to to_canonical_envelope()
+  - Added normalize_amendment import (reads changes.dates / changes.guests)
+  - booking_id = expedia_{reservation_id} — same deterministic rule as bookingcom
+  - canonical_payload includes: booking_id, new_check_in, new_check_out, new_guest_count, amendment_reason
+  - normalize() unchanged — field mapping already correct
+- tests/test_expedia_contract.py: 17 contract tests
+  - normalize field mapping
+  - BOOKING_CREATED: envelope type, key format, payload fields, tenant propagation
+  - BOOKING_CANCELED: envelope type, key format
+  - BOOKING_AMENDED: type, booking_id, check_in, check_out, guests, reason, missing fields as None, key format
+  - Cross-provider key isolation (same event_id → different keys for expedia vs bookingcom)
+
+Result:
+
+190 tests pass (CI-safe suite: 190 passed, 2 skipped).
+Expedia now has feature parity with Booking.com across all 3 event kinds.
+No canonical code touched. No DB changes. No apply_envelope changes.
+
+Next phase: Phase 54 — Airbnb adapter
