@@ -1840,3 +1840,16 @@ source_confidence: FULL | PARTIAL | ESTIMATED per provider.
 Invariant enforced: financial_facts never enters canonical envelope or booking_state.
 Result: 372 passed, 2 skipped.
 
+## Phase 66 — booking_financial_facts Supabase Projection (Closed)
+
+Persists structured financial facts to Supabase after successful BOOKING_CREATED events.
+
+Files added: src/adapters/ota/financial_writer.py, tests/test_financial_writer_contract.py, scripts/migrate_phase66_financial_facts.py, docs/archive/phases/phase-66-spec.md
+Files modified: src/adapters/ota/service.py (financial write after BOOKING_CREATED APPLIED)
+DB: booking_financial_facts table (append-only, RLS, 2 indexes)
+
+Invariant enforced: booking_state must NEVER contain financial data. This is a separate projection table.
+E2E verified: BOOKING_CREATED → booking_financial_facts row written to live Supabase.
+Result: 388 passed, 2 skipped.
+
+

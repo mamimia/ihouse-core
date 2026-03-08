@@ -1279,3 +1279,27 @@ Result: 372 tests pass (372 passed, 2 skipped).
 No canonical business semantics changed.
 No Supabase tables or migrations. No booking_state writes.
 
+## Phase 66 — booking_financial_facts Supabase Projection (Closed)
+
+- [Claude]
+- New: src/adapters/ota/financial_writer.py
+  - write_financial_facts(booking_id, tenant_id, event_kind, facts, client) → None
+  - Best-effort, non-blocking — exceptions logged to stderr, never raised
+  - Converts Decimal fields to string for NUMERIC column compatibility
+- New: scripts/migrate_phase66_financial_facts.py (migration helper)
+- DB migration: booking_financial_facts table
+  - Columns: id, booking_id, tenant_id, provider, total_price, currency, ota_commission, taxes, fees, net_to_property, source_confidence, raw_financial_fields (JSONB), event_kind, recorded_at
+  - RLS enabled: service_role_insert + service_role_select policies
+  - Indexes: ix_bff_booking_id, ix_bff_tenant_id
+- Modified: src/adapters/ota/service.py — after BOOKING_CREATED APPLIED, calls write_financial_facts (best-effort, wrapped in try/except)
+- New: tests/test_financial_writer_contract.py — 16 contract tests (all mocked, CI-safe)
+
+Invariant (locked Phase 62+): booking_state must NEVER contain financial data.
+booking_financial_facts is a separate append-only projection table.
+
+E2E verified: BOOKING_CREATED payload → financial_writer → Supabase row queryable with correct fields.
+
+Result: 388 tests pass (388 passed, 2 skipped).
+No canonical business semantics changed. No booking_state writes.
+
+

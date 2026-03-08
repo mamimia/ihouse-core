@@ -115,4 +115,20 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
+        # Phase 66: persist financial facts to booking_financial_facts table (best-effort)
+        try:
+            from .financial_extractor import extract_financial_facts
+            from .financial_writer import write_financial_facts
+            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            facts = extract_financial_facts(provider, payload)
+            if booking_id and facts:
+                write_financial_facts(
+                    booking_id=booking_id,
+                    tenant_id=tenant_id,
+                    event_kind="BOOKING_CREATED",
+                    facts=facts,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
     return result if isinstance(result, dict) else {"status": status}

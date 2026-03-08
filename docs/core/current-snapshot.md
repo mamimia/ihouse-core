@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 65 — Financial Data Foundation (closed)
+Phase 66 — booking_financial_facts Supabase Projection (closed)
 
 ## Last Closed Phase
-Phase 65 — Financial Data Foundation
+Phase 66 — booking_financial_facts Supabase Projection
 
 ## System Status
 
-**Full HTTP ingestion stack complete (Phases 58–64). Financial Data Foundation complete (Phase 65).**
+**Full HTTP ingestion stack complete (Phases 58–64). Financial Data Foundation complete (Phase 65). Financial Supabase projection complete (Phase 66).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -23,8 +23,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 63 | OpenAPI docs — BearerAuth, response schemas, `/docs` + `/redoc` | ✅ |
 | 64 | Enhanced health check — Supabase ping, DLQ count, 503 support | ✅ |
 | 65 | Financial Data Foundation — BookingFinancialFacts, 5-provider extraction | ✅ |
+| 66 | booking_financial_facts Supabase projection — write after BOOKING_CREATED APPLIED | ✅ |
 
-**372 tests pass** (2 pre-existing SQLite skips, unrelated)
+**388 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -74,6 +75,7 @@ HTTP  →  Logging middleware (X-Request-ID)
 | File | Role |
 |------|------|
 | `src/adapters/ota/financial_extractor.py` | `BookingFinancialFacts` dataclass + per-provider extraction |
+| `src/adapters/ota/financial_writer.py` | Best-effort writer to `booking_financial_facts` (Phase 66) |
 
 ### Provider Financial Fields
 
@@ -87,9 +89,30 @@ HTTP  →  Logging middleware (X-Request-ID)
 
 **Invariant (locked Phase 62+):** `booking_state` must NEVER contain financial data.
 
+### booking_financial_facts Table (Phase 66)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | BIGSERIAL | PK |
+| `booking_id` | TEXT | `{source}_{reservation_ref}` |
+| `tenant_id` | TEXT | |
+| `provider` | TEXT | |
+| `total_price` | NUMERIC | |
+| `currency` | CHAR(3) | |
+| `ota_commission` | NUMERIC | |
+| `taxes` | NUMERIC | |
+| `fees` | NUMERIC | |
+| `net_to_property` | NUMERIC | |
+| `source_confidence` | TEXT | FULL/PARTIAL/ESTIMATED |
+| `raw_financial_fields` | JSONB | Raw provider fields |
+| `event_kind` | TEXT | BOOKING_CREATED / BOOKING_AMENDED |
+| `recorded_at` | TIMESTAMPTZ | auto |
+
+RLS: enabled. Indexed on `booking_id`, `tenant_id`.
+
 ## Next Phase
 
-**Phase 66 — TBD**
+**Phase 67 — TBD**
 - See `docs/core/improvements/future-improvements.md` → Active Backlog
 
 ## Tests
