@@ -218,15 +218,28 @@ def test_replay_harness_same_business_fact_with_different_event_ids_is_reapplied
     assert len(applier.calls) == 2
 
 
-def test_replay_harness_modify_is_rejected_before_apply(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_replay_harness_modify_produces_booking_amended_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Phase 51: reservation_modified is no longer rejected.
+    It now produces a canonical BOOKING_AMENDED envelope.
+
+    The old 'MODIFY → deterministic reject' rule applied at the adapter layer.
+    Phase 51 replaces that rule: MODIFY → BOOKING_AMENDED → apply_envelope.
+    """
     _install_executor_stubs(monkeypatch)
 
-    with pytest.raises(ValueError, match="MODIFY|not supported|rejected"):
-        ingest_provider_event(
-            provider="bookingcom",
-            payload=_bookingcom_payload(event_id="evt_modify_001", event_type="modified"),
-            tenant_id="tenant_001",
-        )
+    envelope = ingest_provider_event(
+        provider="bookingcom",
+        payload=_bookingcom_payload(event_id="evt_modify_001", event_type="modified"),
+        tenant_id="tenant_001",
+    )
+
+    assert envelope.type == "BOOKING_AMENDED"
+    assert envelope.idempotency_key == "bookingcom:booking_amended:evt_modify_001"
+    assert envelope.payload["booking_id"] == "bookingcom_res_001"
+    assert envelope.tenant_id == "tenant_001"
 
 
 def test_replay_harness_invalid_payload_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:

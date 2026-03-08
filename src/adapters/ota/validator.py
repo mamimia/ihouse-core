@@ -10,6 +10,7 @@ from .schemas import (
 SUPPORTED_CANONICAL_TYPES = {
     "BOOKING_CREATED",
     "BOOKING_CANCELED",
+    "BOOKING_AMENDED",
 }
 
 
@@ -45,11 +46,9 @@ def validate_classified_event(event: ClassifiedBookingEvent) -> None:
     Ensure semantic classification is supported.
     """
 
-    if event.semantic_kind not in {"CREATE", "CANCEL", "MODIFY"}:
+    supported = {"CREATE", "CANCEL", "BOOKING_AMENDED"}
+    if event.semantic_kind not in supported:
         raise ValueError(f"unsupported semantic kind: {event.semantic_kind}")
-
-    if event.semantic_kind == "MODIFY":
-        raise ValueError("MODIFY events are deterministically rejected")
 
 
 def validate_canonical_envelope(envelope: CanonicalEnvelope) -> None:

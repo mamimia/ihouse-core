@@ -9,6 +9,7 @@ from .schemas import (
     CanonicalEnvelope,
 )
 from .idempotency import generate_idempotency_key
+from .amendment_extractor import normalize_amendment
 
 
 class BookingComAdapter(OTAAdapter):
@@ -43,19 +44,46 @@ class BookingComAdapter(OTAAdapter):
         elif classified.semantic_kind == "CANCEL":
             canonical_type = "BOOKING_CANCELED"
 
+        elif classified.semantic_kind == "BOOKING_AMENDED":
+            canonical_type = "BOOKING_AMENDED"
+
         else:
-            raise ValueError("MODIFY events are not supported")
+            raise ValueError(f"Unsupported semantic kind: {classified.semantic_kind}")
+
+        # --- Build canonical payload ---
+        canonical_payload: dict
+
+        if canonical_type == "BOOKING_AMENDED":
+            # Deterministic booking_id — same rule as BOOKING_CREATED
+            booking_id = f"{self.provider}_{normalized.reservation_id}"
+
+            # Extract provider-agnostic amendment fields
+            amendment = normalize_amendment(self.provider, normalized.payload)
+
+            canonical_payload = {
+                "provider": self.provider,
+                "reservation_id": normalized.reservation_id,
+                "property_id": normalized.property_id,
+                "booking_id": booking_id,
+                "new_check_in": amendment.new_check_in,
+                "new_check_out": amendment.new_check_out,
+                "new_guest_count": amendment.new_guest_count,
+                "amendment_reason": amendment.amendment_reason,
+                "provider_payload": normalized.payload,
+            }
+        else:
+            canonical_payload = {
+                "provider": self.provider,
+                "reservation_id": normalized.reservation_id,
+                "property_id": normalized.property_id,
+                "provider_payload": normalized.payload,
+            }
 
         return CanonicalEnvelope(
             tenant_id=normalized.tenant_id,
             type=canonical_type,
             occurred_at=normalized.occurred_at,
-            payload={
-                "provider": self.provider,
-                "reservation_id": normalized.reservation_id,
-                "property_id": normalized.property_id,
-                "provider_payload": normalized.payload,
-            },
+            payload=canonical_payload,
             idempotency_key=generate_idempotency_key(
                 self.provider,
                 normalized.external_event_id,

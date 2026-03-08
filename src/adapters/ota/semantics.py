@@ -8,7 +8,8 @@ from .schemas import NormalizedBookingEvent, ClassifiedBookingEvent
 class BookingSemanticKind(str, Enum):
     CREATE = "CREATE"
     CANCEL = "CANCEL"
-    MODIFY = "MODIFY"
+    MODIFY = "MODIFY"           # kept for backward-compat; no longer produced
+    BOOKING_AMENDED = "BOOKING_AMENDED"
 
 
 def _extract_event_type(event: NormalizedBookingEvent) -> str:
@@ -48,7 +49,7 @@ def classify_normalized_event(
     elif event_type in {"reservation_cancelled", "cancelled", "canceled"}:
         semantic = BookingSemanticKind.CANCEL
     elif event_type in {"reservation_modified", "modified", "amended"}:
-        semantic = BookingSemanticKind.MODIFY
+        semantic = BookingSemanticKind.BOOKING_AMENDED
     else:
         raise ValueError(f"Unknown OTA event type: {event_type}")
 

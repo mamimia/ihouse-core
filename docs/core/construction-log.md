@@ -833,3 +833,28 @@ No canonical invariants changed. No alternative write path introduced.
 
 Next phase: Phase 51 — Python Pipeline Integration (semantics.py + service.py BOOKING_AMENDED routing)
 
+
+## Phase 51 — Python Pipeline Integration: BOOKING_AMENDED Routing (Closed)
+
+Rationale:
+
+Phase 50 delivered apply_envelope with a full BOOKING_AMENDED branch on Supabase.
+Phase 51 wires the Python OTA adapter pipeline to route reservation_modified events
+through as canonical BOOKING_AMENDED envelopes, closing the end-to-end loop.
+
+Completed:
+
+- semantics.py: BOOKING_AMENDED added to BookingSemanticKind enum; reservation_modified → BOOKING_AMENDED (was MODIFY)
+- validator.py: BOOKING_AMENDED allowed in validate_classified_event; added to SUPPORTED_CANONICAL_TYPES
+- bookingcom.py: to_canonical_envelope extended with BOOKING_AMENDED branch — builds booking_id + AmendmentFields from normalize_amendment
+- test_ota_replay_harness.py: stale MODIFY-rejection test updated to verify new BOOKING_AMENDED envelope shape
+- tests/test_booking_amended_contract.py: 22 new contract tests (semantics, validator, pipeline envelope shape, regression)
+
+Result:
+
+180 tests pass (2 pre-existing SQLite failures unrelated).
+
+reservation_modified → BOOKING_AMENDED → apply_envelope — end-to-end verified.
+No canonical invariants changed. No alternative write path introduced. apply_envelope remains sole write authority.
+
+Next phase: Phase 52 — TBD
