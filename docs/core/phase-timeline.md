@@ -1592,3 +1592,24 @@ Outcome:
 
 Next phase:
 Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED
+## Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 45 completed the event ordering loop. After a successful BOOKING_CREATED, the system automatically replays any events that were buffered in ota_ordering_buffer as ordering-blocked.
+
+Completed:
+- [Claude]
+- ordering_trigger.py: trigger_ordered_replay — read, replay, mark, log failures, return summary
+- service.py: trigger fires after BOOKING_CREATED APPLIED (best-effort, non-blocking)
+- 7 contract tests
+- E2E: CANCELED → buffer → CREATED → auto-trigger → 0 waiting confirmed
+
+Outcome:
+- 93 tests pass
+- Ordering loop closed: Phases 44+45 together form the full event ordering buffer system
+
+Next phase:
+Phase 46 — TBD

@@ -686,3 +686,21 @@ Result:
 
 Out-of-order OTA events (BOOKING_NOT_FOUND) can now be explicitly buffered by booking_id. When BOOKING_CREATED arrives (Phase 45), the buffer is queryable and ready for replay.
 86 tests pass (2 pre-existing SQLite failures unrelated).
+## Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED (Closed)
+
+Completed:
+
+- [Claude]
+- implemented `src/adapters/ota/ordering_trigger.py`: trigger_ordered_replay(booking_id, client) → dict
+  - reads get_buffered_events(booking_id)
+  - for each: replay_dlq_row(dlq_row_id) → mark_replayed(buffer_id)
+  - best-effort: failure per row logged to stderr, continues
+  - returns {booking_id, replayed, failed, results}
+- integrated into service.py: after BOOKING_CREATED APPLIED → trigger_ordered_replay(booking_id), non-blocking
+- 7 contract tests: empty buffer, single replay, booking_id passthrough, failure logged not raised, multi-row, partial failure continues, result shape
+- E2E verified: CANCELED → DLQ → buffer → CREATED APPLIED → auto-trigger → 0 waiting in buffer
+
+Result:
+
+The ordering loop is now closed. Out-of-order events that were buffered as 'waiting' are automatically replayed when their prerequisite BOOKING_CREATED arrives.
+93 tests pass (2 pre-existing SQLite failures unrelated).

@@ -104,4 +104,15 @@ def ingest_provider_event_with_dlq(
             emitted_json=emitted,
         )
 
+    # After a successful BOOKING_CREATED, check the ordering buffer for
+    # events that were waiting for this booking_id and replay them.
+    if envelope.type == "BOOKING_CREATED" and status == "APPLIED":
+        try:
+            from .ordering_trigger import trigger_ordered_replay
+            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            if booking_id:
+                trigger_ordered_replay(booking_id)
+        except Exception:
+            pass  # best-effort — never block the main response
+
     return result if isinstance(result, dict) else {"status": status}

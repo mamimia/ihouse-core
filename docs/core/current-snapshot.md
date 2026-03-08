@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED
+Phase 46 — TBD
 
 ## Last Closed Phase
-Phase 44 — OTA Ordering Buffer
+Phase 45 — Ordering Buffer Auto-Trigger on BOOKING_CREATED
 
 ## System Status
 
@@ -12,37 +12,33 @@ The deterministic event architecture remains fully operational.
 
 `apply_envelope` remains the only authority allowed to mutate canonical booking state.
 
-## Phase 44 Result
+**The out-of-order event problem is now fully handled (Phases 44+45).**
+
+## Phase 45 Result
 
 [Claude]
 
-**Migration:** `ota_ordering_buffer` table:
-- FK to `ota_dead_letter.id`
-- `booking_id` — what the event is waiting for
-- `event_type` — the blocked event
-- `status` — `waiting` | `replayed` | `expired`
-- Index on `(booking_id, status)` for fast lookup
+The ordering loop is closed.
 
-**Module:** `ordering_buffer.py`
-- `buffer_event(dlq_row_id, booking_id, event_type)` — write
-- `get_buffered_events(booking_id)` — read waiting rows
-- `mark_replayed(buffer_id)` — update after replay
-
-**E2E verified** on live Supabase.
-
-## Event Ordering Lifecycle (After Phase 44)
+**Flow (fully operational):**
 
 ```
-BOOKING_CANCELED arrives (too early)
-         ↓ BOOKING_NOT_FOUND
-    ota_dead_letter (DLQ)
-         ↓ buffer_event()
-    ota_ordering_buffer  ← [status: waiting]
-         ↓ (Phase 45)
-    BOOKING_CREATED arrives → check buffer → replay
-         ↓
-    mark_replayed()       ← [status: replayed]
+BOOKING_CANCELED arrives too early
+        ↓ BOOKING_NOT_FOUND
+  ota_dead_letter (DLQ)         Phase 38
+        ↓ buffer_event()
+  ota_ordering_buffer [waiting]  Phase 44
+
+BOOKING_CREATED arrives → APPLIED
+        ↓ trigger_ordered_replay()    Phase 45
+  get_buffered_events(booking_id)
+        ↓ per row:
+  replay_dlq_row(dlq_row_id)         Phase 39
+        ↓
+  mark_replayed(buffer_id)      Phase 44
 ```
+
+E2E verified: CANCELED buffered → CREATED applied → auto-trigger → 0 waiting in buffer.
 
 ## OTA Adapter Layer — Full Module Map
 
@@ -53,10 +49,29 @@ BOOKING_CANCELED arrives (too early)
 | `dlq_inspector.py` | read-only DLQ observability |
 | `dlq_alerting.py` | threshold alerting |
 | `booking_status.py` | read booking lifecycle status |
-| `ordering_buffer.py` | ordering buffer: write + read + mark ← NEW |
+| `ordering_buffer.py` | ordering buffer: write, read, mark |
+| `ordering_trigger.py` | auto-trigger on BOOKING_CREATED ← NEW |
 
-## BOOKING_AMENDED Prerequisites: 4/10
-(unchanged — no amendment work in Phase 44)
+## BOOKING_AMENDED Prerequisites
+
+4/10 satisfied. External Event Ordering Buffer (Phases 44-45) now also satisfies the "ordering infrastructure" prerequisite.
+
+Updated status:
+
+| Prerequisite | Status |
+|-------------|--------|
+| DLQ infrastructure (Phases 38-39) | ✅ |
+| booking_id stability | ✅ |
+| MODIFY classification (semantics.py) | ✅ |
+| booking_state.status column | ✅ |
+| Ordering infrastructure | ✅ (Phases 44-45) |
+| Normalized AmendmentPayload schema | ❌ |
+| apply_envelope BOOKING_AMENDED branch | ❌ |
+| event_kind enum: BOOKING_AMENDED | ❌ |
+| ACTIVE-state amendment guard | ❌ |
+| Idempotency key for amendments | ❌ |
+
+**5/10 prerequisites now satisfied.**
 
 ## Canonical Invariants
 
