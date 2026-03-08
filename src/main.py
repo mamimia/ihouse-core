@@ -98,6 +98,7 @@ _TAGS = [
     {"name": "webhooks", "description": "OTA provider webhook ingestion. JWT Bearer + HMAC signature required."},
     {"name": "bookings", "description": "Booking state query. JWT Bearer required. Reads from booking_state projection."},
     {"name": "financial", "description": "Financial facts query. JWT Bearer required. Reads from booking_financial_facts only."},
+    {"name": "admin", "description": "Tenant operational summary. JWT Bearer required. Read-only, tenant-scoped."},
 ]
 
 app = FastAPI(
@@ -128,6 +129,9 @@ app.include_router(financial_router)
 
 from api.bookings_router import router as bookings_router  # noqa: E402
 app.include_router(bookings_router)
+
+from api.admin_router import router as admin_router  # noqa: E402
+app.include_router(admin_router)
 
 
 # ---------------------------------------------------------------------------

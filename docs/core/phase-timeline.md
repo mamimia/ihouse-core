@@ -1928,3 +1928,20 @@ API contract:
 
 Invariants: reads booking_state only, no write path, tenant isolation enforced at DB query level.
 Result: 467 passed, 2 skipped.
+
+## Phase 72 — Tenant Summary Dashboard (Closed)
+
+GET /admin/summary — real-time operational summary, tenant-scoped.
+
+Files added:
+- `src/api/admin_router.py` — GET /admin/summary (7 response fields)
+- `tests/test_admin_router_contract.py` — 14 contract tests
+- `docs/archive/phases/phase-72-spec.md`
+
+Files modified:
+- `src/main.py` — admin tag + admin_router registered
+
+Response fields: tenant_id, active_bookings, canceled_bookings, total_bookings,
+dlq_pending (global), amendment_count (tenant), last_event_at (tenant).
+DLQ count is global infra metric; all booking data is tenant-scoped.
+Result: 481 passed, 2 skipped.

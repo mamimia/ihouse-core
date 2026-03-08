@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 71 — Booking State Query API (closed)
+Phase 72 — Tenant Summary Dashboard (closed)
 
 ## Last Closed Phase
 
-Phase 71 — Booking State Query API
+Phase 72 — Tenant Summary Dashboard
 
 ## Current Objective
 
-Phase 72 — TBD.
+Phase 73 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)
