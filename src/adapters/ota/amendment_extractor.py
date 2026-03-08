@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from .date_normalizer import normalize_date
 from .schemas import AmendmentFields
 
 
@@ -36,8 +37,8 @@ def extract_amendment_bookingcom(provider_payload: Dict[str, Any]) -> AmendmentF
     info = provider_payload.get("new_reservation_info") or {}
 
     return AmendmentFields(
-        new_check_in=_nonempty(info.get("arrival_date")),
-        new_check_out=_nonempty(info.get("departure_date")),
+        new_check_in=normalize_date(_nonempty(info.get("arrival_date"))),
+        new_check_out=normalize_date(_nonempty(info.get("departure_date"))),
         new_guest_count=_int_or_none(info.get("number_of_guests")),
         amendment_reason=_nonempty(info.get("modification_reason")),
     )
@@ -67,8 +68,8 @@ def extract_amendment_expedia(provider_payload: Dict[str, Any]) -> AmendmentFiel
     guests = changes.get("guests") or {}
 
     return AmendmentFields(
-        new_check_in=_nonempty(dates.get("check_in")),
-        new_check_out=_nonempty(dates.get("check_out")),
+        new_check_in=normalize_date(_nonempty(dates.get("check_in"))),
+        new_check_out=normalize_date(_nonempty(dates.get("check_out"))),
         new_guest_count=_int_or_none(guests.get("count")),
         amendment_reason=_nonempty(changes.get("reason")),
     )
@@ -94,8 +95,8 @@ def extract_amendment_airbnb(provider_payload: Dict[str, Any]) -> AmendmentField
     alteration = provider_payload.get("alteration") or {}
 
     return AmendmentFields(
-        new_check_in=_nonempty(alteration.get("new_check_in")),
-        new_check_out=_nonempty(alteration.get("new_check_out")),
+        new_check_in=normalize_date(_nonempty(alteration.get("new_check_in"))),
+        new_check_out=normalize_date(_nonempty(alteration.get("new_check_out"))),
         new_guest_count=_int_or_none(alteration.get("guest_count")),
         amendment_reason=_nonempty(alteration.get("reason")),
     )
@@ -121,8 +122,8 @@ def extract_amendment_agoda(provider_payload: Dict[str, Any]) -> AmendmentFields
     modification = provider_payload.get("modification") or {}
 
     return AmendmentFields(
-        new_check_in=_nonempty(modification.get("check_in_date")),
-        new_check_out=_nonempty(modification.get("check_out_date")),
+        new_check_in=normalize_date(_nonempty(modification.get("check_in_date"))),
+        new_check_out=normalize_date(_nonempty(modification.get("check_out_date"))),
         new_guest_count=_int_or_none(modification.get("num_guests")),
         amendment_reason=_nonempty(modification.get("reason")),
     )
@@ -148,8 +149,8 @@ def extract_amendment_tripcom(provider_payload: Dict[str, Any]) -> AmendmentFiel
     changes = provider_payload.get("changes") or {}
 
     return AmendmentFields(
-        new_check_in=_nonempty(changes.get("check_in")),
-        new_check_out=_nonempty(changes.get("check_out")),
+        new_check_in=normalize_date(_nonempty(changes.get("check_in"))),
+        new_check_out=normalize_date(_nonempty(changes.get("check_out"))),
         new_guest_count=_int_or_none(changes.get("guests")),
         amendment_reason=_nonempty(changes.get("remark")),
     )

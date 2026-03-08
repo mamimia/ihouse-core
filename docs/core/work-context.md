@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 73 — Ordering Buffer Auto-Route (closed)
+Phase 74 — OTA Date/Timezone Normalization (closed)
 
 ## Last Closed Phase
 
-Phase 73 — Ordering Buffer Auto-Route
+Phase 74 — OTA Date/Timezone Normalization
 
 ## Current Objective
 
-Phase 74 — TBD.
+Phase 75 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 73 — Ordering Buffer Auto-Route (closed)
+Phase 74 — OTA Date/Timezone Normalization (closed)
 
 ## Last Closed Phase
-Phase 73 — Ordering Buffer Auto-Route
+Phase 74 — OTA Date/Timezone Normalization
 
 ## System Status
 
@@ -30,8 +30,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 71 | Booking State Query API — GET /bookings/{booking_id}, JWT auth, tenant isolation, 16 tests | ✅ |
 | 72 | Tenant Summary Dashboard — GET /admin/summary, 7 fields, DLQ pending, amendment count, 14 tests | ✅ |
 | 73 | Ordering Buffer Auto-Route — BOOKING_NOT_FOUND → buffer auto-replay, 11 contract tests | ✅ |
+| 74 | OTA Date Normalization — date_normalizer.py, all 5 providers, 22 contract tests | ✅ |
 
-**492 tests pass** (2 pre-existing SQLite skips, unrelated)
+**514 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -140,9 +141,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 74 — TBD**
+**Phase 75 — TBD**
 - See `docs/core/improvements/future-improvements.md` → Active Backlog
 
 ## Tests
 
-**492 passing** (2 pre-existing SQLite skips, unrelated)
+**514 passing** (2 pre-existing SQLite skips, unrelated)

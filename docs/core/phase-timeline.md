@@ -1960,3 +1960,19 @@ Files added:
 - `docs/archive/phases/phase-73-spec.md`
 
 Result: 492 passed, 2 skipped.
+
+## Phase 74 — OTA Date/Timezone Normalization (Closed)
+
+date_normalizer.py normalizes all OTA date variants to canonical YYYY-MM-DD.
+Integrated into all 5 provider amendment extractors.
+
+Files added:
+- `src/adapters/ota/date_normalizer.py` — normalize_date() function
+- `tests/test_date_normalizer_contract.py` — 22 contract tests
+- `docs/archive/phases/phase-74-spec.md`
+
+Files modified:
+- `src/adapters/ota/amendment_extractor.py` — all 5 providers now normalize dates
+
+Formats handled: ISO date, ISO datetime (+tz, -tz, Z), compact YYYYMMDD, slash DD/MM/YYYY.
+Result: 514 passed, 2 skipped.
