@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 69 — BOOKING_AMENDED Python Pipeline (closed)
+Phase 71 — Booking State Query API (closed)
 
 ## Last Closed Phase
-Phase 69 — BOOKING_AMENDED Python Pipeline
+Phase 71 — Booking State Query API
 
 ## System Status
 
-**Full HTTP ingestion stack complete (Phases 58–64). Financial Layer complete (Phases 65–67). booking_id Stability enforced (Phase 68). BOOKING_AMENDED fully live end-to-end (Phase 69).**
+**Full HTTP ingestion stack complete (Phases 58–64). Financial Layer complete (Phases 65–67). booking_id Stability (Phase 68). BOOKING_AMENDED live (Phase 69). Booking State Query API (Phase 71).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -27,8 +27,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 67 | Financial Facts Query API — GET /financial/{booking_id}, JWT auth, tenant isolation | ✅ |
 | 68 | booking_id Stability — normalize_reservation_ref, all 5 adapters, 30 contract tests | ✅ |
 | 69 | BOOKING_AMENDED Python Pipeline — booking_amended skill, registry wiring, 20 contract tests | ✅ |
+| 71 | Booking State Query API — GET /bookings/{booking_id}, JWT auth, tenant isolation, 16 tests | ✅ |
 
-**451 tests pass** (2 pre-existing SQLite skips, unrelated)
+**467 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -137,9 +138,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 70 — TBD**
+**Phase 72 — TBD**
 - See `docs/core/improvements/future-improvements.md` → Active Backlog
 
 ## Tests
 
-**451 passing** (2 pre-existing SQLite skips, unrelated)
+**467 passing** (2 pre-existing SQLite skips, unrelated)

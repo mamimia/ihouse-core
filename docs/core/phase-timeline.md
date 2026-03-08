@@ -1908,3 +1908,23 @@ Files modified:
 
 Result: 451 passed, 2 skipped.
 No Supabase schema changes.
+
+## Phase 71 — Booking State Query API (Closed)
+
+GET /bookings/{booking_id} — reads booking_state projection with JWT auth + tenant isolation.
+
+Files added:
+- `src/api/bookings_router.py` — GET /bookings/{booking_id}
+- `tests/test_bookings_router_contract.py` — 16 contract tests
+- `docs/archive/phases/phase-71-spec.md`
+
+Files modified:
+- `src/main.py` — bookings tag + bookings_router registered
+
+API contract:
+- 200 → booking_id, tenant_id, source, reservation_ref, property_id, status, check_in, check_out, version, created_at, updated_at
+- 404 → BOOKING_NOT_FOUND (cross-tenant also returns 404, not 403)
+- 500 → INTERNAL_ERROR
+
+Invariants: reads booking_state only, no write path, tenant isolation enforced at DB query level.
+Result: 467 passed, 2 skipped.

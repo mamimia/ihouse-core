@@ -96,6 +96,7 @@ In development mode (`IHOUSE_JWT_SECRET` not set), auth is bypassed.
 _TAGS = [
     {"name": "ops", "description": "Operational endpoints (health, status). No authentication required."},
     {"name": "webhooks", "description": "OTA provider webhook ingestion. JWT Bearer + HMAC signature required."},
+    {"name": "bookings", "description": "Booking state query. JWT Bearer required. Reads from booking_state projection."},
     {"name": "financial", "description": "Financial facts query. JWT Bearer required. Reads from booking_financial_facts only."},
 ]
 
@@ -124,6 +125,9 @@ app.include_router(webhooks_router)
 
 from api.financial_router import router as financial_router  # noqa: E402
 app.include_router(financial_router)
+
+from api.bookings_router import router as bookings_router  # noqa: E402
+app.include_router(bookings_router)
 
 
 # ---------------------------------------------------------------------------

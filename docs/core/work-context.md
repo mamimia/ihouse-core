@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 69 — BOOKING_AMENDED Python Pipeline (closed)
+Phase 71 — Booking State Query API (closed)
 
 ## Last Closed Phase
 
-Phase 69 — BOOKING_AMENDED Python Pipeline
+Phase 71 — Booking State Query API
 
 ## Current Objective
 
-Phase 70 — TBD.
+Phase 72 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)
