@@ -206,6 +206,7 @@ async def request_logging(request: Request, call_next):  # type: ignore[name-def
         from fastapi.responses import JSONResponse as _JSONResponse
         resp = _JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
         resp.headers["X-Request-ID"] = request_id
+        resp.headers["X-API-Version"] = app.version
         return resp
 
     duration_ms = int((time.monotonic() - start) * 1000)
@@ -218,6 +219,7 @@ async def request_logging(request: Request, call_next):  # type: ignore[name-def
         duration_ms,
     )
     response.headers["X-Request-ID"] = request_id
+    response.headers["X-API-Version"] = app.version
     return response
 
 

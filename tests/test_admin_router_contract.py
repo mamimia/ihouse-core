@@ -238,4 +238,4 @@ class TestAdminSummary500:
         db.table.side_effect = RuntimeError("DB down")
         with patch("api.admin_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/admin/summary")
-        assert resp.json()["error"] == "INTERNAL_ERROR"
+        assert resp.json()["code"] == "INTERNAL_ERROR"

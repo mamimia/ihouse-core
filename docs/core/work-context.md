@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 74 — OTA Date/Timezone Normalization (closed)
+Phase 75 — Production Hardening: API Error Standards (closed)
 
 ## Last Closed Phase
 
-Phase 74 — OTA Date/Timezone Normalization
+Phase 75 — Production Hardening: API Error Standards
 
 ## Current Objective
 
-Phase 75 — TBD.
+Phase 76 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)

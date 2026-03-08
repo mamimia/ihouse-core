@@ -154,7 +154,7 @@ class TestGetBooking404:
         db = _mock_db([])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/nonexistent")
-        assert resp.json()["error"] == "BOOKING_NOT_FOUND"
+        assert resp.json()["code"] == "BOOKING_NOT_FOUND"
 
     def test_404_body_includes_booking_id(self) -> None:
         db = _mock_db([])
@@ -214,4 +214,4 @@ class TestGetBooking500:
         db.table.side_effect = RuntimeError("connection lost")
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        assert resp.json()["error"] == "INTERNAL_ERROR"
+        assert resp.json()["code"] == "INTERNAL_ERROR"

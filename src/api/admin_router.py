@@ -34,6 +34,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +176,4 @@ async def get_tenant_summary(
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /admin/summary error for tenant=%s: %s", tenant_id, exc)
-        return JSONResponse(
-            status_code=500,
-            content={"error": "INTERNAL_ERROR"},
-        )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

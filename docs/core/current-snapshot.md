@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 74 — OTA Date/Timezone Normalization (closed)
+Phase 75 — Production Hardening: API Error Standards (closed)
 
 ## Last Closed Phase
-Phase 74 — OTA Date/Timezone Normalization
+Phase 75 — Production Hardening: API Error Standards
 
 ## System Status
 
@@ -31,8 +31,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 72 | Tenant Summary Dashboard — GET /admin/summary, 7 fields, DLQ pending, amendment count, 14 tests | ✅ |
 | 73 | Ordering Buffer Auto-Route — BOOKING_NOT_FOUND → buffer auto-replay, 11 contract tests | ✅ |
 | 74 | OTA Date Normalization — date_normalizer.py, all 5 providers, 22 contract tests | ✅ |
+| 75 | Production Hardening — error_models.py, X-API-Version header, standard error body, 19 tests | ✅ |
 
-**514 tests pass** (2 pre-existing SQLite skips, unrelated)
+**533 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -141,9 +142,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 75 — TBD**
+**Phase 76 — TBD**
 - See `docs/core/improvements/future-improvements.md` → Active Backlog
 
 ## Tests
 
-**514 passing** (2 pre-existing SQLite skips, unrelated)
+**533 passing** (2 pre-existing SQLite skips, unrelated)

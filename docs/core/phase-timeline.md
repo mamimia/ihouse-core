@@ -1976,3 +1976,22 @@ Files modified:
 
 Formats handled: ISO date, ISO datetime (+tz, -tz, Z), compact YYYYMMDD, slash DD/MM/YYYY.
 Result: 514 passed, 2 skipped.
+
+## Phase 75 — Production Hardening: API Error Standards (Closed)
+
+Standard error body {code, message, trace_id} across Phase 71+ routers.
+X-API-Version response header added to all responses via middleware.
+
+Files added:
+- `src/api/error_models.py` — ErrorCode + make_error_response()
+- `tests/test_api_error_standards_contract.py` — 19 contract tests
+- `docs/archive/phases/phase-75-spec.md`
+
+Files modified:
+- `src/main.py` — X-API-Version header in middleware
+- `src/api/bookings_router.py` — standard error format
+- `src/api/admin_router.py` — standard error format
+- `tests/test_bookings_router_contract.py` — code → error assertions
+- `tests/test_admin_router_contract.py` — code → error assertions
+
+Result: 533 passed, 2 skipped.
