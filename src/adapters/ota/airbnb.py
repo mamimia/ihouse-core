@@ -10,6 +10,7 @@ from .schemas import (
 )
 from .idempotency import generate_idempotency_key
 from .amendment_extractor import normalize_amendment
+from .financial_extractor import extract_financial_facts
 
 
 class AirbnbAdapter(OTAAdapter):
@@ -37,6 +38,7 @@ class AirbnbAdapter(OTAAdapter):
             property_id=payload["listing_id"],       # Airbnb uses listing_id
             occurred_at=datetime.fromisoformat(payload["occurred_at"]),
             payload=payload,
+            financial_facts=extract_financial_facts(self.provider, payload),
         )
 
     def to_canonical_envelope(

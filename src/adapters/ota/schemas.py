@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+if TYPE_CHECKING:
+    from .financial_extractor import BookingFinancialFacts
 
 
 @dataclass
@@ -21,6 +24,7 @@ class NormalizedBookingEvent:
     property_id: str
     occurred_at: datetime
     payload: Dict[str, Any]
+    financial_facts: Optional["BookingFinancialFacts"] = None
 
 
 @dataclass

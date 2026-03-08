@@ -1827,3 +1827,16 @@ Files modified: src/main.py, src/schemas/responses.py
 
 Status: ok / degraded (DLQ>0, 200) / unhealthy (Supabase down, 503)
 Result: 320 passed, 2 skipped.
+
+## Phase 65 — Financial Data Foundation (Closed)
+
+Introduced structured financial field extraction for all 5 OTA adapters.
+
+Files added: src/adapters/ota/financial_extractor.py, tests/test_financial_extractor_contract.py
+Files modified: src/adapters/ota/schemas.py, src/adapters/ota/bookingcom.py, src/adapters/ota/expedia.py, src/adapters/ota/airbnb.py, src/adapters/ota/agoda.py, src/adapters/ota/tripcom.py
+
+BookingFinancialFacts: frozen dataclass (immutable, validated).
+source_confidence: FULL | PARTIAL | ESTIMATED per provider.
+Invariant enforced: financial_facts never enters canonical envelope or booking_state.
+Result: 372 passed, 2 skipped.
+

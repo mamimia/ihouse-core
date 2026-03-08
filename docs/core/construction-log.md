@@ -1256,3 +1256,26 @@ Result:
 320 tests pass (320 passed, 2 skipped).
 No canonical business semantics changed.
 No new Supabase tables or migrations.
+
+## Phase 65 — Financial Data Foundation (Closed)
+
+- [Claude]
+- New: src/adapters/ota/financial_extractor.py
+  - BookingFinancialFacts (frozen=True dataclass): provider, total_price, currency, ota_commission, taxes, fees, net_to_property, source_confidence, raw_financial_fields
+  - Per-provider extractors: _extract_bookingcom, _extract_expedia, _extract_airbnb, _extract_agoda, _extract_tripcom
+  - Public API: extract_financial_facts(provider, payload) → BookingFinancialFacts
+  - source_confidence: FULL / PARTIAL / ESTIMATED
+  - All fields Optional — no exception on absent provider fields
+- Modified: src/adapters/ota/schemas.py — NormalizedBookingEvent gains financial_facts: Optional[BookingFinancialFacts] = None
+- Modified: all 5 adapters (bookingcom, expedia, airbnb, agoda, tripcom) — normalize() now calls extract_financial_facts()
+- New: tests/test_financial_extractor_contract.py — 52 contract tests
+  - Immutability (FrozenInstanceError), per-provider extraction, empty payload safety, confidence
+  - Integration: adapter.normalize() → financial_facts is BookingFinancialFacts instance for all 5 providers
+  - Invariant: financial_facts does not appear in canonical envelope
+
+Invariant (locked Phase 62+): booking_state must NEVER contain financial data. Enforced: financial_facts lives on NormalizedBookingEvent only.
+
+Result: 372 tests pass (372 passed, 2 skipped).
+No canonical business semantics changed.
+No Supabase tables or migrations. No booking_state writes.
+
