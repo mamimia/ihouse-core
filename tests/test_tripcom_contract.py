@@ -76,7 +76,9 @@ class TestTripComNormalize:
     def test_normalize_payload_preserved(self):
         payload = _tripcom_payload()
         normalized = adapter.normalize(payload)
-        assert normalized.payload == payload
+        # Phase 77: normalize_schema() adds canonical_* keys to payload.
+        # The original fields must all be preserved (superset check).
+        assert payload.items() <= normalized.payload.items()
 
 
 class TestTripComBookingCreated:

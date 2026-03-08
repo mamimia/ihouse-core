@@ -12,6 +12,7 @@ from .idempotency import generate_idempotency_key
 from .amendment_extractor import normalize_amendment
 from .financial_extractor import extract_financial_facts
 from .booking_identity import normalize_reservation_ref
+from .schema_normalizer import normalize_schema
 
 
 class BookingComAdapter(OTAAdapter):
@@ -23,6 +24,7 @@ class BookingComAdapter(OTAAdapter):
         Convert Booking.com webhook payload into normalized structure.
         """
 
+        enriched = normalize_schema(self.provider, payload)
         return NormalizedBookingEvent(
             tenant_id=payload["tenant_id"],
             provider=self.provider,
@@ -30,7 +32,7 @@ class BookingComAdapter(OTAAdapter):
             reservation_id=normalize_reservation_ref(self.provider, payload["reservation_id"]),
             property_id=payload["property_id"],
             occurred_at=datetime.fromisoformat(payload["occurred_at"]),
-            payload=payload,
+            payload=enriched,
             financial_facts=extract_financial_facts(self.provider, payload),
         )
 

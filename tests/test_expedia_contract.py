@@ -91,7 +91,9 @@ class TestExpediaNormalize:
         """Original payload dict is preserved in normalized.payload."""
         payload = _expedia_payload()
         normalized = adapter.normalize(payload)
-        assert normalized.payload == payload
+        # Phase 77: normalize_schema() adds canonical_* keys to payload.
+        # The original fields must all be preserved (superset check).
+        assert payload.items() <= normalized.payload.items()
 
 
 # ---------------------------------------------------------------------------

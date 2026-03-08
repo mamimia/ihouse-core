@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 76 — occurred_at vs recorded_at Separation (closed)
+Phase 77 — OTA Schema Normalization (closed)
 
 ## Last Closed Phase
 
-Phase 76 — occurred_at vs recorded_at Separation
+Phase 77 — OTA Schema Normalization
 
 ## Current Objective
 
-Phase 77 — TBD.
+Phase 78 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)
@@ -55,5 +55,5 @@ See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Tests
 
-431 passing (2 pre-existing SQLite skips, unrelated)
+572 passing (2 pre-existing SQLite skips, unrelated)
 

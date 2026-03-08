@@ -76,7 +76,9 @@ class TestAgodaNormalize:
         """Original payload dict is preserved."""
         payload = _agoda_payload()
         normalized = adapter.normalize(payload)
-        assert normalized.payload == payload
+        # Phase 77: normalize_schema() adds canonical_* keys to payload.
+        # The original fields must all be preserved (superset check).
+        assert payload.items() <= normalized.payload.items()
 
 
 class TestAgodaBookingCreated:

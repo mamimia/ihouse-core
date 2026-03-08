@@ -1370,3 +1370,16 @@ No Supabase schema changes. booking_id formula unchanged.
 Result: 451 tests pass (451 passed, 2 skipped).
 No Supabase schema changes. No new migrations.
 Full BOOKING_AMENDED pipeline is live end-to-end.
+
+## Phase 77 — OTA Schema Normalization (Closed)
+
+- [Claude]
+- created `src/adapters/ota/schema_normalizer.py`: normalize_schema(provider, payload) → dict
+  - adds canonical_guest_count, canonical_booking_ref, canonical_property_id to payload copy
+  - raw original fields preserved; missing fields → None (no KeyError)
+- updated all 5 OTA adapters: bookingcom, airbnb, expedia, agoda, tripcom — call normalize_schema() in normalize()
+- 27 contract tests added (tests/test_schema_normalizer_contract.py): Groups A–E
+- 4 existing adapter contract tests updated (superset check for Phase 77 compat)
+
+Result: 572 passed, 2 skipped.
+No Supabase schema changes. No new migrations.

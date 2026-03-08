@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 76 — occurred_at vs recorded_at Separation (closed)
+Phase 77 — OTA Schema Normalization (closed)
 
 ## Last Closed Phase
-Phase 76 — occurred_at vs recorded_at Separation
+Phase 77 — OTA Schema Normalization
 
 ## System Status
 
@@ -33,8 +33,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 74 | OTA Date Normalization — date_normalizer.py, all 5 providers, 22 contract tests | ✅ |
 | 75 | Production Hardening — error_models.py, X-API-Version header, standard error body, 19 tests | ✅ |
 | 76 | occurred_at vs recorded_at Separation — server ingestion timestamp, 12 contract tests | ✅ |
+| 77 | OTA Schema Normalization — schema_normalizer.py, 3 canonical keys, all 5 providers, 27 contract tests | ✅ |
 
-**545 tests pass** (2 pre-existing SQLite skips, unrelated)
+**572 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -143,9 +144,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 77 — TBD**
+**Phase 78 — TBD**
 - See `docs/core/improvements/future-improvements.md` → Active Backlog
 
 ## Tests
 
-**545 passing** (2 pre-existing SQLite skips, unrelated)
+**572 passing** (2 pre-existing SQLite skips, unrelated)

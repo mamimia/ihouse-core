@@ -2009,3 +2009,17 @@ Files added:
 - `docs/archive/phases/phase-76-spec.md`
 
 Result: 545 passed, 2 skipped.
+
+## Phase 77 — OTA Schema Normalization (Closed)
+
+Introduced `normalize_schema(provider, payload)` in `src/adapters/ota/schema_normalizer.py`.
+All 5 OTA adapters (bookingcom, airbnb, expedia, agoda, tripcom) now enrich their `NormalizedBookingEvent.payload` with three canonical keys:
+- `canonical_guest_count` — unified guest count field
+- `canonical_booking_ref` — unified booking reference field
+- `canonical_property_id` — unified property identifier field
+
+Raw provider fields are preserved; canonical keys are additive. Missing fields → `None` (no `KeyError`).
+27 contract tests added (Groups A–E: canonical values, raw preservation, missing-field resilience).
+4 existing adapter contract tests updated to use superset check (`payload.items() <= normalized.payload.items()`).
+
+Result: 572 passed, 2 skipped.
