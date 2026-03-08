@@ -1499,3 +1499,25 @@ Outcome:
 
 Next phase:
 Phase 41 — DLQ Alerting Threshold
+## Phase 41 — DLQ Alerting Threshold (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 41 added a configurable threshold check on DLQ pending count with structured WARNING logging.
+
+Completed:
+- [Claude]
+- DLQAlertResult frozen dataclass
+- check_dlq_threshold(threshold, client) — emits [DLQ ALERT] to stderr when pending >= threshold
+- check_dlq_threshold_default() — reads DLQ_ALERT_THRESHOLD env var, defaults to 10
+- 13 contract tests
+
+Outcome:
+- 67 tests pass (2 pre-existing SQLite failures unrelated)
+- No Supabase migrations
+- No write paths
+
+Next phase:
+Phase 42 — Reservation Amendment Discovery

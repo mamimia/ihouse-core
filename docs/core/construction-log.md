@@ -606,3 +606,19 @@ DLQ is now observable. Operators can query pending rejections, replay history, a
 No write paths added.
 No booking_state reads added.
 No canonical event behaviour changed.
+## Phase 41 — DLQ Alerting Threshold (Closed)
+
+Completed:
+
+- [Claude]
+- implemented `src/adapters/ota/dlq_alerting.py`:
+  - `DLQAlertResult` (frozen dataclass): pending_count, threshold, exceeded, message
+  - `check_dlq_threshold(threshold, client=None)` — emits structured WARNING to stderr when exceeded
+  - `check_dlq_threshold_default(client=None)` — reads DLQ_ALERT_THRESHOLD env var (default: 10)
+- 13 contract tests added: threshold/boundary/env logic, stderr emission, frozen dataclass guard
+- no Supabase tables, no migrations, no write paths added
+
+Result:
+
+Operators can now call check_dlq_threshold_default() on a schedule and receive a structured WARNING to stderr when unresolved DLQ rows accumulate above threshold.
+67 tests pass (2 pre-existing SQLite failures unrelated).

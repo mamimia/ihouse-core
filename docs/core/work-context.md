@@ -2,21 +2,17 @@
 
 ## Current Active Phase
 
-Phase 40 — DLQ Observability
+Phase 41 — DLQ Alerting Threshold
 
 ## Last Closed Phase
 
-Phase 39 — DLQ Controlled Replay
+Phase 40 — DLQ Observability
 
 ## Current Objective
 
-Make the Dead Letter Queue visible and operational. Operators currently have no way to know how many events are in the DLQ, what types of rejections are happening, or which rows have been replayed. This phase adds a read-only inspection layer.
+Add a configurable threshold check on the DLQ pending count. When the number of unresolved DLQ rows exceeds a configured limit, emit a structured warning log. This gives operators an early signal before problems compound.
 
-This phase is a read-only observability phase.
-
-It must not add new write paths.
-It must not read booking_state.
-It must not modify canonical event behaviour.
+This phase is a read-only alerting layer. No new write paths. No new Supabase tables.
 
 ## Locked Architectural Reality
 
@@ -45,23 +41,22 @@ External systems must never bypass the canonical apply gate.
 - provider-specific logic must remain isolated from the shared pipeline
 - MODIFY remains deterministic reject-by-default
 
-## DLQ State After Phase 38-39
+## Phase 41 Scope
 
-ota_dead_letter columns:
-- id, received_at, provider, event_type, rejection_code, rejection_msg
-- envelope_json, emitted_json, trace_id
-- replayed_at, replay_result, replay_trace_id
+1. `src/adapters/ota/dlq_alerting.py`:
+   - `check_dlq_threshold(threshold: int, client=None) -> DLQAlertResult`
+   - `DLQAlertResult`: dataclass with `pending_count`, `threshold`, `exceeded`, `message`
+   - if `pending_count >= threshold` → `exceeded=True`, emit structured WARNING to stderr
+   - configurable default threshold via env var `DLQ_ALERT_THRESHOLD` (default: 10)
 
-## Phase 40 Scope
-
-1. Supabase SQL view `ota_dlq_summary` — rejection counts grouped by event_type and rejection_code
-2. Python read-only utility `src/adapters/ota/dlq_inspector.py`:
-   - `get_pending_count()` → int: rows where replay_result IS NULL or not in APPLIED set
-   - `get_replayed_count()` → int: rows where replay_result in APPLIED set
-   - `get_rejection_breakdown()` → list[dict]: grouped by event_type + rejection_code
-3. Contract tests (unit, mocked — no live Supabase required)
+2. Contract tests:
+   - threshold not exceeded → exceeded=False, no warning
+   - threshold exceeded → exceeded=True, warning emitted to stderr
+   - threshold boundary (pending==threshold) → exceeded=True
+   - default threshold from env var
+   - zero pending → never exceeded
 
 Out of scope:
-- alerting thresholds (Phase 41)
+- external alerting (webhook, email, Slack)
 - automatic retry
-- any write to ota_dead_letter beyond what already exists
+- any writes
