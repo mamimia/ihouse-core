@@ -1,220 +1,148 @@
 # iHouse Core – Roadmap
 
-
-Completed
-
-Phase 21  
-External OTA ingestion boundary defined.
-
-Phase 22  
-OTA adapter layer introduced with normalization and validation.
-
-Phase 23  
-Semantic classification layer introduced for OTA events.
-
-Phase 24  
-OTA modification semantic recognition (MODIFY) introduced with
-deterministic rejection of unresolved modification events.
-
-Phase 25  
-OTA modification resolution rules closed with deterministic
-reject-by-default preserved.
-
-Phase 26  
-OTA payload contract verification completed across multiple providers.
-
-Phase 27  
-Multi-OTA adapter architecture introduced with a shared pipeline,
-multi-provider registry, and provider extensibility proof through
-Booking.com plus an Expedia scaffold adapter.
+> [!NOTE]
+> This document is a living directional guide, not a binding contract.
+> It is updated every few phases to reflect what we've learned and where we're headed.
+> Last updated: Phase 39 closed. [Claude]
 
 
-Upcoming
+## Completed
+
+Phase 21 — External OTA ingestion boundary defined.
+Phase 22 — OTA adapter layer introduced with normalization and validation.
+Phase 23 — Semantic classification layer introduced for OTA events.
+Phase 24 — OTA modification semantic recognition (MODIFY) with deterministic reject-by-default.
+Phase 25 — OTA modification resolution rules closed.
+Phase 26 — OTA payload contract verification across providers.
+Phase 27 — Multi-OTA adapter architecture (shared pipeline, multi-provider registry, Booking.com + Expedia scaffold).
+Phase 28–33 — (See phase-timeline.md for full history.)
+Phase 34 — OTA canonical emitted event alignment discovery.
+Phase 35 — OTA canonical emitted event alignment implementation (BOOKING_CREATED, BOOKING_CANCELED skills).
+Phase 36 — Business identity canonicalization (booking_id = {source}_{reservation_ref} verified and locked).
+Phase 37 — External event ordering protection discovery (CANCELED before CREATED → BOOKING_NOT_FOUND confirmed, current behavior classified as deterministic rejection).
+Phase 38 — Dead Letter Queue implemented (ota_dead_letter table, dead_letter.py, best-effort non-blocking write).
+Phase 39 — DLQ controlled replay (replay_dlq_row, idempotency, outcome persistence).
 
 
-Phase 28  
-OTA external surface decision.
+---
+
+## Upcoming — Near Term
+
+These are concrete next-phase candidates based on current system state.
+
+
+### Phase 40 — DLQ Observability
 
 Goal:
-Decide whether the current single external OTA envelope kind
-(`BOOKING_SYNC_INGEST`) remains sufficient for multi-provider scale,
-or whether the canonical external surface must be split into more
-explicit deterministic kinds.
+Make the Dead Letter Queue visible and operational without adding new write paths.
 
-Key question:
-Should the OTA boundary continue to emit one canonical external
-envelope kind with semantic differentiation inside payload fields,
-or should CREATE and CANCEL outcomes be represented by more explicit
-external canonical kinds?
+Proposed scope:
+- A Supabase SQL view `ota_dlq_summary` grouping rejection counts by event_type and rejection_code
+- A read-only Python utility `dlq_inspector.py` exposing: pending rows, replayed rows, rejection breakdown
+- Contract tests for the inspector (unit, no live Supabase required)
 
-Constraint:
-No reconciliation layer may be introduced in this phase.
-No booking_state lookup may be introduced in this phase.
+Constraints:
+- No new write paths
+- No alerting infrastructure (that is Phase 41)
+- Must not read booking_state
 
 
-Phase 29  
-OTA ingestion replay harness.
+### Phase 41 — DLQ Alerting Threshold
 
 Goal:
-Create deterministic replay tools to simulate external OTA event
-streams against the canonical ingestion pipeline.
+Trigger an observable signal when DLQ accumulates too many unresolved rows.
+
+Proposed scope:
+- A simple threshold checker: if DLQ pending count exceeds N → emit a structured warning log
+- Configurable threshold via environment variable
+- Contract tests for threshold logic
 
 
-Phase 30  
-External integration test harness.
-
-Goal:
-End-to-end verification of OTA ingestion behavior across adapters,
-including rejection scenarios and replay safety.
-
-
-Phase 31  
-Operational observability for OTA ingestion.
+### Phase 42 — Reservation Amendment Discovery
 
 Goal:
-Introduce structured logging, metrics, and ingestion visibility
-for OTA adapters without modifying the deterministic event model.
+Begin the formal discovery phase for BOOKING_AMENDED support.
+
+This phase is discovery only — no implementation.
+
+Key questions:
+- What OTA providers emit amendment signals and in what shape?
+- Can amendment intent be classified deterministically?
+- What does "state-safe amendment application" require from apply_envelope?
+- What ordering guarantees are needed before BOOKING_AMENDED can be introduced?
+
+Constraints:
+- MODIFY remains deterministic reject-by-default until all discovery questions are answered
+- No new canonical event kinds in this phase
+- No booking_state reads in adapters
+
+
+### Phase 43 — booking_id Stability Layer
+
+Goal:
+Protect booking identity against provider-side reservoir_ref format changes.
+
+Key questions:
+- Which providers are likely to change reservation_ref encoding?
+- Should we normalize reservation_ref before forming booking_id?
+- What is the migration path for existing booking rows if the stable key changes?
+
+Constraints:
+- booking_id rule ({source}_{reservation_ref}) must remain deterministic
+- No schema mutation without a migration + replay safety analysis
+
+
+---
+
+## Medium Term
+
+These are directions we expect to reach within 10-15 phases from now.
+
+
+### Operational Observability Layer
+
+Structured logging, ingestion metrics, and DLQ alerting across all OTA adapters.
+
+Will cover:
+- Rejection rates by provider and event type
+- DLQ accumulation trends
+- Replay success/failure rates
+
+
+### OTA Ingestion Replay Harness
+
+Deterministic replay tools to simulate historical OTA event streams against the canonical pipeline. Used for regression testing and incident recovery.
+
+
+### External Integration Test Harness
+
+End-to-end verification of OTA ingestion from the provider webhook boundary through to Supabase state, covering rejection scenarios, dedup, and replay safety.
+
+
+### BOOKING_AMENDED Support (Future)
+
+Full deterministic amendment support. Can only begin after:
+- multiple OTA providers are live
+- ordering buffer or DLQ retry exists
+- out-of-order protections are proven in production
+- amendment classification is deterministic
+
+Until then: MODIFY → deterministic reject-by-default.
+
+
+---
 
 ## Future OTA Evolution — Amendment Handling
 
-Status: Future improvement (not implemented)
+MODIFY remains deterministic reject-by-default.
 
-Current system behavior intentionally supports only two deterministic OTA lifecycle outcomes:
+This section tracks the formal requirements for BOOKING_AMENDED.
+See `improvements/future-improvements.md` for the detailed backlog entry.
 
-- BOOKING_CREATED
-- BOOKING_CANCELED
+Requirements before BOOKING_AMENDED can be introduced:
 
-OTA modification events are currently classified as:
-
-MODIFY → deterministic reject
-
-This behavior is intentional and protects the canonical event model from ambiguous state mutation.
-
-The system does not yet support reservation amendments.
-
----
-
-### Why Amendments Are Not Implemented Yet
-
-OTA providers frequently emit "modification" events representing partial reservation changes.
-
-Examples:
-
-- date change
-- price change
-- guest count change
-- room change
-- reservation correction
-- OTA-side reconciliation
-
-These events are problematic because they are often:
-
-- non-deterministic
-- partial
-- emitted out of order
-- emitted as snapshots instead of deltas
-- dependent on external state
-
-Allowing these events directly into the canonical event model would risk violating core invariants.
-
-Therefore the current system design enforces:
-
-MODIFY → deterministic reject
-
-This ensures that canonical system truth is never derived from ambiguous OTA modification signals.
-
----
-
-### Future Goal
-
-Introduce deterministic amendment support without violating the core architectural invariants.
-
-The system may eventually introduce a new canonical lifecycle event:
-
-BOOKING_AMENDED
-
-This event would represent a deterministic modification to an existing reservation.
-
-However, amendments must only be introduced once the system can safely determine:
-
-- what changed
-- what the previous state was
-- whether the change is valid
-- whether events arrived in correct order
-- whether the modification conflicts with existing bookings
-
----
-
-### Requirements Before Amendment Support Can Be Introduced
-
-The following architectural capabilities must exist before amendments are allowed:
-
-1. Deterministic amendment classification
-
-Adapters must be able to detect safe amendment scenarios such as:
-
-- date extension
-- date reduction
-- guest count update
-
-Ambiguous modifications must still be rejected.
-
-2. Reservation identity stability
-
-The system must be able to guarantee that an amendment references the same reservation identity.
-
-3. State-safe amendment application
-
-The core system must safely transition:
-
-previous booking state → amended booking state
-
-without violating:
-
-- availability
-- overlap rules
-- historical event integrity
-
-4. Out-of-order protection
-
-OTA systems frequently emit events out of order.
-
-The system must ensure amendments cannot corrupt booking state if events arrive late.
-
-5. Projection safety
-
-Booking projections must correctly rebuild amended reservations from event history.
-
----
-
-### Potential Future Canonical Event
-
-Example future event:
-
-BOOKING_AMENDED
-
-Payload example:
-
-{
-  "reservation_id": "...",
-  "previous_dates": {...},
-  "new_dates": {...},
-  "amendment_reason": "date_change"
-}
-
-This event must remain deterministic and reconstructable from the event log.
-
----
-
-### When Amendment Support Should Be Implemented
-
-Amendment support should only be considered after:
-
-- multiple OTA providers are live
-- OTA payload behavior is well understood
-- system projections are stable
-- out-of-order handling strategy is defined
-
-Until then the correct behavior remains:
-
-MODIFY → deterministic reject
+1. Deterministic amendment classification — adapters must distinguish safe amendments from ambiguous modifications
+2. Reservation identity stability — booking_id must be stable across amendment events
+3. State-safe amendment application — apply_envelope must safely transition previous_state → amended_state
+4. Out-of-order protection — amendments must not corrupt state if events arrive late
+5. Projection safety — event log must correctly rebuild amended reservations from history
