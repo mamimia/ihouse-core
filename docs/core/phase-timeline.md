@@ -1808,3 +1808,12 @@ HTTP API layer complete (Phases 58-62):
   60 — Request logging middleware
   61 — JWT auth
   62 — Per-tenant rate limiting
+
+## Phase 63 — OpenAPI Docs (Closed)
+
+Enriched /docs and /redoc to production quality.
+
+Files added: src/schemas/__init__.py, src/schemas/responses.py, docs/archive/phases/phase-63-spec.md
+Files modified: src/main.py (API metadata, BearerAuth scheme), src/api/webhooks.py (response schemas)
+
+Result: 313 passed, 2 skipped.
