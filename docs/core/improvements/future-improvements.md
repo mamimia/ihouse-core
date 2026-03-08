@@ -42,11 +42,12 @@ append-only historical records in `docs/core/phase-timeline.md`.
 - notes: separate `occurred_at` from `recorded_at` so delayed or out-of-order external events remain auditable without weakening ordering guarantees. Use `recorded_at` for canonical ordering and preserve `occurred_at` for business history.
 
 ### Dead Letter Queue for External Event Failures
-- status: deferred
+- status: resolved
 - discovered_in: Phase 20 era backlog
+- resolved_in: Phase 38
 - source_context: external event failure retention
 - priority: medium
-- notes: add a dedicated dead-letter store for invalid or failed external events so they are preserved for investigation, manual correction, and controlled replay.
+- notes: [Claude] Phase 38 implemented ota_dead_letter table (append-only, RLS) and dead_letter.py (best-effort, non-blocking). Rejected OTA events are now preserved. E2E verified.
 
 ### External Event Ordering Protection
 - status: deferred
@@ -128,6 +129,34 @@ append-only historical records in `docs/core/phase-timeline.md`.
 - priority: medium
 - notes: the current rule remains `MODIFY -> deterministic reject-by-default`. Future amendment support is allowed only after deterministic classification, reservation identity stability, safe ordering guarantees, and state-safe application rules exist.
 
+
+### DLQ Controlled Replay
+- status: open
+- discovered_in: Phase 38
+- source_context: DLQ rows are preserved but currently unactionable
+- priority: high
+- notes: [Claude] Now that ota_dead_letter exists, the next step is a safe, controlled replay mechanism that reads specific rows from ota_dead_letter and re-processes them through the canonical ingest pipeline (skill → apply_envelope). Replay must never bypass apply_envelope. Replay must be manually triggered, not automatic. Replay must be idempotent — re-running the same DLQ row must be safe. A replay_id or replay_at timestamp should be written back to the DLQ row after successful replay.
+
+### DLQ Observability and Alerting
+- status: open
+- discovered_in: Phase 38
+- source_context: operational visibility on rejected OTA events
+- priority: medium
+- notes: [Claude] ota_dead_letter is queryable but has no alerting. Future work should add: (1) a daily summary of rejection counts by event_type and rejection_code, (2) alerting when DLQ rows exceed a threshold, (3) a read-only dashboard view on existing Supabase Studio. Must not add new write paths.
+
+### Idempotent DLQ Replay Tracking
+- status: open
+- discovered_in: Phase 38
+- source_context: safe replay from DLQ
+- priority: medium
+- notes: [Claude] When DLQ replay is implemented, the ota_dead_letter table should include: replayed_at (timestamptz), replay_result (text), replay_trace_id (text). This allows operators to see which DLQ rows have been successfully replayed and which remain pending. Must be added via a migration, not by mutating the original preserved envelope.
+
+### booking_id Stability Across Provider Schema Changes
+- status: open
+- discovered_in: Phase 36
+- source_context: booking_id is derived from provider-supplied fields
+- priority: medium
+- notes: [Claude] The canonical booking_id rule is {source}_{reservation_ref}. If an OTA provider changes the format of reservation_ref (e.g., strips a prefix, changes encoding), the same booking will generate a different booking_id and bypass the existing dedup. Future work should consider a stable booking identity layer that canonicalizes reservation_ref before inclusion in booking_id.
 
 ## Resolved / No Longer Open
 

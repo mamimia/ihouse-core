@@ -568,3 +568,23 @@ No canonical invariants are violated.
 No canonical business semantics changed.
 No alternative write path was introduced.
 No closed semantic decision was reopened.
+## Phase 39 — DLQ Controlled Replay (Closed)
+
+Completed:
+
+- [Claude]
+- migration `20260308174500_phase39_dlq_replay_columns.sql`: added replayed_at, replay_result, replay_trace_id columns to ota_dead_letter
+- deployed via supabase db push, verified E2E (columns queryable and writable)
+- implemented `src/adapters/ota/dlq_replay.py`: replay_dlq_row(row_id) — safe, idempotent, always routes through apply_envelope
+- updated `future-improvements.md`: marked DLQ as resolved, added 4 new forward-looking items (DLQ Controlled Replay, DLQ Observability, Idempotent DLQ Replay Tracking, booking_id Stability)
+- 7 contract tests added: idempotency guard, apply_envelope routing, new idempotency key, unknown event_type, missing row, outcome persistence
+- E2E verified: BOOKING_CREATED → BOOKING_CANCELED_IN_DLQ → replay_dlq_row → APPLIED + idempotent second replay
+
+Result:
+
+DLQ rows are now actionable. Operators can replay specific rejected OTA events through the canonical pipeline using replay_dlq_row(row_id). Replay outcome is persisted on the DLQ row.
+43 tests pass (2 pre-existing SQLite failures unrelated).
+
+No canonical business semantics changed.
+No automatic retry was introduced.
+No canonical write path was bypassed.

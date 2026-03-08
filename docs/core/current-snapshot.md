@@ -1,45 +1,45 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 39 — TBD
+Phase 40 — TBD
 
 ## Last Closed Phase
-Phase 38 — Dead Letter Queue for Failed OTA Events
+Phase 39 — DLQ Controlled Replay
 
 ## System Status
 
 The deterministic event architecture remains fully operational.
 
-The canonical database gate (`apply_envelope`) remains the only authority allowed to mutate booking state.
+`apply_envelope` remains the only authority allowed to mutate canonical booking state.
 
-OTA events rejected by `apply_envelope` are now preserved in `ota_dead_letter` instead of being silently lost.
+Rejected OTA events are preserved in `ota_dead_letter` and can now be replayed through `replay_dlq_row(row_id)` back through the canonical pipeline.
 
-## Phase 38 Result
+## Phase 39 Result
 
 [Claude]
 
-Phase 38 implemented a minimal, append-only Dead Letter Queue.
+**Migration:** `replayed_at`, `replay_result`, `replay_trace_id` added to `ota_dead_letter`.
 
-**Supabase table:** `ota_dead_letter` — append-only, RLS enabled for service_role  
-**Module:** `src/adapters/ota/dead_letter.py` — best-effort, non-blocking, swallows errors  
-**Service:** `ingest_provider_event_with_dlq` added to `service.py`, original wrapper preserved
+**Module:** `src/adapters/ota/dlq_replay.py` — `replay_dlq_row(row_id)`:
+- reads specific DLQ row
+- idempotency guard: already-applied rows return previous result, no re-processing
+- new idempotency key per replay (`dlq-replay-{id}-{hex}`) — never reuses original key
+- always routes through `apply_envelope` — never bypasses canonical gate
+- writes outcome back: `replayed_at`, `replay_result`, `replay_trace_id`
 
-E2E verified: `BOOKING_CANCELED` before `BOOKING_CREATED` → `apply_envelope` raises `BOOKING_NOT_FOUND` → DLQ row written with `rejection_code: P0001`
+E2E verified: BOOKING_CREATED → BOOKING_CANCELED_IN_DLQ → `replay_dlq_row` → `APPLIED` + idempotent second replay.
 
-The DLQ is:
-- append-only
-- non-blocking (never raises)
-- never bypasses `apply_envelope`
-- never mutates canonical state
-- observable via SQL query on `ota_dead_letter`
+No automatic retry introduced. No canonical write path bypassed.
 
-No canonical business semantics changed.
-No alternative write path was introduced.
-MODIFY remains deterministic reject-by-default.
+## DLQ Layer Summary (Phases 38-39)
+
+| Component | Where |
+|-----------|-------|
+| `ota_dead_letter` table | Supabase — append-only, RLS |
+| `dead_letter.py` | best-effort write on rejection |
+| `dlq_replay.py` | safe, idempotent, manual replay |
 
 ## Canonical External OTA Events
-
-The canonical OTA lifecycle events remain:
 
 - BOOKING_CREATED
 - BOOKING_CANCELED
@@ -69,6 +69,7 @@ Business Identity
 
 | Gap | Current Behavior | Priority |
 |-----|-----------------|----------|
-| Out-of-order events (CANCELED before CREATED) | Deterministic rejection → DLQ preserved | high |
-| Out-of-order replay / retry from DLQ | Not implemented | high |
-| External event ordering buffer | Not implemented | high |
+| Out-of-order events (CANCELED before CREATED) | Deterministic rejection → DLQ preserved → manual replay available | high |
+| DLQ Observability & Alerting | Not implemented | medium |
+| External Event Ordering Buffer | Not implemented | high |
+| booking_id Stability Across Provider Schema Changes | Not implemented | medium |

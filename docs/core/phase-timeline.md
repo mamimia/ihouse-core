@@ -1451,3 +1451,29 @@ Outcome:
 
 Next phase:
 Phase 39 — TBD
+## Phase 39 — DLQ Controlled Replay (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 39 implemented a safe, idempotent, manually-triggered replay mechanism for ota_dead_letter rows, making DLQ events actionable for the first time.
+
+Completed:
+- [Claude]
+- Migration: replayed_at, replay_result, replay_trace_id added to ota_dead_letter
+- dlq_replay.py: replay_dlq_row(row_id) — always routes through apply_envelope, never bypasses canonical gate
+- Idempotency: successfully-replayed rows return previous result without re-processing
+- New idempotency key: each replay uses a fresh request_id (dlq-replay-{id}-{hex})
+- Outcome persistence: replayed_at, replay_result, replay_trace_id written back to DLQ row
+- 7 contract tests added
+- E2E verified end-to-end
+- future-improvements.md updated with 4 new forward-looking items
+
+Outcome:
+- 43 tests pass (2 pre-existing SQLite failures unrelated)
+- No automatic retry introduced
+- No canonical write path bypassed
+
+Next phase:
+Phase 40 — TBD
