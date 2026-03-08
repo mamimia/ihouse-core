@@ -77,9 +77,41 @@ Do these in order:
 - Ideal cadence: every few minutes during active work, or after every significant file change.
 
 ### Spec file protocol
+
 - Every phase must have a spec file: `docs/archive/phases/phase-X-spec.md`
 - The spec is created at the start of the phase (or reconstructed at closure if the phase was discovery-only).
 - When a phase closes, the spec must already exist in the archive. Do not close a phase without it.
+- **Note:** Phase specs before Phase 65 use an older, shorter format. Do not rewrite them. History is read-only.
+
+#### Canonical phase spec template (Phase 65+)
+
+```markdown
+# Phase N — Short Title
+
+**Status:** Closed
+**Prerequisite:** Phase N-1 (Short Title)
+**Date Closed:** YYYY-MM-DD
+
+## Goal
+
+One paragraph. What this phase accomplishes and why.
+
+## Invariant (if applicable)
+
+Any new or pre-existing invariants that this phase enforces.
+
+## Design / Files
+
+| File | Change |
+|------|--------|
+| `path/to/file.py` | NEW / MODIFIED — one-line description |
+
+## Result
+
+**N tests pass, M skipped.**
+Any side-effects or non-changes explicitly noted.
+```
+
 
 ### ZIP protocol
 - At the end of every closed phase, create: `releases/phase-zips/iHouse-Core-Docs-Phase-<N>.zip`
