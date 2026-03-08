@@ -2,47 +2,46 @@
 
 ## Current Active Phase
 
-Phase 51 — Python Pipeline Integration (BOOKING_AMENDED routing)
+Phase 58 — HTTP Ingestion Layer (closed)
 
 ## Last Closed Phase
 
-Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch
+Phase 57 — Webhook Signature Verification
 
 ## Current Objective
 
-Wire BOOKING_AMENDED through the Python OTA adapter pipeline:
-
-1. **semantics.py** — map `reservation_modified` → semantic kind `BOOKING_AMENDED`
-   (currently maps to `MODIFY` which is rejected by default)
-
-2. **service.py / pipeline.py** — allow `BOOKING_AMENDED` semantic kind to flow through
-   to `to_canonical_envelope` and then `apply_envelope`
-   (currently `MODIFY` is rejected before reaching apply_envelope)
-
-3. **Contract tests** — `tests/test_booking_amended_contract.py`
-   covering the full pipeline path for `reservation_modified` → BOOKING_AMENDED → APPLIED
+Phase 58 is closed. Phase 59 is TBD.
 
 ## Key Invariants (Locked — Do Not Change)
 
 - `apply_envelope` is the single write authority — no adapter reads/writes booking_state directly
 - `event_log` is append-only
 - `booking_id = "{source}_{reservation_ref}"` — deterministic, canonical
+- HTTP endpoint does not call `apply_envelope` directly — routes through `ingest_provider_event` → pipeline → `IngestAPI.append_event` → `CoreExecutor.execute` → `apply_envelope`
 
-## Key Files for Phase 51
+## Key Files Added in Phase 58
 
-| File | Current behavior | Required change |
-|------|-----------------|-----------------|
-| `src/adapters/ota/semantics.py` | `reservation_modified` → MODIFY | → BOOKING_AMENDED |
-| `src/adapters/ota/pipeline.py` | MODIFY → reject before envelope | Allow BOOKING_AMENDED through |
-| `src/adapters/ota/service.py` | BOOKING_AMENDED not handled | Pass through like CREATED/CANCELED |
-| `src/adapters/ota/bookingcom.py` | `to_canonical_envelope` raises on MODIFY | Handle BOOKING_AMENDED payload |
+| File | Role |
+|------|------|
+| `src/api/__init__.py` | Package init |
+| `src/api/webhooks.py` | FastAPI router — `POST /webhooks/{provider}` |
+| `tests/test_webhook_endpoint.py` | 16 contract tests (TestClient, CI-safe) |
+
+## HTTP Status Codes (locked)
+
+| Code | Meaning |
+|------|---------|
+| 200 | ACCEPTED — envelope created |
+| 400 | PAYLOAD_VALIDATION_FAILED |
+| 403 | SIGNATURE_VERIFICATION_FAILED |
+| 500 | INTERNAL_ERROR |
 
 ## Supabase
 
 - Project: `reykggmlcehswrxjviup`
 - URL: `https://reykggmlcehswrxjviup.supabase.co`
-- Phase 50 migration deployed: `20260308210000_phase50_step2_apply_envelope_amended.sql`
+- No new migrations in Phase 58
 
 ## Tests
 
-158 passing (2 pre-existing SQLite failures, unrelated)
+286 passing (2 pre-existing SQLite skips, unrelated)

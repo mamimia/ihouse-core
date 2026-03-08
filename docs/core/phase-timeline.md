@@ -1737,3 +1737,20 @@ Outcome:
 
 Next phase:
 Phase 51 — Python Pipeline Integration (semantics.py + service.py BOOKING_AMENDED routing)
+
+## Phase 58 — HTTP Ingestion Layer (Closed)
+
+Created FastAPI HTTP endpoint as the real production boundary for OTA webhook ingestion.
+
+Files added:
+- src/api/__init__.py
+- src/api/webhooks.py — POST /webhooks/{provider}
+- tests/test_webhook_endpoint.py — 16 contract tests
+
+HTTP status codes locked:
+- 200 ACCEPTED — envelope created, idempotency_key returned
+- 400 PAYLOAD_VALIDATION_FAILED — with codes list
+- 403 SIGNATURE_VERIFICATION_FAILED — HMAC mismatch or unknown provider
+- 500 INTERNAL_ERROR — unexpected exception (internals never surfaced)
+
+Result: 286 passed, 2 skipped.

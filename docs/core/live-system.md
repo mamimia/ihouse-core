@@ -18,12 +18,15 @@ Core principles:
 
 External OTA sources enter the system through a layered canonical path:
 
-OTA service entry  
-→ shared OTA pipeline  
-→ canonical envelope  
-→ IngestAPI.append_event  
-→ CoreExecutor.execute  
-→ Supabase RPC  
+HTTP endpoint (POST /webhooks/{provider})
+→ verify_webhook_signature
+→ validate_ota_payload
+→ OTA service entry (ingest_provider_event)
+→ shared OTA pipeline
+→ canonical envelope
+→ IngestAPI.append_event
+→ CoreExecutor.execute
+→ Supabase RPC
 → apply_envelope
 
 The OTA service entry is thin.
@@ -44,11 +47,14 @@ The canonical external OTA events are:
 
 - BOOKING_CREATED
 - BOOKING_CANCELED
+- BOOKING_AMENDED
 
-OTA modification notifications are classified as:
+HTTP error codes:
 
-MODIFY  
-→ deterministic reject-by-default
+- 403 → SignatureVerificationError or unknown provider
+- 400 → PayloadValidationResult.valid = False
+- 200 → envelope accepted, idempotency_key returned
+- 500 → unexpected exception (never surfaces internals)
 
 The canonical ingest API is the bridge from envelope construction into
 core execution.
@@ -91,17 +97,19 @@ public.booking_state
 - replay verification through the same OTA ingress contract
 - no adapter-level state mutation
 - no booking_state reads inside OTA adapters
+- HMAC-SHA256 signature verification at HTTP boundary (dev-mode skip when secret not set)
 
 ## Current OTA Adapter Status
 
-Implemented:
-- Booking.com
-- Expedia scaffold for architectural validation
+All 5 providers implemented at full parity:
 
-Not yet implemented:
-- Airbnb
-- Agoda
-- Trip.com
+| Provider    | CREATE | CANCEL | AMENDED |
+|-------------|:------:|:------:|:-------:|
+| Booking.com | ✅ | ✅ | ✅ |
+| Expedia     | ✅ | ✅ | ✅ |
+| Airbnb      | ✅ | ✅ | ✅ |
+| Agoda       | ✅ | ✅ | ✅ |
+| Trip.com    | ✅ | ✅ | ✅ |
 
 ## Future Evolution
 
@@ -110,3 +118,8 @@ without breaking the canonical ledger model.
 
 Future OTA expansion must preserve the explicit boundary between OTA
 entry, envelope construction, core ingest, and canonical execution.
+
+Next natural phases:
+- JWT-based auth middleware (tenant_id from token instead of payload)
+- FastAPI app entrypoint + deployment (uvicorn / Supabase Edge Function)
+- Rate limiting / request logging middleware

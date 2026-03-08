@@ -1030,3 +1030,42 @@ Result:
 Pipeline not yet wired to HTTP layer — Phase 58 will integrate into FastAPI/handler.
 
 Next phase: Phase 58 — HTTP ingestion layer (FastAPI endpoint) with signature verification
+
+## Phase 58 — HTTP Ingestion Layer (Closed)
+
+Rationale:
+
+Phase 57 delivered HMAC-SHA256 signature verification. Phase 58 wires
+signature verification, payload validation, and OTA ingestion into a
+single FastAPI HTTP endpoint — the real production boundary.
+
+Completed:
+
+- src/api/__init__.py: package init
+- src/api/webhooks.py: FastAPI APIRouter
+  - POST /webhooks/{provider}
+  - reads raw body BEFORE json.loads (required by signature verifier)
+  - verify_webhook_signature → 403 SignatureVerificationError or unknown provider
+  - validate_ota_payload → 400 if invalid (with codes list)
+  - ingest_provider_event → 200 with idempotency_key
+  - 500 on any unexpected exception (never surfaces internals)
+  - tenant_id sourced from payload (JWT auth deferred to future phase)
+- tests/test_webhook_endpoint.py: 16 contract tests (TestClient, CI-safe):
+  - dev-mode skip (no secret), correct sig, wrong sig, missing header
+  - invalid payload (400 + codes), non-JSON body, unknown provider
+  - ingest crash → 500, tenant_id propagation, 200 body assertions
+  - all 5 providers parametrized
+
+Result:
+
+286 tests pass (286 passed, 2 skipped).
+No canonical business semantics changed.
+No new Supabase tables or migrations.
+No alternative write path introduced.
+
+Also updated stale docs (not updated since Phase 51):
+- docs/core/current-snapshot.md
+- docs/core/work-context.md
+- docs/core/live-system.md
+
+Next phase: Phase 59 — TBD
