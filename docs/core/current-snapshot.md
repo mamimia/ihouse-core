@@ -1,18 +1,17 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 62 — Per-Tenant Rate Limiting (closed)
+Phase 64 — Enhanced Health Check (closed)
 
 ## Last Closed Phase
-Phase 62 — Per-Tenant Rate Limiting
+Phase 64 — Enhanced Health Check
 
 ## System Status
 
-**Full HTTP ingestion stack: webhook → sig verify → JWT auth → rate limit → validate → pipeline → Supabase.**
-
+**Full HTTP ingestion stack complete (Phases 58–64).**
 apply_envelope is the only authority for canonical state mutations.
 
-## HTTP API Layer (Phases 58–62) — Complete
+## HTTP API Layer — Complete
 
 | Phase | Feature | Status |
 |-------|---------|--------|
@@ -21,8 +20,10 @@ apply_envelope is the only authority for canonical state mutations.
 | 60 | Request logging middleware (`X-Request-ID`, duration, status) | ✅ |
 | 61 | JWT auth — `tenant_id` from verified `sub` claim | ✅ |
 | 62 | Per-tenant rate limiting (sliding window, 429 + `Retry-After`) | ✅ |
+| 63 | OpenAPI docs — BearerAuth, response schemas, `/docs` + `/redoc` | ✅ |
+| 64 | Enhanced health check — Supabase ping, DLQ count, 503 support | ✅ |
 
-**313 tests pass** (2 pre-existing SQLite skips, unrelated)
+**320 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -36,36 +37,46 @@ HTTP  →  Logging middleware (X-Request-ID)
       →  500 on unexpected error
 ```
 
-## HTTP Status Codes (Locked)
+## Health Check Response
 
-| Code | Meaning |
-|------|---------|
-| 200 | `{"status": "ACCEPTED", "idempotency_key": "..."}` |
-| 400 | `{"error": "PAYLOAD_VALIDATION_FAILED", "codes": [...]}` |
-| 403 | `{"error": "SIGNATURE_VERIFICATION_FAILED"}` or JWT auth failure |
-| 429 | `{"error": "RATE_LIMIT_EXCEEDED", "retry_after_seconds": N}` |
-| 500 | `{"error": "INTERNAL_ERROR"}` |
+```json
+{
+  "status": "ok | degraded | unhealthy",
+  "version": "0.1.0",
+  "env": "production",
+  "checks": {
+    "supabase": {"status": "ok", "latency_ms": 12},
+    "dlq": {"status": "ok", "unprocessed_count": 0}
+  }
+}
+```
+
+| Status | HTTP | Condition |
+|--------|------|-----------|
+| `ok` | 200 | Supabase up, DLQ empty |
+| `degraded` | 200 | Supabase up, DLQ > 0 |
+| `unhealthy` | 503 | Supabase unreachable |
 
 ## Key Files — API Layer
 
 | File | Role |
 |------|------|
-| `src/api/__init__.py` | Package init |
-| `src/api/webhooks.py` | FastAPI router — `POST /webhooks/{provider}` |
-| `src/api/auth.py` | JWT verification (HMAC-HS256, `sub` → `tenant_id`) |
-| `src/api/rate_limiter.py` | Per-tenant sliding window rate limiter |
-| `src/main.py` | FastAPI app — `/health` + router |
+| `src/api/webhooks.py` | `POST /webhooks/{provider}` |
+| `src/api/auth.py` | JWT verification |
+| `src/api/rate_limiter.py` | Per-tenant rate limiting |
+| `src/api/health.py` | Dependency health checks |
+| `src/schemas/responses.py` | OpenAPI Pydantic response models |
+| `src/main.py` | FastAPI app entrypoint |
 
-## OTA Adapter Matrix
+## Next Phase
 
-| Provider    | CREATE | CANCEL | AMENDED | Signature Header |
-|-------------|:------:|:------:|:-------:|------------------|
-| Booking.com | ✅ | ✅ | ✅ | `X-Booking-Signature` |
-| Expedia     | ✅ | ✅ | ✅ | `X-Expedia-Signature` |
-| Airbnb      | ✅ | ✅ | ✅ | `X-Airbnb-Signature` |
-| Agoda       | ✅ | ✅ | ✅ | `X-Agoda-Signature` |
-| Trip.com    | ✅ | ✅ | ✅ | `X-TripCom-Signature` |
+**Phase 65 — Financial Data Foundation**
+- OTA adapters extracted and preserved financial fields (total_price, currency, ota_commission, etc.)
+- `BookingFinancialFacts` dataclass (immutable, validated) — NO DB write yet
+- `source_confidence`: FULL / PARTIAL / ESTIMATED per provider
+- `booking_state` invariant: must never contain financial calculations
+- See `docs/core/improvements/future-improvements.md` → Financial Model Foundation
 
 ## Tests
 
-**313 passing** (2 pre-existing SQLite skips, unrelated)
+**320 passing** (2 pre-existing SQLite skips, unrelated)

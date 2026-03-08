@@ -32,6 +32,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.webhooks import router as webhooks_router
+from api.health import run_health_checks
 from schemas.responses import ErrorResponse, HealthResponse
 
 # ---------------------------------------------------------------------------
@@ -211,23 +212,34 @@ async def request_logging(request: Request, call_next):  # type: ignore[name-def
 @app.get(
     "/health",
     tags=["ops"],
-    summary="Liveness check",
+    summary="Liveness + dependency check",
     response_model=HealthResponse,
     responses={
-        200: {"model": HealthResponse, "description": "Service is up"},
+        200: {"model": HealthResponse, "description": "ok or degraded (DLQ non-empty)"},
+        503: {"model": HealthResponse, "description": "Supabase unreachable"},
     },
 )
 async def health() -> JSONResponse:
     """
-    Liveness check. No authentication required.
-    Returns service version and deployment environment.
+    Enhanced health check (Phase 64).
+
+    Runs:
+    - **Supabase ping** — SELECT 1 equivalent via REST API
+    - **DLQ count** — unprocessed `ota_dead_letter` rows
+
+    Status semantics:
+    - `ok` — all checks pass, DLQ empty
+    - `degraded` — checks pass but DLQ has unprocessed rows
+    - `unhealthy` — Supabase unreachable → **503**
     """
+    result = run_health_checks(version=app.version, env=_ENV)
     return JSONResponse(
-        status_code=200,
+        status_code=result.http_status,
         content={
-            "status": "ok",
-            "version": app.version,
-            "env": _ENV,
+            "status": result.status,
+            "version": result.version,
+            "env": result.env,
+            "checks": result.checks,
         },
     )
 

@@ -1226,3 +1226,33 @@ Result:
 
 313 tests pass (313 passed, 2 skipped).
 No business logic changes. /docs and /redoc now production-quality.
+
+## Phase 64 — Enhanced Health Check (Closed)
+
+Rationale:
+
+Phase 63 added OpenAPI docs. GET /health was minimal ("status": "ok").
+Phase 64 adds real dependency checks so operators know if the system is healthy.
+
+Completed:
+
+- src/api/health.py: run_health_checks(version, env) → HealthResult
+  - Check 1: Supabase REST ping — latency_ms measured
+  - Check 2: DLQ unprocessed row count (ota_dead_letter WHERE replayed_at IS NULL)
+  - status logic:
+    - "ok" — all checks pass, DLQ empty
+    - "degraded" — checks pass but DLQ count > 0 (still 200)
+    - "unhealthy" — Supabase unreachable (503)
+  - Non-raising: all errors caught, surfaced as check result
+  - Uses stdlib urllib (no extra dependencies)
+- src/main.py: GET /health now calls run_health_checks
+  - Returns 503 if unhealthy
+  - OpenAPI responses dict updated: 200 + 503
+- src/schemas/responses.py: HealthResponse enriched with checks Dict[str, Any]
+- tests/test_health.py: 7 contract tests (CI-safe, mocked urllib)
+
+Result:
+
+320 tests pass (320 passed, 2 skipped).
+No canonical business semantics changed.
+No new Supabase tables or migrations.

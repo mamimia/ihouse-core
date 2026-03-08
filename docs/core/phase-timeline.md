@@ -1817,3 +1817,13 @@ Files added: src/schemas/__init__.py, src/schemas/responses.py, docs/archive/pha
 Files modified: src/main.py (API metadata, BearerAuth scheme), src/api/webhooks.py (response schemas)
 
 Result: 313 passed, 2 skipped.
+
+## Phase 64 — Enhanced Health Check (Closed)
+
+GET /health enriched with real dependency checks.
+
+Files added: src/api/health.py, tests/test_health.py
+Files modified: src/main.py, src/schemas/responses.py
+
+Status: ok / degraded (DLQ>0, 200) / unhealthy (Supabase down, 503)
+Result: 320 passed, 2 skipped.

@@ -9,18 +9,34 @@ but FastAPI uses these schemas to generate the /docs spec.
 """
 from __future__ import annotations
 
-from typing import List
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
 
 class HealthResponse(BaseModel):
     """Liveness check response."""
-    status: str = Field("ok", description="Always 'ok' when the service is up")
+    status: str = Field(..., description="'ok' | 'degraded' | 'unhealthy'")
     version: str = Field(..., description="Application version (semver)")
-    env: str = Field(..., description="Deployment environment (development, staging, production)")
+    env: str = Field(..., description="Deployment environment")
+    checks: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Per-check results: supabase ping, DLQ count",
+    )
 
-    model_config = {"json_schema_extra": {"example": {"status": "ok", "version": "0.1.0", "env": "production"}}}
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "ok",
+                "version": "0.1.0",
+                "env": "production",
+                "checks": {
+                    "supabase": {"status": "ok", "latency_ms": 12},
+                    "dlq": {"status": "ok", "unprocessed_count": 0},
+                },
+            }
+        }
+    }
 
 
 class WebhookAcceptedResponse(BaseModel):
