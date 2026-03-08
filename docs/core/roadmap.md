@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > It is updated every few phases to reflect what we've learned and where we're headed.
-> Last updated: Phase 39 closed. [Claude]
+> Last updated: Phase 64 closed. [Claude]
 
 
 ## Completed
@@ -19,9 +19,19 @@ Phase 28–33 — (See phase-timeline.md for full history.)
 Phase 34 — OTA canonical emitted event alignment discovery.
 Phase 35 — OTA canonical emitted event alignment implementation (BOOKING_CREATED, BOOKING_CANCELED skills).
 Phase 36 — Business identity canonicalization (booking_id = {source}_{reservation_ref} verified and locked).
-Phase 37 — External event ordering protection discovery (CANCELED before CREATED → BOOKING_NOT_FOUND confirmed, current behavior classified as deterministic rejection).
-Phase 38 — Dead Letter Queue implemented (ota_dead_letter table, dead_letter.py, best-effort non-blocking write).
+Phase 37 — External event ordering protection discovery.
+Phase 38 — Dead Letter Queue implemented (ota_dead_letter table, dead_letter.py).
 Phase 39 — DLQ controlled replay (replay_dlq_row, idempotency, outcome persistence).
+Phase 40–49 — (See phase-timeline.md for full history.)
+Phase 50 — BOOKING_AMENDED event handling: DDL migration, apply_envelope branch, E2E verified.
+Phase 51–57 — (See phase-timeline.md for full history.)
+Phase 58 — POST /webhooks/{provider} endpoint: signature verify + validate + ingest.
+Phase 59 — FastAPI app entrypoint (src/main.py), GET /health, uvicorn runner.
+Phase 60 — Request logging middleware: X-Request-ID, duration_ms, structured logging.
+Phase 61 — JWT auth middleware: verify_jwt, tenant_id from sub claim, 403 on failure.
+Phase 62 — Per-tenant rate limiting: sliding window, IHOUSE_RATE_LIMIT_RPM, 429 + Retry-After.
+Phase 63 — OpenAPI docs: BearerAuth scheme, response schemas, /docs + /redoc enriched.
+Phase 64 — Enhanced health check: Supabase ping, DLQ count, ok/degraded/unhealthy (503).
 
 
 ---
@@ -31,66 +41,23 @@ Phase 39 — DLQ controlled replay (replay_dlq_row, idempotency, outcome persist
 These are concrete next-phase candidates based on current system state.
 
 
-### Phase 40 — DLQ Observability
+### Phase 65 — Financial Data Foundation
 
 Goal:
-Make the Dead Letter Queue visible and operational without adding new write paths.
+Begin the financial layer without overloading booking_state.
+See `docs/core/improvements/future-improvements.md` → Financial Model Foundation.
 
 Proposed scope:
-- A Supabase SQL view `ota_dlq_summary` grouping rejection counts by event_type and rejection_code
-- A read-only Python utility `dlq_inspector.py` exposing: pending rows, replayed rows, rejection breakdown
-- Contract tests for the inspector (unit, no live Supabase required)
+- Extract and preserve financial fields from all 5 OTA adapter payloads
+  (total_price, currency, ota_commission, taxes, fees, net_to_property, etc.)
+- Define `BookingFinancialFacts` dataclass — immutable, validated
+- Add `source_confidence`: FULL / PARTIAL / ESTIMATED per provider
+- No DB write yet — dataclass only in this phase
 
 Constraints:
-- No new write paths
-- No alerting infrastructure (that is Phase 41)
-- Must not read booking_state
-
-
-### Phase 41 — DLQ Alerting Threshold
-
-Goal:
-Trigger an observable signal when DLQ accumulates too many unresolved rows.
-
-Proposed scope:
-- A simple threshold checker: if DLQ pending count exceeds N → emit a structured warning log
-- Configurable threshold via environment variable
-- Contract tests for threshold logic
-
-
-### Phase 42 — Reservation Amendment Discovery
-
-Goal:
-Begin the formal discovery phase for BOOKING_AMENDED support.
-
-This phase is discovery only — no implementation.
-
-Key questions:
-- What OTA providers emit amendment signals and in what shape?
-- Can amendment intent be classified deterministically?
-- What does "state-safe amendment application" require from apply_envelope?
-- What ordering guarantees are needed before BOOKING_AMENDED can be introduced?
-
-Constraints:
-- MODIFY remains deterministic reject-by-default until all discovery questions are answered
-- No new canonical event kinds in this phase
-- No booking_state reads in adapters
-
-
-### Phase 43 — booking_id Stability Layer
-
-Goal:
-Protect booking identity against provider-side reservoir_ref format changes.
-
-Key questions:
-- Which providers are likely to change reservation_ref encoding?
-- Should we normalize reservation_ref before forming booking_id?
-- What is the migration path for existing booking rows if the stable key changes?
-
-Constraints:
-- booking_id rule ({source}_{reservation_ref}) must remain deterministic
-- No schema mutation without a migration + replay safety analysis
-
+- booking_state must NEVER contain financial calculations (invariant locked Phase 62+)
+- Financial data is provider-specific — no uniform field assumption
+- Separate financial data may arrive via Finance APIs (not only webhooks)
 
 ---
 

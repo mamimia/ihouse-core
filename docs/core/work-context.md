@@ -2,15 +2,16 @@
 
 ## Current Active Phase
 
-Phase 62 — Per-Tenant Rate Limiting (closed)
+Phase 64 — Enhanced Health Check (closed)
 
 ## Last Closed Phase
 
-Phase 62 — Per-Tenant Rate Limiting
+Phase 64 — Enhanced Health Check
 
 ## Current Objective
 
-HTTP API layer complete (phases 58–62). Phase 63 TBD.
+Phase 65 — Financial Data Foundation (next phase for new chat).
+See `handoff_to_new_chat.md` and `docs/core/improvements/future-improvements.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -19,8 +20,9 @@ HTTP API layer complete (phases 58–62). Phase 63 TBD.
 - `booking_id = "{source}_{reservation_ref}"` — deterministic, canonical
 - HTTP endpoint routes through `ingest_provider_event` → pipeline → `IngestAPI.append_event` → `CoreExecutor.execute` → `apply_envelope`
 - `tenant_id` comes from verified JWT `sub` claim, NOT from payload body (Phase 61+)
+- `booking_state` is an operational read model ONLY — must never contain financial calculations (Phase 62+ invariant)
 
-## Key Files — HTTP API Layer
+## Key Files — HTTP API Layer (Phases 58–64)
 
 | File | Role |
 |------|------|
@@ -28,6 +30,8 @@ HTTP API layer complete (phases 58–62). Phase 63 TBD.
 | `src/api/webhooks.py` | `POST /webhooks/{provider}` |
 | `src/api/auth.py` | JWT auth dependency |
 | `src/api/rate_limiter.py` | Per-tenant rate limiting |
+| `src/api/health.py` | Dependency health checks (Phase 64) |
+| `src/schemas/responses.py` | OpenAPI Pydantic response models (Phase 63) |
 
 ## Environment Variables
 
@@ -37,8 +41,10 @@ HTTP API layer complete (phases 58–62). Phase 63 TBD.
 | `IHOUSE_JWT_SECRET` | unset | dev-mode JWT skip → "dev-tenant" |
 | `IHOUSE_RATE_LIMIT_RPM` | 60 | req/min per tenant, 0 = disabled |
 | `IHOUSE_ENV` | "development" | health response label |
+| `SUPABASE_URL` | required | Supabase project URL |
+| `SUPABASE_KEY` | required | Supabase anon key |
 | `PORT` | 8000 | uvicorn port |
 
 ## Tests
 
-313 passing (2 pre-existing SQLite skips, unrelated)
+320 passing (2 pre-existing SQLite skips, unrelated)

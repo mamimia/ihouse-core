@@ -51,9 +51,11 @@ The canonical external OTA events are:
 
 HTTP error codes:
 
-- 403 → SignatureVerificationError or unknown provider
+- 403 → SignatureVerificationError or JWT auth failure
+- 429 → per-tenant rate limit exceeded (Retry-After header set)
 - 400 → PayloadValidationResult.valid = False
 - 200 → envelope accepted, idempotency_key returned
+- 503 → health check only, Supabase unreachable
 - 500 → unexpected exception (never surfaces internals)
 
 The canonical ingest API is the bridge from envelope construction into
@@ -98,6 +100,9 @@ public.booking_state
 - no adapter-level state mutation
 - no booking_state reads inside OTA adapters
 - HMAC-SHA256 signature verification at HTTP boundary (dev-mode skip when secret not set)
+- JWT Bearer auth — tenant_id from verified sub claim (Phase 61+)
+- per-tenant rate limiting — sliding window, 429 + Retry-After (Phase 62+)
+- booking_state is operational only — must never contain financial data (Phase 62+ invariant)
 
 ## Current OTA Adapter Status
 
@@ -119,7 +124,6 @@ without breaking the canonical ledger model.
 Future OTA expansion must preserve the explicit boundary between OTA
 entry, envelope construction, core ingest, and canonical execution.
 
-Next natural phases:
-- JWT-based auth middleware (tenant_id from token instead of payload)
-- FastAPI app entrypoint + deployment (uvicorn / Supabase Edge Function)
-- Rate limiting / request logging middleware
+Next natural phase:
+- Phase 65 — Financial Data Foundation (BookingFinancialFacts dataclass, adapter financial field extraction)
+- See docs/core/improvements/future-improvements.md → Financial Model Foundation
