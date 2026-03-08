@@ -1657,3 +1657,26 @@ Outcome:
 
 Next phase:
 Phase 48 — TBD
+## Phase 48 — Idempotency Key Standardization (Closed)
+
+Status:
+Closed
+
+Rationale:
+Stripe-style idempotency: keys must be namespaced and collision-safe. Raw external_event_id was shared across providers and event types.
+
+Completed:
+- [Claude]
+- idempotency.py: generate_idempotency_key + validate_idempotency_key
+- Format: provider:event_type:event_id (lowercase, deterministic)
+- Both adapters updated
+- 19 contract tests
+- Updated harness tests for new format
+
+Outcome:
+- 138 tests pass
+- Cross-provider and cross-type key collisions are impossible
+- Key format is ready for BOOKING_AMENDED events when implemented
+
+Next phase:
+Phase 49 — TBD

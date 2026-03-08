@@ -8,6 +8,7 @@ from .schemas import (
     ClassifiedBookingEvent,
     CanonicalEnvelope,
 )
+from .idempotency import generate_idempotency_key
 
 
 class BookingComAdapter(OTAAdapter):
@@ -55,5 +56,9 @@ class BookingComAdapter(OTAAdapter):
                 "property_id": normalized.property_id,
                 "provider_payload": normalized.payload,
             },
-            idempotency_key=normalized.external_event_id,
+            idempotency_key=generate_idempotency_key(
+                self.provider,
+                normalized.external_event_id,
+                canonical_type,
+            ),
         )

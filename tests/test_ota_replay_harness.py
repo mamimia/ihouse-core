@@ -132,7 +132,7 @@ def test_replay_harness_booking_created_is_applied(monkeypatch: pytest.MonkeyPat
     )
 
     assert envelope.type == "BOOKING_CREATED"
-    assert result.event_id == "evt_create_001"
+    assert result.event_id == "bookingcom:booking_created:evt_create_001"
     assert result.apply_status == "APPLIED"
     assert len(applier.calls) == 1
 
@@ -152,7 +152,7 @@ def test_replay_harness_booking_canceled_is_applied(monkeypatch: pytest.MonkeyPa
     )
 
     assert envelope.type == "BOOKING_CANCELED"
-    assert result.event_id == "evt_cancel_001"
+    assert result.event_id == "bookingcom:booking_canceled:evt_cancel_001"
     assert result.apply_status == "APPLIED"
     assert len(applier.calls) == 1
 
@@ -178,7 +178,7 @@ def test_replay_harness_duplicate_replay_is_already_applied(monkeypatch: pytest.
 
     assert first.apply_status == "APPLIED"
     assert second.apply_status == "ALREADY_APPLIED"
-    assert first.event_id == second.event_id == "evt_dup_001"
+    assert first.event_id == second.event_id == "bookingcom:booking_created:evt_dup_001"
     assert len(applier.calls) == 2
 
 
@@ -209,12 +209,12 @@ def test_replay_harness_same_business_fact_with_different_event_ids_is_reapplied
 
     assert first_envelope.payload["reservation_id"] == second_envelope.payload["reservation_id"] == "res_001"
     assert first_envelope.type == second_envelope.type == "BOOKING_CREATED"
-    assert first_envelope.idempotency_key == "evt_biz_001"
-    assert second_envelope.idempotency_key == "evt_biz_002"
+    assert first_envelope.idempotency_key == "bookingcom:booking_created:evt_biz_001"
+    assert second_envelope.idempotency_key == "bookingcom:booking_created:evt_biz_002"
     assert first_result.apply_status == "APPLIED"
     assert second_result.apply_status == "APPLIED"
-    assert first_result.event_id == "evt_biz_001"
-    assert second_result.event_id == "evt_biz_002"
+    assert first_result.event_id == "bookingcom:booking_created:evt_biz_001"
+    assert second_result.event_id == "bookingcom:booking_created:evt_biz_002"
     assert len(applier.calls) == 2
 
 

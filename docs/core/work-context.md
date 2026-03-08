@@ -2,68 +2,54 @@
 
 ## Current Active Phase
 
-Phase 47 — OTA Payload Boundary Validation
+Phase 48 — Idempotency Key Standardization
 
 ## Last Closed Phase
 
-Phase 46 — System Health Check
+Phase 47 — OTA Payload Boundary Validation
 
 ## Current Objective
 
-Every production-grade API (Stripe, Twilio, Airbnb) validates inputs at the boundary before they touch the canonical system. Currently, malformed OTA payloads (missing reservation_id, invalid occurred_at, unknown provider) flow silently into the pipeline and fail deep inside normalize() or apply_envelope.
+Stripe's idempotency model is one of the most studied in the industry. Their keys are:
+- Namespaced (no cross-provider collision)
+- Deterministic (same input → same key, always)
+- Validated before use
 
-Phase 47 introduces an explicit, structured validation layer at the OTA boundary.
+Currently, iHouse Core uses `external_event_id` directly as the idempotency key in both adapters. This is fragile:
+- Two providers can emit the same `event_id` string for different events
+- Booking.com `ev_001` and Expedia `ev_001` would collide
+- `event_id` from Booking.com is raw from the webhook — no namespace, no type disambiguation
 
-This is different from the existing `validator.py` (which validates semantic ClassifiedBookingEvent kinds). This validates the **raw incoming webhook payload** before normalization.
-
-## Why This Is the Right Next Step
-
-1. Without boundary validation, any malformed payload can corrupt the pipeline silently
-2. This is a prerequisite for BOOKING_AMENDED — amendment payloads must be validated
-3. Stripe validates every webhook at the boundary before processing
-4. It creates an explicit contract between OTA providers and the system
+Phase 48 standardizes idempotency keys across all OTA adapters.
 
 ## Scope
 
-### `src/adapters/ota/payload_validator.py`
+### `src/adapters/ota/idempotency.py`
 
 ```python
-@dataclass(frozen=True)
-class PayloadValidationResult:
-    valid: bool
-    errors: list[str]
-    provider: str
-    event_type_raw: str | None
+def generate_idempotency_key(provider: str, event_id: str, event_type: str) -> str
+    # Format: "{provider}:{event_type}:{event_id}" (lowercase, colon-separated)
+    # Example: "bookingcom:booking_created:ev_001"
 
-def validate_ota_payload(provider: str, payload: dict) -> PayloadValidationResult
+def validate_idempotency_key(key: str) -> bool
+    # Returns True if key matches "{string}:{string}:{string}" pattern
+    # Returns False for empty, None, or wrong format
 ```
 
-#### Rules validated:
+### Update adapters:
 
-| Rule | Error |
-|------|-------|
-| provider must be non-empty string | PROVIDER_REQUIRED |
-| payload must be a dict | PAYLOAD_MUST_BE_DICT |
-| reservation_id must be present and non-empty | RESERVATION_ID_REQUIRED |
-| tenant_id must be present and non-empty | TENANT_ID_REQUIRED |
-| occurred_at must be present and parseable as ISO datetime | OCCURRED_AT_INVALID |
-| event_type/type/action must be present | EVENT_TYPE_REQUIRED |
+- `bookingcom.py` → `to_canonical_envelope()` → use `generate_idempotency_key(...)` instead of `external_event_id`
+- `expedia.py` → same
 
-#### Integration:
-
-Called at the top of `process_ota_event` in `pipeline.py`, before `normalize()`.
-If validation fails → raise `ValueError(f"OTA payload validation failed: {errors}")`.
-
-#### Contract tests:
-- valid payload → valid=True, errors=[]
-- missing reservation_id → valid=False, RESERVATION_ID_REQUIRED in errors
-- missing tenant_id → valid=False
-- invalid occurred_at → valid=False, OCCURRED_AT_INVALID
-- missing event_type → valid=False, EVENT_TYPE_REQUIRED
-- empty provider → valid=False, PROVIDER_REQUIRED
-- multiple errors collected at once (not fail-fast)
-- pipeline.py raises on invalid payload
+### Contract tests:
+- known input → expected key format
+- different providers → different keys
+- same event_id on two providers → different keys (no collision)
+- same event_id, different event_type → different keys
+- validate_idempotency_key accepts valid, rejects empty/malformed
+- adapters emit correct key format after update
 
 Out of scope:
-- provider-specific field validation (Booking.com vs Expedia)
-- payload signature verification (separate phase)
+- idempotency key TTL/expiry
+- response caching
+- cross-phase dedup check at Python layer (apply_envelope already handles this at DB level)

@@ -751,3 +751,24 @@ Completed:
 Result:
 
 Malformed OTA payloads are caught at the boundary with structured error codes before touching the canonical pipeline. This is a prerequisite for BOOKING_AMENDED support.
+## Phase 48 — Idempotency Key Standardization (Closed)
+
+Rationale:
+
+Stripe's idempotency keys are namespaced and deterministic. Previously, both adapters set idempotency_key = raw external_event_id from the OTA provider. Two providers could emit the same event_id for different events, causing cross-provider key collisions.
+
+Completed:
+
+- [Claude]
+- implemented `src/adapters/ota/idempotency.py`:
+  - generate_idempotency_key(provider, event_id, event_type) → str
+  - Format: "{provider}:{event_type}:{event_id}" (lowercase, colon-sanitized)
+  - validate_idempotency_key(key) → bool (checks 3-segment format)
+- Updated bookingcom.py and expedia.py to use generate_idempotency_key
+- 19 contract tests: format, cross-provider uniqueness, cross-type uniqueness, lowercase, colon sanitization, empty raises, validate, adapter integration
+- Updated test_ota_replay_harness.py and test_ota_pipeline_contract.py for new key format
+- 138 tests pass (2 pre-existing SQLite failures unrelated)
+
+Result:
+
+All OTA idempotency keys are now namespaced, collision-safe, and deterministic. The format is stable and ready for BOOKING_AMENDED keys when implemented.
