@@ -1,6 +1,7 @@
 {
   "BOOKING_CREATED": "booking-created",
   "BOOKING_CANCELED": "booking-canceled",
+  "BOOKING_AMENDED": "booking-amended",
   "BOOKING_CONFLICT": "booking-conflict-resolver",
   "BOOKING_SYNC_INGEST": "booking-sync-ingest",
   "SLA_ESCALATION": "sla-escalation-engine",

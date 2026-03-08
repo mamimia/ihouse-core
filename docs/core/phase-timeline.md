@@ -1885,3 +1885,26 @@ Files modified:
 
 Result: 431 passed, 2 skipped.
 No Supabase schema changes.
+
+## Phase 69 — BOOKING_AMENDED Python Pipeline (Closed)
+
+Wired the Python pipeline so BOOKING_AMENDED events flow end-to-end from OTA webhook to apply_envelope.
+
+Also performed full backlog audit: marked 3 additional items resolved in future-improvements.md:
+- External Event Ordering Protection (already done Phases 44-45)
+- External Event Signature Validation (already done Phase 57)
+- BOOKING_AMENDED Support (now complete)
+
+Files added:
+- `src/core/skills/booking_amended/__init__.py` — package marker
+- `src/core/skills/booking_amended/skill.py` — COALESCE-safe emitted event builder
+- `tests/test_booking_amended_skill_contract.py` — 20 contract tests
+
+Files modified:
+- `src/core/kind_registry.core.json` — BOOKING_AMENDED → booking-amended
+- `src/core/skill_exec_registry.core.json` — booking-amended → core.skills.booking_amended.skill
+- `src/adapters/ota/service.py` — BOOKING_AMENDED financial facts write (best-effort)
+- `docs/core/improvements/future-improvements.md` — 3 items marked resolved
+
+Result: 451 passed, 2 skipped.
+No Supabase schema changes.

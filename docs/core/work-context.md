@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 68 — booking_id Stability (closed)
+Phase 69 — BOOKING_AMENDED Python Pipeline (closed)
 
 ## Last Closed Phase
 
-Phase 68 — booking_id Stability
+Phase 69 — BOOKING_AMENDED Python Pipeline
 
 ## Current Objective
 
-Phase 69 — TBD.
+Phase 70 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)

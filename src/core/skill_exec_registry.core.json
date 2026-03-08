@@ -1,10 +1,12 @@
 {
   "BOOKING_CREATED": "core.skills.booking_created.skill",
   "BOOKING_CANCELED": "core.skills.booking_canceled.skill",
+  "BOOKING_AMENDED": "core.skills.booking_amended.skill",
   "BOOKING_CONFLICT": "core.skills.booking_conflict_resolver.skill",
   "BOOKING_SYNC_INGEST": "core.skills.booking_sync_ingest.skill",
   "booking-created": "core.skills.booking_created.skill",
   "booking-canceled": "core.skills.booking_canceled.skill",
+  "booking-amended": "core.skills.booking_amended.skill",
   "booking-created-noop": "core.skills.booking_created_noop.skill",
   "booking-conflict-resolver": "core.skills.booking_conflict_resolver.skill",
   "booking-sync-ingest": "core.skills.booking_sync_ingest.skill",

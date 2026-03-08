@@ -131,4 +131,21 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
+    # Phase 69: persist updated financial facts for BOOKING_AMENDED events (best-effort)
+    if envelope.type == "BOOKING_AMENDED" and status == "APPLIED":
+        try:
+            from .financial_extractor import extract_financial_facts
+            from .financial_writer import write_financial_facts
+            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            facts = extract_financial_facts(provider, payload)
+            if booking_id and facts:
+                write_financial_facts(
+                    booking_id=booking_id,
+                    tenant_id=tenant_id,
+                    event_kind="BOOKING_AMENDED",
+                    facts=facts,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
     return result if isinstance(result, dict) else {"status": status}

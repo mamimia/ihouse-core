@@ -59,12 +59,13 @@ append-only historical records in `docs/core/phase-timeline.md`.
 - notes: [Claude] Phase 38 implemented ota_dead_letter table (append-only, RLS) and dead_letter.py (best-effort, non-blocking). Rejected OTA events are now preserved. E2E verified.
 
 ### External Event Ordering Protection
-- status: deferred
+- status: resolved
 - discovered_in: Phase 21, Phase 27
 - verified_in: Phase 37
+- resolved_in: Phase 44 (ota_ordering_buffer table + buffer_event/get_buffered_events/mark_replayed), Phase 45 (ordering_trigger.py, auto-replay on BOOKING_CREATED)
 - source_context: OTA events may arrive out of order
 - priority: high
-- notes: [Claude] Phase 37 verified the current behavior. BOOKING_CANCELED before BOOKING_CREATED raises BOOKING_NOT_FOUND (code P0001) from apply_envelope — a deterministic rejection, not silent data loss. There is no buffering, retry, or ordering layer in the active OTA runtime path. The event is lost. Future work must decide whether to add a dead-letter store, a retry queue, or an ordering buffer — but must not bypass canonical ingest rules or introduce adapter-side state reads.
+- notes: [Claude] Phase 37 verified current behavior: BOOKING_CANCELED before BOOKING_CREATED raises BOOKING_NOT_FOUND — deterministic rejection, not data loss. Phase 44 introduced ota_ordering_buffer table (Supabase) and ordering_buffer.py (buffer_event, get_buffered_events, mark_replayed). Phase 45 closed the loop: ordering_trigger.py fires automatically on BOOKING_CREATED APPLIED, replays any waiting buffer rows via replay_dlq_row, marks them replayed. E2E verified: CANCELED → buffer → CREATED → auto-trigger → 0 waiting.
 
 ### Business Idempotency Beyond Envelope Idempotency
 - status: resolved
@@ -118,11 +119,12 @@ append-only historical records in `docs/core/phase-timeline.md`.
 - notes: when the event log grows large, introduce replay snapshots to reduce rebuild cost without weakening canonical event authority.
 
 ### External Event Signature Validation
-- status: deferred
+- status: resolved
 - discovered_in: Phase 20 era backlog
+- resolved_in: Phase 57 (signature_verifier.py, HMAC-SHA256, 5 providers)
 - source_context: webhook authenticity
 - priority: medium
-- notes: support signature validation such as HMAC or equivalent verification for external OTA webhooks.
+- notes: [Claude] Phase 57 introduced signature_verifier.py with HMAC-SHA256 validation for all 5 OTA providers. Each provider has a dedicated header (X-Booking-Signature, X-Expedia-Signature, X-Airbnb-Signature, X-Agoda-Signature, X-TripCom-Signature) and env var (IHOUSE_WEBHOOK_SECRET_{PROVIDER}). Dev-mode skip when secret not set. 403 SIGNATURE_VERIFICATION_FAILED returned on mismatch.
 
 ### OTA Sync Recovery Layer
 - status: blocked
@@ -172,23 +174,12 @@ append-only historical records in `docs/core/phase-timeline.md`.
 - notes: [Claude] Phase 68 introduced booking_identity.py with normalize_reservation_ref(provider, raw_ref) — strips whitespace, lowercases, and applies per-provider prefix stripping (bookingcom: BK-, agoda: AGD-/AG-, tripcom: TC-). All 5 adapters now call normalize_reservation_ref() in normalize() before constructing reservation_id. The locked formula booking_id = {source}_{reservation_ref} (Phase 36) is unchanged. 30 contract tests cover all providers, determinism, and edge cases.
 
 ### BOOKING_AMENDED Support
-- status: open
+- status: resolved
 - discovered_in: Phase 42
+- resolved_in: Phase 49 (AmendmentFields schema, amendment_extractor.py), Phase 50 (apply_envelope DB branch, BOOKING_AMENDED enum value), Phase 51-57 (Python pipeline routing), Phase 69 (booking_amended skill, registry wiring, service.py hook)
 - source_context: Phase 42 investigated all preconditions; Phase 43 verified status column
 - priority: medium
-- prerequisites_satisfied: 4 of 10
-- notes: [Claude] Prerequisites summary:
-  ✅ DLQ infrastructure (Phases 38-39)
-  ✅ booking_id stability (Phase 36, Phase 42 Q7)
-  ✅ MODIFY classification in semantics.py (already exists)
-  ✅ booking_state.status column (already exists: 'active'/'canceled', Phase 43 E2E verified)
-  ❌ Normalized AmendmentPayload schema (provider-agnostic)
-  ❌ apply_envelope BOOKING_AMENDED branch (DDL + stored procedure)
-  ❌ event_kind enum includes BOOKING_AMENDED (DDL)
-  ❌ ACTIVE-state amendment guard in apply_envelope
-  ❌ Amendment replay ordering rule (DLQ replay exists but unordered)
-  ❌ Idempotency key structure for amendments
-  MODIFY remains deterministic reject-by-default until all 10 prerequisites are satisfied.
+- notes: [Claude] All 10 prerequisites satisfied. Phase 69 wired the full Python pipeline: booking_amended skill (transforms OTA adapter envelope → BOOKING_AMENDED emitted event), registered in kind_registry.core.json and skill_exec_registry.core.json. service.py updated with best-effort BOOKING_AMENDED financial facts write. Adapters already emit booking_id + amendment fields in to_canonical_envelope. Full end-to-end: OTA webhook → pipeline → BOOKING_AMENDED envelope → booking_amended skill → apply_envelope updates booking_state (check_in, check_out via COALESCE). 20 contract tests added (451 total).
 
 ## Resolved / No Longer Open
 

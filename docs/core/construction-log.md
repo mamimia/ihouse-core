@@ -1345,3 +1345,28 @@ No canonical business semantics changed. No booking_state writes.
 
 Result: 431 tests pass (431 passed, 2 skipped).
 No Supabase schema changes. booking_id formula unchanged.
+
+## Phase 69 — BOOKING_AMENDED Python Pipeline (Closed)
+
+- [Claude]
+- New: `src/core/skills/booking_amended/skill.py`
+  - run(payload) → SkillOutput
+  - Reads: booking_id (or falls back to {provider}_{reservation_id}), new_check_in, new_check_out, new_guest_count, amendment_reason
+  - Emits: BOOKING_AMENDED event with only explicitly-amended fields (COALESCE-safe)
+  - Invariant: never reads booking_state, never bypasses apply_envelope
+- Modified: `src/core/kind_registry.core.json` — BOOKING_AMENDED → booking-amended
+- Modified: `src/core/skill_exec_registry.core.json` — booking-amended → core.skills.booking_amended.skill
+- Modified: `src/adapters/ota/service.py` — BOOKING_AMENDED financial facts best-effort write after APPLIED
+- New: `tests/test_booking_amended_skill_contract.py` — 20 contract tests
+  - Full amendment, partial (check_in only, check_out only, guest_count only, reason only)
+  - booking_id fallback construction
+  - Skill contract (reason, no state_upserts, exactly one emitted event)
+  - None field exclusion (4 tests)
+- Modified: `docs/core/improvements/future-improvements.md` — 3 items marked resolved:
+  - External Event Ordering Protection (Phases 44-45)
+  - External Event Signature Validation (Phase 57)
+  - BOOKING_AMENDED Support (Phase 69)
+
+Result: 451 tests pass (451 passed, 2 skipped).
+No Supabase schema changes. No new migrations.
+Full BOOKING_AMENDED pipeline is live end-to-end.
