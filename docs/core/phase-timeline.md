@@ -1701,3 +1701,39 @@ Outcome:
 
 Next phase:
 Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch
+
+## Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 50 completed the SQL/stored-procedure layer for BOOKING_AMENDED and verified it E2E on live Supabase before Phase 51. All 10 BOOKING_AMENDED prerequisites are now satisfied.
+
+Completed:
+- Step 1 (prior chat): ALTER TYPE event_kind ADD VALUE 'BOOKING_AMENDED' — already live ✅
+- Step 2: Deployed via supabase CLI (`supabase db push`), migration `20260308210000_phase50_step2_apply_envelope_amended.sql`
+  - CREATE OR REPLACE FUNCTION apply_envelope — full BOOKING_AMENDED branch added:
+    1. booking_id guard (BOOKING_ID_REQUIRED)
+    2. SELECT FOR UPDATE row lock
+    3. ACTIVE-state lifecycle guard (AMENDMENT_ON_CANCELED_BOOKING)
+    4. Optional new_check_in / new_check_out extraction
+    5. Date validation when both provided
+    6. Append-only STATE_UPSERT to event_log
+    7. UPDATE booking_state with COALESCE (preserves existing dates if not supplied), status stays 'active'
+- Written tests/test_booking_amended_e2e.py — 5 E2E tests, all passing on live Supabase:
+  - BOOKING_CREATED → APPLIED ✅
+  - BOOKING_AMENDED both dates → APPLIED, check_in/check_out updated, status=active, version=2 ✅
+  - BOOKING_AMENDED partial (check_in only) → check_in updated, check_out preserved via COALESCE ✅
+  - BOOKING_AMENDED on CANCELED → AMENDMENT_ON_CANCELED_BOOKING ✅
+  - BOOKING_AMENDED on non-existent booking → BOOKING_NOT_FOUND ✅
+
+Outcome:
+- BOOKING_AMENDED prerequisites: 10/10 ✅
+- apply_envelope remains the single verified write authority for all lifecycle events
+- 158 tests pass (2 pre-existing SQLite failures unrelated)
+- No canonical invariants changed
+- No alternative write path introduced
+
+Next phase:
+Phase 51 — Python Pipeline Integration (semantics.py + service.py BOOKING_AMENDED routing)

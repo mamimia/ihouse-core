@@ -2,52 +2,47 @@
 
 ## Current Active Phase
 
-Phase 49 — Normalized AmendmentPayload Schema
+Phase 51 — Python Pipeline Integration (BOOKING_AMENDED routing)
 
 ## Last Closed Phase
 
-Phase 48 — Idempotency Key Standardization
+Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch
 
 ## Current Objective
 
-Before adding BOOKING_AMENDED to apply_envelope (Phase 50), we need a canonical, provider-agnostic amendment payload structure. Currently, Booking.com puts amendment data in `new_reservation_info`, Expedia puts it in `changes.dates`. Phase 50 cannot know about provider-specific shapes.
+Wire BOOKING_AMENDED through the Python OTA adapter pipeline:
 
-Phase 49 defines the normalized schema and builds extractor functions for each provider.
+1. **semantics.py** — map `reservation_modified` → semantic kind `BOOKING_AMENDED`
+   (currently maps to `MODIFY` which is rejected by default)
 
-This is a Python-only phase. No DDL changes.
+2. **service.py / pipeline.py** — allow `BOOKING_AMENDED` semantic kind to flow through
+   to `to_canonical_envelope` and then `apply_envelope`
+   (currently `MODIFY` is rejected before reaching apply_envelope)
 
-## Scope
+3. **Contract tests** — `tests/test_booking_amended_contract.py`
+   covering the full pipeline path for `reservation_modified` → BOOKING_AMENDED → APPLIED
 
-### `src/adapters/ota/schemas.py` — add `AmendmentFields`:
+## Key Invariants (Locked — Do Not Change)
 
-```python
-@dataclass(frozen=True)
-class AmendmentFields:
-    new_check_in: str | None      # ISO date string or None
-    new_check_out: str | None
-    new_guest_count: int | None
-    amendment_reason: str | None  # optional provider note
-```
+- `apply_envelope` is the single write authority — no adapter reads/writes booking_state directly
+- `event_log` is append-only
+- `booking_id = "{source}_{reservation_ref}"` — deterministic, canonical
 
-### `src/adapters/ota/amendment_extractor.py`:
+## Key Files for Phase 51
 
-```python
-def extract_amendment_bookingcom(provider_payload: dict) -> AmendmentFields
-def extract_amendment_expedia(provider_payload: dict) -> AmendmentFields
-def normalize_amendment(provider: str, payload: dict) -> AmendmentFields
-    # dispatches to the correct extractor by provider
-    # raises ValueError for unknown provider
-```
+| File | Current behavior | Required change |
+|------|-----------------|-----------------|
+| `src/adapters/ota/semantics.py` | `reservation_modified` → MODIFY | → BOOKING_AMENDED |
+| `src/adapters/ota/pipeline.py` | MODIFY → reject before envelope | Allow BOOKING_AMENDED through |
+| `src/adapters/ota/service.py` | BOOKING_AMENDED not handled | Pass through like CREATED/CANCELED |
+| `src/adapters/ota/bookingcom.py` | `to_canonical_envelope` raises on MODIFY | Handle BOOKING_AMENDED payload |
 
-### Contract tests:
-- Booking.com payload with new_reservation_info → correct AmendmentFields
-- Expedia payload with changes.dates → correct AmendmentFields
-- Missing fields → None (not raised — fields are optional)
-- Unknown provider → ValueError
-- AmendmentFields is frozen dataclass
-- normalize_amendment dispatches correctly
+## Supabase
 
-Out of scope:
-- DDL changes
-- apply_envelope modifications (Phase 50)
-- BOOKING_AMENDED in event_kind enum (Phase 50)
+- Project: `reykggmlcehswrxjviup`
+- URL: `https://reykggmlcehswrxjviup.supabase.co`
+- Phase 50 migration deployed: `20260308210000_phase50_step2_apply_envelope_amended.sql`
+
+## Tests
+
+158 passing (2 pre-existing SQLite failures, unrelated)

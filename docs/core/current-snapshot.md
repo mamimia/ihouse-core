@@ -1,41 +1,22 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch
+Phase 51 — Python Pipeline Integration (BOOKING_AMENDED routing)
 
 ## Last Closed Phase
-Phase 49 — Normalized AmendmentPayload Schema
+Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch
 
 ## System Status
 
-**The system is production-hardened and amendment-ready.**
+**The system is production-hardened and BOOKING_AMENDED is live on Supabase.**
 
 apply_envelope is the only authority for canonical state mutations.
 
 Health check: OVERALL OK ✅
 
-## Phase 49 Result
+## Phase 50 Result
 
-[Claude]
-
-**AmendmentFields** (frozen dataclass) added to `schemas.py`:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `new_check_in` | `Optional[str]` | ISO date |
-| `new_check_out` | `Optional[str]` | ISO date |
-| `new_guest_count` | `Optional[int]` | integer |
-| `amendment_reason` | `Optional[str]` | provider note |
-
-**amendment_extractor.py:**
-
-| Function | Maps from |
-|----------|-----------|
-| `extract_amendment_bookingcom` | `new_reservation_info` |
-| `extract_amendment_expedia` | `changes.dates` / `changes.guests` |
-| `normalize_amendment` | dispatcher (raises on unknown) |
-
-## BOOKING_AMENDED Prerequisites: 7/10 ✅
+BOOKING_AMENDED Prerequisites: **10/10 ✅** — all satisfied.
 
 | Prerequisite | Status |
 |-------------|--------|
@@ -45,12 +26,33 @@ Health check: OVERALL OK ✅
 | booking_state.status | ✅ |
 | Ordering infrastructure | ✅ |
 | Idempotency key format | ✅ |
-| Normalized AmendmentPayload | ✅ ← Phase 49 |
-| event_kind enum: BOOKING_AMENDED | ❌ (Phase 50) |
-| apply_envelope BOOKING_AMENDED branch | ❌ (Phase 50) |
-| ACTIVE-state lifecycle guard | ❌ (Phase 50) |
+| Normalized AmendmentPayload | ✅ |
+| event_kind enum: BOOKING_AMENDED | ✅ (Phase 50 Step 1) |
+| apply_envelope BOOKING_AMENDED branch | ✅ (Phase 50 Step 2) |
+| ACTIVE-state lifecycle guard | ✅ (Phase 50 Step 2) |
 
-**3 prerequisites remain — all DDL/stored-procedure layer.**
+**BOOKING_AMENDED branch behavior (live on Supabase):**
+- booking_id guard → BOOKING_ID_REQUIRED
+- SELECT FOR UPDATE row lock
+- ACTIVE-state guard → AMENDMENT_ON_CANCELED_BOOKING if canceled
+- Optional new_check_in / new_check_out (COALESCE preserves existing if not supplied)
+- Date validation when both provided
+- Append-only STATE_UPSERT to event_log
+- UPDATE booking_state — status stays 'active'
+
+**E2E verified (tests/test_booking_amended_e2e.py — 5 tests):**
+- BOOKING_AMENDED → APPLIED, dates updated ✅
+- Partial amendment (check_in only) → COALESCE preserves check_out ✅
+- BOOKING_AMENDED on CANCELED → AMENDMENT_ON_CANCELED_BOOKING ✅
+- BOOKING_AMENDED on non-existent → BOOKING_NOT_FOUND ✅
+
+## Phase 51 Objective
+
+Wire BOOKING_AMENDED through the Python OTA pipeline:
+
+1. **semantics.py** — `reservation_modified` → `BOOKING_AMENDED` (replace `MODIFY` → reject)
+2. **service.py** — BOOKING_AMENDED passes through like CREATED/CANCELED
+3. **Contract tests** — `tests/test_booking_amended_contract.py`
 
 ## Full OTA Adapter Layer
 
@@ -58,7 +60,7 @@ Health check: OVERALL OK ✅
 |--------|------|
 | `idempotency.py` | namespaced key generation + validation |
 | `payload_validator.py` | boundary validation |
-| `amendment_extractor.py` | amendment normalization ← NEW |
+| `amendment_extractor.py` | amendment normalization |
 | `dead_letter.py` | preserve rejected events |
 | `dlq_replay.py` | controlled replay → apply_envelope |
 | `dlq_inspector.py` | read-only DLQ observability |
@@ -69,4 +71,4 @@ Health check: OVERALL OK ✅
 | `health_check.py` | consolidated system readiness check |
 
 ## Tests
-**153 passing** (2 pre-existing SQLite failures, unrelated)
+**158 passing** (2 pre-existing SQLite failures, unrelated)

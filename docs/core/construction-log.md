@@ -797,3 +797,39 @@ Completed:
 Result:
 
 The normalized AmendmentPayload schema is defined. Both adapters have a tested extraction path. Phase 50 can now implement apply_envelope BOOKING_AMENDED branch using AmendmentFields as the canonical input.
+
+## Phase 50 — BOOKING_AMENDED DDL + apply_envelope Branch (Closed)
+
+Rationale:
+
+The final 3 prerequisites for BOOKING_AMENDED were all SQL/stored-procedure layer changes. Phase 50 delivers them atomically and verifies them E2E on live Supabase.
+
+Completed:
+
+- Step 1 (Phase 50 previous chat): ALTER TYPE event_kind ADD VALUE 'BOOKING_AMENDED' — already deployed ✅
+- Step 2: Deployed via `supabase db push` (migration `20260308210000_phase50_step2_apply_envelope_amended.sql`):
+  - CREATE OR REPLACE FUNCTION apply_envelope — full replacement including BOOKING_AMENDED branch
+  - BOOKING_AMENDED branch logic:
+    1. Extract booking_id → raises BOOKING_ID_REQUIRED if missing
+    2. SELECT booking_state FOR UPDATE (row-level lock)
+    3. ACTIVE-state lifecycle guard → raises AMENDMENT_ON_CANCELED_BOOKING if status='canceled'
+    4. Extract new_check_in / new_check_out (both optional)
+    5. Validate dates if both provided (check_out > check_in)
+    6. Write STATE_UPSERT to event_log (append-only)
+    7. UPDATE booking_state: check_in/check_out via COALESCE (preserves existing if not provided), status stays 'active'
+- Written `tests/test_booking_amended_e2e.py` — 5 E2E tests, all passing on live Supabase:
+  - BOOKING_CREATED → APPLIED ✅
+  - BOOKING_AMENDED both dates → APPLIED, check_in/check_out updated, status=active, version=2 ✅
+  - BOOKING_AMENDED partial (check_in only) → check_in updated, check_out preserved via COALESCE ✅
+  - BOOKING_AMENDED on CANCELED booking → AMENDMENT_ON_CANCELED_BOOKING ✅
+  - BOOKING_AMENDED on non-existent booking → BOOKING_NOT_FOUND ✅
+
+Result:
+
+BOOKING_AMENDED prerequisites: 10/10 satisfied.
+apply_envelope is the verified single write authority for BOOKING_AMENDED.
+158 tests pass (2 pre-existing SQLite failures unrelated).
+No canonical invariants changed. No alternative write path introduced.
+
+Next phase: Phase 51 — Python Pipeline Integration (semantics.py + service.py BOOKING_AMENDED routing)
+
