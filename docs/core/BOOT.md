@@ -68,3 +68,27 @@ Do these in order:
 - Never rewrite old history lines.
 - Never downgrade invariants already declared as canonical.
 - If anything is ambiguous, ask one concrete question, then proceed.
+
+## Operational discipline — enforced every phase, no exceptions
+
+### Git push cadence
+- Push to GitHub after every meaningful change.
+- Do not accumulate more than one phase worth of work without pushing.
+- Ideal cadence: every few minutes during active work, or after every significant file change.
+
+### Spec file protocol
+- Every phase must have a spec file: `docs/archive/phases/phase-X-spec.md`
+- The spec is created at the start of the phase (or reconstructed at closure if the phase was discovery-only).
+- When a phase closes, the spec must already exist in the archive. Do not close a phase without it.
+
+### ZIP protocol
+- At the end of every closed phase, create: `iHouse-Core-Docs-Phase-<N>.zip`
+- The ZIP must include the entire `docs/core/` tree — no selective inclusion.
+- Naming is always: `iHouse-Core-Docs-Phase-<N>.zip` (exact casing, no variation).
+- The ZIP is committed and pushed as part of the phase closure commit.
+
+### Tool pivot rule
+- If a tool or approach fails twice, stop immediately.
+- Do not retry the same approach a third time.
+- List all available alternatives (CLI, MCP, REST, Python, browser) and pick the next best one.
+- `supabase CLI` is always checked before browser automation for any DB operation.
