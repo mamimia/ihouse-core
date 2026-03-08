@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 66 — booking_financial_facts Supabase Projection (closed)
+Phase 67 — Financial Facts Query API (closed)
 
 ## Last Closed Phase
-Phase 66 — booking_financial_facts Supabase Projection
+Phase 67 — Financial Facts Query API
 
 ## System Status
 
-**Full HTTP ingestion stack complete (Phases 58–64). Financial Data Foundation complete (Phase 65). Financial Supabase projection complete (Phase 66).**
+**Full HTTP ingestion stack complete (Phases 58–64). Financial Data Foundation complete (Phase 65). Financial Supabase projection complete (Phase 66). Financial Query API complete (Phase 67).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -24,8 +24,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 64 | Enhanced health check — Supabase ping, DLQ count, 503 support | ✅ |
 | 65 | Financial Data Foundation — BookingFinancialFacts, 5-provider extraction | ✅ |
 | 66 | booking_financial_facts Supabase projection — write after BOOKING_CREATED APPLIED | ✅ |
+| 67 | Financial Facts Query API — GET /financial/{booking_id}, JWT auth, tenant isolation | ✅ |
 
-**388 tests pass** (2 pre-existing SQLite skips, unrelated)
+**396 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -63,7 +64,8 @@ HTTP  →  Logging middleware (X-Request-ID)
 
 | File | Role |
 |------|------|
-| `src/api/webhooks.py` | `POST /webhooks/{provider}` |
+| `src/api/webhooks.py` | POST /webhooks/{provider} — OTA ingestion |
+| `src/api/financial_router.py` | GET /financial/{booking_id} — financial facts query (Phase 67) |
 | `src/api/auth.py` | JWT verification |
 | `src/api/rate_limiter.py` | Per-tenant rate limiting |
 | `src/api/health.py` | Dependency health checks |
@@ -110,9 +112,22 @@ HTTP  →  Logging middleware (X-Request-ID)
 
 RLS: enabled. Indexed on `booking_id`, `tenant_id`.
 
+## Financial Query API (Phase 67)
+
+```
+GET /financial/{booking_id}
+  Authorization: Bearer <JWT>
+  → 200 { booking_id, provider, total_price, currency, ota_commission, taxes, fees,
+           net_to_property, source_confidence, event_kind, recorded_at }
+  → 404 { "error": "BOOKING_NOT_FOUND" }
+  → 403 if JWT missing/invalid
+```
+
+Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
+
 ## Next Phase
 
-**Phase 67 — TBD**
+**Phase 68 — TBD**
 - See `docs/core/improvements/future-improvements.md` → Active Backlog
 
 ## Tests

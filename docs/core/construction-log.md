@@ -1302,4 +1302,20 @@ E2E verified: BOOKING_CREATED payload → financial_writer → Supabase row quer
 Result: 388 tests pass (388 passed, 2 skipped).
 No canonical business semantics changed. No booking_state writes.
 
+## Phase 67 — Financial Facts Query API (Closed)
+
+- [Claude]
+- New: src/api/financial_router.py
+  - GET /financial/{booking_id} — reads booking_financial_facts, JWT auth, tenant isolation
+  - Returns most-recent row by recorded_at DESC, 404 if not found, 500 on Supabase error
+  - Never reads from booking_state
+- Modified: src/main.py — added 'financial' OpenAPI tag, included financial_router
+- New: tests/test_financial_router_contract.py — 8 contract tests (all mocked, CI-safe)
+  - T1: 200 + correct fields, T2: 404 unknown, T3: 403 no auth, T4: tenant isolation → 404
+  - T5: most recent row, T6: schema completeness, T7: 500 no internals leaked, T8: tenant_id queried
+
+Result: 396 tests pass (396 passed, 2 skipped).
+No canonical business semantics changed. No booking_state writes.
+
+
 

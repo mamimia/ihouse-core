@@ -1852,4 +1852,15 @@ Invariant enforced: booking_state must NEVER contain financial data. This is a s
 E2E verified: BOOKING_CREATED → booking_financial_facts row written to live Supabase.
 Result: 388 passed, 2 skipped.
 
+## Phase 67 — Financial Facts Query API (Closed)
+
+Exposes booking_financial_facts via GET /financial/{booking_id}. JWT auth + tenant isolation enforced.
+
+Files added: src/api/financial_router.py, tests/test_financial_router_contract.py, docs/archive/phases/phase-67-spec.md
+Files modified: src/main.py (financial tag + router registered)
+
+Invariant: endpoint reads from booking_financial_facts ONLY. Never touches booking_state.
+Result: 396 passed, 2 skipped.
+
+
 
