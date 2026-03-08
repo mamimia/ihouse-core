@@ -1428,3 +1428,26 @@ Outcome:
 
 Next phase:
 Phase 38 — TBD
+## Phase 38 — Dead Letter Queue for Failed OTA Events (Closed)
+
+Status:
+Closed
+
+Summary:
+Phase 38 implemented a minimal, append-only Dead Letter Queue so that OTA events rejected by apply_envelope are preserved for investigation and future replay instead of being silently lost.
+
+Completed:
+- [Claude]
+- Supabase table `ota_dead_letter` created via migration (append-only, RLS for service_role)
+- `dead_letter.py` module: best-effort, non-blocking DLQ write, swallows all errors, logs WARNING to stderr on failure
+- `service.py` updated: `ingest_provider_event_with_dlq` added, original thin wrapper preserved
+- 6 contract tests added and passing
+- E2E verified: BOOKING_CANCELED before CREATED → DLQ row written with rejection_code BOOKING_NOT_FOUND
+
+Outcome:
+- rejected OTA events are now preserved, not lost
+- DLQ is append-only, never bypasses apply_envelope, never mutates canonical state
+- 36 tests pass (2 pre-existing SQLite failures unrelated)
+
+Next phase:
+Phase 39 — TBD

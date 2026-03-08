@@ -546,3 +546,25 @@ No canonical invariants are violated by the current behavior.
 No canonical business semantics changed.
 No alternative write path was introduced.
 No closed semantic decision was reopened.
+## Phase 38 — Dead Letter Queue for Failed OTA Events (Closed)
+
+Completed:
+
+- [Claude]
+- created Supabase table `ota_dead_letter` (append-only, RLS enabled for service_role)
+- deployed migration via `supabase db push`: `20260308_phase38_ota_dead_letter.sql`
+- implemented `src/adapters/ota/dead_letter.py`: best-effort, non-blocking DLQ write
+- updated `src/adapters/ota/service.py`: added `ingest_provider_event_with_dlq` — original thin wrapper preserved unchanged
+- added 6 contract tests covering: non-blocking behavior, error swallowing, stderr logging, Supabase insert call, backward compatibility guard
+- E2E verified: BOOKING_CANCELED before BOOKING_CREATED → apply_envelope BOOKING_NOT_FOUND → DLQ row written and queryable
+
+Result:
+
+Rejected OTA events are now preserved in `ota_dead_letter` instead of being silently lost.
+The DLQ is append-only and never bypasses apply_envelope.
+No canonical invariants are violated.
+36 tests pass (2 pre-existing SQLite failures unrelated).
+
+No canonical business semantics changed.
+No alternative write path was introduced.
+No closed semantic decision was reopened.

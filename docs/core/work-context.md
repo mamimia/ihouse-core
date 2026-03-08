@@ -2,21 +2,21 @@
 
 ## Current Active Phase
 
-Phase 37 — External Event Ordering Protection Discovery
+Phase 38 — Dead Letter Queue for Failed OTA Events
 
 ## Last Closed Phase
 
-Phase 36 — Business Identity Canonicalization
+Phase 37 — External Event Ordering Protection Discovery
 
 ## Current Objective
 
-Verify and document what happens when OTA events arrive out of order, specifically when `BOOKING_CANCELED` arrives before `BOOKING_CREATED`. Identify the current system behavior and determine if additional ordering protection is required.
+Design and implement a minimal Dead Letter Queue (DLQ) for OTA events that are rejected by `apply_envelope`, so that no OTA event is silently lost. Phase 37 proved that out-of-order events are currently lost. This phase introduces a safe, append-only preservation layer.
 
-This phase is a discovery phase only.
+This phase is an implementation phase.
 
-It is not a redesign phase.
 It is not a reconciliation phase.
 It is not an amendment phase.
+It must not introduce any new canonical write path.
 
 ## Locked Architectural Reality
 
@@ -56,28 +56,22 @@ ingest_provider_event
 → CoreExecutor.execute  
 → apply_envelope
 
-## Phase 36 Closed Finding
+## Phase 37 Closed Finding
 
 [Claude]
 
-Canonical booking_id rule confirmed: `booking_id = "{source}_{reservation_ref}"`
+BOOKING_CANCELED before BOOKING_CREATED → apply_envelope raises BOOKING_NOT_FOUND (P0001).
 
-apply_envelope enforces business-level dedup in two layers: by booking_id and by composite (tenant_id, source, reservation_ref, property_id).
+No buffering or retry layer exists. Rejected events are currently lost.
 
-E2E verified: duplicate BOOKING_CREATED with different request_id returns ALREADY_EXISTS.
+## Phase 38 Scope
 
-## Phase 37 Focus
+Implement a minimal, safe DLQ that:
 
-Phase 37 investigates external event ordering protection.
+1. Captures any OTA event that is rejected by apply_envelope (BOOKING_NOT_FOUND or any other non-APPLIED status)
+2. Stores the rejected envelope and the rejection reason in a Supabase table
+3. Does NOT automatically retry or requeue
+4. Does NOT bypass canonical apply gate
+5. Is append-only and auditable
 
-The backlog item **External Event Ordering Protection** (priority: high) covers:
-- delayed events
-- missing events
-- cancellation before creation (BOOKING_CANCELED arriving before BOOKING_CREATED)
-- out-of-order arrival
-
-Phase 37 must answer:
-1. What does apply_envelope currently return when BOOKING_CANCELED arrives before BOOKING_CREATED?
-2. Is there any buffering, retry, or ordering layer in the active runtime path?
-3. Is the current behavior safe (deterministic reject), or is it an unhandled error condition?
-4. What is the minimal safe response to this gap, if any is required?
+This is a preservation layer only. Manual replay from DLQ is a future phase.

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 38 — TBD
+Phase 39 — TBD
 
 ## Last Closed Phase
-Phase 37 — External Event Ordering Protection Discovery
+Phase 38 — Dead Letter Queue for Failed OTA Events
 
 ## System Status
 
@@ -12,24 +12,26 @@ The deterministic event architecture remains fully operational.
 
 The canonical database gate (`apply_envelope`) remains the only authority allowed to mutate booking state.
 
-OTA-originated `BOOKING_CREATED` and `BOOKING_CANCELED` reach `apply_envelope` through the canonical emitted business event contract.
+OTA events rejected by `apply_envelope` are now preserved in `ota_dead_letter` instead of being silently lost.
 
-## Phase 37 Result
+## Phase 38 Result
 
 [Claude]
 
-Phase 37 verified the current system behavior on out-of-order OTA event arrival.
+Phase 38 implemented a minimal, append-only Dead Letter Queue.
 
-**Verified behavior:**
+**Supabase table:** `ota_dead_letter` — append-only, RLS enabled for service_role  
+**Module:** `src/adapters/ota/dead_letter.py` — best-effort, non-blocking, swallows errors  
+**Service:** `ingest_provider_event_with_dlq` added to `service.py`, original wrapper preserved
 
-- `BOOKING_CANCELED` before `BOOKING_CREATED` → `apply_envelope` raises `BOOKING_NOT_FOUND` (code `P0001`)
-- This is a **deterministic rejection** — no silent data loss, no state corruption
-- The rejected event is **lost** — there is no dead-letter store or retry queue in the active runtime path
-- No buffering, retry, or ordering layer exists between the OTA adapter and `apply_envelope`
+E2E verified: `BOOKING_CANCELED` before `BOOKING_CREATED` → `apply_envelope` raises `BOOKING_NOT_FOUND` → DLQ row written with `rejection_code: P0001`
 
-**Classification:** Known open gap, not a canonical invariant violation.
-
-This remains deferred in `future-improvements.md` at priority **high** for a future implementation phase.
+The DLQ is:
+- append-only
+- non-blocking (never raises)
+- never bypasses `apply_envelope`
+- never mutates canonical state
+- observable via SQL query on `ota_dead_letter`
 
 No canonical business semantics changed.
 No alternative write path was introduced.
@@ -67,6 +69,6 @@ Business Identity
 
 | Gap | Current Behavior | Priority |
 |-----|-----------------|----------|
-| Out-of-order events (CANCELED before CREATED) | Deterministic rejection — BOOKING_NOT_FOUND | high |
-| Dead-letter store for failed events | Not implemented | medium |
+| Out-of-order events (CANCELED before CREATED) | Deterministic rejection → DLQ preserved | high |
+| Out-of-order replay / retry from DLQ | Not implemented | high |
 | External event ordering buffer | Not implemented | high |
