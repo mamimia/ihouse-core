@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 122 — OTA Financial Health Comparison (closed)
+Phase 123 — Worker-Facing Task Surface (closed)
 
 ## Last Closed Phase
 
-Phase 122 — OTA Financial Health Comparison
+Phase 123 — Worker-Facing Task Surface
 
 ## Current Objective
 
-**Phase 123 — (next — see roadmap)**
+**Phase 124 — (next — see roadmap)**
 See `docs/core/roadmap.md` for forward plan.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -22,6 +22,7 @@ See `docs/core/roadmap.md` for forward plan.
 | 120 | Cashflow / Payout Timeline | `src/api/cashflow_router.py`, `tests/test_cashflow_router_contract.py` |
 | 121 | Owner Statement Generator (Ring 4) | `src/api/owner_statement_router.py`, `tests/test_owner_statement_phase121_contract.py` |
 | 122 | OTA Financial Health Comparison | `src/api/ota_comparison_router.py`, `tests/test_ota_comparison_router_contract.py` |
+| 123 | Worker-Facing Task Surface | `src/api/worker_router.py`, `tests/test_worker_router_contract.py` |
 | docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
@@ -49,6 +50,7 @@ See `docs/core/roadmap.md` for forward plan.
 | `src/api/cashflow_router.py` | Ring 3: GET /financial/cashflow — weekly inflow buckets, confirmed released, overdue, 30/60/90-day projection |
 | `src/api/owner_statement_router.py` | Ring 4: GET /owner-statement/{property_id} — per-booking line items, epistemic tier, management fee, PDF export |
 | `src/api/ota_comparison_router.py` | Ring 3: GET /financial/ota-comparison — per-OTA commission rate, net-to-gross, revenue share, lifecycle distribution |
+| `src/api/worker_router.py` | Phase 123: GET /worker/tasks, PATCH /worker/tasks/{id}/acknowledge, PATCH /worker/tasks/{id}/complete |
 
 ## Key Files — Task Layer (Phases 111–115)
 
@@ -92,5 +94,5 @@ See `docs/core/roadmap.md` for forward plan.
 
 ## Tests
 
-**2953 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
+**2994 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
 
