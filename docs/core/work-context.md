@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 109 -- Booking Date Range Search (closed)
+Phase 110 -- OTA Reconciliation Implementation (closed)
 
 ## Last Closed Phase
 
-Phase 109 -- Booking Date Range Search
+Phase 110 -- OTA Reconciliation Implementation
 
 ## Current Objective
 
-Phase 110 -- OTA Reconciliation Implementation. See `docs/core/roadmap.md`.
+Phase 111 -- Reconciliation Scheduler / Worker. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
