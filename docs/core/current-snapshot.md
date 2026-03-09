@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 126 — Availability Projection: GET /availability/{property_id} (closed)
+Phase 127 — Integration Health Dashboard (closed)
 
 ## Last Closed Phase
-Phase 126 — Availability Projection
+Phase 127 — Integration Health Dashboard
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -82,9 +82,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 123 | Worker-Facing Task Surface -- worker_router.py: GET /worker/tasks (worker_role/status/date/limit filters, DB-level tenant isolation), PATCH /worker/tasks/{id}/acknowledge (PENDING→ACKNOWLEDGED), PATCH /worker/tasks/{id}/complete (IN_PROGRESS→COMPLETED); VALID_TASK_TRANSITIONS enforced; notes appended on complete; 41 tests | ✅ |
 | 124 | LINE Escalation Channel -- channels/line_escalation.py: pure module: should_escalate (ACK_SLA_BREACH only), build_line_message, format_line_text, is_priority_eligible, LineEscalationRequest/LineDispatchResult dataclasses; api/line_webhook_router.py: POST /line/webhook: PENDING→ACKNOWLEDGED on LINE ack, idempotent for ACKNOWLEDGED, 409 for terminal; HMAC-SHA256 sig validation (dev=skip); 57 tests | ✅ |
 | 125 | Hotelbeds Adapter (Tier 3 B2B Bedbank) -- hotelbeds.py: B2B semantics (property receives net_rate directly, markup_amount=Hotelbeds margin); voucher_ref normalization (HB- prefix strip); financial_extractor: FULL/ESTIMATED/PARTIAL confidence; amendment_extractor: amendment block (check_in/check_out/room_count guest_count fallback); registry registered; 42 tests | ✅ |
-| 126 | Availability Projection -- availability_router.py: GET /availability/{property_id}?from=&to= ; per-date occupancy map computed in-memory from booking_state; VACANT/OCCUPIED/CONFLICT status per date; check_out exclusive; max 366 days; summary counts; CANCELED excluded at DB level; never reads booking_financial_facts or tasks; 36 tests | ✅ |
+| 127 | Integration Health Dashboard -- integration_health_router.py: GET /integration-health: all 13 OTA providers, last_ingest_at, lag_seconds(recorded-occurred), buffer_count(ota_ordering_buffer), dlq_count(ota_dead_letter), stale_alert(24h threshold), summary(ok/stale/unknown/total_dlq/total_buffer/has_alerts); JWT required; best-effort per provider; 37 tests | ✅ |
 
-**3129 tests pass** (2 pre-existing SQLite skips, unrelated)
+**3166 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
