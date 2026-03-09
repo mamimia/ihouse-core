@@ -3129,3 +3129,30 @@ Design decisions:
 Result: 3637 tests pass (3609 + 28 new). No DB schema changes. No migration. No router changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
 
+## Phase 143 — Idempotency Key on Outbound Requests (Closed)
+
+Goal: Attach a stable `X-Idempotency-Key` header to every outbound HTTP call so that
+external OTA APIs can detect duplicate requests and deduplicate them safely.
+Before Phase 143, repeated syncs of the same booking within the same day were
+indistinguishable at the OTA level — any transient failure could cause duplicate
+calendar blocks or availability writes.
+
+Completed:
+
+- `src/adapters/outbound/__init__.py` — MODIFIED — added `_build_idempotency_key(booking_id, external_id) -> str`. Format: `{booking_id}:{external_id}:{YYYYMMDD}` (UTC). Day-stable. Empty input logs a WARNING and returns a best-effort key. Added `from datetime import date as _date`.
+- `src/adapters/outbound/airbnb_adapter.py` — MODIFIED — `X-Idempotency-Key` added to headers dict in `_do_req()` closure.
+- `src/adapters/outbound/bookingcom_adapter.py` — MODIFIED — same.
+- `src/adapters/outbound/expedia_vrbo_adapter.py` — MODIFIED — same.
+- `src/adapters/outbound/ical_push_adapter.py` — MODIFIED — `X-Idempotency-Key` added alongside `Content-Type`; `Authorization` still optional.
+- `tests/test_outbound_idempotency_key_contract.py` — NEW — 23 contract tests across Groups A–E: unit tests for `_build_idempotency_key()` (9 tests), per-adapter header presence and format verification (14 tests). Includes day-rollover simulation via `_date` monkeypatching, retry-stability test (same key on all 4 retry attempts).
+
+Design decisions:
+- Key built once per `send()`/`push()` call (before `_do_req` closure), so all retry attempts share the same key — this is the correct OTA deduplication behaviour.
+- `YYYYMMDD` day component ensures a fresh key per calendar day without requiring a counter.
+- iCal adapter: key is always emitted, even without `api_key`, since X-Idempotency-Key is a standard HTTP deduplication header, not an auth mechanism.
+- No new env variable needed — key generation is always on.
+
+Result: 3660 tests pass (3637 + 23 new). No DB schema changes. No migrations. No router changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+
+

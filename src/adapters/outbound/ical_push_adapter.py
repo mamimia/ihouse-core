@@ -1,5 +1,5 @@
 """
-Phase 142 — iCal Push Adapter (Retry + Exponential Backoff)
+Phase 143 — iCal Push Adapter (Idempotency Key)
 
 Updated from Phase 139 to inject real DTSTART / DTEND from booking_state.
 The push() method now accepts optional check_in / check_out as compact iCal
@@ -25,7 +25,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter, _retry_with_backoff, _throttle
+from adapters.outbound import AdapterResult, OutboundAdapter, _build_idempotency_key, _retry_with_backoff, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,10 @@ class ICalPushAdapter(OutboundAdapter):
                 dtstart=dtstart,
                 dtend=dtend,
             )
-            headers: dict[str, str] = {"Content-Type": "text/calendar; charset=utf-8"}
+            headers: dict[str, str] = {
+                "Content-Type":      "text/calendar; charset=utf-8",
+                "X-Idempotency-Key": _build_idempotency_key(booking_id, external_id),
+            }
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 

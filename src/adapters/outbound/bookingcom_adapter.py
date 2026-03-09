@@ -1,5 +1,5 @@
 """
-Phase 142 — Booking.com Outbound Adapter (Retry + Exponential Backoff)
+Phase 143 — Booking.com Outbound Adapter (Idempotency Key)
 
 Implements availability locking via the Booking.com Connectivity Partner API (api_first).
 
@@ -28,7 +28,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter, _retry_with_backoff, _throttle
+from adapters.outbound import AdapterResult, OutboundAdapter, _build_idempotency_key, _retry_with_backoff, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +80,9 @@ class BookingComAdapter(OutboundAdapter):
                 "notes":      f"Blocked by iHouse Core (booking_id={booking_id})",
             }
             headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type":  "application/json",
+                "Authorization":    f"Bearer {api_key}",
+                "Content-Type":     "application/json",
+                "X-Idempotency-Key": _build_idempotency_key(booking_id, external_id),
             }
             _throttle(rate_limit)
 

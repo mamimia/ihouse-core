@@ -2171,3 +2171,20 @@ Changes:
 Result: 3637 tests pass (3609 + 28 new). No DB schema changes. No migration. No router changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
 
+## Phase 143 — Idempotency Key on Outbound Requests (Closed)
+
+Attaches `X-Idempotency-Key: {booking_id}:{external_id}:{YYYYMMDD}` to every outbound
+HTTP call, allowing OTAs to deduplicate repeated sync requests.
+
+Changes:
+- src/adapters/outbound/__init__.py: added `_build_idempotency_key(booking_id, external_id)` returning `{booking_id}:{external_id}:{YYYYMMDD}`; day-stable (UTC); empty inputs log WARNING + return best-effort key; `from datetime import date as _date`
+- src/adapters/outbound/airbnb_adapter.py: `X-Idempotency-Key` added to headers in `_do_req()` closure
+- src/adapters/outbound/bookingcom_adapter.py: same
+- src/adapters/outbound/expedia_vrbo_adapter.py: same
+- src/adapters/outbound/ical_push_adapter.py: `X-Idempotency-Key` added alongside `Content-Type`; `Authorization` remains optional
+- tests/test_outbound_idempotency_key_contract.py [NEW]: 23 contract tests Groups A–E: key format/stability/rollover (9 unit tests), per-adapter header presence + format + retry-stability + dry-run (14 tests)
+
+Result: 3660 tests pass (3637 + 23 new). No DB schema changes. No migrations. No router changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+
+

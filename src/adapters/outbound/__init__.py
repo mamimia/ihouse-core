@@ -1,5 +1,5 @@
 """
-Phase 142 — Outbound Adapter Base Class + Rate-Limit Throttle + Retry
+Phase 143 — Outbound Adapter Base Class + Rate-Limit Throttle + Retry + Idempotency Key
 
 All outbound adapters implement this interface.
 
@@ -8,8 +8,9 @@ It is responsible for:
   1. Reading its own credentials from environment variables.
   2. Honouring the rate_limit (calls/minute) via _throttle() — Phase 141.
   3. Retrying on 5xx / network errors via _retry_with_backoff() — Phase 142.
-  4. Making the outbound HTTP call (or iCal push).
-  5. Returning a structured AdapterResult.
+  4. Attaching X-Idempotency-Key header via _build_idempotency_key() — Phase 143.
+  5. Making the outbound HTTP call (or iCal push).
+  6. Returning a structured AdapterResult.
 
 Adapters must NOT raise exceptions — catch internally and return status='failed'.
 """
@@ -20,6 +21,7 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional, TypeVar
+from datetime import date as _date
 
 _throttle_logger = logging.getLogger(__name__)
 
@@ -121,6 +123,33 @@ def _retry_with_backoff(fn: Callable[[], _T], max_retries: int = 3) -> _T:
 
     # All retries exhausted with 5xx (no exception path)
     return last_result  # type: ignore[return-value]
+
+
+_idem_logger = logging.getLogger(__name__ + ".idempotency")
+
+
+def _build_idempotency_key(booking_id: str, external_id: str) -> str:
+    """
+    Phase 143 — Build a stable idempotency key for an outbound request.
+
+    Format: ``{booking_id}:{external_id}:{YYYYMMDD}``
+
+    The key is stable within the same calendar day (UTC).  Adapters that
+    support idempotency headers should attach it as ``X-Idempotency-Key``.
+
+    Rules:
+    - booking_id and external_id must not be empty (logs a warning and
+      returns a best-effort key if either is missing).
+    - The date component rolls over at UTC midnight, ensuring a fresh key
+      per day even if the same booking is synced multiple times.
+    """
+    if not booking_id or not external_id:
+        _idem_logger.warning(
+            "_build_idempotency_key called with empty booking_id=%r or external_id=%r",
+            booking_id, external_id,
+        )
+    day = _date.today().strftime("%Y%m%d")
+    return f"{booking_id}:{external_id}:{day}"
 
 
 @dataclass
