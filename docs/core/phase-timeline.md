@@ -3155,4 +3155,30 @@ Design decisions:
 Result: 3660 tests pass (3637 + 23 new). No DB schema changes. No migrations. No router changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
 
+## Phase 144 — Outbound Sync Result Persistence (Closed)
+
+Goal: Persist every ExecutionResult from the outbound executor as an append-only row
+in the new `outbound_sync_log` Supabase table. Gives operators full audit trail of
+all outbound sync attempts. No read API yet (Phase 145).
+
+Completed:
+
+- `migrations/phase_144_outbound_sync_log.sql` — NEW — DDL for `outbound_sync_log` table: BIGSERIAL id, booking_id/tenant_id/provider/external_id/strategy TEXT, status TEXT (CHECK ok/failed/dry_run/skipped), http_status INT, message TEXT, synced_at TIMESTAMPTZ DEFAULT now(). 3 indexes (booking_id; tenant_id+status; tenant_id+synced_at). RLS: service_role full, authenticated read own tenant. Table comment.
+- `src/services/sync_log_writer.py` — NEW — `write_sync_result(**kwargs, client=None)`: best-effort append-only insert; `_get_supabase_client()` lazy import via `SyncPostgrestClient`; optional `client` parameter for test injection; `IHOUSE_SYNC_LOG_DISABLED=true` opt-out; message truncated at 2000 chars; returns True/False; never raises.
+- `src/services/outbound_executor.py` — MODIFIED — added `_SYNC_LOG_AVAILABLE` try-import guard for `sync_log_writer`; `_persist(booking_id, tenant_id, result)` helper with try/except to swallow all exceptions; called in main loop after `results.append(result)` (regular path) and after exception-path append; skipped actions (via `continue`) are NOT persisted.
+- `tests/test_sync_result_persistence_contract.py` — NEW — 13 contract tests across Groups A–E: writer unit (7 tests: correct insert, table name, False on error, truncation, disabled opt-out, http_status=None), executor wiring (3 tests), best-effort swallow (1 test), disabled optout (1 test), skip not persisted (1 test).
+
+Design decisions:
+- Optional `client` param on `write_sync_result()` follows same pattern as `task_writer.py` — no module-level mocking required.
+- `_persist` wraps `_write_sync_result` in try/except — even if the writer mock in tests raises, executor flow is protected.
+- Skipped actions use `continue` before the results.append+_persist path — skip rows are never written.
+- Append-only with no updates — Phase 145 (read inspector) will query this table.
+- `IHOUSE_SYNC_LOG_DISABLED=true` mirrors throttle/retry disabled pattern.
+
+Result: 3673 tests pass (3660 + 13 new). DDL migration added. No router changes. No apply_envelope changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+⚠️ **DDL TODO:** Apply `migrations/phase_144_outbound_sync_log.sql` to Supabase once MCP access is restored.
+
+
+
 

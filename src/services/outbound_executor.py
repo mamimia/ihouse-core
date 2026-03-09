@@ -5,10 +5,17 @@ Updated in Phase 140 to forward booking check_in/check_out dates to
 iCal adapters (ICalPushAdapter.push) so real DTSTART/DTEND are used
 in the VCALENDAR payload instead of placeholder dates.
 
+Phase 144: persist every ExecutionResult into the `outbound_sync_log` table
+via the best-effort sync_log_writer module.
+
 Previous history:
   Phase 138: stub adapters (dry-run only).
   Phase 139: real API + iCal adapters via registry.
   Phase 140: date injection into iCal push call.
+  Phase 141: rate-limit throttle.
+  Phase 142: retry with exponential backoff.
+  Phase 143: X-Idempotency-Key header on all outbound calls.
+  Phase 144: append ExecutionResult rows to outbound_sync_log (this file).
 
 Updated in Phase 139 to use real adapter implementations:
   api_first:    AirbnbAdapter, BookingComAdapter, ExpediaVrboAdapter
@@ -40,6 +47,15 @@ try:
     _ADAPTER_REGISTRY_AVAILABLE = True
 except ImportError:
     _ADAPTER_REGISTRY_AVAILABLE = False
+
+# Phase 144 — best-effort sync result persistence
+try:
+    from services.sync_log_writer import write_sync_result as _write_sync_result
+    _SYNC_LOG_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _SYNC_LOG_AVAILABLE = False
+    def _write_sync_result(**_kw) -> bool:  # type: ignore[misc]
+        return True
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +146,33 @@ class ICalAdapter:
                 f"[Phase 138 stub] ical_fallback dispatched for provider={provider}, "
                 f"external_id={external_id}. Real iCal push deferred to Phase 139."
             ),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Phase 144 — persistence helper
+# ---------------------------------------------------------------------------
+
+def _persist(booking_id: str, tenant_id: str, result: ExecutionResult) -> None:
+    """Best-effort write of one ExecutionResult row to outbound_sync_log."""
+    if not _SYNC_LOG_AVAILABLE:
+        return
+    try:
+        _write_sync_result(
+            booking_id=booking_id,
+            tenant_id=tenant_id,
+            provider=result.provider,
+            external_id=result.external_id,
+            strategy=result.strategy,
+            status=result.status,
+            http_status=result.http_status,
+            message=result.message,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "_persist: sync_log_writer raised (best-effort, swallowed): "
+            "booking_id=%s provider=%s: %s",
+            booking_id, result.provider, exc,
         )
 
 
@@ -275,6 +318,7 @@ def execute_sync_plan(
                 skip_count += 1
 
             results.append(result)
+            _persist(booking_id, tenant_id, result)
 
         except Exception as exc:  # noqa: BLE001
             logger.exception(
@@ -289,6 +333,7 @@ def execute_sync_plan(
                 http_status=None,
                 message=f"Executor exception: {exc}",
             ))
+            _persist(booking_id, tenant_id, results[-1])
             failed_count += 1
 
     # Is this a dry-run execution? True if ALL non-skip results are dry_run.

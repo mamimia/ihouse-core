@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 143 — Idempotency Key on Outbound Requests (closed)
+Phase 144 — Outbound Sync Result Persistence (closed)
 
 ## Last Closed Phase
-Phase 143 — Idempotency Key: `_build_idempotency_key(booking_id, external_id)` → `{booking_id}:{external_id}:{YYYYMMDD}`; attached as `X-Idempotency-Key` in all 4 adapters; 23 contract tests
+Phase 144 — Outbound Sync Result Persistence: `outbound_sync_log` table DDL; `sync_log_writer.write_sync_result()` best-effort writer; wired into `outbound_executor._persist()`; 13 contract tests
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -88,6 +88,7 @@ apply_envelope is the only authority for canonical state mutations.
 | 141 | Rate-Limit Enforcement — `_throttle(rate_limit)` in outbound `__init__.py`; wired into all 4 adapters before HTTP call; `IHOUSE_THROTTLE_DISABLED=true` opt-out; rate_limit≤0 logs WARNING + continues; 22 contract tests | ✅ |
 | 142 | Retry + Exponential Backoff — `_retry_with_backoff(fn, max_retries=3)` in outbound `__init__.py`; backoff 4^attempt capped 30s (1s→4s→16s); retries on 5xx + network exceptions; no retry on 4xx; `IHOUSE_RETRY_DISABLED=true` opt-out; wired via `_do_req()` closure in all 4 adapters; 28 contract tests | ✅ |
 | 143 | Idempotency Key — `_build_idempotency_key(booking_id, external_id)` in outbound `__init__.py`; format `{booking_id}:{external_id}:{YYYYMMDD}`; day-stable (UTC); attached as `X-Idempotency-Key` header in all 4 adapters; stable across retry attempts; `IHOUSE_THROTTLE_DISABLED`+`IHOUSE_RETRY_DISABLED` opt-outs; 23 contract tests | ✅ |
+| 144 | Outbound Sync Result Persistence — `outbound_sync_log` table (DDL in `migrations/phase_144_outbound_sync_log.sql`); `src/services/sync_log_writer.py` (`write_sync_result()` best-effort append-only writer, client injection); `_persist()` helper in `outbound_executor.py` called after every ExecutionResult; skips not persisted; `IHOUSE_SYNC_LOG_DISABLED=true` opt-out; 13 contract tests | ✅ |
 
 **3589 tests pass** (2 pre-existing SQLite guard failures, unrelated)
 
@@ -198,8 +199,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 144** — Outbound Sync Result Persistence (`outbound_sync_log` table)
+**Phase 145** — Outbound Sync Log Inspector (read API for `outbound_sync_log`)
 
 ## Tests
 
-**3660 passing** (2 pre-existing SQLite skips, unrelated)
+**3673 passing** (2 pre-existing SQLite skips, unrelated)

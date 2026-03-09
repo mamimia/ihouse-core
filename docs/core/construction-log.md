@@ -2187,4 +2187,20 @@ Changes:
 Result: 3660 tests pass (3637 + 23 new). No DB schema changes. No migrations. No router changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
 
+## Phase 144 — Outbound Sync Result Persistence (Closed)
+
+Append-only audit log of every ExecutionResult in `outbound_sync_log` table.
+
+Changes:
+- migrations/phase_144_outbound_sync_log.sql [NEW]: DDL — BIGSERIAL id, booking_id/tenant_id/provider/external_id/strategy TEXT, status TEXT CHECK(ok/failed/dry_run/skipped), http_status INT, message TEXT, synced_at TIMESTAMPTZ DEFAULT now(); 3 indexes; RLS; table comment
+- src/services/sync_log_writer.py [NEW]: `write_sync_result(**kwargs, client=None)` — best-effort INSERT into outbound_sync_log; lazy SyncPostgrestClient via `_get_supabase_client()`; `client` param for tests; `IHOUSE_SYNC_LOG_DISABLED=true` opt-out; message truncated at 2000 chars; returns True/False; never raises
+- src/services/outbound_executor.py [MODIFIED]: `_SYNC_LOG_AVAILABLE` try-import guard; `_persist(booking_id, tenant_id, result)` helper with try/except swallow; called after each `results.append(result)` including exception path; skipped actions NOT persisted (use `continue`)
+- tests/test_sync_result_persistence_contract.py [NEW]: 13 contract tests Groups A-E
+
+⚠️ DDL PENDING APPLY: `migrations/phase_144_outbound_sync_log.sql` must be applied to Supabase when MCP access is restored.
+
+Result: 3673 tests pass (3660 + 13 new). 2 pre-existing SQLite failures (unrelated, unchanged).
+
+
+
 

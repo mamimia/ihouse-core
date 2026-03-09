@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 143 — Idempotency Key on Outbound Requests (closed)
+Phase 144 — Outbound Sync Result Persistence (closed)
 
 ## Last Closed Phase
 
-Phase 143 — Idempotency Key: `_build_idempotency_key()` in `outbound/__init__.py`; `X-Idempotency-Key` header in all 4 adapters; 23 contract tests; 3660 passing
+Phase 144 — Outbound Sync Result Persistence: `outbound_sync_log` DDL; `sync_log_writer.write_sync_result()` (best-effort, client-injection); `_persist()` wired in executor; skips not persisted; 13 contract tests; 3673 passing
 
 ## Current Objective
 
-**Phase 144 — Outbound Sync Result Persistence**
+**Phase 145 — Outbound Sync Log Inspector**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,7 +37,7 @@ Phase 143 — Idempotency Key: `_build_idempotency_key()` in `outbound/__init__.
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
 | 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
-| 143 | Idempotency Key | `src/adapters/outbound/__init__.py` (_build_idempotency_key), `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `tests/test_outbound_idempotency_key_contract.py` |
+| 144 | Outbound Sync Result Persistence | `migrations/phase_144_outbound_sync_log.sql`, `src/services/sync_log_writer.py`, `src/services/outbound_executor.py` (_persist), `tests/test_sync_result_persistence_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
