@@ -2138,3 +2138,20 @@ Changes:
 - tests/test_ical_date_injection_contract.py [NEW]: 16 contract tests (Groups A-F)
 Commit: 45fa03f
 Result: 3589 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
+
+## Phase 141 — Rate-Limit Enforcement (Closed)
+
+Enforces `rate_limit` (calls/minute) from SyncAction in all 4 outbound adapters.
+The `rate_limit` param was already on every `send()`/`push()` signature but silently ignored.
+Phase 141 adds the throttle helper and wires it into the real HTTP path.
+
+Changes:
+- src/adapters/outbound/__init__.py: added `_throttle(rate_limit)` — `time.sleep(60.0 / rate_limit)`; `IHOUSE_THROTTLE_DISABLED=true` env opt-out; `rate_limit <= 0` logs WARNING + returns (best-effort); never raises
+- src/adapters/outbound/airbnb_adapter.py: imports `_throttle`; called immediately before `httpx.post()` on real path
+- src/adapters/outbound/bookingcom_adapter.py: same
+- src/adapters/outbound/expedia_vrbo_adapter.py: same
+- src/adapters/outbound/ical_push_adapter.py: `_throttle` called before `httpx.put()` on real path
+- tests/test_rate_limit_enforcement_contract.py [NEW]: 22 contract tests across Groups A–E: arithmetic (60rpm→1s, 120rpm→0.5s), zero/negative rate_limit, IHOUSE_THROTTLE_DISABLED, dry-run bypass for all 4 adapters
+
+Result: 3609 tests pass (3589 + 22 new). No DB schema changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+

@@ -1,5 +1,5 @@
 """
-Phase 140 — iCal Push Adapter (Date Injection)
+Phase 141 — iCal Push Adapter (Rate-Limit Enforcement)
 
 Updated from Phase 139 to inject real DTSTART / DTEND from booking_state.
 The push() method now accepts optional check_in / check_out as compact iCal
@@ -25,7 +25,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter
+from adapters.outbound import AdapterResult, OutboundAdapter, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,7 @@ class ICalPushAdapter(OutboundAdapter):
                 headers["Authorization"] = f"Bearer {api_key}"
 
             full_url = f"{ical_url}/{external_id}.ics"
+            _throttle(rate_limit)
             resp = httpx.put(full_url, content=ical_body.encode(), headers=headers, timeout=15)
 
             if resp.status_code in (200, 201, 204):

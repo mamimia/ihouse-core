@@ -1,5 +1,5 @@
 """
-Phase 139 — Expedia / VRBO Outbound Adapter
+Phase 141 — Expedia / VRBO Outbound Adapter (Rate-Limit Enforcement)
 
 Expedia and VRBO share the same Partner Solutions API (same credentials).
 
@@ -23,7 +23,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter
+from adapters.outbound import AdapterResult, OutboundAdapter, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +75,7 @@ class ExpediaVrboAdapter(OutboundAdapter):
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type":  "application/json",
             }
+            _throttle(rate_limit)
             resp = httpx.post(url, json=payload, headers=headers, timeout=10)
             if resp.status_code in (200, 201, 204):
                 return AdapterResult(

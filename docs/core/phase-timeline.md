@@ -3084,3 +3084,25 @@ Completed:
 - `tests/test_ical_date_injection_contract.py` — NEW — 16 contract tests (Groups A-F: date injection, fallback, template structure, executor forwarding, router conversion, constants)
 
 Result: 3589 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
+
+## Phase 141 — Rate-Limit Enforcement (Closed)
+
+Goal: Honour `rate_limit` (calls/minute) from SyncAction in all 5 outbound adapters. Prevent adapters from overwhelming external OTA APIs.
+
+Completed:
+
+- `src/adapters/outbound/__init__.py` — MODIFIED — added `_throttle(rate_limit: int) -> None` helper. Reads `IHOUSE_THROTTLE_DISABLED` env flag for test opt-out. `rate_limit <= 0` logs WARNING and continues (best-effort). On real path: `time.sleep(60.0 / rate_limit)`.
+- `src/adapters/outbound/airbnb_adapter.py` — MODIFIED — imports `_throttle`; called immediately before `httpx.post()` on the real (non-dry-run) path.
+- `src/adapters/outbound/bookingcom_adapter.py` — MODIFIED — same pattern.
+- `src/adapters/outbound/expedia_vrbo_adapter.py` — MODIFIED — same pattern.
+- `src/adapters/outbound/ical_push_adapter.py` — MODIFIED — `_throttle` called before `httpx.put()` on the real path.
+- `tests/test_rate_limit_enforcement_contract.py` — NEW — 22 contract tests across Groups A–E: `_throttle()` arithmetic (60rpm→1s, 120rpm→0.5s, 30rpm→2s), zero rate_limit, `IHOUSE_THROTTLE_DISABLED`, dry-run bypass for all 4 adapters.
+
+Design decisions:
+- Single implementation in `__init__.py` — impossible to miss in new adapters.
+- `IHOUSE_THROTTLE_DISABLED=true` env opt-out — tests never sleep.
+- Best-effort on `rate_limit <= 0` — prevents blocking on misconfiguration.
+- Throttle called only on real path (after dry-run gate) — dry-run remains fast.
+
+Result: 3609 tests pass (3589 baseline + 22 new). No DB schema changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+

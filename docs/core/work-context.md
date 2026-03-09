@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 140 — iCal Date Injection (closed)
+Phase 141 — Rate-Limit Enforcement (closed)
 
 ## Last Closed Phase
 
-Phase 140 — iCal Date Injection: real DTSTART/DTEND from booking_state; 16 contract tests
+Phase 141 — Rate-Limit Enforcement: `_throttle(rate_limit)` helper in `outbound/__init__.py`; wired into all 4 adapters; 22 contract tests; 3609 passing
 
 ## Current Objective
 
-**Phase 141 — Rate-limit enforcement in outbound adapters**
+**Phase 142 — Retry + Exponential Backoff in Adapters**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,7 +37,7 @@ Phase 140 — iCal Date Injection: real DTSTART/DTEND from booking_state; 16 con
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
 | 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
-| 140 | iCal Date Injection | `src/adapters/outbound/booking_dates.py`, `ical_push_adapter.py` (dates), `services/outbound_executor.py` (forwarding), `api/outbound_executor_router.py` (fetch+pass), `tests/test_ical_date_injection_contract.py` |
+| 141 | Rate-Limit Enforcement | `src/adapters/outbound/__init__.py` (_throttle), `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `tests/test_rate_limit_enforcement_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)

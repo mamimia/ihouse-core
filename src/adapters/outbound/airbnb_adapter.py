@@ -1,5 +1,5 @@
 """
-Phase 139 — Airbnb Outbound Adapter
+Phase 141 — Airbnb Outbound Adapter (Rate-Limit Enforcement)
 
 Implements availability locking via the Airbnb Partner API (api_first).
 
@@ -31,7 +31,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter
+from adapters.outbound import AdapterResult, OutboundAdapter, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,7 @@ class AirbnbAdapter(OutboundAdapter):
                 "X-Airbnb-API-Key": api_key,
                 "Content-Type":     "application/json",
             }
+            _throttle(rate_limit)
             resp = httpx.post(url, json=payload, headers=headers, timeout=10)
             if resp.status_code in (200, 201, 204):
                 logger.info(

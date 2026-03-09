@@ -1,5 +1,5 @@
 """
-Phase 139 — Booking.com Outbound Adapter
+Phase 141 — Booking.com Outbound Adapter (Rate-Limit Enforcement)
 
 Implements availability locking via the Booking.com Connectivity Partner API (api_first).
 
@@ -28,7 +28,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter
+from adapters.outbound import AdapterResult, OutboundAdapter, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,7 @@ class BookingComAdapter(OutboundAdapter):
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type":  "application/json",
             }
+            _throttle(rate_limit)
             resp = httpx.post(url, json=payload, headers=headers, timeout=10)
             if resp.status_code in (200, 201, 204):
                 return AdapterResult(
