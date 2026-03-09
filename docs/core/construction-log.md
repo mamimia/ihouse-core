@@ -1406,3 +1406,16 @@ No Supabase schema changes. No new migrations.
 
 Result: 633 passed, 2 skipped.
 No Supabase schema changes. No new migrations.
+
+## Phase 80 -- Structured Logging Layer (Closed)
+
+- [Claude]
+- Created `src/adapters/ota/structured_logger.py`
+  - `StructuredLogger` class (debug/info/warning/error/critical)
+  - `get_structured_logger(name, trace_id)` factory
+  - JSON entry: {ts, level, event, trace_id?, ...kwargs}
+  - Non-serializable fallback via default=str
+- 30 contract tests (Groups A-G in test_structured_logger_contract.py)
+
+Result: 663 passed, 2 skipped.
+No Supabase schema changes. No new migrations.

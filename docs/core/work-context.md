@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 79 -- Idempotency Monitoring (closed)
+Phase 80 -- Structured Logging Layer (closed)
 
 ## Last Closed Phase
 
-Phase 79 -- Idempotency Monitoring
+Phase 80 -- Structured Logging Layer
 
 ## Current Objective
 
-Phase 80 -- TBD.
+Phase 81 -- TBD.
 See `docs/core/improvements/future-improvements.md`.
 
 ## Key Invariants (Locked — Do Not Change)
@@ -55,5 +55,5 @@ See `docs/core/improvements/future-improvements.md`.
 
 ## Tests
 
-633 passing (2 pre-existing SQLite skips, unrelated)
+663 passing (2 pre-existing SQLite skips, unrelated)
 

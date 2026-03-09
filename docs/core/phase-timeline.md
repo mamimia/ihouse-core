@@ -2058,3 +2058,15 @@ Pure read-only. Zero side effects. No new Supabase schema.
 
 Result: 633 passed, 2 skipped.
 No Supabase schema changes. No new migrations.
+
+## Phase 80 -- Structured Logging Layer (Closed)
+
+[Claude] Created `src/adapters/ota/structured_logger.py`.
+StructuredLogger class: debug/info/warning/error/critical methods, each returns JSON string + emits via stdlib logging.
+Entry format: {ts, level, event, trace_id?, ...kwargs}.
+get_structured_logger(name, trace_id) factory.
+Non-serializable values fall back via default=str. Never raises.
+30 contract tests (Groups A-G in test_structured_logger_contract.py).
+
+Result: 663 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
