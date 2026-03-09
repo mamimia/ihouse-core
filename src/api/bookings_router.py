@@ -1,9 +1,13 @@
 """
 Phase 71 — Booking State Query API
 Phase 106 — Booking List Query API
+Phase 109 — Booking Date Range Search
 
 GET /bookings/{booking_id}    — single booking state (Phase 71)
-GET /bookings                 — list bookings by tenant, with filters (Phase 106)
+GET /bookings                 — list bookings by tenant, with filters (Phase 106 + 109)
+
+Filters (Phase 106): property_id, status, limit
+Filters (Phase 109 addition): check_in_from, check_in_to (ISO 8601 YYYY-MM-DD)
 
 Rules:
 - JWT auth required on both endpoints.
@@ -20,6 +24,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re as _re
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends
@@ -131,6 +136,7 @@ async def get_booking(
 _VALID_STATUSES = frozenset({"active", "canceled"})
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
+_DATE_RE = _re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
 
 @router.get(
@@ -148,6 +154,8 @@ _DEFAULT_LIMIT = 50
 async def list_bookings(
     property_id: Optional[str] = None,
     status: Optional[str] = None,
+    check_in_from: Optional[str] = None,
+    check_in_to: Optional[str] = None,
     limit: int = _DEFAULT_LIMIT,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
@@ -162,6 +170,8 @@ async def list_bookings(
     **Query parameters:**
     - `property_id` — filter by property (optional)
     - `status` — filter by booking status: `active` or `canceled` (optional)
+    - `check_in_from` — filter bookings with `check_in` on or after this date (YYYY-MM-DD, optional)
+    - `check_in_to` — filter bookings with `check_in` on or before this date (YYYY-MM-DD, optional)
     - `limit` — max results to return (1–100, default 50)
 
     **Source:** Reads from `booking_state` projection table only.
@@ -175,6 +185,20 @@ async def list_bookings(
             status_code=400,
             code=ErrorCode.VALIDATION_ERROR,
             extra={"detail": f"status must be one of: {sorted(_VALID_STATUSES)}"},
+        )
+
+    # Validate date range params
+    if check_in_from is not None and not _DATE_RE.match(check_in_from):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "check_in_from must be a valid date in YYYY-MM-DD format"},
+        )
+    if check_in_to is not None and not _DATE_RE.match(check_in_to):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "check_in_to must be a valid date in YYYY-MM-DD format"},
         )
 
     # Clamp limit
@@ -194,6 +218,12 @@ async def list_bookings(
 
         if status is not None:
             query = query.eq("status", status)
+
+        if check_in_from is not None:
+            query = query.gte("check_in", check_in_from)
+
+        if check_in_to is not None:
+            query = query.lte("check_in", check_in_to)
 
         result = query.limit(limit).order("updated_at", desc=True).execute()
         rows = result.data or []
