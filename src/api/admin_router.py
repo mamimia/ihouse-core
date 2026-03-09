@@ -1,6 +1,7 @@
 """
 Phase 72 — Tenant Summary Dashboard
 Phase 82 — Admin Query API (metrics, DLQ, provider health, booking timeline)
+Phase 110 — OTA Reconciliation API
 
 Endpoints:
   GET /admin/summary               — tenant operational summary (Phase 72)
@@ -8,6 +9,7 @@ Endpoints:
   GET /admin/dlq                   — DLQ pending + rejection breakdown (Phase 82)
   GET /admin/health/providers      — per-provider last ingest status (Phase 82)
   GET /admin/bookings/{id}/timeline — per-booking event timeline from event_log (Phase 82)
+  GET /admin/reconciliation        — offline reconciliation report (Phase 110)
 
 Rules:
 - JWT auth required on all endpoints.
@@ -446,4 +448,94 @@ async def get_booking_timeline(
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /admin/bookings/%s/timeline error: %s", booking_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# GET /admin/reconciliation (Phase 110)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/admin/reconciliation",
+    tags=["admin"],
+    summary="Offline reconciliation report",
+    responses={
+        200: {"description": "ReconciliationSummary (+ findings if include_findings=true)"},
+        401: {"description": "Missing or invalid JWT token"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_reconciliation(
+    include_findings: bool = False,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Run the offline reconciliation detector and return a summary report.
+
+    **Authentication:** Bearer JWT required. `sub` claim used as `tenant_id`.
+
+    **Tenant isolation:** Only this tenant's bookings are checked.
+
+    **Query parameters:**
+    - `include_findings` — if `true`, the full findings list is included in
+      the response. Default `false` (summary only) for performance.
+
+    **What is checked (offline, no OTA API):**
+    - `FINANCIAL_FACTS_MISSING` — bookings in `booking_state` with no row
+      in `booking_financial_facts`
+    - `STALE_BOOKING` — active bookings not updated in > 30 days
+
+    **What requires a live OTA snapshot (not yet implemented):**
+    - BOOKING_MISSING_INTERNALLY, BOOKING_STATUS_MISMATCH, DATE_MISMATCH,
+      FINANCIAL_AMOUNT_DRIFT, PROVIDER_DRIFT
+
+    **Source tables:** `booking_state`, `booking_financial_facts` — read-only.
+
+    **Invariant:** Never writes to any table. Never bypasses apply_envelope.
+    """
+    try:
+        from adapters.ota.reconciliation_detector import run_reconciliation  # type: ignore[import]
+        from adapters.ota.reconciliation_model import ReconciliationSummary  # type: ignore[import]
+
+        db = client if client is not None else _get_supabase_client()
+        report = run_reconciliation(tenant_id=tenant_id, db=db)
+        summary = ReconciliationSummary.from_report(report)
+
+        content: dict = {
+            "tenant_id":       summary.tenant_id,
+            "generated_at":    summary.generated_at,
+            "total_checked":   report.total_checked,
+            "finding_count":   summary.finding_count,
+            "critical_count":  summary.critical_count,
+            "warning_count":   summary.warning_count,
+            "info_count":      summary.info_count,
+            "has_critical":    summary.has_critical,
+            "has_warnings":    summary.has_warnings,
+            "top_kind":        summary.top_kind,
+            "partial":         summary.partial,
+        }
+
+        if include_findings:
+            content["findings"] = [
+                {
+                    "finding_id":      f.finding_id,
+                    "kind":            f.kind.value,
+                    "severity":        f.severity.value,
+                    "booking_id":      f.booking_id,
+                    "provider":        f.provider,
+                    "description":     f.description,
+                    "detected_at":     f.detected_at,
+                    "internal_value":  f.internal_value,
+                    "external_value":  f.external_value,
+                    "correction_hint": f.correction_hint,
+                }
+                for f in report.findings
+            ]
+
+        return JSONResponse(status_code=200, content=content)
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("GET /admin/reconciliation error for tenant=%s: %s", tenant_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
