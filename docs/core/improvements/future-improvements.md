@@ -840,3 +840,45 @@ and which are operating in fallback mode.
 
 > Full detail: `docs/core/planning/outbound-sync-layer.md`
 
+---
+
+## Product UI Layer — Backend/UI Rhythm
+
+- status: open
+- discovered_in: Phase 149 closure (2026-03-10)
+- source_context: structural roadmap review — all-API imbalance identified
+- priority: high
+- full_spec: `docs/core/planning/phases-150-175.md`
+
+### Summary
+
+At Phase 149, the system has 3836 passing tests and covers full inbound + outbound sync,
+financial APIs, task system, reconciliation, and owner statements.
+All of it is invisible without Postman.
+
+**Decision:** Introduce a Backend/UI/Backend/UI rhythm starting Phase 150.
+
+### UI Stack
+
+- Framework: Next.js 14 App Router
+- Styling: Tailwind CSS
+- Auth: existing Phase 61 JWT — no new auth layer
+- Data: FastAPI only — never direct Supabase from UI
+
+### Planned Surfaces (Phases 152–170)
+
+| Phase | Surface | Audience |
+|-------|---------|----------|
+| 152 | Next.js scaffold + design system | — |
+| 153 | Operations Dashboard | Admin, Manager |
+| 157 | Worker Task Mobile View | Cleaner, Check-in, Maintenance |
+| 158 | Manager Booking View | Manager |
+| 163 | Financial Dashboard | Admin, Manager |
+| 164 | Owner Statement View | Manager, Owner |
+| 169 | Admin Settings UI | Admin |
+| 170 | Owner Portal | Owner |
+
+### Invariant
+
+The UI never reads Supabase directly. All data flows through FastAPI.
+Role scoping is enforced at the API layer, not the UI layer.
