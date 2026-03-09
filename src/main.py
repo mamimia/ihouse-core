@@ -108,6 +108,7 @@ _TAGS = [
     {"name": "cashflow", "description": "Cashflow / payout timeline (Ring 3). JWT Bearer required. Weekly inflow buckets, confirmed releases, overdue, 30/60/90-day projection."},
     {"name": "ota-comparison", "description": "OTA financial health comparison (Ring 3). JWT Bearer required. Per-OTA commission, net-to-gross, revenue share, lifecycle distribution."},
     {"name": "worker", "description": "Worker-facing task surface (Phase 123). JWT Bearer required. Role-scoped task list, acknowledge, and complete endpoints."},
+    {"name": "line", "description": "LINE external escalation channel (Phase 124). Receives LINE webhook ack callbacks. Writes ONLY to tasks table. LINE is fallback only."},
 ]
 
 app = FastAPI(
@@ -171,6 +172,9 @@ app.include_router(ota_comparison_router)
 
 from api.worker_router import router as worker_router  # noqa: E402
 app.include_router(worker_router)
+
+from api.line_webhook_router import router as line_webhook_router  # noqa: E402
+app.include_router(line_webhook_router)
 
 
 # ---------------------------------------------------------------------------
