@@ -729,3 +729,35 @@ Do not build before Phase 116 (Financial Aggregation API) is complete and stable
 
 > Full detail: `docs/core/planning/ui-architecture.md`
 
+---
+
+## Contextual Help Layer — UI/UX Product Quality
+
+- status: open
+- discovered_in: Phase 120 (user forward-planning note, 2026-03-09)
+- source_context: product quality, UI/UX direction
+- priority: medium — implement when UI phase opens, not before
+- full_spec: `docs/future/contextual-help-layer.md`
+
+### Summary
+
+As iHouse Core grows more complex, the UI will eventually need a structured, layered help system.
+
+**Core principle:** UI stays clean by default. Help appears only where it is genuinely needed.
+
+**Four layers:**
+1. Simple tooltip (1 line — labels, terminology, status chips)
+2. Rich toggletip / popover (2–4 lines — financial logic, tiers, escalation)
+3. Visible helper text (always visible — forms, destructive actions)
+4. Global help toggle (user-controlled on/off, persisted per user)
+
+**High-priority areas for help:** payment lifecycle, reconciliation, epistemic tiers A/B/C, RevPAR, owner statement confidence, escalation/SLA, financial status cards, conflict center, delegated permissions.
+
+**Role-aware depth:** Admin → governance explanations. Manager → operational. Worker → short action-oriented. Owner → plain business language. Guest → minimal.
+
+**Copy rule:** Short, specific, action-aware, not academic. Explain *meaning*, not labels.
+
+**Implementation direction:** Define a help pattern library before adding help ad hoc. Treat the system as a real product capability, not random tooltips.
+
+> Full detail: `docs/future/contextual-help-layer.md`
+
