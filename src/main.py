@@ -111,6 +111,7 @@ _TAGS = [
     {"name": "line", "description": "LINE external escalation channel (Phase 124). Receives LINE webhook ack callbacks. Writes ONLY to tasks table. LINE is fallback only."},
     {"name": "availability", "description": "Availability projection (Phase 126). Per-date occupancy state for a property. Reads from booking_state only. Zero write-path changes."},
     {"name": "integration-health", "description": "Integration Health Dashboard (Phase 127). Per-provider health for all 13 OTA providers: lag, buffer, DLQ, stale alert. JWT required."},
+    {"name": "conflicts", "description": "Conflict Center (Phase 128). Active booking overlaps (CONFLICT pairs) across all properties for a tenant. JWT required."},
 ]
 
 app = FastAPI(
@@ -183,6 +184,9 @@ app.include_router(availability_router)
 
 from api.integration_health_router import router as integration_health_router  # noqa: E402
 app.include_router(integration_health_router)
+
+from api.conflicts_router import router as conflicts_router  # noqa: E402
+app.include_router(conflicts_router)
 
 
 # ---------------------------------------------------------------------------
