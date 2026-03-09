@@ -106,6 +106,7 @@ _TAGS = [
     {"name": "financial-dashboard", "description": "Financial dashboard (Ring 2–3). JWT Bearer required. Per-booking status card, RevPAR, lifecycle-by-property."},
     {"name": "reconciliation", "description": "Reconciliation inbox (Ring 3). JWT Bearer required. Exception-first view of bookings requiring operator attention."},
     {"name": "cashflow", "description": "Cashflow / payout timeline (Ring 3). JWT Bearer required. Weekly inflow buckets, confirmed releases, overdue, 30/60/90-day projection."},
+    {"name": "ota-comparison", "description": "OTA financial health comparison (Ring 3). JWT Bearer required. Per-OTA commission, net-to-gross, revenue share, lifecycle distribution."},
 ]
 
 app = FastAPI(
@@ -163,6 +164,9 @@ app.include_router(reconciliation_router)
 
 from api.cashflow_router import router as cashflow_router  # noqa: E402
 app.include_router(cashflow_router)
+
+from api.ota_comparison_router import router as ota_comparison_router  # noqa: E402
+app.include_router(ota_comparison_router)
 
 
 # ---------------------------------------------------------------------------
