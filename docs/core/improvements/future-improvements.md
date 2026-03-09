@@ -660,3 +660,72 @@ This is a cheap Phase 99–100 DDL migration that prevents performance problems 
 ---
 
 *End of Financial UI direction. Reviewed and expanded from user note, Phase 96.*
+
+---
+
+## UI Architecture and Role-Based Product Surfaces
+
+- status: open
+- discovered_in: Phase 112 (recorded 2026-03-09)
+- source_context: product direction — role-based operational platform
+- priority: high
+- notes: Full architecture vision recorded in `docs/core/planning/ui-architecture.md`. Summary below.
+
+### Core Direction
+
+iHouse Core should become a **set of role-based product surfaces** — not one giant dashboard.
+Every surface should be built around the **7 AM rule**: someone wakes up, opens the dashboard,
+and within two minutes understands the state of the business.
+
+### Role Model
+
+| Role | Authority |
+|------|-----------|
+| Admin | Full system control — settings, integrations, permissions, audit |
+| Manager | Broad operational authority (~80%) — no system-owner powers by default |
+| Manager + delegated permissions | Admin-granted trust extensions per manager |
+| Worker | Action-first mobile surfaces — per role (Cleaner / Check-in / Maintenance) |
+| Owner | Trust-based, financially clear — no operational noise |
+| Guest | Pre-arrival and stay support *(long-term)* |
+
+### Product Surfaces
+
+| Surface | Purpose |
+|---------|---------|
+| Admin Web App | Governance, settings, integrations, audit, financial oversight |
+| Manager Web App | Daily operational command center |
+| Operations Dashboard | Live: arrivals, departures, cleanings, unacked tasks, today's risks |
+| Worker Mobile | Per role — My tasks, ack, start, done, notes, photos |
+| Owner Portal | Monthly statement, revenue, payout status, upcoming stays |
+| Guest Portal | Pre-arrival info, check-in, house guide *(long-term)* |
+
+### Dashboard Philosophy (Anti-patterns to avoid)
+
+- No dashboard that tries to show everything on page one
+- No managers with accidental system-owner powers
+- No workers seeing admin complexity
+- No owners seeing operational noise
+- No charts for chart's sake on the first screen
+
+### Permission-Aware UI
+
+Two managers may not see the same controls. Admin controls delegation.
+The UI must consume a permission manifest — not hardcode role assumptions.
+
+### Financial UI Phasing
+
+Financial UI should grow in layers (per Ring model in this doc), only when
+supporting APIs and reconciliation confidence are stable.
+Do not build before Phase 116 (Financial Aggregation API) is complete and stable.
+
+### Suggested Entry Sequence
+
+1. Build API layer first (Phase 113+ Task Query, Phase 116 Financial Aggregation)
+2. Start with **Operations Dashboard** — clearest contract, highest daily value
+3. Then **Manager Booking + Task views**
+4. Then **Admin settings surfaces**
+5. Then **Owner Portal**
+6. Worker mobile last (needs stable task + notification stack)
+
+> Full detail: `docs/core/planning/ui-architecture.md`
+
