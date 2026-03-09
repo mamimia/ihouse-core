@@ -10,7 +10,7 @@ from .schemas import AmendmentFields
 # Known providers
 # ---------------------------------------------------------------------------
 
-_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka", "makemytrip", "klook", "despegar"}
+_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka", "makemytrip", "klook", "despegar", "hotelbeds"}
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +286,31 @@ def extract_amendment_despegar(provider_payload: Dict[str, Any]) -> AmendmentFie
     )
 
 
+def extract_amendment_hotelbeds(provider_payload: Dict[str, Any]) -> AmendmentFields:
+    """
+    Extract normalized amendment fields from a Hotelbeds BOOKING_AMENDED payload.
+
+    Hotelbeds (B2B bedbank) sends amendment data under 'amendment':
+      amendment.check_in    — new check-in date
+      amendment.check_out   — new check-out date
+      amendment.room_count  — new room count (B2B primary unit)
+      amendment.guest_count — new guest count (sum across rooms)
+      amendment.reason      — reason for amendment
+
+    Note: room_count is the B2B-primary unit; guest_count is optional in Hotelbeds.
+    new_guest_count uses guest_count if present, else room_count.
+    """
+    amend = provider_payload.get("amendment") or {}
+    # Prefer guest_count; fall back to room_count for B2B contexts
+    guest_count = amend.get("guest_count") or amend.get("room_count")
+    return AmendmentFields(
+        new_check_in=normalize_date(_nonempty(amend.get("check_in"))),
+        new_check_out=normalize_date(_nonempty(amend.get("check_out"))),
+        new_guest_count=_int_or_none(guest_count),
+        amendment_reason=_nonempty(amend.get("reason")),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -328,6 +353,8 @@ def normalize_amendment(provider: str, payload: Dict[str, Any]) -> AmendmentFiel
         return extract_amendment_klook(payload)
     elif normalized_provider == "despegar":
         return extract_amendment_despegar(payload)
+    elif normalized_provider == "hotelbeds":
+        return extract_amendment_hotelbeds(payload)
     else:
         raise ValueError(
             f"Unknown provider '{provider}' — cannot extract amendment fields. "

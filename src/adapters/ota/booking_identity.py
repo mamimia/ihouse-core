@@ -80,6 +80,13 @@ def _strip_despegar_prefix(ref: str) -> str:
     return ref
 
 
+def _strip_hotelbeds_prefix(ref: str) -> str:
+    """Hotelbeds voucher refs may be prefixed with 'HB-'. Strip it for a stable ref."""
+    lower = ref.lower()
+    if lower.startswith("hb-"):
+        return ref[3:]
+    return ref
+
 # Registry: provider → list of extra normalization steps after base
 _PROVIDER_RULES: dict[str, list] = {
     "bookingcom": [_strip_bookingcom_prefix],
@@ -93,6 +100,7 @@ _PROVIDER_RULES: dict[str, list] = {
     "makemytrip": [_strip_makemytrip_prefix],  # MMT booking IDs prefixed with MMT-
     "klook":      [_strip_klook_prefix],       # Klook booking refs prefixed with KL-
     "despegar":   [_strip_despegar_prefix],    # Despegar reservation codes prefixed with DSP-
+    "hotelbeds":  [_strip_hotelbeds_prefix],    # Hotelbeds voucher refs prefixed with HB-
 }
 
 

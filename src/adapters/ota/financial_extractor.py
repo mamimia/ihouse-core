@@ -622,6 +622,71 @@ _EXTRACTORS["despegar"] = _extract_despegar
 
 
 # ---------------------------------------------------------------------------
+# Hotelbeds extractor (Phase 125)
+# ---------------------------------------------------------------------------
+
+def _extract_hotelbeds(payload: dict) -> BookingFinancialFacts:
+    """
+    Hotelbeds financial fields (B2B bedbank model — different from B2C OTAs):
+
+      contract_price — Gross price charged to the trade buyer (= total_price)
+      net_rate       — Net rate payable to property by Hotelbeds (= net_to_property)
+      markup_amount  — Hotelbeds' margin: contract_price - net_rate (optional)
+      currency       — ISO 4217 currency code (EUR, GBP, USD, etc.)
+
+    B2B semantics (documented per Phase 125 spec):
+      - Property receives net_rate directly from Hotelbeds.
+      - Hotelbeds earns by marking up net_rate → contract_price for travel buyers.
+      - markup_amount is Hotelbeds' margin; NOT a deduction from the property.
+      - If markup_amount is absent but contract_price + net_rate present:
+          markup_amount = contract_price - net_rate → confidence = ESTIMATED.
+      - ota_commission = markup_amount (Hotelbeds' cut, not a % deduction from us).
+      - No cross-currency aggregation is performed here.
+
+    Confidence:
+      FULL      — net_rate + currency + contract_price all present
+      ESTIMATED — markup_amount derived from contract_price - net_rate
+      PARTIAL   — net_rate or currency missing
+    """
+    contract_price = _to_decimal(payload.get("contract_price"))
+    net_rate = _to_decimal(payload.get("net_rate"))
+    markup_raw = payload.get("markup_amount")
+    markup_amount = _to_decimal(markup_raw)
+    currency = payload.get("currency")
+
+    raw: Dict[str, Any] = {}
+    for k in ("contract_price", "net_rate", "markup_amount", "currency"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    source_confidence: str
+    derived_markup = markup_amount
+
+    if markup_amount is None and contract_price is not None and net_rate is not None:
+        derived_markup = (contract_price - net_rate).quantize(Decimal("0.01"))
+        source_confidence = CONFIDENCE_ESTIMATED
+    elif net_rate is None or currency is None:
+        source_confidence = CONFIDENCE_PARTIAL
+    else:
+        source_confidence = CONFIDENCE_FULL
+
+    return BookingFinancialFacts(
+        provider="hotelbeds",
+        total_price=contract_price,          # gross price buyer pays Hotelbeds
+        currency=currency,
+        ota_commission=derived_markup,        # Hotelbeds' markup = their margin
+        taxes=None,                           # Hotelbeds does not expose taxes separately
+        fees=derived_markup,                  # markup serves as the fee field
+        net_to_property=net_rate,             # what property actually receives
+        source_confidence=source_confidence,
+        raw_financial_fields=raw,
+    )
+
+
+_EXTRACTORS["hotelbeds"] = _extract_hotelbeds
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
