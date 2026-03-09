@@ -3,7 +3,148 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > It is updated every few phases to reflect what we've learned and where we're headed.
-> Last updated: Phase 88 closed. Traveloka Adapter (SE Asia Tier 1.5) complete. Worker Communication Layer planning locked in future-improvements.md. [Claude]
+> Last updated: Phase 92 closed. System audit complete. Roadmap resynced to actual state. [Claude]
+
+
+## ✅ Completed Phases
+
+| Phase | Title | Key Deliverable |
+|-------|-------|----------------|
+| 21 | External OTA ingestion boundary | Boundary defined |
+| 22–33 | (See phase-timeline.md) | Adapter layer, validation, DLQ, replay |
+| 34 | OTA canonical emitted event alignment discovery | Alignment mapping |
+| 35 | Alignment implementation | BOOKING_CREATED, BOOKING_CANCELED skills |
+| 36 | Business identity canonicalization | booking_id = {source}_{ref} locked |
+| 37–49 | (See phase-timeline.md) | Ordering, DLQ, amendment groundwork |
+| 50 | BOOKING_AMENDED | DDL, apply_envelope branch, E2E verified |
+| 51–57 | (See phase-timeline.md) | Pipeline, service, ingest layers |
+| 58 | POST /webhooks/{provider} | Signature verify + validate + ingest |
+| 59 | FastAPI entrypoint | GET /health, uvicorn |
+| 60 | Request logging middleware | X-Request-ID, duration_ms |
+| 61 | JWT auth middleware | tenant_id from sub, 403 on failure |
+| 62 | Per-tenant rate limiting | Sliding window, 429 + Retry-After |
+| 63 | OpenAPI enrichment | BearerAuth, response schemas |
+| 64 | Enhanced health check | Supabase ping, DLQ count, ok/degraded/unhealthy |
+| 65 | Financial data extraction | BookingFinancialFacts, 5 providers, in-memory |
+| 66 | Financial persistence | booking_financial_facts Supabase table |
+| 67–76 | (See phase-timeline.md) | API error standards, OpenAPI, sig verification |
+| 77 | OTA Schema Normalization | canonical_guest_count, canonical_booking_ref, canonical_property_id |
+| 78 | Schema Normalization (Dates + Price) | canonical_check_in/out, canonical_currency, canonical_total_price |
+| 79 | Idempotency Monitoring | idempotency_monitor.py |
+| 80 | Structured Logging Layer | structured_logger.py, JSON output |
+| 81 | Integration Health Dashboard | integration_health.py |
+| 82 | Admin Query API | admin_router.py, /admin/* endpoints |
+| 83 | Vrbo Adapter | VrboAdapter, unit_id mapping, alteration extraction |
+| 84 | Reservation Timeline / Audit Trail | Per-booking event story API |
+| 85 | Google Vacation Rentals Adapter | GVRAdapter, connected_ota field, GVR-specific financial |
+| 86 | Conflict Detection Layer | conflict_detector.py, overlap detection, read-only |
+| 87 | Tenant Isolation Hardening | tenant_isolation_enforcer.py, RLS audit, cross-tenant test |
+| 88 | Traveloka Adapter | TravelokaAdapter, SE Asia Tier 1.5, TV- prefix stripping |
+| 89 | OTA Reconciliation Discovery | reconciliation_model.py, 7 FindingKinds, 3 Severities, READ-ONLY |
+| 90 | External Integration Test Harness | 8-provider E2E harness, Groups A-H, 276 tests |
+| 91 | OTA Replay Fixture Contract | 16 YAML fixtures, fixture-driven determinism, 273 tests |
+| 92 | Roadmap + System Audit | This document. system-audit.md. 1665 tests total. |
+
+
+---
+
+## 🎯 Active Direction — Phase 93+
+
+The system has proven its core pipeline across 8 OTA providers with 1665 deterministic tests (0 live Supabase required). The canonical spine is stable. The next strategic direction is the **Financial Layer + Expansion Wave**.
+
+---
+
+### Phase 93–97 — Financial Layer + Latin America + India
+
+**Phase 93 — Payment Lifecycle / Revenue State Projection**
+`payment_lifecycle.py`: financial status states — `guest_paid`, `ota_collecting`, `payout_pending`, `payout_released`, `reconciliation_pending`, `owner_net_pending`. Builds on BookingFinancialFacts without touching booking_state.
+
+**Phase 94 — MakeMyTrip Adapter** *(Tier 2 — India)*
+Expands into the Indian travel market. Follows established adapter pattern. 9th OTA provider.
+
+**Phase 95 — Owner Statements Foundation**
+`owner_statement.py`: per-property monthly summary, net revenue, payout summary. Read-only layer over financial_facts. First owner-facing output surface.
+
+**Phase 96 — Despegar Adapter** *(Tier 2 — Latin America)*
+Strongest Latin American travel brand. 10th OTA provider. Completes Tier 2 adapter wave.
+
+**Phase 97 — OTA Reconciliation Implementation**
+Implement the reconciliation model from Phase 89. Detection + correction-support layer — never bypasses apply_envelope. Flags drift via admin API.
+
+---
+
+### Phase 98–107 — Product Layer (Operational Completeness)
+
+**Phase 98 — Guest Pre-Arrival / Check-In Intake**
+Lightweight intake per reservation: contact info, arrival time, agreement, special notes, readiness.
+
+**Phase 99 — Task Automation for Operations**
+Rule-based tasks from booking events: BOOKING_CREATED → prep task, checkout tomorrow → cleaning, amendment → reschedule, cancellation → cancel pending.
+
+**Phase 100 — Owner Statements Full View**
+Complete owner-facing monthly statement: property revenue, net vs gross, payout history, scoped role visibility.
+
+**Phase 101–107 — TBD**
+Candidates: Tier 3 adapters (Rakuten, Hotelbeds, Hostelworld), advanced financial reporting, outbound channel sync discovery, multi-projection read models, revenue analytics, advanced conflict resolution.
+
+
+---
+
+## Where We Land After Phase 107
+
+**Adapter coverage:** Booking.com, Airbnb, Expedia, Agoda, Trip.com, Vrbo, GVR, Traveloka, MakeMyTrip, Despegar. **10 channels.** Global + SE Asia + India + LATAM.
+
+**Operational surfaces:** Reservation timeline, integration health dashboard, admin API, conflict detection, reconciliation layer.
+
+**Financial surfaces:** Booking financial facts (persisted), payment lifecycle states, owner statements.
+
+**Product surfaces:** Guest intake, task automation, owner views.
+
+**Architecture:** Canonical core unchanged — `apply_envelope` is the only write authority. All product layers read from or wrap the canonical spine without mutating it.
+
+
+---
+
+## Architectural Constraints — Permanently Locked
+
+> [!IMPORTANT]
+> These rules come from hard lessons learned in early phases and must never be violated.
+
+| Rule | Phase Locked | Rationale |
+|------|-------------|-----------|
+| `apply_envelope` is the ONLY write authority to booking_state | Phase 35 | Prevents split-brain state corruption |
+| `booking_id = {provider}_{normalized_ref}` | Phase 36 | Enables cross-provider reservation identity |
+| `booking_state` must NEVER contain financial calculations | Phase 62+ | Financial data is provider-specific and must remain separate |
+| `occurred_at` from OTA payload; `recorded_at` from server | Phase 76 | Provider time ≠ ingestion time — both preserved |
+| Reconciliation layer is READ-ONLY | Phase 89 | Corrections go through canonical pipeline only |
+| `payload_validator` recognizes: reservation_id, booking_ref, order_id | Phase 90 (discovered) | GVR/Traveloka require reservation_id duplication |
+| `semantics.py` maps a fixed set of event_type strings | Phase 90 (discovered) | Adapter event_types must match the known set |
+
+
+---
+
+## Forward Planning — Worker Communication & Escalation Layer
+
+> [!IMPORTANT]
+> This is a planning direction, not an active phase. Full detail: `docs/core/planning/worker-communication-layer.md`
+
+The system will eventually support **worker-facing operational communication** for: cleaner, check-in/check-out staff, operations manager, maintenance, garden/pool/repair.
+
+### The Core Rule — Must Not Be Violated
+
+**iHouse Core is the system of record, always.**
+
+External channels (LINE → WhatsApp → Telegram → SMS) are fallback escalation surfaces only — never the source of truth.
+
+### Schema Preservation Guidance
+
+When working on the task system or SLA escalation engine, preserve space for:
+- `urgency` field on tasks (low / medium / high / critical)
+- `worker_role` on task assignments (role-aware routing)
+- `ack_sla_minutes` per task (not global fixed timers)
+
+Full detail: `docs/core/planning/worker-communication-layer.md`
+
 
 
 ## Completed

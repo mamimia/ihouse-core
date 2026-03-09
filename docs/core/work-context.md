@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 91 -- OTA Replay Fixture Contract (closed)
+Phase 92 -- Roadmap + System Audit (closed)
 
 ## Last Closed Phase
 
-Phase 91 -- OTA Replay Fixture Contract
+Phase 92 -- Roadmap + System Audit
 
 ## Current Objective
 
-Phase 92 -- Roadmap + System Audit.
-See `docs/core/roadmap.md` Phase 92 entry.
+Phase 93 -- Payment Lifecycle / Revenue State Projection.
+See `docs/core/roadmap.md` Phase 93 entry.
 
 ## Key Invariants (Locked — Do Not Change)
 

@@ -2236,3 +2236,33 @@ pyyaml added to venv (test dependency only).
 No production code changes. No Supabase. No migrations.
 
 Result: 1665 passed, 2 skipped.
+
+## Phase 92 -- Roadmap + System Audit (Closed)
+
+[Claude] Documentation + audit phase. No production code changes. No new tests.
+
+Deliverables:
+  docs/core/roadmap.md — Fully rewritten.
+    Completed table: Phase 21-92 with accurate titles and deliverables.
+    Forward plan: Phase 93-107 (Financial + Expansion + Product layers).
+    Architectural constraints table: 7 permanently locked invariants.
+    Worker Communication planning section preserved.
+    All stale content removed (old near-term/medium-term sections from Phase 65 era).
+
+  docs/core/system-audit.md — NEW. Full system snapshot:
+    Section 1: 116 source modules inventoried across adapters, API, core.
+    Section 2: 57 test files, 1665 tests accounted for.
+    Section 3: 4 known boundary conditions documented with mitigations.
+    Section 4: 7 architectural invariants verified GREEN.
+    Section 5: 6 gaps identified with severity and recommendations.
+    Section 6: Phase 93 nominated as next phase with rationale.
+
+Key gaps surfaced:
+  - payload_validator: gvr_booking_id / booking_code not natively recognized
+  - semantics.py: Traveloka internal event_type names not mapped
+  - pyyaml not in requirements.txt (test dep only, needed before CI)
+  - No AMENDED YAML fixtures yet in tests/fixtures/ota_replay/
+  - Airbnb uses listing_id (not property_id) — must remain different
+  - Traveloka uses event_reference (not event_id) for idempotency source
+
+Result: 1665 passed, 2 skipped. No new tests. Docs-only phase.

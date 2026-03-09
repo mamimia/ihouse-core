@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 91 -- OTA Replay Harness (closed)
+Phase 92 -- Roadmap + System Audit (closed)
 
 ## Last Closed Phase
-Phase 91 -- OTA Replay Harness
+Phase 92 -- Roadmap + System Audit
 
 ## System Status
 
@@ -48,6 +48,7 @@ apply_envelope is the only authority for canonical state mutations.
 | 89 | OTA Reconciliation Discovery -- reconciliation_model.py, ReconciliationFindingKind (7), ReconciliationSeverity (3), ReconciliationFinding, ReconciliationReport, ReconciliationSummary; 87 tests | ✅ |
 | 90 | External Integration Test Harness -- test_e2e_integration_harness.py, 8 providers full pipeline coverage (CREATE/CANCEL/AMENDED), Groups A-H, 276 tests | ✅ |
 | 91 | OTA Replay Fixture Contract -- tests/fixtures/ota_replay/ (16 YAML fixtures, 8 providers×2), test_ota_replay_fixture_contract.py, Groups A-E, 273 tests | ✅ |
+| 92 | Roadmap + System Audit -- roadmap.md rewritten (Phase 21-91 full table), system-audit.md created (module inventory, boundary conditions, architecture integrity, gap analysis) | ✅ |
 
 **1665 tests pass** (2 pre-existing SQLite skips, unrelated)
 
@@ -158,8 +159,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 92 -- Roadmap + System Audit**
-- See `docs/core/roadmap.md` Phase 92 entry
+**Phase 93 -- Payment Lifecycle / Revenue State Projection**
+- See `docs/core/roadmap.md` Phase 93 entry
 
 ## Tests
 
