@@ -1,36 +1,18 @@
 """
-Phase 139 — iCal Push Adapter
+Phase 140 — iCal Push Adapter (Date Injection)
+
+Updated from Phase 139 to inject real DTSTART / DTEND from booking_state.
+The push() method now accepts optional check_in / check_out as compact iCal
+date strings (YYYYMMDD). If not supplied, safe placeholder dates are used so
+existing dry-run behaviour is unchanged.
 
 Handles Tier B providers (ical_fallback via push):
   - Hotelbeds
   - TripAdvisor Rentals
   - Despegar
 
-Each provider has its own iCal push URL and optional API key in env.
-The adapter PUTs a minimal iCal payload to the provider's endpoint.
-
-Credentials per provider (from environment):
-  HOTELBEDS_ICAL_URL          — push endpoint
-  HOTELBEDS_API_KEY           — optional auth header
-  TRIPADVISOR_ICAL_URL
-  TRIPADVISOR_API_KEY
-  DESPEGAR_ICAL_URL
-  DESPEGAR_API_KEY
-
-iCal payload for a blocked period (simplified VCALENDAR):
-    BEGIN:VCALENDAR
-    VERSION:2.0
-    PRODID:-//iHouse Core//Phase 139//EN
-    BEGIN:VEVENT
-    UID:<booking_id>@ihouse.core
-    DTSTART:YYYYMMDD
-    DTEND:YYYYMMDD
-    SUMMARY:Blocked by iHouse Core
-    END:VEVENT
-    END:VCALENDAR
-
-Phase 139: URL is read from env. If absent → dry_run. Dates are placeholders
-(Phase 140 will inject real check-in/check-out from booking).
+Phase 139: URL is read from env. If absent → dry_run.
+Phase 140: DTSTART/DTEND injected from booking_state via fetch_booking_dates().
 """
 from __future__ import annotations
 
@@ -50,16 +32,20 @@ logger = logging.getLogger(__name__)
 _ICAL_TEMPLATE = (
     "BEGIN:VCALENDAR\r\n"
     "VERSION:2.0\r\n"
-    "PRODID:-//iHouse Core//Phase 139//EN\r\n"
+    "PRODID:-//iHouse Core//Phase 140//EN\r\n"
     "BEGIN:VEVENT\r\n"
     "UID:{booking_id}@ihouse.core\r\n"
-    "DTSTART:20260101\r\n"
-    "DTEND:20260102\r\n"
+    "DTSTART:{dtstart}\r\n"
+    "DTEND:{dtend}\r\n"
     "SUMMARY:Blocked by iHouse Core\r\n"
     "DESCRIPTION:booking_id={booking_id} external_id={external_id}\r\n"
     "END:VEVENT\r\n"
     "END:VCALENDAR\r\n"
 )
+
+# Safe fallback dates used when booking_state lookup returns nothing.
+_FALLBACK_DTSTART = "20260101"
+_FALLBACK_DTEND   = "20260102"
 
 _PROVIDER_ENV: dict[str, str] = {
     "hotelbeds":   "HOTELBEDS",
@@ -82,6 +68,8 @@ class ICalPushAdapter(OutboundAdapter):
         booking_id: str,
         rate_limit: int = 10,
         dry_run: bool = False,
+        check_in: Optional[str] = None,   # Phase 140: YYYYMMDD or None
+        check_out: Optional[str] = None,  # Phase 140: YYYYMMDD or None
     ) -> AdapterResult:
         env_prefix = _PROVIDER_ENV.get(self.provider, self.provider.upper())
         ical_url   = os.environ.get(f"{env_prefix}_ICAL_URL", "")
@@ -108,9 +96,13 @@ class ICalPushAdapter(OutboundAdapter):
         try:
             if httpx is None:  # pragma: no cover
                 raise RuntimeError("httpx not available")
+            dtstart = check_in  or _FALLBACK_DTSTART
+            dtend   = check_out or _FALLBACK_DTEND
             ical_body = _ICAL_TEMPLATE.format(
                 booking_id=booking_id,
                 external_id=external_id,
+                dtstart=dtstart,
+                dtend=dtend,
             )
             headers: dict[str, str] = {"Content-Type": "text/calendar; charset=utf-8"}
             if api_key:

@@ -1,5 +1,10 @@
 """
-Phase 138 — Outbound Executor Router
+Phase 140 — Outbound Executor Router
+
+Updated from Phase 138:
+  Phase 139 — real adapters wired via registry.
+  Phase 140 — check_in / check_out fetched from booking_state and forwarded
+               to execute_sync_plan() so iCal adapters emit real DTSTART/DTEND.
 
 POST /internal/sync/execute
 
@@ -125,10 +130,10 @@ async def execute_sync(
     try:
         db = client if client is not None else _get_supabase_client()
 
-        # ---- Resolve property_id ----------------------------------------
+        # ---- Resolve property_id, check_in, check_out from booking_state ----
         booking_result = (
             db.table("booking_state")
-            .select("property_id, tenant_id")
+            .select("property_id, tenant_id, check_in, check_out")
             .eq("booking_id", booking_id)
             .eq("tenant_id", tenant_id)
             .limit(1)
@@ -143,6 +148,15 @@ async def execute_sync(
             )
 
         property_id: str = booking_rows[0].get("property_id", "")
+
+        # Phase 140 — convert ISO dates to compact iCal format (YYYYMMDD)
+        def _to_ical(iso: object) -> Optional[str]:
+            if not iso:
+                return None
+            return str(iso).replace("-", "")[:8]
+
+        check_in:  Optional[str] = _to_ical(booking_rows[0].get("check_in"))
+        check_out: Optional[str] = _to_ical(booking_rows[0].get("check_out"))
 
         # ---- Fetch channel mappings ----------------------------------------
         channels_result = (
@@ -194,6 +208,8 @@ async def execute_sync(
             property_id=property_id,
             tenant_id=tenant_id,
             actions=actions,
+            check_in=check_in,    # Phase 140
+            check_out=check_out,  # Phase 140
         )
 
         return JSONResponse(status_code=200, content=serialise_report(report))

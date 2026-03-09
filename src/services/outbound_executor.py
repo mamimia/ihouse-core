@@ -1,5 +1,14 @@
 """
-Phase 139 — Outbound Executor (Service Layer)
+Phase 140 — Outbound Executor (Service Layer)
+
+Updated in Phase 140 to forward booking check_in/check_out dates to
+iCal adapters (ICalPushAdapter.push) so real DTSTART/DTEND are used
+in the VCALENDAR payload instead of placeholder dates.
+
+Previous history:
+  Phase 138: stub adapters (dry-run only).
+  Phase 139: real API + iCal adapters via registry.
+  Phase 140: date injection into iCal push call.
 
 Updated in Phase 139 to use real adapter implementations:
   api_first:    AirbnbAdapter, BookingComAdapter, ExpediaVrboAdapter
@@ -135,6 +144,8 @@ def execute_sync_plan(
     actions: List[SyncAction],
     api_adapter: Optional[Any] = None,
     ical_adapter: Optional[Any] = None,
+    check_in: Optional[str] = None,   # Phase 140: YYYYMMDD from booking_state
+    check_out: Optional[str] = None,  # Phase 140: YYYYMMDD from booking_state
 ) -> ExecutionReport:
     """
     Execute a sync plan produced by build_sync_plan() (Phase 137).
@@ -148,9 +159,9 @@ def execute_sync_plan(
     api_adapter  : override for testing (defaults to ApiFirstAdapter)
     ical_adapter : override for testing (defaults to ICalAdapter)
 
-    Returns
-    -------
-    ExecutionReport with per-action results.
+    Phase 140: check_in / check_out (YYYYMMDD strings) are forwarded to
+    iCal adapters so real DTSTART/DTEND appear in the VCALENDAR payload.
+    If None, adapters use safe placeholder dates.
     """
     # Phase 139: prefer real adapter registry; fall back to class-level stubs
     # for backward compatibility with Phase 138 tests.
@@ -217,6 +228,8 @@ def execute_sync_plan(
                             external_id=action.external_id,
                             booking_id=booking_id,
                             rate_limit=action.rate_limit,
+                            check_in=check_in,    # Phase 140
+                            check_out=check_out,  # Phase 140
                         )
                         result = ExecutionResult(
                             provider=ar.provider,
