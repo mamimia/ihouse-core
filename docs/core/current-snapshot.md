@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 107 -- Roadmap Refresh (closed)
+Phase 108 -- Financial List Query API (closed)
 
 ## Last Closed Phase
-Phase 107 -- Roadmap Refresh
+Phase 108 -- Financial List Query API
 
 ## System Status
 
@@ -64,8 +64,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 105 | Admin Router Phase 82 Contract Tests -- test_admin_router_phase82_contract.py, 41 tests across Groups A-E covering /admin/metrics, /admin/dlq, /admin/health/providers, /admin/bookings/{id}/timeline; zero source changes | ✅ |
 | 106 | Booking List Query API -- GET /bookings added to bookings_router.py; property_id/status/limit query params; 400 VALIDATION_ERROR on invalid status; limit clamped 1-100; test_booking_list_router_contract.py, 28 tests | ✅ |
 | 107 | Roadmap Refresh -- roadmap.md resynced to Phase 106 actual state; completed-phases table extended 93–106; forward plan Phase 107–126 written covering API completeness → Reconciliation → Task System → Financial UI → Worker Communication | ✅ |
+| 108 | Financial List Query API -- GET /financial added to financial_router.py; provider/month/limit filters; month validated by YYYY-MM regex (400 on bad format); limit clamped 1–100; test_financial_list_router_contract.py, 27 tests | ✅ |
 
-**2374 tests pass** (2 pre-existing SQLite skips, unrelated)
+**2401 tests pass** (2 pre-existing SQLite skips, 1 intentional parametrize skip, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -174,7 +175,7 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 108** *(See `docs/core/roadmap.md`)*
+**Phase 109** *(See `docs/core/roadmap.md`)*
 
 ## Tests
 

@@ -2628,4 +2628,44 @@ Resync `roadmap.md` to actual system state after 14 phases of divergence (last u
 **2374 tests pass, 2 skipped.**
 Documentation-only phase. Zero production source changes. No new invariants.
 
+## Phase 108 — Financial List Query API (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-09
+
+### Goal
+
+Add `GET /financial` to `financial_router.py` — a list endpoint over `booking_financial_facts` with optional `provider`, `month` (YYYY-MM), and `limit` filters. Parallel to Phase 106's `GET /bookings`.
+
+### Endpoint
+
+```
+GET /financial
+  ?provider=<str>    optional — eq filter on provider column
+  ?month=YYYY-MM     optional — gte/lt range on recorded_at
+  ?limit=<int>       optional — clamped 1–100, default 50
+
+Response: { tenant_id, count, limit, records: [...] }
+  400 on bad month format (VALIDATION_ERROR)
+  403 on auth failure
+  500 on Supabase error (INTERNAL_ERROR)
+```
+
+### Notes
+
+- `booking_financial_facts` has no `property_id` column. Filter is by `provider` (a real column).
+- Month filter is `gte(recorded_at, YYYY-MM-01).lt(recorded_at, YYYY-NM-01)` — December boundary handled correctly (wraps to next year).
+- `booking_state` is never touched.
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `src/api/financial_router.py` | MODIFIED — GET /financial list endpoint added (Phase 108); docstring updated |
+| `tests/test_financial_list_router_contract.py` | NEW — 27 tests, 1 skip, Groups A–G |
+
+### Result
+
+**2401 tests pass, 2 pre-existing SQLite skips, 1 intentional skip.**
+No DB schema changes. No migrations. booking_financial_facts read-only.
 

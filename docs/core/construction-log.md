@@ -1887,4 +1887,17 @@ New files:
 Result: 2374 tests pass, 2 skipped.
 Documentation-only phase. Zero production source changes.
 
+### Phase 108 closure — 2026-03-09
+
+Financial List Query API.
+
+Modified:
+  src/api/financial_router.py — GET /financial list endpoint added; docstring updated to Phase 108; month YYYY-MM regex validation; provider + month + limit filters; December boundary arithmetic
+
+New files:
+  tests/test_financial_list_router_contract.py — 27 tests, 1 intentional skip, Groups A–G
+  docs/archive/phases/phase-108-spec.md — phase spec
+
+Result: 2401 tests pass, 2 pre-existing SQLite skips, 1 intentional skip.
+No DB schema changes. No migrations. booking_financial_facts read-only.
 

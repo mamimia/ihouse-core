@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 107 -- Roadmap Refresh (closed)
+Phase 108 -- Financial List Query API (closed)
 
 ## Last Closed Phase
 
-Phase 107 -- Roadmap Refresh
+Phase 108 -- Financial List Query API
 
 ## Current Objective
 
-Phase 108 -- Financial List Query API. See `docs/core/roadmap.md`.
+Phase 109 -- Booking Date Range Search. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
