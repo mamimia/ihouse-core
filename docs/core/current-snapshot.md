@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 112 -- Task Automation from Booking Events (closed)
+Phase 113 -- Task Query API (closed)
 
 ## Last Closed Phase
-Phase 112 -- Task Automation from Booking Events
+Phase 113 -- Task Query API
 
 ## System Status
 
@@ -69,8 +69,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 110 | OTA Reconciliation Implementation -- reconciliation_detector.py (FINANCIAL_FACTS_MISSING + STALE_BOOKING detectors); GET /admin/reconciliation endpoint in admin_router.py (include_findings param); test_reconciliation_detector_contract.py, 27 tests | ✅ |
 | 111 | Task System Foundation -- src/tasks/task_model.py: TaskKind (5), TaskStatus (5), TaskPriority (4), WorkerRole (5) enums; mapping tables (urgency, ACK SLA minutes, default roles/priorities, valid transitions); Task dataclass with .build() factory; CRITICAL ACK SLA = 5 min locked; test_task_model_contract.py, 68 tests | ✅ |
 | 112 | Task Automation from Booking Events -- task_automator.py: tasks_for_booking_created (CHECKIN_PREP+CLEANING), actions_for_booking_canceled (TaskCancelAction), actions_for_booking_amended (TaskRescheduleAction); pure functions, zero DB; test_task_automator_contract.py, 48 tests | ✅ |
+| 113 | Task Query API -- task_router.py: GET /tasks (filters: property_id/status/kind/due_date/limit 1-100), GET /tasks/{task_id} (404 tenant-isolated), PATCH /tasks/{task_id}/status (VALID_TASK_TRANSITIONS enforced, 422 INVALID_TRANSITION); error_models.py +NOT_FOUND +INVALID_TRANSITION; main.py registered; 50 tests | ✅ |
 
-**2580 tests pass** (2 pre-existing SQLite skips, 1 intentional parametrize skip, unrelated)
+**2630 tests pass** (2 pre-existing SQLite skips, 1 intentional parametrize skip, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 

@@ -39,6 +39,8 @@ class ErrorCode:
     AUTH_FAILED        = "AUTH_FAILED"
     RATE_LIMITED       = "RATE_LIMITED"
     VALIDATION_ERROR   = "VALIDATION_ERROR"
+    NOT_FOUND          = "NOT_FOUND"
+    INVALID_TRANSITION = "INVALID_TRANSITION"
 
 
 # ---------------------------------------------------------------------------
@@ -53,6 +55,8 @@ _DEFAULT_MESSAGES: Dict[str, str] = {
     ErrorCode.AUTH_FAILED:        "Authentication failed — missing or invalid Bearer token",
     ErrorCode.RATE_LIMITED:       "Rate limit exceeded — try again later",
     ErrorCode.VALIDATION_ERROR:   "Request payload validation failed",
+    ErrorCode.NOT_FOUND:          "The requested resource was not found",
+    ErrorCode.INVALID_TRANSITION: "Status transition is not allowed from the current state",
 }
 
 

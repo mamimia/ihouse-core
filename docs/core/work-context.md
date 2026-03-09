@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 112 -- Task Automation from Booking Events (closed)
+Phase 113 -- Task Query API (closed)
 
 ## Last Closed Phase
 
-Phase 112 -- Task Automation from Booking Events
+Phase 113 -- Task Query API
 
 ## Current Objective
 
-Phase 113 -- Task Query API. See `docs/core/roadmap.md`.
+Phase 114 -- next phase. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 

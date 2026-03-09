@@ -145,6 +145,10 @@ app.include_router(payment_status_router)
 from api.amendments_router import router as amendments_router  # noqa: E402
 app.include_router(amendments_router)
 
+from tasks.task_router import router as task_router  # noqa: E402
+app.include_router(task_router)
+
+
 
 # ---------------------------------------------------------------------------
 # OpenAPI — inject BearerAuth security scheme (Phase 63)

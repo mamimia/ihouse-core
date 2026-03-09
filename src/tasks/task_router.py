@@ -1,0 +1,319 @@
+"""
+Task Query and Transition API — Phase 113
+
+Endpoints:
+    GET  /tasks                   — list tasks for tenant, with filters
+    GET  /tasks/{task_id}         — get single task by task_id
+    PATCH /tasks/{task_id}/status — transition task status (ack/start/done/cancel)
+
+Filters for GET /tasks:
+    property_id   - filter by property (optional)
+    status        - filter by TaskStatus value (optional, all statuses allowed)
+    kind          - filter by TaskKind (optional)
+    due_date      - filter by due_date (YYYY-MM-DD, optional)
+    limit         - max results, 1–100, default 50
+
+Rules:
+    - JWT auth required on all endpoints.
+    - Tenant isolation enforced at DB level (.eq("tenant_id", tenant_id)).
+    - GET endpoints are strictly read-only.
+    - PATCH /status enforces valid transition rules (VALID_TASK_TRANSITIONS).
+    - Invalid transitions return 422 INVALID_TRANSITION.
+
+Supabase table: `tasks`
+    Required columns: task_id, tenant_id, kind, status, priority, urgency,
+                      worker_role, ack_sla_minutes, booking_id, property_id,
+                      due_date, title, description, created_at, updated_at,
+                      notes, canceled_reason
+
+Invariant (Phase 113):
+    This router NEVER writes to booking_state, event_log, or booking_financial_facts.
+    PATCH /status writes ONLY to the `tasks` table.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+
+from api.auth import jwt_auth
+from api.error_models import ErrorCode, make_error_response
+from tasks.task_model import TaskKind, TaskStatus, VALID_TASK_TRANSITIONS
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+_MAX_LIMIT = 100
+_DEFAULT_LIMIT = 50
+_VALID_TASK_STATUSES = {s.value for s in TaskStatus}
+_VALID_TASK_KINDS = {k.value for k in TaskKind}
+
+
+# ---------------------------------------------------------------------------
+# Supabase client helper
+# ---------------------------------------------------------------------------
+
+def _get_supabase_client() -> Any:
+    from supabase import create_client  # type: ignore[import]
+    url = os.environ["SUPABASE_URL"]
+    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+    return create_client(url, key)
+
+
+# ---------------------------------------------------------------------------
+# GET /tasks
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/tasks",
+    tags=["tasks"],
+    summary="List tasks for tenant with optional filters",
+    responses={
+        200: {"description": "Array of task objects (zero or more)"},
+        400: {"description": "Invalid query parameter"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def list_tasks(
+    property_id: Optional[str] = None,
+    status: Optional[str] = None,
+    kind: Optional[str] = None,
+    due_date: Optional[str] = None,
+    limit: int = _DEFAULT_LIMIT,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Return tasks for the authenticated tenant.
+
+    **Filters (all optional):**
+    - `property_id` — filter by property
+    - `status`      — filter by TaskStatus (PENDING / ACKNOWLEDGED / IN_PROGRESS /
+                      COMPLETED / CANCELED)
+    - `kind`        — filter by TaskKind (CLEANING / CHECKIN_PREP / CHECKOUT_VERIFY /
+                      MAINTENANCE / GENERAL)
+    - `due_date`    — filter by due_date (YYYY-MM-DD)
+    - `limit`       — max results, 1–100 (default 50)
+    """
+    # --- validate limit ---
+    if not (1 <= limit <= _MAX_LIMIT):
+        return make_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            f"limit must be between 1 and {_MAX_LIMIT}",
+        )
+
+    # --- validate status ---
+    if status is not None and status not in _VALID_TASK_STATUSES:
+        return make_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            f"Invalid status '{status}'. Must be one of: {', '.join(sorted(_VALID_TASK_STATUSES))}",
+        )
+
+    # --- validate kind ---
+    if kind is not None and kind not in _VALID_TASK_KINDS:
+        return make_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            f"Invalid kind '{kind}'. Must be one of: {', '.join(sorted(_VALID_TASK_KINDS))}",
+        )
+
+    # --- query ---
+    try:
+        db = client or _get_supabase_client()
+        query = (
+            db.table("tasks")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+            .limit(limit)
+            .order("created_at", desc=True)
+        )
+        if property_id is not None:
+            query = query.eq("property_id", property_id)
+        if status is not None:
+            query = query.eq("status", status)
+        if kind is not None:
+            query = query.eq("kind", kind)
+        if due_date is not None:
+            query = query.eq("due_date", due_date)
+
+        result = query.execute()
+        tasks = result.data if result.data else []
+        return JSONResponse(status_code=200, content={"tasks": tasks, "count": len(tasks)})
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("list_tasks error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to list tasks")
+
+
+# ---------------------------------------------------------------------------
+# GET /tasks/{task_id}
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/tasks/{task_id}",
+    tags=["tasks"],
+    summary="Get a single task by task_id",
+    responses={
+        200: {"description": "Task object"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Task not found for this tenant"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_task(
+    task_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Return a single task by `task_id`.
+
+    **Tenant isolation:** Only tasks belonging to the authenticated tenant are
+    returned. Cross-tenant reads return 404 (not 403) to avoid leaking
+    task existence.
+    """
+    try:
+        db = client or _get_supabase_client()
+        result = (
+            db.table("tasks")
+            .select("*")
+            .eq("task_id", task_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not result.data:
+            return make_error_response(404, ErrorCode.NOT_FOUND, f"Task '{task_id}' not found")
+        return JSONResponse(status_code=200, content={"task": result.data[0]})
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("get_task error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to retrieve task")
+
+
+# ---------------------------------------------------------------------------
+# PATCH /tasks/{task_id}/status
+# ---------------------------------------------------------------------------
+
+@router.patch(
+    "/tasks/{task_id}/status",
+    tags=["tasks"],
+    summary="Transition a task to a new status",
+    responses={
+        200: {"description": "Task updated with new status"},
+        400: {"description": "Missing or invalid request body"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Task not found for this tenant"},
+        422: {"description": "Invalid status transition"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def patch_task_status(
+    task_id: str,
+    body: dict,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Transition a task to a new status.
+
+    **Request body:**
+    ```json
+    {
+      "status": "ACKNOWLEDGED",
+      "canceled_reason": "optional — defaults to 'Canceled via API' when status=CANCELED"
+    }
+    ```
+
+    **Valid transitions:**
+    ```
+    PENDING → ACKNOWLEDGED | CANCELED
+    ACKNOWLEDGED → IN_PROGRESS | CANCELED
+    IN_PROGRESS → COMPLETED | CANCELED
+    COMPLETED → (none — terminal)
+    CANCELED → (none — terminal)
+    ```
+    """
+    # --- validate body has status ---
+    new_status_str = body.get("status") if isinstance(body, dict) else None
+    if not new_status_str:
+        return make_error_response(
+            400, ErrorCode.VALIDATION_ERROR, "Request body must include 'status'"
+        )
+
+    if new_status_str not in _VALID_TASK_STATUSES:
+        return make_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            f"Invalid status '{new_status_str}'. Must be one of: {', '.join(sorted(_VALID_TASK_STATUSES))}",
+        )
+
+    new_status = TaskStatus(new_status_str)
+    canceled_reason: Optional[str] = body.get("canceled_reason") if isinstance(body, dict) else None
+    if new_status == TaskStatus.CANCELED and not canceled_reason:
+        canceled_reason = "Canceled via API"
+
+    try:
+        db = client or _get_supabase_client()
+
+        # --- fetch current task ---
+        result = (
+            db.table("tasks")
+            .select("*")
+            .eq("task_id", task_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not result.data:
+            return make_error_response(404, ErrorCode.NOT_FOUND, f"Task '{task_id}' not found")
+
+        current_row = result.data[0]
+        current_status = TaskStatus(current_row["status"])
+
+        # --- validate transition ---
+        allowed = VALID_TASK_TRANSITIONS.get(current_status, frozenset())
+        if new_status not in allowed:
+            allowed_str = ", ".join(s.value for s in allowed) or "none (terminal state)"
+            return make_error_response(
+                422,
+                ErrorCode.INVALID_TRANSITION,
+                f"Cannot transition from {current_status.value} to {new_status.value}. "
+                f"Allowed: {allowed_str}",
+            )
+
+        # --- apply update ---
+        now = datetime.now(tz=timezone.utc).isoformat()
+        patch_data: dict = {"status": new_status.value, "updated_at": now}
+        if new_status == TaskStatus.CANCELED:
+            patch_data["canceled_reason"] = canceled_reason
+
+        update_result = (
+            db.table("tasks")
+            .update(patch_data)
+            .eq("task_id", task_id)
+            .eq("tenant_id", tenant_id)
+            .execute()
+        )
+
+        updated_row = update_result.data[0] if update_result.data else {**current_row, **patch_data}
+        return JSONResponse(status_code=200, content={"task": updated_row})
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("patch_task_status error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to update task status")
