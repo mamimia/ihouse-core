@@ -56,6 +56,8 @@ def _guest_count(provider: str, payload: dict) -> int | None:
             return int(payload["guest_count"])
         elif provider == "klook":
             return int(payload["participants"])  # Klook uses participants
+        elif provider == "despegar":
+            return int(payload["passenger_count"])  # Despegar: LATAM travel term
         return None
     except (KeyError, TypeError, ValueError):
         return None
@@ -86,6 +88,8 @@ def _booking_ref(provider: str, payload: dict) -> str | None:
             return str(payload["booking_id"])
         elif provider == "klook":
             return str(payload["booking_ref"])  # Klook uses booking_ref
+        elif provider == "despegar":
+            return str(payload["reservation_code"])  # Despegar uses reservation_code
         return None
     except (KeyError, TypeError):
         return None
@@ -114,6 +118,8 @@ def _property_id(provider: str, payload: dict) -> str | None:
             return str(payload["hotel_id"])  # MakeMyTrip uses hotel_id
         elif provider == "klook":
             return str(payload["activity_id"])  # Klook uses activity_id
+        elif provider == "despegar":
+            return str(payload["hotel_id"])  # Despegar uses hotel_id
         return None
     except (KeyError, TypeError):
         return None
@@ -155,6 +161,8 @@ def _check_in(provider: str, payload: dict) -> str | None:
             return str(payload["check_in"])  # MakeMyTrip: check_in
         elif provider == "klook":
             return str(payload["travel_date"])  # Klook: activity start date
+        elif provider == "despegar":
+            return str(payload["check_in"])  # Despegar: standard check_in
         return None
     except (KeyError, TypeError):
         return None
@@ -192,6 +200,8 @@ def _check_out(provider: str, payload: dict) -> str | None:
             return str(payload["check_out"])  # MakeMyTrip: check_out
         elif provider == "klook":
             return str(payload["end_date"])  # Klook: activity end date
+        elif provider == "despegar":
+            return str(payload["check_out"])  # Despegar: standard check_out
         return None
     except (KeyError, TypeError):
         return None
@@ -246,6 +256,8 @@ def _total_price(provider: str, payload: dict) -> str | None:
             val = payload["order_value"]  # MakeMyTrip: order_value
         elif provider == "klook":
             val = payload["booking_amount"]  # Klook: booking_amount
+        elif provider == "despegar":
+            val = payload["total_fare"]  # Despegar: fare-based naming
         else:
             return None
         return str(val) if val is not None else None

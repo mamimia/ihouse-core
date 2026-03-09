@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 97 -- Klook Replay Fixture Contract (closed)
+Phase 98 -- Despegar Adapter (closed)
 
 ## Last Closed Phase
 
-Phase 97 -- Klook Replay Fixture Contract
+Phase 98 -- Despegar Adapter
 
 ## Current Objective
 
-Phase 98 -- Despegar Adapter (Tier 2 — Latin America).
+Phase 99 -- Despegar Replay Fixture Contract.
 See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
@@ -55,4 +55,4 @@ See `docs/core/roadmap.md`.
 
 ## Tests
 
-1977 passing (2 pre-existing SQLite skips, unrelated)
+2038 passing (2 pre-existing SQLite skips, unrelated)

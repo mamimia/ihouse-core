@@ -560,6 +560,68 @@ _EXTRACTORS["klook"] = _extract_klook
 
 
 # ---------------------------------------------------------------------------
+# Despegar extractor (Phase 98)
+# ---------------------------------------------------------------------------
+
+def _extract_despegar(payload: dict) -> BookingFinancialFacts:
+    """
+    Despegar financial fields:
+      total_fare      — gross booking amount (Despegar's fare-based naming)
+      despegar_fee    — Despegar platform fee/commission (optional)
+      net_amount      — net payout to partner (optional)
+      currency        — ISO 4217 code (ARS, BRL, MXN, CLP, COP, PEN, USD, etc.)
+
+    When net_amount is absent but total_fare + despegar_fee are present,
+    net is derived: net = total_fare - despegar_fee → confidence = ESTIMATED.
+
+    Confidence: FULL if total_fare + currency + net_amount present,
+                ESTIMATED if net_amount derived,
+                PARTIAL if total_fare or currency missing.
+
+    LATAM multi-currency note: Despegar operates across many currencies.
+    Currency is always preserved as-is from the provider payload.
+    No cross-currency aggregation is performed here — that responsibility
+    belongs to the financial aggregation API layer (Ring 1).
+    """
+    total_fare = _to_decimal(payload.get("total_fare"))
+    despegar_fee = _to_decimal(payload.get("despegar_fee"))
+    net_amount_raw = payload.get("net_amount")
+    net_amount = _to_decimal(net_amount_raw)
+    currency = payload.get("currency")
+
+    raw: Dict[str, Any] = {}
+    for k in ("total_fare", "despegar_fee", "net_amount", "currency"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    source_confidence: str
+    derived_net = net_amount
+
+    if net_amount is None and total_fare is not None and despegar_fee is not None:
+        derived_net = (total_fare - despegar_fee).quantize(Decimal("0.01"))
+        source_confidence = CONFIDENCE_ESTIMATED
+    elif total_fare is None or currency is None:
+        source_confidence = CONFIDENCE_PARTIAL
+    else:
+        source_confidence = CONFIDENCE_FULL
+
+    return BookingFinancialFacts(
+        provider="despegar",
+        total_price=total_fare,
+        currency=currency,
+        ota_commission=despegar_fee,
+        taxes=None,           # Despegar does not expose taxes separately
+        fees=despegar_fee,
+        net_to_property=derived_net,
+        source_confidence=source_confidence,
+        raw_financial_fields=raw,
+    )
+
+
+_EXTRACTORS["despegar"] = _extract_despegar
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
