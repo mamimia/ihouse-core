@@ -1758,3 +1758,22 @@ Modified:
 Replay harness now covers 11 providers × 2 = 22 fixtures (375 replay tests).
 Result: 2074 tests pass, 2 skipped.
 No adapter code changes. No Supabase changes. No migrations.
+
+---
+
+### Phase 100 closure — 2026-03-09
+
+Owner Statement Foundation.
+
+New files:
+  src/adapters/ota/owner_statement.py — StatementConfidenceLevel, OwnerStatementEntry, OwnerStatementSummary, build_owner_statement()
+  tests/test_owner_statement_contract.py — 60 tests, Groups A-G
+
+Aggregation rules locked:
+  - Canceled bookings excluded from financial totals (gross/net/commission), included in entries
+  - Multi-currency guard: currency="MIXED", totals=None when >1 currency
+  - Confidence breakdown counts all entries (including canceled)
+  - StatementConfidenceLevel: PARTIAL→INCOMPLETE > all FULL→VERIFIED > otherwise MIXED
+
+Result: 2134 tests pass, 2 skipped.
+No adapter changes. No Supabase changes. No migrations.

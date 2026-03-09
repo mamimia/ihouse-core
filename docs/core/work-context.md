@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 99 -- Despegar Replay Fixture Contract (closed)
+Phase 100 -- Owner Statement Foundation (closed)
 
 ## Last Closed Phase
 
-Phase 99 -- Despegar Replay Fixture Contract
+Phase 100 -- Owner Statement Foundation
 
 ## Current Objective
 
-Phase 100 -- See `docs/core/roadmap.md`.
+Phase 101 -- See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 100 -- See `docs/core/roadmap.md`.
 
 ## Tests
 
-2074 passing (2 pre-existing SQLite skips, unrelated)
+2134 passing (2 pre-existing SQLite skips, unrelated)

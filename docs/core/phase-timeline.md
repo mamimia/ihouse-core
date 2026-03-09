@@ -2401,3 +2401,33 @@ Replay fixture count = providers × 2. With 11 providers: exactly 22 fixtures re
 **2074 tests pass, 2 skipped.**
 Replay harness: 375 tests covering 11 providers × 2 fixtures. (+34 vs Phase 98)
 No Supabase schema changes. No new migrations. No adapter code changes.
+
+---
+
+## Phase 100 — Closed
+
+**Phase 100 — Owner Statement Foundation**
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Build the first owner-facing financial surface: a pure, read-only monthly aggregation of BookingFinancialFacts per property. No DB schema changes, no API endpoint, no writes — identical design discipline to Phase 93 (payment_lifecycle.py). Fills the gap left when Owner Statements Foundation was skipped in early roadmap phases.
+
+### Invariant
+
+owner_statement.py is READ-ONLY. Zero writes, zero IO, zero side effects.
+booking_state must NEVER contain financial calculations (Phase 62+ invariant upheld).
+Multi-currency guard: if entries span >1 currency, all monetary totals are None and currency="MIXED".
+Canceled bookings are included in entries for full auditability but excluded from financial totals.
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `src/adapters/ota/owner_statement.py` | NEW — StatementConfidenceLevel enum, OwnerStatementEntry, OwnerStatementSummary, build_owner_statement() |
+| `tests/test_owner_statement_contract.py` | NEW — 60 tests, Groups A–G |
+
+### Result
+
+**2134 tests pass, 2 skipped.**
+No Supabase schema changes. No new migrations. No booking_state writes.
