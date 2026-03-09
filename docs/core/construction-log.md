@@ -2124,3 +2124,17 @@ Modified: src/services/outbound_executor.py (real registry dispatch; Phase 138 s
 Commit: fb6de78
 Result: 3573 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
 
+
+## Phase 140 — iCal Date Injection (Closed)
+
+Injected real check_in / check_out from booking_state into iCal VCALENDAR DTSTART/DTEND.
+Phase 139 shipped placeholder dates (20260101/20260102). Phase 140 replaces them with booking-specific real dates.
+
+Changes:
+- booking_dates.py [NEW]: fetch_booking_dates() — read-only SELECT on booking_state; returns (check_in, check_out) as YYYYMMDD; fail-safe (returns None on missing row or error)
+- ical_push_adapter.py: push() gains check_in/check_out kwargs; _ICAL_TEMPLATE uses {dtstart}/{dtend}; PRODID → Phase 140; _FALLBACK_DTSTART/_FALLBACK_DTEND constants (20260101/20260102) for backward compat
+- outbound_executor.py: execute_sync_plan() gains check_in/check_out; forwarded to adapter.push() in ical_fallback registry branch
+- outbound_executor_router.py: booking_state SELECT expanded to include check_in/check_out; _to_ical() converts ISO→YYYYMMDD; dates passed to execute_sync_plan()
+- tests/test_ical_date_injection_contract.py [NEW]: 16 contract tests (Groups A-F)
+Commit: 45fa03f
+Result: 3589 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).

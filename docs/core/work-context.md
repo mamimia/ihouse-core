@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 139 — Real Outbound Adapters (closed)
+Phase 140 — iCal Date Injection (closed)
 
 ## Last Closed Phase
 
-Phase 139 — Real Outbound Adapters: provider-specific HTTP + iCal adapters; 40 contract tests
+Phase 140 — iCal Date Injection: real DTSTART/DTEND from booking_state; 16 contract tests
 
 ## Current Objective
 
-**Phase 140 — inject real check_in/check_out dates into iCal VCALENDAR payload**
+**Phase 141 — Rate-limit enforcement in outbound adapters**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,6 +37,7 @@ Phase 139 — Real Outbound Adapters: provider-specific HTTP + iCal adapters; 40
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
 | 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
+| 140 | iCal Date Injection | `src/adapters/outbound/booking_dates.py`, `ical_push_adapter.py` (dates), `services/outbound_executor.py` (forwarding), `api/outbound_executor_router.py` (fetch+pass), `tests/test_ical_date_injection_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)

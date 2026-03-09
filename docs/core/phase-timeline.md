@@ -3067,3 +3067,20 @@ Adapter contract (all adapters enforce identically):
 
 Result: 3573 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
 
+
+## Phase 140 — iCal Date Injection (Closed)
+
+**Date:** 2026-03-10
+**Commit:** 45fa03f
+
+Goal: Replace placeholder DTSTART/DTEND (20260101/20260102) in iCal payloads with real booking dates from booking_state.
+
+Completed:
+
+- `src/adapters/outbound/booking_dates.py` — NEW — `fetch_booking_dates(booking_id, tenant_id)`: read-only SELECT on booking_state.check_in / check_out; returns YYYYMMDD strings; fail-safe on missing rows or errors
+- `src/adapters/outbound/ical_push_adapter.py` — MODIFIED — `push()` gains `check_in` / `check_out` kwargs; `_ICAL_TEMPLATE` uses `{dtstart}` / `{dtend}` placeholders; PRODID bumped to Phase 140; `_FALLBACK_DTSTART` / `_FALLBACK_DTEND` constants ensure backward compatibility
+- `src/services/outbound_executor.py` — MODIFIED — `execute_sync_plan()` gains `check_in` / `check_out`; forwarded to `adapter.push()` in ical_fallback registry path
+- `src/api/outbound_executor_router.py` — MODIFIED — booking_state SELECT includes `check_in`, `check_out`; `_to_ical()` inline helper; dates forwarded to `execute_sync_plan()`
+- `tests/test_ical_date_injection_contract.py` — NEW — 16 contract tests (Groups A-F: date injection, fallback, template structure, executor forwarding, router conversion, constants)
+
+Result: 3589 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
