@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 132 — Booking Audit Trail (closed)
+Phase 133 — OTA Ordering Buffer Inspector (closed)
 
 ## Last Closed Phase
 
-Phase 132 — Booking Audit Trail: GET /bookings/{booking_id}/history
+Phase 133 — Buffer Inspector: GET /admin/buffer + GET /admin/buffer/{id}
 
 ## Current Objective
 
-**Phase 133 — (next — see future-improvements.md)**
+**Phase 134 — (next — see future-improvements.md)**
 See `docs/core/improvements/future-improvements.md`.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -32,6 +32,7 @@ See `docs/core/improvements/future-improvements.md`.
 | 130 | Properties Summary Dashboard | `src/api/properties_summary_router.py`, `tests/test_properties_summary_router_contract.py` |
 | 131 | DLQ Inspector | `src/api/dlq_router.py`, `tests/test_dlq_router_contract.py` |
 | 132 | Booking Audit Trail | `src/api/booking_history_router.py`, `tests/test_booking_history_contract.py` |
+| 133 | Buffer Inspector | `src/api/buffer_router.py`, `tests/test_buffer_router_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
