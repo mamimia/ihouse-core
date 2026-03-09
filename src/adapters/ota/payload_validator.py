@@ -80,14 +80,15 @@ def validate_ota_payload(
             event_type_raw=None,
         )
 
-    # Rule 3: reservation_id (or booking_ref for Agoda, or order_id for Trip.com,
-    #          or reservation_code for Despegar, or booking_code for Traveloka)
+    # Rule 3: reservation_id (or booking_ref for Agoda/Klook, or order_id for Trip.com,
+    #          or reservation_code for Despegar, or booking_code/booking_id for Traveloka/MMT)
     reservation_id = (
         payload.get("reservation_id", "") or
         payload.get("booking_ref", "") or
         payload.get("order_id", "") or
         payload.get("reservation_code", "") or   # Despegar
-        payload.get("booking_code", "") or        # Traveloka fallback
+        payload.get("booking_code", "") or        # Traveloka
+        payload.get("booking_id", "") or          # MakeMyTrip
         ""
     )
     if not str(reservation_id).strip():

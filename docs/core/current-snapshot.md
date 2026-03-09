@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 101 -- Owner Statement Query API (closed)
+Phase 102 -- E2E Integration Harness Extension (closed)
 
 ## Last Closed Phase
-Phase 101 -- Owner Statement Query API
+Phase 102 -- E2E Integration Harness Extension
 
 ## System Status
 
@@ -58,8 +58,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 99 | Despegar Replay Fixture Contract -- tests/fixtures/ota_replay/despegar.yaml (CREATE+CANCEL, ARS), EXPECTED_PROVIDERS expanded to 11, fixture count invariant updated 20→22 (test_e4 renamed); +34 tests (total replay: 375) | ✅ |
 | 100 | Owner Statement Foundation -- owner_statement.py, StatementConfidenceLevel (VERIFIED/MIXED/INCOMPLETE), OwnerStatementEntry, OwnerStatementSummary, build_owner_statement(); multi-currency guard; canceled-exclusion rule; 60 tests | ✅ |
 | 101 | Owner Statement Query API -- owner_statement_router.py, GET /owner-statement/{property_id}?month=YYYY-MM, JWT auth, PROPERTY_NOT_FOUND/INVALID_MONTH error codes; error_models.py + main.py updated; 28 tests | ✅ |
+| 102 | E2E Integration Harness Extension -- test_e2e_integration_harness.py expanded 8→11 (MakeMyTrip+Klook+Despegar payload factories); payload_validator.py +booking_id; harness: 375 tests | ✅ |
 
-**2162 tests pass** (2 pre-existing SQLite skips, unrelated)
+**2261 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -168,8 +169,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 102** *(See `docs/core/roadmap.md`)*
+**Phase 103** *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
-**2162 passing** (2 pre-existing SQLite skips, unrelated)
+**2261 passing** (2 pre-existing SQLite skips, unrelated)

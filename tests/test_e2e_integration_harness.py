@@ -1,19 +1,21 @@
 """
 Phase 90 — External Integration Test Harness
+Phase 102 — Extended to 11 providers (MakeMyTrip, Klook, Despegar added)
 
-End-to-end deterministic pipeline harness for all 8 OTA providers.
+End-to-end deterministic pipeline harness for all 11 OTA providers.
 Exercises: raw payload → normalize → classify → to_canonical_envelope.
 CI-safe: no Supabase, no HTTP, no live API calls anywhere.
 
 Provider coverage:
-  bookingcom, expedia, airbnb, agoda, tripcom, vrbo, gvr, traveloka
+  bookingcom, expedia, airbnb, agoda, tripcom, vrbo, gvr, traveloka,
+  makemytrip, klook, despegar
 
 Groups:
-  A — All 8 providers produce valid BOOKING_CREATED envelopes
-  B — All 8 providers produce valid BOOKING_CANCELED envelopes
-  C — All 8 providers produce valid BOOKING_AMENDED envelopes
-  D — booking_id format: '{provider}_{normalized_ref}' across all 8
-  E — idempotency_key is non-empty and deterministic for all 8
+  A — All 11 providers produce valid BOOKING_CREATED envelopes
+  B — All 11 providers produce valid BOOKING_CANCELED envelopes
+  C — All 11 providers produce valid BOOKING_AMENDED envelopes
+  D — booking_id format: '{provider}_{normalized_ref}' across all 11
+  E — idempotency_key is non-empty and deterministic for all 11
   F — Invalid payloads rejected (PayloadValidationResult.valid=False)
   G — Cross-provider isolation: same raw reservation_id → different booking_id
   H — Pipeline idempotency: identical payload → identical envelope
@@ -323,10 +325,113 @@ def _traveloka_amend() -> dict:
     return p
 
 
-# ---------------------------------------------------------------------------
-# Provider registry: all 8 providers with their payload factories
-# Format: (provider_name, create_fn, cancel_fn, amend_fn, reservation_id_field)
-# ---------------------------------------------------------------------------
+def _makemytrip_create() -> dict:
+    return {
+        "event_id":   "mmt-evt-90000001",
+        "booking_id": "MMT-IN-9000001",
+        "hotel_id":   "HOTEL-MMT-1",
+        "event_type": "BOOKING_CONFIRMED",
+        "tenant_id":  TENANT,
+        "occurred_at": "2026-06-01T16:00:00",
+        "check_in":   "2026-10-10",
+        "check_out":  "2026-10-14",
+        "num_guests": 2,
+        "total_amount": "4200.00",
+        "mmt_commission": "420.00",
+        "net_amount": "3780.00",
+        "currency": "INR",
+    }
+
+
+def _makemytrip_cancel() -> dict:
+    p = _makemytrip_create()
+    p["event_type"] = "BOOKING_CANCELLED"
+    return p
+
+
+def _makemytrip_amend() -> dict:
+    p = _makemytrip_create()
+    p["event_type"] = "BOOKING_MODIFIED"
+    p["amendment"] = {
+        "check_in": "2026-10-12",
+        "check_out": "2026-10-16",
+        "guests": 3,
+        "reason": "Date change",
+    }
+    return p
+
+
+def _klook_create() -> dict:
+    return {
+        "event_id":    "klk-evt-10000001",
+        "booking_ref": "KL-ACTBK-10000001",
+        "activity_id": "ACT-KLK-1",
+        "event_type":  "BOOKING_CONFIRMED",
+        "tenant_id":   TENANT,
+        "occurred_at": "2026-06-01T17:00:00",
+        "travel_date":  "2026-11-05",
+        "end_date":     "2026-11-06",
+        "participants": 4,
+        "activity_price": "1200.00",
+        "klook_commission": "180.00",
+        "net_payout": "1020.00",
+        "currency": "HKD",
+    }
+
+
+def _klook_cancel() -> dict:
+    p = _klook_create()
+    p["event_type"] = "BOOKING_CANCELLED"
+    return p
+
+
+def _klook_amend() -> dict:
+    p = _klook_create()
+    p["event_type"] = "BOOKING_MODIFIED"
+    p["modification"] = {
+        "travel_date":  "2026-11-08",
+        "end_date":     "2026-11-09",
+        "participants": 5,
+        "reason":       "Group size change",
+    }
+    return p
+
+
+def _despegar_create() -> dict:
+    return {
+        "event_id":         "dsp-evt-11000001",
+        "reservation_code": "DSP-AR-11000001",
+        "hotel_id":         "HOTEL-DSP-1",
+        "event_type":       "BOOKING_CONFIRMED",
+        "tenant_id":        TENANT,
+        "occurred_at":      "2026-06-01T18:00:00",
+        "check_in":         "2026-12-15",
+        "check_out":        "2026-12-20",
+        "passenger_count":  2,
+        "total_fare":       "85000.00",
+        "despegar_fee":     "8500.00",
+        "net_amount":       "76500.00",
+        "currency":         "ARS",
+    }
+
+
+def _despegar_cancel() -> dict:
+    p = _despegar_create()
+    p["event_type"] = "BOOKING_CANCELLED"
+    return p
+
+
+def _despegar_amend() -> dict:
+    p = _despegar_create()
+    p["event_type"] = "BOOKING_MODIFIED"
+    p["modification"] = {
+        "check_in":         "2026-12-17",
+        "check_out":        "2026-12-22",
+        "passenger_count":  3,
+        "reason":           "Extended stay",
+    }
+    return p
+
 
 PROVIDERS = [
     ("bookingcom",  _bookingcom_create,  _bookingcom_cancel,  _bookingcom_amend,  "reservation_id"),
@@ -337,6 +442,9 @@ PROVIDERS = [
     ("vrbo",        _vrbo_create,        _vrbo_cancel,        _vrbo_amend,        "reservation_id"),
     ("gvr",         _gvr_create,         _gvr_cancel,         _gvr_amend,         "gvr_booking_id"),
     ("traveloka",   _traveloka_create,   _traveloka_cancel,   _traveloka_amend,   "booking_code"),
+    ("makemytrip",  _makemytrip_create,  _makemytrip_cancel,  _makemytrip_amend,  "booking_id"),
+    ("klook",       _klook_create,       _klook_cancel,       _klook_amend,       "booking_ref"),
+    ("despegar",    _despegar_create,    _despegar_cancel,    _despegar_amend,    "reservation_code"),
 ]
 
 PROVIDER_NAMES = [p[0] for p in PROVIDERS]
