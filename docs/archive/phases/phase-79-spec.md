@@ -1,48 +1,38 @@
 # Phase 79 — Idempotency Monitoring
 
-## Status: CLOSED
+**Status:** Closed
+**Prerequisite:** Phase 78 — OTA Schema Normalization (Dates + Price)
+**Date Closed:** 2026-03-09
 
-## Objective
+## Goal
 
-Add `src/adapters/ota/idempotency_monitor.py` — a pure read-only module that collects idempotency health metrics from existing Supabase tables. No new schema.
+Add a pure read-only idempotency health monitoring module. The system had no structured way to observe duplicate event signals, DLQ idempotency rejections, or ordering buffer depth. This phase provides a single `collect_idempotency_report()` function that returns a frozen snapshot of these metrics, injectable for testing without a live DB.
 
-## Design
+## Invariant
 
-### Schema Discovery
+- `idempotency_monitor.py` never writes to any table
+- Missing or empty tables yield zero-value metrics — never raises
+- `apply_envelope` remains the sole write authority
 
-- `event_log` does NOT have `idempotency_key` or `provider` columns  
-- Idempotency is tracked via `event_id` + `ON CONFLICT` in `apply_envelope`  
-- Monitoring signals available via `ota_dead_letter` (rejection_code) and `ota_ordering_buffer` (status)
+## Design / Files
 
-### `IDEMPOTENCY_REJECTION_CODES` constant
+| File | Change |
+|------|--------|
+| `src/adapters/ota/idempotency_monitor.py` | NEW — `IDEMPOTENCY_REJECTION_CODES`, `IdempotencyReport`, `collect_idempotency_report()` |
+| `tests/test_idempotency_monitor_contract.py` | NEW — 35 contract tests (Groups A–F) |
 
-```
-frozenset: ALREADY_APPLIED, ALREADY_EXISTS, ALREADY_EXISTS_BUSINESS, DUPLICATE
-```
-
-### `IdempotencyReport` (frozen dataclass)
+### `IdempotencyReport` fields
 
 | Field | Source |
 |---|---|
 | `total_dlq_rows` | all rows in `ota_dead_letter` |
-| `pending_dlq_rows` | rows where replay_result not in APPLIED_STATUSES |
-| `already_applied_count` | rows where replay_result in APPLIED_STATUSES |
-| `idempotency_rejection_count` | rows where rejection_code in IDEMPOTENCY_REJECTION_CODES |
+| `pending_dlq_rows` | replay_result not in APPLIED_STATUSES |
+| `already_applied_count` | replay_result in APPLIED_STATUSES |
+| `idempotency_rejection_count` | rejection_code in IDEMPOTENCY_REJECTION_CODES |
 | `ordering_buffer_depth` | `ota_ordering_buffer` rows with status='waiting' |
 | `checked_at` | UTC ISO timestamp |
 
-### Rules
-- Never writes to any table
-- Never raises on missing data (empty table = safe zero defaults)
-- `collect_idempotency_report(client=None)` — client injectable for testing
-
-## Files Added
-
-- `src/adapters/ota/idempotency_monitor.py`
-- `tests/test_idempotency_monitor_contract.py`
-
 ## Result
 
-**633 passed, 2 skipped** (pre-existing SQLite skips)  
-35 contract tests (Groups A–F: structure, DLQ classification, rejection codes, ordering buffer, safe defaults, constants).  
+**633 passed, 2 skipped.**
 No Supabase schema changes. No new migrations.

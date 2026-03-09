@@ -1,14 +1,27 @@
 # Phase 78 — OTA Schema Normalization (Dates + Price)
 
-## Status: CLOSED
+**Status:** Closed
+**Prerequisite:** Phase 77 — OTA Schema Normalization
+**Date Closed:** 2026-03-09
 
-## Objective
+## Goal
 
-Extend `schema_normalizer.py` (Phase 77) with 4 additional canonical keys covering date and price fields across all 5 OTA providers.
+Extend `schema_normalizer.py` (Phase 77) with 4 additional canonical keys covering date and price fields. Provider-specific field names for check-in/check-out dates and price totals are inconsistent across all 5 OTA providers. This phase adds a uniform extraction layer that returns raw strings, preserving all original provider fields.
 
-## Problem
+## Invariant
 
-Provider date and price field names are inconsistent:
+- `schema_normalizer.py` returns only raw `str` values for date/price keys — no type conversion
+- `financial_extractor.py` owns Decimal precision; `schema_normalizer.py` never converts to Decimal
+- All canonical keys remain additive — raw provider fields are never removed
+
+## Design / Files
+
+| File | Change |
+|------|--------|
+| `src/adapters/ota/schema_normalizer.py` | MODIFIED — 4 new helpers + 4 new canonical keys added |
+| `tests/test_schema_normalizer_contract.py` | MODIFIED — Groups F–I appended (26 new tests) |
+
+### Provider field mapping
 
 | Canonical Key | bookingcom | airbnb | expedia | agoda | tripcom |
 |---|---|---|---|---|---|
@@ -17,26 +30,7 @@ Provider date and price field names are inconsistent:
 | `canonical_currency` | `currency` | `currency` | `currency` | `currency` | `currency` |
 | `canonical_total_price` | `total_price` | `booking_subtotal` | `total_amount` | `selling_rate` | `order_amount` |
 
-## Design
-
-- Same rules as Phase 77: additive-only, raw fields preserved, missing → None
-- `canonical_total_price` returns raw `str` — no Decimal conversion (financial_extractor owns precision)
-- `canonical_check_in` / `canonical_check_out` return raw `str` — callers decide format
-- No adapter changes required — all adapters already call `normalize_schema()`
-
-## Files Changed
-
-- `src/adapters/ota/schema_normalizer.py` — 4 new helpers + 4 new keys in `normalize_schema()`
-- `tests/test_schema_normalizer_contract.py` — Groups F–I appended (26 new tests)
-
-## Invariants (Unchanged)
-
-- `apply_envelope` is the only write authority
-- `booking_state` never contains financial data
-- All canonical keys are additive — raw fields are never removed
-
 ## Result
 
-**598 passed, 2 skipped** (pre-existing SQLite skips, unrelated)  
-53 tests in test_schema_normalizer_contract.py (27 Phase 77 + 26 Phase 78)  
-No Supabase schema changes. No migrations.
+**598 passed, 2 skipped.**
+No Supabase schema changes. No new migrations. No adapter changes required.
