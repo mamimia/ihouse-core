@@ -382,10 +382,74 @@ Before designing this, it is worth understanding how the strongest tools in this
 
 **Key insight from competitive analysis:**
 
-No existing PMS has a *lifecycle-aware* financial layer.
-They all treat payouts as date-based projections, not state-machine facts.
-iHouse Core — with its `PaymentLifecycleStatus` — could be the first PMS where financial state is *computed from real facts*, not estimated from expected payout dates.
-That is a genuine product differentiator, not a cosmetic improvement.
+Most PMS tools treat payout status as a *calendar estimate* — they guess when money should arrive
+based on expected payout schedules, not based on actual evidence.
+iHouse Core does something meaningfully different: it models lifecycle state explicitly from
+available provider signals, so its conclusions are *qualified by evidence* rather than assumed.
+
+This does not mean iHouse Core can always claim certainty. Not every OTA provides equally
+complete or equally reliable financial signals. Some providers send explicit payout confirmations;
+others only confirm the booking and leave payout inference to the system. The key differentiator
+is that iHouse Core is transparent about *what it knows and how it knows it*, rather than
+presenting all figures with uniform confidence.
+
+That distinction — being honest about evidence quality — is more trustworthy than false precision.
+It is also more defensible when financial figures are exposed to owners.
+
+---
+
+### Epistemic Model — Three Tiers of Financial Knowledge
+
+*Refined: Phase 97 (user note on evidence-quality separation).*
+
+All financial figures surfaced by iHouse Core must be understood within one of three tiers.
+This model should be explicit at the API level, visible in the UI, and clearly documented for
+owner-facing surfaces where trust is highest.
+
+**Tier A — Provider-Attested Facts**
+- Values the OTA webhook explicitly stated in its payload
+- Examples: `booking_amount`, `mmt_commission`, `klook_commission`, `net_payout`, `currency`
+- Status: `source_confidence = FULL` qualifies here
+- How to label in UI: ✅ *Confirmed by {provider}*
+- Reliability: as reliable as the provider's webhook. Most providers are consistent here.
+
+**Tier B — System-Derived States**
+- Values computed by iHouse Core logic from Tier A inputs
+- Examples: `derived_net = booking_amount - commission` when `net_payout` is absent,
+  `lifecycle_status` produced by `project_payment_lifecycle()`, idempotency keys
+- Status: `source_confidence = ESTIMATED`; lifecycle states with strong evidence
+- How to label in UI: 🔵 *Calculated by iHouse Core from provider data*
+- Reliability: deterministic and auditable, but one step removed from provider confirmation.
+  Should be presented as a system conclusion, not as a provider fact.
+
+**Tier C — Estimated or Incomplete Interpretations**
+- Values inferred when provider data is missing, partial, or ambiguous
+- Examples: `source_confidence = PARTIAL`, `lifecycle_status = UNKNOWN`,
+  lifecycle states inferred from booking type without explicit payout signal
+- How to label in UI: ⚠️ *Estimated — provider data incomplete*
+- Reliability: the system's best inference. Must be flagged clearly. Never shown as confirmed.
+
+**Application to lifecycle states:**
+
+| Lifecycle Status | Typical Tier | Notes |
+|-----------------|-------------|-------|
+| `GUEST_PAID` | B or A | A if provider confirms payment; B if inferred from booking_confirmed |
+| `OTA_COLLECTING` | B | Inferred from OTA-type booking; rarely provider-attested |
+| `PAYOUT_PENDING` | B | Lifecycle logic conclusion, not provider confirmation |
+| `PAYOUT_RELEASED` | B → A | A only if provider sends explicit payout event; B otherwise |
+| `RECONCILIATION_PENDING` | B | System-detected gap; show as ⚠️ |
+| `OWNER_NET_PENDING` | C | Downstream of multiple inferences; label clearly |
+| `UNKNOWN` | C | Always surfaced as ⚠️ with explanation |
+
+**Rule for UI:**
+Tier A figures can be shown without qualification.
+Tier B figures must always show the derivation basis (tooltip or badge).
+Tier C figures must always show a warning and never appear in totals without explicit user acknowledgement.
+
+**Rule for owner statements:**
+Owner statements must show the Tier of each financial figure.
+A statement where all figures are Tier A or B is ready to send.
+A statement containing Tier C figures must be flagged for review before sending.
 
 ---
 
@@ -399,9 +463,9 @@ The financial UI should be structured as **4 rings**:
 
 ```
 Ring 1 — Financial API Layer       (read-only aggregation endpoints)
-Ring 2 — Financial State Surface   (per-booking lifecycle status, real-time)
+Ring 2 — Financial State Surface   (per-booking lifecycle status + epistemic tier)
 Ring 3 — Portfolio Surfaces        (across bookings, properties, providers)
-Ring 4 — Owner / External Surfaces (simplified, role-scoped views)
+Ring 4 — Owner / External Surfaces (simplified, role-scoped, tier-filtered views)
 ```
 
 Rings should be built in order. Ring 2 before Ring 3. Ring 3 before Ring 4.
