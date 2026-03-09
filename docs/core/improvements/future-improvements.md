@@ -761,3 +761,82 @@ As iHouse Core grows more complex, the UI will eventually need a structured, lay
 
 > Full detail: `docs/future/contextual-help-layer.md`
 
+---
+
+## API First Outbound Channel Sync
+
+- status: open
+- discovered_in: Phase 131 (user requirement, 2026-03-09)
+- source_context: product requirement — close availability on all connected channels immediately after inbound booking accepted
+- priority: high
+- full_spec: `docs/core/planning/outbound-sync-layer.md`
+
+### Summary
+
+iHouse Core is inbound-complete but outbound-blind.
+
+It knows the booking truth internally. It cannot yet propagate that truth to other
+connected channels for the same property. Without outbound sync, overbooking is not
+a risk we manage — it is a risk we accept. That is not acceptable for a serious
+multi-channel property operations platform.
+
+### Core Requirement
+
+When a booking is accepted from any source:
+
+1. Canonical ingest succeeds — `apply_envelope` returns APPLIED
+2. Internal availability becomes occupied in `booking_state`
+3. Outbound sync trigger fires (best-effort, non-blocking — identical pattern to `task_writer.py`)
+4. Mapped connected channels for the same property receive availability lock updates
+5. Success / failure / retry state is tracked in `channel_sync_log`
+6. UI surfaces show sync health and exceptions
+
+### Architecture Pattern
+
+Wired into `service.py` after BOOKING_CREATED APPLIED — same hook point as
+`task_writer` and `financial_writer`. Non-blocking. Never delays the canonical response.
+
+Three new tables required:
+
+- `property_channel_map` — maps `property_id` to external listing IDs per provider
+- `channel_sync_log` — tracks every outbound sync attempt with retry state
+- `provider_capability_registry` — declarative write capabilities per provider
+
+### Provider Capability Tiers
+
+| Tier | Providers | Write Path |
+|------|-----------|-----------|
+| **Tier A** | Booking.com, Expedia, Vrbo, Agoda, Airbnb | API-first (partner enrollment required) |
+| **Tier B** | Google Vacation Rentals, Hotelbeds, MakeMyTrip | Partner/feed-gated |
+| **Tier C** | Trip.com, Traveloka, Despegar | Verify write path before classifying |
+| **Tier D** | Klook | Not a villa inventory target — disabled |
+| **Fallback** | Any channel without write API | iCal (degraded mode, clearly surfaced in product) |
+
+### iCal Policy (Locked)
+
+iCal is **degraded mode only**. It is never the primary strategy.
+
+If a channel is iCal-only, the product must surface this as lower-confidence sync.
+Operators must be able to see which channels are protected by real-time API lock
+and which are operating in fallback mode.
+
+### Canonical Safety Rules
+
+1. Outbound sync is always best-effort and non-blocking.
+2. Outbound sync never writes to `booking_state` or `event_log`.
+3. `apply_envelope` remains the only write authority for canonical booking state.
+4. Every outbound attempt is auditable — no silent failures.
+5. The source channel is never sent an outbound lock (it already knows).
+
+### Phase Entry Points
+
+| Stage | Phase Window | What |
+|-------|-------------|------|
+| Foundation | 135–137 | `property_channel_map`, `provider_capability_registry`, `channel_sync_log`, trigger hook |
+| First writes | 139–143 | Booking.com, Expedia, Vrbo, Agoda, Airbnb writers |
+| Fallback layer | 144 | iCal fallback writer |
+| Health + retry | 145–148 | Retry engine, sync health dashboard, reconciliation tie-in |
+| Broader coverage | 151–154 | Tier B + Tier C provider verification and writers |
+
+> Full detail: `docs/core/planning/outbound-sync-layer.md`
+
