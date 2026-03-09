@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 113 -- Task Query API (closed)
+Phase 114 -- Task Persistence Layer: Supabase `tasks` Table DDL (closed)
 
 ## Last Closed Phase
 
-Phase 113 -- Task Query API
+Phase 114 -- Task Persistence Layer: Supabase `tasks` Table DDL
 
 ## Current Objective
 
-Phase 114 -- next phase. See `docs/core/roadmap.md`.
+Phase 115 -- Task Writer: persist `task_automator` output to DB after booking events. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 114 -- next phase. See `docs/core/roadmap.md`.
 
 ## Tests
 
-2374 passing (2 pre-existing SQLite skips, unrelated)
+2630 passing (2 pre-existing SQLite skips, unrelated)

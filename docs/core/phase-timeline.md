@@ -2830,3 +2830,20 @@ No DB schema changes. PATCH writes only to `tasks` table.
 
 
 
+
+## Phase 114 — Task Persistence Layer: Supabase `tasks` Table DDL (Closed)
+
+**Date:** 2026-03-09
+
+Goal: Create the `tasks` Supabase table so `task_router.py` (Phase 113) has a real persistence backend.
+
+Completed:
+- Migration `20260309180000_phase114_tasks_table.sql` applied via `supabase db push`
+- `tasks` table created with 18 columns matching `task_model.py` + `task_router.py` requirements
+- 3 RLS policies: service_role full bypass + authenticated tenant-isolated read + authenticated tenant-isolated update
+- 3 composite indexes: (tenant_id, status), (tenant_id, property_id), (tenant_id, due_date)
+- E2E verified on live Supabase: INSERT / SELECT / UPDATE / DELETE all confirmed working
+
+Invariant enforced: PATCH /tasks/{id}/status writes ONLY to `tasks`. Never to booking_state, event_log, or booking_financial_facts.
+
+Result: 2630 tests passing (no change — infra-only phase). tasks table live in production Supabase.

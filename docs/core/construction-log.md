@@ -1982,3 +1982,22 @@ PATCH /tasks/{id}/status writes only to `tasks` table. Never touches booking_sta
 
 
 
+
+## Phase 114 — Task Persistence Layer: Supabase `tasks` Table DDL (Closed)
+
+New files:
+  supabase/migrations/20260309180000_phase114_tasks_table.sql — CREATE TABLE tasks (18 columns), 3 RLS policies, 3 composite indexes
+  docs/archive/phases/phase-114-spec.md — phase spec
+
+Table columns: task_id (TEXT PK, deterministic sha256[:16]), tenant_id, kind, status, priority, urgency, worker_role, ack_sla_minutes, booking_id, property_id, due_date, title, description, created_at (TIMESTAMPTZ DEFAULT now()), updated_at (TIMESTAMPTZ DEFAULT now()), notes (JSONB DEFAULT '[]'), canceled_reason
+
+RLS:
+  tasks_service_role_all — service role full bypass
+  tasks_tenant_read — authenticated SELECT, JWT sub claim isolation
+  tasks_tenant_update — authenticated UPDATE, JWT sub claim isolation
+
+Indexes: ix_tasks_tenant_status, ix_tasks_tenant_property, ix_tasks_tenant_due_date
+
+Result: Migration applied via `supabase db push`. E2E verified: INSERT/SELECT/UPDATE/DELETE all confirmed on live Supabase.
+2630 tests still passing — no Python source changes, infra-only phase.
+Invariant: PATCH /tasks/{id}/status writes ONLY to `tasks`. Never touches booking_state, event_log, or booking_financial_facts.

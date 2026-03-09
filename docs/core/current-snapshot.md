@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 113 -- Task Query API (closed)
+Phase 114 -- Task Persistence Layer: Supabase `tasks` Table DDL (closed)
 
 ## Last Closed Phase
-Phase 113 -- Task Query API
+Phase 114 -- Task Persistence Layer: Supabase `tasks` Table DDL
 
 ## System Status
 
@@ -70,6 +70,7 @@ apply_envelope is the only authority for canonical state mutations.
 | 111 | Task System Foundation -- src/tasks/task_model.py: TaskKind (5), TaskStatus (5), TaskPriority (4), WorkerRole (5) enums; mapping tables (urgency, ACK SLA minutes, default roles/priorities, valid transitions); Task dataclass with .build() factory; CRITICAL ACK SLA = 5 min locked; test_task_model_contract.py, 68 tests | ✅ |
 | 112 | Task Automation from Booking Events -- task_automator.py: tasks_for_booking_created (CHECKIN_PREP+CLEANING), actions_for_booking_canceled (TaskCancelAction), actions_for_booking_amended (TaskRescheduleAction); pure functions, zero DB; test_task_automator_contract.py, 48 tests | ✅ |
 | 113 | Task Query API -- task_router.py: GET /tasks (filters: property_id/status/kind/due_date/limit 1-100), GET /tasks/{task_id} (404 tenant-isolated), PATCH /tasks/{task_id}/status (VALID_TASK_TRANSITIONS enforced, 422 INVALID_TRANSITION); error_models.py +NOT_FOUND +INVALID_TRANSITION; main.py registered; 50 tests | ✅ |
+| 114 | Task Persistence Layer -- Supabase `tasks` table DDL: 18 columns, 3 RLS policies (service_role all / authenticated read / authenticated update), 3 composite indexes (tenant+status, tenant+property_id, tenant+due_date); migration applied + E2E verified (INSERT/SELECT/UPDATE/DELETE); 0 new tests (infra phase) | ✅ |
 
 **2630 tests pass** (2 pre-existing SQLite skips, 1 intentional parametrize skip, unrelated)
 
@@ -180,7 +181,7 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 113** *(See `docs/core/roadmap.md`)*
+**Phase 115** — Task Writer: persist `task_automator` output to DB after booking events *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
