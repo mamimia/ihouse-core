@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 138 — Outbound Executor (closed)
+Phase 139 — Real Outbound Adapters (closed)
 
 ## Last Closed Phase
-Phase 138 — Outbound Executor: dry-run dispatch via POST /internal/sync/execute
+Phase 139 — Real Outbound Adapters: provider-specific HTTP + iCal adapters wired into executor
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -83,8 +83,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 124 | LINE Escalation Channel -- channels/line_escalation.py: pure module: should_escalate (ACK_SLA_BREACH only), build_line_message, format_line_text, is_priority_eligible, LineEscalationRequest/LineDispatchResult dataclasses; api/line_webhook_router.py: POST /line/webhook: PENDING→ACKNOWLEDGED on LINE ack, idempotent for ACKNOWLEDGED, 409 for terminal; HMAC-SHA256 sig validation (dev=skip); 57 tests | ✅ |
 | 125 | Hotelbeds Adapter (Tier 3 B2B Bedbank) -- hotelbeds.py: B2B semantics (property receives net_rate directly, markup_amount=Hotelbeds margin); voucher_ref normalization (HB- prefix strip); financial_extractor: FULL/ESTIMATED/PARTIAL confidence; amendment_extractor: amendment block (check_in/check_out/room_count guest_count fallback); registry registered; 42 tests | ✅ |
 | 131 | DLQ Inspector -- dlq_router.py: GET /admin/dlq(source/status/limit filters; status derived pending/applied/error from replay_result; payload_preview 200chars; list excludes raw_payload) + GET /admin/dlq/{envelope_id}(full raw_payload); reads ota_dead_letter global; JWT required; 44 tests | ✅ |
+| 139 | Real Outbound Adapters — AirbnbAdapter (api_first POST /v2/calendar_operations), BookingComAdapter (api_first), ExpediaVrboAdapter (api_first, shared API key), ICalPushAdapter (ical_fallback; Hotelbeds+TripAdvisor+Despegar); build_adapter_registry(); outbound_executor.py wired; dry_run on missing credentials / IHOUSE_DRY_RUN=true; 40 new contract tests | ✅ |
 
-**3317 tests pass** (2 pre-existing SQLite guard failures, unrelated)
+**3573 tests pass** (2 pre-existing SQLite guard failures, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -193,8 +194,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 121** — Owner Statement Generator (Ring 4) *(See `docs/core/roadmap.md`)*
+**Phase 140** — Inject real booking dates (check_in / check_out) into iCal VCALENDAR payload *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
-**2860 passing** (2 pre-existing SQLite skips, unrelated)
+**3573 passing** (2 pre-existing SQLite skips, unrelated)

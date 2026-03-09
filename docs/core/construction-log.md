@@ -2100,3 +2100,27 @@ GET /admin/dlq?source=&status=&limit= — list ota_dead_letter entries with filt
 New: src/api/dlq_router.py, tests/test_dlq_router_contract.py (44 tests)
 Result: 3317 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
 
+## Phase 139 — Real Outbound Adapters (Closed)
+
+Replaced Phase 138 dry-run stub adapters with provider-specific implementations wired into outbound_executor.py via a new adapter registry.
+
+Tier A — api_first adapters:
+- AirbnbAdapter: POST /v2/calendar_operations, AIRBNB_API_KEY + AIRBNB_API_BASE
+- BookingComAdapter: POST /v1/hotels/availability-blocks, BOOKINGCOM_API_KEY + BOOKINGCOM_API_BASE
+- ExpediaVrboAdapter: POST /v1/properties/{id}/availability, shared EXPEDIA_API_KEY (Expedia + VRBO)
+
+Tier B — ical_fallback adapters (ICalPushAdapter):
+- hotelbeds: PUT {HOTELBEDS_ICAL_URL}/{external_id}.ics
+- tripadvisor: PUT {TRIPADVISOR_ICAL_URL}/{external_id}.ics
+- despegar: PUT {DESPEGAR_ICAL_URL}/{external_id}.ics
+
+Dry-run contract (all adapters): absent credentials → dry_run; IHOUSE_DRY_RUN=true → dry_run; 2xx → ok; non-2xx → failed; network exc → failed (no re-raise).
+
+Registry: build_adapter_registry() → {provider: adapter} map for 7 providers.
+
+New: src/adapters/outbound/__init__.py, airbnb_adapter.py, bookingcom_adapter.py, expedia_vrbo_adapter.py, ical_push_adapter.py, registry.py
+New: tests/test_outbound_adapters_contract.py (40 tests)
+Modified: src/services/outbound_executor.py (real registry dispatch; Phase 138 stubs kept as fallback)
+Commit: fb6de78
+Result: 3573 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
+

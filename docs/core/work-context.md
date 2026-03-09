@@ -2,16 +2,15 @@
 
 ## Current Active Phase
 
-Phase 138 — Outbound Executor (closed)
+Phase 139 — Real Outbound Adapters (closed)
 
 ## Last Closed Phase
 
-Phase 138 — Outbound Executor: dry-run dispatch via POST /internal/sync/execute
+Phase 139 — Real Outbound Adapters: provider-specific HTTP + iCal adapters; 40 contract tests
 
 ## Current Objective
 
-**Phase 139 — (next — see future-improvements.md)**
-See `docs/core/improvements/future-improvements.md`.
+**Phase 140 — inject real check_in/check_out dates into iCal VCALENDAR payload**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,6 +36,7 @@ See `docs/core/improvements/future-improvements.md`.
 | 136 | Provider Capability Registry | `migrations/phase_136_provider_capability_registry.sql`, `src/api/capability_registry_router.py`, `tests/test_capability_registry_contract.py` |
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
+| 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)

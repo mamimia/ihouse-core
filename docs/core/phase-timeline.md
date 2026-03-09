@@ -3040,3 +3040,30 @@ Reads ota_dead_letter (global, not tenant-scoped). JWT required. Zero write-path
 
 Result: 3317 tests pass. No DB schema changes.
 
+## Phase 139 — Real Outbound Adapters (Closed)
+
+**Date:** 2026-03-10
+**Commit:** fb6de78
+
+Goal: Replace Phase 138 dry-run stub adapters with real, provider-specific outbound adapters wired into the executor via a registry.
+
+Completed:
+
+- `src/adapters/outbound/__init__.py` — NEW — `OutboundAdapter` ABC + `AdapterResult` dataclass
+- `src/adapters/outbound/airbnb_adapter.py` — NEW — Tier A api_first; POST /v2/calendar_operations; AIRBNB_API_KEY
+- `src/adapters/outbound/bookingcom_adapter.py` — NEW — Tier A api_first; POST /v1/hotels/availability-blocks; BOOKINGCOM_API_KEY
+- `src/adapters/outbound/expedia_vrbo_adapter.py` — NEW — Tier A api_first; shared EXPEDIA_API_KEY for both providers
+- `src/adapters/outbound/ical_push_adapter.py` — NEW — Tier B ical_fallback; PUT *.ics; hotelbeds / tripadvisor / despegar
+- `src/adapters/outbound/registry.py` — NEW — `build_adapter_registry()` maps 7 provider names → adapter instances
+- `src/services/outbound_executor.py` — MODIFIED — upgraded to use real registry; Phase 138 stubs kept as fallback for unknown providers
+- `tests/test_outbound_adapters_contract.py` — NEW (40 contract tests)
+
+Adapter contract (all adapters enforce identically):
+- No credentials → dry_run
+- IHOUSE_DRY_RUN=true → dry_run
+- HTTP 2xx → ok, http_status set
+- HTTP non-2xx → failed, http_status set
+- Network exception → failed, no re-raise
+
+Result: 3573 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
+
