@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 103 -- Payment Lifecycle Query API (closed)
+Phase 104 -- Amendment History Query API (closed)
 
 ## Last Closed Phase
 
-Phase 103 -- Payment Lifecycle Query API
+Phase 104 -- Amendment History Query API
 
 ## Current Objective
 
-Phase 104 -- See `docs/core/roadmap.md`.
+Phase 105 -- See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 104 -- See `docs/core/roadmap.md`.
 
 ## Tests
 
-2285 passing (2 pre-existing SQLite skips, unrelated)
+2305 passing (2 pre-existing SQLite skips, unrelated)

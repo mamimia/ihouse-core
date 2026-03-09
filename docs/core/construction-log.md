@@ -1823,3 +1823,20 @@ Modified:
 
 Result: 2285 tests pass, 2 skipped.
 No DB schema changes. No migrations. No booking_state reads.
+
+---
+
+### Phase 104 closure — 2026-03-09
+
+Amendment History Query API.
+
+New files:
+  src/api/amendments_router.py — GET /amendments/{booking_id}
+  tests/test_amendments_router_contract.py — 20 tests, Groups A-F
+
+Modified:
+  src/main.py — amendments_router registered + tag added
+
+Data source: booking_financial_facts WHERE event_kind='BOOKING_AMENDED', ORDER BY recorded_at ASC.
+Result: 2305 tests pass, 2 skipped.
+No DB schema changes. No migrations. No booking_state reads.

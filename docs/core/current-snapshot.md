@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 103 -- Payment Lifecycle Query API (closed)
+Phase 104 -- Amendment History Query API (closed)
 
 ## Last Closed Phase
-Phase 103 -- Payment Lifecycle Query API
+Phase 104 -- Amendment History Query API
 
 ## System Status
 
@@ -60,8 +60,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 101 | Owner Statement Query API -- owner_statement_router.py, GET /owner-statement/{property_id}?month=YYYY-MM, JWT auth, PROPERTY_NOT_FOUND/INVALID_MONTH error codes; error_models.py + main.py updated; 28 tests | ✅ |
 | 102 | E2E Integration Harness Extension -- test_e2e_integration_harness.py expanded 8→11 (MakeMyTrip+Klook+Despegar payload factories); payload_validator.py +booking_id; harness: 375 tests | ✅ |
 | 103 | Payment Lifecycle Query API -- payment_status_router.py, GET /payment-status/{booking_id}, JWT auth, BOOKING_NOT_FOUND 404, explain_payment_lifecycle (Phase 93), rule_applied + reason; main.py + tag; 24 tests | ✅ |
+| 104 | Amendment History Query API -- amendments_router.py, GET /amendments/{booking_id}, booking_financial_facts WHERE event_kind='BOOKING_AMENDED', ordered ASC, 200+empty for known unamended booking, 404 for unknown; main.py + tag; 20 tests | ✅ |
 
-**2285 tests pass** (2 pre-existing SQLite skips, unrelated)
+**2305 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -170,8 +171,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 104** *(See `docs/core/roadmap.md`)*
+**Phase 105** *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
-**2285 passing** (2 pre-existing SQLite skips, unrelated)
+**2305 passing** (2 pre-existing SQLite skips, unrelated)

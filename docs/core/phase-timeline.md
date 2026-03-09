@@ -2518,3 +2518,32 @@ explain_payment_lifecycle() is pure, no IO.
 
 **2285 tests pass, 2 skipped.**
 No Supabase schema changes. No migrations. No booking_state reads or writes.
+
+---
+
+## Phase 104 — Closed
+
+**Phase 104 — Amendment History Query API**
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Expose amendment financial history via HTTP. New GET /amendments/{booking_id} endpoint. Reads booking_financial_facts filtered by event_kind='BOOKING_AMENDED' (ORDER BY recorded_at ASC). Returns a chronological list of financial snapshots from each amendment event. Distinguishes between unknown booking (404) and known booking with no amendments (200 + empty list).
+
+### Invariant
+
+Never reads booking_state. Tenant isolation at DB level (.eq("tenant_id", tenant_id)).
+Amendment rows exist in booking_financial_facts — same table, event_kind discriminator.
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `src/api/amendments_router.py` | NEW — GET /amendments/{booking_id}; JWT auth; 404 for unknown booking; 200+empty for known unamended; 500 on DB error |
+| `src/main.py` | MODIFIED — amendments_router registered; amendments tag added |
+| `tests/test_amendments_router_contract.py` | NEW — 20 tests, Groups A–F |
+
+### Result
+
+**2305 tests pass, 2 skipped.**
+No Supabase schema changes. No migrations. No booking_state writes or reads.
