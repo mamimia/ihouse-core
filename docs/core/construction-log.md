@@ -2214,6 +2214,18 @@ Changes:
 Result: 3703 tests pass (3673 + 30 new). No DB schema changes. 2 pre-existing SQLite failures (unrelated, unchanged).
 
 
+## Phase 146 — Sync Health Dashboard (Closed)
+
+Per-provider outbound sync reliability metrics. No new schema.
+
+Changes:
+- src/api/outbound_log_router.py [MODIFIED]: `_compute_health(db, tenant_id)` — in-memory aggregation of newest 2000 rows; per-provider ok/failed/dry_run/skipped + last_sync_at + failure_rate_7d (None if no ok+failed in window); malformed timestamps skipped; returns [] on DB error; alphabetical sort. `GET /admin/outbound-health` endpoint: tenant-scoped; `{tenant_id, provider_count, checked_at, providers[]}`.
+- tests/test_outbound_health_contract.py [NEW]: 33 contract tests Groups A-N
+
+Result: 3736 tests pass (3703 + 33 new). No DB schema changes. No main.py change. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+
+
 
 
 

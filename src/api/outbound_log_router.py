@@ -1,5 +1,6 @@
 """
 Phase 145 — Outbound Sync Log Inspector API
+Phase 146 — Sync Health Dashboard
 
 Provides read-only visibility into all outbound adapter calls via the
 `outbound_sync_log` table written by Phase 144.
@@ -15,6 +16,11 @@ Endpoints:
       Returns: all sync log rows for a specific booking (this tenant only).
       404 if no rows found for this booking.
 
+  GET /admin/outbound-health       (Phase 146)
+      Returns per-provider aggregate: ok/failed/dry_run/skipped counts,
+      last_sync_at, failure_rate_7d. Only providers that have at least
+      one row in outbound_sync_log for this tenant are included.
+
 Invariant:
   These endpoints NEVER write to any table.
   They read ONLY from `outbound_sync_log`.
@@ -23,7 +29,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -227,4 +234,159 @@ async def get_outbound_log_for_booking(
             "GET /admin/outbound-log/%s error for tenant=%s: %s",
             booking_id, tenant_id, exc,
         )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# _compute_health — Phase 146 helper
+# ---------------------------------------------------------------------------
+
+def _compute_health(db: Any, tenant_id: str) -> List[Dict[str, Any]]:
+    """
+    Compute per-provider sync health for this tenant.
+
+    Fetches all outbound_sync_log rows for this tenant (newest 2000, enough
+    for any reasonable operator view), then aggregates in-memory:
+      - ok_count, failed_count, dry_run_count, skipped_count
+      - last_sync_at   — latest synced_at across all statuses
+      - failure_rate_7d — failed / (ok + failed) in last 7 days (None if no data)
+
+    Only providers that have at least one row are included in the result.
+    Never raises — returns [] on error.
+    """
+    try:
+        result = (
+            db.table("outbound_sync_log")
+            .select("provider, status, synced_at")
+            .eq("tenant_id", tenant_id)
+            .order("synced_at", desc=True)
+            .limit(2000)
+            .execute()
+        )
+        rows = result.data or []
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("_compute_health: DB error for tenant=%s: %s", tenant_id, exc)
+        return []
+
+    if not rows:
+        return []
+
+    now_utc   = datetime.now(tz=timezone.utc)
+    cutoff_7d = now_utc - timedelta(days=7)
+
+    # Aggregate per provider
+    by_provider: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        prov     = row.get("provider") or "unknown"
+        status   = row.get("status")   or "unknown"
+        synced   = row.get("synced_at")
+
+        if prov not in by_provider:
+            by_provider[prov] = {
+                "provider":       prov,
+                "ok_count":       0,
+                "failed_count":   0,
+                "dry_run_count":  0,
+                "skipped_count":  0,
+                "last_sync_at":   None,
+                "_ok_7d":         0,
+                "_failed_7d":     0,
+            }
+
+        agg = by_provider[prov]
+
+        # Status counters (all time)
+        if status == "ok":       agg["ok_count"]      += 1
+        elif status == "failed": agg["failed_count"]  += 1
+        elif status == "dry_run": agg["dry_run_count"] += 1
+        elif status == "skipped": agg["skipped_count"] += 1
+
+        # last_sync_at (newest-first from DB, so first row per provider wins
+        # but we keep it safe by comparing)
+        if agg["last_sync_at"] is None or (synced and synced > agg["last_sync_at"]):
+            agg["last_sync_at"] = synced
+
+        # 7-day window counters
+        if synced:
+            try:
+                synced_dt = datetime.fromisoformat(synced.replace("Z", "+00:00"))
+                if synced_dt >= cutoff_7d:
+                    if status == "ok":     agg["_ok_7d"]     += 1
+                    elif status == "failed": agg["_failed_7d"] += 1
+            except (ValueError, AttributeError):
+                pass  # malformed timestamp — skip
+
+    # Build final list
+    result_list = []
+    for agg in by_provider.values():
+        ok_7d     = agg.pop("_ok_7d")
+        failed_7d = agg.pop("_failed_7d")
+        denom     = ok_7d + failed_7d
+        agg["failure_rate_7d"] = round(failed_7d / denom, 4) if denom > 0 else None
+        result_list.append(agg)
+
+    # Sort alphabetically by provider for stable output
+    result_list.sort(key=lambda r: r["provider"])
+    return result_list
+
+
+# ---------------------------------------------------------------------------
+# GET /admin/outbound-health  (Phase 146)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/admin/outbound-health",
+    tags=["admin", "outbound"],
+    summary="Per-provider outbound sync health dashboard",
+    responses={
+        200: {"description": "Per-provider sync health stats for this tenant"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_outbound_health(
+    tenant_id: str           = Depends(jwt_auth),
+    client:    Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Per-provider outbound sync health aggregate for the authenticated tenant.
+
+    **Authentication:** Bearer JWT required. `sub` claim used as `tenant_id`.
+
+    **Tenant isolation:** Only this tenant's sync attempts are included.
+
+    **Response fields per provider:**
+    - `provider`        — OTA provider name (e.g. `airbnb`, `bookingcom`)
+    - `ok_count`        — total successful syncs (all time)
+    - `failed_count`    — total failed syncs (all time)
+    - `dry_run_count`   — total dry-run syncs (all time)
+    - `skipped_count`   — total skipped actions (all time)
+    - `last_sync_at`    — ISO timestamp of most recent sync attempt
+    - `failure_rate_7d` — failed / (ok + failed) in last 7 days, null if no data
+
+    **Ordering:** Alphabetical by provider name.
+
+    **Source:** `outbound_sync_log` — read-only.
+
+    Only providers with at least one row in `outbound_sync_log` are returned.
+    An empty `providers` list means no syncs have been logged yet.
+    """
+    try:
+        db       = client if client is not None else _get_supabase_client()
+        providers = _compute_health(db, tenant_id)
+
+        checked_at = datetime.now(tz=timezone.utc).isoformat()
+        return JSONResponse(
+            status_code=200,
+            content={
+                "tenant_id":   tenant_id,
+                "provider_count": len(providers),
+                "checked_at": checked_at,
+                "providers":  providers,
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("GET /admin/outbound-health error for tenant=%s: %s", tenant_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

@@ -3206,6 +3206,28 @@ Design decisions:
 Result: 3703 tests pass (3673 + 30 new). No DB schema changes (reads Phase 144 table). 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
 
+## Phase 146 — Sync Health Dashboard (Closed)
+
+Goal: Aggregate view of outbound sync health per OTA provider, showing at-a-glance
+reliability metrics for operators. No new DB schema — reads Phase 144 `outbound_sync_log` table.
+
+Completed:
+
+- `src/api/outbound_log_router.py` — MODIFIED — Added `_compute_health(db, tenant_id)` helper + `GET /admin/outbound-health` endpoint.
+  - `_compute_health()`: fetches newest 2000 rows via `.limit(2000)`; in-memory aggregation by provider; computes ok/failed/dry_run/skipped counts (all time); last_sync_at (newest synced_at per provider); `failure_rate_7d` = `failed_7d / (ok_7d + failed_7d)` with `None` when denominator is 0; malformed ISO timestamps are silently skipped; never raises (returns `[]` on DB error). Results sorted alphabetically by provider.
+  - `GET /admin/outbound-health`: tenant-scoped; returns `{tenant_id, provider_count, checked_at, providers[]}`. Only providers that have at least one row included.
+- `tests/test_outbound_health_contract.py` — NEW — 33 contract tests Groups A–N: shape (A), empty (B), single-provider counters (C), multi-provider isolation (D), failure_rate_7d correct ratio (E), rate None when data outside 7d window (F), rate None when only dry_run/skipped (G), last_sync_at picks newest (H), alphabetical order (I), malformed timestamps no crash (J), DB error best-effort (K), tenant isolation via query (L), route smoke (M), `_compute_health` unit tests direct (N).
+
+Design decisions:
+- Chose in-memory aggregation over SQL GROUP BY to avoid Supabase PostgREST aggregate limitations and keep implementation simple.
+- `failure_rate_7d` uses only `ok` + `failed` in the denominator — `dry_run` and `skipped` are not failure-relevant for rate calculation.
+- `failure_rate_7d = None` (not 0.0) when there is no ok+failed data in the 7-day window.
+- Module docstring updated to add Phase 146 and the new endpoint.
+
+Result: 3736 tests pass (3703 + 33 new). No DB schema changes. No `main.py` change (endpoint added to existing router). 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+
+
 
 
 
