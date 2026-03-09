@@ -2431,3 +2431,33 @@ Canceled bookings are included in entries for full auditability but excluded fro
 
 **2134 tests pass, 2 skipped.**
 No Supabase schema changes. No new migrations. No booking_state writes.
+
+---
+
+## Phase 101 — Closed
+
+**Phase 101 — Owner Statement Query API**
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Expose build_owner_statement() (Phase 100) via HTTP. New GET /owner-statement/{property_id}?month=YYYY-MM endpoint. Reads from booking_financial_facts (same source as financial_router.py), assembles BookingFinancialFacts, calls build_owner_statement() in-memory, returns serialized OwnerStatementSummary. Added PROPERTY_NOT_FOUND and INVALID_MONTH error codes to error_models.py.
+
+### Invariant
+
+Tenant isolation: .eq("tenant_id", tenant_id) at DB query level — same as all other API routers.
+No booking_state reads. No writes of any kind.
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `src/api/owner_statement_router.py` | NEW — GET /owner-statement/{property_id}?month=YYYY-MM; JWT auth; INVALID_MONTH 400; PROPERTY_NOT_FOUND 404; 500 on DB error |
+| `src/api/error_models.py` | MODIFIED — Added PROPERTY_NOT_FOUND and INVALID_MONTH error codes |
+| `src/main.py` | MODIFIED — owner_statement_router registered; owner-statement tag added |
+| `tests/test_owner_statement_router_contract.py` | NEW — 28 tests, Groups A–E |
+
+### Result
+
+**2162 tests pass, 2 skipped.**
+No Supabase schema changes. No new migrations. No booking_state writes.

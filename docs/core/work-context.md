@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 100 -- Owner Statement Foundation (closed)
+Phase 101 -- Owner Statement Query API (closed)
 
 ## Last Closed Phase
 
-Phase 100 -- Owner Statement Foundation
+Phase 101 -- Owner Statement Query API
 
 ## Current Objective
 
-Phase 101 -- See `docs/core/roadmap.md`.
+Phase 102 -- See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 101 -- See `docs/core/roadmap.md`.
 
 ## Tests
 
-2134 passing (2 pre-existing SQLite skips, unrelated)
+2162 passing (2 pre-existing SQLite skips, unrelated)

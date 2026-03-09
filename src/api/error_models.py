@@ -32,11 +32,13 @@ from fastapi.responses import JSONResponse
 # ---------------------------------------------------------------------------
 
 class ErrorCode:
-    BOOKING_NOT_FOUND = "BOOKING_NOT_FOUND"
-    INTERNAL_ERROR    = "INTERNAL_ERROR"
-    AUTH_FAILED       = "AUTH_FAILED"
-    RATE_LIMITED      = "RATE_LIMITED"
-    VALIDATION_ERROR  = "VALIDATION_ERROR"
+    BOOKING_NOT_FOUND  = "BOOKING_NOT_FOUND"
+    PROPERTY_NOT_FOUND = "PROPERTY_NOT_FOUND"
+    INVALID_MONTH      = "INVALID_MONTH"
+    INTERNAL_ERROR     = "INTERNAL_ERROR"
+    AUTH_FAILED        = "AUTH_FAILED"
+    RATE_LIMITED       = "RATE_LIMITED"
+    VALIDATION_ERROR   = "VALIDATION_ERROR"
 
 
 # ---------------------------------------------------------------------------
@@ -44,11 +46,13 @@ class ErrorCode:
 # ---------------------------------------------------------------------------
 
 _DEFAULT_MESSAGES: Dict[str, str] = {
-    ErrorCode.BOOKING_NOT_FOUND: "Booking not found for this tenant",
-    ErrorCode.INTERNAL_ERROR:    "An unexpected internal error occurred",
-    ErrorCode.AUTH_FAILED:       "Authentication failed — missing or invalid Bearer token",
-    ErrorCode.RATE_LIMITED:      "Rate limit exceeded — try again later",
-    ErrorCode.VALIDATION_ERROR:  "Request payload validation failed",
+    ErrorCode.BOOKING_NOT_FOUND:  "Booking not found for this tenant",
+    ErrorCode.PROPERTY_NOT_FOUND: "No financial records found for this property in the requested month",
+    ErrorCode.INVALID_MONTH:      "The 'month' query parameter is required and must be in YYYY-MM format",
+    ErrorCode.INTERNAL_ERROR:     "An unexpected internal error occurred",
+    ErrorCode.AUTH_FAILED:        "Authentication failed — missing or invalid Bearer token",
+    ErrorCode.RATE_LIMITED:       "Rate limit exceeded — try again later",
+    ErrorCode.VALIDATION_ERROR:   "Request payload validation failed",
 }
 
 

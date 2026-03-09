@@ -1777,3 +1777,20 @@ Aggregation rules locked:
 
 Result: 2134 tests pass, 2 skipped.
 No adapter changes. No Supabase changes. No migrations.
+
+---
+
+### Phase 101 closure — 2026-03-09
+
+Owner Statement Query API.
+
+New files:
+  src/api/owner_statement_router.py — GET /owner-statement/{property_id}?month=YYYY-MM
+  tests/test_owner_statement_router_contract.py — 28 tests, Groups A-E
+
+Modified:
+  src/api/error_models.py — PROPERTY_NOT_FOUND + INVALID_MONTH codes added
+  src/main.py — owner_statement_router registered + tag added
+
+Result: 2162 tests pass, 2 skipped.
+No DB schema changes. No migrations. No booking_state writes.
