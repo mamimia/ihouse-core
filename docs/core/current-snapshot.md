@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 128 — Conflict Center (closed)
+Phase 129 — Booking Search Enhancement (closed)
 
 ## Last Closed Phase
-Phase 128 — Conflict Center
+Phase 129 — Booking Search: source/check_out/sort_by/sort_dir
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search Enhancement (129).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -82,9 +82,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 123 | Worker-Facing Task Surface -- worker_router.py: GET /worker/tasks (worker_role/status/date/limit filters, DB-level tenant isolation), PATCH /worker/tasks/{id}/acknowledge (PENDING→ACKNOWLEDGED), PATCH /worker/tasks/{id}/complete (IN_PROGRESS→COMPLETED); VALID_TASK_TRANSITIONS enforced; notes appended on complete; 41 tests | ✅ |
 | 124 | LINE Escalation Channel -- channels/line_escalation.py: pure module: should_escalate (ACK_SLA_BREACH only), build_line_message, format_line_text, is_priority_eligible, LineEscalationRequest/LineDispatchResult dataclasses; api/line_webhook_router.py: POST /line/webhook: PENDING→ACKNOWLEDGED on LINE ack, idempotent for ACKNOWLEDGED, 409 for terminal; HMAC-SHA256 sig validation (dev=skip); 57 tests | ✅ |
 | 125 | Hotelbeds Adapter (Tier 3 B2B Bedbank) -- hotelbeds.py: B2B semantics (property receives net_rate directly, markup_amount=Hotelbeds margin); voucher_ref normalization (HB- prefix strip); financial_extractor: FULL/ESTIMATED/PARTIAL confidence; amendment_extractor: amendment block (check_in/check_out/room_count guest_count fallback); registry registered; 42 tests | ✅ |
-| 128 | Conflict Center -- conflicts_router.py: GET /conflicts?property_id= ; cross-property tenant-scoped ACTIVE booking overlap detection; itertools.combinations per property; CRITICAL(>=3 nights)/WARNING(1-2); pair deduplication booking_a<booking_b; summary(total_conflicts/properties_affected/bookings_involved); JWT required; check_out exclusive; 39 tests | ✅ |
+| 129 | Booking Search Enhancement -- bookings_router.py GET /bookings enhanced: source(OTA provider), check_out_from/check_out_to range filters, sort_by(check_in|check_out|updated_at|created_at), sort_dir(asc|desc default desc); sort_by/sort_dir echoed in response; validation 400; backward compatible; 31 tests | ✅ |
 
-**3205 tests pass** (2 pre-existing SQLite skips, unrelated)
+**3236 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
