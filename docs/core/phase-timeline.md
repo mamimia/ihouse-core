@@ -2847,3 +2847,196 @@ Completed:
 Invariant enforced: PATCH /tasks/{id}/status writes ONLY to `tasks`. Never to booking_state, event_log, or booking_financial_facts.
 
 Result: 2630 tests passing (no change — infra-only phase). tasks table live in production Supabase.
+
+## Phase 115 — Task Writer: Persist task_automator output to `tasks` table (Closed)
+
+**Date:** 2026-03-09
+
+Goal: Persisting task_automator.py outputs into Supabase `tasks` table via task_writer.py.
+
+Completed:
+- `src/tasks/task_writer.py` — NEW — handles BOOKING_CREATED, BOOKING_CANCELED, BOOKING_AMENDED events; best-effort, idempotent
+- `src/service.py` — MODIFIED — calls task_writer after task_automator
+- `tests/test_task_writer_contract.py` — NEW — comprehensive contract tests
+- Integrated into service pipeline
+
+Result: Tests passing. tasks table integration complete.
+
+## Phase 116 — Financial Aggregation Router (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /financial/summary — monthly financial aggregation from booking_financial_facts.
+
+Completed:
+- `src/api/financial_aggregation_router.py` — NEW
+- Ring 1 epistemic deduplication (most-recent recorded_at per booking_id)
+- `tests/test_financial_aggregation_router_contract.py` — NEW
+
+## Phase 117 — SLA Engine (Closed)
+
+**Date:** 2026-03-09
+
+Goal: SLA escalation engine for task acknowledgement deadlines.
+
+Completed:
+- `src/tasks/sla_engine.py` — NEW — ACK_SLA_BREACH detection, 5-minute critical SLA
+- `tests/test_sla_engine_contract.py` — NEW
+
+## Phase 118 — Financial Dashboard Router (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /financial/dashboard — multi-ring financial status per booking.
+
+Completed:
+- `src/api/financial_dashboard_router.py` — NEW — Rings 1–4 epistemic tier labels
+- `tests/test_financial_dashboard_router_contract.py` — NEW
+
+## Phase 119 — Reconciliation Inbox Router (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /financial/reconciliation — bookings with missing or estimated financial data.
+
+Completed:
+- `src/api/reconciliation_router.py` — NEW
+- `tests/test_reconciliation_router_contract.py` — NEW
+
+## Phase 120 — Cashflow View Router (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /financial/cashflow — monthly cash flow projection from financial facts.
+
+Completed:
+- `src/api/cashflow_router.py` — NEW — OTA_COLLECTING honesty invariant (net excluded)
+- `tests/test_cashflow_router_contract.py` — NEW
+
+## Phase 121 — Owner Statement Generator (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /owner-statement — per-property owner financial statement with PDF export.
+
+Completed:
+- `src/api/owner_statement_router.py` — REWRITTEN (Ring 4)
+- management_fee_pct query param; OTA_COLLECTING exclusion; PDF text/plain export
+- `tests/test_owner_statement_phase121_contract.py` — NEW (49 tests)
+
+Result: 2909 tests pass, 2 pre-existing SQLite skips.
+
+## Phase 122 — OTA Financial Health Comparison (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /financial/ota-comparison — per-OTA financial health: revenue, commission, NET confidence.
+
+Completed:
+- `src/api/ota_comparison_router.py` — NEW
+- `tests/test_ota_comparison_router_contract.py` — NEW
+
+## Phase 123 — Worker-Facing Task Surface (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /worker/tasks + PATCH /worker/tasks/{id}/acknowledge + /complete.
+
+Completed:
+- `src/api/worker_router.py` — NEW — worker_role/status/date filters; PENDING→ACKNOWLEDGED; IN_PROGRESS→COMPLETED
+- `tests/test_worker_router_contract.py` — NEW (41 tests)
+
+## Phase 124 — LINE Escalation Channel (Closed)
+
+**Date:** 2026-03-09
+
+Goal: LINE messaging escalation for ACK_SLA_BREACH tasks + LINE webhook for acknowledgement.
+
+Completed:
+- `src/channels/line_escalation.py` — NEW — pure module: should_escalate, build_line_message, format_line_text
+- `src/api/line_webhook_router.py` — NEW — POST /line/webhook; HMAC-SHA256 sig validation
+- `tests/test_line_escalation_contract.py` + `tests/test_line_webhook_router_contract.py` — NEW (57 tests total)
+
+## Phase 125 — Hotelbeds Adapter (Tier 3 B2B Bedbank) (Closed)
+
+**Date:** 2026-03-09
+
+Goal: Hotelbeds OTA adapter — B2B bedbank semantics (net_rate, voucher_ref, markup_amount).
+
+Completed:
+- `src/adapters/ota/hotelbeds.py` — NEW — HB- prefix strip; financial_extractor FULL/ESTIMATED/PARTIAL confidence
+- `tests/test_hotelbeds_adapter_contract.py` — NEW (42 tests)
+
+## Phase 126 — Availability Projection (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /availability/{property_id}?from=&to= — per-date occupancy from booking_state.
+
+Completed:
+- `src/api/availability_router.py` — NEW — per-date occupancy; CONFLICT detection; check_out exclusive
+- `tests/test_availability_router_contract.py` — NEW
+
+## Phase 127 — Integration Health Dashboard (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /integration-health — per-provider health for all 13 OTA providers.
+
+Completed:
+- `src/api/integration_health_router.py` — NEW — lag_seconds, buffer_count, dlq_count, stale_alert (24h); summary block
+- `tests/test_integration_health_router_contract.py` — NEW (37 tests)
+
+Result: 3166 tests pass.
+
+## Phase 128 — Conflict Center (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /conflicts — cross-property tenant-scoped active booking overlap detection.
+
+Completed:
+- `src/api/conflicts_router.py` — NEW — itertools.combinations per property; CRITICAL(≥3 nights)/WARNING(1-2); pair dedup; JWT required
+- `tests/test_conflicts_router_contract.py` — NEW (39 tests)
+
+Result: 3205 tests pass. No DB schema changes.
+
+## Phase 129 — Booking Search Enhancement (Closed)
+
+**Date:** 2026-03-09
+
+Goal: Enhance GET /bookings with source, check_out range, sort_by/sort_dir.
+
+Completed:
+- `src/api/bookings_router.py` — MODIFIED — source(OTA provider), check_out_from/to, sort_by(check_in|check_out|updated_at|created_at), sort_dir(asc|desc)
+- `tests/test_booking_search_contract.py` — NEW (31 tests)
+- Backward compatible. Response echoes sort_by/sort_dir.
+
+Result: 3236 tests pass. No DB changes.
+
+## Phase 130 — Properties Summary Dashboard (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /properties/summary — per-property portfolio view for the authenticated tenant.
+
+Completed:
+- `src/api/properties_summary_router.py` — NEW — active_count, canceled_count, next_check_in, next_check_out, has_conflict; portfolio totals; sorted by property_id; limit 1–200
+- `tests/test_properties_summary_router_contract.py` — NEW (37 tests)
+
+Result: 3273 tests pass. No DB changes.
+
+## Phase 131 — DLQ Inspector (Closed)
+
+**Date:** 2026-03-09
+
+Goal: GET /admin/dlq + GET /admin/dlq/{envelope_id} — dead letter queue inspection for operational triage.
+
+Completed:
+- `src/api/dlq_router.py` — NEW — list with source/status/limit filters; status derived (pending/applied/error) from replay_result; payload_preview 200 chars; single entry includes full raw_payload
+- `tests/test_dlq_router_contract.py` — NEW (44 tests)
+
+Reads ota_dead_letter (global, not tenant-scoped). JWT required. Zero write-path changes.
+
+Result: 3317 tests pass. No DB schema changes.
+

@@ -2038,3 +2038,65 @@ New invariants locked (Phase 121):
 
 Result: 2909 tests pass, 2 pre-existing SQLite skips.
 No DB schema changes. All reads from booking_financial_facts only.
+
+## Phase 122 — OTA Financial Health Comparison (Closed)
+
+GET /financial/ota-comparison: per-OTA revenue, commission, NET confidence breakdown.
+New: src/api/ota_comparison_router.py, tests/test_ota_comparison_router_contract.py
+Result: tests passing. No DB schema changes.
+
+## Phase 123 — Worker-Facing Task Surface (Closed)
+
+GET /worker/tasks (worker_role/status/date/limit filters), PATCH /worker/tasks/{id}/acknowledge (PENDING→ACKNOWLEDGED), PATCH /worker/tasks/{id}/complete (IN_PROGRESS→COMPLETED). VALID_TASK_TRANSITIONS enforced. Notes appended on complete.
+New: src/api/worker_router.py, tests/test_worker_router_contract.py (41 tests)
+No DB schema changes.
+
+## Phase 124 — LINE Escalation Channel (Closed)
+
+LINE messaging integration for SLA breach escalation. POST /line/webhook for LINE ack (PENDING→ACKNOWLEDGED). HMAC-SHA256 sig validation (dev=skip).
+New: src/channels/line_escalation.py, src/api/line_webhook_router.py
+Tests: test_line_escalation_contract.py + test_line_webhook_router_contract.py (57 tests)
+No DB schema changes.
+
+## Phase 125 — Hotelbeds Adapter Tier 3 B2B Bedbank (Closed)
+
+Hotelbeds B2B bedbank adapter: net_rate (property receives directly), markup_amount (Hotelbeds margin), HB- prefix strip on voucher_ref. Financial extractor FULL/ESTIMATED/PARTIAL confidence. Amendment extractor.
+New: src/adapters/ota/hotelbeds.py, tests/test_hotelbeds_adapter_contract.py (42 tests)
+Registry registered.
+
+## Phase 126 — Availability Projection (Closed)
+
+GET /availability/{property_id}?from=&to= — per-date occupancy from booking_state. CONFLICT detection for dates with >1 ACTIVE booking. check_out exclusive. Zero write-path changes. JWT required.
+New: src/api/availability_router.py, tests/test_availability_router_contract.py.
+
+## Phase 127 — Integration Health Dashboard (Closed)
+
+GET /integration-health: all 13 OTA providers — last_ingest_at, lag_seconds (recorded_at - occurred_at), buffer_count (ota_ordering_buffer), dlq_count (ota_dead_letter), stale_alert (24h threshold). summary block (ok/stale/unknown/total_dlq/total_buffer/has_alerts). JWT required. Best-effort per provider (error → "unknown" status).
+New: src/api/integration_health_router.py, tests/test_integration_health_router_contract.py (37 tests)
+Result: 3166 tests pass.
+
+## Phase 128 — Conflict Center (Closed)
+
+GET /conflicts?property_id= — cross-property tenant-scoped ACTIVE booking overlap detection. itertools.combinations per property. CRITICAL(≥3 nights)/WARNING(1-2). Pair deduplication (booking_a < booking_b lexicographically). Summary: total_conflicts/properties_affected/bookings_involved. JWT required. check_out exclusive.
+New: src/api/conflicts_router.py, tests/test_conflicts_router_contract.py (39 tests)
+Result: 3205 tests pass. No DB schema changes.
+
+## Phase 129 — Booking Search Enhancement (Closed)
+
+GET /bookings enhanced: source(OTA provider filter .eq("source")), check_out_from/check_out_to date range, sort_by(check_in|check_out|updated_at|created_at, default updated_at), sort_dir(asc|desc, default desc). Response echoes sort_by/sort_dir. Backward compatible (all existing callers unaffected). Validation: sort_by/sort_dir 400 on invalid. Date validation loop consolidated.
+Modified: src/api/bookings_router.py
+New: tests/test_booking_search_contract.py (31 tests)
+Result: 3236 tests pass. No DB changes.
+
+## Phase 130 — Properties Summary Dashboard (Closed)
+
+GET /properties/summary?limit= — per-property portfolio view. Per-property: active_count, canceled_count, next_check_in (earliest upcoming ≥ today), next_check_out (earliest > today), has_conflict (itertools.combinations pattern from Phase 128). Portfolio: total_active_bookings, total_canceled_bookings, properties_with_conflicts. Sorted alphabetically by property_id. limit 1–200 (default 100). JWT required.
+New: src/api/properties_summary_router.py, tests/test_properties_summary_router_contract.py (37 tests)
+Result: 3273 tests pass. No DB changes.
+
+## Phase 131 — DLQ Inspector (Closed)
+
+GET /admin/dlq?source=&status=&limit= — list ota_dead_letter entries with filters. Status derived in Python from replay_result: null→pending, APPLIED/ALREADY_APPLIED/ALREADY_EXISTS/ALREADY_EXISTS_BUSINESS→applied, other→error. payload_preview: first 200 chars. GET /admin/dlq/{envelope_id} — single entry with full raw_payload. JWT required. Global read (not tenant-scoped). Zero write-path changes.
+New: src/api/dlq_router.py, tests/test_dlq_router_contract.py (44 tests)
+Result: 3317 tests pass. No DB schema changes. 2 pre-existing SQLite guard failures (unrelated).
+
