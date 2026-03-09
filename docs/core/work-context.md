@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 135 — Property-Channel Mapping Foundation (closed)
+Phase 136 — Provider Capability Registry (closed)
 
 ## Last Closed Phase
 
-Phase 135 — Property-Channel Map: property_channel_map table + CRUD API
+Phase 136 — Provider Capability Registry: provider_capability_registry table + GET/PUT API
 
 ## Current Objective
 
-**Phase 136 — (next — see future-improvements.md)**
+**Phase 137 — (next — see future-improvements.md)**
 See `docs/core/improvements/future-improvements.md`.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -34,6 +34,7 @@ See `docs/core/improvements/future-improvements.md`.
 | 132 | Booking Audit Trail | `src/api/booking_history_router.py`, `tests/test_booking_history_contract.py` |
 | 133 | Buffer Inspector | `src/api/buffer_router.py`, `tests/test_buffer_router_contract.py` |
 | 135 | Property-Channel Map Foundation | `migrations/phase_135_property_channel_map.sql`, `src/api/channel_map_router.py`, `tests/test_channel_map_contract.py` |
+| 136 | Provider Capability Registry | `migrations/phase_136_provider_capability_registry.sql`, `src/api/capability_registry_router.py`, `tests/test_capability_registry_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
