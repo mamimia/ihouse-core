@@ -3285,6 +3285,33 @@ Design decisions:
 Result: 3799 tests pass (3769 + 30 new). No DB schema changes. No API changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
 
+## Phase 149 — RFC 5545 VCALENDAR Compliance Audit (Closed)
+
+Goal: Bring the iCal payload emitted by `ICalPushAdapter` into full RFC 5545 compliance
+by adding all required VCALENDAR and VEVENT fields.
+
+Completed:
+
+- `src/adapters/outbound/ical_push_adapter.py` — MODIFIED
+  - Added `from datetime import datetime, timezone` import.
+  - Updated `_ICAL_TEMPLATE`:
+    - VCALENDAR header: added `CALSCALE:GREGORIAN` (RFC 5545 §3.7.1), `METHOD:PUBLISH` (§3.7.2)
+    - VEVENT: added `DTSTAMP:{dtstamp}` (§3.8.7.2) and `SEQUENCE:0` (§3.8.7.4)
+    - PRODID bumped from Phase 140 to Phase 149.
+  - Updated `push()`: computes `dtstamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")` and passes it to `_ICAL_TEMPLATE.format()`.
+- `tests/test_rfc5545_compliance_contract.py` — NEW — 37 contract tests Groups A-J.
+- `tests/test_ical_date_injection_contract.py` — MODIFIED — updated PRODID assertion from Phase 140 to Phase 149 (1 line change).
+
+Design decisions:
+- `DTSTAMP` generated at the moment of push (not from booking data) — correct per RFC 5545 which defines it as creation timestamp.
+- `SEQUENCE:0` is hardcoded as 0 because iHouse always pushes a complete replacement payload; no amendment increment is attempted in this phase.
+- `CALSCALE` and `METHOD` positioned in VCALENDAR header before BEGIN:VEVENT per RFC ordering convention.
+- Test verifies CRLF line endings throughout the template, not just content.
+
+Result: 3836 tests pass (3799 + 37 new). No DB schema changes. No API changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+
+
 
 
 

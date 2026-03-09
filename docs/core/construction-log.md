@@ -2248,6 +2248,19 @@ Changes:
 Result: 3799 tests pass (3769 + 30 new). No DB schema changes. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).
 
 
+## Phase 149 — RFC 5545 VCALENDAR Compliance Audit (Closed)
+
+Audit and update the iCal payload to include all RFC 5545 required fields.
+
+Changes:
+- src/adapters/outbound/ical_push_adapter.py [MODIFIED]: added `CALSCALE:GREGORIAN`, `METHOD:PUBLISH` to VCALENDAR header; `DTSTAMP:YYYYMMDDTHHMMSSZ` (UTC) and `SEQUENCE:0` to VEVENT; PRODID bumped to Phase 149; `datetime`/`timezone` import added.
+- tests/test_rfc5545_compliance_contract.py [NEW]: 37 contract tests Groups A-J.
+- tests/test_ical_date_injection_contract.py [MODIFIED]: PRODID assertion Phase 140 → Phase 149 (1 line).
+
+Result: 3836 tests pass (3799 + 37 new). No DB schema changes. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+
+
 
 
 

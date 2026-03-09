@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 148 — Sync Result Webhook Callback (closed)
+Phase 149 — RFC 5545 VCALENDAR Compliance Audit (closed)
 
 ## Last Closed Phase
 
-Phase 148 — Sync Result Webhook Callback: `_fire_callback()` in `outbound_executor.py`; `IHOUSE_SYNC_CALLBACK_URL`; ok only; errors swallowed; 30 contract tests; 3799 passing
+Phase 149 — RFC 5545 Compliance: `CALSCALE:GREGORIAN`, `METHOD:PUBLISH`, `DTSTAMP`, `SEQUENCE:0` in `_ICAL_TEMPLATE`; PRODID Phase 149; 37 contract tests; 3836 passing
 
 ## Current Objective
 
-**Phase 149 — Full RFC 5545 VCALENDAR Compliance Audit**
+**Phase 150 — iCal VTIMEZONE Support**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,7 +37,7 @@ Phase 148 — Sync Result Webhook Callback: `_fire_callback()` in `outbound_exec
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
 | 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
-| 148 | Sync Result Webhook Callback | `src/services/outbound_executor.py` (_fire_callback + _CALLBACK_URL), `tests/test_sync_callback_contract.py` |
+| 149 | RFC 5545 VCALENDAR Compliance | `src/adapters/outbound/ical_push_adapter.py` (CALSCALE, METHOD, DTSTAMP, SEQUENCE:0 in template), `tests/test_rfc5545_compliance_contract.py`, `tests/test_ical_date_injection_contract.py` (PRODID assertion updated) |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)

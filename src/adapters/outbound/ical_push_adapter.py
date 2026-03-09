@@ -1,10 +1,19 @@
 """
-Phase 143 — iCal Push Adapter (Idempotency Key)
+Phase 149 — iCal Push Adapter (RFC 5545 Compliance Audit)
 
-Updated from Phase 139 to inject real DTSTART / DTEND from booking_state.
-The push() method now accepts optional check_in / check_out as compact iCal
-date strings (YYYYMMDD). If not supplied, safe placeholder dates are used so
-existing dry-run behaviour is unchanged.
+Updated from Phase 143 to include all RFC 5545 REQUIRED fields in the
+VCALENDAR and VEVENT components:
+
+  VCALENDAR header:
+    CALSCALE:GREGORIAN   (RFC 5545 §3.7.1)
+    METHOD:PUBLISH       (RFC 5545 §3.7.2)
+
+  VEVENT:
+    DTSTAMP:YYYYMMDDTHHMMSSZ  (UTC, generated at push time) (RFC 5545 §3.8.7.2)
+    SEQUENCE:0                (RFC 5545 £3.8.7.4)
+
+See also: Phase 140 (DTSTART/DTEND date injection)
+         Phase 143 (X-Idempotency-Key header)
 
 Handles Tier B providers (ical_fallback via push):
   - Hotelbeds
@@ -18,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Optional
 
 try:
@@ -32,11 +42,15 @@ logger = logging.getLogger(__name__)
 _ICAL_TEMPLATE = (
     "BEGIN:VCALENDAR\r\n"
     "VERSION:2.0\r\n"
-    "PRODID:-//iHouse Core//Phase 140//EN\r\n"
+    "PRODID:-//iHouse Core//Phase 149//EN\r\n"
+    "CALSCALE:GREGORIAN\r\n"
+    "METHOD:PUBLISH\r\n"
     "BEGIN:VEVENT\r\n"
     "UID:{booking_id}@ihouse.core\r\n"
+    "DTSTAMP:{dtstamp}\r\n"
     "DTSTART:{dtstart}\r\n"
     "DTEND:{dtend}\r\n"
+    "SEQUENCE:0\r\n"
     "SUMMARY:Blocked by iHouse Core\r\n"
     "DESCRIPTION:booking_id={booking_id} external_id={external_id}\r\n"
     "END:VEVENT\r\n"
@@ -96,13 +110,15 @@ class ICalPushAdapter(OutboundAdapter):
         try:
             if httpx is None:  # pragma: no cover
                 raise RuntimeError("httpx not available")
-            dtstart = check_in  or _FALLBACK_DTSTART
-            dtend   = check_out or _FALLBACK_DTEND
+            dtstart   = check_in  or _FALLBACK_DTSTART
+            dtend     = check_out or _FALLBACK_DTEND
+            dtstamp   = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             ical_body = _ICAL_TEMPLATE.format(
                 booking_id=booking_id,
                 external_id=external_id,
                 dtstart=dtstart,
                 dtend=dtend,
+                dtstamp=dtstamp,
             )
             headers: dict[str, str] = {
                 "Content-Type":      "text/calendar; charset=utf-8",
