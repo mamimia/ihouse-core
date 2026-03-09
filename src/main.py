@@ -192,6 +192,9 @@ app.include_router(conflicts_router)
 from api.properties_summary_router import router as properties_summary_router  # noqa: E402
 app.include_router(properties_summary_router)
 
+from api.dlq_router import router as dlq_router  # noqa: E402
+app.include_router(dlq_router)
+
 
 # ---------------------------------------------------------------------------
 # OpenAPI — inject BearerAuth security scheme (Phase 63)

@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 130 — Properties Summary Dashboard (closed)
+Phase 131 — DLQ Inspector (closed)
 
 ## Last Closed Phase
 
-Phase 130 — Properties Summary: GET /properties/summary
+Phase 131 — DLQ Inspector: GET /admin/dlq + GET /admin/dlq/{envelope_id}
 
 ## Current Objective
 
-**Phase 131 — (next — see future-improvements.md)**
+**Phase 132 — (next — see future-improvements.md)**
 See `docs/core/improvements/future-improvements.md`.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -30,6 +30,7 @@ See `docs/core/improvements/future-improvements.md`.
 | 128 | Conflict Center | `src/api/conflicts_router.py`, `tests/test_conflicts_router_contract.py` |
 | 129 | Booking Search Enhancement | `src/api/bookings_router.py`, `tests/test_booking_search_contract.py` |
 | 130 | Properties Summary Dashboard | `src/api/properties_summary_router.py`, `tests/test_properties_summary_router_contract.py` |
+| 131 | DLQ Inspector | `src/api/dlq_router.py`, `tests/test_dlq_router_contract.py` |
 | docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
@@ -66,6 +67,7 @@ See `docs/core/improvements/future-improvements.md`.
 | `src/api/conflicts_router.py` | Phase 128: GET /conflicts — cross-property tenant-scoped booking overlap detection; CRITICAL(>=3nights)/WARNING(1-2); itertools.combinations; dedup; JWT required |
 | `src/api/bookings_router.py` | Phase 129: GET /bookings enhanced — source filter, check_out_from/to, sort_by(check_in|check_out|updated_at|created_at), sort_dir(asc|desc); backward compatible |
 | `src/api/properties_summary_router.py` | Phase 130: GET /properties/summary — per-property: active_count, canceled_count, next_check_in, next_check_out, has_conflict; portfolio totals; sorted by property_id; limit 1–200 |
+| `src/api/dlq_router.py` | Phase 131: GET /admin/dlq (list, source/status/limit filters) + GET /admin/dlq/{envelope_id} (full payload); status derived from replay_result (pending/applied/error); reads ota_dead_letter; payload_preview 200 chars |
 
 ## Key Files — Task Layer (Phases 111–115)
 
@@ -109,5 +111,5 @@ See `docs/core/improvements/future-improvements.md`.
 
 ## Tests
 
-**3273 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
+**3317 passing** (2 pre-existing SQLite guard failures in `tests/invariants/test_invariant_suite.py` — unrelated)
 
