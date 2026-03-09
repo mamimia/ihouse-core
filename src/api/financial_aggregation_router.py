@@ -37,7 +37,8 @@ Multi-currency invariant (Phase 116):
   Each currency is returned as a separate key in the response.
 
 Supported currencies (Phase 116):
-  USD, THB, EUR, GBP, CNY, INR, JPY, SGD, AUD, ILS, BRL, MXN
+  USD, THB, EUR, GBP, CNY, INR, JPY, SGD, AUD, ILS, BRL, MXN, HKD,
+  AED, IDR, CAD, TRY, KRW, CHF
   All other currencies found in data are grouped under "OTHER".
 """
 from __future__ import annotations
@@ -79,8 +80,15 @@ SUPPORTED_CURRENCIES: frozenset[str] = frozenset({
     "SGD",  # Singapore Dollar   — Singapore / regional hub
     "AUD",  # Australian Dollar  — Australia / Pacific
     "ILS",  # Israeli New Shekel — Israel
-    "BRL",  # Brazilian Real     — Brazil / Latin America
-    "MXN",  # Mexican Peso       — Mexico / Latin America
+    "BRL",  # Brazilian Real      — Brazil / Latin America
+    "MXN",  # Mexican Peso        — Mexico / Latin America
+    "HKD",  # Hong Kong Dollar    — Hong Kong / regional hub
+    "AED",  # UAE Dirham          — Dubai / UAE (top short-term rental market)
+    "IDR",  # Indonesian Rupiah   — Indonesia / Bali (top Airbnb destination)
+    "CAD",  # Canadian Dollar     — Canada (Toronto, Vancouver, Montreal)
+    "TRY",  # Turkish Lira        — Turkey / Istanbul (top-5 Airbnb city globally)
+    "KRW",  # South Korean Won    — South Korea / Seoul
+    "CHF",  # Swiss Franc         — Switzerland (luxury short-term rentals)
 })
 
 

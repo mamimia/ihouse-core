@@ -563,9 +563,12 @@ class TestSupportedCurrencies:
         from api.financial_aggregation_router import SUPPORTED_CURRENCIES
         assert isinstance(SUPPORTED_CURRENCIES, frozenset)
 
-    def test_supported_currencies_contains_all_12(self):
+    def test_supported_currencies_contains_all_19(self):
         from api.financial_aggregation_router import SUPPORTED_CURRENCIES
-        expected = {"USD", "THB", "EUR", "GBP", "CNY", "INR", "JPY", "SGD", "AUD", "ILS", "BRL", "MXN"}
+        expected = {
+            "USD", "THB", "EUR", "GBP", "CNY", "INR", "JPY", "SGD", "AUD",
+            "ILS", "BRL", "MXN", "HKD", "AED", "IDR", "CAD", "TRY", "KRW", "CHF",
+        }
         assert expected == SUPPORTED_CURRENCIES
 
     def test_canonical_currency_returns_other_for_unknown(self):
