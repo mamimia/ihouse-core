@@ -113,6 +113,7 @@ _TAGS = [
     {"name": "integration-health", "description": "Integration Health Dashboard (Phase 127). Per-provider health for all 13 OTA providers: lag, buffer, DLQ, stale alert. JWT required."},
     {"name": "conflicts", "description": "Conflict Center (Phase 128). Active booking overlaps (CONFLICT pairs) across all properties for a tenant. JWT required."},
     {"name": "properties", "description": "Properties Summary Dashboard (Phase 130). Per-property portfolio view: active/canceled counts, next check-in/out, conflict flag. JWT required."},
+    {"name": "history", "description": "Booking Audit Trail (Phase 132). Chronological event_log trail for a single booking: CREATED, AMENDED, CANCELED, buffered, replayed. JWT required."},
 ]
 
 app = FastAPI(
@@ -194,6 +195,9 @@ app.include_router(properties_summary_router)
 
 from api.dlq_router import router as dlq_router  # noqa: E402
 app.include_router(dlq_router)
+
+from api.booking_history_router import router as booking_history_router  # noqa: E402
+app.include_router(booking_history_router)
 
 
 # ---------------------------------------------------------------------------

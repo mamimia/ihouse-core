@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 131 — DLQ Inspector (closed)
+Phase 132 — Booking Audit Trail (closed)
 
 ## Last Closed Phase
 
-Phase 131 — DLQ Inspector: GET /admin/dlq + GET /admin/dlq/{envelope_id}
+Phase 132 — Booking Audit Trail: GET /bookings/{booking_id}/history
 
 ## Current Objective
 
-**Phase 132 — (next — see future-improvements.md)**
+**Phase 133 — (next — see future-improvements.md)**
 See `docs/core/improvements/future-improvements.md`.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -31,7 +31,8 @@ See `docs/core/improvements/future-improvements.md`.
 | 129 | Booking Search Enhancement | `src/api/bookings_router.py`, `tests/test_booking_search_contract.py` |
 | 130 | Properties Summary Dashboard | `src/api/properties_summary_router.py`, `tests/test_properties_summary_router_contract.py` |
 | 131 | DLQ Inspector | `src/api/dlq_router.py`, `tests/test_dlq_router_contract.py` |
-| docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
+| 132 | Booking Audit Trail | `src/api/booking_history_router.py`, `tests/test_booking_history_contract.py` |
+| docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
 
