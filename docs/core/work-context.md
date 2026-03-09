@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 116 -- Financial Aggregation API (closed)
+Phase 117 -- SLA Escalation Engine (closed)
 
 ## Last Closed Phase
 
-Phase 116 -- Financial Aggregation API
+Phase 117 -- SLA Escalation Engine
 
 ## Current Objective
 
-Phase 117 -- SLA Escalation Engine. See `docs/core/roadmap.md`.
+Phase 118 -- Financial Dashboard API (Ring 2-3). See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 117 -- SLA Escalation Engine. See `docs/core/roadmap.md`.
 
 ## Tests
 
-2709 passing (2 pre-existing SQLite skips, unrelated)
+2747 passing (2 pre-existing SQLite skips, unrelated)
