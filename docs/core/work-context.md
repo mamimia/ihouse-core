@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 124 — External Channel Escalation: LINE (closed)
+Phase 125 — Tier 3 Adapter: Hotelbeds (closed)
 
 ## Last Closed Phase
 
-Phase 124 — External Channel Escalation: LINE
+Phase 125 — Tier 3 Adapter: Hotelbeds
 
 ## Current Objective
 
-**Phase 125 — (next — see roadmap)**
+**Phase 126 — (next — see roadmap)**
 See `docs/core/roadmap.md` for forward plan.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -24,6 +24,7 @@ See `docs/core/roadmap.md` for forward plan.
 | 122 | OTA Financial Health Comparison | `src/api/ota_comparison_router.py`, `tests/test_ota_comparison_router_contract.py` |
 | 123 | Worker-Facing Task Surface | `src/api/worker_router.py`, `tests/test_worker_router_contract.py` |
 | 124 | LINE Escalation Channel | `src/channels/line_escalation.py`, `src/api/line_webhook_router.py`, `tests/test_line_*` |
+| 125 | Hotelbeds Adapter (Tier 3 B2B) | `src/adapters/ota/hotelbeds.py`, `tests/test_hotelbeds_adapter_contract.py` |
 | docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
@@ -54,6 +55,7 @@ See `docs/core/roadmap.md` for forward plan.
 | `src/api/worker_router.py` | Phase 123: GET /worker/tasks, PATCH /worker/tasks/{id}/acknowledge, PATCH /worker/tasks/{id}/complete |
 | `src/channels/line_escalation.py` | Phase 124: pure LINE module — should_escalate, build_line_message, format_line_text, is_priority_eligible |
 | `src/api/line_webhook_router.py` | Phase 124: POST /line/webhook — LINE ack callback → PENDING→ACKNOWLEDGED, dev/prod sig validation |
+| `src/adapters/ota/hotelbeds.py` | Phase 125: Tier 3 B2B bedbank adapter — voucher_ref, hotel_code, net_rate/contract_price/markup_amount |
 
 ## Key Files — Task Layer (Phases 111–115)
 
@@ -97,5 +99,5 @@ See `docs/core/roadmap.md` for forward plan.
 
 ## Tests
 
-**3051 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
+**3093 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
 

@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 124 — External Channel Escalation: LINE (closed)
+Phase 125 — Tier 3 Adapter: Hotelbeds (closed)
 
 ## Last Closed Phase
-Phase 124 — External Channel Escalation: LINE
+Phase 125 — Tier 3 Adapter: Hotelbeds
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -81,8 +81,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 122 | OTA Financial Health Comparison -- ota_comparison_router.py: GET /financial/ota-comparison?period=; per-(OTA,currency) metrics: booking_count, gross_total, commission_total, net_total, avg_commission_rate, net_to_gross_ratio, revenue_share_pct, epistemic_tier (A/B/C), lifecycle_distribution; no cross-currency arithmetic; dedup by most-recent recorded_at; 44 tests | ✅ |
 | 123 | Worker-Facing Task Surface -- worker_router.py: GET /worker/tasks (worker_role/status/date/limit filters, DB-level tenant isolation), PATCH /worker/tasks/{id}/acknowledge (PENDING→ACKNOWLEDGED), PATCH /worker/tasks/{id}/complete (IN_PROGRESS→COMPLETED); VALID_TASK_TRANSITIONS enforced; notes appended on complete; 41 tests | ✅ |
 | 124 | LINE Escalation Channel -- channels/line_escalation.py: pure module: should_escalate (ACK_SLA_BREACH only), build_line_message, format_line_text, is_priority_eligible, LineEscalationRequest/LineDispatchResult dataclasses; api/line_webhook_router.py: POST /line/webhook: PENDING→ACKNOWLEDGED on LINE ack, idempotent for ACKNOWLEDGED, 409 for terminal; HMAC-SHA256 sig validation (dev=skip); 57 tests | ✅ |
+| 125 | Hotelbeds Adapter (Tier 3 B2B Bedbank) -- hotelbeds.py: B2B semantics (property receives net_rate directly, markup_amount=Hotelbeds margin); voucher_ref normalization (HB- prefix strip); financial_extractor: FULL/ESTIMATED/PARTIAL confidence; amendment_extractor: amendment block (check_in/check_out/room_count guest_count fallback); registry registered; 42 tests | ✅ |
 
-**3051 tests pass** (2 pre-existing SQLite skips, unrelated)
+**3093 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
