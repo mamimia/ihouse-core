@@ -248,9 +248,155 @@ class TestMissingFieldsYieldNone:
         assert result["canonical_property_id"] is None
 
     def test_unknown_provider_all_none(self):
-        """Unknown provider should not raise — all canonical fields are None."""
+        """Unknown provider should not raise -- all canonical fields are None."""
         result = normalize_schema("unknown_provider", {"some_field": "value"})
         assert result["canonical_guest_count"] is None
         assert result["canonical_booking_ref"] is None
         assert result["canonical_property_id"] is None
         assert result["some_field"] == "value"
+
+
+# ---------------------------------------------------------------------------
+# Group F — canonical_check_in (Phase 78)
+# ---------------------------------------------------------------------------
+
+class TestCanonicalCheckIn:
+
+    def test_bookingcom_check_in(self):
+        result = normalize_schema("bookingcom", _bookingcom_payload(check_in="2026-06-01"))
+        assert result["canonical_check_in"] == "2026-06-01"
+
+    def test_airbnb_check_in(self):
+        result = normalize_schema("airbnb", _airbnb_payload(check_in="2026-06-02"))
+        assert result["canonical_check_in"] == "2026-06-02"
+
+    def test_expedia_check_in_date(self):
+        # Expedia uses check_in_date
+        result = normalize_schema("expedia", _expedia_payload(check_in_date="2026-06-03"))
+        assert result["canonical_check_in"] == "2026-06-03"
+
+    def test_agoda_check_in(self):
+        result = normalize_schema("agoda", _agoda_payload(check_in="2026-06-04"))
+        assert result["canonical_check_in"] == "2026-06-04"
+
+    def test_tripcom_arrival_date(self):
+        # Trip.com uses arrival_date
+        result = normalize_schema("tripcom", _tripcom_payload(arrival_date="2026-06-05"))
+        assert result["canonical_check_in"] == "2026-06-05"
+
+    def test_missing_check_in_yields_none(self):
+        result = normalize_schema("bookingcom", _bookingcom_payload())
+        assert result["canonical_check_in"] is None
+
+
+# ---------------------------------------------------------------------------
+# Group G — canonical_check_out (Phase 78)
+# ---------------------------------------------------------------------------
+
+class TestCanonicalCheckOut:
+
+    def test_bookingcom_check_out(self):
+        result = normalize_schema("bookingcom", _bookingcom_payload(check_out="2026-06-08"))
+        assert result["canonical_check_out"] == "2026-06-08"
+
+    def test_airbnb_check_out(self):
+        result = normalize_schema("airbnb", _airbnb_payload(check_out="2026-06-09"))
+        assert result["canonical_check_out"] == "2026-06-09"
+
+    def test_expedia_check_out_date(self):
+        # Expedia uses check_out_date
+        result = normalize_schema("expedia", _expedia_payload(check_out_date="2026-06-10"))
+        assert result["canonical_check_out"] == "2026-06-10"
+
+    def test_agoda_check_out(self):
+        result = normalize_schema("agoda", _agoda_payload(check_out="2026-06-11"))
+        assert result["canonical_check_out"] == "2026-06-11"
+
+    def test_tripcom_departure_date(self):
+        # Trip.com uses departure_date
+        result = normalize_schema("tripcom", _tripcom_payload(departure_date="2026-06-12"))
+        assert result["canonical_check_out"] == "2026-06-12"
+
+    def test_missing_check_out_yields_none(self):
+        result = normalize_schema("tripcom", _tripcom_payload())
+        assert result["canonical_check_out"] is None
+
+
+# ---------------------------------------------------------------------------
+# Group H — canonical_currency (Phase 78)
+# ---------------------------------------------------------------------------
+
+class TestCanonicalCurrency:
+
+    def test_bookingcom_currency(self):
+        result = normalize_schema("bookingcom", _bookingcom_payload(currency="USD"))
+        assert result["canonical_currency"] == "USD"
+
+    def test_airbnb_currency(self):
+        result = normalize_schema("airbnb", _airbnb_payload(currency="EUR"))
+        assert result["canonical_currency"] == "EUR"
+
+    def test_expedia_currency(self):
+        result = normalize_schema("expedia", _expedia_payload(currency="GBP"))
+        assert result["canonical_currency"] == "GBP"
+
+    def test_agoda_currency(self):
+        result = normalize_schema("agoda", _agoda_payload(currency="THB"))
+        assert result["canonical_currency"] == "THB"
+
+    def test_tripcom_currency(self):
+        result = normalize_schema("tripcom", _tripcom_payload(currency="CNY"))
+        assert result["canonical_currency"] == "CNY"
+
+    def test_missing_currency_yields_none(self):
+        result = normalize_schema("bookingcom", _bookingcom_payload())
+        assert result["canonical_currency"] is None
+
+
+# ---------------------------------------------------------------------------
+# Group I — canonical_total_price (Phase 78)
+# ---------------------------------------------------------------------------
+
+class TestCanonicalTotalPrice:
+
+    def test_bookingcom_total_price(self):
+        # bookingcom -> total_price
+        result = normalize_schema("bookingcom", _bookingcom_payload(total_price=450.00))
+        assert result["canonical_total_price"] == "450.0"
+
+    def test_airbnb_booking_subtotal(self):
+        # airbnb -> booking_subtotal
+        result = normalize_schema("airbnb", _airbnb_payload(booking_subtotal=320.50))
+        assert result["canonical_total_price"] == "320.5"
+
+    def test_expedia_total_amount(self):
+        # expedia -> total_amount
+        result = normalize_schema("expedia", _expedia_payload(total_amount=600))
+        assert result["canonical_total_price"] == "600"
+
+    def test_agoda_selling_rate(self):
+        # agoda -> selling_rate
+        result = normalize_schema("agoda", _agoda_payload(selling_rate=1200.75))
+        assert result["canonical_total_price"] == "1200.75"
+
+    def test_tripcom_order_amount(self):
+        # tripcom -> order_amount
+        result = normalize_schema("tripcom", _tripcom_payload(order_amount=850))
+        assert result["canonical_total_price"] == "850"
+
+    def test_missing_total_price_yields_none(self):
+        result = normalize_schema("bookingcom", _bookingcom_payload())
+        assert result["canonical_total_price"] is None
+
+    def test_total_price_is_raw_string_not_decimal(self):
+        """canonical_total_price must be a str, not a Decimal or float."""
+        result = normalize_schema("airbnb", _airbnb_payload(booking_subtotal=99.99))
+        assert isinstance(result["canonical_total_price"], str)
+
+    def test_unknown_provider_phase78_keys_all_none(self):
+        """Unknown provider: all Phase 78 canonical keys are None."""
+        result = normalize_schema("unknown", {"x": 1})
+        assert result["canonical_check_in"] is None
+        assert result["canonical_check_out"] is None
+        assert result["canonical_currency"] is None
+        assert result["canonical_total_price"] is None

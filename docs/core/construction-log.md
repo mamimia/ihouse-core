@@ -1383,3 +1383,14 @@ Full BOOKING_AMENDED pipeline is live end-to-end.
 
 Result: 572 passed, 2 skipped.
 No Supabase schema changes. No new migrations.
+
+## Phase 78 — OTA Schema Normalization (Dates + Price) (Closed)
+
+- [Claude]
+- Extended `src/adapters/ota/schema_normalizer.py`: 4 new helpers + 4 new canonical keys
+  - canonical_check_in, canonical_check_out, canonical_currency, canonical_total_price
+  - Raw str values; no Decimal conversion; no adapter changes needed
+- 26 contract tests added (Groups F–I in test_schema_normalizer_contract.py)
+
+Result: 598 passed, 2 skipped.
+No Supabase schema changes. No new migrations.

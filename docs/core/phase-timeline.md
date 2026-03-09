@@ -2023,3 +2023,25 @@ Raw provider fields are preserved; canonical keys are additive. Missing fields �
 4 existing adapter contract tests updated to use superset check (`payload.items() <= normalized.payload.items()`).
 
 Result: 572 passed, 2 skipped.
+
+## Phase 78 — OTA Schema Normalization (Dates + Price)
+
+[Claude] Extended `src/adapters/ota/schema_normalizer.py` with 4 additional canonical keys:
+- `canonical_check_in`   — check_in / check_in_date / arrival_date per provider
+- `canonical_check_out`  — check_out / check_out_date / departure_date per provider
+- `canonical_currency`   — currency (uniform across all providers)
+- `canonical_total_price` — total_price / booking_subtotal / total_amount / selling_rate / order_amount per provider
+
+All values returned as raw strings. No adapter changes required (all already call normalize_schema()).
+26 new contract tests added (Groups F–I in test_schema_normalizer_contract.py).
+
+Provider field mapping:
+| Canonical Key       | bookingcom    | airbnb           | expedia        | agoda        | tripcom       |
+|---------------------|---------------|------------------|----------------|--------------|---------------|
+| canonical_check_in  | check_in      | check_in         | check_in_date  | check_in     | arrival_date  |
+| canonical_check_out | check_out     | check_out        | check_out_date | check_out    | departure_date|
+| canonical_currency  | currency      | currency         | currency       | currency     | currency      |
+| canonical_total_price | total_price | booking_subtotal | total_amount   | selling_rate | order_amount  |
+
+Result: 598 passed, 2 skipped.
+No Supabase schema changes. No new migrations.

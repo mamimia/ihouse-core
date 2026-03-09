@@ -209,3 +209,111 @@ this file instead of being added as new backlog content inside
 Phase 34 proved the routing and emitted-event alignment gap. Phase 35 implemented the minimal fix. Phase 36 confirmed that business identity is deterministic and business dedup is enforced by apply_envelope.
 
 This follow-up is fully resolved.
+
+
+---
+
+## Forward Product and Architecture Bundle
+*Added: Phase 77 closure. Source: user forward-planning note.*
+
+> These are NOT an immediate backlog. They are serious product-direction items to keep in mind while planning future phases, so decisions do not accidentally close these doors.
+
+The core intent: keep the canonical architecture clean and strong while gradually adding thin layers that make the product operationally complete, trustworthy, and useful to real property managers and owners.
+
+Guiding questions for future phases:
+- Does this improve operator visibility?
+- Does it improve trust in the data?
+- Does it help real property managers act faster?
+- Does it preserve the canonical architecture?
+
+### Visibility and Trust group
+
+#### Reservation Timeline / Audit Trail
+- status: open
+- priority: high (builds on existing event_log — zero DB cost)
+- notes: Per-booking timeline showing the full event story: created, amended, canceled, occurred_at, recorded_at, buffered, replayed, DLQ, financial updates, state transitions. Does not change the canonical core — only surfaces what already exists in event_log in a human-readable form.
+
+#### Integration Health Dashboard
+- status: open
+- priority: high
+- notes: Operational dashboard beyond the /health endpoint. Per-provider: last successful ingest, occurred_at vs recorded_at lag, buffer counts, DLQ counts, reject counts, stale provider alerts. Uses data the system already collects.
+
+#### Conflict Detection and Mapping Coverage
+- status: open
+- priority: medium
+- notes: Visibility layer for overlaps on same property, missing property mapping, incomplete canonical coverage, potential overbooking risk, provider mapping gaps. Strengthens trust without requiring a full outbound channel manager.
+
+### Reliability and Recovery group
+
+#### OTA Reconciliation / Recovery Layer
+- status: open
+- priority: medium
+- notes: Periodic comparison between iHouse Core state and external OTA state. Detects: booking missing internally, status mismatch, date mismatch, financial facts missing, provider drift. Implemented as a detection and correction-support layer — never bypasses apply_envelope.
+
+### Financial Clarity group
+
+#### Payment Lifecycle / Revenue State Projection
+- status: open
+- priority: medium
+- notes: Dedicated financial status layer with payment states: guest_paid, ota_collecting, payout_pending, payout_released, reconciliation_pending, owner_net_pending. Builds on BookingFinancialFacts (Phase 65/66) without polluting booking_state.
+
+#### Owner Statements and Owner-Facing Views
+- status: open
+- priority: medium
+- notes: Lightweight owner-facing layer: monthly statement, property revenue summary, owner net view, payout summary, scoped role visibility. Turns internal financial data into a usable business surface for property managers and owners.
+
+### Operational Usefulness group
+
+#### Guest Pre-Arrival / Check-In Intake
+- status: open
+- priority: low-medium
+- notes: Lightweight intake flow per reservation before arrival: guest contact, arrival time, ID upload, agreement confirmation, special notes, pre-arrival readiness status. Natural extension from booking ingestion into reservation operations.
+
+#### Task Automation for Operations
+- status: open
+- priority: low-medium
+- notes: Rule-based task layer driven by booking events: new booking → prep task, checkout tomorrow → cleaning task, amendment → reschedule tasks, cancellation → cancel pending tasks. Architecture is already event-driven — natural extension of the existing model.
+
+
+---
+
+## Forward Adapter Expansion Wave
+*Added: Phase 77 closure. Source: user forward-planning note.*
+
+> This is NOT a command to build all adapters immediately. It is a prioritization note so future roadmap decisions follow the right order.
+
+**Principle:** More adapters is not automatically better. A smaller set of strong, well-behaved adapters is better than many shallow integrations. The stronger metric is market coverage and customer confidence per adapter.
+
+**Current core set (done):** Booking.com, Airbnb, Expedia, Agoda, Trip.com.
+
+### Recommended next adapter wave
+
+#### Tier 1 — Vrbo
+- status: open
+- priority: highest in next wave
+- notes: Largest gap in vacation rental credibility. Connects with Booking.com/Airbnb/Expedia as a must-have for management companies focused on villas, holiday homes, vacation rentals. Established connectivity ecosystem.
+
+#### Tier 1 — Google Vacation Rentals
+- status: open
+- priority: very high
+- notes: Not a classic OTA but a critical distribution surface. Many travelers start searches on Google. Official onboarding guidance for vacation rental integrations available. Makes the platform feel modern and complete.
+
+#### Tier 1.5 — Traveloka
+- status: open
+- priority: high (regional)
+- notes: Dominant platform in Southeast Asia — strategically relevant given Thailand and regional property-management context. Improves market fit for Southeast Asian operators.
+
+#### Tier 2 — MakeMyTrip
+- status: open
+- priority: medium
+- notes: Major player in India. Expands iHouse Core into the Indian travel market and adds commercial depth beyond the global channel set.
+
+#### Tier 2 — Despegar
+- status: open
+- priority: medium
+- notes: Strongest travel brand in Latin America. Gives the system broader global coverage beyond English-speaking and Asian channels.
+
+#### Tier 3 — Future candidates
+- Rakuten Travel, Hotelbeds, Hostelworld, Hopper, additional regional/niche channels based on customer profile.
+
+**Planning rule:** When choosing the next adapter, prefer channels that increase customer confidence fast, improve coverage in a meaningful region, have clear strategic value for management companies, and fit the current architecture without unusual complexity.

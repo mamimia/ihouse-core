@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 77 — OTA Schema Normalization (closed)
+Phase 78 — OTA Schema Normalization (Dates + Price) (closed)
 
 ## Last Closed Phase
 
-Phase 77 — OTA Schema Normalization
+Phase 78 — OTA Schema Normalization (Dates + Price)
 
 ## Current Objective
 
-Phase 78 — TBD.
+Phase 79 — TBD.
 See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Key Invariants (Locked — Do Not Change)
@@ -55,5 +55,5 @@ See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Tests
 
-572 passing (2 pre-existing SQLite skips, unrelated)
+598 passing (2 pre-existing SQLite skips, unrelated)
 

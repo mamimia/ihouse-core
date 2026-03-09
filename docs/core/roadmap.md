@@ -3,7 +3,152 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > It is updated every few phases to reflect what we've learned and where we're headed.
-> Last updated: Phase 64 closed. [Claude]
+> Last updated: Phase 77 closed. [Claude]
+
+
+## Completed
+
+Phase 21 — External OTA ingestion boundary defined.
+Phase 22–33 — (See phase-timeline.md for full history.)
+Phase 34 — OTA canonical emitted event alignment discovery.
+Phase 35 — Alignment implementation (BOOKING_CREATED, BOOKING_CANCELED skills).
+Phase 36 — Business identity canonicalization (booking_id locked).
+Phase 37–49 — (See phase-timeline.md for full history.)
+Phase 50 — BOOKING_AMENDED: DDL, apply_envelope branch, E2E verified.
+Phase 51–57 — (See phase-timeline.md for full history.)
+Phase 58 — POST /webhooks/{provider}: signature verify + validate + ingest.
+Phase 59 — FastAPI entrypoint, GET /health, uvicorn.
+Phase 60 — Request logging middleware (X-Request-ID, duration_ms).
+Phase 61 — JWT auth middleware (tenant_id from sub, 403 on failure).
+Phase 62 — Per-tenant rate limiting (sliding window, 429 + Retry-After).
+Phase 63 — OpenAPI enrichment (BearerAuth, response schemas).
+Phase 64 — Enhanced health check (Supabase ping, DLQ count, ok/degraded/unhealthy).
+Phase 65 — Financial data extraction (BookingFinancialFacts, 5 providers, in-memory).
+Phase 66 — Financial persistence (booking_financial_facts Supabase table, financial_writer.py).
+Phase 67–76 — (See phase-timeline.md for full history.)
+Phase 77 — OTA Schema Normalization (canonical_guest_count, canonical_booking_ref, canonical_property_id, 27 tests).
+
+
+---
+
+## Forward Planning Context (Phase 78+)
+
+Two major forward-planning notes are locked in `docs/core/improvements/future-improvements.md`:
+
+1. **Product and Architecture Bundle** — visibility, auditability, reconciliation, financial clarity, owner surfaces, operational usefulness.
+2. **Adapter Expansion Wave** — Vrbo → Google Vacation Rentals → Traveloka → MakeMyTrip → Despegar.
+
+These are not immediate execution orders. They are direction notes that inform future phase decisions.
+
+
+---
+
+## Phase 78–107 Forward Plan
+
+### Phase 78–82 — Infrastructure Hardening + Schema Completion
+
+**Phase 78 — Schema Normalization (Dates + Price)**
+Extend Phase 77: add `canonical_check_in`, `canonical_check_out`, `canonical_currency`, `canonical_total_price` for all 5 providers. Completes the canonical schema layer.
+
+**Phase 79 — Idempotency Monitoring**
+`idempotency_monitor.py`: metrics on duplicate envelope detection, retry storms, anomalies. Uses existing DLQ + ordering_buffer + event_log data.
+
+**Phase 80 — Structured Logging Layer**
+`structured_logger.py`: JSON output with `request_id`, `tenant_id`, `provider`, `duration_ms`, `result`. Replaces all stderr print statements. Foundation for future dashboards.
+
+**Phase 81 — Integration Health Dashboard (Foundation)**
+`integration_health.py`: per-provider last successful ingest, occurred_at vs recorded_at lag, DLQ counts, buffer counts, reject counts, stale alerts. Surfaces data the system already collects.
+
+**Phase 82 — Admin Query API**
+`src/api/admin_router.py` endpoints: `GET /admin/metrics`, `GET /admin/dlq`, `GET /admin/health/providers`, `GET /admin/bookings/{id}/timeline`. First queryable surface for operators.
+
+---
+
+### Phase 83–87 — Adapter Wave 1 + Visibility
+
+**Phase 83 — Vrbo Adapter** *(Tier 1)*
+First new adapter after the core set. Closes the largest vacation-rental credibility gap. Standard adapter pattern: normalize → validate → classify → to_canonical_envelope.
+
+**Phase 84 — Reservation Timeline / Audit Trail**
+Per-booking story API from existing event_log: created, amended, canceled, buffered, replayed, DLQ events, financial updates. Zero DB schema changes — only reads what already exists.
+
+**Phase 85 — Google Vacation Rentals Adapter** *(Tier 1)*
+Distribution surface rather than classic OTA. Critical for discoveryability. Adapter pattern may differ slightly — document the difference explicitly.
+
+**Phase 86 — Conflict Detection Layer**
+`conflict_detector.py`: overlap on same property, missing mapping, incomplete canonical coverage, potential overbooking, provider mapping gaps. Visibility only — no writes to booking_state.
+
+**Phase 87 — Tenant Isolation Hardening**
+RLS policy audit across all Supabase tables. Verify per-tenant isolation in event_log, booking_state, booking_financial_facts. Add contract tests for cross-tenant data leakage prevention.
+
+---
+
+### Phase 88–92 — Recovery + Southeast Asia + Test Infrastructure
+
+**Phase 88 — Traveloka Adapter** *(Tier 1.5 — Southeast Asia)*
+Dominant platform in Thailand and regional SE Asia context. Increases market fit for local operators.
+
+**Phase 89 — OTA Reconciliation Discovery**
+Discovery phase only. Map what comparison is possible between iHouse Core state and OTA state without a live API. Define the reconciliation model: what to detect, how to flag, what to correct.
+
+**Phase 90 — External Integration Test Harness**
+End-to-end deterministic harness for all current providers (5 core + Vrbo + GVR + Traveloka): webhook → signature → pipeline → Supabase state. Covers rejection, dedup, replay.
+
+**Phase 91 — Replay Harness**
+Historical OTA event stream deterministic replay against the canonical pipeline. For incident recovery and regression testing. Builds on DLQ replay infrastructure (Phase 39+).
+
+**Phase 92 — Roadmap + System Audit**
+Update all docs: `roadmap.md`, `future-improvements.md`, `current-snapshot.md`. Close gaps between code and documentation. Evaluate next 10-phase direction based on what's been learned.
+
+---
+
+### Phase 93–97 — Financial Layer + Latin America + India
+
+**Phase 93 — Payment Lifecycle / Revenue State Projection**
+`payment_lifecycle.py`: financial status states — `guest_paid`, `ota_collecting`, `payout_pending`, `payout_released`, `reconciliation_pending`, `owner_net_pending`. Builds on BookingFinancialFacts without touching booking_state.
+
+**Phase 94 — MakeMyTrip Adapter** *(Tier 2 — India)*
+Expands into the Indian travel market. Follows established adapter pattern.
+
+**Phase 95 — Owner Statements Foundation**
+`owner_statement.py`: per-property monthly summary, net revenue, payout summary. Read-only layer over financial_facts. First owner-facing surface.
+
+**Phase 96 — Despegar Adapter** *(Tier 2 — Latin America)*
+Strongest Latin American travel brand. Completes the Tier 2 adapter wave.
+
+**Phase 97 — OTA Reconciliation Implementation**
+Implement the reconciliation model defined in Phase 89. Detection and correction-support layer — never bypasses apply_envelope. Flags drift via admin API.
+
+---
+
+### Phase 98–107 — Product Layer (Operational Completeness)
+
+**Phase 98 — Guest Pre-Arrival / Check-In Intake**
+Lightweight intake flow per reservation: contact info, arrival time, agreement, special notes, readiness status.
+
+**Phase 99 — Task Automation for Operations**
+Rule-based task layer driven by booking events: BOOKING_CREATED → prep task, checkout tomorrow → cleaning task, amendment → reschedule, cancellation → cancel pending.
+
+**Phase 100 — Owner Statements Full View**
+Expand Phase 95 into a complete owner-facing surface: monthly statement, property revenue, net vs gross, payout history, scoped role visibility.
+
+**Phase 101–107 — TBD based on product learning**
+Candidates: Tier 3 adapters (Rakuten, Hotelbeds, Hostelworld), advanced financial reporting, outbound channel sync discovery, multi-projection read models, revenue analytics, advanced conflict resolution.
+
+
+---
+
+## Where We Land After Phase 107
+
+**Adapter coverage:** Booking.com, Airbnb, Expedia, Agoda, Trip.com, Vrbo, Google Vacation Rentals, Traveloka, MakeMyTrip, Despegar. 10 channels. Global + SE Asia + India + LATAM coverage.
+
+**Operational surfaces:** Reservation timeline, integration health dashboard, admin API, conflict detection, reconciliation layer.
+
+**Financial surfaces:** Booking financial facts (persisted), payment lifecycle states, owner statements.
+
+**Product surfaces:** Guest intake, task automation, owner views.
+
+**Architecture:** Canonical core unchanged — `apply_envelope` still the only write authority. All product layers read from or wrap the canonical spine without mutating it.
 
 
 ## Completed
