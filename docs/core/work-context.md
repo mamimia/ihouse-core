@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 110 -- OTA Reconciliation Implementation (closed)
+Phase 111 -- Task System Foundation (closed)
 
 ## Last Closed Phase
 
-Phase 110 -- OTA Reconciliation Implementation
+Phase 111 -- Task System Foundation
 
 ## Current Objective
 
-Phase 111 -- Reconciliation Scheduler / Worker. See `docs/core/roadmap.md`.
+Phase 112 -- Task Automation from Booking Events. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
