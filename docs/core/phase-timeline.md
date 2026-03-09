@@ -2266,3 +2266,42 @@ Key gaps surfaced:
   - Traveloka uses event_reference (not event_id) for idempotency source
 
 Result: 1665 passed, 2 skipped. No new tests. Docs-only phase.
+
+## Phase 93 -- Payment Lifecycle / Revenue State Projection (Closed)
+
+[Claude] Deterministic, read-only payment lifecycle state machine.
+No writes to any data store. Pure projection from BookingFinancialFacts.
+
+New:
+  src/adapters/ota/payment_lifecycle.py
+    PaymentLifecycleStatus (enum, 7 states):
+      GUEST_PAID | OTA_COLLECTING | PAYOUT_PENDING | PAYOUT_RELEASED |
+      RECONCILIATION_PENDING | OWNER_NET_PENDING | UNKNOWN
+    PaymentLifecycleState (frozen dataclass)
+    PaymentLifecycleExplanation (frozen dataclass, includes rule_applied + reason)
+    project_payment_lifecycle(facts, envelope_type) → PaymentLifecycleState
+    explain_payment_lifecycle(facts, envelope_type) → PaymentLifecycleExplanation
+    6 priority rules (applied in order, first match wins):
+      1. canceled_booking  → RECONCILIATION_PENDING (always for BOOKING_CANCELED)
+      2. no_financial_data → UNKNOWN (no total AND no net)
+      3. partial_no_net    → PAYOUT_PENDING (PARTIAL confidence, total present)
+      4. net_available     → OWNER_NET_PENDING (net exists, direct or derived)
+      5. full_confidence   → GUEST_PAID (FULL confidence, BOOKING_CREATED)
+      6. fallback          → UNKNOWN (catch-all)
+
+  tests/test_payment_lifecycle_contract.py — 118 tests (Groups A-F)
+    A: enum/dataclass structure (8)
+    B: project_payment_lifecycle() all status outcomes (16)
+    C: explain_payment_lifecycle() rule_applied + reason (8)
+    D: all 8 OTA providers end-to-end extract → project (8×8=64)
+    E: determinism (4)
+    F: error handling / type guards (7)
+
+Invariants locked:
+  - payment_lifecycle.py READ-ONLY. No writes.
+  - booking_state must NEVER contain financial calculations (reaffirmed).
+  - Same inputs → same state (verified by Group E).
+
+No Supabase schema changes. No new migrations. No booking_state writes.
+
+Result: 1783 passed, 2 skipped.

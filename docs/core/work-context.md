@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 92 -- Roadmap + System Audit (closed)
+Phase 93 -- Payment Lifecycle / Revenue State Projection (closed)
 
 ## Last Closed Phase
 
-Phase 92 -- Roadmap + System Audit
+Phase 93 -- Payment Lifecycle / Revenue State Projection
 
 ## Current Objective
 
-Phase 93 -- Payment Lifecycle / Revenue State Projection.
-See `docs/core/roadmap.md` Phase 93 entry.
+Phase 94 -- MakeMyTrip Adapter (Tier 2 — India).
+See `docs/core/roadmap.md` Phase 94 entry.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -55,4 +55,4 @@ See `docs/core/roadmap.md` Phase 93 entry.
 
 ## Tests
 
-1665 passing (2 pre-existing SQLite skips, unrelated)
+1783 passing (2 pre-existing SQLite skips, unrelated)

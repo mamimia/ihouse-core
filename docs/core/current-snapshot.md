@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 92 -- Roadmap + System Audit (closed)
+Phase 93 -- Payment Lifecycle / Revenue State Projection (closed)
 
 ## Last Closed Phase
-Phase 92 -- Roadmap + System Audit
+Phase 93 -- Payment Lifecycle / Revenue State Projection
 
 ## System Status
 
@@ -49,8 +49,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 90 | External Integration Test Harness -- test_e2e_integration_harness.py, 8 providers full pipeline coverage (CREATE/CANCEL/AMENDED), Groups A-H, 276 tests | ✅ |
 | 91 | OTA Replay Fixture Contract -- tests/fixtures/ota_replay/ (16 YAML fixtures, 8 providers×2), test_ota_replay_fixture_contract.py, Groups A-E, 273 tests | ✅ |
 | 92 | Roadmap + System Audit -- roadmap.md rewritten (Phase 21-91 full table), system-audit.md created (module inventory, boundary conditions, architecture integrity, gap analysis) | ✅ |
+| 93 | Payment Lifecycle / Revenue State Projection -- payment_lifecycle.py, PaymentLifecycleStatus (7 states), PaymentLifecycleState, PaymentLifecycleExplanation, project_payment_lifecycle(), explain_payment_lifecycle(), 6-rule priority engine; 118 tests | ✅ |
 
-**1665 tests pass** (2 pre-existing SQLite skips, unrelated)
+**1783 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -159,9 +160,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 93 -- Payment Lifecycle / Revenue State Projection**
-- See `docs/core/roadmap.md` Phase 93 entry
+**Phase 94 -- MakeMyTrip Adapter** *(Tier 2 — India)*
+- See `docs/core/roadmap.md` Phase 94 entry
 
 ## Tests
 
-**1665 passing** (2 pre-existing SQLite skips, unrelated)
+**1783 passing** (2 pre-existing SQLite skips, unrelated)
