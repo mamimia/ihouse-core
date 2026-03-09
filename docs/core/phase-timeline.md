@@ -2669,3 +2669,164 @@ Response: { tenant_id, count, limit, records: [...] }
 **2401 tests pass, 2 pre-existing SQLite skips, 1 intentional skip.**
 No DB schema changes. No migrations. booking_financial_facts read-only.
 
+
+---
+
+## Phase 109 — Booking Date Range Search (Closed)
+
+**Status:** Closed
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Extended `GET /bookings` with `check_in_from` and `check_in_to` query parameters
+(YYYY-MM-DD) to support date range filtering. Used Supabase `.gte()` and `.lte()`
+on the `check_in` column. Bad date format returns 400 VALIDATION_ERROR.
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `src/api/bookings_router.py` | MODIFIED — check_in_from + check_in_to params, ISO 8601 regex validation |
+| `tests/test_booking_date_range_contract.py` | NEW — 36 tests |
+| `docs/archive/phases/phase-109-spec.md` | NEW |
+
+### Result
+
+**2437 tests pass, 2 pre-existing SQLite skips.**
+No DB schema changes.
+
+---
+
+## Phase 110 — OTA Reconciliation Implementation (Closed)
+
+**Status:** Closed
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Implemented OTA reconciliation detector with two finding types:
+- `FINANCIAL_FACTS_MISSING` — bookings with no financial facts record
+- `STALE_BOOKING` — active bookings not updated in >30 days
+
+Added `GET /admin/reconciliation` endpoint to `admin_router.py` with optional
+`include_findings` query param. Pure read-only, never touches event_log or booking_state.
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `src/reconciliation/reconciliation_detector.py` | NEW — run_reconciliation(), two detectors |
+| `src/api/admin_router.py` | MODIFIED — GET /admin/reconciliation endpoint |
+| `tests/test_reconciliation_detector_contract.py` | NEW — 27 tests, Groups A–J |
+| `docs/archive/phases/phase-110-spec.md` | NEW |
+
+### Result
+
+**2464 tests pass, 2 pre-existing SQLite skips.**
+No DB schema changes.
+
+---
+
+## Phase 111 — Task System Foundation (Closed)
+
+**Status:** Closed
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Created the canonical data model for the task system. Defined all enums, mapping
+tables, state machine, and the `Task` dataclass with factory and lifecycle helpers.
+CRITICAL ACK SLA of 5 minutes is locked as a hard invariant.
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `src/tasks/__init__.py` | NEW — package marker |
+| `src/tasks/task_model.py` | NEW — TaskKind(5), TaskStatus(5), TaskPriority(4), WorkerRole(5), mapping tables, Task.build() |
+| `tests/test_task_model_contract.py` | NEW — 68 tests, Groups A–I |
+| `docs/archive/phases/phase-111-spec.md` | NEW |
+
+### Invariants (Locked)
+
+- CRITICAL ACK SLA = 5 minutes (immutable)
+- task_id is deterministic (hash-based)
+- task_model.py is pure — no DB I/O or side effects
+
+### Result
+
+**2532 tests pass, 2 pre-existing SQLite skips.**
+No DB schema changes.
+
+---
+
+## Phase 112 — Task Automation from Booking Events (Closed)
+
+**Status:** Closed
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Implemented task automation rules triggered by booking lifecycle events. All three
+functions are pure (no DB reads/writes). Callers are responsible for persisting
+the returned actions.
+
+### Automation Rules (Locked)
+
+- `BOOKING_CREATED` → emit `CHECKIN_PREP` (HIGH) + `CLEANING` (MEDIUM), both due on `check_in`
+- `BOOKING_CANCELED` → emit `TaskCancelAction` for all pending tasks
+- `BOOKING_AMENDED` → emit `TaskRescheduleAction` for CHECKIN_PREP + CLEANING if check_in changed
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `src/tasks/task_automator.py` | NEW — tasks_for_booking_created, actions_for_booking_canceled, actions_for_booking_amended + action dataclasses |
+| `tests/test_task_automator_contract.py` | NEW — 48 tests, Groups A–J |
+| `docs/archive/phases/phase-112-spec.md` | NEW |
+
+### Result
+
+**2580 tests pass, 2 pre-existing SQLite skips.**
+No DB schema changes. Pure functions only.
+
+---
+
+## Phase 113 — Task Query API (Closed)
+
+**Status:** Closed
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Exposed a task read and status-transition REST API. Three endpoints registered in
+`main.py`, tenant-isolated, JWT-authenticated. Status transitions enforced via
+`VALID_TASK_TRANSITIONS` from `task_model.py`. Added `NOT_FOUND` and
+`INVALID_TRANSITION` error codes to `error_models.py`.
+
+### Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /tasks` | List with filters: property_id, status, kind, due_date, limit(1–100) |
+| `GET /tasks/{task_id}` | Single task, 404 tenant-isolated |
+| `PATCH /tasks/{task_id}/status` | Status transition, 422 on invalid transition |
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `src/tasks/task_router.py` | NEW — 3 endpoints |
+| `src/api/error_models.py` | MODIFIED — added NOT_FOUND, INVALID_TRANSITION |
+| `src/main.py` | MODIFIED — registered task_router |
+| `tests/test_task_router_contract.py` | NEW — 50 tests, Groups A–P |
+| `docs/archive/phases/phase-113-spec.md` | NEW |
+
+### Result
+
+**2630 tests pass, 2 pre-existing SQLite skips.**
+No DB schema changes. PATCH writes only to `tasks` table.
+
+
+

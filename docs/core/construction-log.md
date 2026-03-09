@@ -1901,3 +1901,84 @@ New files:
 Result: 2401 tests pass, 2 pre-existing SQLite skips, 1 intentional skip.
 No DB schema changes. No migrations. booking_financial_facts read-only.
 
+### Phase 109 closure — 2026-03-09
+
+Booking Date Range Search.
+
+Modified:
+  src/api/bookings_router.py — GET /bookings extended: check_in_from + check_in_to (YYYY-MM-DD), ISO 8601 regex validation, gte/lte on check_in column; 400 VALIDATION_ERROR on bad format
+
+New files:
+  tests/test_booking_date_range_contract.py — 36 tests, Groups A–G
+  docs/archive/phases/phase-109-spec.md — phase spec
+
+Result: 2437 tests pass, 2 pre-existing SQLite skips.
+No DB schema changes. booking_state read-only.
+
+### Phase 110 closure — 2026-03-09
+
+OTA Reconciliation Implementation.
+
+New files:
+  src/reconciliation/__init__.py — package marker
+  src/reconciliation/reconciliation_detector.py — run_reconciliation(), FINANCIAL_FACTS_MISSING + STALE_BOOKING detectors (pure read-only)
+  tests/test_reconciliation_detector_contract.py — 27 tests, Groups A–J
+  docs/archive/phases/phase-110-spec.md — phase spec
+
+Modified:
+  src/api/admin_router.py — GET /admin/reconciliation endpoint added (include_findings param)
+
+Result: 2464 tests pass, 2 pre-existing SQLite skips.
+No DB schema changes.
+
+### Phase 111 closure — 2026-03-09
+
+Task System Foundation.
+
+New files:
+  src/tasks/__init__.py — package marker
+  src/tasks/task_model.py — TaskKind(5), TaskStatus(5), TaskPriority(4), WorkerRole(5) enums; PRIORITY_URGENCY, PRIORITY_ACK_SLA_MINUTES, KIND_DEFAULT_WORKER_ROLE, KIND_DEFAULT_PRIORITY mapping tables; VALID_TASK_TRANSITIONS, TERMINAL_STATUSES; Task dataclass with .build() factory, .with_status(), .can_transition_to(), .is_terminal()
+  tests/test_task_model_contract.py — 68 tests, Groups A–I
+  docs/archive/phases/phase-111-spec.md — phase spec
+
+Invariant locked: CRITICAL ACK SLA = 5 minutes.
+Invariant locked: task_id is deterministic (hash-based).
+
+Result: 2532 tests pass, 2 pre-existing SQLite skips.
+No DB schema changes. Pure data model — no DB I/O.
+
+### Phase 112 closure — 2026-03-09
+
+Task Automation from Booking Events.
+
+New files:
+  src/tasks/task_automator.py — tasks_for_booking_created() [CHECKIN_PREP+CLEANING], actions_for_booking_canceled() [TaskCancelAction], actions_for_booking_amended() [TaskRescheduleAction]; TaskCancelAction + TaskRescheduleAction frozen dataclasses
+  tests/test_task_automator_contract.py — 48 tests, Groups A–J
+  docs/archive/phases/phase-112-spec.md — phase spec
+
+Automation rules locked:
+  BOOKING_CREATED → CHECKIN_PREP (HIGH) + CLEANING (MEDIUM), both due on check_in
+  BOOKING_CANCELED → TaskCancelAction for all PENDING tasks
+  BOOKING_AMENDED → TaskRescheduleAction for CHECKIN_PREP + CLEANING if check_in changed
+
+Result: 2580 tests pass, 2 pre-existing SQLite skips.
+No DB schema changes. Pure functions — callers persist actions.
+
+### Phase 113 closure — 2026-03-09
+
+Task Query API.
+
+New files:
+  src/tasks/task_router.py — GET /tasks (filters: property_id, status, kind, due_date, limit 1-100), GET /tasks/{task_id} (404 tenant-isolated), PATCH /tasks/{task_id}/status (VALID_TASK_TRANSITIONS enforced, 422 INVALID_TRANSITION, canceled_reason defaults to "Canceled via API")
+  tests/test_task_router_contract.py — 50 tests, Groups A–P
+  docs/archive/phases/phase-113-spec.md — phase spec
+
+Modified:
+  src/api/error_models.py — ErrorCode.NOT_FOUND + ErrorCode.INVALID_TRANSITION added
+  src/main.py — task_router registered
+
+Result: 2630 tests pass, 2 pre-existing SQLite skips.
+PATCH /tasks/{id}/status writes only to `tasks` table. Never touches booking_state, event_log, or booking_financial_facts.
+
+
+
