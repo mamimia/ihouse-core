@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 89 -- OTA Reconciliation Discovery (closed)
+Phase 90 -- External Integration Test Harness (closed)
 
 ## Last Closed Phase
 
-Phase 89 -- OTA Reconciliation Discovery
+Phase 90 -- External Integration Test Harness
 
 ## Current Objective
 
-Phase 90 -- External Integration Test Harness.
-See `docs/core/roadmap.md` Phase 90 entry.
+Phase 91 -- OTA Replay Harness.
+See `docs/core/roadmap.md` Phase 91 entry.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -55,4 +55,4 @@ See `docs/core/roadmap.md` Phase 90 entry.
 
 ## Tests
 
-1116 passing (2 pre-existing SQLite skips, unrelated)
+1392 passing (2 pre-existing SQLite skips, unrelated)

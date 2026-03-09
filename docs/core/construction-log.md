@@ -1644,3 +1644,27 @@ booking_state or any Supabase table. Corrections require a new canonical event.
 
 Result: 1116 passed, 2 skipped.
 No Supabase schema changes. No new migrations. No booking_state writes.
+
+## Phase 90 -- External Integration Test Harness (Closed)
+
+[Claude] End-to-end deterministic pipeline harness for all 8 OTA providers.
+No production code changes. Infrastructure-only. CI-safe.
+
+New: tests/test_e2e_integration_harness.py — 276 tests (Groups A-H)
+
+Group A: All 8 providers × 8 assertions → BOOKING_CREATED
+Group B: All 8 providers × 4 assertions → BOOKING_CANCELED
+Group C: All 8 providers × 6 assertions → BOOKING_AMENDED
+Group D: booking_id Phase 36 invariant + prefix stripping
+Group E: idempotency_key non-empty, deterministic, event-differentiated
+Group F: Invalid payload boundary rejection
+Group G: Cross-provider isolation (same raw ref → different booking_id)
+Group H: Pipeline idempotency (same payload → same envelope)
+
+Key engineering notes:
+  - payload_validator accepts reservation_id/booking_ref/order_id only.
+    gvr_booking_id and booking_code require reservation_id duplication.
+  - Traveloka event_types must match semantics.py known values (not BOOKING_CONFIRMED etc.)
+
+Result: 1392 passed, 2 skipped.
+No Supabase schema changes. No new migrations. No booking_state writes.

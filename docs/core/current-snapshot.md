@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 89 -- OTA Reconciliation Discovery (closed)
+Phase 90 -- External Integration Test Harness (closed)
 
 ## Last Closed Phase
-Phase 89 -- OTA Reconciliation Discovery
+Phase 90 -- External Integration Test Harness
 
 ## System Status
 
@@ -46,8 +46,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 87 | Tenant Isolation Hardening -- tenant_isolation_enforcer.py, TABLE_REGISTRY, TableIsolationPolicy, check_cross_tenant_leak, audit_system_isolation; 54 tests | ✅ |
 | 88 | Traveloka Adapter (SE Asia Tier 1.5) -- traveloka.py, _extract_traveloka, extract_amendment_traveloka, _strip_traveloka_prefix; 6 files changed; 53 tests | ✅ |
 | 89 | OTA Reconciliation Discovery -- reconciliation_model.py, ReconciliationFindingKind (7), ReconciliationSeverity (3), ReconciliationFinding, ReconciliationReport, ReconciliationSummary; 87 tests | ✅ |
+| 90 | External Integration Test Harness -- test_e2e_integration_harness.py, 8 providers full pipeline coverage (CREATE/CANCEL/AMENDED), Groups A-H, 276 tests | ✅ |
 
-**1116 tests pass** (2 pre-existing SQLite skips, unrelated)
+**1392 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -156,9 +157,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 90 -- External Integration Test Harness**
-- See `docs/core/roadmap.md` Phase 90 entry
+**Phase 91 -- OTA Replay Harness**
+- See `docs/core/roadmap.md` Phase 91 entry
 
 ## Tests
 
-**1116 passing** (2 pre-existing SQLite skips, unrelated)
+**1392 passing** (2 pre-existing SQLite skips, unrelated)

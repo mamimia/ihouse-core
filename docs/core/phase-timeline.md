@@ -2187,5 +2187,29 @@ ReconciliationSummary (frozen, .from_report(), top_kind tie-breaking logic).
 New invariant: reconciliation layer is READ-ONLY. Findings describe drift only.
 Corrections require a new canonical event through the normal pipeline.
 
+Corrections require a new canonical event through the normal pipeline.
+
 Result: 1116 passed, 2 skipped.
 No Supabase schema changes. No new migrations. No booking_state writes.
+
+## Phase 90 -- External Integration Test Harness (Closed)
+
+[Claude] End-to-end deterministic pipeline harness for all 8 OTA providers.
+CI-safe: no Supabase, no HTTP, no live API calls.
+
+tests/test_e2e_integration_harness.py — 276 tests (Groups A-H)
+  Group A: All 8 providers produce BOOKING_CREATED (8 tests × 8 providers)
+  Group B: All 8 providers produce BOOKING_CANCELED (4 tests × 8 providers)
+  Group C: All 8 providers produce BOOKING_AMENDED (6 tests × 8 providers)
+  Group D: booking_id Phase 36 format invariant across all 8 (8 tests)
+  Group E: idempotency_key non-empty, deterministic, event-type-differentiated (4 × 8)
+  Group F: Boundary validation rejects invalid payloads (8 tests)
+  Group G: Cross-provider isolation — same raw ref → different booking_id (parametric)
+  Group H: Pipeline idempotency — same payload → same envelope (4 × 8)
+
+Key finding: provider-specific event_type values surface semantic routing paths.
+Traveloka and GVR required reservation_id duplicated for payload_validator boundary.
+No production code changes. Infrastructure-only.
+
+Result: 1392 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
