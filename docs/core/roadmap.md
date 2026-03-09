@@ -112,17 +112,14 @@ All read from `booking_financial_facts`. No mutations. Multi-currency aware (no 
 **Phase 117 — SLA Escalation Engine**
 `sla_engine.py`: per-task SLA timer consumer. Reads `ack_sla_minutes` from task, tracks acknowledgement state, emits escalation actions based on urgency level (LOW → in-app only / MEDIUM → external after delay / HIGH → fast external / CRITICAL → manager + SMS fallback per `worker-communication-layer.md`). Pure in-system — no external channel integrations yet. Deterministic escalation audit events emitted.
 
-**Phase 118 — Financial Dashboard API (Ring 2–3)**
-Per `future-improvements.md` Ring 2–3 spec. Extends Phase 116:
-- Per-booking financial status card endpoint: `GET /financial/status/{booking_id}` — lifecycle_status, total_price, ota_commission, net_to_property, source_confidence, plain-English reason from `explain_payment_lifecycle()`
-- RevPAR computation: `GET /financial/revpar?property_id=&period=` — `total_revenue / available_room_nights`
-- Lifecycle distribution per property. Epistemic tier (A/B/C) on all returned figures.
+**Phase 118 — Financial Dashboard API (Ring 2–3)** ✅ CLOSED
+GET /financial/status/{booking_id} (lifecycle card + epistemic tier A/B/C + plain-English reason), GET /financial/revpar (total_net/available_room_nights per currency, worst-tier wins), GET /financial/lifecycle-by-property (distribution grouped by property). Shared helpers _tier, _worst_tier, _monetary, _project_lifecycle_status exported for re-use. 44 tests.
 
-**Phase 119 — Reconciliation Inbox API**
-Per `future-improvements.md` Ring 3 Reconciliation Inbox spec. `GET /admin/reconciliation` — exception-first view: bookings with RECONCILIATION_PENDING, PARTIAL confidence, missing net_to_property, lifecycle_status UNKNOWN. Correction hints where inferable. Surfaces only items that need operator attention — empty inbox = clean financials.
+**Phase 119 — Reconciliation Inbox API** ✅ CLOSED
+GET /admin/reconciliation?period= — exception-first inbox. 4 flags: RECONCILIATION_PENDING, PARTIAL_CONFIDENCE, MISSING_NET_TO_PROPERTY, UNKNOWN_LIFECYCLE. correction_hint (human-readable guidance) per item. Tier C first sort. Empty inbox = clean financials. Never queries booking_state. 32 tests.
 
-**Phase 120 — Payout Timeline / Cashflow View**
-Per `future-improvements.md` Ring 3 Cashflow spec. `GET /financial/cashflow?period=` → expected inflows by week, confirmed released payouts, overdue (expected but not released), forward projection (next 30/60/90 days). Honest projections: OTA_COLLECTING bookings NOT counted as received. PAYOUT_RELEASED only. Key differentiator vs. competitors.
+**Phase 120 — Payout Timeline / Cashflow View** ✅ CLOSED
+GET /financial/cashflow?period= → expected_inflows_by_week (ISO week buckets per currency), confirmed_released (PAYOUT_RELEASED only), overdue, forward_projection (next 30/60/90 days with booking_count + estimated_revenue + confidence=estimated), totals per currency, ota_collecting_excluded_count. _iso_week_key helper. OTA_COLLECTING bookings explicitly excluded from all inflow counts. 37 tests.
 
 **Phase 121 — Owner Statement Generator (Ring 4)**
 Per `future-improvements.md` Ring 4 spec. `GET /owner-statement/{property_id}?month=` enhanced with:

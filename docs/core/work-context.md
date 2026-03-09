@@ -2,15 +2,28 @@
 
 ## Current Active Phase
 
-Phase 117 -- SLA Escalation Engine (closed)
+Phase 120 — Cashflow / Payout Timeline (closed)
 
 ## Last Closed Phase
 
-Phase 117 -- SLA Escalation Engine
+Phase 120 — Cashflow / Payout Timeline
 
 ## Current Objective
 
-Phase 118 -- Financial Dashboard API (Ring 2-3). See `docs/core/roadmap.md`.
+**Phase 121 — Owner Statement Generator (Ring 4)**
+Enhanced owner statement: per-booking line items, management fee deduction, owner net total,
+payout status per booking, epistemic tier on every figure, PDF export endpoint.
+Role-scoped: owner accounts see only their properties.
+See `docs/core/roadmap.md` for full spec.
+
+## What Was Done in This Session (Phases 118–120)
+
+| Phase | Feature | Files |
+|-------|---------|-------|
+| 118 | Financial Dashboard API | `src/api/financial_dashboard_router.py`, `tests/test_financial_dashboard_router_contract.py` |
+| 119 | Reconciliation Inbox API | `src/api/reconciliation_router.py`, `tests/test_reconciliation_router_contract.py` |
+| 120 | Cashflow / Payout Timeline | `src/api/cashflow_router.py`, `tests/test_cashflow_router_contract.py` |
+| docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -21,6 +34,28 @@ Phase 118 -- Financial Dashboard API (Ring 2-3). See `docs/core/roadmap.md`.
 - HTTP endpoint routes through `ingest_provider_event` → pipeline → `IngestAPI.append_event` → `CoreExecutor.execute` → `apply_envelope`
 - `tenant_id` comes from verified JWT `sub` claim, NOT from payload body (Phase 61+)
 - `booking_state` is an operational read model ONLY — must never contain financial calculations (Phase 62+ invariant)
+- All financial read endpoints query `booking_financial_facts` ONLY — never `booking_state`
+- Deduplication rule: most-recent `recorded_at` per `booking_id` (shared across Phase 116–120)
+- Epistemic tier: FULL→A, ESTIMATED→B, PARTIAL→C. Worst tier wins in aggregated endpoints.
+
+## Key Files — Financial API Layer (Phases 116–120)
+
+| File | Role |
+|------|------|
+| `src/api/financial_aggregation_router.py` | Ring 1: summary/by-provider/by-property/lifecycle-distribution. Shared helpers: `_fetch_period_rows`, `_dedup_latest`, `_validate_period`, `_fmt`, `_to_decimal` |
+| `src/api/financial_dashboard_router.py` | Ring 2–3: GET /financial/status/{id}, /revpar, /lifecycle-by-property. Exports: `_tier`, `_worst_tier`, `_monetary`, `_project_lifecycle_status` |
+| `src/api/reconciliation_router.py` | Ring 3: GET /admin/reconciliation — exception-first inbox |
+| `src/api/cashflow_router.py` | Ring 3: GET /financial/cashflow — weekly inflow buckets, confirmed released, overdue, 30/60/90-day projection |
+
+## Key Files — Task Layer (Phases 111–115)
+
+| File | Role |
+|------|------|
+| `src/tasks/task_model.py` | TaskKind, TaskStatus, TaskPriority, WorkerRole, Task dataclass |
+| `src/tasks/task_automator.py` | Pure tasks_for_booking_created / actions_for_booking_canceled / amended |
+| `src/tasks/task_writer.py` | Supabase upsert/cancel/reschedule — wired into service.py |
+| `src/tasks/task_router.py` | GET /tasks, GET /tasks/{id}, PATCH /tasks/{id}/status |
+| `src/tasks/sla_engine.py` | evaluate() — pure SLA escalation logic, ACK_SLA_BREACH + COMPLETION_SLA_BREACH |
 
 ## Key Files — Booking Identity Layer (Phase 68)
 
@@ -32,7 +67,7 @@ Phase 118 -- Financial Dashboard API (Ring 2-3). See `docs/core/roadmap.md`.
 
 | File | Role |
 |------|------|
-| `src/main.py` | FastAPI app entrypoint |
+| `src/main.py` | FastAPI app entrypoint (all routers registered here) |
 | `src/api/webhooks.py` | `POST /webhooks/{provider}` |
 | `src/api/auth.py` | JWT auth dependency |
 | `src/api/rate_limiter.py` | Per-tenant rate limiting |
@@ -54,4 +89,5 @@ Phase 118 -- Financial Dashboard API (Ring 2-3). See `docs/core/roadmap.md`.
 
 ## Tests
 
-2747 passing (2 pre-existing SQLite skips, unrelated)
+**2860 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
+
