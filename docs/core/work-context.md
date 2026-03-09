@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 144 — Outbound Sync Result Persistence (closed)
+Phase 145 — Outbound Sync Log Inspector (closed)
 
 ## Last Closed Phase
 
-Phase 144 — Outbound Sync Result Persistence: `outbound_sync_log` DDL; `sync_log_writer.write_sync_result()` (best-effort, client-injection); `_persist()` wired in executor; skips not persisted; 13 contract tests; 3673 passing
+Phase 145 — Outbound Sync Log Inspector: `GET /admin/outbound-log` + `GET /admin/outbound-log/{booking_id}`; tenant-scoped; registered in main.py; 30 contract tests; 3703 passing
 
 ## Current Objective
 
-**Phase 145 — Outbound Sync Log Inspector**
+**Phase 146 — Sync Health Dashboard**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,7 +37,7 @@ Phase 144 — Outbound Sync Result Persistence: `outbound_sync_log` DDL; `sync_l
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
 | 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
-| 144 | Outbound Sync Result Persistence | `migrations/phase_144_outbound_sync_log.sql`, `src/services/sync_log_writer.py`, `src/services/outbound_executor.py` (_persist), `tests/test_sync_result_persistence_contract.py` |
+| 145 | Outbound Sync Log Inspector | `src/api/outbound_log_router.py` (NEW), `src/main.py` (registration + tag), `tests/test_outbound_log_router_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)

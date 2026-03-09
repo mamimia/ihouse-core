@@ -118,6 +118,7 @@ _TAGS = [
     {"name": "channel-map", "description": "Property-Channel Mapping Foundation (Phase 135). Register/list/update/remove OTA channel mappings per property. Outbound sync foundation. JWT required."},
     {"name": "registry", "description": "Provider Capability Registry (Phase 136). OTA write capabilities, tiers (A/B/C/D), sync modes, rate limits. Global. JWT required."},
     {"name": "sync", "description": "Outbound Sync Trigger (Phase 137). Compute per-channel sync_plan (api_first|ical_fallback|skip) by joining channel map and capability registry. JWT required."},
+    {"name": "outbound", "description": "Outbound Sync Log Inspector (Phase 145). Read-only audit log of all outbound sync attempts per tenant. Filters: booking_id, provider, status, limit. JWT required."},
 ]
 
 app = FastAPI(
@@ -217,6 +218,9 @@ app.include_router(sync_trigger_router)
 
 from api.outbound_executor_router import router as outbound_executor_router  # noqa: E402
 app.include_router(outbound_executor_router)
+
+from api.outbound_log_router import router as outbound_log_router  # noqa: E402  # Phase 145
+app.include_router(outbound_log_router)
 
 
 # ---------------------------------------------------------------------------

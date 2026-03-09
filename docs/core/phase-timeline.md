@@ -3180,5 +3180,32 @@ Result: 3673 tests pass (3660 + 13 new). DDL migration added. No router changes.
 ⚠️ **DDL TODO:** Apply `migrations/phase_144_outbound_sync_log.sql` to Supabase once MCP access is restored.
 
 
+## Phase 145 — Outbound Sync Log Inspector (Closed)
+
+Goal: Read-only API to inspect what was sent to each OTA provider, when, and with
+what status. Complement to DLQ Inspector (Phase 131). First consumer of Phase 144
+`outbound_sync_log` table.
+
+Completed:
+
+- `src/api/outbound_log_router.py` — NEW — Two endpoints:
+  - `GET /admin/outbound-log` — list entries for this tenant, newest-first. Query params: `booking_id`, `provider`, `status` (validated: ok/failed/dry_run/skipped → 400 on invalid), `limit` (1-200, default 50). Returns: `{tenant_id, count, limit, entries[]}`.
+  - `GET /admin/outbound-log/{booking_id}` — all rows for a booking, 404 if none. Returns `{booking_id, tenant_id, count, entries[]}`. Cross-tenant reads silently 404 (same convention as booking timeline).
+  - Both use `_get_supabase_client()` with optional `client=` override for tests.
+  - `_query_log()` helper: fluent chain `.eq("tenant_id")` → optional further filters → `.order("synced_at", desc=True)` → `.limit(limit)`.
+- `src/main.py` — MODIFIED — Added `"outbound"` OpenAPI tag + `include_router(outbound_log_router)`.
+- `tests/test_outbound_log_router_contract.py` — NEW — 30 contract tests Groups A–J: list (A), filter booking_id (B), filter provider (C), filter status all 4 valid (D), limit params (E), invalid status 400 (F), booking detail found (G), 404 not-found (H), tenant isolation via query inspection (I), smoke (J).
+
+Design decisions:
+- `_query_log()` applies `tenant_id` as the FIRST eq filter — isolation invariant verified by Group I tests.
+- 400 on invalid status (VALIDATION_ERROR) before any DB call — guard at API layer.
+- 404 on missing booking (same convention as admin_router.py `get_booking_timeline`).
+- limit max 200 enforced by FastAPI Query constraint → 422 for >200.
+- No write path. Tags: `["admin", "outbound"]` to appear in both tag sections of OpenAPI.
+
+Result: 3703 tests pass (3673 + 30 new). No DB schema changes (reads Phase 144 table). 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+
+
 
 

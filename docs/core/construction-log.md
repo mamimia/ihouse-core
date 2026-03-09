@@ -2202,5 +2202,18 @@ Changes:
 Result: 3673 tests pass (3660 + 13 new). 2 pre-existing SQLite failures (unrelated, unchanged).
 
 
+## Phase 145 — Outbound Sync Log Inspector (Closed)
+
+Read-only API to inspect `outbound_sync_log` rows written by Phase 144.
+
+Changes:
+- src/api/outbound_log_router.py [NEW]: `GET /admin/outbound-log` (filters: booking_id/provider/status/limit 1-200); `GET /admin/outbound-log/{booking_id}` (404 if no rows); tenant-scoped; optional client injection; `_query_log()` helper; VALIDATION_ERROR on invalid status; newest-first ordering
+- src/main.py [MODIFIED]: Added "outbound" tag to _TAGS; registered outbound_log_router after outbound_executor_router
+- tests/test_outbound_log_router_contract.py [NEW]: 30 contract tests Groups A-J
+
+Result: 3703 tests pass (3673 + 30 new). No DB schema changes. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+
+
 
 
