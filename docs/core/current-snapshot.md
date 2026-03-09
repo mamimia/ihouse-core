@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 115 -- Task Writer (closed)
+Phase 116 -- Financial Aggregation API (closed)
 
 ## Last Closed Phase
-Phase 115 -- Task Writer
+Phase 116 -- Financial Aggregation API
 
 ## System Status
 
@@ -72,8 +72,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 113 | Task Query API -- task_router.py: GET /tasks (filters: property_id/status/kind/due_date/limit 1-100), GET /tasks/{task_id} (404 tenant-isolated), PATCH /tasks/{task_id}/status (VALID_TASK_TRANSITIONS enforced, 422 INVALID_TRANSITION); error_models.py +NOT_FOUND +INVALID_TRANSITION; main.py registered; 50 tests | ✅ |
 | 114 | Task Persistence Layer -- Supabase `tasks` table DDL: 18 columns, 3 RLS policies (service_role all / authenticated read / authenticated update), 3 composite indexes (tenant+status, tenant+property_id, tenant+due_date); migration applied + E2E verified (INSERT/SELECT/UPDATE/DELETE); 0 new tests (infra phase) | ✅ |
 | 115 | Task Writer -- task_writer.py: write_tasks_for_booking_created (upsert CHECKIN_PREP+CLEANING, idempotent), cancel_tasks_for_booking_canceled (PENDING→CANCELED), reschedule_tasks_for_booking_amended (due_date update); wired into service.py best-effort blocks after APPLIED for all 3 event types; test_task_writer_contract.py Groups A–E, 32 tests | ✅ |
+| 116 | Financial Aggregation API -- financial_aggregation_router.py: GET /financial/summary, /by-provider, /by-property, /lifecycle-distribution; SUPPORTED_CURRENCIES frozenset (12 currencies: USD/THB/EUR/GBP/CNY/INR/JPY/SGD/AUD/ILS/BRL/MXN); multi-currency grouping, dedup by booking_id; INVALID_PERIOD error code; test_financial_aggregation_router_contract.py Groups A–H, 47 tests | ✅ |
 
-**2662 tests pass** (2 pre-existing SQLite skips, unrelated)
+**2709 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -182,8 +183,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 116** — Financial Aggregation API: `GET /financial/summary` aggregating across bookings *(See `docs/core/roadmap.md`)*
+**Phase 117** — SLA Escalation Engine: `sla_engine.py`, per-task SLA timer consumer, escalation actions by urgency *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
-**2374 passing** (2 pre-existing SQLite skips, unrelated)
+**2709 passing** (2 pre-existing SQLite skips, unrelated)

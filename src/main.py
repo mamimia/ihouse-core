@@ -102,6 +102,7 @@ _TAGS = [
     {"name": "owner-statement", "description": "Monthly owner statement. JWT Bearer required. Aggregates booking_financial_facts per property."},
     {"name": "payment-status", "description": "Payment lifecycle projection. JWT Bearer required. Reads booking_financial_facts and projects state in-memory."},
     {"name": "amendments", "description": "Amendment history. JWT Bearer required. Returns chronological BOOKING_AMENDED financial snapshots from booking_financial_facts."},
+    {"name": "financial-aggregation", "description": "Financial aggregation (Ring 1). JWT Bearer required. Aggregates booking_financial_facts by currency, provider, property, and lifecycle status."},
 ]
 
 app = FastAPI(
@@ -147,6 +148,9 @@ app.include_router(amendments_router)
 
 from tasks.task_router import router as task_router  # noqa: E402
 app.include_router(task_router)
+
+from api.financial_aggregation_router import router as financial_aggregation_router  # noqa: E402
+app.include_router(financial_aggregation_router)
 
 
 

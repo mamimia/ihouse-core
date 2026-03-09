@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 115 -- Task Writer (closed)
+Phase 116 -- Financial Aggregation API (closed)
 
 ## Last Closed Phase
 
-Phase 115 -- Task Writer
+Phase 116 -- Financial Aggregation API
 
 ## Current Objective
 
-Phase 116 -- Financial Aggregation API. See `docs/core/roadmap.md`.
+Phase 117 -- SLA Escalation Engine. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 116 -- Financial Aggregation API. See `docs/core/roadmap.md`.
 
 ## Tests
 
-2662 passing (2 pre-existing SQLite skips, unrelated)
+2709 passing (2 pre-existing SQLite skips, unrelated)

@@ -41,6 +41,7 @@ class ErrorCode:
     VALIDATION_ERROR   = "VALIDATION_ERROR"
     NOT_FOUND          = "NOT_FOUND"
     INVALID_TRANSITION = "INVALID_TRANSITION"
+    INVALID_PERIOD     = "INVALID_PERIOD"
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +58,7 @@ _DEFAULT_MESSAGES: Dict[str, str] = {
     ErrorCode.VALIDATION_ERROR:   "Request payload validation failed",
     ErrorCode.NOT_FOUND:          "The requested resource was not found",
     ErrorCode.INVALID_TRANSITION: "Status transition is not allowed from the current state",
+    ErrorCode.INVALID_PERIOD:     "The 'period' query parameter is required and must be in YYYY-MM format",
 }
 
 
