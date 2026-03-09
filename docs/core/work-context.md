@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 106 -- Booking List Query API (closed)
+Phase 107 -- Roadmap Refresh (closed)
 
 ## Last Closed Phase
 
-Phase 106 -- Booking List Query API
+Phase 107 -- Roadmap Refresh
 
 ## Current Objective
 
-Phase 107 -- See `docs/core/roadmap.md`.
+Phase 108 -- Financial List Query API. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 

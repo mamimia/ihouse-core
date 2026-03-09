@@ -1873,3 +1873,18 @@ New files:
 
 Result: 2374 tests pass, 2 skipped.
 No DB schema changes. No migrations. booking_state read-only.
+
+### Phase 107 closure — 2026-03-09
+
+Roadmap Refresh.
+
+Modified:
+  docs/core/roadmap.md — completed-phases table extended Phase 93–106; forward plan Phase 107–126 written; "where we land" updated to Phase 126
+
+New files:
+  docs/archive/phases/phase-107-spec.md — phase spec
+
+Result: 2374 tests pass, 2 skipped.
+Documentation-only phase. Zero production source changes.
+
+

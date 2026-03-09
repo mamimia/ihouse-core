@@ -2601,3 +2601,31 @@ Reads booking_state only. Never reads event_log. Never writes. Tenant isolation 
 
 **2374 tests pass, 2 skipped.**
 No schema changes. No migrations. booking_state read-only.
+
+## Phase 107 — Roadmap Refresh (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-09
+
+### Goal
+
+Resync `roadmap.md` to actual system state after 14 phases of divergence (last updated Phase 92, now at Phase 106). Extend the forward plan from Phase 107 to Phase 126 based on:
+- `docs/core/improvements/future-improvements.md` (deferred backlog, Financial UI Ring architecture)
+- `docs/core/planning/worker-communication-layer.md` (task system, SLA engine, graded escalation)
+- Analysis of what was planned vs. what was actually built in Phases 93–106
+
+### Changes
+
+- Completed-phases table extended through Phase 106 (14 new rows: Phases 93–106)
+- Active direction note updated to reflect 11 providers + 2374 tests
+- Stale Phase 93–107 forward plan replaced with accurate Phase 107–126 plan:
+  - Phase 107–116: API Completeness + Reconciliation + Task System
+  - Phase 117–126: Financial UI + SLA Engine + Worker Communication
+- "Where we land" section updated to Phase 126 (13 OTA providers, full financial UI, worker surfaces, availability projection)
+
+### Result
+
+**2374 tests pass, 2 skipped.**
+Documentation-only phase. Zero production source changes. No new invariants.
+
+
