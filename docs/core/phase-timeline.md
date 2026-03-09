@@ -2547,3 +2547,30 @@ Amendment rows exist in booking_financial_facts — same table, event_kind discr
 
 **2305 tests pass, 2 skipped.**
 No Supabase schema changes. No migrations. No booking_state writes or reads.
+
+---
+
+## Phase 105 — Closed
+
+**Phase 105 — Admin Router Phase 82 Contract Tests**
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Write contract tests for the 4 Phase 82 admin endpoints that had been implemented but had no test coverage: GET /admin/metrics, GET /admin/dlq, GET /admin/health/providers, GET /admin/bookings/{id}/timeline.
+
+### Invariant
+
+All tests are offline — no live Supabase, no env vars required.
+Admin endpoints are read-only — tests verify no writes occur.
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `tests/test_admin_router_phase82_contract.py` | NEW — 41 tests, Groups A-E covering all 4 Phase 82 endpoints |
+
+### Result
+
+**2346 tests pass, 2 skipped.**
+No source code changes. No migrations. Pure test coverage gap filled.

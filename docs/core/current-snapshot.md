@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 104 -- Amendment History Query API (closed)
+Phase 105 -- Admin Router Phase 82 Contract Tests (closed)
 
 ## Last Closed Phase
-Phase 104 -- Amendment History Query API
+Phase 105 -- Admin Router Phase 82 Contract Tests
 
 ## System Status
 
@@ -61,8 +61,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 102 | E2E Integration Harness Extension -- test_e2e_integration_harness.py expanded 8→11 (MakeMyTrip+Klook+Despegar payload factories); payload_validator.py +booking_id; harness: 375 tests | ✅ |
 | 103 | Payment Lifecycle Query API -- payment_status_router.py, GET /payment-status/{booking_id}, JWT auth, BOOKING_NOT_FOUND 404, explain_payment_lifecycle (Phase 93), rule_applied + reason; main.py + tag; 24 tests | ✅ |
 | 104 | Amendment History Query API -- amendments_router.py, GET /amendments/{booking_id}, booking_financial_facts WHERE event_kind='BOOKING_AMENDED', ordered ASC, 200+empty for known unamended booking, 404 for unknown; main.py + tag; 20 tests | ✅ |
+| 105 | Admin Router Phase 82 Contract Tests -- test_admin_router_phase82_contract.py, 41 tests across Groups A-E covering /admin/metrics, /admin/dlq, /admin/health/providers, /admin/bookings/{id}/timeline; zero source changes | ✅ |
 
-**2305 tests pass** (2 pre-existing SQLite skips, unrelated)
+**2346 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -171,8 +172,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 105** *(See `docs/core/roadmap.md`)*
+**Phase 106** *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
-**2305 passing** (2 pre-existing SQLite skips, unrelated)
+**2346 passing** (2 pre-existing SQLite skips, unrelated)

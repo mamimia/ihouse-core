@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 104 -- Amendment History Query API (closed)
+Phase 105 -- Admin Router Phase 82 Contract Tests (closed)
 
 ## Last Closed Phase
 
-Phase 104 -- Amendment History Query API
+Phase 105 -- Admin Router Phase 82 Contract Tests
 
 ## Current Objective
 
-Phase 105 -- See `docs/core/roadmap.md`.
+Phase 106 -- See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 105 -- See `docs/core/roadmap.md`.
 
 ## Tests
 
-2305 passing (2 pre-existing SQLite skips, unrelated)
+2346 passing (2 pre-existing SQLite skips, unrelated)
