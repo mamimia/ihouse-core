@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 129 — Booking Search Enhancement (closed)
+Phase 130 — Properties Summary Dashboard (closed)
 
 ## Last Closed Phase
 
-Phase 129 — Booking Search: source filter, check_out range, sort_by/sort_dir
+Phase 130 — Properties Summary: GET /properties/summary
 
 ## Current Objective
 
-**Phase 130 — (next — see future-improvements.md)**
+**Phase 131 — (next — see future-improvements.md)**
 See `docs/core/improvements/future-improvements.md`.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -29,6 +29,7 @@ See `docs/core/improvements/future-improvements.md`.
 | 127 | Integration Health Dashboard | `src/api/integration_health_router.py`, `tests/test_integration_health_router_contract.py` |
 | 128 | Conflict Center | `src/api/conflicts_router.py`, `tests/test_conflicts_router_contract.py` |
 | 129 | Booking Search Enhancement | `src/api/bookings_router.py`, `tests/test_booking_search_contract.py` |
+| 130 | Properties Summary Dashboard | `src/api/properties_summary_router.py`, `tests/test_properties_summary_router_contract.py` |
 | docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
@@ -64,6 +65,7 @@ See `docs/core/improvements/future-improvements.md`.
 | `src/api/integration_health_router.py` | Phase 127: GET /integration-health — all 13 OTA providers, lag_seconds, buffer_count, dlq_count, stale_alert (24h), summary block, JWT required |
 | `src/api/conflicts_router.py` | Phase 128: GET /conflicts — cross-property tenant-scoped booking overlap detection; CRITICAL(>=3nights)/WARNING(1-2); itertools.combinations; dedup; JWT required |
 | `src/api/bookings_router.py` | Phase 129: GET /bookings enhanced — source filter, check_out_from/to, sort_by(check_in|check_out|updated_at|created_at), sort_dir(asc|desc); backward compatible |
+| `src/api/properties_summary_router.py` | Phase 130: GET /properties/summary — per-property: active_count, canceled_count, next_check_in, next_check_out, has_conflict; portfolio totals; sorted by property_id; limit 1–200 |
 
 ## Key Files — Task Layer (Phases 111–115)
 
@@ -107,5 +109,5 @@ See `docs/core/improvements/future-improvements.md`.
 
 ## Tests
 
-**3236 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
+**3273 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
 
