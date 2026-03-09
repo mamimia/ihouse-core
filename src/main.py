@@ -115,6 +115,7 @@ _TAGS = [
     {"name": "properties", "description": "Properties Summary Dashboard (Phase 130). Per-property portfolio view: active/canceled counts, next check-in/out, conflict flag. JWT required."},
     {"name": "history", "description": "Booking Audit Trail (Phase 132). Chronological event_log trail for a single booking: CREATED, AMENDED, CANCELED, buffered, replayed. JWT required."},
     {"name": "buffer", "description": "OTA Ordering Buffer Inspector (Phase 133). Entries stuck waiting for BOOKING_CREATED — event_type, age_seconds, dlq_row_id. JWT required."},
+    {"name": "channel-map", "description": "Property-Channel Mapping Foundation (Phase 135). Register/list/update/remove OTA channel mappings per property. Outbound sync foundation. JWT required."},
 ]
 
 app = FastAPI(
@@ -202,6 +203,9 @@ app.include_router(booking_history_router)
 
 from api.buffer_router import router as buffer_router  # noqa: E402
 app.include_router(buffer_router)
+
+from api.channel_map_router import router as channel_map_router  # noqa: E402
+app.include_router(channel_map_router)
 
 
 # ---------------------------------------------------------------------------
