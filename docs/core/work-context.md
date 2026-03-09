@@ -2,16 +2,15 @@
 
 ## Current Active Phase
 
-Phase 98 -- Despegar Adapter (closed)
+Phase 99 -- Despegar Replay Fixture Contract (closed)
 
 ## Last Closed Phase
 
-Phase 98 -- Despegar Adapter
+Phase 99 -- Despegar Replay Fixture Contract
 
 ## Current Objective
 
-Phase 99 -- Despegar Replay Fixture Contract.
-See `docs/core/roadmap.md`.
+Phase 100 -- See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -55,4 +54,4 @@ See `docs/core/roadmap.md`.
 
 ## Tests
 
-2038 passing (2 pre-existing SQLite skips, unrelated)
+2074 passing (2 pre-existing SQLite skips, unrelated)

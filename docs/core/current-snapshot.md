@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 98 -- Despegar Adapter (closed)
+Phase 99 -- Despegar Replay Fixture Contract (closed)
 
 ## Last Closed Phase
-Phase 98 -- Despegar Adapter
+Phase 99 -- Despegar Replay Fixture Contract
 
 ## System Status
 
@@ -55,8 +55,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 96 | Klook Adapter (Tier 2 Asia activities) -- klook.py, KL- prefix stripping, travel_date/end_date/participants canonical mapping, financial extractor (booking_amount/klook_commission/net_payout), amendment extractor (modification block), 60 tests | ✅ |
 | 97 | Klook Replay Fixture Contract -- tests/fixtures/ota_replay/klook.yaml (CREATE+CANCEL), EXPECTED_PROVIDERS expanded to 10, fixture count invariant updated 18→20; +34 tests (total replay: 341) | ✅ |
 | 98 | Despegar Adapter (Tier 2 Latin America) -- despegar.py, DSP- prefix stripping, passenger_count/total_fare/despegar_fee canonical mapping, financial extractor (ARS/BRL/MXN multi-currency), amendment extractor (modification block), payload_validator.py extended for reservation_code; 61 tests | ✅ |
+| 99 | Despegar Replay Fixture Contract -- tests/fixtures/ota_replay/despegar.yaml (CREATE+CANCEL, ARS), EXPECTED_PROVIDERS expanded to 11, fixture count invariant updated 20→22 (test_e4 renamed); +34 tests (total replay: 375) | ✅ |
 
-**2038 tests pass** (2 pre-existing SQLite skips, unrelated)
+**2074 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -165,9 +166,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 99 -- Despegar Replay Fixture Contract** *(Despegar YAML fixtures for replay harness)*
-- See `docs/core/roadmap.md`
+**Phase 100** *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
-**2038 passing** (2 pre-existing SQLite skips, unrelated)
+**2074 passing** (2 pre-existing SQLite skips, unrelated)

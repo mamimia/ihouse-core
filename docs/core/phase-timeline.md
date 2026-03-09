@@ -2372,3 +2372,32 @@ payload_validator.py Rule 3 now accepts reservation_code (Despegar) and booking_
 **2038 tests pass, 2 skipped.**
 OTA adapters: 11 total (8 Tier 1 + MMT + Klook + Despegar).
 No Supabase schema changes. No new migrations. No booking_state writes.
+
+---
+
+## Phase 99 — Closed
+
+**Phase 99 — Despegar Replay Fixture Contract**
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Add Despegar replay fixtures to the OTA Replay Fixture Contract harness (Phase 91). Follows the same pattern as Phase 95 (MMT replay) and Phase 97 (Klook replay). Extends EXPECTED_PROVIDERS to 11 and the fixture count invariant to 22 (11 providers × 2).
+
+### Invariant
+
+Replay fixture count = providers × 2. With 11 providers: exactly 22 fixtures required.
+`test_e4_total_fixture_count_is_twenty_two` enforces this.
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `tests/fixtures/ota_replay/despegar.yaml` | NEW — 2 fixtures: despegar_create (ARS, DSP-AR-REPLAY-001, BOOKING_CONFIRMED) + despegar_cancel (BOOKING_CANCELLED) |
+| `tests/test_ota_replay_fixture_contract.py` | MODIFIED — EXPECTED_PROVIDERS 10→11, test_e4 count 20→22, docstrings updated |
+
+### Result
+
+**2074 tests pass, 2 skipped.**
+Replay harness: 375 tests covering 11 providers × 2 fixtures. (+34 vs Phase 98)
+No Supabase schema changes. No new migrations. No adapter code changes.

@@ -1,0 +1,37 @@
+provider: despegar
+label: despegar_create
+payload:
+  reservation_code: "DSP-AR-REPLAY-001"
+  event_id: "dsp-evt-replay-create-001"
+  hotel_id: "DSP-HOTEL-REPLAY-001"
+  passenger_count: 2
+  total_fare: "75000.00"
+  despegar_fee: "11250.00"
+  net_amount: "63750.00"
+  currency: "ARS"
+  event_type: BOOKING_CONFIRMED
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T10:00:00"
+expected:
+  type: BOOKING_CREATED
+  provider: despegar
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: despegar
+---
+provider: despegar
+label: despegar_cancel
+payload:
+  reservation_code: "DSP-AR-REPLAY-001"
+  event_id: "dsp-evt-replay-cancel-001"
+  hotel_id: "DSP-HOTEL-REPLAY-001"
+  passenger_count: 2
+  total_fare: "75000.00"
+  currency: "ARS"
+  event_type: BOOKING_CANCELLED
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-02T10:00:00"
+expected:
+  type: BOOKING_CANCELED
+  provider: despegar
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: despegar

@@ -1742,3 +1742,19 @@ Modified:
 OTA adapters: 11 total (8 Tier 1 + MMT + Klook + Despegar).
 Result: 2038 tests pass, 2 skipped.
 No Supabase schema changes. No new migrations. No booking_state writes.
+
+---
+
+### Phase 99 closure — 2026-03-09
+
+Despegar Replay Fixture Contract.
+
+New files:
+  tests/fixtures/ota_replay/despegar.yaml — 2 fixtures (despegar_create ARS + despegar_cancel)
+
+Modified:
+  tests/test_ota_replay_fixture_contract.py — EXPECTED_PROVIDERS 10→11, test_e4 count 20→22, D1 docstring updated
+
+Replay harness now covers 11 providers × 2 = 22 fixtures (375 replay tests).
+Result: 2074 tests pass, 2 skipped.
+No adapter code changes. No Supabase changes. No migrations.
