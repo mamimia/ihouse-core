@@ -12,6 +12,13 @@ Phase 149 — RFC 5545 Compliance: `CALSCALE:GREGORIAN`, `METHOD:PUBLISH`, `DTST
 
 **Phase 150 — iCal VTIMEZONE Support**
 
+## Roadmap Direction (Phase 149 → 175)
+
+**Revised plan:** `docs/core/planning/phases-150-175.md`  
+**Key change:** Backend/UI/Backend/UI rhythm introduced. 8 UI phases (Next.js) across Phases 152–170.  
+**Supersedes:** `phases-141-190.md` Phases 150–175 section.  
+**Rhythm:** Backend A (150–151) → UI 1 (152–153) → Backend B (154–156) → UI 2 (157–158) → Backend C (159–162) → UI 3 (163–164) → Backend D (165–168) → UI 4 (169–170) → Backend E (171–174) → Milestone (175)
+
 ## What Was Done in This Session (Phases 118–122)
 
 | Phase | Feature | Files |
