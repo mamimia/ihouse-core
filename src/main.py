@@ -103,6 +103,7 @@ _TAGS = [
     {"name": "payment-status", "description": "Payment lifecycle projection. JWT Bearer required. Reads booking_financial_facts and projects state in-memory."},
     {"name": "amendments", "description": "Amendment history. JWT Bearer required. Returns chronological BOOKING_AMENDED financial snapshots from booking_financial_facts."},
     {"name": "financial-aggregation", "description": "Financial aggregation (Ring 1). JWT Bearer required. Aggregates booking_financial_facts by currency, provider, property, and lifecycle status."},
+    {"name": "financial-dashboard", "description": "Financial dashboard (Ring 2–3). JWT Bearer required. Per-booking status card, RevPAR, lifecycle-by-property."},
 ]
 
 app = FastAPI(
@@ -152,6 +153,8 @@ app.include_router(task_router)
 from api.financial_aggregation_router import router as financial_aggregation_router  # noqa: E402
 app.include_router(financial_aggregation_router)
 
+from api.financial_dashboard_router import router as financial_dashboard_router  # noqa: E402
+app.include_router(financial_dashboard_router)
 
 
 # ---------------------------------------------------------------------------
