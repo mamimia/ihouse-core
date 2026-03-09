@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 111 -- Task System Foundation (closed)
+Phase 112 -- Task Automation from Booking Events (closed)
 
 ## Last Closed Phase
-Phase 111 -- Task System Foundation
+Phase 112 -- Task Automation from Booking Events
 
 ## System Status
 
@@ -68,8 +68,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 109 | Booking Date Range Search -- GET /bookings extended with check_in_from + check_in_to (YYYY-MM-DD, gte/lte on check_in); ISO 8601 regex validation; 400 VALIDATION_ERROR on bad format; test_booking_date_range_contract.py, 36 tests | ✅ |
 | 110 | OTA Reconciliation Implementation -- reconciliation_detector.py (FINANCIAL_FACTS_MISSING + STALE_BOOKING detectors); GET /admin/reconciliation endpoint in admin_router.py (include_findings param); test_reconciliation_detector_contract.py, 27 tests | ✅ |
 | 111 | Task System Foundation -- src/tasks/task_model.py: TaskKind (5), TaskStatus (5), TaskPriority (4), WorkerRole (5) enums; mapping tables (urgency, ACK SLA minutes, default roles/priorities, valid transitions); Task dataclass with .build() factory; CRITICAL ACK SLA = 5 min locked; test_task_model_contract.py, 68 tests | ✅ |
+| 112 | Task Automation from Booking Events -- task_automator.py: tasks_for_booking_created (CHECKIN_PREP+CLEANING), actions_for_booking_canceled (TaskCancelAction), actions_for_booking_amended (TaskRescheduleAction); pure functions, zero DB; test_task_automator_contract.py, 48 tests | ✅ |
 
-**2532 tests pass** (2 pre-existing SQLite skips, 1 intentional parametrize skip, unrelated)
+**2580 tests pass** (2 pre-existing SQLite skips, 1 intentional parametrize skip, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -178,7 +179,7 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 112** *(See `docs/core/roadmap.md`)*
+**Phase 113** *(See `docs/core/roadmap.md`)*
 
 ## Tests
 

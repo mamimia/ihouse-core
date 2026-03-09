@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 111 -- Task System Foundation (closed)
+Phase 112 -- Task Automation from Booking Events (closed)
 
 ## Last Closed Phase
 
-Phase 111 -- Task System Foundation
+Phase 112 -- Task Automation from Booking Events
 
 ## Current Objective
 
-Phase 112 -- Task Automation from Booking Events. See `docs/core/roadmap.md`.
+Phase 113 -- Task Query API. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
