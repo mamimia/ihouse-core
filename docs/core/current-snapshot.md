@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 96 -- Klook Adapter (closed)
+Phase 97 -- Klook Replay Fixture Contract (closed)
 
 ## Last Closed Phase
-Phase 96 -- Klook Adapter
+Phase 97 -- Klook Replay Fixture Contract
 
 ## System Status
 
@@ -53,8 +53,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 94 | MakeMyTrip Adapter (Tier 2 India) -- makemytrip.py, MMT- prefix stripping, financial extractor (order_value/mmt_commission/net_amount), amendment extractor (amendment block), semantics aliases (booking_confirmed/cancelled/modified), gap fix in semantics.py; 66 tests | ✅ |
 | 95 | MakeMyTrip Replay Fixture Contract -- tests/fixtures/ota_replay/makemytrip.yaml (CREATE+CANCEL), EXPECTED_PROVIDERS expanded to 9, fixture count invariant updated 16→18; +34 tests (total replay: 307) | ✅ |
 | 96 | Klook Adapter (Tier 2 Asia activities) -- klook.py, KL- prefix stripping, travel_date/end_date/participants canonical mapping, financial extractor (booking_amount/klook_commission/net_payout), amendment extractor (modification block), 60 tests | ✅ |
+| 97 | Klook Replay Fixture Contract -- tests/fixtures/ota_replay/klook.yaml (CREATE+CANCEL), EXPECTED_PROVIDERS expanded to 10, fixture count invariant updated 18→20; +34 tests (total replay: 341) | ✅ |
 
-**1943 tests pass** (2 pre-existing SQLite skips, unrelated)
+**1977 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -163,9 +164,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 97 -- Klook Replay Fixture Contract** *(Klook YAML fixtures for replay harness)*
+**Phase 98 -- Despegar Adapter** *(Tier 2 — Latin America)*
 - See `docs/core/roadmap.md`
 
 ## Tests
 
-**1943 passing** (2 pre-existing SQLite skips, unrelated)
+**1977 passing** (2 pre-existing SQLite skips, unrelated)

@@ -1,0 +1,41 @@
+provider: klook
+label: klook_create
+payload:
+  booking_ref: "KL-ACTBK-REPLAY-001"
+  event_id: "kl-evt-replay-create-001"
+  activity_id: "KL-ACT-TOUR-REPLAY-001"
+  travel_date: "2026-09-01"
+  end_date: "2026-09-01"
+  participants: 3
+  booking_amount: "4500.00"
+  klook_commission: "675.00"
+  net_payout: "3825.00"
+  currency: "SGD"
+  event_type: BOOKING_CONFIRMED
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T10:00:00"
+expected:
+  type: BOOKING_CREATED
+  provider: klook
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: klook
+---
+provider: klook
+label: klook_cancel
+payload:
+  booking_ref: "KL-ACTBK-REPLAY-001"
+  event_id: "kl-evt-replay-cancel-001"
+  activity_id: "KL-ACT-TOUR-REPLAY-001"
+  travel_date: "2026-09-01"
+  end_date: "2026-09-01"
+  participants: 3
+  booking_amount: "4500.00"
+  currency: "SGD"
+  event_type: BOOKING_CANCELLED
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-02T10:00:00"
+expected:
+  type: BOOKING_CANCELED
+  provider: klook
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: klook
