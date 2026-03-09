@@ -2,27 +2,25 @@
 
 ## Current Active Phase
 
-Phase 120 — Cashflow / Payout Timeline (closed)
+Phase 121 — Owner Statement Generator (closed)
 
 ## Last Closed Phase
 
-Phase 120 — Cashflow / Payout Timeline
+Phase 121 — Owner Statement Generator (Ring 4)
 
 ## Current Objective
 
-**Phase 121 — Owner Statement Generator (Ring 4)**
-Enhanced owner statement: per-booking line items, management fee deduction, owner net total,
-payout status per booking, epistemic tier on every figure, PDF export endpoint.
-Role-scoped: owner accounts see only their properties.
-See `docs/core/roadmap.md` for full spec.
+**Phase 122 — (next — see roadmap)**
+See `docs/core/roadmap.md` for forward plan.
 
-## What Was Done in This Session (Phases 118–120)
+## What Was Done in This Session (Phases 118–121)
 
 | Phase | Feature | Files |
 |-------|---------|-------|
 | 118 | Financial Dashboard API | `src/api/financial_dashboard_router.py`, `tests/test_financial_dashboard_router_contract.py` |
 | 119 | Reconciliation Inbox API | `src/api/reconciliation_router.py`, `tests/test_reconciliation_router_contract.py` |
 | 120 | Cashflow / Payout Timeline | `src/api/cashflow_router.py`, `tests/test_cashflow_router_contract.py` |
+| 121 | Owner Statement Generator (Ring 4) | `src/api/owner_statement_router.py`, `tests/test_owner_statement_phase121_contract.py` |
 | docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
@@ -35,10 +33,12 @@ See `docs/core/roadmap.md` for full spec.
 - `tenant_id` comes from verified JWT `sub` claim, NOT from payload body (Phase 61+)
 - `booking_state` is an operational read model ONLY — must never contain financial calculations (Phase 62+ invariant)
 - All financial read endpoints query `booking_financial_facts` ONLY — never `booking_state`
-- Deduplication rule: most-recent `recorded_at` per `booking_id` (shared across Phase 116–120)
+- Deduplication rule: most-recent `recorded_at` per `booking_id` (shared across Phase 116–121)
 - Epistemic tier: FULL→A, ESTIMATED→B, PARTIAL→C. Worst tier wins in aggregated endpoints.
+- Management fee is applied AFTER OTA commission on the aggregated net_to_property (Phase 121)
+- OTA_COLLECTING net is NEVER included in owner_net_total — honesty invariant (Phase 121)
 
-## Key Files — Financial API Layer (Phases 116–120)
+## Key Files — Financial API Layer (Phases 116–121)
 
 | File | Role |
 |------|------|
@@ -46,6 +46,7 @@ See `docs/core/roadmap.md` for full spec.
 | `src/api/financial_dashboard_router.py` | Ring 2–3: GET /financial/status/{id}, /revpar, /lifecycle-by-property. Exports: `_tier`, `_worst_tier`, `_monetary`, `_project_lifecycle_status` |
 | `src/api/reconciliation_router.py` | Ring 3: GET /admin/reconciliation — exception-first inbox |
 | `src/api/cashflow_router.py` | Ring 3: GET /financial/cashflow — weekly inflow buckets, confirmed released, overdue, 30/60/90-day projection |
+| `src/api/owner_statement_router.py` | Ring 4: GET /owner-statement/{property_id} — per-booking line items, epistemic tier, management fee, PDF export |
 
 ## Key Files — Task Layer (Phases 111–115)
 
@@ -89,5 +90,5 @@ See `docs/core/roadmap.md` for full spec.
 
 ## Tests
 
-**2860 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
+**2909 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
 

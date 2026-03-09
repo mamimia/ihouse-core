@@ -2001,3 +2001,40 @@ Indexes: ix_tasks_tenant_status, ix_tasks_tenant_property, ix_tasks_tenant_due_d
 Result: Migration applied via `supabase db push`. E2E verified: INSERT/SELECT/UPDATE/DELETE all confirmed on live Supabase.
 2630 tests still passing — no Python source changes, infra-only phase.
 Invariant: PATCH /tasks/{id}/status writes ONLY to `tasks`. Never touches booking_state, event_log, or booking_financial_facts.
+
+### Phase 121 closure — 2026-03-09
+
+Owner Statement Generator (Ring 4).
+
+Modified:
+  src/api/owner_statement_router.py — complete Ring 4 rewrite:
+    - Property_id filter applied at DB level (eq("property_id")) instead of client-side ilike
+    - Per-booking line items with: check_in, check_out, gross, ota_commission, net_to_property,
+      epistemic_tier (A/B/C), lifecycle_status, event_kind, source_confidence, recorded_at
+    - management_fee_pct query param (0.0–100.0) — deducted from aggregated net_to_property
+      to produce owner_net_total; management_fee_amount shown separately
+    - OTA_COLLECTING bookings: appear in line_items for auditability but net EXCLUDED from
+      owner_net_total (Phase 120 honesty invariant)
+    - Multi-currency guard: MIXED currency → all monetary totals None
+    - Dedup: most-recent recorded_at per booking_id (_dedup_latest from Ring 1)
+    - PDF export: ?format=pdf → text/plain response with Content-Disposition: attachment
+    - Overall epistemic_tier in summary (worst of all line item tiers)
+    - Imports _tier, _worst_tier, _project_lifecycle_status from financial_dashboard_router
+    - Imports _dedup_latest, _fmt, _month_bounds, _to_decimal, _canonical_currency from
+      financial_aggregation_router
+
+  tests/test_owner_statement_router_contract.py — updated Phase 101 tests for Phase 121 shape:
+    - Mock chain updated (gte/lt instead of ilike)
+    - Assertions updated to new response shape (summary.* fields)
+
+New files:
+  tests/test_owner_statement_phase121_contract.py — 49 tests, Groups A–I
+  docs/archive/phases/phase-121-spec.md — phase spec
+
+New invariants locked (Phase 121):
+  Management fee applied AFTER OTA commission on aggregated net_to_property.
+  OTA_COLLECTING net NEVER included in owner_net_total.
+  PDF export: text/plain only — no external PDF library dependency.
+
+Result: 2909 tests pass, 2 pre-existing SQLite skips.
+No DB schema changes. All reads from booking_financial_facts only.

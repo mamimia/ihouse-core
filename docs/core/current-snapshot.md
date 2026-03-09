@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 120 — Cashflow / Payout Timeline (closed)
+Phase 121 — Owner Statement Generator (closed)
 
 ## Last Closed Phase
-Phase 120 — Cashflow / Payout Timeline
+Phase 121 — Owner Statement Generator (Ring 4)
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -77,8 +77,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 118 | Financial Dashboard API -- financial_dashboard_router.py: GET /financial/status/{booking_id} (lifecycle card + epistemic tier + reason), GET /financial/revpar (total_net/available_room_nights per currency), GET /financial/lifecycle-by-property (distribution grouped by property); A/B/C tier helpers (_tier, _worst_tier); 44 tests | ✅ |
 | 119 | Reconciliation Inbox API -- reconciliation_router.py: GET /admin/reconciliation?period=; 4 exception flags (RECONCILIATION_PENDING, PARTIAL_CONFIDENCE, MISSING_NET_TO_PROPERTY, UNKNOWN_LIFECYCLE); correction_hint per item; Tier C first sort order; empty inbox = clean financials; 32 tests | ✅ |
 | 120 | Cashflow / Payout Timeline -- cashflow_router.py: GET /financial/cashflow?period=; expected_inflows_by_week (ISO week buckets), confirmed_released (PAYOUT_RELEASED only), overdue, forward_projection (30/60/90 days), totals per currency; OTA_COLLECTING explicitly excluded; _iso_week_key helper; 37 tests | ✅ |
+| 121 | Owner Statement Generator (Ring 4) -- owner_statement_router.py: GET /owner-statement/{property_id}?month=&management_fee_pct=&format=pdf; per-booking line items (check_in/out, gross, ota_commission, net_to_property, epistemic_tier A/B/C, lifecycle_status); management fee deduction; owner_net_total; OTA_COLLECTING excluded from net; PDF plain-text export; property_id filter at DB level; dedup (most-recent recorded_at); 49 new tests + 28 updated Phase 101 tests | ✅ |
 
-**2860 tests pass** (2 pre-existing SQLite skips, unrelated)
+**2909 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
