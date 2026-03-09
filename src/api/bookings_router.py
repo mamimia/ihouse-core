@@ -1,21 +1,20 @@
 """
 Phase 71 — Booking State Query API
+Phase 106 — Booking List Query API
 
-GET /bookings/{booking_id}
-
-Returns the current state of a booking from the booking_state projection table.
+GET /bookings/{booking_id}    — single booking state (Phase 71)
+GET /bookings                 — list bookings by tenant, with filters (Phase 106)
 
 Rules:
-- JWT auth required (same pattern as /financial).
-- Tenant isolation enforced: tenant can only read their own bookings.
-  Cross-tenant reads return 404 (not 403) to avoid leaking booking existence.
+- JWT auth required on both endpoints.
+- Tenant isolation enforced at DB level (.eq("tenant_id", tenant_id)).
 - Reads from booking_state only. Never reads event_log directly.
 - booking_state is a projection — its values are authoritative for read purposes,
   but the canonical source of truth remains the event_log.
 
 Invariant (locked Phase 62+):
-  This endpoint must NEVER write to booking_state or event_log.
-  It is strictly a read-only projection endpoint.
+  These endpoints must NEVER write to booking_state or event_log.
+  Strictly read-only projection endpoints.
 """
 from __future__ import annotations
 
@@ -123,3 +122,110 @@ async def get_booking(
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /bookings/%s error: %s", booking_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# GET /bookings (Phase 106)
+# ---------------------------------------------------------------------------
+
+_VALID_STATUSES = frozenset({"active", "canceled"})
+_MAX_LIMIT = 100
+_DEFAULT_LIMIT = 50
+
+
+@router.get(
+    "/bookings",
+    tags=["bookings"],
+    summary="List bookings for a tenant",
+    responses={
+        200: {"description": "Paginated list of bookings from booking_state projection"},
+        400: {"description": "Invalid query parameter (e.g. unknown status value)"},
+        401: {"description": "Missing or invalid JWT token"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def list_bookings(
+    property_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = _DEFAULT_LIMIT,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Return a paginated list of bookings from the `booking_state` projection.
+
+    **Authentication:** Bearer JWT required. `sub` claim used as `tenant_id`.
+
+    **Tenant isolation:** All results are scoped to the authenticated tenant.
+
+    **Query parameters:**
+    - `property_id` — filter by property (optional)
+    - `status` — filter by booking status: `active` or `canceled` (optional)
+    - `limit` — max results to return (1–100, default 50)
+
+    **Source:** Reads from `booking_state` projection table only.
+    Never reads `event_log` directly.
+
+    **Invariant:** Read-only. Never writes to any table.
+    """
+    # Validate status
+    if status is not None and status not in _VALID_STATUSES:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"status must be one of: {sorted(_VALID_STATUSES)}"},
+        )
+
+    # Clamp limit
+    limit = max(1, min(limit, _MAX_LIMIT))
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        query = (
+            db.table("booking_state")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+        )
+
+        if property_id is not None:
+            query = query.eq("property_id", property_id)
+
+        if status is not None:
+            query = query.eq("status", status)
+
+        result = query.limit(limit).order("updated_at", desc=True).execute()
+        rows = result.data or []
+
+        bookings = [
+            {
+                "booking_id":      r["booking_id"],
+                "tenant_id":       r["tenant_id"],
+                "source":          r.get("source"),
+                "reservation_ref": r.get("reservation_ref"),
+                "property_id":     r.get("property_id"),
+                "status":          r.get("status"),
+                "check_in":        r.get("check_in"),
+                "check_out":       r.get("check_out"),
+                "version":         r.get("version"),
+                "created_at":      r.get("created_at"),
+                "updated_at":      r.get("updated_at"),
+            }
+            for r in rows
+        ]
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "tenant_id":     tenant_id,
+                "count":         len(bookings),
+                "limit":         limit,
+                "bookings":      bookings,
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("GET /bookings error for tenant=%s: %s", tenant_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+

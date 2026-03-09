@@ -2574,3 +2574,30 @@ Admin endpoints are read-only — tests verify no writes occur.
 
 **2346 tests pass, 2 skipped.**
 No source code changes. No migrations. Pure test coverage gap filled.
+
+---
+
+## Phase 106 — Closed
+
+**Phase 106 — Booking List Query API**
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Extend bookings_router.py with GET /bookings (list endpoint). Supports ?property_id=, ?status=active|canceled, ?limit=1-100 (default 50, clamped) query params. Returns tenant-scoped list from booking_state, ordered by updated_at DESC. Invalid status → 400 VALIDATION_ERROR before DB call.
+
+### Invariant
+
+Reads booking_state only. Never reads event_log. Never writes. Tenant isolation via .eq("tenant_id", tenant_id).
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `src/api/bookings_router.py` | MODIFIED — GET /bookings list endpoint added (Phase 106) |
+| `tests/test_booking_list_router_contract.py` | NEW — 28 tests, Groups A-G |
+
+### Result
+
+**2374 tests pass, 2 skipped.**
+No schema changes. No migrations. booking_state read-only.

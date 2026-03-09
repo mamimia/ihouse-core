@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 105 -- Admin Router Phase 82 Contract Tests (closed)
+Phase 106 -- Booking List Query API (closed)
 
 ## Last Closed Phase
 
-Phase 105 -- Admin Router Phase 82 Contract Tests
+Phase 106 -- Booking List Query API
 
 ## Current Objective
 
-Phase 106 -- See `docs/core/roadmap.md`.
+Phase 107 -- See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 106 -- See `docs/core/roadmap.md`.
 
 ## Tests
 
-2346 passing (2 pre-existing SQLite skips, unrelated)
+2374 passing (2 pre-existing SQLite skips, unrelated)

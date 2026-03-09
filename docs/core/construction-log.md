@@ -1857,3 +1857,19 @@ Endpoints covered for the first time:
   GET /admin/bookings/{id}/timeline (event_log per booking)
 
 Result: 2346 tests pass, 2 skipped. Zero source code changes.
+
+---
+
+### Phase 106 closure — 2026-03-09
+
+Booking List Query API.
+
+Modified:
+  src/api/bookings_router.py — GET /bookings added after GET /bookings/{booking_id}
+  Query params: property_id (optional), status (active|canceled, 400 on invalid), limit (1-100, default 50)
+
+New files:
+  tests/test_booking_list_router_contract.py — 28 tests, Groups A-G
+
+Result: 2374 tests pass, 2 skipped.
+No DB schema changes. No migrations. booking_state read-only.
