@@ -215,6 +215,9 @@ app.include_router(capability_registry_router)
 from api.sync_trigger_router import router as sync_trigger_router  # noqa: E402
 app.include_router(sync_trigger_router)
 
+from api.outbound_executor_router import router as outbound_executor_router  # noqa: E402
+app.include_router(outbound_executor_router)
+
 
 # ---------------------------------------------------------------------------
 # OpenAPI — inject BearerAuth security scheme (Phase 63)
