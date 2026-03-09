@@ -3227,6 +3227,36 @@ Design decisions:
 Result: 3736 tests pass (3703 + 33 new). No DB schema changes. No `main.py` change (endpoint added to existing router). 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
 
+## Phase 147 — Failed Sync Replay (Closed)
+
+Goal: Allow operators to manually re-trigger a failed outbound sync for `booking_id + provider`
+without rebuilding a full sync plan. All Phase 141-144 guarantees (throttle, retry, idempotency, persistence) apply.
+
+Completed:
+
+- `src/services/outbound_executor.py` — MODIFIED — Added `execute_single_provider()`.
+  - Constructs a single `SyncAction` (booking_id, property_id, provider, external_id, strategy, reason="replay", tier=None, rate_limit) then delegates to `execute_sync_plan()`.
+  - Full Phase 141-144 path: rate-limit throttle, exponential backoff retry, X-Idempotency-Key, best-effort sync_log_writer persistence, dry-run fallback.
+- `src/api/outbound_log_router.py` — MODIFIED — Added `_fetch_last_log_row()` + `POST /admin/outbound-replay`.
+  - `_fetch_last_log_row(db, tenant_id, booking_id, provider)`: tenant-isolated Supabase query, returns None on empty or DB error.
+  - `POST /admin/outbound-replay {booking_id, provider}`:
+    - **400** if either field missing or blank.
+    - **404** when no prior log row (or DB error on lookup).
+    - **200** with `{replayed:true, booking_id, provider, tenant_id, result{provider,external_id,strategy,status,http_status,message}, replayed_at}`.
+    - `strategy` and `external_id` taken from the most recent log row.
+    - Lazy import of `execute_single_provider` and `serialise_report` to avoid circular imports.
+- `tests/test_outbound_replay_contract.py` — NEW — 33 contract tests Groups A-L.
+
+Design decisions:
+- Delegation to `execute_sync_plan()` over duplicating executor logic ensures zero drift in Phase 141-144 behaviour.
+- `tier=None` on replay SyncAction: tier enforcement only applies at plan build time, not on replay.
+- DB error on `_fetch_last_log_row` returns `None` → 404, matching the "no history to replay" case.
+- 200 returned regardless of sync success; caller inspects `result.status`.
+
+Result: 3769 tests pass (3736 + 33 new). No DB schema changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+
+
 
 
 

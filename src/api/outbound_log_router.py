@@ -21,14 +21,22 @@ Endpoints:
       last_sync_at, failure_rate_7d. Only providers that have at least
       one row in outbound_sync_log for this tenant are included.
 
+  POST /admin/outbound-replay   (Phase 147)
+      Body: {booking_id, provider}
+      Re-executes the most recent sync attempt for that booking+provider
+      by looking up strategy/external_id from outbound_sync_log and calling
+      execute_single_provider(). Fail-isolated (same guarantees as Phase 138-144).
+
 Invariant:
-  These endpoints NEVER write to any table.
-  They read ONLY from `outbound_sync_log`.
+  GET endpoints NEVER write to any table.
+  POST /admin/outbound-replay writes to outbound_sync_log (via best-effort
+  sync_log_writer) and dispatches to real OTA adapters.
 """
 from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -389,4 +397,152 @@ async def get_outbound_health(
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /admin/outbound-health error for tenant=%s: %s", tenant_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 147 — Replay helper + endpoint
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _ReplayRequest:
+    booking_id: str
+    provider:   str
+
+
+def _fetch_last_log_row(
+    db: Any,
+    tenant_id:  str,
+    booking_id: str,
+    provider:   str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Find the most recent outbound_sync_log row for this tenant+booking+provider.
+    Returns the full row dict or None if not found.
+    Used by the replay endpoint to discover external_id and strategy.
+    """
+    try:
+        result = (
+            db.table("outbound_sync_log")
+            .select("provider, external_id, strategy, status, synced_at")
+            .eq("tenant_id", tenant_id)
+            .eq("booking_id", booking_id)
+            .eq("provider", provider)
+            .order("synced_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = result.data or []
+        return rows[0] if rows else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "_fetch_last_log_row error tenant=%s booking=%s provider=%s: %s",
+            tenant_id, booking_id, provider, exc,
+        )
+        return None
+
+
+@router.post(
+    "/admin/outbound-replay",
+    tags=["admin", "outbound"],
+    summary="Replay a failed outbound sync for a specific booking+provider",
+    responses={
+        200: {"description": "Replay attempt completed (check result.status for outcome)"},
+        400: {"description": "Missing required fields in request body"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "No prior sync log row found for this booking+provider"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def replay_outbound_sync(
+    body:      Dict[str, Any],
+    tenant_id: str           = Depends(jwt_auth),
+    client:    Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Re-execute the most recent outbound sync attempt for `booking_id + provider`.
+
+    **Authentication:** Bearer JWT required. `sub` claim used as `tenant_id`.
+
+    **Tenant isolation:** Only this tenant's log rows are considered.
+
+    **Body fields:**
+    - `booking_id` — required, the booking to replay
+    - `provider`   — required, the OTA provider to re-target (e.g. `airbnb`)
+
+    **Behaviour:**
+    - Looks up the most recent `outbound_sync_log` row for this booking+provider+tenant.
+    - Re-uses the `external_id` and `strategy` from that row.
+    - Calls `execute_single_provider()` — the full fail-isolated executor path.
+    - The new result is persisted to `outbound_sync_log` (best-effort).
+    - Returns 200 with the result envelope regardless of whether the sync succeeded.
+      Inspect `.result.status` (`ok` / `failed` / `dry_run`) to see the outcome.
+    - Returns **404** if no prior log row exists (nothing to replay).
+    - Returns **400** if `booking_id` or `provider` is missing from the body.
+
+    **Source:** `outbound_sync_log` — reads to discover parameters, then writes via executor.
+    """
+    # Validate body
+    booking_id = (body.get("booking_id") or "").strip()
+    provider   = (body.get("provider")   or "").strip()
+
+    if not booking_id or not provider:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "'booking_id' and 'provider' are required"},
+        )
+
+    try:
+        db  = client if client is not None else _get_supabase_client()
+        row = _fetch_last_log_row(db, tenant_id, booking_id, provider)
+
+        if row is None:
+            return make_error_response(
+                status_code=404,
+                code=ErrorCode.BOOKING_NOT_FOUND,
+                extra={
+                    "booking_id": booking_id,
+                    "provider":   provider,
+                    "detail":     "No prior sync log entry found for this booking+provider",
+                },
+            )
+
+        external_id = row.get("external_id") or ""
+        strategy    = row.get("strategy")    or "api_first"
+
+        # Import here (lazy) — mirrors the admin_router.py lazy import pattern
+        from services.outbound_executor import execute_single_provider, serialise_report  # noqa: PLC0415
+
+        report = execute_single_provider(
+            booking_id=booking_id,
+            property_id="",         # not stored in sync log; replay operates without it
+            tenant_id=tenant_id,
+            provider=provider,
+            external_id=external_id,
+            strategy=strategy,
+        )
+
+        serialised = serialise_report(report)
+        # Flatten for readability — there is exactly one result entry
+        result_entry = serialised["results"][0] if serialised["results"] else {}
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "replayed":   True,
+                "booking_id": booking_id,
+                "provider":   provider,
+                "tenant_id":  tenant_id,
+                "result":     result_entry,
+                "replayed_at": datetime.now(tz=timezone.utc).isoformat(),
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "POST /admin/outbound-replay error booking=%s provider=%s tenant=%s: %s",
+            booking_id, provider, tenant_id, exc,
+        )
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

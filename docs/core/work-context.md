@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 146 — Sync Health Dashboard (closed)
+Phase 147 — Failed Sync Replay (closed)
 
 ## Last Closed Phase
 
-Phase 146 — Sync Health Dashboard: `GET /admin/outbound-health`; per-provider aggregation (ok/failed/dry_run/skipped + last_sync_at + failure_rate_7d); added to `outbound_log_router.py`; 33 contract tests; 3736 passing
+Phase 147 — Failed Sync Replay: `POST /admin/outbound-replay`; `execute_single_provider()` in executor; 400/404 guards; 33 contract tests; 3769 passing
 
 ## Current Objective
 
-**Phase 147 — Failed Sync Replay**
+**Phase 148 — Sync Result Webhook Callback**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,7 +37,7 @@ Phase 146 — Sync Health Dashboard: `GET /admin/outbound-health`; per-provider 
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
 | 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
-| 146 | Sync Health Dashboard | `src/api/outbound_log_router.py` (_compute_health + /admin/outbound-health), `tests/test_outbound_health_contract.py` |
+| 147 | Failed Sync Replay | `src/api/outbound_log_router.py` (_fetch_last_log_row + POST /admin/outbound-replay), `src/services/outbound_executor.py` (execute_single_provider), `tests/test_outbound_replay_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)

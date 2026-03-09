@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 146 — Sync Health Dashboard (closed)
+Phase 147 — Failed Sync Replay (closed)
 
 ## Last Closed Phase
-Phase 146 — Sync Health Dashboard: `GET /admin/outbound-health`; per-provider ok/failed/dry_run/skipped counts + last_sync_at + failure_rate_7d; in-memory aggregation; alphabetical order; added to `outbound_log_router.py`; 33 contract tests
+Phase 147 — Failed Sync Replay: `POST /admin/outbound-replay {booking_id, provider}`; `_fetch_last_log_row()` + `execute_single_provider()` (all Phase 141-144 guarantees); 400/404 on missing body/no log row; 33 contract tests
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -91,6 +91,7 @@ apply_envelope is the only authority for canonical state mutations.
 | 144 | Outbound Sync Result Persistence — `outbound_sync_log` table (DDL in `migrations/phase_144_outbound_sync_log.sql`); `src/services/sync_log_writer.py` (`write_sync_result()` best-effort append-only writer, client injection); `_persist()` helper in `outbound_executor.py` called after every ExecutionResult; skips not persisted; `IHOUSE_SYNC_LOG_DISABLED=true` opt-out; 13 contract tests | ✅ |
 | 145 | Outbound Sync Log Inspector — `src/api/outbound_log_router.py` (NEW); `GET /admin/outbound-log` (filters: booking_id/provider/status/limit 1-200, default 50, newest-first) + `GET /admin/outbound-log/{booking_id}` (404 if no rows); tenant-scoped; registered in `main.py`; 30 contract tests | ✅ |
 | 146 | Sync Health Dashboard — `GET /admin/outbound-health` added to `outbound_log_router.py`; `_compute_health()` in-memory aggregation of `outbound_sync_log` rows; per-provider: ok/failed/dry_run/skipped counts, last_sync_at, failure_rate_7d (7-day window, None if no ok+failed); alphabetical sort; malformed timestamps skipped; 33 contract tests | ✅ |
+| 147 | Failed Sync Replay — `POST /admin/outbound-replay` in `outbound_log_router.py`; `_fetch_last_log_row()` helper + `execute_single_provider()` in `outbound_executor.py`; reconstructs SyncAction from log row; all Phase 141-144 guarantees apply; 400 on missing body fields; 404 when no prior log row; best-effort persistence; 33 contract tests | ✅ |
 
 **3589 tests pass** (2 pre-existing SQLite guard failures, unrelated)
 
@@ -201,8 +202,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 147** — Failed Sync Replay (`POST /admin/outbound-replay`)
+**Phase 148** — Sync Result Webhook Callback (`IHOUSE_SYNC_CALLBACK_URL`)
 
 ## Tests
 
-**3736 passing** (2 pre-existing SQLite skips, unrelated)
+**3769 passing** (2 pre-existing SQLite skips, unrelated)

@@ -2225,6 +2225,19 @@ Changes:
 Result: 3736 tests pass (3703 + 33 new). No DB schema changes. No main.py change. 2 pre-existing SQLite failures (unrelated, unchanged).
 
 
+## Phase 147 — Failed Sync Replay (Closed)
+
+Replay a failed outbound sync for a specific booking+provider, reusing all Phase 141-144 guarantees.
+
+Changes:
+- src/services/outbound_executor.py [MODIFIED]: `execute_single_provider()` — builds SyncAction from args, delegates to execute_sync_plan() (full path: throttle + retry + idempotency + persistence). tier=None on replay.
+- src/api/outbound_log_router.py [MODIFIED]: `_fetch_last_log_row()` — tenant-isolated log row lookup. `POST /admin/outbound-replay` — 400 on missing fields, 404 on no log row, 200 with result envelope.
+- tests/test_outbound_replay_contract.py [NEW]: 33 contract tests Groups A-L.
+
+Result: 3769 tests pass (3736 + 33 new). No DB schema changes. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+
+
 
 
 

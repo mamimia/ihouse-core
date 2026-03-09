@@ -376,3 +376,74 @@ def serialise_report(report: ExecutionReport) -> Dict[str, Any]:
             for r in report.results
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 147 — single-provider replay
+# ---------------------------------------------------------------------------
+
+def execute_single_provider(
+    booking_id:   str,
+    property_id:  str,
+    tenant_id:    str,
+    provider:     str,
+    external_id:  str,
+    strategy:     str,          # "api_first" | "ical_fallback"
+    rate_limit:   int = 60,
+    check_in:     Optional[str] = None,
+    check_out:    Optional[str] = None,
+    api_adapter:  Optional[Any] = None,
+    ical_adapter: Optional[Any] = None,
+) -> ExecutionReport:
+    """
+    Phase 147: Re-execute a single provider through the full fail-isolated
+    executor path (throttle, retry, idempotency key, persistence).
+
+    Constructs a single SyncAction and delegates to execute_sync_plan()
+    so all Phase 141-144 guarantees apply:
+      - Rate-limit throttle (IHOUSE_THROTTLE_DISABLED opt-out)
+      - Exponential backoff retry (IHOUSE_RETRY_DISABLED opt-out)
+      - X-Idempotency-Key header attachment
+      - Best-effort sync_log_writer persistence
+      - Dry-run fallback when credentials absent
+      - Exception isolation (never raises)
+
+    Parameters
+    ----------
+    booking_id   : str
+    property_id  : str
+    tenant_id    : str
+    provider     : str    — OTA provider name (e.g. 'airbnb')
+    external_id  : str    — booking reference on the OTA side
+    strategy     : str    — 'api_first' | 'ical_fallback'
+    rate_limit   : int    — calls per minute (default 60)
+    check_in     : str    — YYYYMMDD, forwarded to iCal adapter
+    check_out    : str    — YYYYMMDD, forwarded to iCal adapter
+    api_adapter  : Any    — injectable for testing
+    ical_adapter : Any    — injectable for testing
+
+    Returns
+    -------
+    ExecutionReport with a single result entry.
+    """
+    action = SyncAction(
+        booking_id=booking_id,
+        property_id=property_id,
+        provider=provider,
+        external_id=external_id,
+        strategy=strategy,
+        reason="replay",
+        tier=None,           # not stored in sync log; no tier enforcement on replay
+        rate_limit=rate_limit,
+    )
+    return execute_sync_plan(
+        booking_id=booking_id,
+        property_id=property_id,
+        tenant_id=tenant_id,
+        actions=[action],
+        api_adapter=api_adapter,
+        ical_adapter=ical_adapter,
+        check_in=check_in,
+        check_out=check_out,
+    )
+
