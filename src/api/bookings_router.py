@@ -2,12 +2,16 @@
 Phase 71 — Booking State Query API
 Phase 106 — Booking List Query API
 Phase 109 — Booking Date Range Search
+Phase 129 — Booking Search: source filter, check_out range, sort_by/sort_dir
 
 GET /bookings/{booking_id}    — single booking state (Phase 71)
-GET /bookings                 — list bookings by tenant, with filters (Phase 106 + 109)
+GET /bookings                 — list bookings by tenant, with filters (106/109/129)
 
 Filters (Phase 106): property_id, status, limit
 Filters (Phase 109 addition): check_in_from, check_in_to (ISO 8601 YYYY-MM-DD)
+Filters (Phase 129 addition): source (OTA provider), check_out_from, check_out_to,
+                               sort_by (check_in|check_out|updated_at|created_at),
+                               sort_dir (asc|desc)
 
 Rules:
 - JWT auth required on both endpoints.
@@ -134,6 +138,8 @@ async def get_booking(
 # ---------------------------------------------------------------------------
 
 _VALID_STATUSES = frozenset({"active", "canceled"})
+_VALID_SORT_BY = frozenset({"check_in", "check_out", "updated_at", "created_at"})
+_VALID_SORT_DIR = frozenset({"asc", "desc"})
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
 _DATE_RE = _re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
@@ -142,10 +148,10 @@ _DATE_RE = _re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 @router.get(
     "/bookings",
     tags=["bookings"],
-    summary="List bookings for a tenant",
+    summary="List / search bookings for a tenant",
     responses={
         200: {"description": "Paginated list of bookings from booking_state projection"},
-        400: {"description": "Invalid query parameter (e.g. unknown status value)"},
+        400: {"description": "Invalid query parameter (e.g. unknown status or sort_by value)"},
         401: {"description": "Missing or invalid JWT token"},
         500: {"description": "Unexpected internal error"},
     },
@@ -154,8 +160,13 @@ _DATE_RE = _re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 async def list_bookings(
     property_id: Optional[str] = None,
     status: Optional[str] = None,
+    source: Optional[str] = None,
     check_in_from: Optional[str] = None,
     check_in_to: Optional[str] = None,
+    check_out_from: Optional[str] = None,
+    check_out_to: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_dir: str = "desc",
     limit: int = _DEFAULT_LIMIT,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
@@ -170,8 +181,13 @@ async def list_bookings(
     **Query parameters:**
     - `property_id` — filter by property (optional)
     - `status` — filter by booking status: `active` or `canceled` (optional)
-    - `check_in_from` — filter bookings with `check_in` on or after this date (YYYY-MM-DD, optional)
-    - `check_in_to` — filter bookings with `check_in` on or before this date (YYYY-MM-DD, optional)
+    - `source` — filter by OTA provider name e.g. `bookingcom`, `airbnb` (optional)
+    - `check_in_from` — filter bookings with `check_in` ≥ this date (YYYY-MM-DD, optional)
+    - `check_in_to` — filter bookings with `check_in` ≤ this date (YYYY-MM-DD, optional)
+    - `check_out_from` — filter bookings with `check_out` ≥ this date (YYYY-MM-DD, optional)
+    - `check_out_to` — filter bookings with `check_out` ≤ this date (YYYY-MM-DD, optional)
+    - `sort_by` — field to sort by: `check_in`, `check_out`, `updated_at` (default), `created_at`
+    - `sort_dir` — `asc` or `desc` (default `desc`)
     - `limit` — max results to return (1–100, default 50)
 
     **Source:** Reads from `booking_state` projection table only.
@@ -187,22 +203,40 @@ async def list_bookings(
             extra={"detail": f"status must be one of: {sorted(_VALID_STATUSES)}"},
         )
 
+    # Validate sort_by
+    if sort_by is not None and sort_by not in _VALID_SORT_BY:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"sort_by must be one of: {sorted(_VALID_SORT_BY)}"},
+        )
+
+    # Validate sort_dir
+    if sort_dir not in _VALID_SORT_DIR:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"sort_dir must be one of: {sorted(_VALID_SORT_DIR)}"},
+        )
+
     # Validate date range params
-    if check_in_from is not None and not _DATE_RE.match(check_in_from):
-        return make_error_response(
-            status_code=400,
-            code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": "check_in_from must be a valid date in YYYY-MM-DD format"},
-        )
-    if check_in_to is not None and not _DATE_RE.match(check_in_to):
-        return make_error_response(
-            status_code=400,
-            code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": "check_in_to must be a valid date in YYYY-MM-DD format"},
-        )
+    for field_name, field_val in [
+        ("check_in_from", check_in_from),
+        ("check_in_to", check_in_to),
+        ("check_out_from", check_out_from),
+        ("check_out_to", check_out_to),
+    ]:
+        if field_val is not None and not _DATE_RE.match(field_val):
+            return make_error_response(
+                status_code=400,
+                code=ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"{field_name} must be a valid date in YYYY-MM-DD format"},
+            )
 
     # Clamp limit
     limit = max(1, min(limit, _MAX_LIMIT))
+    _sort_field = sort_by or "updated_at"
+    _sort_desc = sort_dir == "desc"
 
     try:
         db = client if client is not None else _get_supabase_client()
@@ -219,13 +253,22 @@ async def list_bookings(
         if status is not None:
             query = query.eq("status", status)
 
+        if source is not None:
+            query = query.eq("source", source)
+
         if check_in_from is not None:
             query = query.gte("check_in", check_in_from)
 
         if check_in_to is not None:
             query = query.lte("check_in", check_in_to)
 
-        result = query.limit(limit).order("updated_at", desc=True).execute()
+        if check_out_from is not None:
+            query = query.gte("check_out", check_out_from)
+
+        if check_out_to is not None:
+            query = query.lte("check_out", check_out_to)
+
+        result = query.limit(limit).order(_sort_field, desc=_sort_desc).execute()
         rows = result.data or []
 
         bookings = [
@@ -248,10 +291,12 @@ async def list_bookings(
         return JSONResponse(
             status_code=200,
             content={
-                "tenant_id":     tenant_id,
-                "count":         len(bookings),
-                "limit":         limit,
-                "bookings":      bookings,
+                "tenant_id": tenant_id,
+                "count":     len(bookings),
+                "limit":     limit,
+                "sort_by":   _sort_field,
+                "sort_dir":  sort_dir,
+                "bookings":  bookings,
             },
         )
 
