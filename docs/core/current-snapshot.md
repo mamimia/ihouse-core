@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 123 — Worker-Facing Task Surface (closed)
+Phase 124 — External Channel Escalation: LINE (closed)
 
 ## Last Closed Phase
-Phase 123 — Worker-Facing Task Surface
+Phase 124 — External Channel Escalation: LINE
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -80,8 +80,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 121 | Owner Statement Generator (Ring 4) -- owner_statement_router.py: GET /owner-statement/{property_id}?month=&management_fee_pct=&format=pdf; per-booking line items (check_in/out, gross, ota_commission, net_to_property, epistemic_tier A/B/C, lifecycle_status); management fee deduction; owner_net_total; OTA_COLLECTING excluded from net; PDF plain-text export; property_id filter at DB level; dedup (most-recent recorded_at); 49 new tests + 28 updated Phase 101 tests | ✅ |
 | 122 | OTA Financial Health Comparison -- ota_comparison_router.py: GET /financial/ota-comparison?period=; per-(OTA,currency) metrics: booking_count, gross_total, commission_total, net_total, avg_commission_rate, net_to_gross_ratio, revenue_share_pct, epistemic_tier (A/B/C), lifecycle_distribution; no cross-currency arithmetic; dedup by most-recent recorded_at; 44 tests | ✅ |
 | 123 | Worker-Facing Task Surface -- worker_router.py: GET /worker/tasks (worker_role/status/date/limit filters, DB-level tenant isolation), PATCH /worker/tasks/{id}/acknowledge (PENDING→ACKNOWLEDGED), PATCH /worker/tasks/{id}/complete (IN_PROGRESS→COMPLETED); VALID_TASK_TRANSITIONS enforced; notes appended on complete; 41 tests | ✅ |
+| 124 | LINE Escalation Channel -- channels/line_escalation.py: pure module: should_escalate (ACK_SLA_BREACH only), build_line_message, format_line_text, is_priority_eligible, LineEscalationRequest/LineDispatchResult dataclasses; api/line_webhook_router.py: POST /line/webhook: PENDING→ACKNOWLEDGED on LINE ack, idempotent for ACKNOWLEDGED, 409 for terminal; HMAC-SHA256 sig validation (dev=skip); 57 tests | ✅ |
 
-**2994 tests pass** (2 pre-existing SQLite skips, unrelated)
+**3051 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 

@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 123 — Worker-Facing Task Surface (closed)
+Phase 124 — External Channel Escalation: LINE (closed)
 
 ## Last Closed Phase
 
-Phase 123 — Worker-Facing Task Surface
+Phase 124 — External Channel Escalation: LINE
 
 ## Current Objective
 
-**Phase 124 — (next — see roadmap)**
+**Phase 125 — (next — see roadmap)**
 See `docs/core/roadmap.md` for forward plan.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -23,6 +23,7 @@ See `docs/core/roadmap.md` for forward plan.
 | 121 | Owner Statement Generator (Ring 4) | `src/api/owner_statement_router.py`, `tests/test_owner_statement_phase121_contract.py` |
 | 122 | OTA Financial Health Comparison | `src/api/ota_comparison_router.py`, `tests/test_ota_comparison_router_contract.py` |
 | 123 | Worker-Facing Task Surface | `src/api/worker_router.py`, `tests/test_worker_router_contract.py` |
+| 124 | LINE Escalation Channel | `src/channels/line_escalation.py`, `src/api/line_webhook_router.py`, `tests/test_line_*` |
 | docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
@@ -51,6 +52,8 @@ See `docs/core/roadmap.md` for forward plan.
 | `src/api/owner_statement_router.py` | Ring 4: GET /owner-statement/{property_id} — per-booking line items, epistemic tier, management fee, PDF export |
 | `src/api/ota_comparison_router.py` | Ring 3: GET /financial/ota-comparison — per-OTA commission rate, net-to-gross, revenue share, lifecycle distribution |
 | `src/api/worker_router.py` | Phase 123: GET /worker/tasks, PATCH /worker/tasks/{id}/acknowledge, PATCH /worker/tasks/{id}/complete |
+| `src/channels/line_escalation.py` | Phase 124: pure LINE module — should_escalate, build_line_message, format_line_text, is_priority_eligible |
+| `src/api/line_webhook_router.py` | Phase 124: POST /line/webhook — LINE ack callback → PENDING→ACKNOWLEDGED, dev/prod sig validation |
 
 ## Key Files — Task Layer (Phases 111–115)
 
@@ -94,5 +97,5 @@ See `docs/core/roadmap.md` for forward plan.
 
 ## Tests
 
-**2994 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
+**3051 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
 
