@@ -198,7 +198,7 @@ def test_service_api_first_dry_run():
 
 
 def test_service_ical_fallback_dry_run():
-    actions = [_action(strategy="ical_fallback", tier="B", rate_limit=10)]
+    actions = [_action(provider="hotelbeds", strategy="ical_fallback", tier="B", rate_limit=10)]
     report = execute_sync_plan(_BOOKING, _PROP, _TENANT, actions)
     assert report.ok_count == 1
     assert report.results[0].status == "dry_run"

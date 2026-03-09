@@ -1,46 +1,21 @@
 """
-Phase 138 — Outbound Executor (Service Layer)
+Phase 139 — Outbound Executor (Service Layer)
 
-Receives the output of Phase 137's build_sync_plan() and dispatches each
-non-skip SyncAction to the appropriate outbound adapter.
+Updated in Phase 139 to use real adapter implementations:
+  api_first:    AirbnbAdapter, BookingComAdapter, ExpediaVrboAdapter
+  ical_fallback: ICalPushAdapter (Hotelbeds, TripAdvisor, Despegar)
 
-Design decisions:
-  - Phase 138 is an **executor**, not a scheduler. It runs synchronously within
-    the request — each action is attempted in turn.
-  - Phase 138 ships with **stubbed adapters** — they log the intent and return
-    a deterministic success/dry-run result. Real API calls come in Phase 139+.
-  - The execution result for every action is recorded in ExecutionResult,
-    regardless of success or failure.
-  - If one action fails, the others still run (fail-isolated dispatch).
+Strategy resolution is unchanged from Phase 138.
+The Phase 138 stub adapters (ApiFirstAdapter, ICalAdapter) are kept as
+fallback for unknown providers not in the adapter registry.
 
-ExecutionResult schema (per action):
-    provider     TEXT
-    external_id  TEXT
-    strategy     TEXT  (api_first | ical_fallback | skip)
-    status       TEXT  (ok | failed | skipped | dry_run)
-    http_status  INT?  (from OTA API, if applicable)
-    message      TEXT  (human explanation)
-
-ExecutionReport schema (full report):
-    booking_id      TEXT
-    property_id     TEXT
-    tenant_id       TEXT
-    total_actions   INT
-    ok_count        INT
-    failed_count    INT
-    skip_count      INT
-    dry_run         BOOL
-    results         List[ExecutionResult]
-
-Adapter registry (stubbed for Phase 138):
-    api_first   → ApiFirstAdapter.send(provider, external_id, booking_id)
-    ical_fallback → ICalAdapter.push(provider, external_id, booking_id)
+Adapter registry: adapters/outbound/registry.py → build_adapter_registry()
 
 Invariants:
-    - Adapters in Phase 138 are stubs that return dry_run=True.
-    - apply_envelope is never called.
-    - Only processes actions with strategy != 'skip'.
-    - Skipped actions are echoed in results with status='skipped'.
+  - Adapters fall back to dry_run if credentials absent.
+  - apply_envelope is never called.
+  - Fail-isolated: one failure does not prevent other actions.
+  - Skipped actions are echoed in results with status='skipped'.
 """
 from __future__ import annotations
 
@@ -49,6 +24,13 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from services.outbound_sync_trigger import SyncAction
+
+# Phase 139 — real adapter registry
+try:
+    from adapters.outbound.registry import build_adapter_registry as _build_registry
+    _ADAPTER_REGISTRY_AVAILABLE = True
+except ImportError:
+    _ADAPTER_REGISTRY_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -170,8 +152,11 @@ def execute_sync_plan(
     -------
     ExecutionReport with per-action results.
     """
-    _api  = api_adapter  or ApiFirstAdapter
-    _ical = ical_adapter or ICalAdapter
+    # Phase 139: prefer real adapter registry; fall back to class-level stubs
+    # for backward compatibility with Phase 138 tests.
+    use_registry = _ADAPTER_REGISTRY_AVAILABLE and api_adapter is None and ical_adapter is None
+    _api_cls  = api_adapter  or ApiFirstAdapter
+    _ical_cls = ical_adapter or ICalAdapter
 
     results: List[ExecutionResult] = []
     ok_count      = 0
@@ -193,19 +178,68 @@ def execute_sync_plan(
 
         try:
             if action.strategy == "api_first":
-                result = _api.send(
-                    provider=action.provider,
-                    external_id=action.external_id,
-                    booking_id=booking_id,
-                    rate_limit=action.rate_limit,
-                )
+                if use_registry:
+                    adapter = _build_registry().get(action.provider)
+                    if adapter is not None:
+                        ar = adapter.send(
+                            external_id=action.external_id,
+                            booking_id=booking_id,
+                            rate_limit=action.rate_limit,
+                        )
+                        result = ExecutionResult(
+                            provider=ar.provider,
+                            external_id=ar.external_id,
+                            strategy=ar.strategy,
+                            status=ar.status,
+                            http_status=ar.http_status,
+                            message=ar.message,
+                        )
+                    else:
+                        # Unknown provider — fall back to stub
+                        result = _api_cls.send(
+                            provider=action.provider,
+                            external_id=action.external_id,
+                            booking_id=booking_id,
+                            rate_limit=action.rate_limit,
+                        )
+                else:
+                    result = _api_cls.send(
+                        provider=action.provider,
+                        external_id=action.external_id,
+                        booking_id=booking_id,
+                        rate_limit=action.rate_limit,
+                    )
             elif action.strategy == "ical_fallback":
-                result = _ical.push(
-                    provider=action.provider,
-                    external_id=action.external_id,
-                    booking_id=booking_id,
-                    rate_limit=action.rate_limit,
-                )
+                if use_registry:
+                    adapter = _build_registry().get(action.provider)
+                    if adapter is not None:
+                        ar = adapter.push(
+                            external_id=action.external_id,
+                            booking_id=booking_id,
+                            rate_limit=action.rate_limit,
+                        )
+                        result = ExecutionResult(
+                            provider=ar.provider,
+                            external_id=ar.external_id,
+                            strategy=ar.strategy,
+                            status=ar.status,
+                            http_status=ar.http_status,
+                            message=ar.message,
+                        )
+                    else:
+                        result = _ical_cls.push(
+                            provider=action.provider,
+                            external_id=action.external_id,
+                            booking_id=booking_id,
+                            rate_limit=action.rate_limit,
+                        )
+                else:
+                    result = _ical_cls.push(
+                        provider=action.provider,
+                        external_id=action.external_id,
+                        booking_id=booking_id,
+                        rate_limit=action.rate_limit,
+                    )
             else:
                 result = ExecutionResult(
                     provider=action.provider,
