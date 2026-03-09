@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > It is updated every few phases to reflect what we've learned and where we're headed.
-> Last updated: Phase 77 closed. [Claude]
+> Last updated: Phase 88 closed. Traveloka Adapter (SE Asia Tier 1.5) complete. Worker Communication Layer planning locked in future-improvements.md. [Claude]
 
 
 ## Completed
@@ -258,3 +258,60 @@ Requirements before BOOKING_AMENDED can be introduced:
 3. State-safe amendment application — apply_envelope must safely transition previous_state → amended_state
 4. Out-of-order protection — amendments must not corrupt state if events arrive late
 5. Projection safety — event log must correctly rebuild amended reservations from history
+
+
+---
+
+## Forward Planning — Worker Communication & Escalation Layer
+
+> [!IMPORTANT]
+> This is a planning direction, not an active phase. It establishes architectural constraints
+> that future phases must respect. Full detail in `docs/core/planning/worker-communication-layer.md`.
+
+### Summary of Direction
+
+The system will eventually support **worker-facing operational communication** for roles such as:
+cleaner, check-in/check-out staff, operations manager, maintenance worker, garden/pool/repair worker.
+
+Workers will have their own surfaces inside the system (dashboard, mobile view, assigned work, status, acknowledgement, completion, and history).
+
+### The Core Rule — Must Not Be Violated
+
+**iHouse Core is the system of record, always.**
+
+| What lives in iHouse Core | External channels are |
+|---|---|
+| Task creation, status, acknowledgement, completion, escalation state, audit trail | Fallback / escalation delivery only — never the source of truth |
+
+External channels (LINE → WhatsApp → Telegram → SMS) may only be added as fallback escalation surfaces, not as primary surfaces.
+
+### Graded Escalation Model
+
+Escalation behavior must be **intelligent**, not uniform:
+
+| Urgency | Behavior |
+|---|---|
+| Low | In-app only, long SLA window |
+| Medium | In-app first, external after delay if unacknowledged |
+| High | In-app + fast external fallback |
+| Critical | Manager escalation + SMS final fallback |
+
+### What Future Schema Decisions Should Preserve Room For
+
+When working on the task system or SLA escalation engine, preserve space for:
+
+- `urgency` field on tasks (low / medium / high / critical)
+- `worker_role` on task assignments (role-aware routing without schema migration later)
+- `ack_sla_minutes` on tasks (per-task acknowledgement SLA, not global fixed timers)
+
+Adding these fields at the right time costs almost nothing. Retrofitting them later costs significantly more.
+
+### Architectural Guidance for Future Phases
+
+When designing:
+- **Task schema changes** → leave room for `urgency`, `worker_role`, `ack_sla_minutes`
+- **Escalation engine** → design triggers to accept task-level context, not only fixed timers
+- **Worker surfaces** → treat as first-class access points, not secondary admin views
+- **Notification infrastructure** → architect as pluggable channels with in-app always first
+
+Full detail: `docs/core/planning/worker-communication-layer.md`

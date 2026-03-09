@@ -1,5 +1,6 @@
 """
 Phase 67 — financial_router contract tests.
+Phase 81 — Updated 404 and 500 assertions to use standardised 'code' field (Phase 75 standard).
 
 Uses FastAPI TestClient + mocked Supabase — no live DB required.
 """
@@ -115,7 +116,7 @@ class TestGetFinancialFacts:
             resp = client.get("/financial/bookingcom_UNKNOWN")
 
         assert resp.status_code == 404
-        assert resp.json()["error"] == "BOOKING_NOT_FOUND"
+        assert resp.json()["code"] == "BOOKING_NOT_FOUND"
         assert resp.json()["booking_id"] == "bookingcom_UNKNOWN"
 
     # -----------------------------------------------------------------------
@@ -225,7 +226,7 @@ class TestGetFinancialFacts:
 
         assert resp.status_code == 500
         body = resp.json()
-        assert body["error"] == "INTERNAL_ERROR"
+        assert body["code"] == "INTERNAL_ERROR"
         assert "DB down" not in str(body)  # no internal details leaked
 
     # -----------------------------------------------------------------------

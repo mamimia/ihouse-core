@@ -106,15 +106,18 @@ public.booking_state
 
 ## Current OTA Adapter Status
 
-All 5 providers implemented at full parity:
+All 8 providers implemented at full parity:
 
-| Provider    | CREATE | CANCEL | AMENDED |
-|-------------|:------:|:------:|:-------:|
-| Booking.com | ✅ | ✅ | ✅ |
-| Expedia     | ✅ | ✅ | ✅ |
-| Airbnb      | ✅ | ✅ | ✅ |
-| Agoda       | ✅ | ✅ | ✅ |
-| Trip.com    | ✅ | ✅ | ✅ |
+| Provider       | CREATE | CANCEL | AMENDED | Phase |
+|----------------|:------:|:------:|:-------:|-------|
+| Booking.com    | ✅ | ✅ | ✅ | Phases 35-50 |
+| Expedia        | ✅ | ✅ | ✅ | Phases 35-50 |
+| Airbnb         | ✅ | ✅ | ✅ | Phases 35-50 |
+| Agoda          | ✅ | ✅ | ✅ | Phases 35-50 |
+| Trip.com       | ✅ | ✅ | ✅ | Phases 35-50 |
+| Vrbo           | ✅ | ✅ | ✅ | Phase 83 |
+| Google Vacation Rentals | ✅ | ✅ | ✅ | Phase 85 |
+| Traveloka      | ✅ | ✅ | ✅ | Phase 88 |
 
 ## Future Evolution
 
@@ -124,6 +127,8 @@ without breaking the canonical ledger model.
 Future OTA expansion must preserve the explicit boundary between OTA
 entry, envelope construction, core ingest, and canonical execution.
 
-Next natural phase:
-- Phase 65 — Financial Data Foundation (BookingFinancialFacts dataclass, adapter financial field extraction)
-- See docs/core/improvements/future-improvements.md → Financial Model Foundation
+Next natural phases (from roadmap.md + future-improvements.md):
+- Phase 89+ — MakeMyTrip / Despegar adapter expansion
+- Worker Communication Layer (forward planning — see future-improvements.md)
+- Financial reconciliation layer
+- Property and tenant management surfaces

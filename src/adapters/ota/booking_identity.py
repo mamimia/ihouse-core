@@ -48,6 +48,14 @@ def _strip_tripcom_prefix(ref: str) -> str:
     return ref
 
 
+def _strip_traveloka_prefix(ref: str) -> str:
+    """Traveloka booking codes may be prefixed with 'TV-'. Strip it for a stable ref."""
+    lower = ref.lower()
+    if lower.startswith("tv-"):
+        return ref[3:]
+    return ref
+
+
 # Registry: provider → list of extra normalization steps after base
 _PROVIDER_RULES: dict[str, list] = {
     "bookingcom": [_strip_bookingcom_prefix],
@@ -55,6 +63,9 @@ _PROVIDER_RULES: dict[str, list] = {
     "airbnb":     [],   # no extra rules — numeric IDs, stable
     "agoda":      [_strip_agoda_prefix],
     "tripcom":    [_strip_tripcom_prefix],
+    "vrbo":       [],   # numeric IDs, stable — no prefix stripping needed
+    "gvr":        [],   # GVR booking IDs are stable alphanumeric — no prefix stripping
+    "traveloka":  [_strip_traveloka_prefix],  # Traveloka booking codes prefixed with TV-
 }
 
 

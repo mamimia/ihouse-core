@@ -1419,3 +1419,228 @@ No Supabase schema changes. No new migrations.
 
 Result: 663 passed, 2 skipped.
 No Supabase schema changes. No new migrations.
+
+## Phase 81 -- Tenant Isolation Audit (Closed)
+
+[Claude] Audited all admin/bookings/financial endpoints for tenant_id isolation.
+
+Audit result:
+- `bookings_router.py` — all queries have `.eq("tenant_id", tenant_id)` ✅
+- `admin_router.py` — booking_state (active/canceled/total/last) + booking_financial_facts all filtered ✅
+- `admin_router.py` — ota_dead_letter is global by design (no tenant_id column) — documented ✅
+- `financial_router.py` — query correctly filtered; 404/500 responses used old format → fixed ✅
+
+Files added:
+- `src/adapters/ota/tenant_isolation_checker.py` — TenantIsolationReport (frozen dataclass), check_query_has_tenant_filter(), audit_tenant_isolation()
+- `tests/test_tenant_isolation_checker_contract.py` — 24 contract tests (Groups A–D)
+
+Files modified:
+- `src/api/financial_router.py` — 404/500 now use make_error_response (Phase 75 standard)
+- `tests/test_financial_router_contract.py` — T2/T7 updated: assert ["error"] → assert ["code"]
+
+Result: 687 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 82 -- Admin Query API (Closed)
+
+[Claude] Extended admin_router.py with 4 new operator-facing query endpoints.
+
+Added endpoints:
+- GET /admin/metrics — collect_idempotency_report() → total_dlq_rows, pending_dlq_rows, already_applied_count, idempotency_rejection_count, ordering_buffer_depth, checked_at
+- GET /admin/dlq — get_pending_count(), get_replayed_count(), get_rejection_breakdown() from dlq_inspector.py
+- GET /admin/health/providers — per-provider last recorded_at from event_log (bookingcom/airbnb/expedia/agoda/tripcom). status: ok|unknown
+- GET /admin/bookings/{id}/timeline — all event_log events for a booking ordered by recorded_at asc
+
+Added helper functions:
+- _get_provider_health(db, tenant_id) → list — never raises, returns provider entries
+- _get_booking_timeline(db, tenant_id, booking_id) → list — never raises, returns event entries
+
+All endpoints: JWT auth required, read-only, use make_error_response for 404/500.
+DLQ endpoints global by design (ota_dead_letter has no tenant_id).
+Timeline and health/providers are tenant-scoped via event_log.
+
+Files added:
+- tests/test_admin_query_api_contract.py — 35 contract tests (Groups A–E)
+
+Files modified:
+- src/api/admin_router.py — 4 new endpoints, 2 new helpers, module docstring updated
+
+Result: 722 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 83 -- Vrbo Adapter (Closed)
+
+[Claude] Added Vrbo as the 6th OTA provider following the standard adapter pattern.
+
+Vrbo field quirks: unit_id (not property_id), arrival_date/departure_date (shared with tripcom), guest_count (shared with airbnb), traveler_payment (total), manager_payment (net), service_fee (platform fee).
+Amendment pattern: alteration.* (same top-level key as airbnb, different field names).
+booking_id: vrbo_{normalized_reservation_id} (Phase 36 invariant).
+
+Files added:
+- src/adapters/ota/vrbo.py — VrboAdapter (normalize + to_canonical_envelope for all 3 event types)
+- tests/test_vrbo_adapter_contract.py — 45 contract tests (Groups A-H)
+
+Files modified:
+- src/adapters/ota/schema_normalizer.py — added vrbo to all 7 canonical field helpers
+- src/adapters/ota/financial_extractor.py — added _extract_vrbo (traveler_payment/manager_payment/service_fee)
+- src/adapters/ota/amendment_extractor.py — added extract_amendment_vrbo, vrbo branch in dispatcher
+- src/adapters/ota/booking_identity.py — added vrbo to _PROVIDER_RULES (no prefix stripping)
+- src/adapters/ota/registry.py — registered VrboAdapter under "vrbo"
+
+Result: 767 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 84 -- Reservation Timeline / Audit Trail (Closed)
+
+[Claude] Built a unified per-booking audit trail aggregating events from 4 source tables.
+
+reservation_timeline.py: pure read-only module, never raises.
+Structures: TimelineEvent (frozen dataclass), ReservationTimeline (dataclass).
+Public API: build_reservation_timeline(db, tenant_id, booking_id) -> ReservationTimeline.
+
+Sources:
+- event_log: canonical events (BOOKING_CREATED/AMENDED/CANCELED), tenant-scoped.
+- booking_financial_facts: financial snapshots (FINANCIAL_RECORDED), tenant-scoped.
+- ota_dead_letter: DLQ entries (DLQ_INGESTED), global (no tenant_id).
+- ota_ordering_buffer: buffered events (BUFFERED), global.
+
+Events sorted by recorded_at ascending. partial=True if any source query fails.
+Each fetcher returns (events, failed_bool) and swallows all exceptions.
+
+Files added:
+- src/adapters/ota/reservation_timeline.py — TimelineEvent, ReservationTimeline, build_reservation_timeline, 4 private fetchers
+- tests/test_reservation_timeline_contract.py — 45 contract tests (Groups A-H)
+
+Result: 812 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 85 -- Google Vacation Rentals Adapter (Closed)
+
+[Claude] Added GVR as the 7th OTA adapter. Key architectural difference documented:
+GVR is a distribution surface (Google Search/Maps/Hotels), not a marketplace.
+Adapter pattern is IDENTICAL to other providers — difference is in field names and extra field.
+
+Field differences vs classic OTAs:
+- gvr_booking_id (not reservation_id) for the booking reference
+- property_id = standard field (shared with bookingcom/expedia)
+- check_in / check_out (not arrival_date/departure_date)
+- booking_value (total), google_fee (commission), net_amount (net, derived if absent)
+- connected_ota: extra field forwarded in CREATE/CANCEL envelopes
+- Amendment pattern: modification.{check_in, check_out, guest_count, reason}
+
+Financial: net_amount derived = booking_value - google_fee when absent (confidence=ESTIMATED).
+
+Files added:
+- src/adapters/ota/gvr.py — GVRAdapter with full architectural doc
+- tests/test_gvr_adapter_contract.py — 50 contract tests (Groups A-I)
+
+Files modified:
+- schema_normalizer.py + financial_extractor.py + amendment_extractor.py + booking_identity.py + registry.py
+
+Result: 862 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 86 -- Conflict Detection Layer (Closed)
+
+[Claude] Purely read-only conflict detection over booking_state (ACTIVE rows only).
+
+Detects 4 categories:
+- DATE_OVERLAP (ERROR): two ACTIVE bookings on same property, dates overlap
+- MISSING_PROPERTY (ERROR): ACTIVE booking has no property_id
+- MISSING_DATES (WARNING): ACTIVE booking has no check_in or check_out
+- DUPLICATE_REF (ERROR): same (provider, reservation_id) appears in two bookings
+
+Public API: detect_conflicts(db, tenant_id) -> ConflictReport.
+Never raises. partial=True if DB query fails. Results sorted ERROR first.
+_get_field reads top-level first, falls back to state_json (jsonb).
+Date overlap uses exclusive checkout (turnaround day = no conflict).
+
+Files added:
+- src/adapters/ota/conflict_detector.py — ConflictKind, ConflictSeverity, Conflict, ConflictReport, detect_conflicts
+- tests/test_conflict_detector_contract.py — 58 contract tests (Groups A-I)
+
+Result: 920 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 87 -- Tenant Isolation Hardening (Closed)
+
+[Claude] System-level isolation policy layer — extends Phase 81.
+
+TABLE_REGISTRY canonical classification (5 tables):
+- TENANT_SCOPED (requires_filter=True): event_log, booking_state, booking_financial_facts
+- GLOBAL (requires_filter=False): ota_dead_letter, ota_ordering_buffer
+  Global rationale: no tenant_id column — isolation via booking_id routing.
+
+New functions:
+- get_table_policy(table_name) → TableIsolationPolicy | None
+- check_cross_tenant_leak(tenant_a, tenant_b, rows) → CrossTenantLeakResult
+- audit_system_isolation() → SystemIsolationReport (all_compliant=True confirmed)
+
+Integration tests verify Phase 81 + Phase 87 agreement at both query-level and table-level.
+
+Files added:
+- src/adapters/ota/tenant_isolation_enforcer.py
+- tests/test_tenant_isolation_enforcer_contract.py — 54 contract tests (Groups A-I)
+
+Result: 974 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 88 -- Traveloka Adapter (Closed)
+
+[Claude] Traveloka — SE Asia Tier 1.5 OTA (dominant platform in Indonesia, Thailand, Vietnam).
+
+Field mapping: booking_code (TV- prefix stripped) → reservation_id, property_code → property_id,
+check_in_date/check_out_date → canonical dates, num_guests → guest count,
+booking_total → total_price, currency_code (not 'currency') → currency, traveloka_fee → commission.
+
+Financial: FULL if booking_total + currency_code + net_payout; ESTIMATED if net derived from booking_total - traveloka_fee.
+Amendment block: modification.{check_in_date, check_out_date, num_guests, modification_reason}.
+Prefix stripping: _strip_traveloka_prefix strips TV- / tv-.
+
+Files changed:
+- src/adapters/ota/traveloka.py (NEW)
+- src/adapters/ota/schema_normalizer.py (+8 traveloka, currency_code special case)
+- src/adapters/ota/financial_extractor.py (_extract_traveloka + ESTIMATED net derivation)
+- src/adapters/ota/amendment_extractor.py (extract_amendment_traveloka + dispatcher)
+- src/adapters/ota/booking_identity.py (_strip_traveloka_prefix + registry entry)
+- src/adapters/ota/registry.py (TravelokaAdapter registered)
+- tests/test_traveloka_adapter_contract.py (53 contract tests Groups A-I)
+
+Result: 1029 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 89 -- OTA Reconciliation Discovery (Closed)
+
+[Claude] Discovery-only phase. Defined the canonical reconciliation data model.
+
+New: src/adapters/ota/reconciliation_model.py
+  - ReconciliationFindingKind (StrEnum, 7 values): BOOKING_MISSING_INTERNALLY,
+    BOOKING_STATUS_MISMATCH, DATE_MISMATCH, FINANCIAL_FACTS_MISSING,
+    FINANCIAL_AMOUNT_DRIFT, PROVIDER_DRIFT, STALE_BOOKING
+  - ReconciliationSeverity (StrEnum, 3 values): CRITICAL, WARNING, INFO
+  - FINDING_SEVERITY: canonical kind → severity mapping (locked)
+  - CORRECTION_HINTS: canonical kind → human-readable guidance (locked)
+  - _make_finding_id(kind, booking_id) → 12-char hex (sha256[:12], deterministic)
+  - ReconciliationFinding (frozen dataclass): .build() factory — auto-assigns
+    finding_id, severity, correction_hint from canonical maps
+  - ReconciliationReport (dataclass): .build() auto-derives critical/warning/info
+    counts from findings list; has_critical(), has_warnings(), is_clean() helpers
+  - ReconciliationSummary (frozen dataclass): .from_report() — compact view,
+    top_kind tie-breaking: most-frequent → CRITICAL first → alphabetical
+
+New: tests/test_reconciliation_model_contract.py — 87 contract tests (Groups A-I)
+  Group A: FindingKind enum (10 tests)
+  Group B: Severity enum (5 tests)
+  Group C: FINDING_SEVERITY mapping (9 tests)
+  Group D: CORRECTION_HINTS mapping (7 tests)
+  Group E: ReconciliationFinding.build() factory (13 tests + parametric)
+  Group F: finding_id determinism (6 tests)
+  Group G: ReconciliationReport.build() (11 tests)
+  Group H: Report helper methods (8 tests)
+  Group I: ReconciliationSummary.from_report() (12 tests)
+
+New invariant: The reconciliation layer is READ-ONLY. It never writes to
+booking_state or any Supabase table. Corrections require a new canonical event.
+
+Result: 1116 passed, 2 skipped.
+No Supabase schema changes. No new migrations. No booking_state writes.

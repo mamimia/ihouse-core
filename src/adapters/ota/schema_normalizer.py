@@ -1,5 +1,5 @@
 """
-schema_normalizer.py — Phase 77 + Phase 78
+schema_normalizer.py — Phase 77 + Phase 78 + Phase 83 + Phase 85
 
 Enriches a raw OTA provider payload with canonical field names.
 
@@ -19,7 +19,7 @@ Canonical keys added to the returned copy (all are additive — originals never 
 Rules:
 - Returns a shallow copy of the payload — original keys are never removed.
 - Missing or unparseable fields -> None (never raises KeyError).
-- Supports all 5 providers: bookingcom, airbnb, expedia, agoda, tripcom.
+- Supports all 8 providers: bookingcom, airbnb, expedia, agoda, tripcom, vrbo, gvr, traveloka.
 - Unknown providers pass through with all canonical keys set to None.
 """
 
@@ -46,6 +46,12 @@ def _guest_count(provider: str, payload: dict) -> int | None:
             return int(payload["num_guests"])
         elif provider == "tripcom":
             return int(payload["guests"])
+        elif provider == "vrbo":
+            return int(payload["guest_count"])
+        elif provider == "gvr":
+            return int(payload["guest_count"])
+        elif provider == "traveloka":
+            return int(payload["num_guests"])
         return None
     except (KeyError, TypeError, ValueError):
         return None
@@ -64,6 +70,14 @@ def _booking_ref(provider: str, payload: dict) -> str | None:
             return str(payload["booking_ref"])
         elif provider == "tripcom":
             return str(payload["order_id"])
+        elif provider == "vrbo":
+            return str(payload["reservation_id"])
+        elif provider == "gvr":
+            # GVR uses gvr_booking_id as its native booking reference
+            return str(payload["gvr_booking_id"])
+        elif provider == "traveloka":
+            # Traveloka uses booking_code (may include TV- prefix)
+            return str(payload["booking_code"])
         return None
     except (KeyError, TypeError):
         return None
@@ -82,6 +96,12 @@ def _property_id(provider: str, payload: dict) -> str | None:
             return str(payload["property_id"])
         elif provider == "tripcom":
             return str(payload["hotel_id"])
+        elif provider == "vrbo":
+            return str(payload["unit_id"])  # Vrbo uses unit_id
+        elif provider == "gvr":
+            return str(payload["property_id"])  # GVR uses standard property_id
+        elif provider == "traveloka":
+            return str(payload["property_code"])  # Traveloka uses property_code
         return None
     except (KeyError, TypeError):
         return None
@@ -100,6 +120,7 @@ def _check_in(provider: str, payload: dict) -> str | None:
       expedia    -> check_in_date
       agoda      -> check_in
       tripcom    -> arrival_date
+      vrbo       -> arrival_date
     """
     try:
         if provider == "bookingcom":
@@ -112,6 +133,12 @@ def _check_in(provider: str, payload: dict) -> str | None:
             return str(payload["check_in"])
         elif provider == "tripcom":
             return str(payload["arrival_date"])
+        elif provider == "vrbo":
+            return str(payload["arrival_date"])
+        elif provider == "gvr":
+            return str(payload["check_in"])
+        elif provider == "traveloka":
+            return str(payload["check_in_date"])  # Traveloka: check_in_date
         return None
     except (KeyError, TypeError):
         return None
@@ -126,6 +153,7 @@ def _check_out(provider: str, payload: dict) -> str | None:
       expedia    -> check_out_date
       agoda      -> check_out
       tripcom    -> departure_date
+      vrbo       -> departure_date
     """
     try:
         if provider == "bookingcom":
@@ -138,15 +166,27 @@ def _check_out(provider: str, payload: dict) -> str | None:
             return str(payload["check_out"])
         elif provider == "tripcom":
             return str(payload["departure_date"])
+        elif provider == "vrbo":
+            return str(payload["departure_date"])
+        elif provider == "gvr":
+            return str(payload["check_out"])
+        elif provider == "traveloka":
+            return str(payload["check_out_date"])  # Traveloka: check_out_date
         return None
     except (KeyError, TypeError):
         return None
 
 
 def _currency(provider: str, payload: dict) -> str | None:
-    """Extract ISO 4217 currency code. All providers use the field name 'currency'."""
+    """Extract ISO 4217 currency code.
+
+    Most providers use 'currency'. Traveloka uses 'currency_code'.
+    """
     try:
-        val = payload["currency"]
+        if provider == "traveloka":
+            val = payload.get("currency_code")
+        else:
+            val = payload.get("currency")
         return str(val) if val is not None else None
     except (KeyError, TypeError):
         return None
@@ -161,6 +201,7 @@ def _total_price(provider: str, payload: dict) -> str | None:
       expedia    -> total_amount
       agoda      -> selling_rate
       tripcom    -> order_amount
+      vrbo       -> traveler_payment
 
     Returns raw str value. No Decimal conversion — financial_extractor owns precision.
     """
@@ -175,6 +216,12 @@ def _total_price(provider: str, payload: dict) -> str | None:
             val = payload["selling_rate"]
         elif provider == "tripcom":
             val = payload["order_amount"]
+        elif provider == "vrbo":
+            val = payload["traveler_payment"]
+        elif provider == "gvr":
+            val = payload["booking_value"]
+        elif provider == "traveloka":
+            val = payload["booking_total"]  # Traveloka: booking_total
         else:
             return None
         return str(val) if val is not None else None
@@ -201,7 +248,7 @@ def normalize_schema(provider: str, payload: dict) -> dict:
       canonical_total_price  -- str or None (raw provider value)
 
     Existing keys are never removed or renamed.
-    Supports providers: bookingcom, airbnb, expedia, agoda, tripcom.
+    Supports providers: bookingcom, airbnb, expedia, agoda, tripcom, vrbo, gvr.
     Unknown providers are passed through with all canonical keys set to None.
     """
     enriched: dict[str, Any] = dict(payload)

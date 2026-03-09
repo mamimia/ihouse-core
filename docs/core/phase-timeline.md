@@ -2070,3 +2070,122 @@ Non-serializable values fall back via default=str. Never raises.
 
 Result: 663 passed, 2 skipped.
 No Supabase schema changes. No new migrations.
+
+## Phase 81 -- Tenant Isolation Audit (Closed)
+
+[Claude] Audited admin_router.py, bookings_router.py, financial_router.py for tenant_id query isolation.
+
+All booking_state and booking_financial_facts queries are correctly filtered by tenant_id.
+ota_dead_letter is global by design (no tenant_id column) — documented.
+financial_router.py 404/500 response format was legacy ({"error": "..."}) — standardised to ({"code": "..."}).
+
+Created src/adapters/ota/tenant_isolation_checker.py:
+TenantIsolationReport frozen dataclass, check_query_has_tenant_filter(), audit_tenant_isolation().
+Pure audit tool — never reads or writes DB. Never raises.
+24 contract tests (Groups A-D in test_tenant_isolation_checker_contract.py).
+
+Result: 687 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 82 -- Admin Query API (Closed)
+
+[Claude] Extended admin_router.py with 4 operator-facing admin endpoints.
+
+GET /admin/metrics: idempotency health (DLQ counts, ordering buffer depth) via collect_idempotency_report().
+GET /admin/dlq: global DLQ pending/replayed + rejection breakdown per event_type via dlq_inspector.
+GET /admin/health/providers: per-provider (bookingcom/airbnb/expedia/agoda/tripcom) last ingest from event_log, tenant-scoped. Status: ok|unknown.
+GET /admin/bookings/{id}/timeline: ordered event history from event_log filtered by tenant_id+booking_id. Returns 404 if no events (cross-tenant safe).
+
+All endpoints: JWT auth, read-only, make_error_response 404/500.
+35 contract tests (Groups A-E in test_admin_query_api_contract.py).
+
+Result: 722 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 83 -- Vrbo Adapter (Closed)
+
+[Claude] Added VrboAdapter as the 6th OTA provider.
+
+Standard adapter pattern (normalize → classify → to_canonical_envelope) applied.
+Field mapping: unit_id→property_id, arrival_date/departure_date, guest_count, traveler_payment/manager_payment/service_fee.
+Amendment: alteration.{new_check_in, new_check_out, new_guest_count, amendment_reason}.
+Updated: schema_normalizer, financial_extractor, amendment_extractor, booking_identity, registry.
+45 contract tests (Groups A-H in test_vrbo_adapter_contract.py).
+
+Result: 767 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 84 -- Reservation Timeline / Audit Trail (Closed)
+
+[Claude] reservation_timeline.py — unified per-booking audit trail, 4 sources.
+
+build_reservation_timeline(db, tenant_id, booking_id) → ReservationTimeline.
+Sources: event_log, booking_financial_facts (both tenant-scoped), ota_dead_letter, ota_ordering_buffer (both global).
+Events sorted by recorded_at asc. partial=True if any source fails.
+45 contract tests (Groups A-H in test_reservation_timeline_contract.py).
+
+Result: 812 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 85 -- Google Vacation Rentals Adapter (Closed)
+
+[Claude] GVRAdapter — 7th OTA adapter, distribution surface not classic OTA.
+Architecture difference documented in gvr.py module docstring and phase-85-spec.md.
+Key field: gvr_booking_id, connected_ota forwarded in envelopes.
+Financial: booking_value/google_fee/net_amount. Net derived if absent (ESTIMATED).
+Amendment: modification.{check_in, check_out, guest_count, reason}.
+50 contract tests (Groups A-I in test_gvr_adapter_contract.py).
+
+Result: 862 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 86 -- Conflict Detection Layer (Closed)
+
+[Claude] conflict_detector.py — read-only scan of booking_state for 4 conflict types.
+DATE_OVERLAP (ERROR), MISSING_PROPERTY (ERROR), MISSING_DATES (WARNING), DUPLICATE_REF (ERROR).
+detect_conflicts(db, tenant_id) → ConflictReport. Never raises. Never writes.
+58 contract tests (Groups A-I in test_conflict_detector_contract.py).
+
+Result: 920 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 87 -- Tenant Isolation Hardening (Closed)
+
+[Claude] tenant_isolation_enforcer.py — system-level policy layer over Phase 81.
+TABLE_REGISTRY: 5 tables classified as TENANT_SCOPED or GLOBAL with rationale.
+check_cross_tenant_leak: Python-layer row inspection for cross-tenant leakage.
+audit_system_isolation: full compliance check — all_compliant=True confirmed.
+54 contract tests (Groups A-I in test_tenant_isolation_enforcer_contract.py).
+
+Result: 974 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 88 -- Traveloka Adapter (Closed)
+
+[Claude] traveloka.py — SE Asia Tier 1.5 OTA. booking_code (TV- prefix), property_code, check_in_date/check_out_date,
+num_guests, booking_total, currency_code, traveloka_fee, net_payout.
+ESTIMATED net derivation when net_payout absent. 6 files changed.
+53 contract tests (Groups A-I in test_traveloka_adapter_contract.py).
+
+Result: 1029 passed, 2 skipped.
+No Supabase schema changes. No new migrations.
+
+## Phase 89 -- OTA Reconciliation Discovery (Closed)
+
+[Claude] Discovery-only phase. Defined the canonical reconciliation model for detecting
+drift between iHouse Core state and external OTA state.
+
+reconciliation_model.py: 7 ReconciliationFindingKind values (BOOKING_MISSING_INTERNALLY,
+BOOKING_STATUS_MISMATCH, DATE_MISMATCH, FINANCIAL_FACTS_MISSING, FINANCIAL_AMOUNT_DRIFT,
+PROVIDER_DRIFT, STALE_BOOKING). 3 severity levels (CRITICAL/WARNING/INFO).
+FINDING_SEVERITY + CORRECTION_HINTS canonical maps locked.
+ReconciliationFinding (frozen, .build() factory, deterministic finding_id via sha256[:12]).
+ReconciliationReport (.build() auto-derives counts, partial flag).
+ReconciliationSummary (frozen, .from_report(), top_kind tie-breaking logic).
+87 contract tests (Groups A-I in test_reconciliation_model_contract.py).
+
+New invariant: reconciliation layer is READ-ONLY. Findings describe drift only.
+Corrections require a new canonical event through the normal pipeline.
+
+Result: 1116 passed, 2 skipped.
+No Supabase schema changes. No new migrations. No booking_state writes.

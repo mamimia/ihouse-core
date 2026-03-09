@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 80 -- Structured Logging Layer (closed)
+Phase 89 -- OTA Reconciliation Discovery (closed)
 
 ## Last Closed Phase
-Phase 80 -- Structured Logging Layer
+Phase 89 -- OTA Reconciliation Discovery
 
 ## System Status
 
@@ -37,8 +37,17 @@ apply_envelope is the only authority for canonical state mutations.
 | 78 | OTA Schema Normalization (Dates + Price) -- 4 more canonical keys (check_in, check_out, currency, total_price), 26 tests | ✅ |
 | 79 | Idempotency Monitoring -- idempotency_monitor.py, IdempotencyReport, collect_idempotency_report(), 35 tests | ✅ |
 | 80 | Structured Logging Layer -- structured_logger.py, StructuredLogger, get_structured_logger(), 30 tests | ✅ |
+| 81 | Tenant Isolation Audit -- tenant_isolation_checker.py, TenantIsolationReport, audit_tenant_isolation(), 24 tests; financial_router 404/500 standardised | ✅ |
+| 82 | Admin Query API -- GET /admin/metrics, /admin/dlq, /admin/health/providers, /admin/bookings/{id}/timeline; 35 tests | ✅ |
+| 83 | Vrbo Adapter -- vrbo.py, VrboAdapter, extract_amendment_vrbo, _extract_vrbo, schema_normalizer+registry+financial_extractor+amendment_extractor updated; 43 tests | ✅ |
+| 84 | Reservation Timeline -- reservation_timeline.py, TimelineEvent, ReservationTimeline, build_reservation_timeline(); 45 tests | ✅ |
+| 85 | Google Vacation Rentals Adapter -- gvr.py, GVRAdapter, _extract_gvr, extract_amendment_gvr; architecture diff documented; 50 tests | ✅ |
+| 86 | Conflict Detection Layer -- conflict_detector.py, ConflictKind, ConflictSeverity, Conflict, ConflictReport, detect_conflicts(); 58 tests | ✅ |
+| 87 | Tenant Isolation Hardening -- tenant_isolation_enforcer.py, TABLE_REGISTRY, TableIsolationPolicy, check_cross_tenant_leak, audit_system_isolation; 54 tests | ✅ |
+| 88 | Traveloka Adapter (SE Asia Tier 1.5) -- traveloka.py, _extract_traveloka, extract_amendment_traveloka, _strip_traveloka_prefix; 6 files changed; 53 tests | ✅ |
+| 89 | OTA Reconciliation Discovery -- reconciliation_model.py, ReconciliationFindingKind (7), ReconciliationSeverity (3), ReconciliationFinding, ReconciliationReport, ReconciliationSummary; 87 tests | ✅ |
 
-**663 tests pass** (2 pre-existing SQLite skips, unrelated)
+**1116 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -147,9 +156,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 81 -- TBD**
-- See `docs/core/improvements/future-improvements.md`
+**Phase 90 -- External Integration Test Harness**
+- See `docs/core/roadmap.md` Phase 90 entry
 
 ## Tests
 
-**663 passing** (2 pre-existing SQLite skips, unrelated)
+**1116 passing** (2 pre-existing SQLite skips, unrelated)

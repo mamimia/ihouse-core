@@ -10,7 +10,7 @@ from .schemas import AmendmentFields
 # Known providers
 # ---------------------------------------------------------------------------
 
-_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom"}
+_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka"}
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +156,79 @@ def extract_amendment_tripcom(provider_payload: Dict[str, Any]) -> AmendmentFiel
     )
 
 
+def extract_amendment_vrbo(provider_payload: Dict[str, Any]) -> AmendmentFields:
+    """
+    Extract normalized amendment fields from a Vrbo webhook payload.
+
+    Vrbo sends amendment data under 'alteration':
+
+        {
+          "alteration": {
+            "new_check_in":     "2026-12-01",
+            "new_check_out":    "2026-12-08",
+            "new_guest_count": 3,
+            "amendment_reason": "guest_request"
+          }
+        }
+
+    Returns AmendmentFields with None for any missing field.
+    """
+    alteration = provider_payload.get("alteration") or {}
+
+    return AmendmentFields(
+        new_check_in=normalize_date(_nonempty(alteration.get("new_check_in"))),
+        new_check_out=normalize_date(_nonempty(alteration.get("new_check_out"))),
+        new_guest_count=_int_or_none(alteration.get("new_guest_count")),
+        amendment_reason=_nonempty(alteration.get("amendment_reason")),
+    )
+
+
+def extract_amendment_gvr(provider_payload: Dict[str, Any]) -> AmendmentFields:
+    """
+    Extract normalized amendment fields from a GVR webhook payload.
+
+    GVR sends amendment data under 'modification':
+
+        {
+          "modification": {
+            "check_in":        "2026-12-01",
+            "check_out":       "2026-12-08",
+            "guest_count":     3,
+            "reason":          "guest_request"
+          }
+        }
+
+    Returns AmendmentFields with None for any missing field.
+    """
+    modification = provider_payload.get("modification") or {}
+
+    return AmendmentFields(
+        new_check_in=normalize_date(_nonempty(modification.get("check_in"))),
+        new_check_out=normalize_date(_nonempty(modification.get("check_out"))),
+        new_guest_count=_int_or_none(modification.get("guest_count")),
+        amendment_reason=_nonempty(modification.get("reason")),
+    )
+
+
+def extract_amendment_traveloka(provider_payload: Dict[str, Any]) -> AmendmentFields:
+    """
+    Extract normalized amendment fields from a Traveloka BOOKING_MODIFIED payload.
+
+    Traveloka sends modification data under 'modification':
+      modification.check_in_date        — new check-in date
+      modification.check_out_date       — new check-out date
+      modification.num_guests           — new guest count
+      modification.modification_reason  — reason for modification
+    """
+    mod = provider_payload.get("modification") or {}
+    return AmendmentFields(
+        new_check_in=normalize_date(_nonempty(mod.get("check_in_date"))),
+        new_check_out=normalize_date(_nonempty(mod.get("check_out_date"))),
+        new_guest_count=_int_or_none(mod.get("num_guests")),
+        amendment_reason=_nonempty(mod.get("modification_reason")),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -186,6 +259,12 @@ def normalize_amendment(provider: str, payload: Dict[str, Any]) -> AmendmentFiel
         return extract_amendment_agoda(payload)
     elif normalized_provider == "tripcom":
         return extract_amendment_tripcom(payload)
+    elif normalized_provider == "vrbo":
+        return extract_amendment_vrbo(payload)
+    elif normalized_provider == "gvr":
+        return extract_amendment_gvr(payload)
+    elif normalized_provider == "traveloka":
+        return extract_amendment_traveloka(payload)
     else:
         raise ValueError(
             f"Unknown provider '{provider}' — cannot extract amendment fields. "

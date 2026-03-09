@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 80 -- Structured Logging Layer (closed)
+Phase 89 -- OTA Reconciliation Discovery (closed)
 
 ## Last Closed Phase
 
-Phase 80 -- Structured Logging Layer
+Phase 89 -- OTA Reconciliation Discovery
 
 ## Current Objective
 
-Phase 81 -- TBD.
-See `docs/core/improvements/future-improvements.md`.
+Phase 90 -- External Integration Test Harness.
+See `docs/core/roadmap.md` Phase 90 entry.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -55,5 +55,4 @@ See `docs/core/improvements/future-improvements.md`.
 
 ## Tests
 
-663 passing (2 pre-existing SQLite skips, unrelated)
-
+1116 passing (2 pre-existing SQLite skips, unrelated)

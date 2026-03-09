@@ -289,10 +289,94 @@ def _extract_tripcom(payload: dict) -> BookingFinancialFacts:
         raw_financial_fields=raw,
     )
 
+def _extract_vrbo(payload: dict) -> BookingFinancialFacts:
+    """
+    Vrbo financial fields:
+      traveler_payment — gross amount charged to guest (= total_price)
+      manager_payment  — net payout to property manager (= net_to_property)
+      service_fee      — Vrbo platform service fee
+      currency         — ISO 4217 currency code
+    Confidence: FULL if traveler_payment + manager_payment + currency present,
+                PARTIAL otherwise.
+    """
+    traveler_payment = _to_decimal(payload.get("traveler_payment"))
+    manager_payment = _to_decimal(payload.get("manager_payment"))
+    service_fee = _to_decimal(payload.get("service_fee"))
+    currency = payload.get("currency")
 
-# ---------------------------------------------------------------------------
-# Registry
-# ---------------------------------------------------------------------------
+    raw: Dict[str, Any] = {}
+    for k in ("traveler_payment", "manager_payment", "service_fee", "currency"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    # Derive implied commission from service_fee if available
+    implied_commission = service_fee  # service_fee is the Vrbo platform cut
+
+    confidence = _confidence([
+        traveler_payment is not None,
+        manager_payment is not None,
+        currency is not None,
+    ])
+
+    return BookingFinancialFacts(
+        provider="vrbo",
+        total_price=traveler_payment,
+        currency=currency,
+        ota_commission=implied_commission,
+        taxes=None,           # Vrbo does not expose taxes separately
+        fees=service_fee,
+        net_to_property=manager_payment,
+        source_confidence=confidence,
+        raw_financial_fields=raw,
+    )
+
+
+
+def _extract_gvr(payload: dict) -> BookingFinancialFacts:
+    """
+    Google Vacation Rentals financial fields:
+      booking_value — gross booking amount as reported by GVR
+      net_amount    — net payout to property (may be absent, derived from booking_value - google_fee)
+      google_fee    — Google's platform fee (if applicable)
+      currency      — ISO 4217 currency code
+
+    Note: GVR financial data may originate from a connected OTA channel.
+    When google_fee is absent, ota_commission is None.
+    When net_amount is absent but booking_value + google_fee are present, net is derived.
+    Confidence: FULL if booking_value + currency present, PARTIAL otherwise.
+    """
+    booking_value = _to_decimal(payload.get("booking_value"))
+    net_amount = _to_decimal(payload.get("net_amount"))
+    google_fee = _to_decimal(payload.get("google_fee"))
+    currency = payload.get("currency")
+
+    raw: Dict[str, Any] = {}
+    for k in ("booking_value", "net_amount", "google_fee", "currency"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    # Derive net if missing but booking_value + google_fee are present
+    if net_amount is None and booking_value is not None and google_fee is not None:
+        net_amount = (booking_value - google_fee).quantize(Decimal("0.01"))
+        confidence = CONFIDENCE_ESTIMATED
+    else:
+        confidence = _confidence([
+            booking_value is not None,
+            currency is not None,
+        ])
+
+    return BookingFinancialFacts(
+        provider="gvr",
+        total_price=booking_value,
+        currency=currency,
+        ota_commission=google_fee,    # google_fee is Google's cut
+        taxes=None,                   # GVR does not expose taxes separately
+        fees=google_fee,
+        net_to_property=net_amount,
+        source_confidence=confidence,
+        raw_financial_fields=raw,
+    )
+
 
 _EXTRACTORS = {
     "bookingcom": _extract_bookingcom,
@@ -300,7 +384,65 @@ _EXTRACTORS = {
     "airbnb": _extract_airbnb,
     "agoda": _extract_agoda,
     "tripcom": _extract_tripcom,
+    "vrbo": _extract_vrbo,
+    "gvr": _extract_gvr,
 }
+
+# ---------------------------------------------------------------------------
+# Traveloka extractor (Phase 88)
+# ---------------------------------------------------------------------------
+
+def _extract_traveloka(payload: dict) -> BookingFinancialFacts:
+    """
+    Traveloka financial fields:
+      booking_total  — gross booking amount charged to guest (= total_price)
+      traveloka_fee  — Traveloka platform commission (= ota_commission, optional)
+      net_payout     — net payout to property after commission (optional)
+      currency_code  — ISO 4217 currency code (note: 'currency_code' not 'currency')
+
+    When net_payout is absent but booking_total + traveloka_fee are present,
+    net is derived: net = booking_total - traveloka_fee → confidence = ESTIMATED.
+
+    Confidence: FULL if booking_total + currency_code + net_payout present,
+                ESTIMATED if net_payout derived,
+                PARTIAL if booking_total or currency_code missing.
+    """
+    booking_total = _to_decimal(payload.get("booking_total"))
+    traveloka_fee = _to_decimal(payload.get("traveloka_fee"))
+    net_payout_raw = payload.get("net_payout")
+    net_payout = _to_decimal(net_payout_raw)
+    currency = payload.get("currency_code")
+
+    raw: Dict[str, Any] = {}
+    for k in ("booking_total", "traveloka_fee", "net_payout", "currency_code"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    source_confidence: str
+    derived_net = net_payout
+
+    if net_payout is None and booking_total is not None and traveloka_fee is not None:
+        derived_net = booking_total - traveloka_fee
+        source_confidence = "ESTIMATED"
+    elif booking_total is None or currency is None:
+        source_confidence = "PARTIAL"
+    else:
+        source_confidence = "FULL"
+
+    return BookingFinancialFacts(
+        provider="traveloka",
+        total_price=booking_total,
+        currency=currency,
+        ota_commission=traveloka_fee,
+        taxes=None,           # Traveloka does not expose taxes separately
+        fees=traveloka_fee,
+        net_to_property=derived_net,
+        source_confidence=source_confidence,
+        raw_financial_fields=raw,
+    )
+
+
+_EXTRACTORS["traveloka"] = _extract_traveloka
 
 
 # ---------------------------------------------------------------------------
