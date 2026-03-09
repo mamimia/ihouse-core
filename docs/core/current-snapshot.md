@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 78 — OTA Schema Normalization (Dates + Price) (closed)
+Phase 79 -- Idempotency Monitoring (closed)
 
 ## Last Closed Phase
-Phase 78 — OTA Schema Normalization (Dates + Price)
+Phase 79 -- Idempotency Monitoring
 
 ## System Status
 
@@ -34,9 +34,10 @@ apply_envelope is the only authority for canonical state mutations.
 | 75 | Production Hardening — error_models.py, X-API-Version header, standard error body, 19 tests | ✅ |
 | 76 | occurred_at vs recorded_at Separation — server ingestion timestamp, 12 contract tests | ✅ |
 | 77 | OTA Schema Normalization — schema_normalizer.py, 3 canonical keys, all 5 providers, 27 contract tests | ✅ |
-| 78 | OTA Schema Normalization (Dates + Price) — 4 more canonical keys (check_in, check_out, currency, total_price), 26 tests | ✅ |
+| 78 | OTA Schema Normalization (Dates + Price) -- 4 more canonical keys (check_in, check_out, currency, total_price), 26 tests | ✅ |
+| 79 | Idempotency Monitoring -- idempotency_monitor.py, IdempotencyReport, collect_idempotency_report(), 35 tests | ✅ |
 
-**598 tests pass** (2 pre-existing SQLite skips, unrelated)
+**633 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -145,9 +146,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 79 — TBD**
-- See `docs/core/improvements/future-improvements.md` → Active Backlog
+**Phase 80 -- TBD**
+- See `docs/core/improvements/future-improvements.md`
 
 ## Tests
 
-**598 passing** (2 pre-existing SQLite skips, unrelated)
+**633 passing** (2 pre-existing SQLite skips, unrelated)

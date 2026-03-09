@@ -1394,3 +1394,15 @@ No Supabase schema changes. No new migrations.
 
 Result: 598 passed, 2 skipped.
 No Supabase schema changes. No new migrations.
+
+## Phase 79 -- Idempotency Monitoring (Closed)
+
+- [Claude]
+- Created `src/adapters/ota/idempotency_monitor.py`
+  - `IDEMPOTENCY_REJECTION_CODES` frozenset
+  - `IdempotencyReport` frozen dataclass (6 fields)
+  - `collect_idempotency_report()` -- reads ota_dead_letter + ota_ordering_buffer
+- 35 contract tests (Groups A--F in test_idempotency_monitor_contract.py)
+
+Result: 633 passed, 2 skipped.
+No Supabase schema changes. No new migrations.

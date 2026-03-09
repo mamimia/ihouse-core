@@ -2045,3 +2045,16 @@ Provider field mapping:
 
 Result: 598 passed, 2 skipped.
 No Supabase schema changes. No new migrations.
+
+## Phase 79 -- Idempotency Monitoring (Closed)
+
+[Claude] Created `src/adapters/ota/idempotency_monitor.py`.
+`IdempotencyReport` frozen dataclass: total_dlq_rows, pending_dlq_rows, already_applied_count,
+idempotency_rejection_count, ordering_buffer_depth, checked_at.
+`collect_idempotency_report()` reads ota_dead_letter + ota_ordering_buffer.
+Pure read-only. Zero side effects. No new Supabase schema.
+35 contract tests (Groups A-F in test_idempotency_monitor_contract.py).
+`IDEMPOTENCY_REJECTION_CODES` frozenset: ALREADY_APPLIED, ALREADY_EXISTS, ALREADY_EXISTS_BUSINESS, DUPLICATE.
+
+Result: 633 passed, 2 skipped.
+No Supabase schema changes. No new migrations.

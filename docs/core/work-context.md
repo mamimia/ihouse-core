@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 78 — OTA Schema Normalization (Dates + Price) (closed)
+Phase 79 -- Idempotency Monitoring (closed)
 
 ## Last Closed Phase
 
-Phase 78 — OTA Schema Normalization (Dates + Price)
+Phase 79 -- Idempotency Monitoring
 
 ## Current Objective
 
-Phase 79 — TBD.
-See `docs/core/improvements/future-improvements.md` → Active Backlog.
+Phase 80 -- TBD.
+See `docs/core/improvements/future-improvements.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -55,5 +55,5 @@ See `docs/core/improvements/future-improvements.md` → Active Backlog.
 
 ## Tests
 
-598 passing (2 pre-existing SQLite skips, unrelated)
+633 passing (2 pre-existing SQLite skips, unrelated)
 
