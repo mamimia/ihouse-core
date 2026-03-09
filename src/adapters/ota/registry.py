@@ -10,6 +10,7 @@ from .vrbo import VrboAdapter
 from .gvr import GVRAdapter
 from .traveloka import TravelokaAdapter
 from .makemytrip import MakemytripAdapter
+from .klook import KlookAdapter
 
 
 _ADAPTERS: Dict[str, OTAAdapter] = {
@@ -22,6 +23,7 @@ _ADAPTERS: Dict[str, OTAAdapter] = {
     "gvr": GVRAdapter(),
     "traveloka": TravelokaAdapter(),
     "makemytrip": MakemytripAdapter(),
+    "klook": KlookAdapter(),
 }
 
 

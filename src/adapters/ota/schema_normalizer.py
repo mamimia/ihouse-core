@@ -54,6 +54,8 @@ def _guest_count(provider: str, payload: dict) -> int | None:
             return int(payload["num_guests"])
         elif provider == "makemytrip":
             return int(payload["guest_count"])
+        elif provider == "klook":
+            return int(payload["participants"])  # Klook uses participants
         return None
     except (KeyError, TypeError, ValueError):
         return None
@@ -82,6 +84,8 @@ def _booking_ref(provider: str, payload: dict) -> str | None:
             return str(payload["booking_code"])
         elif provider == "makemytrip":
             return str(payload["booking_id"])
+        elif provider == "klook":
+            return str(payload["booking_ref"])  # Klook uses booking_ref
         return None
     except (KeyError, TypeError):
         return None
@@ -108,6 +112,8 @@ def _property_id(provider: str, payload: dict) -> str | None:
             return str(payload["property_code"])  # Traveloka uses property_code
         elif provider == "makemytrip":
             return str(payload["hotel_id"])  # MakeMyTrip uses hotel_id
+        elif provider == "klook":
+            return str(payload["activity_id"])  # Klook uses activity_id
         return None
     except (KeyError, TypeError):
         return None
@@ -147,6 +153,8 @@ def _check_in(provider: str, payload: dict) -> str | None:
             return str(payload["check_in_date"])  # Traveloka: check_in_date
         elif provider == "makemytrip":
             return str(payload["check_in"])  # MakeMyTrip: check_in
+        elif provider == "klook":
+            return str(payload["travel_date"])  # Klook: activity start date
         return None
     except (KeyError, TypeError):
         return None
@@ -182,6 +190,8 @@ def _check_out(provider: str, payload: dict) -> str | None:
             return str(payload["check_out_date"])  # Traveloka: check_out_date
         elif provider == "makemytrip":
             return str(payload["check_out"])  # MakeMyTrip: check_out
+        elif provider == "klook":
+            return str(payload["end_date"])  # Klook: activity end date
         return None
     except (KeyError, TypeError):
         return None
@@ -234,6 +244,8 @@ def _total_price(provider: str, payload: dict) -> str | None:
             val = payload["booking_total"]  # Traveloka: booking_total
         elif provider == "makemytrip":
             val = payload["order_value"]  # MakeMyTrip: order_value
+        elif provider == "klook":
+            val = payload["booking_amount"]  # Klook: booking_amount
         else:
             return None
         return str(val) if val is not None else None

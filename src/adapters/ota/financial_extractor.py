@@ -503,6 +503,63 @@ _EXTRACTORS["makemytrip"] = _extract_makemytrip
 
 
 # ---------------------------------------------------------------------------
+# Klook extractor (Phase 96)
+# ---------------------------------------------------------------------------
+
+def _extract_klook(payload: dict) -> BookingFinancialFacts:
+    """
+    Klook financial fields:
+      booking_amount    — gross booking amount paid by customer
+      klook_commission  — Klook platform commission (optional)
+      net_payout        — net payout to partner (optional)
+      currency          — ISO 4217 currency code
+
+    When net_payout is absent but booking_amount + klook_commission are present,
+    net is derived: net = booking_amount - klook_commission → confidence = ESTIMATED.
+
+    Confidence: FULL if booking_amount + currency + net_payout present,
+                ESTIMATED if net_payout derived,
+                PARTIAL if booking_amount or currency missing.
+    """
+    booking_amount = _to_decimal(payload.get("booking_amount"))
+    klook_commission = _to_decimal(payload.get("klook_commission"))
+    net_payout_raw = payload.get("net_payout")
+    net_payout = _to_decimal(net_payout_raw)
+    currency = payload.get("currency")
+
+    raw: Dict[str, Any] = {}
+    for k in ("booking_amount", "klook_commission", "net_payout", "currency"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    source_confidence: str
+    derived_net = net_payout
+
+    if net_payout is None and booking_amount is not None and klook_commission is not None:
+        derived_net = (booking_amount - klook_commission).quantize(Decimal("0.01"))
+        source_confidence = CONFIDENCE_ESTIMATED
+    elif booking_amount is None or currency is None:
+        source_confidence = CONFIDENCE_PARTIAL
+    else:
+        source_confidence = CONFIDENCE_FULL
+
+    return BookingFinancialFacts(
+        provider="klook",
+        total_price=booking_amount,
+        currency=currency,
+        ota_commission=klook_commission,
+        taxes=None,           # Klook does not expose taxes separately
+        fees=klook_commission,
+        net_to_property=derived_net,
+        source_confidence=source_confidence,
+        raw_financial_fields=raw,
+    )
+
+
+_EXTRACTORS["klook"] = _extract_klook
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 

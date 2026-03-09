@@ -10,7 +10,7 @@ from .schemas import AmendmentFields
 # Known providers
 # ---------------------------------------------------------------------------
 
-_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka", "makemytrip"}
+_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka", "makemytrip", "klook"}
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +248,25 @@ def extract_amendment_makemytrip(provider_payload: Dict[str, Any]) -> AmendmentF
     )
 
 
+def extract_amendment_klook(provider_payload: Dict[str, Any]) -> AmendmentFields:
+    """
+    Extract normalized amendment fields from a Klook BOOKING_MODIFIED payload.
+
+    Klook sends modification data under 'modification':
+      modification.travel_date   — new activity start date
+      modification.end_date      — new activity end date
+      modification.participants  — new participant count
+      modification.reason        — reason for modification
+    """
+    mod = provider_payload.get("modification") or {}
+    return AmendmentFields(
+        new_check_in=normalize_date(_nonempty(mod.get("travel_date"))),
+        new_check_out=normalize_date(_nonempty(mod.get("end_date"))),
+        new_guest_count=_int_or_none(mod.get("participants")),
+        amendment_reason=_nonempty(mod.get("reason")),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -286,6 +305,8 @@ def normalize_amendment(provider: str, payload: Dict[str, Any]) -> AmendmentFiel
         return extract_amendment_traveloka(payload)
     elif normalized_provider == "makemytrip":
         return extract_amendment_makemytrip(payload)
+    elif normalized_provider == "klook":
+        return extract_amendment_klook(payload)
     else:
         raise ValueError(
             f"Unknown provider '{provider}' — cannot extract amendment fields. "
