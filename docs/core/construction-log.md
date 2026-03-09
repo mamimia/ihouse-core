@@ -2237,6 +2237,18 @@ Changes:
 Result: 3769 tests pass (3736 + 33 new). No DB schema changes. 2 pre-existing SQLite failures (unrelated, unchanged).
 
 
+## Phase 148 — Sync Result Webhook Callback (Closed)
+
+Best-effort HTTP POST to IHOUSE_SYNC_CALLBACK_URL after ok syncs. No DB changes.
+
+Changes:
+- src/services/outbound_executor.py [MODIFIED]: `_CALLBACK_URL` + `_fire_callback()` — noop when unconfigured, ok only, JSON payload {event:sync.ok, ...}, urllib 5s timeout, all errors swallowed. Called in execute_sync_plan() after _persist().
+- tests/test_sync_callback_contract.py [NEW]: 30 contract tests Groups A-J.
+
+Result: 3799 tests pass (3769 + 30 new). No DB schema changes. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+
+
 
 
 

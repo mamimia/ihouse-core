@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 147 — Failed Sync Replay (closed)
+Phase 148 — Sync Result Webhook Callback (closed)
 
 ## Last Closed Phase
 
-Phase 147 — Failed Sync Replay: `POST /admin/outbound-replay`; `execute_single_provider()` in executor; 400/404 guards; 33 contract tests; 3769 passing
+Phase 148 — Sync Result Webhook Callback: `_fire_callback()` in `outbound_executor.py`; `IHOUSE_SYNC_CALLBACK_URL`; ok only; errors swallowed; 30 contract tests; 3799 passing
 
 ## Current Objective
 
-**Phase 148 — Sync Result Webhook Callback**
+**Phase 149 — Full RFC 5545 VCALENDAR Compliance Audit**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,7 +37,7 @@ Phase 147 — Failed Sync Replay: `POST /admin/outbound-replay`; `execute_single
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
 | 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
-| 147 | Failed Sync Replay | `src/api/outbound_log_router.py` (_fetch_last_log_row + POST /admin/outbound-replay), `src/services/outbound_executor.py` (execute_single_provider), `tests/test_outbound_replay_contract.py` |
+| 148 | Sync Result Webhook Callback | `src/services/outbound_executor.py` (_fire_callback + _CALLBACK_URL), `tests/test_sync_callback_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)

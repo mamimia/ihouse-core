@@ -3256,6 +3256,36 @@ Design decisions:
 Result: 3769 tests pass (3736 + 33 new). No DB schema changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
 
+## Phase 148 — Sync Result Webhook Callback (Closed)
+
+Goal: Best-effort HTTP POST to a user-configured URL after every successful (`ok`) outbound sync.
+No DB changes. Callback failure is never retried and never blocks the sync path.
+
+Completed:
+
+- `src/services/outbound_executor.py` — MODIFIED
+  - Added `import json`, `import os`, `import urllib.request`.
+  - Added `_CALLBACK_URL: Optional[str] = os.environ.get("IHOUSE_SYNC_CALLBACK_URL") or None`.
+  - Added `_fire_callback(booking_id, tenant_id, result, *, callback_url=None)`:
+    - Noop if URL is absent (env or override not set).
+    - Noop if `result.status != "ok"` — only fires on successful syncs.
+    - Sends `POST {url}` with JSON payload `{event:"sync.ok", booking_id, tenant_id, provider, external_id, strategy, http_status}`.
+    - Uses `urllib.request.urlopen(req, timeout=5)`.
+    - All exceptions (HTTP errors, URLError, socket.timeout, generic) are caught, logged as WARNING, and swallowed.
+    - Never retried.
+  - Added `_fire_callback(booking_id, tenant_id, result)` call in `execute_sync_plan()` immediately after `_persist()`.
+- `tests/test_sync_callback_contract.py` — NEW — 30 contract tests Groups A-J.
+
+Design decisions:
+- `callback_url` kwarg on `_fire_callback()` is the testability seam — tests inject a URL directly without needing env var mutation.
+- `urllib.request` chosen over `httpx`/`requests` to avoid new dependencies.
+- Timeout hardcoded to 5 seconds — not configurable to keep the feature strictly noop-or-fire.
+- No retry: callback is observational, not transactional.
+
+Result: 3799 tests pass (3769 + 30 new). No DB schema changes. No API changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+
+
 
 
 

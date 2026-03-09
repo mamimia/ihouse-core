@@ -8,6 +8,10 @@ in the VCALENDAR payload instead of placeholder dates.
 Phase 144: persist every ExecutionResult into the `outbound_sync_log` table
 via the best-effort sync_log_writer module.
 
+Phase 148: fire best-effort webhook callback to IHOUSE_SYNC_CALLBACK_URL
+after every 'ok' result. Noop when env var absent. Callback failure is
+never retried and never blocks the sync path.
+
 Previous history:
   Phase 138: stub adapters (dry-run only).
   Phase 139: real API + iCal adapters via registry.
@@ -16,6 +20,7 @@ Previous history:
   Phase 142: retry with exponential backoff.
   Phase 143: X-Idempotency-Key header on all outbound calls.
   Phase 144: append ExecutionResult rows to outbound_sync_log (this file).
+  Phase 148: best-effort webhook callback after ok results.
 
 Updated in Phase 139 to use real adapter implementations:
   api_first:    AirbnbAdapter, BookingComAdapter, ExpediaVrboAdapter
@@ -36,6 +41,9 @@ Invariants:
 from __future__ import annotations
 
 import logging
+import json
+import os
+import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -58,6 +66,79 @@ except ImportError:  # pragma: no cover
         return True
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Phase 148 — webhook callback configuration
+# ---------------------------------------------------------------------------
+
+_CALLBACK_URL: Optional[str] = os.environ.get("IHOUSE_SYNC_CALLBACK_URL") or None
+
+
+def _fire_callback(
+    booking_id:  str,
+    tenant_id:   str,
+    result:      Any,
+    *,
+    callback_url: Optional[str] = None,
+) -> None:
+    """
+    Phase 148: Best-effort HTTP POST to `IHOUSE_SYNC_CALLBACK_URL` (or the
+    injected `callback_url` override used in tests).
+
+    Sends a JSON body:
+      {
+        "event":      "sync.ok",
+        "booking_id": ...,
+        "tenant_id":  ...,
+        "provider":   ...,
+        "external_id": ...,
+        "strategy":   ...,
+        "http_status": ...
+      }
+
+    Rules:
+      - Only fires when `result.status == 'ok'`.
+      - Noop if no URL is configured (env or override absent).
+      - Uses a 5-second connect + read timeout.
+      - Any exception is caught, logged as WARNING, and swallowed —
+        callback failure NEVER raises and NEVER blocks the sync path.
+      - Never retried.
+    """
+    url = callback_url if callback_url is not None else _CALLBACK_URL
+    if not url:
+        return  # not configured — noop
+
+    if result.status != "ok":
+        return  # only fire on successful syncs
+
+    payload = json.dumps({
+        "event":       "sync.ok",
+        "booking_id":  booking_id,
+        "tenant_id":   tenant_id,
+        "provider":    result.provider,
+        "external_id": result.external_id,
+        "strategy":    result.strategy,
+        "http_status": result.http_status,
+    }).encode("utf-8")
+
+    try:
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310
+            logger.debug(
+                "_fire_callback: callback ok status=%d booking=%s provider=%s",
+                resp.status, booking_id, result.provider,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "_fire_callback: callback failed (best-effort, swallowed) "
+            "booking=%s provider=%s url=%s: %s",
+            booking_id, result.provider, url, exc,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +400,8 @@ def execute_sync_plan(
 
             results.append(result)
             _persist(booking_id, tenant_id, result)
+            # Phase 148: best-effort webhook callback for ok syncs
+            _fire_callback(booking_id, tenant_id, result)
 
         except Exception as exc:  # noqa: BLE001
             logger.exception(
