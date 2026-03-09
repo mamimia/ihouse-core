@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 127 — Integration Health Dashboard (closed)
+Phase 128 — Conflict Center (closed)
 
 ## Last Closed Phase
 
-Phase 127 — Integration Health Dashboard: GET /integration-health
+Phase 128 — Conflict Center: GET /conflicts
 
 ## Current Objective
 
-**Phase 128 — (next — see roadmap / future-improvements.md)**
-See `docs/core/roadmap.md` and `docs/core/improvements/future-improvements.md`.
+**Phase 129 — (next — see future-improvements.md)**
+See `docs/core/improvements/future-improvements.md`.
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -27,6 +27,7 @@ See `docs/core/roadmap.md` and `docs/core/improvements/future-improvements.md`.
 | 125 | Hotelbeds Adapter (Tier 3 B2B) | `src/adapters/ota/hotelbeds.py`, `tests/test_hotelbeds_adapter_contract.py` |
 | 126 | Availability Projection | `src/api/availability_router.py`, `tests/test_availability_router_contract.py` |
 | 127 | Integration Health Dashboard | `src/api/integration_health_router.py`, `tests/test_integration_health_router_contract.py` |
+| 128 | Conflict Center | `src/api/conflicts_router.py`, `tests/test_conflicts_router_contract.py` |
 | docs | Contextual Help Layer spec | `docs/future/contextual-help-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
@@ -60,6 +61,7 @@ See `docs/core/roadmap.md` and `docs/core/improvements/future-improvements.md`.
 | `src/adapters/ota/hotelbeds.py` | Phase 125: Tier 3 B2B bedbank adapter — voucher_ref, hotel_code, net_rate/contract_price/markup_amount |
 | `src/api/availability_router.py` | Phase 126: GET /availability/{property_id}?from=&to= — per-date occupancy from booking_state, CONFLICT detection, zero write-path |
 | `src/api/integration_health_router.py` | Phase 127: GET /integration-health — all 13 OTA providers, lag_seconds, buffer_count, dlq_count, stale_alert (24h), summary block, JWT required |
+| `src/api/conflicts_router.py` | Phase 128: GET /conflicts — cross-property tenant-scoped booking overlap detection; CRITICAL(>=3nights)/WARNING(1-2); itertools.combinations; dedup; JWT required |
 
 ## Key Files — Task Layer (Phases 111–115)
 
@@ -103,5 +105,5 @@ See `docs/core/roadmap.md` and `docs/core/improvements/future-improvements.md`.
 
 ## Tests
 
-**3166 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
+**3205 passing** (2 pre-existing SQLite skips in `tests/invariants/test_invariant_suite.py` — unrelated to financial layer)
 
