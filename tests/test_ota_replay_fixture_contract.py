@@ -13,7 +13,7 @@ Verifies:
   - Envelope produced is a CanonicalEnvelope dataclass
 
 Structure:
-  Group A — Fixture loading: all 8 provider YAML files are loadable
+  Group A — Fixture loading: all 9 provider YAML files are loadable
   Group B — Per-fixture replay: each fixture produces the expected envelope
   Group C — Fixture replay determinism: same fixture → same idempotency_key
   Group D — Fixture mutation: changing event_id changes the idempotency_key
@@ -39,7 +39,7 @@ FIXTURE_DIR = pathlib.Path(__file__).parent / "fixtures" / "ota_replay"
 
 EXPECTED_PROVIDERS = [
     "bookingcom", "expedia", "airbnb", "agoda",
-    "tripcom", "vrbo", "gvr", "traveloka",
+    "tripcom", "vrbo", "gvr", "traveloka", "makemytrip",
 ]
 
 
@@ -217,7 +217,10 @@ class TestGroupDFixtureMutation:
     ) -> None:
         """Changing the external event identifier must change the idempotency_key.
 
-        Most providers use 'event_id'. Traveloka uses 'event_reference'.
+        id_field: the event identifier field name varies by provider:
+          - traveloka  → event_reference
+          - makemytrip → event_id  (standard)
+          - all others → event_id  (standard)
         """
         original_envelope = _run_fixture(fixture)
 
@@ -278,10 +281,10 @@ class TestGroupECoverageInvariant:
             f"{provider}: no BOOKING_CANCELED fixture found"
         )
 
-    def test_e4_total_fixture_count_is_sixteen(self) -> None:
-        """Exactly 16 fixtures: 8 providers × 2 (CREATE + CANCEL)."""
-        assert len(ALL_FIXTURES) == 16, (
-            f"Expected 16 fixtures, found {len(ALL_FIXTURES)}: {FIXTURE_IDS}"
+    def test_e4_total_fixture_count_is_eighteen(self) -> None:
+        """Exactly 18 fixtures: 9 providers × 2 (CREATE + CANCEL)."""
+        assert len(ALL_FIXTURES) == 18, (
+            f"Expected 18 fixtures, found {len(ALL_FIXTURES)}: {FIXTURE_IDS}"
         )
 
     @pytest.mark.parametrize("provider", EXPECTED_PROVIDERS)

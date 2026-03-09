@@ -1,0 +1,43 @@
+provider: makemytrip
+label: makemytrip_create
+payload:
+  booking_id: "MMT-REPLAY-001"
+  reservation_id: "MMT-REPLAY-001"
+  event_id: "mmt-evt-replay-create-001"
+  hotel_id: "PROP-MMT-REPLAY"
+  check_in: "2026-08-01"
+  check_out: "2026-08-05"
+  guest_count: 2
+  order_value: "12500.00"
+  mmt_commission: "1250.00"
+  net_amount: "11250.00"
+  currency: "INR"
+  event_type: booking_confirmed
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T10:00:00"
+expected:
+  type: BOOKING_CREATED
+  provider: makemytrip
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: makemytrip
+---
+provider: makemytrip
+label: makemytrip_cancel
+payload:
+  booking_id: "MMT-REPLAY-001"
+  reservation_id: "MMT-REPLAY-001"
+  event_id: "mmt-evt-replay-cancel-001"
+  hotel_id: "PROP-MMT-REPLAY"
+  check_in: "2026-08-01"
+  check_out: "2026-08-05"
+  guest_count: 2
+  order_value: "12500.00"
+  currency: "INR"
+  event_type: booking_cancelled
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T11:00:00"
+expected:
+  type: BOOKING_CANCELED
+  provider: makemytrip
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: makemytrip

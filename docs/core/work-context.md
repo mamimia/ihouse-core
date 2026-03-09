@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 94 -- MakeMyTrip Adapter (closed)
+Phase 95 -- MakeMyTrip Replay Fixture Contract (closed)
 
 ## Last Closed Phase
 
-Phase 94 -- MakeMyTrip Adapter
+Phase 95 -- MakeMyTrip Replay Fixture Contract
 
 ## Current Objective
 
-Phase 95 -- MakeMyTrip Replay Fixture Contract.
-See `docs/core/roadmap.md` Phase 95 entry.
+Phase 96 -- Klook Adapter (Tier 2 — Asia activities/tours).
+See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -55,4 +55,4 @@ See `docs/core/roadmap.md` Phase 95 entry.
 
 ## Tests
 
-1849 passing (2 pre-existing SQLite skips, unrelated)
+1883 passing (2 pre-existing SQLite skips, unrelated)
