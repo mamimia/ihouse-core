@@ -117,6 +117,7 @@ _TAGS = [
     {"name": "buffer", "description": "OTA Ordering Buffer Inspector (Phase 133). Entries stuck waiting for BOOKING_CREATED — event_type, age_seconds, dlq_row_id. JWT required."},
     {"name": "channel-map", "description": "Property-Channel Mapping Foundation (Phase 135). Register/list/update/remove OTA channel mappings per property. Outbound sync foundation. JWT required."},
     {"name": "registry", "description": "Provider Capability Registry (Phase 136). OTA write capabilities, tiers (A/B/C/D), sync modes, rate limits. Global. JWT required."},
+    {"name": "sync", "description": "Outbound Sync Trigger (Phase 137). Compute per-channel sync_plan (api_first|ical_fallback|skip) by joining channel map and capability registry. JWT required."},
 ]
 
 app = FastAPI(
@@ -210,6 +211,9 @@ app.include_router(channel_map_router)
 
 from api.capability_registry_router import router as capability_registry_router  # noqa: E402
 app.include_router(capability_registry_router)
+
+from api.sync_trigger_router import router as sync_trigger_router  # noqa: E402
+app.include_router(sync_trigger_router)
 
 
 # ---------------------------------------------------------------------------

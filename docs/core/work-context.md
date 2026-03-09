@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 136 — Provider Capability Registry (closed)
+Phase 137 — Outbound Sync Trigger (closed)
 
 ## Last Closed Phase
 
-Phase 136 — Provider Capability Registry: provider_capability_registry table + GET/PUT API
+Phase 137 — Outbound Sync Trigger: sync_plan via POST /internal/sync/trigger
 
 ## Current Objective
 
-**Phase 137 — (next — see future-improvements.md)**
+**Phase 138 — (next — see future-improvements.md)**
 See `docs/core/improvements/future-improvements.md`.
 
 ## What Was Done in This Session (Phases 118–122)
@@ -35,6 +35,7 @@ See `docs/core/improvements/future-improvements.md`.
 | 133 | Buffer Inspector | `src/api/buffer_router.py`, `tests/test_buffer_router_contract.py` |
 | 135 | Property-Channel Map Foundation | `migrations/phase_135_property_channel_map.sql`, `src/api/channel_map_router.py`, `tests/test_channel_map_contract.py` |
 | 136 | Provider Capability Registry | `migrations/phase_136_provider_capability_registry.sql`, `src/api/capability_registry_router.py`, `tests/test_capability_registry_contract.py` |
+| 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)
