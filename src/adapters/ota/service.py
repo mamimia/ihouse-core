@@ -180,6 +180,23 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
+        # Phase 115: persist operational tasks after BOOKING_CREATED (best-effort)
+        try:
+            from tasks.task_writer import write_tasks_for_booking_created
+            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            check_in = payload.get("check_in") or payload.get("arrival_date") or ""
+            property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
+            if booking_id and check_in and property_id:
+                write_tasks_for_booking_created(
+                    tenant_id=tenant_id,
+                    booking_id=booking_id,
+                    property_id=property_id,
+                    check_in=check_in,
+                    provider=provider,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
     # Phase 69: persist updated financial facts for BOOKING_AMENDED events (best-effort)
     if envelope.type == "BOOKING_AMENDED" and status == "APPLIED":
         try:
@@ -193,6 +210,35 @@ def ingest_provider_event_with_dlq(
                     tenant_id=tenant_id,
                     event_kind="BOOKING_AMENDED",
                     facts=facts,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
+        # Phase 115: reschedule tasks due_date after BOOKING_AMENDED (best-effort)
+        try:
+            from tasks.task_writer import reschedule_tasks_for_booking_amended
+            from .amendment_extractor import normalize_amendment
+            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            amendment = normalize_amendment(provider, payload)
+            new_check_in = amendment.new_check_in if amendment else None
+            if booking_id and new_check_in:
+                reschedule_tasks_for_booking_amended(
+                    booking_id=booking_id,
+                    new_check_in=new_check_in,
+                    tenant_id=tenant_id,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
+    # Phase 115: cancel PENDING tasks after BOOKING_CANCELED (best-effort)
+    if envelope.type == "BOOKING_CANCELED" and status == "APPLIED":
+        try:
+            from tasks.task_writer import cancel_tasks_for_booking_canceled
+            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            if booking_id:
+                cancel_tasks_for_booking_canceled(
+                    booking_id=booking_id,
+                    tenant_id=tenant_id,
                 )
         except Exception:
             pass  # best-effort — never block the main response

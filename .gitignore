@@ -31,3 +31,4 @@ PR_METADATA.txt
 .env.*.local
 
 # Local agent skills
+releases/phase-zips/

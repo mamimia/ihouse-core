@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 114 -- Task Persistence Layer: Supabase `tasks` Table DDL (closed)
+Phase 115 -- Task Writer (closed)
 
 ## Last Closed Phase
 
-Phase 114 -- Task Persistence Layer: Supabase `tasks` Table DDL
+Phase 115 -- Task Writer
 
 ## Current Objective
 
-Phase 115 -- Task Writer: persist `task_automator` output to DB after booking events. See `docs/core/roadmap.md`.
+Phase 116 -- Financial Aggregation API. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 115 -- Task Writer: persist `task_automator` output to DB after booking ev
 
 ## Tests
 
-2630 passing (2 pre-existing SQLite skips, unrelated)
+2662 passing (2 pre-existing SQLite skips, unrelated)
