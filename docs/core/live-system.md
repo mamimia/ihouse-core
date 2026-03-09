@@ -106,29 +106,43 @@ public.booking_state
 
 ## Current OTA Adapter Status
 
-All 8 providers implemented at full parity:
+All **11 providers** implemented at full parity:
 
-| Provider       | CREATE | CANCEL | AMENDED | Phase |
-|----------------|:------:|:------:|:-------:|-------|
-| Booking.com    | ✅ | ✅ | ✅ | Phases 35-50 |
-| Expedia        | ✅ | ✅ | ✅ | Phases 35-50 |
-| Airbnb         | ✅ | ✅ | ✅ | Phases 35-50 |
-| Agoda          | ✅ | ✅ | ✅ | Phases 35-50 |
-| Trip.com       | ✅ | ✅ | ✅ | Phases 35-50 |
-| Vrbo           | ✅ | ✅ | ✅ | Phase 83 |
+| Provider | CREATE | CANCEL | AMENDED | Phase |
+|----------|:------:|:------:|:-------:|-------|
+| Booking.com | ✅ | ✅ | ✅ | Phases 35-50 |
+| Expedia | ✅ | ✅ | ✅ | Phases 35-50 |
+| Airbnb | ✅ | ✅ | ✅ | Phases 35-50 |
+| Agoda | ✅ | ✅ | ✅ | Phases 35-50 |
+| Trip.com | ✅ | ✅ | ✅ | Phases 35-50 |
+| Vrbo | ✅ | ✅ | ✅ | Phase 83 |
 | Google Vacation Rentals | ✅ | ✅ | ✅ | Phase 85 |
-| Traveloka      | ✅ | ✅ | ✅ | Phase 88 |
+| Traveloka | ✅ | ✅ | ✅ | Phase 88 |
+| MakeMyTrip | ✅ | ✅ | ✅ | Phase 102 |
+| Klook | ✅ | ✅ | ✅ | Phase 102 |
+| Despegar | ✅ | ✅ | ✅ | Phase 99 |
+
+## Current API Surface (Read Path)
+
+| Endpoint | Source | Phase |
+|----------|--------|-------|
+| `GET /health` | Supabase ping | 64 |
+| `GET /financial/{booking_id}` | `booking_financial_facts` | 67 |
+| `GET /bookings/{booking_id}` | `booking_state` | 71 |
+| `GET /bookings` | `booking_state` (+ filters) | 106 |
+| `GET /admin/summary` | multi-table | 72 |
+| `GET /admin/metrics` | `ota_dead_letter` + `ota_ordering_buffer` | 82 |
+| `GET /admin/dlq` | `ota_dead_letter` | 82 |
+| `GET /admin/health/providers` | `event_log` | 82 |
+| `GET /admin/bookings/{id}/timeline` | `event_log` | 82 |
+| `GET /owner-statement/{property_id}` | `booking_financial_facts` | 101 |
+| `GET /payment-status/{booking_id}` | `booking_financial_facts` (in-memory) | 103 |
+| `GET /amendments/{booking_id}` | `booking_financial_facts` | 104 |
 
 ## Future Evolution
 
-Additional adapters, projections, and domain modules may be added
+Additional projections and domain modules may be added
 without breaking the canonical ledger model.
 
 Future OTA expansion must preserve the explicit boundary between OTA
 entry, envelope construction, core ingest, and canonical execution.
-
-Next natural phases (from roadmap.md + future-improvements.md):
-- Phase 89+ — MakeMyTrip / Despegar adapter expansion
-- Worker Communication Layer (forward planning — see future-improvements.md)
-- Financial reconciliation layer
-- Property and tenant management surfaces

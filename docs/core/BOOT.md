@@ -20,7 +20,7 @@ This file is the only context you should need at the start of a new chat.
 
 ### Layer C — Current State (editable, tightly scoped)
 - docs/core/current-snapshot.md
-4. docs/core/work-context.md (if present)
+- docs/core/work-context.md
 - docs/core/live-system.md
 - docs/core/roadmap.md
 
