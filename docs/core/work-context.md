@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 93 -- Payment Lifecycle / Revenue State Projection (closed)
+Phase 94 -- MakeMyTrip Adapter (closed)
 
 ## Last Closed Phase
 
-Phase 93 -- Payment Lifecycle / Revenue State Projection
+Phase 94 -- MakeMyTrip Adapter
 
 ## Current Objective
 
-Phase 94 -- MakeMyTrip Adapter (Tier 2 — India).
-See `docs/core/roadmap.md` Phase 94 entry.
+Phase 95 -- MakeMyTrip Replay Fixture Contract.
+See `docs/core/roadmap.md` Phase 95 entry.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -55,4 +55,4 @@ See `docs/core/roadmap.md` Phase 94 entry.
 
 ## Tests
 
-1783 passing (2 pre-existing SQLite skips, unrelated)
+1849 passing (2 pre-existing SQLite skips, unrelated)

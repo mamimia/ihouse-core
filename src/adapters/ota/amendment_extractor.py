@@ -10,7 +10,7 @@ from .schemas import AmendmentFields
 # Known providers
 # ---------------------------------------------------------------------------
 
-_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka"}
+_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka", "makemytrip"}
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +229,25 @@ def extract_amendment_traveloka(provider_payload: Dict[str, Any]) -> AmendmentFi
     )
 
 
+def extract_amendment_makemytrip(provider_payload: Dict[str, Any]) -> AmendmentFields:
+    """
+    Extract normalized amendment fields from a MakeMyTrip BOOKING_MODIFIED payload.
+
+    MakeMyTrip sends modification data under 'amendment':
+      amendment.check_in   — new check-in date
+      amendment.check_out  — new check-out date
+      amendment.guests     — new guest count
+      amendment.reason     — reason for modification
+    """
+    amend = provider_payload.get("amendment") or {}
+    return AmendmentFields(
+        new_check_in=normalize_date(_nonempty(amend.get("check_in"))),
+        new_check_out=normalize_date(_nonempty(amend.get("check_out"))),
+        new_guest_count=_int_or_none(amend.get("guests")),
+        amendment_reason=_nonempty(amend.get("reason")),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -265,6 +284,8 @@ def normalize_amendment(provider: str, payload: Dict[str, Any]) -> AmendmentFiel
         return extract_amendment_gvr(payload)
     elif normalized_provider == "traveloka":
         return extract_amendment_traveloka(payload)
+    elif normalized_provider == "makemytrip":
+        return extract_amendment_makemytrip(payload)
     else:
         raise ValueError(
             f"Unknown provider '{provider}' — cannot extract amendment fields. "

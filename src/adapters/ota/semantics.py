@@ -46,9 +46,23 @@ def classify_normalized_event(
 
     if event_type in {"reservation_created", "created", "new", "reservation_create", "booking.created", "order_created"}:
         semantic = BookingSemanticKind.CREATE
-    elif event_type in {"reservation_cancelled", "cancelled", "canceled", "reservation_cancel", "booking.cancelled", "booking.canceled", "order_cancelled", "order_canceled"}:
+    elif event_type in {
+        "reservation_cancelled", "cancelled", "canceled",
+        "reservation_cancel", "booking.cancelled", "booking.canceled",
+        "order_cancelled", "order_canceled",
+    }:
         semantic = BookingSemanticKind.CANCEL
-    elif event_type in {"reservation_modified", "modified", "amended", "alteration_create", "alteration", "booking.modified", "order_modified"}:
+    elif event_type in {
+        "reservation_modified", "modified", "amended",
+        "alteration_create", "alteration", "booking.modified", "order_modified",
+    }:
+        semantic = BookingSemanticKind.BOOKING_AMENDED
+    # --- MMT and Traveloka native event_type aliases (Phase 94) ---
+    elif event_type in {"booking_confirmed"}:
+        semantic = BookingSemanticKind.CREATE
+    elif event_type in {"booking_cancelled", "booking_canceled"}:
+        semantic = BookingSemanticKind.CANCEL
+    elif event_type in {"booking_modified"}:
         semantic = BookingSemanticKind.BOOKING_AMENDED
     else:
         raise ValueError(f"Unknown OTA event type: {event_type}")

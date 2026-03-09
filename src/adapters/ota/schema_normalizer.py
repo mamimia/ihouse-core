@@ -52,6 +52,8 @@ def _guest_count(provider: str, payload: dict) -> int | None:
             return int(payload["guest_count"])
         elif provider == "traveloka":
             return int(payload["num_guests"])
+        elif provider == "makemytrip":
+            return int(payload["guest_count"])
         return None
     except (KeyError, TypeError, ValueError):
         return None
@@ -78,6 +80,8 @@ def _booking_ref(provider: str, payload: dict) -> str | None:
         elif provider == "traveloka":
             # Traveloka uses booking_code (may include TV- prefix)
             return str(payload["booking_code"])
+        elif provider == "makemytrip":
+            return str(payload["booking_id"])
         return None
     except (KeyError, TypeError):
         return None
@@ -102,6 +106,8 @@ def _property_id(provider: str, payload: dict) -> str | None:
             return str(payload["property_id"])  # GVR uses standard property_id
         elif provider == "traveloka":
             return str(payload["property_code"])  # Traveloka uses property_code
+        elif provider == "makemytrip":
+            return str(payload["hotel_id"])  # MakeMyTrip uses hotel_id
         return None
     except (KeyError, TypeError):
         return None
@@ -139,6 +145,8 @@ def _check_in(provider: str, payload: dict) -> str | None:
             return str(payload["check_in"])
         elif provider == "traveloka":
             return str(payload["check_in_date"])  # Traveloka: check_in_date
+        elif provider == "makemytrip":
+            return str(payload["check_in"])  # MakeMyTrip: check_in
         return None
     except (KeyError, TypeError):
         return None
@@ -172,6 +180,8 @@ def _check_out(provider: str, payload: dict) -> str | None:
             return str(payload["check_out"])
         elif provider == "traveloka":
             return str(payload["check_out_date"])  # Traveloka: check_out_date
+        elif provider == "makemytrip":
+            return str(payload["check_out"])  # MakeMyTrip: check_out
         return None
     except (KeyError, TypeError):
         return None
@@ -222,6 +232,8 @@ def _total_price(provider: str, payload: dict) -> str | None:
             val = payload["booking_value"]
         elif provider == "traveloka":
             val = payload["booking_total"]  # Traveloka: booking_total
+        elif provider == "makemytrip":
+            val = payload["order_value"]  # MakeMyTrip: order_value
         else:
             return None
         return str(val) if val is not None else None

@@ -446,6 +446,63 @@ _EXTRACTORS["traveloka"] = _extract_traveloka
 
 
 # ---------------------------------------------------------------------------
+# MakeMyTrip extractor (Phase 94)
+# ---------------------------------------------------------------------------
+
+def _extract_makemytrip(payload: dict) -> BookingFinancialFacts:
+    """
+    MakeMyTrip financial fields:
+      order_value     — gross booking amount (= total_price)
+      mmt_commission  — MMT platform commission (absolute amount, optional)
+      net_amount      — net payout to property after commission (optional)
+      currency        — ISO 4217 currency code
+
+    When net_amount is absent but order_value + mmt_commission are present,
+    net is derived: net = order_value - mmt_commission → confidence = ESTIMATED.
+
+    Confidence: FULL if order_value + currency + net_amount present,
+                ESTIMATED if net_amount derived,
+                PARTIAL if order_value or currency missing.
+    """
+    order_value = _to_decimal(payload.get("order_value"))
+    mmt_commission = _to_decimal(payload.get("mmt_commission"))
+    net_amount_raw = payload.get("net_amount")
+    net_amount = _to_decimal(net_amount_raw)
+    currency = payload.get("currency")
+
+    raw: Dict[str, Any] = {}
+    for k in ("order_value", "mmt_commission", "net_amount", "currency"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    source_confidence: str
+    derived_net = net_amount
+
+    if net_amount is None and order_value is not None and mmt_commission is not None:
+        derived_net = (order_value - mmt_commission).quantize(Decimal("0.01"))
+        source_confidence = CONFIDENCE_ESTIMATED
+    elif order_value is None or currency is None:
+        source_confidence = CONFIDENCE_PARTIAL
+    else:
+        source_confidence = CONFIDENCE_FULL
+
+    return BookingFinancialFacts(
+        provider="makemytrip",
+        total_price=order_value,
+        currency=currency,
+        ota_commission=mmt_commission,
+        taxes=None,           # MakeMyTrip does not expose taxes separately
+        fees=mmt_commission,
+        net_to_property=derived_net,
+        source_confidence=source_confidence,
+        raw_financial_fields=raw,
+    )
+
+
+_EXTRACTORS["makemytrip"] = _extract_makemytrip
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 93 -- Payment Lifecycle / Revenue State Projection (closed)
+Phase 94 -- MakeMyTrip Adapter (closed)
 
 ## Last Closed Phase
-Phase 93 -- Payment Lifecycle / Revenue State Projection
+Phase 94 -- MakeMyTrip Adapter
 
 ## System Status
 
@@ -50,8 +50,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 91 | OTA Replay Fixture Contract -- tests/fixtures/ota_replay/ (16 YAML fixtures, 8 providers×2), test_ota_replay_fixture_contract.py, Groups A-E, 273 tests | ✅ |
 | 92 | Roadmap + System Audit -- roadmap.md rewritten (Phase 21-91 full table), system-audit.md created (module inventory, boundary conditions, architecture integrity, gap analysis) | ✅ |
 | 93 | Payment Lifecycle / Revenue State Projection -- payment_lifecycle.py, PaymentLifecycleStatus (7 states), PaymentLifecycleState, PaymentLifecycleExplanation, project_payment_lifecycle(), explain_payment_lifecycle(), 6-rule priority engine; 118 tests | ✅ |
+| 94 | MakeMyTrip Adapter (Tier 2 India) -- makemytrip.py, MMT- prefix stripping, financial extractor (order_value/mmt_commission/net_amount), amendment extractor (amendment block), semantics aliases (booking_confirmed/cancelled/modified), gap fix in semantics.py; 66 tests | ✅ |
 
-**1783 tests pass** (2 pre-existing SQLite skips, unrelated)
+**1849 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -160,9 +161,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 94 -- MakeMyTrip Adapter** *(Tier 2 — India)*
-- See `docs/core/roadmap.md` Phase 94 entry
+**Phase 95 -- MakeMyTrip Replay Fixture Contract** *(MMT YAML fixtures for replay harness)*
+- See `docs/core/roadmap.md` Phase 95 entry
 
 ## Tests
 
-**1783 passing** (2 pre-existing SQLite skips, unrelated)
+**1849 passing** (2 pre-existing SQLite skips, unrelated)

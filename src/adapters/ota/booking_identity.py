@@ -56,6 +56,14 @@ def _strip_traveloka_prefix(ref: str) -> str:
     return ref
 
 
+def _strip_makemytrip_prefix(ref: str) -> str:
+    """MakeMyTrip booking IDs may be prefixed with 'MMT-'. Strip it for a stable ref."""
+    lower = ref.lower()
+    if lower.startswith("mmt-"):
+        return ref[4:]
+    return ref
+
+
 # Registry: provider → list of extra normalization steps after base
 _PROVIDER_RULES: dict[str, list] = {
     "bookingcom": [_strip_bookingcom_prefix],
@@ -66,6 +74,7 @@ _PROVIDER_RULES: dict[str, list] = {
     "vrbo":       [],   # numeric IDs, stable — no prefix stripping needed
     "gvr":        [],   # GVR booking IDs are stable alphanumeric — no prefix stripping
     "traveloka":  [_strip_traveloka_prefix],  # Traveloka booking codes prefixed with TV-
+    "makemytrip": [_strip_makemytrip_prefix],  # MMT booking IDs prefixed with MMT-
 }
 
 
