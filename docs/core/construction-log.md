@@ -1691,3 +1691,54 @@ Traveloka uses event_reference (not event_id) as the idempotency source field.
 
 Result: 1665 passed, 2 skipped.
 No Supabase schema changes. No new migrations. No booking_state writes.
+
+---
+
+## Phase 97 closure — 2026-03-09
+
+Klook Replay Fixture Contract.
+
+Added YAML replay fixtures for Klook to the OTA replay harness. Expanded EXPECTED_PROVIDERS from 9→10, fixture count invariant 18→20.
+
+New files:
+  tests/fixtures/ota_replay/klook.yaml (2 docs)
+    klook_create: BOOKING_CONFIRMED / KL-ACTBK-REPLAY-001 / SGD / participants=3
+    klook_cancel: BOOKING_CANCELLED / same ref
+
+Modified:
+  tests/test_ota_replay_fixture_contract.py
+    — EXPECTED_PROVIDERS: added "klook"
+    — test_e4: 18→20 fixture count invariant
+    — docstring header: 9→10 providers
+    — D1 comment: klook uses event_id (standard)
+
+Result: 341 replay tests pass. 1977 total tests pass, 2 skipped.
+No production code changes. No Supabase migrations.
+
+---
+
+## Phase 98 closure — 2026-03-09
+
+Despegar Adapter (Tier 2 — Latin America).
+
+Integrated Despegar — dominant OTA in LATAM (Argentina, Brazil, Mexico, Chile, Colombia, Peru). Fields: reservation_code (DSP- stripped), hotel_id, passenger_count, check_in/check_out, total_fare, despegar_fee, net_amount. Multi-currency: ARS, BRL, MXN, CLP, COP, PEN, USD.
+
+Also patched payload_validator.py: Rule 3 now accepts reservation_code and booking_code in addition to reservation_id/booking_ref/order_id. This was a latent gap that would have blocked any DSP-style provider.
+
+New files:
+  src/adapters/ota/despegar.py — DespegarAdapter
+  tests/test_despegar_adapter_contract.py — 61 tests (Groups A-H)
+
+Modified:
+  src/adapters/ota/registry.py          — DespegarAdapter registered
+  src/adapters/ota/booking_identity.py  — _strip_despegar_prefix (DSP-→ stripped)
+  src/adapters/ota/schema_normalizer.py — 6 helpers
+  src/adapters/ota/amendment_extractor.py — extract_amendment_despegar
+  src/adapters/ota/financial_extractor.py — _extract_despegar (FULL/ESTIMATED/PARTIAL)
+  src/adapters/ota/payload_validator.py — Rule 3 extended
+  docs/core/current-snapshot.md
+  docs/core/work-context.md
+
+OTA adapters: 11 total (8 Tier 1 + MMT + Klook + Despegar).
+Result: 2038 tests pass, 2 skipped.
+No Supabase schema changes. No new migrations. No booking_state writes.

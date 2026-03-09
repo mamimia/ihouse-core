@@ -2305,3 +2305,70 @@ Invariants locked:
 No Supabase schema changes. No new migrations. No booking_state writes.
 
 Result: 1783 passed, 2 skipped.
+
+---
+
+## Phase 97 — Klook Replay Fixture Contract
+
+**Status:** Closed
+**Prerequisite:** Phase 96 (Klook Adapter)
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Add Despegar replay YAML fixture to the OTA replay harness, expanding provider coverage to 11 total.
+
+### Invariant
+
+Replay fixture count must equal providers × 2. Any new adapter must ship a fixture within the next phase.
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `tests/fixtures/ota_replay/klook.yaml` | NEW — 2 docs: klook_create (BOOKING_CONFIRMED / SGD / KL-ACTBK-REPLAY-001) + klook_cancel |
+| `tests/test_ota_replay_fixture_contract.py` | MODIFIED — EXPECTED_PROVIDERS 9→10, fixture count invariant 18→20, D1 comment |
+| `docs/core/current-snapshot.md` | MODIFIED — Phase 97 entry |
+| `docs/core/work-context.md` | MODIFIED — Phase 98 queued |
+
+### Result
+
+**341 replay tests pass. 1977 total tests pass, 2 skipped.**
+No production code changes. No Supabase migrations. No booking_state writes.
+
+---
+
+## Phase 98 — Despegar Adapter (Tier 2 — Latin America)
+
+**Status:** Closed
+**Prerequisite:** Phase 97 (Klook Replay Fixture Contract)
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Integrate Despegar — the dominant OTA in Latin America (Argentina, Brazil, Mexico, Chile, Colombia, Peru) — as an 11th OTA adapter in iHouse Core. Covers multi-currency LATAM markets (ARS, BRL, MXN, CLP, COP, PEN, USD). Also fixes payload_validator.py gap: reservation_code field was not accepted as a valid booking identity field.
+
+### Invariant
+
+payload_validator.py Rule 3 now accepts reservation_code (Despegar) and booking_code (Traveloka fallback) in addition to the original reservation_id / booking_ref / order_id.
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `src/adapters/ota/despegar.py` | NEW — DespegarAdapter: reservation_code, hotel_id, passenger_count, check_in/check_out, BOOKING_CONFIRMED/CANCELLED/MODIFIED |
+| `src/adapters/ota/registry.py` | MODIFIED — DespegarAdapter registered |
+| `src/adapters/ota/booking_identity.py` | MODIFIED — _strip_despegar_prefix (DSP- removed) |
+| `src/adapters/ota/schema_normalizer.py` | MODIFIED — 6 helpers: passenger_count, reservation_code, hotel_id, check_in, check_out, total_fare |
+| `src/adapters/ota/amendment_extractor.py` | MODIFIED — extract_amendment_despegar (modification.{check_in, check_out, passenger_count, reason}) |
+| `src/adapters/ota/financial_extractor.py` | MODIFIED — _extract_despegar (total_fare/despegar_fee/net_amount, FULL/ESTIMATED/PARTIAL, multi-currency) |
+| `src/adapters/ota/payload_validator.py` | MODIFIED — Rule 3 extended: reservation_code + booking_code accepted |
+| `tests/test_despegar_adapter_contract.py` | NEW — 61 tests, Groups A–H |
+| `docs/core/current-snapshot.md` | MODIFIED — Phase 98 entry |
+| `docs/core/work-context.md` | MODIFIED — Phase 99 queued |
+
+### Result
+
+**2038 tests pass, 2 skipped.**
+OTA adapters: 11 total (8 Tier 1 + MMT + Klook + Despegar).
+No Supabase schema changes. No new migrations. No booking_state writes.
