@@ -1,0 +1,36 @@
+provider: tripcom
+label: tripcom_create
+payload:
+  event_id: "replay-tc-evt-create-001"
+  order_id: "TC-REPLAY-001"
+  hotel_id: "HOTEL-TC-REPLAY"
+  event_type: order_created
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T12:00:00"
+  arrival_date: "2026-11-15"
+  departure_date: "2026-11-20"
+  guest_count: 2
+  order_amount: "550.00"
+  channel_fee: "55.00"
+  currency: "CNY"
+expected:
+  type: BOOKING_CREATED
+  provider: tripcom
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: tripcom
+---
+provider: tripcom
+label: tripcom_cancel
+payload:
+  event_id: "replay-tc-evt-cancel-001"
+  order_id: "TC-REPLAY-001"
+  hotel_id: "HOTEL-TC-REPLAY"
+  event_type: order_cancelled
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T13:00:00"
+  currency: "CNY"
+expected:
+  type: BOOKING_CANCELED
+  provider: tripcom
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: tripcom

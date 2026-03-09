@@ -2,16 +2,16 @@
 
 ## Current Active Phase
 
-Phase 90 -- External Integration Test Harness (closed)
+Phase 91 -- OTA Replay Fixture Contract (closed)
 
 ## Last Closed Phase
 
-Phase 90 -- External Integration Test Harness
+Phase 91 -- OTA Replay Fixture Contract
 
 ## Current Objective
 
-Phase 91 -- OTA Replay Harness.
-See `docs/core/roadmap.md` Phase 91 entry.
+Phase 92 -- Roadmap + System Audit.
+See `docs/core/roadmap.md` Phase 92 entry.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -55,4 +55,4 @@ See `docs/core/roadmap.md` Phase 91 entry.
 
 ## Tests
 
-1392 passing (2 pre-existing SQLite skips, unrelated)
+1665 passing (2 pre-existing SQLite skips, unrelated)

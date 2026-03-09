@@ -1,0 +1,38 @@
+provider: agoda
+label: agoda_create
+payload:
+  event_id: "replay-ag-evt-create-001"
+  booking_ref: "AG-REPLAY-001"
+  reservation_id: "AG-REPLAY-001"
+  property_id: "PROP-AG-REPLAY"
+  event_type: "booking.created"
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T11:00:00"
+  check_in: "2026-12-01"
+  check_out: "2026-12-04"
+  num_guests: 2
+  selling_rate: "330.00"
+  net_rate: "280.50"
+  currency: "THB"
+expected:
+  type: BOOKING_CREATED
+  provider: agoda
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: agoda
+---
+provider: agoda
+label: agoda_cancel
+payload:
+  event_id: "replay-ag-evt-cancel-001"
+  booking_ref: "AG-REPLAY-001"
+  reservation_id: "AG-REPLAY-001"
+  property_id: "PROP-AG-REPLAY"
+  event_type: "booking.cancelled"
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T12:00:00"
+  currency: "THB"
+expected:
+  type: BOOKING_CANCELED
+  provider: agoda
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: agoda

@@ -2213,3 +2213,26 @@ No production code changes. Infrastructure-only.
 
 Result: 1392 passed, 2 skipped.
 No Supabase schema changes. No new migrations.
+
+## Phase 91 -- OTA Replay Fixture Contract (Closed)
+
+[Claude] Static YAML fixture replay harness for all 8 OTA providers.
+Extends Phase 90 with fixture-driven determinism validation.
+
+New:
+  tests/fixtures/ota_replay/ — 16 YAML fixture files (8 providers × CREATE + CANCEL)
+    bookingcom.yaml | expedia.yaml | airbnb.yaml | agoda.yaml
+    tripcom.yaml    | vrbo.yaml    | gvr.yaml     | traveloka.yaml
+  tests/test_ota_replay_fixture_contract.py — 273 tests (Groups A-E)
+
+Group A (5×8=40): Fixture loading — file exists, YAML valid, required keys present
+Group B (8×16=128): Per-fixture replay — type, provider, tenant, idempotency, fields
+Group C (3×16=48): Replay determinism — same fixture → same key across two runs
+Group D (2×16+8=40): Mutation — changing event identifier changes idempotency_key
+  Traveloka note: uses event_reference (not event_id) as idempotency source
+Group E (5×8=40 + 1): Coverage invariant — 16 total, each provider has CREATE+CANCEL
+
+pyyaml added to venv (test dependency only).
+No production code changes. No Supabase. No migrations.
+
+Result: 1665 passed, 2 skipped.

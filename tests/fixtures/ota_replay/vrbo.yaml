@@ -1,0 +1,37 @@
+provider: vrbo
+label: vrbo_create
+payload:
+  event_id: "replay-vrbo-evt-create-001"
+  reservation_id: "VR-REPLAY-001"
+  unit_id: "UNIT-VR-REPLAY"
+  event_type: reservation_created
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T13:00:00"
+  arrival_date: "2026-08-10"
+  departure_date: "2026-08-17"
+  guest_count: 4
+  traveler_payment: "900.00"
+  manager_payment: "765.00"
+  service_fee: "135.00"
+  currency: "USD"
+expected:
+  type: BOOKING_CREATED
+  provider: vrbo
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: vrbo
+---
+provider: vrbo
+label: vrbo_cancel
+payload:
+  event_id: "replay-vrbo-evt-cancel-001"
+  reservation_id: "VR-REPLAY-001"
+  unit_id: "UNIT-VR-REPLAY"
+  event_type: reservation_cancelled
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T14:00:00"
+  currency: "USD"
+expected:
+  type: BOOKING_CANCELED
+  provider: vrbo
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: vrbo

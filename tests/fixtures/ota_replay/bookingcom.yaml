@@ -1,0 +1,40 @@
+# Phase 91 — OTA Replay Fixture: bookingcom CREATE
+provider: bookingcom
+label: bookingcom_create
+payload:
+  event_id: "replay-bc-evt-create-001"
+  reservation_id: "BK-REPLAY-001"
+  property_id: "PROP-BC-REPLAY"
+  event_type: reservation_created
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T08:00:00"
+  check_in: "2026-09-01"
+  check_out: "2026-09-07"
+  num_guests: 2
+  total_price: "750.00"
+  currency: "EUR"
+  commission: "75.00"
+expected:
+  type: BOOKING_CREATED
+  provider: bookingcom
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: bookingcom
+---
+# Phase 91 — OTA Replay Fixture: bookingcom CANCEL
+provider: bookingcom
+label: bookingcom_cancel
+payload:
+  event_id: "replay-bc-evt-cancel-001"
+  reservation_id: "BK-REPLAY-001"
+  property_id: "PROP-BC-REPLAY"
+  event_type: reservation_cancelled
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T09:00:00"
+  check_in: "2026-09-01"
+  check_out: "2026-09-07"
+  currency: "EUR"
+expected:
+  type: BOOKING_CANCELED
+  provider: bookingcom
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: bookingcom

@@ -1,0 +1,41 @@
+provider: traveloka
+label: traveloka_create
+payload:
+  booking_code: "TV-REPLAY-001"
+  reservation_id: "TV-REPLAY-001"
+  event_reference: "tvk-evt-replay-001"
+  property_code: "PROP-TV-REPLAY"
+  check_in_date: "2026-07-01"
+  check_out_date: "2026-07-05"
+  num_guests: 2
+  booking_total: "3200.00"
+  traveloka_fee: "320.00"
+  net_payout: "2880.00"
+  currency_code: "THB"
+  event_type: reservation_created
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T15:00:00"
+expected:
+  type: BOOKING_CREATED
+  provider: traveloka
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: traveloka
+---
+provider: traveloka
+label: traveloka_cancel
+payload:
+  booking_code: "TV-REPLAY-001"
+  reservation_id: "TV-REPLAY-001"
+  event_reference: "tvk-evt-replay-cancel-001"
+  property_code: "PROP-TV-REPLAY"
+  check_in_date: "2026-07-01"
+  check_out_date: "2026-07-05"
+  currency_code: "THB"
+  event_type: reservation_cancelled
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T16:00:00"
+expected:
+  type: BOOKING_CANCELED
+  provider: traveloka
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: traveloka

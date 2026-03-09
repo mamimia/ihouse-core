@@ -1,0 +1,36 @@
+provider: expedia
+label: expedia_create
+payload:
+  event_id: "replay-ex-evt-create-001"
+  reservation_id: "EXP-REPLAY-001"
+  property_id: "PROP-EX-REPLAY"
+  event_type: reservation_created
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T09:00:00"
+  check_in: "2026-10-01"
+  check_out: "2026-10-05"
+  guest_count: 2
+  total_amount: "480.00"
+  currency: "USD"
+  commission_percent: "15"
+expected:
+  type: BOOKING_CREATED
+  provider: expedia
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: expedia
+---
+provider: expedia
+label: expedia_cancel
+payload:
+  event_id: "replay-ex-evt-cancel-001"
+  reservation_id: "EXP-REPLAY-001"
+  property_id: "PROP-EX-REPLAY"
+  event_type: reservation_cancelled
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T10:00:00"
+  currency: "USD"
+expected:
+  type: BOOKING_CANCELED
+  provider: expedia
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: expedia

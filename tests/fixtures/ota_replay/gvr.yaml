@@ -1,0 +1,41 @@
+provider: gvr
+label: gvr_create
+payload:
+  event_id: "replay-gvr-evt-create-001"
+  gvr_booking_id: "GVR-REPLAY-001"
+  reservation_id: "GVR-REPLAY-001"
+  property_id: "PROP-GVR-REPLAY"
+  event_type: reservation_created
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T14:00:00"
+  check_in: "2026-09-20"
+  check_out: "2026-09-25"
+  guest_count: 2
+  booking_value: "400.00"
+  google_fee: "40.00"
+  net_amount: "360.00"
+  currency: "EUR"
+  connected_ota: "bookingcom"
+expected:
+  type: BOOKING_CREATED
+  provider: gvr
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: gvr
+---
+provider: gvr
+label: gvr_cancel
+payload:
+  event_id: "replay-gvr-evt-cancel-001"
+  gvr_booking_id: "GVR-REPLAY-001"
+  reservation_id: "GVR-REPLAY-001"
+  property_id: "PROP-GVR-REPLAY"
+  event_type: reservation_cancelled
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T15:00:00"
+  currency: "EUR"
+  connected_ota: "bookingcom"
+expected:
+  type: BOOKING_CANCELED
+  provider: gvr
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: gvr

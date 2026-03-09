@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 90 -- External Integration Test Harness (closed)
+Phase 91 -- OTA Replay Harness (closed)
 
 ## Last Closed Phase
-Phase 90 -- External Integration Test Harness
+Phase 91 -- OTA Replay Harness
 
 ## System Status
 
@@ -47,8 +47,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 88 | Traveloka Adapter (SE Asia Tier 1.5) -- traveloka.py, _extract_traveloka, extract_amendment_traveloka, _strip_traveloka_prefix; 6 files changed; 53 tests | ✅ |
 | 89 | OTA Reconciliation Discovery -- reconciliation_model.py, ReconciliationFindingKind (7), ReconciliationSeverity (3), ReconciliationFinding, ReconciliationReport, ReconciliationSummary; 87 tests | ✅ |
 | 90 | External Integration Test Harness -- test_e2e_integration_harness.py, 8 providers full pipeline coverage (CREATE/CANCEL/AMENDED), Groups A-H, 276 tests | ✅ |
+| 91 | OTA Replay Fixture Contract -- tests/fixtures/ota_replay/ (16 YAML fixtures, 8 providers×2), test_ota_replay_fixture_contract.py, Groups A-E, 273 tests | ✅ |
 
-**1392 tests pass** (2 pre-existing SQLite skips, unrelated)
+**1665 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -157,9 +158,9 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 91 -- OTA Replay Harness**
-- See `docs/core/roadmap.md` Phase 91 entry
+**Phase 92 -- Roadmap + System Audit**
+- See `docs/core/roadmap.md` Phase 92 entry
 
 ## Tests
 
-**1392 passing** (2 pre-existing SQLite skips, unrelated)
+**1665 passing** (2 pre-existing SQLite skips, unrelated)

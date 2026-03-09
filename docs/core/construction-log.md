@@ -1668,3 +1668,26 @@ Key engineering notes:
 
 Result: 1392 passed, 2 skipped.
 No Supabase schema changes. No new migrations. No booking_state writes.
+
+## Phase 91 -- OTA Replay Fixture Contract (Closed)
+
+[Claude] YAML fixture-driven replay harness for all 8 OTA providers.
+No production code changes. Test infrastructure only. CI-safe.
+
+New files:
+  tests/fixtures/ota_replay/bookingcom.yaml (2 docs)
+  tests/fixtures/ota_replay/expedia.yaml   (2 docs)
+  tests/fixtures/ota_replay/airbnb.yaml    (2 docs)
+  tests/fixtures/ota_replay/agoda.yaml     (2 docs)
+  tests/fixtures/ota_replay/tripcom.yaml   (2 docs)
+  tests/fixtures/ota_replay/vrbo.yaml      (2 docs)
+  tests/fixtures/ota_replay/gvr.yaml       (2 docs)
+  tests/fixtures/ota_replay/traveloka.yaml (2 docs)
+  tests/test_ota_replay_fixture_contract.py — 273 tests (Groups A-E)
+
+Key eng note: pyyaml (test dependency) installed to .venv.
+GVR + Traveloka need reservation_id duplicated (payload_validator requirement).
+Traveloka uses event_reference (not event_id) as the idempotency source field.
+
+Result: 1665 passed, 2 skipped.
+No Supabase schema changes. No new migrations. No booking_state writes.

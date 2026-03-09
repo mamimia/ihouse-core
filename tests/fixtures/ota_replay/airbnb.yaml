@@ -1,0 +1,37 @@
+provider: airbnb
+label: airbnb_create
+payload:
+  event_id: "replay-ab-evt-create-001"
+  reservation_id: "ABNB-REPLAY-001"
+  listing_id: "LISTING-AB-REPLAY"
+  event_type: reservation_create
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T10:00:00"
+  check_in: "2026-11-01"
+  check_out: "2026-11-06"
+  guest_count: 3
+  payout_amount: "620.00"
+  booking_subtotal: "700.00"
+  taxes: "80.00"
+  currency: "USD"
+expected:
+  type: BOOKING_CREATED
+  provider: airbnb
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: airbnb
+---
+provider: airbnb
+label: airbnb_cancel
+payload:
+  event_id: "replay-ab-evt-cancel-001"
+  reservation_id: "ABNB-REPLAY-001"
+  listing_id: "LISTING-AB-REPLAY"
+  event_type: reservation_cancel
+  tenant_id: tenant-replay-01
+  occurred_at: "2026-06-01T11:00:00"
+  currency: "USD"
+expected:
+  type: BOOKING_CANCELED
+  provider: airbnb
+  tenant_id: tenant-replay-01
+  idempotency_key_contains: airbnb
