@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > It is updated every few phases to reflect what we've learned and where we're headed.
-> Last updated: Phase 92 closed. System audit complete. Roadmap resynced to actual state. [Claude]
+> Last updated: Phase 106 closed. Roadmap resynced to actual state through Phase 106. Forward plan extended to Phase 126. [Claude]
 
 
 ## ✅ Completed Phases
@@ -44,63 +44,130 @@
 | 90 | External Integration Test Harness | 8-provider E2E harness, Groups A-H, 276 tests |
 | 91 | OTA Replay Fixture Contract | 16 YAML fixtures, fixture-driven determinism, 273 tests |
 | 92 | Roadmap + System Audit | This document. system-audit.md. 1665 tests total. |
+| 93 | Payment Lifecycle Projection | payment_lifecycle.py, 7 states, 6-rule priority engine, 118 tests |
+| 94 | MakeMyTrip Adapter (India) | makemytrip.py, MMT- prefix, financial+amendment extractors, 66 tests |
+| 95 | MakeMyTrip Replay Fixture | fixtures/ota_replay/makemytrip.yaml, 18 fixtures total, 307 replay tests |
+| 96 | Klook Adapter (Asia activities) | klook.py, KL- prefix, travel_date/participants canonical mapping, 60 tests |
+| 97 | Klook Replay Fixture | fixtures/ota_replay/klook.yaml, 20 fixtures total, 341 replay tests |
+| 98 | Despegar Adapter (Latin America) | despegar.py, DSP- prefix, ARS/BRL/MXN multi-currency, 61 tests |
+| 99 | Despegar Replay Fixture | fixtures/ota_replay/despegar.yaml, 22 fixtures total, 375 replay tests |
+| 100 | Owner Statement Foundation | owner_statement.py, StatementConfidenceLevel, build_owner_statement(), 60 tests |
+| 101 | Owner Statement Query API | owner_statement_router.py, GET /owner-statement/{property_id}?month=, 28 tests |
+| 102 | E2E Harness Extension | harness expanded 8→11 providers (MakeMyTrip+Klook+Despegar), 375 harness tests |
+| 103 | Payment Lifecycle Query API | payment_status_router.py, GET /payment-status/{booking_id}, 24 tests |
+| 104 | Amendment History Query API | amendments_router.py, GET /amendments/{booking_id}, 20 tests |
+| 105 | Admin Router Contract Tests | test_admin_router_phase82_contract.py, 41 tests, zero source changes |
+| 106 | Booking List Query API | GET /bookings, property_id/status/limit filters, test_booking_list_router_contract.py, 28 tests |
 
 
 ---
 
-## 🎯 Active Direction — Phase 93+
+## 🎯 Active Direction — Phase 107+
 
-The system has proven its core pipeline across 8 OTA providers with 1665 deterministic tests (0 live Supabase required). The canonical spine is stable. The next strategic direction is the **Financial Layer + Expansion Wave**.
-
----
-
-### Phase 93–97 — Financial Layer + Latin America + India
-
-**Phase 93 — Payment Lifecycle / Revenue State Projection**
-`payment_lifecycle.py`: financial status states — `guest_paid`, `ota_collecting`, `payout_pending`, `payout_released`, `reconciliation_pending`, `owner_net_pending`. Builds on BookingFinancialFacts without touching booking_state.
-
-**Phase 94 — MakeMyTrip Adapter** *(Tier 2 — India)*
-Expands into the Indian travel market. Follows established adapter pattern. 9th OTA provider.
-
-**Phase 95 — Owner Statements Foundation**
-`owner_statement.py`: per-property monthly summary, net revenue, payout summary. Read-only layer over financial_facts. First owner-facing output surface.
-
-**Phase 96 — Despegar Adapter** *(Tier 2 — Latin America)*
-Strongest Latin American travel brand. 10th OTA provider. Completes Tier 2 adapter wave.
-
-**Phase 97 — OTA Reconciliation Implementation**
-Implement the reconciliation model from Phase 89. Detection + correction-support layer — never bypasses apply_envelope. Flags drift via admin API.
+The system has proven its canonical pipeline across **11 OTA providers** with **2374 deterministic tests**. The financial layer (BookingFinancialFacts, payment lifecycle, owner statements, amendment history) is live. The next strategic direction is **API completeness → Reconciliation → Task/Operational Layer → Financial UI → Worker Communication**.
 
 ---
 
-### Phase 98–107 — Product Layer (Operational Completeness)
+### Phase 107–116 — API Completeness + Reconciliation + Task System
 
-**Phase 98 — Guest Pre-Arrival / Check-In Intake**
-Lightweight intake per reservation: contact info, arrival time, agreement, special notes, readiness.
+**Phase 107 — Roadmap Refresh**
+Update `roadmap.md` to reflect actual Phases 93–106 completion vs. original plan. Extend forward plan to Phase 126. Low-risk documentation phase that sets direction cleanly before execution accelerates.
 
-**Phase 99 — Task Automation for Operations**
-Rule-based tasks from booking events: BOOKING_CREATED → prep task, checkout tomorrow → cleaning, amendment → reschedule, cancellation → cancel pending.
+**Phase 108 — Financial List Query API**
+`GET /financial?property_id=&month=YYYY-MM` — list financial records with filters (parallel to Phase 106 for bookings). Reads `booking_financial_facts`, returns per-booking financial facts array with tenant isolation. No schema change. Pure Python + tests.
 
-**Phase 100 — Owner Statements Full View**
-Complete owner-facing monthly statement: property revenue, net vs gross, payout history, scoped role visibility.
+**Phase 109 — Booking Date Range Search**
+Extend `GET /bookings` (Phase 106) with `?check_in_from=&check_in_to=` date range filtering. Add ISO 8601 date parsing, 400 on invalid format, compound filter support (property_id + status + date range). Most critical missing search dimension for operators.
 
-**Phase 101–107 — TBD**
-Candidates: Tier 3 adapters (Rakuten, Hotelbeds, Hostelworld), advanced financial reporting, outbound channel sync discovery, multi-projection read models, revenue analytics, advanced conflict resolution.
+**Phase 110 — OTA Reconciliation Implementation**
+Implement the reconciliation model built in Phase 89 (`reconciliation_model.py`, 7 FindingKinds). Detection layer that compares internal `booking_state` vs. expected OTA state. Emits `ReconciliationReport` with findings, severity, and correction hints. Never bypasses `apply_envelope`. Surfaces gaps via admin API.
 
+**Phase 111 — Task System Foundation**
+`task_model.py`: `Task` dataclass, `TaskKind` enum (CLEANING / CHECKIN_PREP / CHECKOUT_VERIFY / MAINTENANCE / GENERAL), `TaskStatus` (PENDING / ACKNOWLEDGED / IN_PROGRESS / COMPLETED / CANCELED), `TaskPriority` (LOW / MEDIUM / HIGH / CRITICAL). Schema preserves `urgency`, `worker_role`, `ack_sla_minutes` per `worker-communication-layer.md`. No external channels yet — in-system only.
+
+**Phase 112 — Task Automation from Booking Events**
+`task_automator.py`: rule engine that emits Tasks from booking lifecycle events. `BOOKING_CREATED → CHECKIN_PREP + CLEANING tasks`. `BOOKING_CANCELED → cancel pending tasks`. `BOOKING_AMENDED → reschedule tasks if dates changed`. Read-only from `booking_state` — never writes to event_log directly.
+
+**Phase 113 — Task Query API**
+`task_router.py`: `GET /tasks?property_id=&status=&date=` (list with filters), `GET /tasks/{task_id}` (single task). JWT auth, tenant isolation. `PATCH /tasks/{task_id}/status` — the only write endpoint in the task layer (status transitions only, not event-log writes).
+
+**Phase 114 — Guest Pre-Arrival Intake**
+`guest_intake_model.py` + `guest_intake_router.py`: lightweight per-reservation intake. `POST /intake/{booking_id}` captures: guest contact, arrival time, special notes, ID verification status, pre-arrival readiness. `GET /intake/{booking_id}` retrieves. Zero canonical state mutation — stored as a side table read model.
+
+**Phase 115 — Tier 3 OTA Adapter (Rakuten Travel)**
+`rakuten.py`: Japan-market adapter. Expands to 12th OTA provider. Follows established pattern: normalize → validate → classify → to_canonical_envelope. Includes replay fixture contract (YAML). Strongest travel brand in Japan — opens the Northeast Asia market segment.
+
+**Phase 116 — Financial Aggregation API (Ring 1)**
+Per `future-improvements.md` Ring 1 spec. `financial_aggregation_router.py`:
+- `GET /financial/summary?period=YYYY-MM` → gross, commission, net totals
+- `GET /financial/by-provider?period=` → per-OTA breakdown
+- `GET /financial/by-property?period=` → per-property breakdown
+- `GET /financial/lifecycle-distribution?period=` → count by PaymentLifecycleStatus
+All read from `booking_financial_facts`. No mutations. Multi-currency aware (no cross-currency aggregation without explicit conversion). This is the backbone that Rings 2–4 depend on.
 
 ---
 
-## Where We Land After Phase 107
+### Phase 117–126 — Financial UI + SLA Engine + Worker Communication
 
-**Adapter coverage:** Booking.com, Airbnb, Expedia, Agoda, Trip.com, Vrbo, GVR, Traveloka, MakeMyTrip, Despegar. **10 channels.** Global + SE Asia + India + LATAM.
+**Phase 117 — SLA Escalation Engine**
+`sla_engine.py`: per-task SLA timer consumer. Reads `ack_sla_minutes` from task, tracks acknowledgement state, emits escalation actions based on urgency level (LOW → in-app only / MEDIUM → external after delay / HIGH → fast external / CRITICAL → manager + SMS fallback per `worker-communication-layer.md`). Pure in-system — no external channel integrations yet. Deterministic escalation audit events emitted.
 
-**Operational surfaces:** Reservation timeline, integration health dashboard, admin API, conflict detection, reconciliation layer.
+**Phase 118 — Financial Dashboard API (Ring 2–3)**
+Per `future-improvements.md` Ring 2–3 spec. Extends Phase 116:
+- Per-booking financial status card endpoint: `GET /financial/status/{booking_id}` — lifecycle_status, total_price, ota_commission, net_to_property, source_confidence, plain-English reason from `explain_payment_lifecycle()`
+- RevPAR computation: `GET /financial/revpar?property_id=&period=` — `total_revenue / available_room_nights`
+- Lifecycle distribution per property. Epistemic tier (A/B/C) on all returned figures.
 
-**Financial surfaces:** Booking financial facts (persisted), payment lifecycle states, owner statements.
+**Phase 119 — Reconciliation Inbox API**
+Per `future-improvements.md` Ring 3 Reconciliation Inbox spec. `GET /admin/reconciliation` — exception-first view: bookings with RECONCILIATION_PENDING, PARTIAL confidence, missing net_to_property, lifecycle_status UNKNOWN. Correction hints where inferable. Surfaces only items that need operator attention — empty inbox = clean financials.
 
-**Product surfaces:** Guest intake, task automation, owner views.
+**Phase 120 — Payout Timeline / Cashflow View**
+Per `future-improvements.md` Ring 3 Cashflow spec. `GET /financial/cashflow?period=` → expected inflows by week, confirmed released payouts, overdue (expected but not released), forward projection (next 30/60/90 days). Honest projections: OTA_COLLECTING bookings NOT counted as received. PAYOUT_RELEASED only. Key differentiator vs. competitors.
 
-**Architecture:** Canonical core unchanged — `apply_envelope` is the only write authority. All product layers read from or wrap the canonical spine without mutating it.
+**Phase 121 — Owner Statement Generator (Ring 4)**
+Per `future-improvements.md` Ring 4 spec. `GET /owner-statement/{property_id}?month=` enhanced with:
+- Per-booking line items (check-in/out, OTA, gross, commission, net)
+- Management fee deduction (configurable %)
+- Owner net total for period
+- Payout status per booking
+- Epistemic tier on every figure
+- PDF export endpoint: `GET /owner-statement/{property_id}?month=&format=pdf`
+Role-scoped: owner accounts see only their properties. This turns iHouse Core into an owner-facing product.
+
+**Phase 122 — OTA Financial Health Comparison**
+Per `future-improvements.md` Ring 3 OTA comparison spec. `GET /financial/ota-comparison?period=`:
+- Average commission rate per OTA
+- Net-to-gross ratio per OTA
+- Average time-to-payout per OTA
+- Lifecycle distribution per OTA (which OTAs have more RECONCILIATION_PENDING?)
+- Revenue share by OTA
+Helps operators make smarter channel management decisions.
+
+**Phase 123 — Worker-Facing Task Surface**
+Per `worker-communication-layer.md`. `GET /worker/tasks?worker_role=&status=&date=` — role-scoped task view for workers. `PATCH /worker/tasks/{id}/acknowledge`, `PATCH /worker/tasks/{id}/complete`. Dashboard-first (not mobile-first yet). In-app task acknowledgement model — external channels not wired yet.
+
+**Phase 124 — External Channel Escalation (LINE first)**
+Per `worker-communication-layer.md` graded escalation model. Integrate LINE as first external fallback channel. Triggered only after in-app ack SLA breached (Phase 117 engine). iHouse Core remains source of truth — LINE is delivery only. LINE webhook response → write ack back to task_id in core system.
+
+**Phase 125 — Tier 3 Adapter (Hotelbeds)**
+`hotelbeds.py`: EU/Global B2B distribution adapter. 13th OTA provider. Hotelbeds is the largest B2B bedbank globally — connects with wholesalers, TMCs, tour operators. Different payload semantics (B2B vs. B2C) documented explicitly. Replay fixture contract included.
+
+**Phase 126 — Multi-Projection Read Models**
+Per `future-improvements.md` Multi Projection Support item. Introduce `availability_projection` (per-property, per-date occupancy state) as a second read model built from `event_log`. `GET /availability/{property_id}?from=&to=` — which dates are occupied, by which booking. Zero write-path changes. Foundation for channel sync, OTA calendar push, and rate management.
+
+---
+
+## Where We Land After Phase 126
+
+**Adapter coverage:** 13 OTA providers (Booking.com, Airbnb, Expedia, Agoda, Trip.com, Vrbo, GVR, Traveloka, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds). Global + SE Asia + India + LATAM + Japan + EU B2B.
+
+**Operational surfaces:** Reservation timeline, integration health, admin API, conflict detection, reconciliation inbox, payout timeline, task system, worker surfaces, SLA escalation engine.
+
+**Financial surfaces:** Financial facts (persisted), payment lifecycle (7 states), owner statements (PDF-export), financial aggregation API (Ring 1–4), RevPAR, cashflow view, OTA comparison.
+
+**Product surfaces:** Guest intake, task automation, task query API, worker-facing task surface, LINE escalation (graded).
+
+**Architecture:** Canonical core unchanged — `apply_envelope` is the only write authority. All product and financial layers read from or wrap the canonical spine without mutating it. Availability projection added as second read model.
 
 
 ---
