@@ -100,6 +100,7 @@ _TAGS = [
     {"name": "financial", "description": "Financial facts query. JWT Bearer required. Reads from booking_financial_facts only."},
     {"name": "admin", "description": "Tenant operational summary. JWT Bearer required. Read-only, tenant-scoped."},
     {"name": "owner-statement", "description": "Monthly owner statement. JWT Bearer required. Aggregates booking_financial_facts per property."},
+    {"name": "payment-status", "description": "Payment lifecycle projection. JWT Bearer required. Reads booking_financial_facts and projects state in-memory."},
 ]
 
 app = FastAPI(
@@ -136,6 +137,9 @@ app.include_router(admin_router)
 
 from api.owner_statement_router import router as owner_statement_router  # noqa: E402
 app.include_router(owner_statement_router)
+
+from api.payment_status_router import router as payment_status_router  # noqa: E402
+app.include_router(payment_status_router)
 
 
 # ---------------------------------------------------------------------------

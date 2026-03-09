@@ -1807,3 +1807,19 @@ Modified files:
 
 E2E harness: 375 tests, all 11 providers × Groups A-H.
 Result: 2261 tests pass, 2 skipped.
+
+---
+
+### Phase 103 closure — 2026-03-09
+
+Payment Lifecycle Query API.
+
+New files:
+  src/api/payment_status_router.py — GET /payment-status/{booking_id}
+  tests/test_payment_status_router_contract.py — 24 tests, Groups A-E
+
+Modified:
+  src/main.py — payment_status_router registered + tag added
+
+Result: 2285 tests pass, 2 skipped.
+No DB schema changes. No migrations. No booking_state reads.

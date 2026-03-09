@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 102 -- E2E Integration Harness Extension (closed)
+Phase 103 -- Payment Lifecycle Query API (closed)
 
 ## Last Closed Phase
 
-Phase 102 -- E2E Integration Harness Extension
+Phase 103 -- Payment Lifecycle Query API
 
 ## Current Objective
 
-Phase 103 -- See `docs/core/roadmap.md`.
+Phase 104 -- See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -54,4 +54,4 @@ Phase 103 -- See `docs/core/roadmap.md`.
 
 ## Tests
 
-2261 passing (2 pre-existing SQLite skips, unrelated)
+2285 passing (2 pre-existing SQLite skips, unrelated)

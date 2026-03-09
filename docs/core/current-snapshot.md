@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 102 -- E2E Integration Harness Extension (closed)
+Phase 103 -- Payment Lifecycle Query API (closed)
 
 ## Last Closed Phase
-Phase 102 -- E2E Integration Harness Extension
+Phase 103 -- Payment Lifecycle Query API
 
 ## System Status
 
@@ -59,8 +59,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 100 | Owner Statement Foundation -- owner_statement.py, StatementConfidenceLevel (VERIFIED/MIXED/INCOMPLETE), OwnerStatementEntry, OwnerStatementSummary, build_owner_statement(); multi-currency guard; canceled-exclusion rule; 60 tests | ✅ |
 | 101 | Owner Statement Query API -- owner_statement_router.py, GET /owner-statement/{property_id}?month=YYYY-MM, JWT auth, PROPERTY_NOT_FOUND/INVALID_MONTH error codes; error_models.py + main.py updated; 28 tests | ✅ |
 | 102 | E2E Integration Harness Extension -- test_e2e_integration_harness.py expanded 8→11 (MakeMyTrip+Klook+Despegar payload factories); payload_validator.py +booking_id; harness: 375 tests | ✅ |
+| 103 | Payment Lifecycle Query API -- payment_status_router.py, GET /payment-status/{booking_id}, JWT auth, BOOKING_NOT_FOUND 404, explain_payment_lifecycle (Phase 93), rule_applied + reason; main.py + tag; 24 tests | ✅ |
 
-**2261 tests pass** (2 pre-existing SQLite skips, unrelated)
+**2285 tests pass** (2 pre-existing SQLite skips, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -169,8 +170,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 103** *(See `docs/core/roadmap.md`)*
+**Phase 104** *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
-**2261 passing** (2 pre-existing SQLite skips, unrelated)
+**2285 passing** (2 pre-existing SQLite skips, unrelated)

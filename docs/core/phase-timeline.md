@@ -2489,3 +2489,32 @@ PROVIDER_NAMES, PROVIDER_CREATE, PROVIDER_CANCEL, PROVIDER_AMEND are derived fro
 
 **2261 tests pass, 2 skipped.**
 E2E harness: 375 tests passing across all 11 providers × Groups A–H.
+
+---
+
+## Phase 103 — Closed
+
+**Phase 103 — Payment Lifecycle Query API**
+**Date Closed:** 2026-03-09
+
+### Goal
+
+Expose explain_payment_lifecycle() (Phase 93) via HTTP. New GET /payment-status/{booking_id} endpoint. Reads the most recent booking_financial_facts record for the booking, calls explain_payment_lifecycle() in-memory, returns serialized PaymentLifecycleState + explanation fields. Follows the same pattern as financial_router.py (Phase 67) and owner_statement_router.py (Phase 101).
+
+### Invariant
+
+Never reads booking_state. Tenant isolation at DB level (.eq("tenant_id", tenant_id)).
+explain_payment_lifecycle() is pure, no IO.
+
+### Design / Files
+
+| File | Change |
+|------|--------|
+| `src/api/payment_status_router.py` | NEW — GET /payment-status/{booking_id}; JWT auth; BOOKING_NOT_FOUND 404; 500 on DB error; explain_payment_lifecycle (Phase 93) |
+| `src/main.py` | MODIFIED — payment_status_router registered; payment-status tag added |
+| `tests/test_payment_status_router_contract.py` | NEW — 24 tests, Groups A–E |
+
+### Result
+
+**2285 tests pass, 2 skipped.**
+No Supabase schema changes. No migrations. No booking_state reads or writes.
