@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 108 -- Financial List Query API (closed)
+Phase 109 -- Booking Date Range Search (closed)
 
 ## Last Closed Phase
-Phase 108 -- Financial List Query API
+Phase 109 -- Booking Date Range Search
 
 ## System Status
 
@@ -65,8 +65,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 106 | Booking List Query API -- GET /bookings added to bookings_router.py; property_id/status/limit query params; 400 VALIDATION_ERROR on invalid status; limit clamped 1-100; test_booking_list_router_contract.py, 28 tests | ✅ |
 | 107 | Roadmap Refresh -- roadmap.md resynced to Phase 106 actual state; completed-phases table extended 93–106; forward plan Phase 107–126 written covering API completeness → Reconciliation → Task System → Financial UI → Worker Communication | ✅ |
 | 108 | Financial List Query API -- GET /financial added to financial_router.py; provider/month/limit filters; month validated by YYYY-MM regex (400 on bad format); limit clamped 1–100; test_financial_list_router_contract.py, 27 tests | ✅ |
+| 109 | Booking Date Range Search -- GET /bookings extended with check_in_from + check_in_to (YYYY-MM-DD, gte/lte on check_in); ISO 8601 regex validation; 400 VALIDATION_ERROR on bad format; test_booking_date_range_contract.py, 36 tests | ✅ |
 
-**2401 tests pass** (2 pre-existing SQLite skips, 1 intentional parametrize skip, unrelated)
+**2437 tests pass** (2 pre-existing SQLite skips, 1 intentional parametrize skip, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -175,7 +176,7 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 109** *(See `docs/core/roadmap.md`)*
+**Phase 110** *(See `docs/core/roadmap.md`)*
 
 ## Tests
 

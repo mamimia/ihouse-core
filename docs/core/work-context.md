@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 108 -- Financial List Query API (closed)
+Phase 109 -- Booking Date Range Search (closed)
 
 ## Last Closed Phase
 
-Phase 108 -- Financial List Query API
+Phase 109 -- Booking Date Range Search
 
 ## Current Objective
 
-Phase 109 -- Booking Date Range Search. See `docs/core/roadmap.md`.
+Phase 110 -- OTA Reconciliation Implementation. See `docs/core/roadmap.md`.
 
 ## Key Invariants (Locked — Do Not Change)
 
