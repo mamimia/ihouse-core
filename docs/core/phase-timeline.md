@@ -3106,3 +3106,26 @@ Design decisions:
 
 Result: 3609 tests pass (3589 baseline + 22 new). No DB schema changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
+## Phase 142 — Retry + Exponential Backoff (Closed)
+
+Goal: On 5xx or network error, each adapter retries the HTTP call up to 3 times with exponential backoff before returning `failed`. Before Phase 142, any transient 5xx immediately returned `failed`.
+
+Completed:
+
+- `src/adapters/outbound/__init__.py` — MODIFIED — added `_retry_with_backoff(fn, max_retries=3)` helper. Backoff: `4 ** (attempt-1)` capped at 30s (1s→4s→16s). Retries on 5xx (`http_status >= 500`) and network exceptions. Never retries on 4xx or `http_status=None`. `IHOUSE_RETRY_DISABLED=true` opt-out.
+- `src/adapters/outbound/airbnb_adapter.py` — MODIFIED — HTTP call moved into `_do_req()` closure; `_retry_with_backoff(_do_req)` called after `_throttle`.
+- `src/adapters/outbound/bookingcom_adapter.py` — MODIFIED — same pattern.
+- `src/adapters/outbound/expedia_vrbo_adapter.py` — MODIFIED — same pattern.
+- `src/adapters/outbound/ical_push_adapter.py` — MODIFIED — same pattern (httpx.put path).
+- `tests/test_adapter_retry_contract.py` — NEW — 28 contract tests across Groups A–E: unit tests for `_retry_with_backoff()` (10 tests), and per-adapter retry wiring (18 tests).
+
+Design decisions:
+- `_do_req()` closure captures all local variables; clean retry boundary.
+- Throttle remains outside retry loop — rate throttle per `send()` call, not per attempt.
+- max_retries=3 → 4 total attempts (0,1,2,3); backoff delays: [1s, 4s, 16s].
+- 4xx not retried — client error, retrying wastes rate-limit budget.
+- `IHOUSE_RETRY_DISABLED=true` — mirrors `IHOUSE_THROTTLE_DISABLED` pattern.
+
+Result: 3637 tests pass (3609 + 28 new). No DB schema changes. No migration. No router changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+

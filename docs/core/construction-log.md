@@ -2155,3 +2155,19 @@ Changes:
 
 Result: 3609 tests pass (3589 + 22 new). No DB schema changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
 
+## Phase 142 — Retry + Exponential Backoff (Closed)
+
+On 5xx or network error, adapters now retry the HTTP call up to 3 times with exponential backoff.
+Before Phase 142, any transient 5xx immediately returned `failed` — requiring manual replay.
+
+Changes:
+- src/adapters/outbound/__init__.py: added `_retry_with_backoff(fn, max_retries=3)` — backoff: `4^(attempt-1)` s capped at 30s (1s→4s→16s); retries on 5xx (http_status>=500) and exceptions; no retry on 4xx or http_status=None; `IHOUSE_RETRY_DISABLED=true` opt-out
+- src/adapters/outbound/airbnb_adapter.py: HTTP call moved to `_do_req()` closure; `_retry_with_backoff(_do_req)` called after `_throttle(rate_limit)`
+- src/adapters/outbound/bookingcom_adapter.py: same
+- src/adapters/outbound/expedia_vrbo_adapter.py: same
+- src/adapters/outbound/ical_push_adapter.py: same (httpx.put path)
+- tests/test_adapter_retry_contract.py [NEW]: 28 contract tests across Groups A–E: `_retry_with_backoff()` unit (10 tests), per-adapter wiring (18 tests)
+
+Result: 3637 tests pass (3609 + 28 new). No DB schema changes. No migration. No router changes. 2 pre-existing SQLite guard failures (unrelated, unchanged).
+
+

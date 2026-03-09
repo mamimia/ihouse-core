@@ -1,5 +1,5 @@
 """
-Phase 141 — Booking.com Outbound Adapter (Rate-Limit Enforcement)
+Phase 142 — Booking.com Outbound Adapter (Retry + Exponential Backoff)
 
 Implements availability locking via the Booking.com Connectivity Partner API (api_first).
 
@@ -28,7 +28,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter, _throttle
+from adapters.outbound import AdapterResult, OutboundAdapter, _retry_with_backoff, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -84,20 +84,24 @@ class BookingComAdapter(OutboundAdapter):
                 "Content-Type":  "application/json",
             }
             _throttle(rate_limit)
-            resp = httpx.post(url, json=payload, headers=headers, timeout=10)
-            if resp.status_code in (200, 201, 204):
+
+            def _do_req() -> AdapterResult:
+                resp = httpx.post(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in (200, 201, 204):
+                    return AdapterResult(
+                        provider=_PROVIDER, external_id=external_id,
+                        strategy="api_first", status="ok",
+                        http_status=resp.status_code,
+                        message=f"Booking.com block sent. HTTP {resp.status_code}.",
+                    )
                 return AdapterResult(
                     provider=_PROVIDER, external_id=external_id,
-                    strategy="api_first", status="ok",
+                    strategy="api_first", status="failed",
                     http_status=resp.status_code,
-                    message=f"Booking.com block sent. HTTP {resp.status_code}.",
+                    message=f"Booking.com API error HTTP {resp.status_code}: {resp.text[:200]}",
                 )
-            return AdapterResult(
-                provider=_PROVIDER, external_id=external_id,
-                strategy="api_first", status="failed",
-                http_status=resp.status_code,
-                message=f"Booking.com API error HTTP {resp.status_code}: {resp.text[:200]}",
-            )
+
+            return _retry_with_backoff(_do_req)
         except Exception as exc:  # noqa: BLE001
             logger.exception("bookingcom adapter exception: %s", exc)
             return AdapterResult(

@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 141 — Rate-Limit Enforcement (closed)
+Phase 142 — Retry + Exponential Backoff (closed)
 
 ## Last Closed Phase
 
-Phase 141 — Rate-Limit Enforcement: `_throttle(rate_limit)` helper in `outbound/__init__.py`; wired into all 4 adapters; 22 contract tests; 3609 passing
+Phase 142 — Retry + Exponential Backoff: `_retry_with_backoff(fn, max_retries=3)` in `outbound/__init__.py`; wired into all 4 adapters via `_do_req()` closure; 28 contract tests; 3637 passing
 
 ## Current Objective
 
-**Phase 142 — Retry + Exponential Backoff in Adapters**
+**Phase 143 — Idempotency Key on Outbound Requests**
 
 ## What Was Done in This Session (Phases 118–122)
 
@@ -37,7 +37,7 @@ Phase 141 — Rate-Limit Enforcement: `_throttle(rate_limit)` helper in `outboun
 | 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
 | 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
 | 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
-| 141 | Rate-Limit Enforcement | `src/adapters/outbound/__init__.py` (_throttle), `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `tests/test_rate_limit_enforcement_contract.py` |
+| 142 | Retry + Exponential Backoff | `src/adapters/outbound/__init__.py` (_retry_with_backoff), `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `tests/test_adapter_retry_contract.py` |
 | docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
 
 ## Key Invariants (Locked — Do Not Change)

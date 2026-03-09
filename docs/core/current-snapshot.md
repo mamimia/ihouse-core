@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 141 — Rate-Limit Enforcement (closed)
+Phase 142 — Retry + Exponential Backoff (closed)
 
 ## Last Closed Phase
-Phase 141 — Rate-Limit Enforcement: `_throttle(rate_limit)` helper in outbound `__init__.py`; wired into all 4 adapters (Airbnb, BookingCom, Expedia/VRBO, iCal); 22 contract tests
+Phase 142 — Retry + Exponential Backoff: `_retry_with_backoff(fn, max_retries=3)` helper in outbound `__init__.py`; wired into all 4 adapters (Airbnb, BookingCom, Expedia/VRBO, iCal) via `_do_req()` closure; 28 contract tests
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -85,6 +85,8 @@ apply_envelope is the only authority for canonical state mutations.
 | 131 | DLQ Inspector -- dlq_router.py: GET /admin/dlq(source/status/limit filters; status derived pending/applied/error from replay_result; payload_preview 200chars; list excludes raw_payload) + GET /admin/dlq/{envelope_id}(full raw_payload); reads ota_dead_letter global; JWT required; 44 tests | ✅ |
 | 139 | Real Outbound Adapters — AirbnbAdapter (api_first POST /v2/calendar_operations), BookingComAdapter (api_first), ExpediaVrboAdapter (api_first, shared API key), ICalPushAdapter (ical_fallback; Hotelbeds+TripAdvisor+Despegar); build_adapter_registry(); outbound_executor.py wired; dry_run on missing credentials / IHOUSE_DRY_RUN=true; 40 new contract tests | ✅ |
 | 140 | iCal Date Injection — booking_dates.py (fetch_booking_dates, fail-safe); ICalPushAdapter.push() gains check_in/check_out; ICAL_TEMPLATE DTSTART/DTEND from real booking_state dates; executor + router wired; PRODID Phase 139→140; fallback constants 20260101/20260102; 16 contract tests | ✅ |
+| 141 | Rate-Limit Enforcement — `_throttle(rate_limit)` in outbound `__init__.py`; wired into all 4 adapters before HTTP call; `IHOUSE_THROTTLE_DISABLED=true` opt-out; rate_limit≤0 logs WARNING + continues; 22 contract tests | ✅ |
+| 142 | Retry + Exponential Backoff — `_retry_with_backoff(fn, max_retries=3)` in outbound `__init__.py`; backoff 4^attempt capped 30s (1s→4s→16s); retries on 5xx + network exceptions; no retry on 4xx; `IHOUSE_RETRY_DISABLED=true` opt-out; wired via `_do_req()` closure in all 4 adapters; 28 contract tests | ✅ |
 
 **3589 tests pass** (2 pre-existing SQLite guard failures, unrelated)
 
@@ -195,8 +197,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 141** — Rate-limit enforcement: honour `rate_limit` field in outbound adapters *(See `docs/core/roadmap.md`)*
+**Phase 143** — Idempotency Key on Outbound Requests *(See `docs/core/roadmap.md`)*
 
 ## Tests
 
-**3589 passing** (2 pre-existing SQLite skips, unrelated)
+**3637 passing** (2 pre-existing SQLite skips, unrelated)

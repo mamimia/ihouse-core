@@ -1,5 +1,5 @@
 """
-Phase 141 — iCal Push Adapter (Rate-Limit Enforcement)
+Phase 142 — iCal Push Adapter (Retry + Exponential Backoff)
 
 Updated from Phase 139 to inject real DTSTART / DTEND from booking_state.
 The push() method now accepts optional check_in / check_out as compact iCal
@@ -25,7 +25,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter, _throttle
+from adapters.outbound import AdapterResult, OutboundAdapter, _retry_with_backoff, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -110,29 +110,32 @@ class ICalPushAdapter(OutboundAdapter):
 
             full_url = f"{ical_url}/{external_id}.ics"
             _throttle(rate_limit)
-            resp = httpx.put(full_url, content=ical_body.encode(), headers=headers, timeout=15)
 
-            if resp.status_code in (200, 201, 204):
-                logger.info(
-                    "%s ical_fallback OK: external_id=%s status=%d",
+            def _do_req() -> AdapterResult:
+                resp = httpx.put(full_url, content=ical_body.encode(), headers=headers, timeout=15)
+                if resp.status_code in (200, 201, 204):
+                    logger.info(
+                        "%s ical_fallback OK: external_id=%s status=%d",
+                        self.provider, external_id, resp.status_code,
+                    )
+                    return AdapterResult(
+                        provider=self.provider, external_id=external_id,
+                        strategy="ical_fallback", status="ok",
+                        http_status=resp.status_code,
+                        message=f"{self.provider} iCal pushed. HTTP {resp.status_code}.",
+                    )
+                logger.warning(
+                    "%s ical_fallback error: external_id=%s status=%d",
                     self.provider, external_id, resp.status_code,
                 )
                 return AdapterResult(
                     provider=self.provider, external_id=external_id,
-                    strategy="ical_fallback", status="ok",
+                    strategy="ical_fallback", status="failed",
                     http_status=resp.status_code,
-                    message=f"{self.provider} iCal pushed. HTTP {resp.status_code}.",
+                    message=f"{self.provider} iCal error HTTP {resp.status_code}: {resp.text[:200]}",
                 )
-            logger.warning(
-                "%s ical_fallback error: external_id=%s status=%d",
-                self.provider, external_id, resp.status_code,
-            )
-            return AdapterResult(
-                provider=self.provider, external_id=external_id,
-                strategy="ical_fallback", status="failed",
-                http_status=resp.status_code,
-                message=f"{self.provider} iCal error HTTP {resp.status_code}: {resp.text[:200]}",
-            )
+
+            return _retry_with_backoff(_do_req)
 
         except Exception as exc:  # noqa: BLE001
             logger.exception("%s ical_fallback exception: %s", self.provider, exc)

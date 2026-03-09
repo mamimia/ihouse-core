@@ -1,5 +1,5 @@
 """
-Phase 141 — Airbnb Outbound Adapter (Rate-Limit Enforcement)
+Phase 142 — Airbnb Outbound Adapter (Retry + Exponential Backoff)
 
 Implements availability locking via the Airbnb Partner API (api_first).
 
@@ -31,7 +31,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
-from adapters.outbound import AdapterResult, OutboundAdapter, _throttle
+from adapters.outbound import AdapterResult, OutboundAdapter, _retry_with_backoff, _throttle
 
 logger = logging.getLogger(__name__)
 
@@ -91,28 +91,32 @@ class AirbnbAdapter(OutboundAdapter):
                 "Content-Type":     "application/json",
             }
             _throttle(rate_limit)
-            resp = httpx.post(url, json=payload, headers=headers, timeout=10)
-            if resp.status_code in (200, 201, 204):
-                logger.info(
-                    "airbnb api_first OK: external_id=%s status=%d",
-                    external_id, resp.status_code,
+
+            def _do_req() -> AdapterResult:
+                resp = httpx.post(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in (200, 201, 204):
+                    logger.info(
+                        "airbnb api_first OK: external_id=%s status=%d",
+                        external_id, resp.status_code,
+                    )
+                    return AdapterResult(
+                        provider=_PROVIDER, external_id=external_id,
+                        strategy="api_first", status="ok",
+                        http_status=resp.status_code,
+                        message=f"Airbnb calendar block sent. HTTP {resp.status_code}.",
+                    )
+                logger.warning(
+                    "airbnb api_first error: external_id=%s status=%d body=%s",
+                    external_id, resp.status_code, resp.text[:200],
                 )
                 return AdapterResult(
                     provider=_PROVIDER, external_id=external_id,
-                    strategy="api_first", status="ok",
+                    strategy="api_first", status="failed",
                     http_status=resp.status_code,
-                    message=f"Airbnb calendar block sent. HTTP {resp.status_code}.",
+                    message=f"Airbnb API error HTTP {resp.status_code}: {resp.text[:200]}",
                 )
-            logger.warning(
-                "airbnb api_first error: external_id=%s status=%d body=%s",
-                external_id, resp.status_code, resp.text[:200],
-            )
-            return AdapterResult(
-                provider=_PROVIDER, external_id=external_id,
-                strategy="api_first", status="failed",
-                http_status=resp.status_code,
-                message=f"Airbnb API error HTTP {resp.status_code}: {resp.text[:200]}",
-            )
+
+            return _retry_with_backoff(_do_req)
         except Exception as exc:  # noqa: BLE001
             logger.exception("airbnb api_first exception: external_id=%s: %s", external_id, exc)
             return AdapterResult(
