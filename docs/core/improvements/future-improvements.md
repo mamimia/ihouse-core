@@ -317,3 +317,282 @@ Guiding questions for future phases:
 - Rakuten Travel, Hotelbeds, Hostelworld, Hopper, additional regional/niche channels based on customer profile.
 
 **Planning rule:** When choosing the next adapter, prefer channels that increase customer confidence fast, improve coverage in a meaningful region, have clear strategic value for management companies, and fit the current architecture without unusual complexity.
+
+---
+
+## Financial UI and Revenue Surfaces Product Direction
+*Added: Phase 96 closure. Source: user forward-planning note + architecture analysis.*
+
+> **Status: deferred — serious near-future direction. Not immediate.**
+> This section captures the financial UI product vision, why it matters now,
+> what real SaaS competitors do well, and the precise architectural entry point.
+
+---
+
+### Why Phase 93 Changed Things
+
+Before Phase 93, iHouse Core was **booking-aware**.
+It could record, track, amend, and cancel reservations across 10 OTAs.
+
+After Phase 93, it is becoming **business-aware**.
+It now understands not only *that* a booking happened — but *where the money stands*.
+
+The 7-state `PaymentLifecycleStatus` machine can answer:
+- Is the guest paying, or is the OTA collecting?
+- Has the payout been released, or is it pending?
+- Is there a reconciliation gap?
+- What does the owner actually net?
+- Is this booking's financial picture complete or partial?
+
+That unlocks a product layer that was previously impossible to build correctly.
+
+---
+
+### What Real SaaS Products Do — and What They Get Wrong
+
+Before designing this, it is worth understanding how the strongest tools in this space approach it.
+
+**Guesty** (leading PMS, ~$400M ARR, PE-backed):
+- Owner statements as first-class PDF exports
+- Per-booking gross/fees/net breakdown
+- Multi-property owner view
+- Weakness: financial UI is often separated from real-time booking state. Owners see stale aggregations, not live lifecycle state.
+
+**Hostaway** (fast-growing PMS, strong in EU/AU):
+- OTA channel-separated financial reporting
+- Payout schedule calendar
+- Provider revenue comparison built in
+- Weakness: overly complex for small operators. Reconciliation is manual.
+
+**Lodgify** (mid-market, strong in villas):
+- Clean owner-facing revenue summaries
+- Occupancy-correlated revenue charts
+- Weakness: no lifecycle-aware status. Payouts are assumed to be on time.
+
+**Stripe** (payments infrastructure — not a PMS but best-in-class financial UX):
+- Revenue charts with drill-down to individual transactions
+- Balance / payout / reserve distinction shown clearly
+- Beautiful exception-first design: show what is normal at a glance, alert on anomalies
+- **Key insight: never show everything — show the delta from normal first.**
+
+**Quickbooks / Xero** (accounting tools):
+- Reconciliation-first design
+- Strong at "what do we still need to match?"
+- Weakness: too heavy for property-manager workflows. Overkill.
+
+**Key insight from competitive analysis:**
+
+No existing PMS has a *lifecycle-aware* financial layer.
+They all treat payouts as date-based projections, not state-machine facts.
+iHouse Core — with its `PaymentLifecycleStatus` — could be the first PMS where financial state is *computed from real facts*, not estimated from expected payout dates.
+That is a genuine product differentiator, not a cosmetic improvement.
+
+---
+
+### Recommended Financial UI Architecture
+
+> **Architectural invariant: `booking_state` must NEVER contain financial data.**
+> All financial surfaces read from `booking_financial_facts` and the payment lifecycle projection layer.
+> No UI surface bypasses this separation.
+
+The financial UI should be structured as **4 rings**:
+
+```
+Ring 1 — Financial API Layer       (read-only aggregation endpoints)
+Ring 2 — Financial State Surface   (per-booking lifecycle status, real-time)
+Ring 3 — Portfolio Surfaces        (across bookings, properties, providers)
+Ring 4 — Owner / External Surfaces (simplified, role-scoped views)
+```
+
+Rings should be built in order. Ring 2 before Ring 3. Ring 3 before Ring 4.
+
+---
+
+### Specific Surfaces — Prioritized
+
+#### 1. Financial Summary Widget (Ring 2 — per booking)
+- status: open
+- priority: high (builds directly on Phase 93 output)
+- suggested_entry_phase: 100–102
+- notes: A compact, per-booking financial status card. Shows:
+  `lifecycle_status`, `total_price`, `ota_commission`, `net_to_property`, `currency`,
+  `source_confidence` (FULL / ESTIMATED / PARTIAL), and a plain-English explanation
+  from `explain_payment_lifecycle()`. This is the fastest win and directly
+  surfaces Phase 93's value to users. Single-booking scope. Zero new DB work.
+
+#### 2. Financial Aggregation API (Ring 1 — read-only endpoints)
+- status: open
+- priority: high (everything UI-side depends on this)
+- suggested_entry_phase: 100–103
+- notes: A set of read-only FastAPI endpoints that aggregate
+  `booking_financial_facts` by property, provider, date range, and lifecycle status.
+  No mutations. No booking_state involvement. Returns structured summaries:
+  - `GET /financial/summary?tenant_id=&period=`  →  gross, commission, net totals
+  - `GET /financial/by-provider?...`              →  per-OTA breakdown
+  - `GET /financial/by-property?...`              →  per-property breakdown
+  - `GET /financial/lifecycle-distribution?...`   →  count by PaymentLifecycleStatus
+  This is the backbone layer. All UI surfaces query this.
+
+#### 3. Financial Dashboard (Ring 3 — portfolio-level)
+- status: open
+- priority: high
+- suggested_entry_phase: 103–106
+- design_reference: Stripe balance dashboard + Guesty owner view
+- notes: High-level operator screen. Key metrics:
+  - **Gross Revenue** (confirmed bookings, period selectable)
+  - **OTA Commission Total** (how much is being paid across all providers)
+  - **Net to Portfolio** (what the operation actually retains)
+  - **Payout Pending** (how much is on its way but not yet released)
+  - **Payout Released** (confirmed received)
+  - **Reconciliation Pending** (items needing attention)
+  - **Owner Net Pending** (amount not yet settled to owners)
+  - **Lifecycle Distribution** (pie/bar of 7 states across active bookings)
+  - **Provider Health** (quick visual: which OTAs have drift/gaps)
+  Design principle from Stripe: show the exception first, not the total.
+  A green "all clear" is worth less than a red "3 bookings need reconciliation."
+
+#### 4. Revenue by Property (Ring 3)
+- status: open
+- priority: medium
+- suggested_entry_phase: 104–107
+- notes: Property-level financial performance screen.
+  - Gross revenue per property (period selectable)
+  - OTA commission per property
+  - Owner net per property
+  - Booking count + average booking value
+  - Lifecycle distribution per property
+  - RevPAR (Revenue Per Available Room/Unit) — industry standard hospitality metric.
+    Formula: `RevPAR = total_revenue / available_room_nights`.
+    This is the metric that gives operators the clearest picture of property yield.
+  - Trend direction (MoM, QoQ) if enough historical data
+  No operations PMS should ship without RevPAR. It is the industry benchmark.
+
+#### 5. Owner Statement Generator (Ring 4 — external-facing)
+- status: open
+- priority: medium-high
+- suggested_entry_phase: 106–110
+- design_reference: Guesty owner statements + Hostaway payout calendar
+- notes: The most important owner-facing surface. Period-based (monthly / custom).
+  Shows per owner:
+  - Bookings included (list with check-in/out, OTA, gross, commission, net)
+  - Total gross revenue (period)
+  - Total OTA commissions deducted
+  - Total management/operation fees (configurable %)
+  - **Owner net for period** — the single most important number
+  - Payout status per booking (released / pending / reconciliation_pending)
+  - Statement total with running balance
+  - PDF export (this is a key owner trust builder)
+  Role-scoped: owner accounts see only their own properties.
+  **This turns iHouse Core from an internal ops tool into an owner-facing product.**
+
+#### 6. Payout Timeline / Cashflow View (Ring 3)
+- status: open
+- priority: medium
+- suggested_entry_phase: 107–111
+- design_reference: Stripe payout calendar + Xero cashflow
+- notes: Time-oriented financial view. Not just totals — when does the money move.
+  - Expected inflows by week/month (from OTA payout projections)
+  - Released payouts (actual cash received, confirmed)
+  - Delayed payouts (expected but overdue)
+  - Provider-by-provider payout schedule
+  - Forward projection: next 30/60/90 days of expected cash
+  Key differentiator from competitors: because iHouse Core has lifecycle state,
+  this view can show HONEST projections — not assumed ones.
+  OTA_COLLECTING bookings are NOT projected as received.
+  PAYOUT_RELEASED bookings ARE confirmed.
+  No other PMS makes this distinction clearly.
+
+#### 7. Reconciliation Inbox (Ring 3 — operator-facing)
+- status: open
+- priority: medium
+- suggested_entry_phase: 108–112
+- design_reference: Stripe disputes + Quickbooks unmatched items
+- notes: Exception-first view. Shows only items that need attention.
+  - Bookings with RECONCILIATION_PENDING status
+  - Bookings with PARTIAL confidence financial facts
+  - Bookings with missing `net_to_property` (detected financial drift)
+  - Bookings where lifecycle_status is UNKNOWN
+  - Provider-flagged mismatches (OTA state vs internal state)
+  - Correction suggestions where the system can infer the likely fix
+  Design principle: this inbox should be **empty on a good day**.
+  If it is empty, the operator knows financials are clean.
+  If it has items, they are always actionable.
+
+#### 8. OTA Financial Health Comparison (Ring 3)
+- status: open
+- priority: low-medium
+- suggested_entry_phase: 110–115
+- notes: Cross-provider intelligence view.
+  - Average commission rate per OTA (over a period)
+  - Net-to-gross ratio per OTA
+  - Average time-to-payout per OTA (if timestamps captured)
+  - Lifecycle distribution per OTA (which OTAs have more RECONCILIATION_PENDING?)
+  - Revenue share by OTA
+  This helps operators make smarter channel management decisions.
+  A channel with 25% commission and slow payouts is less valuable than it appears.
+
+---
+
+### Surfaces NOT to Build (Yet)
+
+The following are deliberate exclusions to avoid premature complexity:
+
+| Surface | Reason Not to Build Yet |
+|---------|------------------------|
+| Full accounting ledger / double-entry | Not a core PMS need. Use Xero/QBO export if needed. |
+| Tax calculation engine | Jurisdiction-specific. Requires legal input. Out of scope. |
+| Automated bank reconciliation | Requires bank API integrations. Different product scope. |
+| Owner payment disbursement | Requires payment rails (Stripe Connect, etc.). Phase 200+. |
+| Forecasting / ML revenue models | No training data yet. Premature. |
+
+The financial layer should stay in its lane: **explain what the money IS doing**, not what it WILL do.
+Forecasting can come later when historical fact density justifies it.
+
+---
+
+### Architecture Rules for This Layer
+
+These must be preserved across all financial UI phases:
+
+1. **Read-only surfaces only.** Financial UI reads `booking_financial_facts`. Never writes to booking_state.
+2. **No financial logic in the UI layer.** All business logic lives in `payment_lifecycle.py`. UI consumes projections.
+3. **Confidence is always visible.** Every financial figure must show its `source_confidence` (FULL / ESTIMATED / PARTIAL). Users must never assume a number is confirmed when it is derived.
+4. **Lifecycle state is the source of truth.** No UI surface should compute payout status from raw fields. Always call `project_payment_lifecycle()`.
+5. **Currency is always explicit.** Multi-currency is real (SGD, INR, THB, USD, EUR). Never aggregate across currencies without explicit conversion — or show per-currency figures separately.
+6. **Owner surfaces are role-scoped.** Owners see their properties only. No cross-property leakage.
+
+---
+
+### Suggested Phase Entry Point
+
+Based on the current roadmap and architecture maturity:
+
+| Ring | Suggested Window | Prerequisite |
+|------|-----------------|--------------|
+| Ring 1 — Financial API | Phase 100–103 | 10+ providers stable ✅, payment lifecycle stable ✅ |
+| Ring 2 — Per-booking widget | Phase 100–102 | Phase 93 output ✅ |
+| Ring 3 — Portfolio views | Phase 103–112 | Ring 1 API complete |
+| Ring 4 — Owner statements | Phase 106–112 | Ring 3 + role scoping |
+
+**Do not rush Ring 4 before Ring 1 is solid.**
+Owner statements need a reliable aggregation backend.
+A bad owner statement destroys trust faster than no statement at all.
+
+---
+
+### Immediate Action (Now — Before Implementation)
+
+Before any financial UI phase starts, one pre-step should happen:
+
+**Ensure `booking_financial_facts` has the right indexing and RLS.**
+Specifically:
+- Index on `(tenant_id, provider, created_at)` for fast aggregation
+- Index on `(tenant_id, booking_id)` for per-booking lookup
+- RLS policy that scopes all reads to `tenant_id`
+- Confirm `source_confidence` column exists (or add it)
+
+This is a cheap Phase 99–100 DDL migration that prevents performance problems later.
+
+---
+
+*End of Financial UI direction. Reviewed and expanded from user note, Phase 96.*
