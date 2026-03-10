@@ -3471,3 +3471,23 @@ Completed:
 - `tests/test_ical_amend_push_contract.py` — UPDATED — 2 test expectations updated (airbnb now routes via API adapter)
 
 Result: 4065 tests pass (4028 + 37 new). No DB schema changes. No new endpoints.
+
+---
+
+## Phase 156 — Closed
+
+**Phase 156 — Property Metadata Table**
+**Date closed:** 2026-03-10
+**Tests:** 4098 passing (4065 + 33 new), 2 pre-existing SQLite skips (unchanged)
+
+Goal: Canonical property metadata store for all UI surfaces.
+
+Completed:
+- `migrations/phase_156_properties_table.sql` — NEW — CREATE TABLE properties, RLS, updated_at trigger, UNIQUE(tenant_id, property_id), index
+- `src/api/properties_router.py` — NEW — GET /properties, POST /properties, GET /properties/{property_id}, PATCH /properties/{property_id}
+- `src/main.py` — MODIFIED — registered properties_router
+- `tests/test_properties_router_contract.py` — NEW — 33 contract tests (Groups A-P)
+
+⚠️ Migration applied manually via Supabase dashboard (apply_migration blocked by service role restriction).
+
+Result: 4098 tests pass (4065 + 33 new).
