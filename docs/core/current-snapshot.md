@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 170 — Owner Portal UI (closed)
+Phase 171 — Admin Audit Log (closed)
 
 ## Last Closed Phase
-Phase 170 — Owner Portal UI: ihouse-ui/app/owner/page.tsx — portfolio summary, property cards, statement drawer, month picker. Owner nav added. TypeScript clean. Tests: 4420 (unchanged — UI phase).
+Phase 171 — Admin Audit Log: admin_audit_log DDL + write_audit_event() + GET /admin/audit-log, 28 contract tests. Total: 4448 passing.
 
 ## System Status
 

@@ -2430,3 +2430,14 @@ Changes:
 - ihouse-ui/app/layout.tsx [MODIFIED]: Added Owner nav link (🏠).
 
 TypeScript: 0 errors. No backend tests (UI-only phase per spec).
+
+## Phase 171 — Admin Audit Log (Closed)
+
+Append-only compliance trail for every admin action.
+
+Changes:
+- migrations/phase_171_admin_audit_log.sql [NEW]: admin_audit_log table — actor_user_id, action, target_type, target_id, before_state JSONB, after_state JSONB, metadata JSONB. 4 indexes (tenant+time, actor, target, action). RLS. DDL comment enforcing append-only.
+- src/api/admin_router.py [MODIFIED]: write_audit_event(db, *, tenant_id, actor_user_id, action, target_type, target_id, before_state, after_state, metadata) — append-only, best-effort, never raises. GET /admin/audit-log — filterable by action/actor_user_id/target_type/target_id, limit 1-500 (default 100), tenant-scoped, ordered occurred_at DESC.
+- tests/test_admin_audit_log_contract.py [NEW]: 28 contract tests.
+
+Result: 4448 tests pass (4420 + 28 new). 2 pre-existing SQLite skips unchanged.

@@ -1,7 +1,8 @@
 """
-Phase 72 — Tenant Summary Dashboard
-Phase 82 — Admin Query API (metrics, DLQ, provider health, booking timeline)
+Phase 72  — Tenant Summary Dashboard
+Phase 82  — Admin Query API (metrics, DLQ, provider health, booking timeline)
 Phase 110 — OTA Reconciliation API
+Phase 171 — Admin Audit Log
 
 Endpoints:
   GET /admin/summary               — tenant operational summary (Phase 72)
@@ -10,15 +11,17 @@ Endpoints:
   GET /admin/health/providers      — per-provider last ingest status (Phase 82)
   GET /admin/bookings/{id}/timeline — per-booking event timeline from event_log (Phase 82)
   GET /admin/reconciliation        — offline reconciliation report (Phase 110)
+  GET /admin/audit-log             — admin audit trail (Phase 171)
 
 Rules:
 - JWT auth required on all endpoints.
 - All queries are tenant-scoped where applicable.
-- Read-only. No writes to any table.
+- Read-only. No writes to any table (except audit log).
 - DLQ endpoints are global (ota_dead_letter has no tenant_id).
 
 Invariant:
-  These endpoints must NEVER write to any table.
+  These endpoints must NEVER write to any table EXCEPT admin_audit_log.
+  admin_audit_log rows are NEVER updated or deleted.
 """
 from __future__ import annotations
 
@@ -539,3 +542,179 @@ async def get_reconciliation(
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /admin/reconciliation error for tenant=%s: %s", tenant_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 171 — Admin Audit Log
+# ---------------------------------------------------------------------------
+
+def write_audit_event(
+    db: Any,
+    *,
+    tenant_id: str,
+    actor_user_id: str,
+    action: str,
+    target_type: str,
+    target_id: str,
+    before_state: Optional[dict] = None,
+    after_state: Optional[dict] = None,
+    metadata: Optional[dict] = None,
+) -> bool:
+    """
+    Append a single audit event to admin_audit_log.
+
+    APPEND-ONLY: never updates or deletes rows.
+    Best-effort: returns False on error, never raises.
+
+    Args:
+        db:            Supabase client.
+        tenant_id:     Tenant performing the action.
+        actor_user_id: JWT sub of the acting user.
+        action:        e.g. 'grant_permission', 'patch_provider', 'replay_dlq'
+        target_type:   e.g. 'permission', 'provider', 'dlq_entry'
+        target_id:     The entity being acted on.
+        before_state:  Optional JSONB snapshot before the change.
+        after_state:   Optional JSONB snapshot after the change.
+        metadata:      Any additional context (request body fields, source IP).
+
+    Returns:
+        True if written successfully, False otherwise.
+    """
+    row: dict = {
+        "tenant_id":     tenant_id,
+        "actor_user_id": actor_user_id,
+        "action":        action,
+        "target_type":   target_type,
+        "target_id":     str(target_id),
+        "metadata":      metadata or {},
+    }
+    if before_state is not None:
+        row["before_state"] = before_state
+    if after_state is not None:
+        row["after_state"] = after_state
+
+    try:
+        db.table("admin_audit_log").insert(row).execute()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "write_audit_event failed for tenant=%s action=%s: %s",
+            tenant_id, action, exc,
+        )
+        return False
+
+
+_AUDIT_SELECT_COLS = (
+    "id, tenant_id, actor_user_id, action, target_type, target_id, "
+    "before_state, after_state, metadata, occurred_at"
+)
+
+_VALID_AUDIT_ACTIONS = frozenset({
+    "grant_permission", "revoke_permission", "update_permission_role",
+    "upsert_provider", "patch_provider",
+    "replay_dlq",
+    "create_booking", "cancel_booking", "amend_booking",
+})
+
+
+@router.get(
+    "/admin/audit-log",
+    tags=["admin"],
+    summary="Admin audit trail (Phase 171)",
+    description=(
+        "Returns the append-only admin audit trail for this tenant.\\n\\n"
+        "**Tenant-scoped.** Filterable by `action`, `actor_user_id`, "
+        "`target_type`, `target_id`.\\n\\n"
+        "**Ordered:** most recent first.\\n\\n"
+        "**Limit:** 1–500 (default 100).\\n\\n"
+        "**Read-only.** Rows are never modified."
+    ),
+    responses={
+        200: {"description": "Audit log entries, most recent first."},
+        400: {"description": "Invalid filter value."},
+        401: {"description": "Missing or invalid JWT token."},
+        500: {"description": "Internal server error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_audit_log(
+    action: Optional[str] = None,
+    actor_user_id: Optional[str] = None,
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
+    limit: int = 100,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    GET /admin/audit-log
+
+    Returns the admin audit trail for this tenant.
+    Supports filters: action, actor_user_id, target_type, target_id.
+    Default limit: 100. Max: 500.
+    Ordered by occurred_at DESC.
+    """
+    if limit < 1 or limit > 500:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "'limit' must be between 1 and 500."},
+        )
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        query = (
+            db.table("admin_audit_log")
+            .select(_AUDIT_SELECT_COLS)
+            .eq("tenant_id", tenant_id)
+            .order("occurred_at", desc=True)
+            .limit(limit)
+        )
+
+        if action is not None:
+            query = query.eq("action", action)
+        if actor_user_id is not None:
+            query = query.eq("actor_user_id", actor_user_id)
+        if target_type is not None:
+            query = query.eq("target_type", target_type)
+        if target_id is not None:
+            query = query.eq("target_id", target_id)
+
+        result = query.execute()
+        rows: list = result.data or []
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("GET /admin/audit-log error for tenant=%s: %s", tenant_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+    entries = [
+        {
+            "id":            r.get("id"),
+            "actor_user_id": r.get("actor_user_id"),
+            "action":        r.get("action"),
+            "target_type":   r.get("target_type"),
+            "target_id":     r.get("target_id"),
+            "before_state":  r.get("before_state"),
+            "after_state":   r.get("after_state"),
+            "metadata":      r.get("metadata"),
+            "occurred_at":   r.get("occurred_at"),
+        }
+        for r in rows
+    ]
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "tenant_id":    tenant_id,
+            "count":        len(entries),
+            "limit":        limit,
+            "filters": {
+                "action":        action,
+                "actor_user_id": actor_user_id,
+                "target_type":   target_type,
+                "target_id":     target_id,
+            },
+            "entries": entries,
+        },
+    )
