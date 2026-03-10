@@ -178,6 +178,44 @@ export interface ReconciliationResponse {
     count?: number;
 }
 
+export interface OwnerStatementLineItem {
+    booking_id: string;
+    provider: string;
+    currency: string | null;
+    check_in: string | null;
+    check_out: string | null;
+    gross: string | null;
+    ota_commission: string | null;
+    net_to_property: string | null;
+    source_confidence: string;
+    epistemic_tier: string;
+    lifecycle_status: string | null;
+    event_kind: string;
+    recorded_at: string | null;
+}
+
+export interface OwnerStatementSummary {
+    currency: string;
+    gross_total: string | null;
+    ota_commission_total: string | null;
+    net_to_property_total: string | null;
+    management_fee_pct: string;
+    management_fee_amount: string | null;
+    owner_net_total: string | null;
+    booking_count: number;
+    ota_collecting_excluded_from_net: number;
+    overall_epistemic_tier: string;
+}
+
+export interface OwnerStatementResponse {
+    tenant_id: string;
+    property_id: string;
+    month: string;
+    total_bookings_checked: number;
+    summary: OwnerStatementSummary;
+    line_items: OwnerStatementLineItem[];
+}
+
 // ---------------------------------------------------------------------------
 // API calls
 // ---------------------------------------------------------------------------
@@ -260,6 +298,17 @@ export const api = {
 
     getReconciliation: (period: string): Promise<ReconciliationResponse> =>
         apiFetch(`/admin/reconciliation?period=${period}`),
+
+    // Phase 164 — Owner Statement
+    getOwnerStatement: (
+        propertyId: string,
+        month: string,
+        managementFeePct?: string,
+    ): Promise<OwnerStatementResponse> => {
+        const q = new URLSearchParams({ month });
+        if (managementFeePct) q.set("management_fee_pct", managementFeePct);
+        return apiFetch(`/owner-statement/${encodeURIComponent(propertyId)}?${q}`);
+    },
 };
 
 // Phase 157 — Worker task types

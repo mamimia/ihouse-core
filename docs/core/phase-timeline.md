@@ -3615,3 +3615,17 @@ Goal: Portfolio-level financial dashboard at /financial.
 Completed:
 - `ihouse-ui/app/financial/page.tsx` — NEW — 5 sections: (1) summary bar (gross/commission/net/bookings cards), (2) provider breakdown table (OTA colour dots + commission rate badge), (3) property breakdown table, (4) payment lifecycle segmented bar + legend, (5) reconciliation inbox chip + link. Period nav (‹/›), 7-currency selector, shimmer loading skeletons, staggered fadeIn animation, collapsing reconciliation warning banner.
 - `ihouse-ui/lib/api.ts` — MODIFIED — added 5 typed financial API methods + FinancialSummaryResponse, FinancialByProviderResponse, FinancialByPropertyResponse, LifecycleDistributionResponse, ReconciliationResponse interfaces.
+
+---
+
+## Phase 164 — Closed
+
+**Phase 164 — Owner Statement UI**
+**Date closed:** 2026-03-10
+**Tests:** UI phase, no backend tests. 0 TypeScript errors.
+
+Goal: Monthly owner statement view at /financial/statements.
+
+Completed:
+- `ihouse-ui/app/financial/statements/page.tsx` — NEW — Property + period + management fee controls; per-booking table with epistemic tier badges (✅A/🔵B/⚠️C), OTA colour dots, lifecycle chips, net suppressed for OTA-Collecting rows; totals panel (gross/commission/net/mgmt fee/owner net); CSV client-side export; PDF (plain-text) link; idle prompt; shimmer skeletons; worst-tier summary badge.
+- `ihouse-ui/lib/api.ts` — MODIFIED — OwnerStatementLineItem, OwnerStatementSummary, OwnerStatementResponse interfaces + getOwnerStatement() method.
