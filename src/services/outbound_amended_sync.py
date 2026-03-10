@@ -14,10 +14,10 @@ Phase 141-144 guarantees apply automatically via execute_sync_plan:
   - Idempotency key: {booking_id}:{external_id}:{YYYYMMDD} (Phase 143)
   - Sync log persistence to outbound_sync_log table (Phase 144)
 
-Relationship to amend_sync_trigger.py (Phase 152/155):
-  - amend_sync_trigger.py calls adapters directly (no rate-limit/retry/log).
-  - This module goes through execute_sync_plan — full guarantees apply.
-  - Both are wired in service.py as additive triggers.
+Phase 209 — Trigger Consolidation:
+  The old fast-path trigger (amend_sync_trigger.py, Phase 152/155) has been
+  removed. This module is now the SOLE outbound sync path for BOOKING_AMENDED.
+  service.py calls fire_amended_sync() only — no dual triggers.
 
 The amended booking dates (check_in, check_out) are passed through via
 context fields so adapters that need them can extract them from the

@@ -11,11 +11,11 @@ Tests:
   G — ExpediaVrboAdapter.cancel() dry-run (no API key)
   H — ExpediaVrboAdapter.cancel() 'vrbo' sub-provider dry-run
   I — ExpediaVrboAdapter.cancel() real HTTP 200
-  J — cancel_sync_trigger: api_first provider cancel path
-  K — cancel_sync_trigger: ical_fallback provider still works
-  L — cancel_sync_trigger: unknown provider → skipped
-  M — cancel_sync_trigger: mixed api + ical channels
   N — _build_idempotency_key suffix distincts keys
+
+Phase 209 — Groups J, K, L, M removed (tested deprecated cancel_sync_trigger.py fast-path,
+now deleted). Outbound cancel sync is handled solely via fire_canceled_sync() in
+outbound_canceled_sync.py through the guaranteed build_sync_plan -> execute_sync_plan path.
 """
 from __future__ import annotations
 
@@ -283,137 +283,14 @@ class TestGroupI_ExpediaCancel_Http:
 
 
 # ===========================================================================
-# Group J — cancel_sync_trigger: api_first path
+# Groups J, K, L, M — REMOVED in Phase 209
+# Tested deprecated cancel_sync_trigger.py fast-path (Phase 151/154),
+# now deleted. Outbound cancel sync uses sole guaranteed path:
+# outbound_canceled_sync.fire_canceled_sync() -> build_sync_plan -> execute_sync_plan.
 # ===========================================================================
 
-class TestGroupJ_TriggerApiPath:
-
-    def _make_airbnb_channel(self, external_id: str = "listing-jj") -> dict:
-        return {"provider": "airbnb", "external_id": external_id, "sync_strategy": "api_first"}
-
-    def test_j1_airbnb_channel_calls_cancel(self, monkeypatch):
-        monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
-        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
-        results = fire_cancel_sync(
-            booking_id="bk-j1",
-            property_id="prop-1",
-            tenant_id="t-j",
-            channels=[self._make_airbnb_channel()],
-        )
-        assert len(results) == 1
-        assert results[0].status == "dry_run"
-
-    def test_j2_bookingcom_channel_calls_cancel(self, monkeypatch):
-        monkeypatch.delenv("BOOKINGCOM_API_KEY", raising=False)
-        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
-        results = fire_cancel_sync(
-            booking_id="bk-j2",
-            property_id="prop-1",
-            tenant_id="t-j",
-            channels=[{"provider": "bookingcom", "external_id": "hotel-j2", "sync_strategy": "api_first"}],
-        )
-        assert results[0].status == "dry_run"
-        assert results[0].provider == "bookingcom"
-
-    def test_j3_expedia_channel_calls_cancel(self, monkeypatch):
-        monkeypatch.delenv("EXPEDIA_API_KEY", raising=False)
-        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
-        results = fire_cancel_sync(
-            booking_id="bk-j3",
-            property_id="prop-1",
-            tenant_id="t-j",
-            channels=[{"provider": "expedia", "external_id": "prop-j3", "sync_strategy": "api_first"}],
-        )
-        assert results[0].provider == "expedia"
-        assert results[0].status == "dry_run"
 
 
-# ===========================================================================
-# Group K — cancel_sync_trigger: ical_fallback path still works
-# ===========================================================================
-
-class TestGroupK_TriggerIcalPath:
-
-    def test_k1_hotelbeds_ical_channel_uses_ical_adapter(self, monkeypatch):
-        monkeypatch.setenv("HOTELBEDS_ICAL_URL", "https://hotelbeds.example.com/ical")
-        monkeypatch.setenv("IHOUSE_DRY_RUN", "true")
-        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
-        results = fire_cancel_sync(
-            booking_id="bk-k1",
-            property_id="prop-1",
-            tenant_id="t-k",
-            channels=[{"provider": "hotelbeds", "external_id": "ext-k1", "sync_strategy": "ical_fallback"}],
-        )
-        # dry_run returns dry_run status via ICalPushAdapter
-        assert results[0].provider == "hotelbeds"
-        assert results[0].status in ("dry_run", "ok", "failed")  # adapter decides
-        monkeypatch.delenv("IHOUSE_DRY_RUN")
-
-
-# ===========================================================================
-# Group L — cancel_sync_trigger: unknown provider → skipped
-# ===========================================================================
-
-class TestGroupL_TriggerUnknown:
-
-    def test_l1_unknown_provider_is_skipped(self):
-        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
-        results = fire_cancel_sync(
-            booking_id="bk-l1",
-            property_id="prop-1",
-            tenant_id="t-l",
-            channels=[{"provider": "UNKNOWN_OTA", "external_id": "ext-l1", "sync_strategy": "api_first"}],
-        )
-        assert results[0].status == "skipped"
-        assert results[0].provider == "UNKNOWN_OTA"
-
-    def test_l2_missing_provider_skipped(self):
-        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
-        results = fire_cancel_sync(
-            booking_id="bk-l2",
-            property_id="prop-1",
-            tenant_id="t-l",
-            channels=[{"provider": "", "external_id": "ext-l2", "sync_strategy": "api_first"}],
-        )
-        assert results[0].status == "skipped"
-
-
-# ===========================================================================
-# Group M — cancel_sync_trigger: mixed channels
-# ===========================================================================
-
-class TestGroupM_TriggerMixed:
-
-    def test_m1_two_channels_two_results(self, monkeypatch):
-        monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
-        monkeypatch.setenv("IHOUSE_DRY_RUN", "true")
-        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
-        channels = [
-            {"provider": "airbnb",    "external_id": "listing-m1", "sync_strategy": "api_first"},
-            {"provider": "hotelbeds", "external_id": "ext-m1",     "sync_strategy": "ical_fallback"},
-        ]
-        results = fire_cancel_sync(
-            booking_id="bk-m1", property_id="prop-1", tenant_id="t-m",
-            channels=channels,
-        )
-        assert len(results) == 2
-        monkeypatch.delenv("IHOUSE_DRY_RUN")
-
-    def test_m2_all_providers_present(self, monkeypatch):
-        monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
-        monkeypatch.delenv("BOOKINGCOM_API_KEY", raising=False)
-        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
-        channels = [
-            {"provider": "airbnb",    "external_id": "a1", "sync_strategy": "api_first"},
-            {"provider": "bookingcom","external_id": "b1", "sync_strategy": "api_first"},
-        ]
-        results = fire_cancel_sync(
-            booking_id="bk-m2", property_id="prop-1", tenant_id="t-m",
-            channels=channels,
-        )
-        providers = {r.provider for r in results}
-        assert "airbnb" in providers
-        assert "bookingcom" in providers
 
 
 # ===========================================================================

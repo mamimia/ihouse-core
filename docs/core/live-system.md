@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 208 — Platform Checkpoint III (2026-03-11)**
+**Last updated: Phase 210 — Documentation Audit (2026-03-11)**
 
 ## Core Architecture
 
@@ -222,6 +222,8 @@ All **14 providers** implemented at full parity:
 | `POST /line/webhook` | LINE task acknowledgement | 124 |
 | `GET /whatsapp/webhook` | WhatsApp webhook challenge (Meta) | 196 |
 | `POST /whatsapp/webhook` | WhatsApp task acknowledgement | 196 |
+| `GET /telegram/webhook` | Telegram webhook challenge | 203 |
+| `POST /telegram/webhook` | Telegram task acknowledgement | 203 |
 
 ## Future Evolution
 

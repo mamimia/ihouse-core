@@ -14,13 +14,10 @@ Phase 141-144 guarantees apply automatically via execute_sync_plan:
   - Idempotency key: {booking_id}:{external_id}:{YYYYMMDD} (Phase 143)
   - Sync log persistence to outbound_sync_log table (Phase 144)
 
-Relationship to cancel_sync_trigger.py (Phase 151/154):
-  - cancel_sync_trigger.py calls adapters directly (no rate-limit/retry/log).
-  - This module goes through execute_sync_plan — full guarantees apply.
-  - Both are wired in service.py. They are additive, not competing:
-    cancel_sync_trigger: direct .cancel() on each adapter (fast path)
-    fire_canceled_sync:  build_sync_plan → execute_sync_plan (guaranteed path)
-  - The two are intentionally complementary until a future phase consolidates them.
+Phase 209 — Trigger Consolidation:
+  The old fast-path trigger (cancel_sync_trigger.py, Phase 151/154) has been
+  removed. This module is now the SOLE outbound sync path for BOOKING_CANCELED.
+  service.py calls fire_canceled_sync() only — no dual triggers.
 
 Design (identical to outbound_created_sync.py):
   - Best-effort — never raises, never blocks the main ingest response.

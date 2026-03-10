@@ -10,7 +10,7 @@ plan to all configured channels for the property:
   5. Returns list of CreatedSyncResult (pure data, no side-effects beyond HTTP)
 
 Design:
-  - Mirrors the pattern of cancel_sync_trigger.py and amend_sync_trigger.py.
+  - Shared pattern with outbound_canceled_sync.py and outbound_amended_sync.py.
   - Best-effort — never raises, never blocks the main ingest response.
   - channels and registry params allow full DI for unit tests (no live DB).
   - On any exception → log warning, swallow, return [].

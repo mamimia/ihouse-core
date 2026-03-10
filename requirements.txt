@@ -1,0 +1,75 @@
+# iHouse Core — Python Dependencies
+# Pinned from production venv (Phase 211)
+# To regenerate: source .venv/bin/activate && pip freeze > requirements.txt
+
+# --- Core Framework ---
+fastapi==0.133.1
+uvicorn==0.41.0
+starlette==0.52.1
+python-multipart==0.0.24
+pydantic==2.12.5
+pydantic_core==2.41.5
+
+# --- Supabase Client ---
+supabase==2.28.0
+supabase-auth==2.28.0
+supabase-functions==2.28.0
+postgrest==2.28.0
+storage3==2.28.0
+realtime==2.28.0
+
+# --- HTTP / Networking ---
+httpx==0.28.1
+httpcore==1.0.9
+requests==2.32.5
+urllib3==2.6.3
+h11==0.16.0
+h2==4.3.0
+hpack==4.1.0
+hyperframe==6.1.0
+certifi==2026.2.25
+idna==3.11
+charset-normalizer==3.4.4
+
+# --- Auth / Crypto ---
+PyJWT==2.11.0
+cryptography==46.0.5
+cffi==2.0.0
+pycparser==3.0
+
+# --- Async ---
+anyio==4.12.1
+websockets==15.0.1
+
+# --- Config ---
+python-dotenv==1.2.1
+PyYAML==6.0.3
+strictyaml==1.7.3
+
+# --- Utilities ---
+click==8.3.1
+python-dateutil==2.9.0.post0
+six==1.17.0
+tenacity==9.1.4
+typing_extensions==4.15.0
+typing-inspection==0.4.2
+annotated-types==0.7.0
+annotated-doc==0.0.4
+packaging==26.0
+deprecation==2.1.0
+StrEnum==0.4.15
+
+# --- PDF Generation (owner statements) ---
+reportlab==4.4.10
+pillow==12.1.1
+
+# --- Caching / Performance ---
+cachetools==6.2.6
+propcache==0.4.1
+multidict==6.7.1
+yarl==1.22.0
+
+# --- Dev/Test (do NOT include in production image) ---
+# pytest==9.0.2
+# pluggy==1.6.0
+# iniconfig==2.3.0

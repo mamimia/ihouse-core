@@ -1,7 +1,7 @@
 # iHouse Core — UI Architecture and Role-Based Product Surfaces
 
-**Status:** 6 of 7 target screens deployed. Worker Mobile surface missing. No auth flow yet.
-**Date recorded:** 2026-03-09 | **Last updated:** 2026-03-10 (Phase 175 checkpoint)
+**Status:** 12+ screens deployed. All target surfaces built. Auth flow live.
+**Date recorded:** 2026-03-09 | **Last updated:** 2026-03-11 (Phase 210 documentation audit)
 **Intent:** Keep this document as a standing architectural reference for all future
 UI phases, API design, and permission modeling decisions.
 
@@ -295,16 +295,19 @@ The `ihouse-ui/` Next.js 14 App Router project was scaffolded in Phase 152 and h
 | `/dashboard` | Operations Dashboard | ✅ Phase 153 | /operations/today, /tasks, /admin/outbound-health, /admin/reconciliation, /admin/dlq |
 | `/tasks` | Task Center + Detail | ✅ Phase 157 | /tasks, /tasks/{id}, /worker/tasks |
 | `/bookings` | Bookings List | ✅ Phase 158 | /bookings, /bookings/{id}, /amendments/{id} |
+| `/calendar` | Booking Calendar | ✅ Phase 200 | /bookings (date-range filtered) |
 | `/financial` | Financial Dashboard | ✅ Phase 163 | /financial/summary, /financial/cashflow, /financial/ota-comparison |
+| `/financial/statements` | Owner Statement | ✅ Phase 164 | /owner-statement/{property_id} |
 | `/owner` | Owner Portal | ✅ Phase 170 | /owner-statement/{property_id}, /financial/cashflow |
 | `/admin` | Admin Settings | ✅ Phase 169 | /admin/registry/providers, /admin/permissions, /admin/dlq |
-| `/worker` | Worker Mobile | ❌ Missing | /worker/tasks, /worker/tasks/{id}/acknowledge |
-| `/login` | Auth Flow | ❌ Missing | /auth/login or Supabase auth |
+| `/admin/dlq` | DLQ Replay UI | ✅ Phase 205 | /admin/dlq, /admin/dlq/{id}/replay |
+| `/worker` | Worker Mobile | ✅ Phase 157 | /worker/tasks, /worker/tasks/{id}/acknowledge |
+| `/login` | Auth Flow | ✅ Phase 178 | JWT collection + redirect |
+| `/guests` | Guest Profile | ✅ Phase 193 | /bookings/{id}/guest-profile |
 
-### Critical Gaps (must close before production)
+### Status: All Critical Gaps Closed
 
-1. **No auth flow** — JWT is assumed to be externally provided. No login page, no token collection, no redirect on 401.
-2. **No Worker Mobile screen** — The task model, worker router, and LINE channel are all complete. The UI surface is the only missing piece.
+Both the auth flow and Worker Mobile screen have been built. The system has 12+ deployed screens covering all target role surfaces.
 
 ### Invariant: UI never reads Supabase directly
 

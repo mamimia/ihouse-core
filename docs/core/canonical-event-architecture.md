@@ -3,10 +3,11 @@
 
 ## Version
 
-Phase 28 – OTA External Surface Canonicalization (Locked)
+Phase 28 – OTA External Surface Canonicalization (Locked)  
+Phase 69 – Amendment Support Added (MODIFY reclassified to BOOKING_AMENDED)
 
-Last Closed Phase  
-Phase 28 – OTA External Surface Canonicalization
+Last Updated  
+Phase 210 – Documentation Audit
 
 
 ## Purpose
@@ -159,32 +160,38 @@ Example:
 reservation_modified
 
 
-### Canonical Rule
+### Canonical Rule (Updated Phase 69)
 
-MODIFY does not represent a canonical booking lifecycle event.
+MODIFY was originally rejected by default (Phase 28).
 
-OTA modification payloads cannot be deterministically interpreted
-without external state or OTA-specific logic.
+Since Phase 69, MODIFY payloads are reclassified to BOOKING_AMENDED.
+This is a canonical booking lifecycle event representing date, rate,
+or guest-count changes to an existing reservation.
 
-Because of this, the system enforces the following invariant:
+Current invariant:
 
-MODIFY → deterministic reject-by-default
+MODIFY → reclassified to BOOKING_AMENDED → processed through apply_envelope
 
 
-### Adapter Behavior
+### Adapter Behavior (Updated Phase 69)
 
 When an OTA modification payload is received:
 
 reservation_modified  
 → semantic classification MODIFY  
-→ deterministic rejection by adapter
+→ reclassified to BOOKING_AMENDED by adapter  
+→ processed through apply_envelope
 
-Adapters are not allowed to:
+Adapters are required to:
 
-- perform booking_state lookups
-- infer lifecycle transitions
-- emit UPDATE events
+- extract the changed fields (dates, rates, guest count)
+- emit a BOOKING_AMENDED canonical envelope
+- pass through apply_envelope like any other lifecycle event
+
+Adapters are still not allowed to:
+
 - split MODIFY into CANCEL + CREATE
+- perform booking_state lookups during classification
 
 
 ## Multi-OTA Adapter Architecture
@@ -219,8 +226,7 @@ External event ingestion must remain deterministic.
 
 Only canonical lifecycle outcomes may reach the database gate.
 
-OTA modification events are rejected unless a future deterministic
-resolution strategy is formally introduced.
+OTA modification events are reclassified to BOOKING_AMENDED (Phase 69).
 
 The shared OTA pipeline must remain provider-agnostic.
 
@@ -238,9 +244,9 @@ Phase 28 replaced this external surface with explicit lifecycle events:
 BOOKING_CREATED  
 BOOKING_CANCELED
 
-The historical transport event may still appear internally inside
-the OTA adapter execution pipeline.
+Phase 69 added:
 
-This artifact is not considered a canonical external event and may
-be removed in a future cleanup phase once the execution pipeline
-fully transitions to lifecycle-only semantics.
+BOOKING_AMENDED
+
+The BOOKING_SYNC_INGEST transport artifact has been fully removed
+from the execution pipeline. It no longer appears in any code path.

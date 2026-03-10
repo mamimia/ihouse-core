@@ -44,9 +44,10 @@ normalizes external payloads,
 validates them against canonical rules,
 and submits canonical envelopes through apply_envelope only.
 
-Supported external ingestion kinds in the current hardening phase:
+Supported external ingestion kinds:
 BOOKING_CREATED
 BOOKING_CANCELED
+BOOKING_AMENDED
 
 Unsupported external event types must be rejected rather than approximated.
 

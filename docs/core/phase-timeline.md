@@ -4181,3 +4181,19 @@ Documentation and audit phase. No source code changes. Full system sync after 11
 - 12 UI surfaces
 - 5,049 tests collected / 5,049 passing / 0 failures. Exit 0.
 
+## Phase 209 — Outbound Sync Trigger Consolidation (Closed) — 2026-03-11
+
+Tech debt closure: Phase 185 dual outbound sync triggers consolidated. Audit confirmed fast-path triggers (`cancel_sync_trigger.py`, `amend_sync_trigger.py`) were already disconnected from `service.py` — comments at lines 301 and 357 confirm removal. Both deprecated source files deleted, both deprecated test files deleted, both `deprecated/` directories removed. Docstrings in `outbound_canceled_sync.py`, `outbound_amended_sync.py`, and `outbound_created_sync.py` updated to reflect consolidated single-path architecture.
+
+Test groups J–M removed from `test_sync_cancel_contract.py` (8 tests). Test groups J–N removed from `test_sync_amend_contract.py` (14 tests). All removed tests imported from the deleted deprecated modules.
+
+Outbound sync architecture is now clean: one path per event type — `fire_created_sync`, `fire_canceled_sync`, `fire_amended_sync` — each going through `build_sync_plan → execute_sync_plan` with full Phase 141–144 guarantees (rate-limit, retry, idempotency, sync log persistence). No dual triggers, no fast-path, no deprecated files.
+
+Tests: 5,027 collected / 5,027 passing / 0 failures. Exit 0. (−22 from Phase 208 baseline.)
+
+## Phase 210 — Roadmap & Documentation Cleanup (Closed) — 2026-03-11
+
+Documentation debt closure. Rewrote `roadmap.md` from 626 → 150 lines — removed 4 duplicate completed lists, 3 obsolete forward-planning sections, 2 duplicate worker communication blocks, and the stale Phase 185 tech debt warning (closed by Phase 209). Updated forward plan to Phases 210–218. Archived 6 stale files to `docs/archive/`: `phase-roadmap.md`, `architecture.md`, `phase-23-implementation-breakdown.md`, `phase-27-canonical-compliance-checklist-multi-ota.md`, `system-audit.md`, `improvements/future-improvements.md`. Updated `current-snapshot.md` and `work-context.md`.
+
+Tests: 5,027 (no code changes, docs-only phase).
+

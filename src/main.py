@@ -109,6 +109,12 @@ _TAGS = [
     {"name": "ota-comparison", "description": "OTA financial health comparison (Ring 3). JWT Bearer required. Per-OTA commission, net-to-gross, revenue share, lifecycle distribution."},
     {"name": "worker", "description": "Worker-facing task surface (Phase 123). JWT Bearer required. Role-scoped task list, acknowledge, and complete endpoints."},
     {"name": "line", "description": "LINE external escalation channel (Phase 124). Receives LINE webhook ack callbacks. Writes ONLY to tasks table. LINE is fallback only."},
+    {"name": "sms", "description": "SMS escalation channel (Phase 212). Tier-2 last-resort escalation via Twilio. Inbound ACK replies → task acknowledgement. IHOUSE_SMS_TOKEN required."},
+    {"name": "email", "description": "Email notification channel (Phase 213). One-click task acknowledgement via email link. GET /email/ack?task_id=&token=. IHOUSE_EMAIL_TOKEN required."},
+    {"name": "onboarding", "description": "Property Onboarding Wizard API (Phase 214). Guided 3-step flow: metadata → channel mappings → worker assignments. Idempotent / upsert. JWT Bearer required."},
+    {"name": "revenue-report", "description": "Automated Revenue Reports (Phase 215). Per-property monthly breakdown + portfolio cross-property summary. Reads `booking_financial_facts` only. JWT Bearer required."},
+    {"name": "portfolio", "description": "Portfolio Dashboard UI (Phase 216). Cross-property owner view: occupancy, revenue, pending tasks, sync health. Single aggregated endpoint. JWT Bearer required."},
+    {"name": "integrations", "description": "Integration Management UI (Phase 217). Admin surface: all OTA connections per property with last sync status, stale flags, enabled/disabled. JWT Bearer required."},
     {"name": "availability", "description": "Availability projection (Phase 126). Per-date occupancy state for a property. Reads from booking_state only. Zero write-path changes."},
     {"name": "integration-health", "description": "Integration Health Dashboard (Phase 127). Per-provider health for all 13 OTA providers: lag, buffer, DLQ, stale alert. JWT required."},
     {"name": "conflicts", "description": "Conflict Center (Phase 128). Active booking overlaps (CONFLICT pairs) across all properties for a tenant. JWT required."},
@@ -259,6 +265,24 @@ app.include_router(booking_guest_link_router)
 from api.whatsapp_router import router as whatsapp_router  # noqa: E402  # Phase 196
 app.include_router(whatsapp_router)
 
+from api.sms_router import router as sms_router  # noqa: E402  # Phase 212
+app.include_router(sms_router)
+
+from api.email_router import router as email_router  # noqa: E402  # Phase 213
+app.include_router(email_router)
+
+from api.onboarding_router import router as onboarding_router  # noqa: E402  # Phase 214
+app.include_router(onboarding_router)
+
+from api.revenue_report_router import router as revenue_report_router  # noqa: E402  # Phase 215
+app.include_router(revenue_report_router)
+
+from api.portfolio_dashboard_router import router as portfolio_dashboard_router  # noqa: E402  # Phase 216
+app.include_router(portfolio_dashboard_router)
+
+from api.integration_management_router import router as integration_management_router  # noqa: E402  # Phase 217
+app.include_router(integration_management_router)
+
 
 # ---------------------------------------------------------------------------
 # OpenAPI — inject BearerAuth security scheme (Phase 63)
@@ -380,6 +404,41 @@ async def health() -> JSONResponse:
             "version": result.version,
             "env": result.env,
             "checks": result.checks,
+        },
+    )
+
+
+@app.get(
+    "/readiness",
+    tags=["ops"],
+    summary="Readiness probe (Supabase reachable?)",
+    responses={
+        200: {"description": "Ready — Supabase reachable, can serve traffic"},
+        503: {"description": "Not ready — Supabase unreachable"},
+    },
+)
+async def readiness() -> JSONResponse:
+    """
+    Kubernetes-style readiness probe (Phase 211).
+
+    Unlike /health (liveness — is the process alive?), /readiness answers:
+    "can this instance serve traffic right now?"
+
+    Returns 200 if Supabase is reachable, 503 otherwise.
+    Load balancers should use this to decide whether to route traffic here.
+
+    No authentication required.
+    """
+    result = run_health_checks(version=app.version, env=_ENV)
+    supabase_check = result.checks.get("supabase", {})
+    is_ready = supabase_check.get("status") in ("ok", "skipped")
+
+    return JSONResponse(
+        status_code=200 if is_ready else 503,
+        content={
+            "ready": is_ready,
+            "status": result.status,
+            "version": result.version,
         },
     )
 

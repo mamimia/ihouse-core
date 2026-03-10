@@ -1,0 +1,63 @@
+# =============================================================================
+# iHouse Core — Docker Ignore
+# Keep the image small — exclude dev/test/docs/local artifacts
+# =============================================================================
+
+# Version control
+.git
+.gitignore
+
+# Python cache
+__pycache__
+*.py[cod]
+*.pyo
+.pytest_cache
+
+# Virtual environments
+.venv
+venv
+
+# IDE
+.vscode
+.idea
+.claude
+.agent
+
+# Local data
+.data
+*.sqlite
+*.sqlite3
+*.db
+*-wal
+*-shm
+database.sqlite
+
+# Environment files (injected at runtime, not baked into image)
+.env
+.env.local
+.env.*.local
+
+# Documentation (not needed at runtime)
+docs/
+releases/
+backups/
+artifacts/
+migrations/
+
+# Tests (not needed in production image)
+tests/
+
+# OS artifacts
+.DS_Store
+PUT_DB_PATH_HERE
+PR_METADATA.txt
+tmp_event.json
+
+# UI (separate deployment)
+ihouse-ui/
+
+# Supabase config
+supabase/
+
+# Scripts (dev tooling)
+scripts/

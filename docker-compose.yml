@@ -1,0 +1,51 @@
+# =============================================================================
+# iHouse Core — Docker Compose
+# Phase 211 — Production Deployment Foundation
+# =============================================================================
+#
+# Usage:
+#   docker compose up             — start in foreground
+#   docker compose up -d          — start detached
+#   docker compose down           — stop and remove containers
+#   docker compose logs -f api    — follow API logs
+#   docker compose ps             — check health status
+#
+# Environment:
+#   Reads from .env in project root. Required variables:
+#     SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+#
+# =============================================================================
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ihouse-core-api
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      - IHOUSE_ENV=production
+      - PORT=8000
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

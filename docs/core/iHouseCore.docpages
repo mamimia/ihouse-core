@@ -1,0 +1,279 @@
+# iHouseCore — DocPages
+## Complete Phase Registry (Phases 1–218)
+
+> Living document. Each closed phase is one entry.
+> Source of truth: `docs/core/roadmap.md`, `docs/archive/phases/`
+
+---
+
+## Foundation — OTA Ingestion Core (Phases 1–57)
+
+| Phase | Title | Key Deliverable |
+|-------|-------|-----------------|
+| 1 | Project Bootstrap | Repo init, initial structure |
+| 2 | Core Data Model | Event envelope, booking_state schema |
+| 3 | Pipeline Skeleton | service.py, apply_envelope stub |
+| 4 | Airbnb Adapter v1 | First OTA webhook parser |
+| 5 | DLQ Foundation | Dead-letter queue for malformed payloads |
+| 6 | Replay Engine | DLQ replay → reprocess through pipeline |
+| 7 | Booking Created Event | BOOKING_CREATED canonical processing |
+| 8 | Booking Canceled Event | BOOKING_CANCELED canonical processing |
+| 9 | Idempotency Layer | Duplicate envelope detection |
+| 10 | Event Log Foundation | Append-only event_log table |
+| 11 | Booking.com Adapter | Second major OTA |
+| 12 | Expedia Adapter | Third major OTA |
+| 13 | Agoda Adapter | Asia Tier 1.5 |
+| 14 | Trip.com Adapter | Asia Tier 1.5 |
+| 15 | Payload Validator | validate_ota_payload — field presence + type |
+| 16 | OTA Schema Map | Normalize field aliases across providers |
+| 17 | Error Model | Structured error codes + make_error_response |
+| 18 | Tenant Isolation v1 | tenant_id enforcement on all writes |
+| 19 | Replay Safety | Idempotency in replay path |
+| 20 | Pipeline Hardening | Exception boundaries, error propagation |
+| 21 | Service Pipeline | ingest_provider_event full wiring |
+| 22 | Canonical Event Test | Contract for apply_envelope invariants |
+| 23 | Multi-OTA Compliance | Cross-provider schema normalization |
+| 24 | Traveloka Adapter | SE Asia Tier 1.5 |
+| 25 | DLQ Inspector v1 | View dead-letter entries |
+| 26 | Booking State Query | GET /bookings/{booking_id} skeleton |
+| 27 | Canonical Compliance | Checklist for multi-OTA compliance |
+| 28 | Fixture Harness | Replay fixture contracts |
+| 29 | E2E Test Foundation | Full ingestion → state harness |
+| 30 | Idempotency Monitoring | Track duplicate detection rates |
+| 31 | Event Semantics | semantics.py — event_type → action mapping |
+| 32 | Ordering Buffer | OTA messages ordered by occurred_at |
+| 33 | Buffer Inspector | View ordering buffer state |
+| 34 | Conflict Detection v1 | Detect overlapping bookings |
+| 35 | apply_envelope Authority | Locked: only write authority to booking_state |
+| 36 | booking_id Scheme | `{provider}_{normalized_ref}` deterministic |
+| 37 | Canonical Event v2 | occurred_at + recorded_at separation |
+| 38 | Schema Normalization | Normalize dates, prices, currency |
+| 39 | Soft Delete Safety | Canceled vs deleted distinction |
+| 40 | Payload Envelope | EventEnvelope dataclass canonical |
+| 41 | Adapter Registry | Adapter discovery + registration |
+| 42 | Provider Routing | Route by provider slug |
+| 43 | Logging Layer | Structured logging per request |
+| 44 | Tenant Rate Limit v1 | Per-tenant sliding window |
+| 45 | Health Check v1 | GET /health basic |
+| 46 | API Version Header | X-API-Version on all responses |
+| 47 | Reserve Keyword Safe | Handle cancel/modify keyword variants |
+| 48 | Fixture Coverage | Fixture contracts for 5 providers |
+| 49 | E2E Harness v2 | 8-provider E2E coverage |
+| 50 | Platform Checkpoint I | Full audit, handoff (Phase 50) |
+| 51 | Admin Query API | GET /admin/summary |
+| 52 | Booking List v1 | GET /bookings basic list |
+| 53 | Vrbo Adapter | Vacation rental global Tier 2 |
+| 54 | GVR Adapter | Google Vacation Rentals Tier 2 |
+| 55 | Reservation Timeline | Per-booking event history |
+| 56 | OTA Schema Extension | reservation_id alias support (GVR/Traveloka) |
+| 57 | REST Hardening | Error boundary cleanup, Platform Checkpoint |
+
+---
+
+## HTTP API + Financial Foundation (Phases 58–110)
+
+| Phase | Title | Key Deliverable |
+|-------|-------|-----------------|
+| 58 | POST /webhooks/{provider} | Full sig verify + validate + ingest |
+| 59 | main.py FastAPI | FastAPI entrypoint, GET /health |
+| 60 | Request Logging Middleware | X-Request-ID, duration, status |
+| 61 | JWT Auth | tenant_id from verified sub claim |
+| 62 | Per-Tenant Rate Limiting | Sliding window, 429 + Retry-After |
+| 63 | OpenAPI Docs | BearerAuth, response schemas, /docs + /redoc |
+| 64 | Enhanced Health Check | Supabase ping, DLQ count, 503 support |
+| 65 | Financial Data Foundation | BookingFinancialFacts, 5-provider extraction |
+| 66 | booking_financial_facts | Supabase projection table |
+| 67 | Financial Facts Query API | GET /financial/{booking_id} |
+| 68 | booking_id Stability | normalize_reservation_ref, all adapters |
+| 69 | BOOKING_AMENDED Pipeline | MODIFY event type → canonical AMENDED |
+| 71 | Booking State Query API | GET /bookings/{booking_id} full |
+| 72 | Tenant Summary Dashboard | GET /admin/summary |
+| 73 | Ordering Buffer Auto-Route | Auto-buffer ambiguous ordering |
+| 74 | OTA Date Normalization | Standardize check_in/check_out formats |
+| 75 | Production Hardening | error_models.py, X-API-Version |
+| 76 | occurred_at vs recorded_at | Provider time ≠ ingestion time — both preserved |
+| 77 | OTA Schema Normalization | Normalize 3 key aliases |
+| 78 | OTA Schema Normalization v2 | Dates + price normalization |
+| 79 | Idempotency Monitoring | Track dup rates, metrics |
+| 80 | Structured Logging | Per-request structured log |
+| 81 | Tenant Isolation Audit | Full tenant_id boundary review |
+| 82 | Admin Query API | Extended admin endpoints |
+| 83 | Vrbo Adapter Full | Full Vrbo adapter + contract tests |
+| 84 | Reservation Timeline | Per-booking event timeline API |
+| 85 | GVR Adapter Full | Full GVR adapter + contract tests |
+| 86 | Conflict Detection Layer | Overlap detection engine |
+| 87 | Tenant Isolation Hardening | Hard boundaries on all queries |
+| 88 | Traveloka Adapter Full | Full Traveloka adapter + contract tests |
+| 89 | OTA Reconciliation Discovery | Detect missing/stale facts |
+| 90 | External Integration Test Harness | 11-provider E2E harness |
+| 91 | OTA Replay Fixture Contract | Replay fixture validation |
+| 92 | Roadmap + System Audit | Phase checkpoint, docs update |
+| 93 | Payment Lifecycle / Revenue State | 7-state payment lifecycle |
+| 94 | MakeMyTrip Adapter | Tier 2 India |
+| 95 | MakeMyTrip Replay Fixture | Contract tests |
+| 96 | Klook Adapter | Tier 2 Asia activities |
+| 97 | Klook Replay Fixture | Contract tests |
+| 98 | Despegar Adapter | Tier 2 Latin America |
+| 99 | Despegar Replay Fixture | Contract tests |
+| 100 | Owner Statement Foundation | Net-to-property calculation |
+| 101 | Owner Statement Query API | GET /owner-statements |
+| 102 | E2E Harness Extension | MakeMyTrip + Klook + Despegar |
+| 103 | Payment Status API | GET /payment-status/{booking_id} |
+| 104 | Amendment History API | GET /amendments/{booking_id} |
+| 105 | Admin Router Contract Tests | Full coverage on admin endpoints |
+| 106 | Booking List Query API | GET /bookings with filters |
+| 107 | Roadmap Refresh | Updated roadmap, forward plan |
+| 108 | Financial List Query API | GET /financial list endpoint |
+| 109 | Booking Date Range Search | Date filters on booking list |
+| 110 | OTA Reconciliation Implementation | Flag missing/stale financial facts |
+
+---
+
+## Task System + Financial Suite (Phases 111–133)
+
+| Phase | Title | Key Deliverable |
+|-------|-------|-----------------|
+| 111 | Task System Foundation | TaskKind, TaskStatus, TaskPriority, WorkerRole |
+| 112 | Task Automation | task_automator.py — tasks from booking events |
+| 113 | Task Query API | GET /tasks, GET /tasks/{id} |
+| 114 | Task Persistence (DDL) | tasks table Supabase DDL |
+| 115 | Task Writer | task_writer.py — upsert/cancel/reschedule |
+| 116 | Financial Aggregation API | Ring 1: summary/provider/property/lifecycle |
+| 117 | SLA Escalation Engine | sla_engine.py — CRITICAL_ACK_SLA_MINUTES=5 |
+| 118 | Financial Dashboard API | Ring 2–3: status card, RevPAR |
+| 119 | Reconciliation Inbox API | Exception-first reconciliation view |
+| 120 | Cashflow / Payout Timeline | Weekly buckets, 30/60/90d projection |
+| 121 | Owner Statement Generator | Ring 4: per-booking line items + PDF |
+| 122 | OTA Financial Health Comparison | Per-OTA commission rate, net-to-gross |
+| 123 | Worker-Facing Task Surface | GET /worker/tasks, acknowledge, complete |
+| 124 | LINE Escalation Channel | LINE pure module, HMAC-SHA256 verify |
+| 125 | Hotelbeds Adapter | Tier 3 B2B bedbank, 13th adapter |
+| 126 | Availability Projection | Per-date occupancy state |
+| 127 | Integration Health Dashboard | Per-provider health: lag, buffer, DLQ, stale |
+| 128 | Conflict Center | Active overlap pairs across all properties |
+| 129 | Booking Search Enhancement | Full-text + date range search |
+| 130 | Properties Summary Dashboard | Cross-property tenant view |
+| 131 | DLQ Inspector | GET /admin/dlq — list + single entry |
+| 132 | Booking Audit Trail | Chronological event history |
+| 133 | OTA Ordering Buffer Inspector | Buffer queue inspector |
+
+---
+
+## Outbound Sync Layer (Phases 135–155)
+
+| Phase | Title | Key Deliverable |
+|-------|-------|-----------------|
+| 135 | Property-Channel Map Foundation | property_channel_map CRUD |
+| 136 | Provider Capability Registry | Per-provider sync capability config |
+| 137 | Outbound Sync Trigger | Sync trigger on booking events |
+| 138 | Outbound Executor | execute_sync_plan → real adapter calls |
+| 139 | Real Outbound Adapters | 4 providers (Airbnb, Booking.com, Vrbo, iCal) |
+| 140 | iCal Date Injection | Real check_in/check_out in VCALENDAR |
+| 141 | Rate-Limit Enforcement | Per-provider rate limiting in outbound |
+| 142 | Retry + Exponential Backoff | Transient failure recovery |
+| 143 | Idempotency Key | Outbound call deduplication |
+| 144 | Outbound Sync Result Persistence | outbound_sync_log writes |
+| 145 | Outbound Sync Log Inspector | GET /admin/outbound-log |
+| 146 | Sync Health Dashboard | Per-property sync health aggregation |
+| 147 | Failed Sync Replay | Retry failed sync entries |
+| 148 | Sync Result Webhook Callback | POST callback on sync.ok |
+| 149 | RFC 5545 VCALENDAR Compliance | Full iCal standard compliance |
+| 150 | iCal VTIMEZONE Support | VTIMEZONE block in VCALENDAR |
+| 151 | iCal Cancellation Push | Cancel booking → iCal CANCELLED method |
+| 152 | iCal Sync-on-Amendment Push | BOOKING_AMENDED → iCal update |
+| 153 | Operations Dashboard UI | /ops today view: arrivals, departures, cleanings |
+| 154 | API-first Cancel Push | Cancel via provider write API |
+| 155 | API-first Amend Push | Amend via provider write API |
+
+---
+
+## UI + Admin + Permissions (Phases 156–177)
+
+| Phase | Title | Key Deliverable |
+|-------|-------|-----------------|
+| 157 | Worker Task UI | Mobile worker task management surface |
+| 158 | Bookings View UI | Booking list + detail view |
+| 163 | Financial Dashboard UI | Financial rings UI |
+| 164 | Owner Statement UI | Owner statement + PDF download UI |
+| 165 | Properties Metadata API | Properties table, GET /properties |
+| 166 | Role-Based Scoping | Role definitions, access control |
+| 167 | Permissions Routing | Permission checks on API layer |
+| 168 | Push Notification Foundation | FCM push infra + notification_channels table |
+| 169 | Admin Settings UI | Admin settings surface |
+| 170 | Owner Portal UI | Owner-facing portal surface |
+| 171 | Admin Audit Log | admin_audit_log table, GET /admin/audit |
+| 172 | Health Check Enrichment | Enriched health with dependency checks |
+| 173 | IPI — Proactive Availability Broadcasting | Auto-broadcast availability on bookings |
+| 174 | Outbound Sync Stress Harness | 449-test outbound stress suite |
+| 175 | Platform Checkpoint I (Outbound) | Full outbound sync audit + handoff |
+| 176 | Outbound Sync Auto-Trigger BOOKING_CREATED | Auto-sync on ingest |
+| 177 | SLA→Dispatcher Bridge | sla_engine.evaluate() → dispatch_notification() |
+
+---
+
+## Notifications + Channels (Phases 178–203)
+
+| Phase | Title | Key Deliverable |
+|-------|-------|-----------------|
+| 178–183 | Notification Delivery Writer + Channel Infra | notification_delivery_log, dispatcher, delivery status |
+| 187 | Rakuten Travel Adapter | Japan Tier 2, 14th OTA adapter |
+| 188 | PDF Owner Statements | PDF generation via ReportLab |
+| 189 | Booking Mutation Audit Events | Audit trail on CREATED/CANCELED/AMENDED |
+| 190 | Manager Activity Feed UI | Manager-facing activity feed |
+| 191 | Multi-Currency Financial Overview | Multi-currency aggregation + display |
+| 192 | Guest Profile Foundation | guest_profiles table, guest model |
+| 193 | Guest Profile UI | Guest profile management surface |
+| 194 | Booking→Guest Link | booking_guest_links table + API |
+| 195 | Hostelworld Adapter | Budget/hostel global Tier 3, 14th adapter |
+| 196 | WhatsApp Escalation Channel | Per-worker architecture, Meta Cloud API |
+| 197 | Platform Checkpoint II | Full docs sync, handoff (Phase 197) |
+| 198 | Test Suite Stabilization | 4,903 passing, 0 failed — full green |
+| 199 | Supabase RLS Systematic Audit | 0 security findings across all tables |
+| 200 | Booking Calendar UI | /calendar month-view + provider/status filters |
+| 201 | Worker Channel Preference UI | notification_channels table, GET/PUT/DELETE /worker/preferences |
+| 202 | Notification History Inbox | notification_delivery_log, GET /worker/notifications |
+| 203 | Telegram Escalation Channel | telegram_escalation.py, dispatcher upgraded to 3-channel |
+| 204 | Docs Sync | live-system.md + current-snapshot.md refreshed |
+| 205 | DLQ Replay from UI | POST /admin/dlq/{envelope_id}/replay, /admin/dlq UI page |
+| 206 | Pre-Arrival Guest Task Workflow | GUEST_WELCOME TaskKind, pre_arrival_tasks.py, POST /tasks/pre-arrival/{booking_id} |
+| 207 | Conflict Auto-Resolution Engine | conflict_auto_resolver.py, POST /conflicts/auto-check/{booking_id} |
+
+---
+
+## Documentation + Deployment + Product Surfaces (Phases 208–218)
+
+| Phase | Title | Key Deliverable |
+|-------|-------|-----------------|
+| 208 | Platform Checkpoint III | Full system audit, docs sync, handoff (Phase 208) |
+| 209 | Outbound Sync Trigger Consolidation | Deprecated dual-trigger tech debt. Single path: fire_*_sync() → build_sync_plan → execute_sync_plan |
+| 210 | Roadmap & Documentation Cleanup | Audited 20+ docs, archived stale files, created `docs/core/planning/ai-strategy.md` |
+| 211 | Production Deployment Foundation | Dockerfile (multi-stage), docker-compose.yml, .dockerignore, requirements.txt, GET /readiness |
+| 212 | SMS Escalation Channel | sms_escalation.py, sms_router.py (GET challenge + POST Twilio inbound ACK) |
+| 213 | Email Notification Channel | email_escalation.py, email_router.py (GET health + GET /email/ack one-click token ACK) |
+| 214 | Property Onboarding Wizard API | onboarding_router.py — 4-step stateless wizard: /start → /channels → /workers → /status |
+| 215 | Automated Revenue Reports | revenue_report_router.py — GET /revenue-report/portfolio + GET /revenue-report/{id}, monthly breakdown, mgmt fee |
+| 216 | Portfolio Dashboard UI | portfolio_dashboard_router.py — GET /portfolio/dashboard: occupancy + revenue + tasks + sync health per property |
+| 217 | Integration Management UI | integration_management_router.py — GET /admin/integrations (grouped by property, sync status) + /summary |
+| 218 | Platform Checkpoint IV | Full audit Phases 210–217, docs sync (snapshot, work-context, roadmap), handoff Phase-218 |
+
+---
+
+## System Totals (Phase 218)
+
+| Metric | Value |
+|--------|-------|
+| Total Phases | **218** (including checkpoints and gaps) |
+| OTA Adapters | **14** |
+| Escalation Channels | **5** (LINE, WhatsApp, Telegram, SMS, Email) |
+| Task Kinds | **6** |
+| Product/UI Surfaces | **16** |
+| Financial Rings | **6** |
+| Tests | **5,179 passing, 0 failures** |
+
+---
+
+## Spec Files
+
+All phase specs live in `docs/archive/phases/phase-N-spec.md`.
+Phase ZIPs live in `releases/phase-zips/iHouse-Core-Docs-Phase-N.zip`.
+Handoffs live in `releases/handoffs/handoff_to_new_chat Phase-N.md`.

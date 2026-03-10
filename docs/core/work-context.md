@@ -1,17 +1,15 @@
-# iHouse Core — Work Context
-
 ## Current Active Phase
 
-Phase 208 — Platform Checkpoint III (closed)
+Phase 218 — Platform Checkpoint IV (closed)
 
 ## Last Closed Phase
 
-Phase 208 — Platform Checkpoint III — docs audit, handoff document, forward plan (Phases 209–218). Test count: 5049 (0 failures). current-snapshot.md and work-context.md updated to reflect Phases 198–208.
+Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff. 0 new code files.
 
 ## Current Objective
 
-Continue executing the next phases from the roadmap.
-Next up: Phase 209 (see handoff document for Phases 209–218 plan).
+Phase 218 complete. Next: Phase 219 (not yet assigned).
+See `docs/core/handoff_to_new_chat_Phase-218.md` for full context.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -47,18 +45,21 @@ Next up: Phase 209 (see handoff document for Phases 209–218 plan).
 ## Key Files — Financial API Layer (Phases 116–122)
 
 | File | Role |
-|------|------|
+|------|›----|
 | `src/api/financial_aggregation_router.py` | Ring 1: summary / by-provider / by-property / lifecycle-distribution / multi-currency-overview |
 | `src/api/financial_dashboard_router.py` | Ring 2–3: status card, revpar, lifecycle-by-property |
 | `src/api/reconciliation_router.py` | Ring 3: Exception-first reconciliation inbox |
 | `src/api/cashflow_router.py` | Ring 3: Weekly inflow buckets, 30/60/90-day projection |
 | `src/api/owner_statement_router.py` | Ring 4: Per-booking line items + PDF export (Phase 188) |
 | `src/api/ota_comparison_router.py` | Ring 3: Per-OTA commission rate, net-to-gross, revenue share |
+| `src/api/revenue_report_router.py` | Phase 215: GET /revenue-report/portfolio + GET /revenue-report/{id} |
+| `src/api/portfolio_dashboard_router.py` | Phase 216: GET /portfolio/dashboard — occupancy+revenue+tasks+sync per property |
+| `src/api/integration_management_router.py` | Phase 217: GET /admin/integrations + /admin/integrations/summary |
 
 ## Key Files — Task Layer (Phases 111–117, 206–207)
 
 | File | Role |
-|------|------|
+|------|›----|
 | `src/tasks/task_model.py` | TaskKind (6 kinds incl GUEST_WELCOME), TaskStatus, TaskPriority, WorkerRole, Task dataclass |
 | `src/tasks/task_automator.py` | Pure tasks_for_booking_created / canceled / amended |
 | `src/tasks/pre_arrival_tasks.py` | Pure tasks_for_pre_arrival — GUEST_WELCOME + enriched CHECKIN_PREP (Phase 206) |
@@ -67,6 +68,24 @@ Next up: Phase 209 (see handoff document for Phases 209–218 plan).
 | `src/tasks/sla_engine.py` | evaluate() — ACK_SLA_BREACH + COMPLETION_SLA_BREACH. CRITICAL_ACK_SLA_MINUTES=5. |
 | `src/api/worker_router.py` | GET /worker/tasks, PATCH /acknowledge, PATCH /complete |
 | `src/services/conflict_auto_resolver.py` | Phase 207 — run_auto_check() — auto-conflict on BOOKING_CREATED/AMENDED |
+
+## Key Files — Communication Channels (Phases 212, 213)
+
+| File | Role |
+|------|›----|
+| `src/channels/sms_escalation.py` | SMS pure module — mirrors LINE/WhatsApp/Telegram pattern (Phase 212) |
+| `src/api/sms_router.py` | GET challenge + POST inbound ACK via Twilio form fields |
+| `src/channels/email_escalation.py` | Email pure module — one-click ACK token flow (Phase 213) |
+| `src/api/email_router.py` | GET /email/webhook health + GET /email/ack token ACK |
+
+## Key Files — Onboarding + Product Surfaces (Phases 214–217)
+
+| File | Role |
+|------|›----|
+| `src/api/onboarding_router.py` | Phase 214: 4-step wizard — POST /onboarding/start, /{id}/channels, /{id}/workers, GET /{id}/status |
+| `src/api/revenue_report_router.py` | Phase 215: GET /revenue-report/portfolio + /revenue-report/{id} |
+| `src/api/portfolio_dashboard_router.py` | Phase 216: GET /portfolio/dashboard — occupancy+revenue+tasks+sync health per property |
+| `src/api/integration_management_router.py` | Phase 217: GET /admin/integrations (OTA connection view) + /admin/integrations/summary |
 
 ## Key Files — HTTP API Layer (Phases 58–64)
 
@@ -90,6 +109,7 @@ Next up: Phase 209 (see handoff document for Phases 209–218 plan).
 | `IHOUSE_ENV` | "development" | health response label |
 | `SUPABASE_URL` | required | Supabase URL |
 | `SUPABASE_KEY` | required | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | required | Used by all financial/admin routers (Phases 116+) |
 | `IHOUSE_LINE_SECRET` | unset | dev-mode LINE sig skip |
 | `IHOUSE_WHATSAPP_TOKEN` | unset | production WhatsApp dispatch |
 | `IHOUSE_WHATSAPP_PHONE_NUMBER_ID` | unset | Meta Cloud API phone ID |
@@ -105,4 +125,4 @@ Next up: Phase 209 (see handoff document for Phases 209–218 plan).
 
 ## Tests
 
-**5,049 collected. 5,049 passing. 0 failures. Exit 0.**
+**5,179 collected. 5,179 passing. 0 failures. Exit 0.**

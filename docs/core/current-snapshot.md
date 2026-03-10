@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 208 — Platform Checkpoint III (closed)
+Phase 218 — Platform Checkpoint IV (closed)
 
 ## Last Closed Phase
-Phase 208 — Platform Checkpoint III (closed)
+Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153). iCal Timezone Support (150). API-first Cancel Push (154). API-first Amend Push (155). Worker Task UI (157). Bookings View UI (158). Financial Dashboard UI (163). Owner Statement UI (164). Properties Metadata API (165). Role-Based Scoping (166). Permissions Routing (167). Push Notification Foundation (168). Admin Settings UI (169). Owner Portal UI (170). Admin Audit Log (171). Health Check Enrichment (172). IPI — Proactive Availability Broadcasting (173). Outbound Sync Stress Harness (174). Platform Checkpoint I (175). Outbound Sync Auto-Trigger for BOOKING_CREATED (176). SLA→Dispatcher Bridge (177). Notification Delivery Writer (178–183). PDF Owner Statements (188). Booking Mutation Audit Events (189). Manager Activity Feed UI (190). Multi-Currency Financial Overview (191). Guest Profile Foundation (192). Guest Profile UI (193). Booking→Guest Link (194). Hostelworld Adapter (195). WhatsApp Escalation Channel — Per-Worker Architecture (196). Platform Checkpoint II (197). Test Suite Stabilization (198). Supabase RLS Audit — 0 findings (199). Booking Calendar UI (200). Worker Channel Preference UI — notification_channels, GET/PUT/DELETE /worker/preferences (201). Notification History Inbox — notification_delivery_log, GET /worker/notifications (202). Telegram Escalation Channel — telegram_escalation.py pure module (203). Docs Sync (204). DLQ Replay from UI — POST /admin/dlq/{envelope_id}/replay, /admin/dlq UI page (205). Pre-Arrival Guest Task Workflow — GUEST_WELCOME TaskKind, pre_arrival_tasks.py, POST /tasks/pre-arrival/{booking_id} (206). Conflict Auto-Resolution Engine — conflict_auto_resolver.py, POST /conflicts/auto-check/{booking_id}, service.py hooks (207). Platform Checkpoint III — full docs sync, handoff, forward plan 209–218 (208).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal Timezone Support (150). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153). API-first Cancel Push (154). API-first Amend Push (155). Worker Task UI (157). Bookings View UI (158). Financial Dashboard UI (163). Owner Statement UI (164). Properties Metadata API (165). Role-Based Scoping (166). Permissions Routing (167). Push Notification Foundation (168). Admin Settings UI (169). Owner Portal UI (170). Admin Audit Log (171). Health Check Enrichment (172). IPI — Proactive Availability Broadcasting (173). Outbound Sync Stress Harness (174). Platform Checkpoint I (175). Outbound Sync Auto-Trigger for BOOKING_CREATED (176). SLA→Dispatcher Bridge (177). Notification Delivery Writer (178–183). PDF Owner Statements (188). Booking Mutation Audit Events (189). Manager Activity Feed UI (190). Multi-Currency Financial Overview (191). Guest Profile Foundation (192). Guest Profile UI (193). Booking→Guest Link (194). Hostelworld Adapter (195). WhatsApp Escalation Channel — Per-Worker Architecture (196). Platform Checkpoint II (197). Test Suite Stabilization (198). Supabase RLS Audit — 0 findings (199). Booking Calendar UI (200). Worker Channel Preference UI (201). Notification History Inbox (202). Telegram Escalation Channel (203). Docs Sync (204). DLQ Replay from UI (205). Pre-Arrival Guest Task Workflow (206). Conflict Auto-Resolution Engine (207). Platform Checkpoint III (208). Outbound Sync Trigger Consolidation (209). Roadmap & Documentation Cleanup (210). Production Deployment Foundation — Dockerfile, docker-compose, GET /readiness (211). SMS Escalation Channel — sms_escalation.py, sms_router.py (212). Email Notification Channel — email_escalation.py, email_router.py, one-click ACK (213). Property Onboarding Wizard API — onboarding_router.py 4-step wizard (214). Automated Revenue Reports — revenue_report_router.py, portfolio + per-property (215). Portfolio Dashboard UI — portfolio_dashboard_router.py, GET /portfolio/dashboard (216). Integration Management UI — integration_management_router.py, GET /admin/integrations + /summary (217). Platform Checkpoint IV (218).**
 
 
 apply_envelope is the only authority for canonical state mutations.
@@ -138,7 +138,7 @@ apply_envelope is the only authority for canonical state mutations.
 | 192 | Guest Profile Foundation | ✅ |
 | 193 | Guest Profile UI | ✅ |
 | 194 | Booking→Guest Link | ✅ |
-| 195 | Hostelworld Adapter (Tier 3, 12th adapter) | ✅ |
+| 195 | Hostelworld Adapter (Tier 3, 13th adapter) | ✅ |
 | 196 | WhatsApp Escalation Channel — Per-Worker Architecture | ✅ |
 | 197 | Platform Checkpoint II — docs sync, handoff | ✅ |
 | 198 | Test Suite Stabilization — 4903 passing, 0 failed | ✅ |
@@ -152,6 +152,16 @@ apply_envelope is the only authority for canonical state mutations.
 | 206 | Pre-Arrival Guest Task Workflow — GUEST_WELCOME kind, pre_arrival_tasks.py, POST /tasks/pre-arrival/{booking_id} | ✅ |
 | 207 | Conflict Auto-Resolution Engine — conflict_auto_resolver.py, POST /conflicts/auto-check/{booking_id}, service.py auto-hooks | ✅ |
 | 208 | Platform Checkpoint III — docs audit, handoff, forward plan | ✅ |
+| 209 | Outbound Sync Trigger Consolidation — dual-trigger tech debt closed | ✅ |
+| 210 | Roadmap & Documentation Cleanup — audit, archive stale files, AI strategy | ✅ |
+| 211 | Production Deployment Foundation — Dockerfile, docker-compose, .dockerignore, requirements.txt, GET /readiness | ✅ |
+| 212 | SMS Escalation Channel — sms_escalation.py, sms_router.py (GET + POST), registered in main.py, python-multipart | ✅ |
+| 213 | Email Notification Channel — email_escalation.py, email_router.py (GET health + GET /email/ack one-click token ACK) | ✅ |
+| 214 | Property Onboarding Wizard API — onboarding_router.py (POST /start, POST /{id}/channels, POST /{id}/workers, GET /{id}/status) | ✅ |
+| 215 | Automated Revenue Reports — revenue_report_router.py (GET /revenue-report/portfolio + GET /revenue-report/{id}, monthly breakdown + cross-property portfolio, mgmt fee) | ✅ |
+| 216 | Portfolio Dashboard UI — portfolio_dashboard_router.py (GET /portfolio/dashboard: occupancy + revenue + tasks + sync health per property, sorted by urgency) | ✅ |
+| 217 | Integration Management UI — integration_management_router.py (GET /admin/integrations: all OTA connections grouped by property + sync status; GET /admin/integrations/summary) | ✅ |
+| 218 | Platform Checkpoint IV — full audit + docs sync (current-snapshot, work-context, roadmap), handoff_to_new_chat_Phase-218.md | ✅ |
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -294,10 +304,8 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 ## Next Phase
 
-**The next chat must NOT continue automatically from Phase 209.**
-
-See: `releases/handoffs/handoff_to_new_chat Phase-208.md` for full protocol.
+Phase 219 — next open phase after checkpoint.
 
 ## Tests
 
-**5,049 collected. 5,049 passing. 0 failures. Exit 0.**
+**5,179 collected. 5,179 passing. 0 failures. Exit 0.**
