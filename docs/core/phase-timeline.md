@@ -4197,3 +4197,98 @@ Documentation debt closure. Rewrote `roadmap.md` from 626 → 150 lines — remo
 
 Tests: 5,027 (no code changes, docs-only phase).
 
+## Phase 211 — Production Deployment Foundation (Closed) — 2026-03-11
+
+Multi-stage Dockerfile (Python 3.12-slim, pip install, uvicorn entrypoint), `docker-compose.yml` (app service + env vars), `.dockerignore`. `requirements.txt` consolidated. New endpoint: `GET /readiness` — Kubernetes-style probe that pings Supabase and returns 200/503 with structured JSON (`{status, checks: {supabase: {status, latency_ms}}}`). Registered in `main.py`.
+
+Files: `Dockerfile` NEW. `docker-compose.yml` NEW. `.dockerignore` NEW. `requirements.txt` MODIFIED. `src/api/health.py` MODIFIED (readiness endpoint added).
+
+Tests: +6 → 5,033 passing. Exit 0.
+
+## Phase 212 — SMS Escalation Channel (Closed) — 2026-03-11
+
+Fourth escalation channel. `sms_escalation.py` — pure module mirroring LINE/WhatsApp/Telegram pattern: `should_escalate`, `build_sms_message`, `format_sms_text`, `is_priority_eligible`, `dispatch_dry_run`. `sms_router.py` — `GET /sms/webhook` (provider challenge/health, 503 if token not set) + `POST /sms/webhook` (Twilio form-field inbound, X-Twilio-Signature verify, `ACK {task_id}` parsing, best-effort PENDING→ACKNOWLEDGED). `notification_dispatcher.py` extended: CHANNEL_SMS. `python-multipart` added to `requirements.txt`. Registered in `main.py`.
+
+Files: `src/channels/sms_escalation.py` NEW. `src/api/sms_router.py` NEW. `src/channels/notification_dispatcher.py` MODIFIED. `requirements.txt` MODIFIED. `src/main.py` MODIFIED.
+
+Tests: +31 → 5,064 passing. Exit 0.
+
+## Phase 213 — Email Notification Channel (Closed) — 2026-03-11
+
+Fifth escalation channel. `email_escalation.py` — pure module mirroring SMS/WhatsApp/Telegram pattern. `email_router.py` — `GET /email/webhook` (health check, 200 "ok" or "not_configured") + `GET /email/ack` (one-click token ACK: `?task_id={task_id}&token={ack_token}` → task PENDING→ACKNOWLEDGED, returns HTML confirmation page). Token validation: token starts with task_id[:8]. Best-effort, errors swallowed. Registered in `main.py`.
+
+Files: `src/channels/email_escalation.py` NEW. `src/api/email_router.py` NEW. `src/main.py` MODIFIED.
+
+Tests: +35 → 5,099 passing. Exit 0.
+
+## Phase 214 — Property Onboarding Wizard API (Closed) — 2026-03-11
+
+`onboarding_router.py` — 4-endpoint stateless wizard. `POST /onboarding/start` (Step 1: property creation + active-bookings safety gate). `POST /onboarding/{id}/channels` (Step 2: OTA channel mappings via property_channel_map upsert). `POST /onboarding/{id}/workers` (Step 3: notification channels upsert for workers). `GET /onboarding/{id}/status` (derived completion state from property + channels + workers presence). Registered in `main.py`.
+
+Files: `src/api/onboarding_router.py` NEW. `src/main.py` MODIFIED.
+
+Tests: +20 → 5,119 passing. Exit 0.
+
+## Phase 215 — Automated Revenue Reports (Closed) — 2026-03-11
+
+`revenue_report_router.py` — `GET /revenue-report/portfolio` (cross-property monthly breakdown, sorted by gross DESC) + `GET /revenue-report/{property_id}` (single-property monthly breakdown). Parameters: `from_month`/`to_month` range (max 24 months), optional `management_fee_pct`. Reuses owner-statement dedup logic, epistemic tier assignment, and OTA_COLLECTING exclusion invariant. Registered in `main.py`.
+
+Files: `src/api/revenue_report_router.py` NEW. `src/main.py` MODIFIED.
+
+Tests: +24 → 5,143 passing. Exit 0.
+
+## Phase 216 — Portfolio Dashboard UI (Closed) — 2026-03-11
+
+`portfolio_dashboard_router.py` — `GET /portfolio/dashboard`. Single composite endpoint aggregating per-property: occupancy (from `booking_state`, current month), revenue (from `booking_financial_facts`, current month), pending tasks (from `tasks`), and sync health (from `outbound_sync_log`). Property list derived from union of all four data sources. Sorted by urgency: stale sync → pending tasks → active bookings. Registered in `main.py`.
+
+Files: `src/api/portfolio_dashboard_router.py` NEW. `src/main.py` MODIFIED.
+
+Tests: +21 → 5,164 passing. Exit 0.
+
+## Phase 217 — Integration Management UI (Closed) — 2026-03-11
+
+`integration_management_router.py` — `GET /admin/integrations` (cross-property OTA connection view, grouped by property, enriched with last sync status + stale flag from outbound_sync_log, filterable by provider/enabled) + `GET /admin/integrations/summary` (tenant-level totals: enabled, disabled, stale, failed, provider distribution). In-memory join of `property_channel_map` + `outbound_sync_log`. Registered in `main.py`.
+
+Files: `src/api/integration_management_router.py` NEW. `src/main.py` MODIFIED.
+
+Tests: +15 → 5,179 passing. Exit 0.
+
+## Phase 218 — Platform Checkpoint IV (Closed) — 2026-03-11
+
+Documentation and audit phase. No source code changes. Full system sync after Phases 210–217.
+
+Scope completed:
+- `docs/core/current-snapshot.md` — Phases 210–218 fully integrated. Test count → 5,179.
+- `docs/core/work-context.md` — fully rewritten. Phase 218 current. All key file tables updated for Phases 212–217 additions.
+- `docs/core/roadmap.md` — Phases 210–218 marked complete. Forward plan updated to AI Assistive Layer (Phases 220+).
+- `releases/handoffs/handoff_to_new_chat Phase-218.md` — written with full system shape, forward plan, protocol for next session.
+
+System state at closure:
+- 14 OTA adapters live
+- 5 escalation channels (LINE, WhatsApp, Telegram live; SMS, Email stubbed/registered)
+- 6 TaskKinds
+- 16 UI/product surfaces
+- 6 financial rings complete
+- 5,179 tests collected / 5,179 passing / 0 failures. Exit 0.
+
+**Correction note (Phase 219):** Phases 211–218 timeline entries were missing from this file due to an oversight in the Phase 218 checkpoint. They have been reconstructed from `roadmap.md`, `current-snapshot.md`, and source code docstrings. All facts verified against the actual codebase.
+
+## Phase 219 — Documentation Integrity Repair (Closed) — 2026-03-11
+
+Documentation-only phase. No source code changes. Full audit of append-only history docs revealed 8 missing phase entries.
+
+**Scope completed:**
+- `docs/core/phase-timeline.md` — Phases 211–218 entries reconstructed and appended. This entry (Phase 219) appended.
+- `docs/core/construction-log.md` — Phases 211–218 entries reconstructed and appended.
+- `docs/core/live-system.md` — 11 missing endpoints added (GET /readiness, SMS/Email webhooks, onboarding wizard 4 endpoints, revenue reports 2 endpoints, portfolio dashboard, integration management 2 endpoints). Header updated to Phase 219.
+- `docs/core/current-snapshot.md` — Phase 219 current. Next phase → 220.
+- `docs/core/work-context.md` — Phase 219 current. Objective updated.
+- `docs/core/roadmap.md` — Phase 219 marked complete.
+
+**Gap analysis (what was fixed):**
+- phase-timeline.md was missing entries for Phases 211–218 (BOOT.md protocol violation)
+- construction-log.md was missing entries for Phases 211–218 (same)
+- live-system.md was stale at Phase 210 (missing 11 endpoints from Phases 211–217)
+
+Tests: 5,179 (no code changes, docs-only phase). Exit 0.
+

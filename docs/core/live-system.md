@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 210 — Documentation Audit (2026-03-11)**
+**Last updated: Phase 219 — Documentation Integrity Repair (2026-03-11)**
 
 ## Core Architecture
 
@@ -130,6 +130,7 @@ All **14 providers** implemented at full parity:
 | Endpoint | Description | Phase |
 |----------|-------------|-------|
 | `GET /health` | Supabase ping, DLQ count, ok/degraded/unhealthy | 64 |
+| `GET /readiness` | Kubernetes-style probe — Supabase ping, 200/503 | 211 |
 | `GET /admin/summary` | Tenant summary — booking counts, DLQ, financial totals | 72 |
 | `GET /admin/metrics` | DLQ + ordering buffer metrics | 82 |
 | `GET /admin/dlq` | List dead-letter entries with filters | 131 |
@@ -137,6 +138,8 @@ All **14 providers** implemented at full parity:
 | `POST /admin/dlq/{envelope_id}/replay` | Replay a failed DLQ entry | 205 |
 | `GET /admin/audit` | Admin audit log (action, actor, timestamp) | 171 |
 | `GET /admin/health/providers` | Per-OTA last-event timestamp, event counts | 127 |
+| `GET /admin/integrations` | Cross-property OTA connection view (sync status) | 217 |
+| `GET /admin/integrations/summary` | Tenant totals — enabled, disabled, stale, failed | 217 |
 
 ### Bookings
 
@@ -214,6 +217,23 @@ All **14 providers** implemented at full parity:
 | `POST /conflicts/resolve` | Manual conflict resolution | 184 |
 | `POST /conflicts/auto-check/{booking_id}` | Manual trigger of auto-conflict check | 207 |
 
+### Onboarding
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /onboarding/start` | Step 1 — property creation + safety gate | 214 |
+| `POST /onboarding/{id}/channels` | Step 2 — OTA channel mappings | 214 |
+| `POST /onboarding/{id}/workers` | Step 3 — notification channels for workers | 214 |
+| `GET /onboarding/{id}/status` | Derived completion state | 214 |
+
+### Revenue & Portfolio
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /revenue-report/portfolio` | Cross-property monthly revenue breakdown | 215 |
+| `GET /revenue-report/{property_id}` | Single-property monthly breakdown | 215 |
+| `GET /portfolio/dashboard` | Per-property occupancy + revenue + tasks + sync health | 216 |
+
 ### Escalation Channels (Webhooks)
 
 | Endpoint | Description | Phase |
@@ -224,6 +244,10 @@ All **14 providers** implemented at full parity:
 | `POST /whatsapp/webhook` | WhatsApp task acknowledgement | 196 |
 | `GET /telegram/webhook` | Telegram webhook challenge | 203 |
 | `POST /telegram/webhook` | Telegram task acknowledgement | 203 |
+| `GET /sms/webhook` | SMS provider challenge / health check | 212 |
+| `POST /sms/webhook` | SMS inbound task acknowledgement (Twilio) | 212 |
+| `GET /email/webhook` | Email channel health check | 213 |
+| `GET /email/ack` | One-click email task acknowledgement | 213 |
 
 ## Future Evolution
 

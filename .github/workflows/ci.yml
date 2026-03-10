@@ -5,8 +5,10 @@ on:
   pull_request:
 
 jobs:
-  ci:
+  test:
+    name: Test Suite
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -15,15 +17,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
-      - name: Create venv and install deps
+      - name: Install dependencies
         run: |
-          python -m venv .venv
-          source .venv/bin/activate
           python -m pip install -U pip
-          if [ -f requirements.txt ]; then
-            python -m pip install -r requirements.txt
-          fi
+          python -m pip install -r requirements.txt
           python -m pip install -U pytest
 
       - name: Ensure canonical scripts exist
@@ -33,23 +32,70 @@ jobs:
           test -f scripts/dev/curl_event.sh
 
       - name: Run unit and contract tests
+        env:
+          PYTHONPATH: src
+          # IHOUSE_JWT_SECRET must be set — tests that parse JWTs require it
+          IHOUSE_JWT_SECRET: "test-jwt-secret-that-is-long-enough-32chars"
         run: |
-          source .venv/bin/activate
-          # SQLite invariant tests excluded — require IHOUSE_ALLOW_SQLITE=1 (local only)
-          # E2E Supabase tests excluded — require live secrets (manual trigger only)
-          PYTHONPATH=src python -m pytest -q \
-            --ignore=tests/invariants \
-            --ignore=tests/test_booking_amended_e2e.py
+          # pytest.ini already sets: addopts = -q --ignore=tests/invariants --ignore=tests/deprecated
+          # Only add the e2e ignores (require live Supabase secrets)
+          python -m pytest \
+            --ignore=tests/test_booking_amended_e2e.py \
+            --ignore=tests/test_e2e_integration_harness.py \
+            -v --tb=short
+
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff check (report only)
+        # Non-blocking: ruff reports issues but does not fail CI until a
+        # clean baseline is established (future phase).
+        run: ruff check src/ --output-format=github || true
+
+      - name: Run ruff format check (report only)
+        run: ruff format src/ --check --diff || true
+
+  smoke:
+    name: HTTP Smoke Test
+    runs-on: ubuntu-latest
+    # Only runs when IHOUSE_API_KEY secret is configured in this repo
+    if: ${{ secrets.IHOUSE_API_KEY != '' }}
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install -r requirements.txt
 
       - name: Boot API and run HTTP smoke
-        # Only runs when IHOUSE_API_KEY secret is configured in this repo
-        if: ${{ secrets.IHOUSE_API_KEY != '' }}
         env:
           IHOUSE_API_KEY: ${{ secrets.IHOUSE_API_KEY }}
+          PYTHONPATH: src
         run: |
-          source .venv/bin/activate
-          export PYTHONPATH=src
-
           ./scripts/run_api.sh > api.log 2>&1 &
           API_PID=$!
 

@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 218 — Platform Checkpoint IV (closed)
+Phase 219 — Documentation Integrity Repair (closed)
 
 ## Last Closed Phase
 
@@ -8,8 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 218 complete. Next: Phase 219 (not yet assigned).
-See `docs/core/handoff_to_new_chat_Phase-218.md` for full context.
+Phase 219 closed. Next: Phase 220 — CI/CD Pipeline Foundation.
 
 ## Key Invariants (Locked — Do Not Change)
 
