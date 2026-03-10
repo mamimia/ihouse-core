@@ -3601,3 +3601,17 @@ Completed:
 - `src/api/financial_correction_router.py` — NEW — POST /financial/corrections (validates booking_id, currency, at least one amount; 404 on missing booking; inserts BOOKING_CORRECTED / OPERATOR_MANUAL row into booking_financial_facts; best-effort audit event to event_log)
 - `src/main.py` — MODIFIED — registered financial_correction_router
 - `tests/test_financial_correction_contract.py` — NEW — 37 contract tests (Groups A-T)
+
+---
+
+## Phase 163 — Closed
+
+**Phase 163 — Financial Dashboard UI**
+**Date closed:** 2026-03-10
+**Tests:** UI phase, no backend tests. 0 TypeScript errors.
+
+Goal: Portfolio-level financial dashboard at /financial.
+
+Completed:
+- `ihouse-ui/app/financial/page.tsx` — NEW — 5 sections: (1) summary bar (gross/commission/net/bookings cards), (2) provider breakdown table (OTA colour dots + commission rate badge), (3) property breakdown table, (4) payment lifecycle segmented bar + legend, (5) reconciliation inbox chip + link. Period nav (‹/›), 7-currency selector, shimmer loading skeletons, staggered fadeIn animation, collapsing reconciliation warning banner.
+- `ihouse-ui/lib/api.ts` — MODIFIED — added 5 typed financial API methods + FinancialSummaryResponse, FinancialByProviderResponse, FinancialByPropertyResponse, LifecycleDistributionResponse, ReconciliationResponse interfaces.

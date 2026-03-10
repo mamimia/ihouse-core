@@ -1,4 +1,5 @@
 // Phase 153 — iHouse Core API client
+// Phase 163 — Financial Dashboard API methods added
 // Typed fetch wrapper for all backend endpoints.
 // Base URL: NEXT_PUBLIC_API_URL env var (or http://localhost:8000 for dev).
 
@@ -128,6 +129,56 @@ export interface DlqListResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Financial types (Phase 163)
+// ---------------------------------------------------------------------------
+
+export interface FinancialCurrencyBucket {
+    gross: string;
+    commission: string;
+    net: string;
+    booking_count: number;
+}
+
+export interface FinancialSummaryResponse {
+    tenant_id: string;
+    period: string;
+    total_bookings: number;
+    currencies: Record<string, FinancialCurrencyBucket>;
+    base_currency?: string;
+    conversion_warnings?: string[];
+}
+
+export interface FinancialByProviderResponse {
+    tenant_id: string;
+    period: string;
+    providers: Record<string, Record<string, FinancialCurrencyBucket>>;
+    base_currency?: string;
+    conversion_warnings?: string[];
+}
+
+export interface FinancialByPropertyResponse {
+    tenant_id: string;
+    period: string;
+    properties: Record<string, Record<string, FinancialCurrencyBucket>>;
+    base_currency?: string;
+    conversion_warnings?: string[];
+}
+
+export interface LifecycleDistributionResponse {
+    tenant_id: string;
+    period: string;
+    total_bookings: number;
+    distribution: Record<string, number>;
+}
+
+export interface ReconciliationResponse {
+    tenant_id?: string;
+    period?: string;
+    exceptions?: Array<{ booking_id: string; issue?: string }>;
+    count?: number;
+}
+
+// ---------------------------------------------------------------------------
 // API calls
 // ---------------------------------------------------------------------------
 
@@ -184,6 +235,31 @@ export const api = {
             method: "PATCH",
             body: JSON.stringify({ notes: notes ?? "" }),
         }),
+
+    // Phase 163 — Financial Dashboard
+    getFinancialSummary: (period: string, baseCurrency?: string): Promise<FinancialSummaryResponse> => {
+        const q = new URLSearchParams({ period });
+        if (baseCurrency) q.set("base_currency", baseCurrency);
+        return apiFetch(`/financial/summary?${q}`);
+    },
+
+    getFinancialByProvider: (period: string, baseCurrency?: string): Promise<FinancialByProviderResponse> => {
+        const q = new URLSearchParams({ period });
+        if (baseCurrency) q.set("base_currency", baseCurrency);
+        return apiFetch(`/financial/by-provider?${q}`);
+    },
+
+    getFinancialByProperty: (period: string, baseCurrency?: string): Promise<FinancialByPropertyResponse> => {
+        const q = new URLSearchParams({ period });
+        if (baseCurrency) q.set("base_currency", baseCurrency);
+        return apiFetch(`/financial/by-property?${q}`);
+    },
+
+    getLifecycleDistribution: (period: string): Promise<LifecycleDistributionResponse> =>
+        apiFetch(`/financial/lifecycle-distribution?period=${period}`),
+
+    getReconciliation: (period: string): Promise<ReconciliationResponse> =>
+        apiFetch(`/admin/reconciliation?period=${period}`),
 };
 
 // Phase 157 — Worker task types
