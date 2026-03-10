@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 166 — Worker + Owner Role Scoping (closed)
+Phase 167 — Manager Delegated Permissions (closed)
 
 ## Last Closed Phase
 
-Phase 166 — Worker + Owner Role Scoping: worker_router auto-scoped to permissions.worker_role, owner_statement_router + financial_aggregation_router property-scoped via permissions.property_ids, 44 new contract tests, 4341 total passing.
+Phase 167 — Manager Delegated Permissions: PATCH /permissions/{user_id}/grant + /revoke, get_permission_flags() + has_permission() helpers in auth.py, 37 contract tests, 4378 total passing.
 
 ## Current Objective
 
-**Phase 167 — Manager Delegated Permissions**
+**Phase 168 — Push Notification Foundation (LINE + FCM)**
 
 ## Roadmap Direction (Phase 149 → 175)
 

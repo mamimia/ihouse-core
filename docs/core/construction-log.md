@@ -2382,3 +2382,16 @@ Changes:
 - tests/test_owner_role_scoping_contract.py [NEW]: 22 contract tests.
 
 Result: 4341 tests pass (4297 + 44 new). 2 pre-existing SQLite skips unchanged.
+
+## Phase 167 — Manager Delegated Permissions (Closed)
+
+Admin can grant/revoke specific capability flags to managers.
+
+Changes:
+- src/api/permissions_router.py [MODIFIED]: PATCH /permissions/{user_id}/grant (shallow-merge capabilities dict into permissions JSONB), PATCH /permissions/{user_id}/revoke (remove listed capability keys, idempotent). Both return 404 if no record. _fetch_existing_permissions() new helper.
+- src/api/auth.py [MODIFIED]: get_permission_flags(db, tenant_id, user_id, flags) → {flag: value|None} dict, best-effort. has_permission(db, tenant_id, user_id, flag) → bool, best-effort. Phase 167 capability flag helpers for route-level guards.
+- tests/test_delegated_permissions_contract.py [NEW]: 37 contract tests.
+
+Known capability flags: can_approve_owner_statements, can_manage_integrations, can_view_financials, can_manage_workers, worker_role (str), property_ids (list).
+
+Result: 4378 tests pass (4341 + 37 new). 2 pre-existing SQLite skips unchanged.

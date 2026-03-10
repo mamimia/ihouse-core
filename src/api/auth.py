@@ -1,5 +1,6 @@
 """
 JWT Authentication — FastAPI Dependency
+Phase 167 — Capability flag helpers
 ========================================
 
 Provides `verify_jwt` — a FastAPI Depends-injectable function that:
@@ -162,3 +163,50 @@ def get_jwt_scope(db: Any, tenant_id: str, user_id: str) -> dict:
         "permissions": record.get("permissions") or {},
     }
 
+
+# ---------------------------------------------------------------------------
+# Phase 167 — Capability flag helpers
+# ---------------------------------------------------------------------------
+
+def get_permission_flags(
+    db: Any,
+    tenant_id: str,
+    user_id: str,
+    flags: list[str],
+) -> dict[str, Any]:
+    """
+    Best-effort: return the requested permission flags for a user.
+
+    Returns a dict of {flag_name: value} for each flag in `flags`.
+    Missing flags get a default of None.
+    Never raises — returns {flag: None, ...} on any error.
+
+    Usage (route-level guard):
+        flags = get_permission_flags(db, tenant_id, user_id, ["can_approve_owner_statements"])
+        if not flags.get("can_approve_owner_statements"):
+            return 403
+
+    Phase 167: used to enforce delegated-permission guards on manager-facing endpoints.
+    """
+    try:
+        scope = get_jwt_scope(db, tenant_id, user_id)
+        permissions = scope.get("permissions") or {}
+        return {flag: permissions.get(flag) for flag in flags}
+    except Exception:  # noqa: BLE001
+        return {flag: None for flag in flags}
+
+
+def has_permission(db: Any, tenant_id: str, user_id: str, flag: str) -> bool:
+    """
+    Best-effort: return True if the user has the given capability flag set to truthy.
+
+    Convenience wrapper around get_permission_flags().
+    Never raises — returns False on any error.
+
+    Phase 167: sugar for simple boolean capability checks in route guards.
+    """
+    try:
+        flags = get_permission_flags(db, tenant_id, user_id, [flag])
+        return bool(flags.get(flag))
+    except Exception:  # noqa: BLE001
+        return False

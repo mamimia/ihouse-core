@@ -1,13 +1,16 @@
 """
 Phase 165 — Permissions Router
+Phase 167 — Manager Delegated Permissions
 
 Admin-managed CRUD for tenant_permissions.
 
 Endpoints:
-  GET    /permissions                     — list all permissions for the tenant
-  GET    /permissions/{user_id}           — get permission record for a user
-  POST   /permissions                     — create or upsert a permission record
-  DELETE /permissions/{user_id}           — delete a permission record
+  GET    /permissions                           — list all permissions for the tenant
+  GET    /permissions/{user_id}                 — get permission record for a user
+  POST   /permissions                           — create or upsert a permission record
+  DELETE /permissions/{user_id}                 — delete a permission record
+  PATCH  /permissions/{user_id}/grant           — Phase 167: grant capability flags
+  PATCH  /permissions/{user_id}/revoke          — Phase 167: revoke capability flags
 
 Rules:
   - JWT auth required (tenant_id from sub claim).
@@ -17,6 +20,24 @@ Rules:
   - POST is an upsert (insert or replace on conflict).
   - DELETE returns 404 if the record does not exist.
   - 400 on invalid role.
+
+Grant/Revoke (Phase 167):
+  - PATCH /permissions/{user_id}/grant  body: {"capabilities": {"flag": value, ...}}
+    Merges supplied flags into the existing permissions JSONB (shallow merge).
+    Creates record if missing (with role='manager' default unless user has a record).
+    Returns 404 if no existing permission record for user_id.
+  - PATCH /permissions/{user_id}/revoke body: {"capabilities": ["flag", ...]}
+    Removes listed keys from the existing permissions JSONB.
+    Returns 404 if no existing permission record.
+    Returns 200 even if some keys were not present (idempotent).
+
+Known capability flags (non-exhaustive):
+  can_approve_owner_statements  bool
+  can_manage_integrations       bool
+  can_view_financials           bool
+  can_manage_workers            bool
+  worker_role                   str   (WorkerRole value — for worker-scoped tasks)
+  property_ids                  list  (for owner-scoped properties)
 
 Enrichment helper (used by auth.py):
   get_permission_record(db, tenant_id, user_id) → dict | None
@@ -322,4 +343,231 @@ async def delete_permission(
         })
     except Exception as exc:
         logger.exception("DELETE /permissions/%s error: %s", user_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 167 helpers
+# ---------------------------------------------------------------------------
+
+def _fetch_existing_permissions(db: Any, tenant_id: str, user_id: str) -> Optional[dict]:
+    """Fetch the current permissions JSONB for (tenant_id, user_id). Returns None if missing."""
+    try:
+        result = (
+            db.table("tenant_permissions")
+            .select("permissions")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        rows = result.data or []
+        if not rows:
+            return None
+        return rows[0].get("permissions") or {}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+# ---------------------------------------------------------------------------
+# PATCH /permissions/{user_id}/grant
+# ---------------------------------------------------------------------------
+
+@router.patch(
+    "/permissions/{user_id}/grant",
+    tags=["permissions"],
+    summary="Grant capability flags to a user (Phase 167)",
+    description=(
+        "Merges the supplied capability flags into the user's permissions JSONB. "
+        "Existing flags not listed in the body are preserved. "
+        "**Required body:** `{\"capabilities\": {\"flag\": value, ...}}`. "
+        "Returns 404 if no permission record exists for the user."
+    ),
+    responses={
+        200: {"description": "Capabilities granted"},
+        400: {"description": "Validation error"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Permission record not found"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def grant_permission(
+    user_id: str,
+    body: dict,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Grant capability flags to an existing user permission record.
+
+    **Body:**
+    ```json
+    {"capabilities": {"can_approve_owner_statements": true, "can_view_financials": true}}
+    ```
+
+    Flags are merged (shallow) into the existing `permissions` JSONB.
+    Existing flags NOT in this payload are preserved.
+    Returns **404** if the user has no permission record — create one first
+    via `POST /permissions`.
+    """
+    if not isinstance(body, dict):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "Request body must be a JSON object."},
+        )
+
+    capabilities = body.get("capabilities")
+    if not isinstance(capabilities, dict):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "'capabilities' must be a JSON object (dict of flag: value)."},
+        )
+
+    if not capabilities:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "'capabilities' must be non-empty."},
+        )
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        existing_perms = _fetch_existing_permissions(db, tenant_id, user_id)
+        if existing_perms is None:
+            return make_error_response(
+                status_code=404,
+                code=ErrorCode.PERMISSION_NOT_FOUND,
+                extra={"user_id": user_id},
+            )
+
+        # Shallow merge: existing flags preserved, new flags overlay
+        merged = {**existing_perms, **capabilities}
+        now = datetime.now(tz=timezone.utc).isoformat()
+
+        db.table("tenant_permissions") \
+            .update({"permissions": merged, "updated_at": now}) \
+            .eq("tenant_id", tenant_id) \
+            .eq("user_id", user_id) \
+            .execute()
+
+        return JSONResponse(status_code=200, content={
+            "status":           "granted",
+            "tenant_id":        tenant_id,
+            "user_id":          user_id,
+            "granted":          capabilities,
+            "permissions":      merged,
+            "updated_at":       now,
+        })
+    except Exception as exc:
+        logger.exception("PATCH /permissions/%s/grant error: %s", user_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# PATCH /permissions/{user_id}/revoke
+# ---------------------------------------------------------------------------
+
+@router.patch(
+    "/permissions/{user_id}/revoke",
+    tags=["permissions"],
+    summary="Revoke capability flags from a user (Phase 167)",
+    description=(
+        "Removes the listed capability flag keys from the user's permissions JSONB. "
+        "Keys not present are ignored (idempotent). "
+        "**Required body:** `{\"capabilities\": [\"flag_name\", ...]}`. "
+        "Returns 404 if no permission record exists for the user."
+    ),
+    responses={
+        200: {"description": "Capabilities revoked"},
+        400: {"description": "Validation error"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Permission record not found"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def revoke_permission(
+    user_id: str,
+    body: dict,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Revoke (remove) specific capability flags from a user's permissions record.
+
+    **Body:**
+    ```json
+    {"capabilities": ["can_approve_owner_statements", "can_view_financials"]}
+    ```
+
+    Keys not present in the current permissions are silently ignored (idempotent).
+    Returns **404** if the user has no permission record.
+    """
+    if not isinstance(body, dict):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "Request body must be a JSON object."},
+        )
+
+    capabilities = body.get("capabilities")
+    if not isinstance(capabilities, list):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "'capabilities' must be a JSON array of flag names."},
+        )
+
+    if not capabilities:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "'capabilities' must be non-empty."},
+        )
+
+    # All entries must be strings
+    if not all(isinstance(k, str) for k in capabilities):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "All entries in 'capabilities' must be strings."},
+        )
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        existing_perms = _fetch_existing_permissions(db, tenant_id, user_id)
+        if existing_perms is None:
+            return make_error_response(
+                status_code=404,
+                code=ErrorCode.PERMISSION_NOT_FOUND,
+                extra={"user_id": user_id},
+            )
+
+        # Remove listed keys; keys not present are silently ignored
+        actually_revoked = [k for k in capabilities if k in existing_perms]
+        remaining = {k: v for k, v in existing_perms.items() if k not in capabilities}
+        now = datetime.now(tz=timezone.utc).isoformat()
+
+        db.table("tenant_permissions") \
+            .update({"permissions": remaining, "updated_at": now}) \
+            .eq("tenant_id", tenant_id) \
+            .eq("user_id", user_id) \
+            .execute()
+
+        return JSONResponse(status_code=200, content={
+            "status":           "revoked",
+            "tenant_id":        tenant_id,
+            "user_id":          user_id,
+            "revoked":          actually_revoked,
+            "ignored":          [k for k in capabilities if k not in existing_perms],
+            "permissions":      remaining,
+            "updated_at":       now,
+        })
+    except Exception as exc:
+        logger.exception("PATCH /permissions/%s/revoke error: %s", user_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
