@@ -3491,3 +3491,20 @@ Completed:
 ⚠️ Migration applied manually via Supabase dashboard (apply_migration blocked by service role restriction).
 
 Result: 4098 tests pass (4065 + 33 new).
+
+---
+
+## Phase 157 — Closed
+
+**Phase 157 — Worker Task Mobile View UI**
+**Date closed:** 2026-03-10
+**Tests:** UI phase — no new backend tests. Python suite: 4098 passing (unchanged).
+
+Goal: Mobile-optimised task surface for cleaners, check-in staff, maintenance workers.
+
+Completed:
+- `ihouse-ui/lib/api.ts` — EXTENDED — WorkerTask, WorkerTaskListResponse types; getWorkerTasks(), acknowledgeTask(), startTask(), completeTask() API calls
+- `ihouse-ui/app/tasks/page.tsx` — NEW — Task list with CRITICAL-first sort, priority colour strips, live SLA countdown (1s interval), overdue indicator, one-tap acknowledge, 30s auto-refresh, filter tabs (All/Pending/In Progress/Done), loading skeletons, loading pulse animation
+- `ihouse-ui/app/tasks/[id]/page.tsx` — NEW — Task detail with full metadata grid, SLA countdown, single-tap action flow (Acknowledge → Start → Complete), notes textarea on completion, success/error toasts, back navigation
+
+TypeScript: 0 errors.

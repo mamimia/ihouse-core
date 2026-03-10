@@ -159,4 +159,55 @@ export const api = {
         if (params?.limit) q.set("limit", String(params.limit));
         return apiFetch(`/admin/dlq${q.size ? "?" + q : ""}`);
     },
+
+    // Phase 157 — Worker task actions
+    getWorkerTasks: (params?: {
+        status?: string;
+        priority?: string;
+        limit?: number;
+    }): Promise<WorkerTaskListResponse> => {
+        const q = new URLSearchParams();
+        if (params?.status) q.set("status", params.status);
+        if (params?.priority) q.set("priority", params.priority);
+        if (params?.limit) q.set("limit", String(params.limit));
+        return apiFetch(`/worker/tasks${q.size ? "?" + q : ""}`);
+    },
+
+    acknowledgeTask: (id: string): Promise<WorkerTask> =>
+        apiFetch(`/worker/tasks/${id}/acknowledge`, { method: "PATCH" }),
+
+    startTask: (id: string): Promise<WorkerTask> =>
+        apiFetch(`/worker/tasks/${id}/start`, { method: "PATCH" }),
+
+    completeTask: (id: string, notes?: string): Promise<WorkerTask> =>
+        apiFetch(`/worker/tasks/${id}/complete`, {
+            method: "PATCH",
+            body: JSON.stringify({ notes: notes ?? "" }),
+        }),
 };
+
+// Phase 157 — Worker task types
+export interface WorkerTask {
+    task_id: string;
+    kind: string;         // CLEANING | CHECKIN_PREP | CHECKOUT_PREP | MAINTENANCE
+    status: string;       // pending | acknowledged | in_progress | completed
+    priority: string;     // LOW | MEDIUM | HIGH | CRITICAL
+    urgency: string;
+    worker_role: string;
+    ack_sla_minutes: number;
+    booking_id: string;
+    property_id: string;
+    due_date: string;
+    due_time?: string;
+    title: string;
+    description?: string;
+    notes?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface WorkerTaskListResponse {
+    tenant_id: string;
+    count: number;
+    tasks: WorkerTask[];
+}
