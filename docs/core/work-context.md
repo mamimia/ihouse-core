@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 151 — iCal Cancellation Push (closed)
+Phase 152 — iCal Sync-on-Amendment Push (closed)
 
 ## Last Closed Phase
 
-Phase 151 — iCal Cancellation Push: `cancel_sync_trigger.fire_cancel_sync()`; `ICalPushAdapter.cancel()` METHOD:CANCEL + STATUS:CANCELLED + SEQUENCE:1; service.py hook after BOOKING_CANCELED APPLIED; 38 contract tests; 3928 passing
+Phase 152 — iCal Sync-on-Amendment Push: `amend_sync_trigger.fire_amend_sync()`; reuses `ICalPushAdapter.push()` with updated dates + timezone; `_to_ical()` normaliser; service.py hook; 35 contract tests; 3963 passing
 
 ## Current Objective
 
-**Phase 152 — iCal Sync-on-Amendment Push**
+**Phase 153 — iCal Provider Sync-Status API**
 
 ## Roadmap Direction (Phase 149 → 175)
 
@@ -125,5 +125,5 @@ Phase 151 — iCal Cancellation Push: `cancel_sync_trigger.fire_cancel_sync()`; 
 
 ## Tests
 
-**3928 passing** (2 pre-existing SQLite guard failures in `tests/invariants/test_invariant_suite.py` — unrelated)
+**3963 passing** (2 pre-existing SQLite guard failures in `tests/invariants/test_invariant_suite.py` — unrelated)
 

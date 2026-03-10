@@ -230,6 +230,24 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
+        # Phase 152: re-push iCal block with updated dates to ical_fallback providers (best-effort)
+        try:
+            from services.amend_sync_trigger import fire_amend_sync
+            from .amendment_extractor import normalize_amendment as _normalize_amendment
+            booking_id  = (emitted[0]["payload"].get("booking_id",  "") if emitted else "")
+            property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
+            _amendment  = _normalize_amendment(provider, payload)
+            if booking_id and property_id:
+                fire_amend_sync(
+                    booking_id=booking_id,
+                    property_id=property_id,
+                    tenant_id=tenant_id,
+                    check_in=_amendment.new_check_in  if _amendment else None,
+                    check_out=_amendment.new_check_out if _amendment else None,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
     # Phase 115: cancel PENDING tasks after BOOKING_CANCELED (best-effort)
     if envelope.type == "BOOKING_CANCELED" and status == "APPLIED":
         try:

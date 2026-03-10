@@ -3377,3 +3377,27 @@ Design decisions:
 - Never blocks main BOOKING_CANCELED response — wrapped in `try/except: pass`
 
 Result: 3928 tests pass (3890 + 38 new). No DB schema changes. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+---
+
+## Phase 152 — Closed
+
+**Phase 152 — iCal Sync-on-Amendment Push**
+**Date closed:** 2026-03-10
+**Tests:** 3963 passing (3928 + 35 new), 2 pre-existing SQLite skips (unchanged)
+
+Goal: When BOOKING_AMENDED is APPLIED, re-push the iCal block with updated dates to all ical_fallback channels for the property. Reuses the amendment extractor already called for task rescheduling.
+
+Completed:
+
+- `src/services/amend_sync_trigger.py` — NEW — `fire_amend_sync(booking_id, property_id, tenant_id, check_in, check_out)`: fetches ical_fallback channels (with timezone), normalises dates via `_to_ical()`, calls `ICalPushAdapter.push()` per provider; best-effort, swallows exceptions; returns `list[AmendSyncResult]`
+- `src/adapters/ota/service.py` — MODIFIED — Phase 152 hook after BOOKING_AMENDED APPLIED (after Phase 115 task-reschedule block); reuses `normalize_amendment()` output already computed
+- `tests/test_ical_amend_push_contract.py` — NEW — 35 contract tests Groups A-J
+
+Design decisions:
+- Reuses `ICalPushAdapter.push()` — not a new method — so timezone (Phase 150), VTIMEZONE, and all RFC 5545 fields come for free
+- `_to_ical()` helper normalises both ISO (YYYY-MM-DD) and compact (YYYYMMDD) input formats
+- `channels` injection param allows tests to bypass DB query (same pattern as Phase 151)
+- Never blocks main BOOKING_AMENDED response — wrapped in `try/except: pass`
+
+Result: 3963 tests pass (3928 + 35 new). No DB schema changes. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).

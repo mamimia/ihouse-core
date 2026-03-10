@@ -2292,3 +2292,14 @@ Changes:
 - tests/test_ical_cancel_push_contract.py [NEW]: 38 contract tests Groups A-J
 
 Result: 3928 tests pass (3890 + 38 new). No DB changes. No API changes.
+
+## Phase 152 — iCal Sync-on-Amendment Push (Closed)
+
+When BOOKING_AMENDED APPLIED: re-push iCal block with updated dates to ical_fallback channels. Reuses ICalPushAdapter.push() so timezone (Phase 150), VTIMEZONE, and RFC 5545 fields come for free.
+
+Changes:
+- src/services/amend_sync_trigger.py [NEW]: fire_amend_sync() — fetches ical_fallback channels, normalises dates, calls ICalPushAdapter.push(), returns list[AmendSyncResult]
+- src/adapters/ota/service.py [MODIFIED]: Phase 152 hook after BOOKING_AMENDED APPLIED
+- tests/test_ical_amend_push_contract.py [NEW]: 35 contract tests Groups A-J
+
+Result: 3963 tests pass (3928 + 35 new). No DB changes. No API changes.
