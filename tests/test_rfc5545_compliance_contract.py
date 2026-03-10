@@ -283,4 +283,4 @@ class TestAdapterSmoke:
         assert not unknown, f"Unknown placeholders in template: {unknown}"
 
     def test_prodid_updated_to_phase_149(self):
-        assert "Phase 149" in _render()
+        assert "Phase 150" in _render()

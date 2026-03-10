@@ -3318,3 +3318,36 @@ Result: 3836 tests pass (3799 + 37 new). No DB schema changes. No API changes. 2
 
 
 
+
+---
+
+## Phase 150 — Closed
+
+**Phase 150 — iCal VTIMEZONE Support**
+**Date closed:** 2026-03-10
+**Tests:** 3890 passing (3836 + 54 new), 2 pre-existing SQLite skips (unchanged)
+
+Goal: RFC 5545 §3.6.5 compliance. When `property_channel_map.timezone` is known, emit VTIMEZONE component + TZID-qualified `DTSTART`/`DTEND`. When absent: UTC behaviour unchanged.
+
+Completed:
+
+- `migrations/phase_150_property_channel_map_timezone.sql` — NEW — `ALTER TABLE property_channel_map ADD COLUMN IF NOT EXISTS timezone TEXT`
+- `src/adapters/outbound/ical_push_adapter.py` — MODIFIED
+  - Split `_ICAL_TEMPLATE` into `_ICAL_TEMPLATE_UTC` (UTC path) and `_ICAL_TEMPLATE_TZID` (TZID path)
+  - Added `_VTIMEZONE_BLOCK` template (RFC 5545 §3.6.5 VTIMEZONE, STANDARD sub-component)
+  - Added `_build_ical_body(*, booking_id, external_id, dtstart, dtend, dtstamp, timezone_id)` helper
+  - `_ICAL_TEMPLATE` backward-compat alias → `_ICAL_TEMPLATE_UTC` (Phase 149 tests unchanged)
+  - `push()` gains `timezone: Optional[str] = None` param
+  - PRODID bumped to Phase 150
+  - Import: `UTC = timezone.utc` to avoid namespace collision with `timezone` param
+- `tests/test_ical_timezone_contract.py` — NEW — 54 contract tests Groups A-J
+- `tests/test_rfc5545_compliance_contract.py` — MODIFIED — PRODID assertion Phase 149→150 (1 line)
+- `tests/test_ical_date_injection_contract.py` — MODIFIED — PRODID assertion Phase 149→150 (1 line)
+
+Design decisions:
+- TZID value is the raw IANA identifier (e.g. `Asia/Bangkok`) — no offset expansion (consumer verifies via VTIMEZONE block)
+- VTIMEZONE STANDARD sub-component uses `TZOFFSETFROM/TZOFFSETTO:+0000` placeholder — DST deferred to Phase 165+ when real offset data is available
+- `DTSTART;TZID=...:YYYYMMDDTHHmmss` format (local noon midnight) per RFC 5545 §3.3.5
+- UTC path unchanged — zero regression risk
+
+Result: 3890 tests pass (3836 + 54 new). 1 new DB column. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).

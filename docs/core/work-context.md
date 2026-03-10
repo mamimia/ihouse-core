@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 149 — RFC 5545 VCALENDAR Compliance Audit (closed)
+Phase 150 — iCal VTIMEZONE Support (closed)
 
 ## Last Closed Phase
 
-Phase 149 — RFC 5545 Compliance: `CALSCALE:GREGORIAN`, `METHOD:PUBLISH`, `DTSTAMP`, `SEQUENCE:0` in `_ICAL_TEMPLATE`; PRODID Phase 149; 37 contract tests; 3836 passing
+Phase 150 — iCal VTIMEZONE Support: `property_channel_map.timezone` nullable column; dual templates UTC+TZID; VTIMEZONE block + TZID-qualified DTSTART/DTEND; `_build_ical_body()` helper; PRODID Phase 150; 54 contract tests; 3890 passing
 
 ## Current Objective
 
-**Phase 150 — iCal VTIMEZONE Support**
+**Phase 151 — iCal Cancellation Push**
 
 ## Roadmap Direction (Phase 149 → 175)
 
@@ -125,5 +125,5 @@ Phase 149 — RFC 5545 Compliance: `CALSCALE:GREGORIAN`, `METHOD:PUBLISH`, `DTST
 
 ## Tests
 
-**3317 passing** (2 pre-existing SQLite guard failures in `tests/invariants/test_invariant_suite.py` — unrelated)
+**3890 passing** (2 pre-existing SQLite guard failures in `tests/invariants/test_invariant_suite.py` — unrelated)
 

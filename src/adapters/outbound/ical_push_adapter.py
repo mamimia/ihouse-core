@@ -1,34 +1,42 @@
 """
-Phase 149 — iCal Push Adapter (RFC 5545 Compliance Audit)
+Phase 150 — iCal Push Adapter (VTIMEZONE Support)
 
-Updated from Phase 143 to include all RFC 5545 REQUIRED fields in the
-VCALENDAR and VEVENT components:
+Extends Phase 149 RFC 5545 compliance with timezone-aware output.
 
-  VCALENDAR header:
-    CALSCALE:GREGORIAN   (RFC 5545 §3.7.1)
-    METHOD:PUBLISH       (RFC 5545 §3.7.2)
+When `timezone` is provided (e.g. "Asia/Bangkok", "America/New_York"):
+  - VTIMEZONE component emitted before VEVENT (RFC 5545 §3.6.5)
+  - DTSTART and DTEND use TZID-qualified format:
+      DTSTART;TZID=Asia/Bangkok:20260115T000000
+      DTEND;TZID=Asia/Bangkok:20260116T000000
+  - Note: TZID value is the IANA tz identifier (Region/City)
 
-  VEVENT:
-    DTSTAMP:YYYYMMDDTHHMMSSZ  (UTC, generated at push time) (RFC 5545 §3.8.7.2)
-    SEQUENCE:0                (RFC 5545 £3.8.7.4)
+When `timezone` is absent or None:
+  - Existing UTC behaviour unchanged (safe, backward-compatible)
+  - DTSTART/DTEND remain in YYYYMMDD format
 
-See also: Phase 140 (DTSTART/DTEND date injection)
-         Phase 143 (X-Idempotency-Key header)
+VTIMEZONE block uses floating-time DTSTART (no Z suffix) per RFC 5545 §3.6.5.
+STANDARD sub-component only — DST omitted for simplicity (TZOFFSETTO=+0000 placeholder).
+The TZID in VTIMEZONE MUST match the TZID in DTSTART/DTEND.
+
+See also:
+  Phase 140 — DTSTART/DTEND date injection
+  Phase 143 — X-Idempotency-Key header
+  Phase 149 — CALSCALE, METHOD, DTSTAMP, SEQUENCE:0
 
 Handles Tier B providers (ical_fallback via push):
   - Hotelbeds
   - TripAdvisor Rentals
   - Despegar
-
-Phase 139: URL is read from env. If absent → dry_run.
-Phase 140: DTSTART/DTEND injected from booking_state via fetch_booking_dates().
 """
 from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone as _tz_module
 from typing import Optional
+
+UTC = _tz_module.utc
 
 try:
     import httpx  # type: ignore[import]
@@ -39,10 +47,15 @@ from adapters.outbound import AdapterResult, OutboundAdapter, _build_idempotency
 
 logger = logging.getLogger(__name__)
 
-_ICAL_TEMPLATE = (
+# ---------------------------------------------------------------------------
+# iCal templates
+# ---------------------------------------------------------------------------
+
+# UTC template (Phase 149 baseline). DTSTART/DTEND as bare dates (YYYYMMDD).
+_ICAL_TEMPLATE_UTC = (
     "BEGIN:VCALENDAR\r\n"
     "VERSION:2.0\r\n"
-    "PRODID:-//iHouse Core//Phase 149//EN\r\n"
+    "PRODID:-//iHouse Core//Phase 150//EN\r\n"
     "CALSCALE:GREGORIAN\r\n"
     "METHOD:PUBLISH\r\n"
     "BEGIN:VEVENT\r\n"
@@ -57,6 +70,43 @@ _ICAL_TEMPLATE = (
     "END:VCALENDAR\r\n"
 )
 
+# VTIMEZONE template (Phase 150). Emitted when timezone is known.
+# TZID placeholder must appear identically in DTSTART;TZID=... lines.
+_VTIMEZONE_BLOCK = (
+    "BEGIN:VTIMEZONE\r\n"
+    "TZID:{tzid}\r\n"
+    "BEGIN:STANDARD\r\n"
+    "DTSTART:19700101T000000\r\n"
+    "TZOFFSETFROM:+0000\r\n"
+    "TZOFFSETTO:+0000\r\n"
+    "END:STANDARD\r\n"
+    "END:VTIMEZONE\r\n"
+)
+
+# TZID-qualified template (Phase 150). DTSTART/DTEND carry ;TZID= parameter.
+_ICAL_TEMPLATE_TZID = (
+    "BEGIN:VCALENDAR\r\n"
+    "VERSION:2.0\r\n"
+    "PRODID:-//iHouse Core//Phase 150//EN\r\n"
+    "CALSCALE:GREGORIAN\r\n"
+    "METHOD:PUBLISH\r\n"
+    "{vtimezone}"
+    "BEGIN:VEVENT\r\n"
+    "UID:{booking_id}@ihouse.core\r\n"
+    "DTSTAMP:{dtstamp}\r\n"
+    "DTSTART;TZID={tzid}:{dtstart}T000000\r\n"
+    "DTEND;TZID={tzid}:{dtend}T000000\r\n"
+    "SEQUENCE:0\r\n"
+    "SUMMARY:Blocked by iHouse Core\r\n"
+    "DESCRIPTION:booking_id={booking_id} external_id={external_id}\r\n"
+    "END:VEVENT\r\n"
+    "END:VCALENDAR\r\n"
+)
+
+# Backward-compat alias: Phase 149 tests import _ICAL_TEMPLATE by name.
+# Always points to the UTC template (timezone-unaware path).
+_ICAL_TEMPLATE = _ICAL_TEMPLATE_UTC
+
 # Safe fallback dates used when booking_state lookup returns nothing.
 _FALLBACK_DTSTART = "20260101"
 _FALLBACK_DTEND   = "20260102"
@@ -68,10 +118,49 @@ _PROVIDER_ENV: dict[str, str] = {
 }
 
 
+def _build_ical_body(
+    *,
+    booking_id: str,
+    external_id: str,
+    dtstart: str,
+    dtend: str,
+    dtstamp: str,
+    timezone_id: Optional[str],
+) -> str:
+    """
+    Build the iCal body string.
+
+    When timezone_id is provided: uses VTIMEZONE block + TZID-qualified dates.
+    When timezone_id is None/empty: uses plain UTC format (backward-compatible).
+    """
+    if timezone_id:
+        vtimezone_block = _VTIMEZONE_BLOCK.format(tzid=timezone_id)
+        return _ICAL_TEMPLATE_TZID.format(
+            booking_id=booking_id,
+            external_id=external_id,
+            dtstart=dtstart,
+            dtend=dtend,
+            dtstamp=dtstamp,
+            tzid=timezone_id,
+            vtimezone=vtimezone_block,
+        )
+    return _ICAL_TEMPLATE_UTC.format(
+        booking_id=booking_id,
+        external_id=external_id,
+        dtstart=dtstart,
+        dtend=dtend,
+        dtstamp=dtstamp,
+    )
+
+
 class ICalPushAdapter(OutboundAdapter):
     """
     Outbound adapter for Tier B providers (iCal push).
     Supports: hotelbeds, tripadvisor, despegar.
+
+    Phase 150: accepts optional `timezone` parameter.
+    When provided, VTIMEZONE block + TZID-qualified DTSTART/DTEND are emitted.
+    When absent, UTC behaviour is unchanged.
     """
     def __init__(self, provider: str):
         self.provider = provider   # type: ignore[assignment]
@@ -82,8 +171,9 @@ class ICalPushAdapter(OutboundAdapter):
         booking_id: str,
         rate_limit: int = 10,
         dry_run: bool = False,
-        check_in: Optional[str] = None,   # Phase 140: YYYYMMDD or None
-        check_out: Optional[str] = None,  # Phase 140: YYYYMMDD or None
+        check_in: Optional[str] = None,    # Phase 140: YYYYMMDD or None
+        check_out: Optional[str] = None,   # Phase 140: YYYYMMDD or None
+        timezone: Optional[str] = None,    # Phase 150: IANA tz id or None
     ) -> AdapterResult:
         env_prefix = _PROVIDER_ENV.get(self.provider, self.provider.upper())
         ical_url   = os.environ.get(f"{env_prefix}_ICAL_URL", "")
@@ -110,15 +200,17 @@ class ICalPushAdapter(OutboundAdapter):
         try:
             if httpx is None:  # pragma: no cover
                 raise RuntimeError("httpx not available")
-            dtstart   = check_in  or _FALLBACK_DTSTART
-            dtend     = check_out or _FALLBACK_DTEND
-            dtstamp   = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            ical_body = _ICAL_TEMPLATE.format(
+
+            dtstart  = check_in  or _FALLBACK_DTSTART
+            dtend    = check_out or _FALLBACK_DTEND
+            dtstamp  = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
+            ical_body = _build_ical_body(
                 booking_id=booking_id,
                 external_id=external_id,
                 dtstart=dtstart,
                 dtend=dtend,
                 dtstamp=dtstamp,
+                timezone_id=timezone,
             )
             headers: dict[str, str] = {
                 "Content-Type":      "text/calendar; charset=utf-8",

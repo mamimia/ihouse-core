@@ -2267,3 +2267,16 @@ Result: 3836 tests pass (3799 + 37 new). No DB schema changes. No API changes. 2
 
 
 
+
+## Phase 150 — iCal VTIMEZONE Support (Closed)
+
+Added timezone-aware iCal output. When `property_channel_map.timezone` is known, emits a VTIMEZONE component + TZID-qualified DTSTART/DTEND per RFC 5545 §3.6.5. When absent, UTC behaviour unchanged.
+
+Changes:
+- migrations/phase_150_property_channel_map_timezone.sql [NEW]: ADD COLUMN timezone TEXT to property_channel_map
+- src/adapters/outbound/ical_push_adapter.py [MODIFIED]: dual templates (UTC/TZID), `_build_ical_body()` helper, `timezone` param on `push()`, PRODID Phase 150, `_ICAL_TEMPLATE` compat alias
+- tests/test_ical_timezone_contract.py [NEW]: 54 contract tests Groups A-J
+- tests/test_rfc5545_compliance_contract.py [MODIFIED]: PRODID assertion →Phase 150
+- tests/test_ical_date_injection_contract.py [MODIFIED]: PRODID assertion →Phase 150
+
+Result: 3890 tests pass (3836 + 54 new). No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).

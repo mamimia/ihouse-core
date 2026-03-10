@@ -135,7 +135,7 @@ class TestICalDateInjection:
             adapter.push("HB-11", "bk-003", check_in="20260601", check_out="20260610")
 
         body = captured[0].decode()
-        assert "PRODID:-//iHouse Core//Phase 149//EN" in body
+        assert "PRODID:-//iHouse Core//Phase 150//EN" in body
 
     def test_dates_not_sent_in_dry_run(self, monkeypatch):
         """dry_run=True: no HTTP call — dates keyword args accepted without error."""
