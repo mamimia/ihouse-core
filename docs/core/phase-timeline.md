@@ -3564,3 +3564,24 @@ Completed:
 - `tests/test_bookings_router_contract.py` — FIXED — test_200_reads_booking_state_table updated to assert_any_call since GET now also queries booking_flags
 
 ⚠️ Migration applied manually via Supabase dashboard.
+
+---
+
+## Phase 161 — Closed
+
+**Phase 161 — Multi-Currency Conversion Layer**
+**Date closed:** 2026-03-10
+**Tests:** 4229 passing (4191 + 38 new). 2 pre-existing SQLite skips (unchanged).
+
+Goal: Exchange-rate table + optional ?base_currency= on financial aggregation endpoints.
+
+Completed:
+- `migrations/phase_161_exchange_rates.sql` — NEW — CREATE TABLE exchange_rates, UNIQUE(from_currency, to_currency), pre-seeded with 26 common pairs (USD/THB/EUR/GBP/SGD/AUD/JPY/CNY/INR/HKD/AED/KRW + identity). Applied to Supabase.
+- `src/api/financial_aggregation_router.py` — MODIFIED:
+  - _validate_base_currency() helper (3-letter alpha check)
+  - _fetch_rate(db, from, to) → Decimal | None, never raises
+  - _apply_conversion(amounts, base_currency, db) → (merged, warnings)
+  - GET /financial/summary: added base_currency param, conversion, base_currency+conversion_warnings fields
+  - GET /financial/by-provider: same
+  - GET /financial/by-property: same
+- `tests/test_multicurrency_conversion_contract.py` — NEW — 38 contract tests (Groups A-T)

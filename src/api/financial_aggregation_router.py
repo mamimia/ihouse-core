@@ -1,16 +1,18 @@
 """
 Phase 116 — Financial Aggregation API (Ring 1)
+Phase 161 — Multi-Currency Conversion Layer
 
 Aggregation endpoints over booking_financial_facts for the authenticated tenant.
 
 Endpoints:
-    GET /financial/summary?period=YYYY-MM
+    GET /financial/summary?period=YYYY-MM[&base_currency=USD]
         Gross + commission + net totals, grouped by currency.
+        If base_currency supplied, all buckets are converted to that currency.
 
-    GET /financial/by-provider?period=YYYY-MM
+    GET /financial/by-provider?period=YYYY-MM[&base_currency=USD]
         Per-OTA-provider breakdown, grouped by currency.
 
-    GET /financial/by-property?period=YYYY-MM
+    GET /financial/by-property?period=YYYY-MM[&base_currency=USD]
         Per-property breakdown, grouped by currency.
 
     GET /financial/lifecycle-distribution?period=YYYY-MM
@@ -191,6 +193,89 @@ def _fetch_period_rows(db: Any, tenant_id: str, period: str) -> List[dict]:
     return result.data or []
 
 
+def _validate_base_currency(base_currency: Optional[str]) -> Optional[JSONResponse]:
+    """Return error response if base_currency is supplied but not a known currency code."""
+    if base_currency is None:
+        return None
+    if not base_currency.isalpha() or len(base_currency) != 3:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "base_currency must be a 3-letter ISO currency code (e.g. USD, THB)"},
+        )
+    return None
+
+
+def _fetch_rate(db: Any, from_ccy: str, to_ccy: str) -> Optional[Decimal]:
+    """
+    Look up an exchange rate from the exchange_rates table.
+    Returns None if no rate row exists for this pair.
+    Same currency pair always returns Decimal('1').
+    """
+    if from_ccy.upper() == to_ccy.upper():
+        return Decimal("1")
+    try:
+        result = (
+            db.table("exchange_rates")
+            .select("rate")
+            .eq("from_currency", from_ccy.upper())
+            .eq("to_currency", to_ccy.upper())
+            .limit(1)
+            .execute()
+        )
+        rows = result.data or []
+        if rows:
+            return _to_decimal(rows[0]["rate"])
+        return None
+    except Exception:
+        return None
+
+
+def _apply_conversion(
+    amounts: Dict[str, Dict[str, Any]],
+    base_currency: str,
+    db: Any,
+) -> tuple[Dict[str, Dict[str, Any]], list[str]]:
+    """
+    Convert all currency buckets in `amounts` to `base_currency`.
+
+    Returns:
+        (merged_amounts, warnings)
+        - merged_amounts: all values collapsed into one currency key
+        - warnings: list of currency codes for which no rate was found
+    """
+    target = base_currency.upper()
+    merged: Dict[str, Any] = {
+        "gross": Decimal("0"),
+        "commission": Decimal("0"),
+        "net": Decimal("0"),
+        "booking_count": 0,
+    }
+    warnings: list[str] = []
+
+    for ccy, data in amounts.items():
+        rate = _fetch_rate(db, ccy, target)
+        if rate is None:
+            warnings.append(ccy)
+            # Still include unconverted amounts under original currency in a passthrough sense
+            # — they are excluded from the converted total with a warning
+            continue
+        merged["gross"] += _to_decimal(data["gross"]) * rate
+        merged["commission"] += _to_decimal(data["commission"]) * rate
+        merged["net"] += _to_decimal(data["net"]) * rate
+        merged["booking_count"] += data["booking_count"]
+
+    out = {
+        target: {
+            "gross": _fmt(merged["gross"]),
+            "commission": _fmt(merged["commission"]),
+            "net": _fmt(merged["net"]),
+            "booking_count": merged["booking_count"],
+        }
+    }
+    return out, warnings
+
+
 # ---------------------------------------------------------------------------
 # GET /financial/summary
 # ---------------------------------------------------------------------------
@@ -209,6 +294,7 @@ def _fetch_period_rows(db: Any, tenant_id: str, period: str) -> List[dict]:
 )
 async def get_financial_summary(
     period: Optional[str] = None,
+    base_currency: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
@@ -236,6 +322,9 @@ async def get_financial_summary(
     err = _validate_period(period)
     if err:
         return err
+    err2 = _validate_base_currency(base_currency)
+    if err2:
+        return err2
 
     try:
         db = client if client is not None else _get_supabase_client()
@@ -263,15 +352,29 @@ async def get_financial_summary(
             for cur, data in sorted(totals.items())
         }
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "tenant_id": tenant_id,
-                "period": period,
-                "total_bookings": len(deduped),
-                "currencies": currencies_out,
-            },
-        )
+        # Phase 161: optional conversion to base_currency
+        conversion_warnings: list[str] = []
+        if base_currency:
+            currencies_out, conversion_warnings = _apply_conversion(
+                {cur: {"gross": _fmt(data["gross"]), "commission": _fmt(data["commission"]),
+                       "net": _fmt(data["net"]), "booking_count": data["booking_count"]}
+                 for cur, data in totals.items()},
+                base_currency,
+                db,
+            )
+
+        response_body: Dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "period": period,
+            "total_bookings": len(deduped),
+            "currencies": currencies_out,
+        }
+        if base_currency:
+            response_body["base_currency"] = base_currency.upper()
+        if conversion_warnings:
+            response_body["conversion_warnings"] = conversion_warnings
+
+        return JSONResponse(status_code=200, content=response_body)
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /financial/summary error for tenant=%s: %s", tenant_id, exc)
@@ -296,6 +399,7 @@ async def get_financial_summary(
 )
 async def get_financial_by_provider(
     period: Optional[str] = None,
+    base_currency: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
@@ -316,6 +420,9 @@ async def get_financial_by_provider(
     err = _validate_period(period)
     if err:
         return err
+    err2 = _validate_base_currency(base_currency)
+    if err2:
+        return err2
 
     try:
         db = client if client is not None else _get_supabase_client()
@@ -336,7 +443,7 @@ async def get_financial_by_provider(
             by_provider[provider][cur]["net"] += _to_decimal(row.get("net_to_property"))
             by_provider[provider][cur]["booking_count"] += 1
 
-        providers_out = {
+        providers_out: Dict[str, Any] = {
             prov: {
                 cur: {
                     "gross": _fmt(data["gross"]),
@@ -349,14 +456,32 @@ async def get_financial_by_provider(
             for prov, cur_map in sorted(by_provider.items())
         }
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "tenant_id": tenant_id,
-                "period": period,
-                "providers": providers_out,
-            },
-        )
+        # Phase 161: optional conversion per provider
+        all_warnings: list[str] = []
+        if base_currency:
+            converted_providers: Dict[str, Any] = {}
+            for prov, cur_map in by_provider.items():
+                str_map = {
+                    cur: {"gross": _fmt(d["gross"]), "commission": _fmt(d["commission"]),
+                          "net": _fmt(d["net"]), "booking_count": d["booking_count"]}
+                    for cur, d in cur_map.items()
+                }
+                converted, warns = _apply_conversion(str_map, base_currency, db)
+                converted_providers[prov] = converted
+                all_warnings.extend(w for w in warns if w not in all_warnings)
+            providers_out = converted_providers
+
+        response_body2: Dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "period": period,
+            "providers": providers_out,
+        }
+        if base_currency:
+            response_body2["base_currency"] = base_currency.upper()
+        if all_warnings:
+            response_body2["conversion_warnings"] = all_warnings
+
+        return JSONResponse(status_code=200, content=response_body2)
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /financial/by-provider error for tenant=%s: %s", tenant_id, exc)
@@ -381,6 +506,7 @@ async def get_financial_by_provider(
 )
 async def get_financial_by_property(
     period: Optional[str] = None,
+    base_currency: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
@@ -402,6 +528,9 @@ async def get_financial_by_property(
     err = _validate_period(period)
     if err:
         return err
+    err2 = _validate_base_currency(base_currency)
+    if err2:
+        return err2
 
     try:
         db = client if client is not None else _get_supabase_client()
@@ -422,7 +551,7 @@ async def get_financial_by_property(
             by_property[prop][cur]["net"] += _to_decimal(row.get("net_to_property"))
             by_property[prop][cur]["booking_count"] += 1
 
-        properties_out = {
+        properties_out: Dict[str, Any] = {
             prop: {
                 cur: {
                     "gross": _fmt(data["gross"]),
@@ -435,14 +564,32 @@ async def get_financial_by_property(
             for prop, cur_map in sorted(by_property.items())
         }
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "tenant_id": tenant_id,
-                "period": period,
-                "properties": properties_out,
-            },
-        )
+        # Phase 161: optional conversion per property
+        prop_warnings: list[str] = []
+        if base_currency:
+            converted_props: Dict[str, Any] = {}
+            for prop, cur_map in by_property.items():
+                str_map = {
+                    cur: {"gross": _fmt(d["gross"]), "commission": _fmt(d["commission"]),
+                          "net": _fmt(d["net"]), "booking_count": d["booking_count"]}
+                    for cur, d in cur_map.items()
+                }
+                converted, warns = _apply_conversion(str_map, base_currency, db)
+                converted_props[prop] = converted
+                prop_warnings.extend(w for w in warns if w not in prop_warnings)
+            properties_out = converted_props
+
+        response_body3: Dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "period": period,
+            "properties": properties_out,
+        }
+        if base_currency:
+            response_body3["base_currency"] = base_currency.upper()
+        if prop_warnings:
+            response_body3["conversion_warnings"] = prop_warnings
+
+        return JSONResponse(status_code=200, content=response_body3)
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /financial/by-property error for tenant=%s: %s", tenant_id, exc)
