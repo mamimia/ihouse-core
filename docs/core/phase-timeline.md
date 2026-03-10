@@ -3629,3 +3629,22 @@ Goal: Monthly owner statement view at /financial/statements.
 Completed:
 - `ihouse-ui/app/financial/statements/page.tsx` — NEW — Property + period + management fee controls; per-booking table with epistemic tier badges (✅A/🔵B/⚠️C), OTA colour dots, lifecycle chips, net suppressed for OTA-Collecting rows; totals panel (gross/commission/net/mgmt fee/owner net); CSV client-side export; PDF (plain-text) link; idle prompt; shimmer skeletons; worst-tier summary badge.
 - `ihouse-ui/lib/api.ts` — MODIFIED — OwnerStatementLineItem, OwnerStatementSummary, OwnerStatementResponse interfaces + getOwnerStatement() method.
+
+---
+
+## Phase 165 — Closed
+
+**Phase 165 — Permission Model Foundation**
+**Date closed:** 2026-03-10
+**Tests:** 29 new. Total suite: 4297 passed, 2 pre-existing SQLite skips unchanged.
+**⚠️ DB migration not yet applied to Supabase — must be done manually.**
+
+Goal: tenant_permissions schema + CRUD API + JWT scope enrichment helper. Foundation for role-scoped UI (Phases 166–168).
+
+Completed:
+- `migrations/phase_165_tenant_permissions.sql` — NEW — tenant_permissions table: BIGSERIAL PK, tenant_id, user_id, role CHECK (admin|manager|worker|owner), permissions JSONB default '{}', created_at/updated_at TIMESTAMPTZ. UNIQUE(tenant_id, user_id). idx_tenant_permissions_tenant_id + idx_tenant_permissions_user_id indexes. RLS enabled (tenant_id isolation policy). updated_at trigger.
+- `src/api/error_models.py` — MODIFIED — PERMISSION_NOT_FOUND + FORBIDDEN error codes + default messages.
+- `src/api/permissions_router.py` — NEW — GET /permissions (list, tenant-scoped), GET /permissions/{user_id} (404 if missing), POST /permissions (upsert on conflict tenant_id+user_id), DELETE /permissions/{user_id} (404 if missing). Role validation (400 on invalid). JSONB permissions field validated (400 if not dict). get_permission_record() enrichment helper (best-effort, never raises).
+- `src/api/auth.py` — MODIFIED — get_jwt_scope(db, tenant_id, user_id) → {role, permissions} scope dict. Best-effort (never raises). Lazy import of get_permission_record to avoid circular import. Added `from typing import Any`.
+- `src/main.py` — MODIFIED — registered permissions_router.
+- `tests/test_permissions_contract.py` — NEW — 29 contract tests: list/get/upsert/delete, role validation, 400/404/500, tenant isolation (dependency_overrides pattern), get_permission_record(), get_jwt_scope().

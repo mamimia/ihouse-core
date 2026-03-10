@@ -2303,3 +2303,69 @@ Changes:
 - tests/test_ical_amend_push_contract.py [NEW]: 35 contract tests Groups A-J
 
 Result: 3963 tests pass (3928 + 35 new). No DB changes. No API changes.
+
+## Phase 153 — Operations Dashboard UI (Closed)
+
+GET /operations/today backend + ihouse-ui Next.js 14 App Router scaffold + dashboard page.
+
+Changes:
+- src/api/operations_router.py [NEW]: GET /operations/today — arrivals, departures, cleanings, urgent tasks; in-memory aggregation; as_of override
+- ihouse-ui/ [NEW]: Next.js 14 App Router, lib/api.ts typed client
+- ihouse-ui/app/page.tsx [NEW]: Urgent tasks, Today stats, Sync Health, Integration Alerts sections
+- tests/test_operations_router_contract.py [NEW]: 30 contract tests Groups A-I
+- src/main.py [MODIFIED]: registered operations_router
+
+Result: 3993 tests pass. 0 TypeScript errors. No DB changes.
+
+## Phases 154–158 — Worker Mobile View + Manager Booking View (UI Block)
+
+Phase 154: API-first Cancellation Push adapters.
+Phase 155: Properties API (GET /properties).
+Phase 156: Guest Profile API (GET /guests/{guest_id}).
+Phase 157: Worker Mobile View UI (ihouse-ui/app/worker).
+Phase 158: Manager Booking View UI (ihouse-ui/app/bookings).
+
+Result: Incremental. Tests accumulated per phase. No DB schema changes.
+
+## Phases 159–162 — Backend Block C (Closed)
+
+Phase 159: Booking Flag API (GET/POST /bookings/{id}/flags).
+Phase 160: Multi-Currency Conversion Layer (currency_converter.py, /financial/summary multi-currency).
+Phase 161: Financial Correction Event (POST /financial/corrections, BOOKING_CORRECTED event kind).
+Phase 162: (renumbered — see above).
+
+Result: cumulatively 4191 tests pass before Phase 163.
+
+## Phase 163 — Financial Dashboard UI (Closed)
+
+Portfolio-level financial dashboard at /financial.
+
+Changes:
+- ihouse-ui/app/financial/page.tsx [NEW]: 5 sections (summary bar, provider breakdown, property breakdown, lifecycle segmented bar, reconciliation inbox chip). Period nav, 7-currency selector, shimmer skeletons, staggered fadeIn.
+- ihouse-ui/lib/api.ts [MODIFIED]: FinancialSummaryResponse, FinancialByProviderResponse, FinancialByPropertyResponse, LifecycleDistributionResponse, ReconciliationResponse + 5 typed API methods.
+
+Result: 0 TypeScript errors. UI phase — no backend tests.
+
+## Phase 164 — Owner Statement UI (Closed)
+
+Monthly owner statement at /financial/statements.
+
+Changes:
+- ihouse-ui/app/financial/statements/page.tsx [NEW]: property/period/mgmt-fee controls; per-booking table with epistemic tier badges, OTA colour dots, lifecycle chips, net suppressed for OTA-Collecting; totals panel; CSV export; PDF link; shimmer skeletons.
+- ihouse-ui/lib/api.ts [MODIFIED]: OwnerStatementLineItem, OwnerStatementSummary, OwnerStatementResponse + getOwnerStatement().
+
+Result: 0 TypeScript errors. UI phase — no backend tests.
+
+## Phase 165 — Permission Model Foundation (Closed)
+
+tenant_permissions table + CRUD API + JWT scope enrichment.
+
+Changes:
+- migrations/phase_165_tenant_permissions.sql [NEW]: tenant_permissions — UNIQUE(tenant_id, user_id), role CHECK, permissions JSONB, RLS, updated_at trigger. ⚠️ NOT YET applied to Supabase.
+- src/api/error_models.py [MODIFIED]: PERMISSION_NOT_FOUND + FORBIDDEN codes.
+- src/api/permissions_router.py [NEW]: GET /permissions, GET /permissions/{user_id}, POST /permissions (upsert), DELETE /permissions/{user_id}. get_permission_record() best-effort helper (never raises).
+- src/api/auth.py [MODIFIED]: get_jwt_scope(db, tenant_id, user_id) → {role, permissions} scope dict. Best-effort, never raises. Lazy import to avoid circular dep.
+- src/main.py [MODIFIED]: registered permissions_router.
+- tests/test_permissions_contract.py [NEW]: 29 contract tests.
+
+Result: 4297 tests pass (4191 + 29 new + prior phase tests). 2 pre-existing SQLite skips unchanged. All work committed locally. ⚠️ git push pending.

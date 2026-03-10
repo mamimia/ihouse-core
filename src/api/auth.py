@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 
 import jwt
 from fastapi import HTTPException
@@ -124,5 +125,40 @@ def _make_bearer_dependency():
     return _dep
 
 
+
 # The canonical Depends-injectable for route use
 jwt_auth = _make_bearer_dependency()
+
+
+# ---------------------------------------------------------------------------
+# Phase 165 — JWT scope enrichment helper
+# ---------------------------------------------------------------------------
+
+def get_jwt_scope(db: Any, tenant_id: str, user_id: str) -> dict:
+    """
+    Best-effort: look up the tenant_permissions row and return a scope dict.
+
+    Returns:
+        {
+            "role":        str | None,    # 'admin' | 'manager' | 'worker' | 'owner'
+            "permissions": dict,          # capability flags
+        }
+
+    Never raises. Returns empty scope if no record found or DB errors.
+    Used to enrich JWT context for role-scoped endpoints (Phase 165+).
+
+    Args:
+        db:        Supabase client instance.
+        tenant_id: Tenant from the JWT sub claim.
+        user_id:   User identifier — typically the same as tenant_id for
+                   single-user tenants, or from a 'uid' JWT claim.
+    """
+    from api.permissions_router import get_permission_record  # avoid circular at module level
+    record = get_permission_record(db, tenant_id, user_id)
+    if not record:
+        return {"role": None, "permissions": {}}
+    return {
+        "role":        record.get("role"),
+        "permissions": record.get("permissions") or {},
+    }
+

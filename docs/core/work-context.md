@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 152 — iCal Sync-on-Amendment Push (closed)
+Phase 165 — Permission Model Foundation (closed)
 
 ## Last Closed Phase
 
-Phase 152 — iCal Sync-on-Amendment Push: `amend_sync_trigger.fire_amend_sync()`; reuses `ICalPushAdapter.push()` with updated dates + timezone; `_to_ical()` normaliser; service.py hook; 35 contract tests; 3963 passing
+Phase 165 — Permission Model Foundation: tenant_permissions table DDL (local only, ⚠️ Supabase migration pending), permissions CRUD router, get_jwt_scope() enrichment helper, 29 contract tests, 4297 total passing.
 
 ## Current Objective
 
-**Phase 153 — iCal Provider Sync-Status API**
+**Phase 166 — Worker + Owner Role Scoping**
 
 ## Roadmap Direction (Phase 149 → 175)
 

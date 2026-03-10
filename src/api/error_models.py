@@ -42,6 +42,8 @@ class ErrorCode:
     NOT_FOUND          = "NOT_FOUND"
     INVALID_TRANSITION = "INVALID_TRANSITION"
     INVALID_PERIOD     = "INVALID_PERIOD"
+    PERMISSION_NOT_FOUND = "PERMISSION_NOT_FOUND"  # Phase 165
+    FORBIDDEN            = "FORBIDDEN"              # Phase 165
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +61,8 @@ _DEFAULT_MESSAGES: Dict[str, str] = {
     ErrorCode.NOT_FOUND:          "The requested resource was not found",
     ErrorCode.INVALID_TRANSITION: "Status transition is not allowed from the current state",
     ErrorCode.INVALID_PERIOD:     "The 'period' query parameter is required and must be in YYYY-MM format",
+    ErrorCode.PERMISSION_NOT_FOUND: "Permission record not found for this user",
+    ErrorCode.FORBIDDEN:            "You do not have permission to perform this action",
 }
 
 

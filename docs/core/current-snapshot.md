@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 153 — Operations Dashboard UI (closed)
+Phase 165 — Permission Model Foundation (closed)
 
 ## Last Closed Phase
-Phase 153 — Operations Dashboard UI: `GET /operations/today` (arrivals/departures/cleanings); Next.js 14 `ihouse-ui/` scaffolded; dashboard page with Urgent, Today, Sync Health, Integration Alerts sections; 30 contract tests (Groups A-I)
+Phase 165 — Permission Model Foundation: tenant_permissions table (DDL local, migration pending Supabase), CRUD router (GET/POST/DELETE /permissions), JWT scope enrichment helper (get_jwt_scope), 29 contract tests. Total: 4297 passing.
 
 ## System Status
 
@@ -95,7 +95,7 @@ apply_envelope is the only authority for canonical state mutations.
 | 148 | Sync Result Webhook Callback — `_fire_callback(booking_id, tenant_id, result, *, callback_url)` in `outbound_executor.py`; reads `IHOUSE_SYNC_CALLBACK_URL`; fires only on `ok`; payload `{event:sync.ok, booking_id, tenant_id, provider, external_id, strategy, http_status}` via `urllib.request.urlopen`; 5s timeout; HTTP/connection/timeout errors swallowed; never retried; called in `execute_sync_plan()` after `_persist()`; 30 contract tests | ✅ |
 | 153 | Operations Dashboard UI — `GET /operations/today` (arrivals/departures/cleanings, in-memory, `as_of` override); `ihouse-ui/` Next.js 14 App Router scaffolded; dashboard page: Urgent tasks, Today stats, Sync Health, Integration Alerts; typed `lib/api.ts` client; 30 contract tests (Groups A-I); UI build ✅ | ✅ |
 
-**3993 tests pass** (2 pre-existing SQLite guard failures, unrelated)
+**4297 tests pass** (2 pre-existing SQLite guard failures, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -204,8 +204,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 154** — API-first Cancellation Push (Airbnb, Booking.com, Expedia/VRBO `cancel()` adapters)
+**Phase 166** — Worker + Owner Role Scoping (enforce role visibility in worker_router, owner_statement_router, financial_aggregation_router)
 
 ## Tests
 
-**3993 passing** (2 pre-existing SQLite skips, unrelated)
+**4297 passing** (2 pre-existing SQLite skips, unrelated)
