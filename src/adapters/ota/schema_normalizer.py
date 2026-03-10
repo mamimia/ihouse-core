@@ -19,7 +19,7 @@ Canonical keys added to the returned copy (all are additive — originals never 
 Rules:
 - Returns a shallow copy of the payload — original keys are never removed.
 - Missing or unparseable fields -> None (never raises KeyError).
-- Supports all 8 providers: bookingcom, airbnb, expedia, agoda, tripcom, vrbo, gvr, traveloka.
+- Supports all providers: bookingcom, airbnb, expedia, agoda, tripcom, vrbo, gvr, traveloka, makemytrip, klook, despegar, hotelbeds, rakuten.
 - Unknown providers pass through with all canonical keys set to None.
 """
 
@@ -58,6 +58,8 @@ def _guest_count(provider: str, payload: dict) -> int | None:
             return int(payload["participants"])  # Klook uses participants
         elif provider == "despegar":
             return int(payload["passenger_count"])  # Despegar: LATAM travel term
+        elif provider == "rakuten":
+            return int(payload["guest_count"])  # Rakuten: standard guest_count
         return None
     except (KeyError, TypeError, ValueError):
         return None
@@ -90,6 +92,8 @@ def _booking_ref(provider: str, payload: dict) -> str | None:
             return str(payload["booking_ref"])  # Klook uses booking_ref
         elif provider == "despegar":
             return str(payload["reservation_code"])  # Despegar uses reservation_code
+        elif provider == "rakuten":
+            return str(payload["booking_ref"])  # Rakuten: booking_ref
         return None
     except (KeyError, TypeError):
         return None
@@ -120,6 +124,8 @@ def _property_id(provider: str, payload: dict) -> str | None:
             return str(payload["activity_id"])  # Klook uses activity_id
         elif provider == "despegar":
             return str(payload["hotel_id"])  # Despegar uses hotel_id
+        elif provider == "rakuten":
+            return str(payload["hotel_code"])  # Rakuten: hotel_code
         return None
     except (KeyError, TypeError):
         return None
@@ -163,6 +169,8 @@ def _check_in(provider: str, payload: dict) -> str | None:
             return str(payload["travel_date"])  # Klook: activity start date
         elif provider == "despegar":
             return str(payload["check_in"])  # Despegar: standard check_in
+        elif provider == "rakuten":
+            return str(payload["check_in"])  # Rakuten: standard check_in
         return None
     except (KeyError, TypeError):
         return None
@@ -202,6 +210,8 @@ def _check_out(provider: str, payload: dict) -> str | None:
             return str(payload["end_date"])  # Klook: activity end date
         elif provider == "despegar":
             return str(payload["check_out"])  # Despegar: standard check_out
+        elif provider == "rakuten":
+            return str(payload["check_out"])  # Rakuten: standard check_out
         return None
     except (KeyError, TypeError):
         return None
@@ -258,6 +268,8 @@ def _total_price(provider: str, payload: dict) -> str | None:
             val = payload["booking_amount"]  # Klook: booking_amount
         elif provider == "despegar":
             val = payload["total_fare"]  # Despegar: fare-based naming
+        elif provider == "rakuten":
+            val = payload["total_amount"]  # Rakuten: total_amount
         else:
             return None
         return str(val) if val is not None else None

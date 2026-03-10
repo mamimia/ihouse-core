@@ -1,6 +1,8 @@
 // Phase 153 — iHouse Core API client
 // Phase 163 — Financial Dashboard API methods added
 // Phase 169 — Admin Settings: getProviders, getPermissions, patchProvider
+// Phase 179 — Auth: login()
+// Phase 186 — Auth: logout(), apiFetch auto-logout on 401/403
 // Typed fetch wrapper for all backend endpoints.
 // Base URL: NEXT_PUBLIC_API_URL env var (or http://localhost:8000 for dev).
 
@@ -33,6 +35,21 @@ export function getToken(): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 186 — Client-side logout helper (also called by apiFetch on 401/403)
+// ---------------------------------------------------------------------------
+
+export function performClientLogout(redirectPath = '/login'): void {
+    clearToken();
+    // Clear cookie so middleware also evicts
+    if (typeof document !== 'undefined') {
+        document.cookie = 'ihouse_token=; path=/; max-age=0; SameSite=Lax';
+    }
+    if (typeof window !== 'undefined') {
+        window.location.href = redirectPath;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Core fetch helper
 // ---------------------------------------------------------------------------
 
@@ -46,6 +63,13 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const resp = await fetch(`${BASE_URL}${path}`, { ...init, headers });
     if (!resp.ok) {
         const body = await resp.json().catch(() => ({}));
+        // Phase 186: auto-logout on 401/403 (expired or invalid token)
+        if (resp.status === 401 || resp.status === 403) {
+            // Only auto-logout if we had a token (avoid redirect loop on /login calls)
+            if (_token) {
+                performClientLogout('/login');
+            }
+        }
         throw new ApiError(resp.status, body?.error || "UNKNOWN_ERROR", body);
     }
     return resp.json();
@@ -251,10 +275,38 @@ export interface PermissionListResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 179 — Auth types
+// ---------------------------------------------------------------------------
+
+export interface LoginResponse {
+    token: string;
+    tenant_id: string;
+    expires_in: number;
+}
+
+// ---------------------------------------------------------------------------
 // API calls
 // ---------------------------------------------------------------------------
 
 export const api = {
+    // Phase 179 — Auth
+    login: (tenant_id: string, secret: string): Promise<LoginResponse> =>
+        apiFetch('/auth/token', {
+            method: 'POST',
+            body: JSON.stringify({ tenant_id, secret }),
+        }),
+
+    // Phase 186 — Logout
+    logout: async (): Promise<void> => {
+        try {
+            // Best-effort: call server to clear cookie. Ignore errors.
+            await fetch(`${BASE_URL}/auth/logout`, { method: 'POST' });
+        } catch (_) {
+            // swallow — client-side cleanup still runs
+        }
+        performClientLogout('/login');
+    },
+
     getOperationsToday: (): Promise<OperationsToday> =>
         apiFetch("/operations/today"),
 

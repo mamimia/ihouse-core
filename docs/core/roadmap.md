@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > It is updated every few phases to reflect what we've learned and where we're headed.
-> Last updated: Phase 106 closed. Roadmap resynced to actual state through Phase 106. Forward plan extended to Phase 126. [Claude]
+> Last updated: Phase 180 checkpoint. Phases 176–179 closed. Forward plan Phase 181–190 written. [Antigravity]
 
 
 ## ✅ Completed Phases
@@ -58,114 +58,158 @@
 | 104 | Amendment History Query API | amendments_router.py, GET /amendments/{booking_id}, 20 tests |
 | 105 | Admin Router Contract Tests | test_admin_router_phase82_contract.py, 41 tests, zero source changes |
 | 106 | Booking List Query API | GET /bookings, property_id/status/limit filters, test_booking_list_router_contract.py, 28 tests |
+| 107 | Roadmap Refresh | roadmap.md Phase 93–106 completion table, forward plan Phase 107–126 written |
+| 108 | Financial List Query API | GET /financial?property_id=&month=, limit 1–100 clamped, 27 tests |
+| 109 | Booking Date Range Search | GET /bookings extended with check_in_from + check_in_to, ISO 8601 validation, 36 tests |
+| 110 | OTA Reconciliation Implementation | reconciliation_detector.py, FINANCIAL_FACTS_MISSING + STALE_BOOKING detectors, GET /admin/reconciliation, 27 tests |
+| 111 | Task System Foundation | task_model.py: TaskKind (5), TaskStatus (5), TaskPriority (4), WorkerRole (5), CRITICAL_ACK_SLA=5min, 68 tests |
+| 112 | Task Automation from Booking Events | task_automator.py: BOOKING_CREATED→CHECKIN_PREP+CLEANING, cancel, reschedule; 48 tests |
+| 113 | Task Query API | task_router.py: GET /tasks + GET /tasks/{id} + PATCH status, VALID_TASK_TRANSITIONS, 50 tests |
+| 114 | Task Persistence Layer | tasks table DDL, 3 RLS policies, 3 composite indexes, migration applied |
+| 115 | Task Writer | task_writer.py: write/cancel/reschedule, upsert idempotent, wired into service.py, 32 tests |
+| 116 | Financial Aggregation API | GET /financial/summary + /by-provider + /by-property + /lifecycle-distribution, 47 tests |
+| 117 | SLA Escalation Engine | sla_engine.py: ACK_SLA_BREACH + COMPLETION_SLA_BREACH, EscalationResult, 38 tests |
+| 118 | Financial Dashboard API | GET /financial/status/{id}, /revpar, /lifecycle-by-property; A/B/C tier; 44 tests |
+| 119 | Reconciliation Inbox API | GET /admin/reconciliation, 4 flags, correction_hint, Tier C-first sort, 32 tests |
+| 120 | Cashflow / Payout Timeline | GET /financial/cashflow, ISO week buckets, forward projection 30/60/90 days, 37 tests |
+| 121 | Owner Statement Generator | GET /owner-statement/{property_id}?month=&management_fee_pct=&format=pdf, line items, 49 tests |
+| 122 | OTA Financial Health Comparison | GET /financial/ota-comparison, net-to-gross ratio, revenue share, lifecycle dist., 44 tests |
+| 123 | Worker-Facing Task Surface | worker_router.py: GET /worker/tasks + PATCH acknowledge/complete, role-scoped, 41 tests |
+| 124 | LINE Escalation Channel | line_escalation.py, POST /line/webhook, HMAC-SHA256 sig, PENDING→ACKNOWLEDGED, 57 tests |
+| 125 | Hotelbeds Adapter (Tier 3 B2B) | hotelbeds.py, B2B semantics, HB- prefix, FULL/ESTIMATED/PARTIAL confidence, 42 tests |
+| 126 | Availability Projection | availability_projection.py, GET /availability/{property_id}?from=&to=, occupancy read model |
+| 127 | Integration Health Dashboard | integration_health_router.py, GET /admin/integration-health, per-provider status |
+| 128 | Conflict Center API | conflicts_router.py, GET /admin/conflicts, overlap + missing-mapping detection |
+| 129 | Booking Search | bookings_router.py extended with full-text search + property filter |
+| 130 | Properties Summary Dashboard | properties_summary_router.py, GET /admin/properties/summary |
+| 131 | DLQ Inspector | dlq_router.py: GET /admin/dlq + GET /admin/dlq/{envelope_id}, status derived, 44 tests |
+| 132 | Booking Audit Trail | booking_history_router.py, GET /bookings/{id}/history, chronological event list |
+| 133 | OTA Ordering Buffer Inspector | buffer_router.py, GET /admin/buffer, per-provider buffered counts |
+| 135 | Property-Channel Map Foundation | property_channel_map table, channel_map_router.py, GET/POST/DELETE mappings |
+| 136 | Provider Capability Registry | provider_capability_registry table + GET /admin/registry/providers |
+| 137 | Outbound Sync Trigger | build_sync_plan() — deterministic SyncAction list from channel map + registry |
+| 138 | Outbound Executor | execute_sync_plan() — fail-isolated ExecutionResult per action, ExecutionReport |
+| 139 | Real Outbound Adapters | AirbnbAdapter, BookingComAdapter, ExpediaVrboAdapter, ICalPushAdapter; dry-run on missing keys; 40 tests |
+| 140 | iCal Date Injection | booking_dates.py, ICalPushAdapter.push(check_in/check_out), DTSTART/DTEND from real dates, 16 tests |
+| 141 | Rate-Limit Enforcement | _throttle() in outbound __init__.py, IHOUSE_THROTTLE_DISABLED opt-out, 22 tests |
+| 142 | Retry + Exponential Backoff | _retry_with_backoff(), 4^attempt backoff capped 30s, IHOUSE_RETRY_DISABLED opt-out, 28 tests |
+| 143 | Idempotency Key | _build_idempotency_key(), format booking_id:external_id:YYYYMMDD, day-stable, 23 tests |
+| 144 | Outbound Sync Result Persistence | outbound_sync_log table, sync_log_writer.py, _persist() in executor, 13 tests |
+| 145 | Outbound Sync Log Inspector | GET /admin/outbound-log + /admin/outbound-log/{booking_id}, 30 tests |
+| 146 | Sync Health Dashboard | GET /admin/outbound-health, per-provider: ok/failed counts, failure_rate_7d, 33 tests |
+| 147 | Failed Sync Replay | POST /admin/outbound-replay, reconstructs SyncAction from log, all Phase 141-144 guarantees, 33 tests |
+| 148 | Sync Result Webhook Callback | _fire_callback() on ok, IHOUSE_SYNC_CALLBACK_URL, 5s timeout swallowed, 30 tests |
+| 149 | RFC 5545 VCALENDAR Compliance | CALSCALE, METHOD, DTSTAMP, SEQUENCE:0 in iCal payload |
+| 150 | iCal VTIMEZONE Support | VTIMEZONE block + TZID-qualified DTSTART/DTEND, backward-compat UTC path |
+| 151 | iCal Cancellation Push | ICalPushAdapter.cancel(), STATUS:CANCELLED, HMAC-safe dry-run path |
+| 152 | iCal Sync-on-Amendment Push | iCal push on BOOKING_AMENDED |
+| 153 | Operations Dashboard UI | GET /operations/today + Next.js dashboard page (arrivals, tasks, sync health, alerts), 30 tests |
+| 154 | API-first Cancellation Push | AirbnbAdapter.cancel(), BookingComAdapter.cancel(), ExpediaVrboAdapter.cancel() |
+| 155 | API-first Amendment Push | AirbnbAdapter.amend(), BookingComAdapter.amend(), ExpediaVrboAdapter.amend() |
+| 156 | Property Metadata Table | properties table, GET/POST/PATCH/DELETE /properties |
+| 157 | Worker Task UI | Next.js /tasks page — task list, task detail, acknowledge/complete |
+| 158 | Booking View UI | Next.js /bookings page — list + filters + amendment history |
+| 159 | Guest Profile Foundation | guest_profile table, GET/POST /guests |
+| 160 | Guest Profile UI | Next.js guest profile view (linked from booking) |
+| 161 | Financial Correction API | financial_correction_router.py, POST /financial/{id}/correct, audit trail |
+| 162 | Financial Correction API | Closed prior |
+| 163 | Financial Dashboard UI | Next.js /financial page — summary, cashflow, OTA comparison |
+| 164 | Owner Statement UI | Next.js /financial/statements page |
+| 165 | Properties Metadata API | GET /properties, POST /properties, properties table + RLS, migrations applied |
+| 166 | Role-Based Scoping | Worker/owner/manager isolation enforced in routers, permission guards |
+| 167 | Permissions Routing | PATCH /permissions/{user_id}/grant + revoke + GET list |
+| 168 | Push Notification Foundation | notification_channels table, dispatch_notification() LINE>FCM>email, 27 tests |
+| 169 | Admin Settings UI | PATCH /admin/registry/providers/{provider} + Next.js /admin page, 15 tests |
+| 170 | Owner Portal UI | Next.js /owner page — portfolio, statement drawer, payout timeline |
+| 171 | Admin Audit Log | admin_audit_log table, write_audit_event(), GET /admin/audit-log, 28 tests |
+| 172 | Health Check Enrichment | OutboundSyncProbeResult, run_health_checks_enriched(), checks['outbound'], 20 tests |
+| 173 | IPI — Proactive Availability Broadcasting | outbound_availability_broadcaster.py, POST /admin/broadcast/availability, audit debt closed, 35 tests |
+| 174 | Outbound Sync Stress Harness | Groups I–O in E2E harness (send/cancel/amend/throttle/retry/idempotency/routing), 449 total harness tests |
+| 175 | Platform Checkpoint | System audit, roadmap refresh, handoff document, docs update |
+| 176 | Outbound Sync Auto-Trigger for BOOKING_CREATED | `outbound_created_sync.py`, `fire_created_sync()` wired into service.py, 26 tests |
+| 177 | SLA→Dispatcher Bridge | `sla_dispatch_bridge.py`, `dispatch_escalations()`, tenant_permissions role resolution, 28 tests |
+| 178 | Worker Mobile UI | `/worker` route, bottom nav, To Do/Active/Done, DetailSheet, acknowledge+complete |
+| 179 | UI Auth Flow | `POST /auth/token`, `/login` page, Next.js Edge middleware, `api.login()`, 21 tests |
+| 180 | Roadmap Refresh | roadmap.md updated 176–179, forward plan 181–190 written |
 
 
 ---
 
-## 🎯 Active Direction — Phase 107+
+## 🎯 Active Direction — Phase 181+
 
-The system has proven its canonical pipeline across **11 OTA providers** with **2374 deterministic tests**. The financial layer (BookingFinancialFacts, payment lifecycle, owner statements, amendment history) is live. The next strategic direction is **API completeness → Reconciliation → Task/Operational Layer → Financial UI → Worker Communication**.
-
----
-
-### Phase 107–116 — API Completeness + Reconciliation + Task System
-
-**Phase 107 — Roadmap Refresh**
-Update `roadmap.md` to reflect actual Phases 93–106 completion vs. original plan. Extend forward plan to Phase 126. Low-risk documentation phase that sets direction cleanly before execution accelerates.
-
-**Phase 108 — Financial List Query API**
-`GET /financial?property_id=&month=YYYY-MM` — list financial records with filters (parallel to Phase 106 for bookings). Reads `booking_financial_facts`, returns per-booking financial facts array with tenant isolation. No schema change. Pure Python + tests.
-
-**Phase 109 — Booking Date Range Search**
-Extend `GET /bookings` (Phase 106) with `?check_in_from=&check_in_to=` date range filtering. Add ISO 8601 date parsing, 400 on invalid format, compound filter support (property_id + status + date range). Most critical missing search dimension for operators.
-
-**Phase 110 — OTA Reconciliation Implementation**
-Implement the reconciliation model built in Phase 89 (`reconciliation_model.py`, 7 FindingKinds). Detection layer that compares internal `booking_state` vs. expected OTA state. Emits `ReconciliationReport` with findings, severity, and correction hints. Never bypasses `apply_envelope`. Surfaces gaps via admin API.
-
-**Phase 111 — Task System Foundation**
-`task_model.py`: `Task` dataclass, `TaskKind` enum (CLEANING / CHECKIN_PREP / CHECKOUT_VERIFY / MAINTENANCE / GENERAL), `TaskStatus` (PENDING / ACKNOWLEDGED / IN_PROGRESS / COMPLETED / CANCELED), `TaskPriority` (LOW / MEDIUM / HIGH / CRITICAL). Schema preserves `urgency`, `worker_role`, `ack_sla_minutes` per `worker-communication-layer.md`. No external channels yet — in-system only.
-
-**Phase 112 — Task Automation from Booking Events**
-`task_automator.py`: rule engine that emits Tasks from booking lifecycle events. `BOOKING_CREATED → CHECKIN_PREP + CLEANING tasks`. `BOOKING_CANCELED → cancel pending tasks`. `BOOKING_AMENDED → reschedule tasks if dates changed`. Read-only from `booking_state` — never writes to event_log directly.
-
-**Phase 113 — Task Query API**
-`task_router.py`: `GET /tasks?property_id=&status=&date=` (list with filters), `GET /tasks/{task_id}` (single task). JWT auth, tenant isolation. `PATCH /tasks/{task_id}/status` — the only write endpoint in the task layer (status transitions only, not event-log writes).
-
-**Phase 114 — Guest Pre-Arrival Intake**
-`guest_intake_model.py` + `guest_intake_router.py`: lightweight per-reservation intake. `POST /intake/{booking_id}` captures: guest contact, arrival time, special notes, ID verification status, pre-arrival readiness. `GET /intake/{booking_id}` retrieves. Zero canonical state mutation — stored as a side table read model.
-
-**Phase 115 — Tier 3 OTA Adapter (Rakuten Travel)**
-`rakuten.py`: Japan-market adapter. Expands to 12th OTA provider. Follows established pattern: normalize → validate → classify → to_canonical_envelope. Includes replay fixture contract (YAML). Strongest travel brand in Japan — opens the Northeast Asia market segment.
-
-**Phase 116 — Financial Aggregation API (Ring 1)**
-Per `future-improvements.md` Ring 1 spec. `financial_aggregation_router.py`:
-- `GET /financial/summary?period=YYYY-MM` → gross, commission, net totals
-- `GET /financial/by-provider?period=` → per-OTA breakdown
-- `GET /financial/by-property?period=` → per-property breakdown
-- `GET /financial/lifecycle-distribution?period=` → count by PaymentLifecycleStatus
-All read from `booking_financial_facts`. No mutations. Multi-currency aware (no cross-currency aggregation without explicit conversion). This is the backbone that Rings 2–4 depend on.
+Phases 176–179 closed the **integration wiring gap**: outbound sync auto-triggers, SLA→notification bridge, worker mobile UI, and end-to-end auth. The next wave focuses on **real-time data freshness, platform hardening, and market expansion**.
 
 ---
 
-### Phase 117–126 — Financial UI + SLA Engine + Worker Communication
+### Phase 181–184 — Real-Time + Reliability *(closed or in-progress)*
 
-**Phase 117 — SLA Escalation Engine**
-`sla_engine.py`: per-task SLA timer consumer. Reads `ack_sla_minutes` from task, tracks acknowledgement state, emits escalation actions based on urgency level (LOW → in-app only / MEDIUM → external after delay / HIGH → fast external / CRITICAL → manager + SMS fallback per `worker-communication-layer.md`). Pure in-system — no external channel integrations yet. Deterministic escalation audit events emitted.
+**Phase 181 — SSE Live Refresh** ✅ *Closed*  
+`sse_broker.py`, `GET /events/stream`, `/worker` EventSource (fallback 60s). 20 tests.
 
-**Phase 118 — Financial Dashboard API (Ring 2–3)** ✅ CLOSED
-GET /financial/status/{booking_id} (lifecycle card + epistemic tier A/B/C + plain-English reason), GET /financial/revpar (total_net/available_room_nights per currency, worst-tier wins), GET /financial/lifecycle-by-property (distribution grouped by property). Shared helpers _tier, _worst_tier, _monetary, _project_lifecycle_status exported for re-use. 44 tests.
+**Phase 182 — Outbound Sync Auto-Trigger for BOOKING_CANCELED + BOOKING_AMENDED** ✅ *Closed*  
+`outbound_canceled_sync.py` + `outbound_amended_sync.py` via `build_sync_plan → execute_sync_plan`. Additive (parallel) triggers in service.py. 28 tests.
 
-**Phase 119 — Reconciliation Inbox API** ✅ CLOSED
-GET /admin/reconciliation?period= — exception-first inbox. 4 flags: RECONCILIATION_PENDING, PARTIAL_CONFIDENCE, MISSING_NET_TO_PROPERTY, UNKNOWN_LIFECYCLE. correction_hint (human-readable guidance) per item. Tier C first sort. Empty inbox = clean financials. Never queries booking_state. 32 tests.
+**Phase 183 — Notification Delivery Status Tracking** ✅ *Closed*  
+`notification_delivery_log` table, `write_delivery_log()`, wired into `sla_dispatch_bridge.py`. 25 tests.
 
-**Phase 120 — Payout Timeline / Cashflow View** ✅ CLOSED
-GET /financial/cashflow?period= → expected_inflows_by_week (ISO week buckets per currency), confirmed_released (PAYOUT_RELEASED only), overdue, forward_projection (next 30/60/90 days with booking_count + estimated_revenue + confidence=estimated), totals per currency, ota_collecting_excluded_count. _iso_week_key helper. OTA_COLLECTING bookings explicitly excluded from all inflow counts. 37 tests.
-
-**Phase 121 — Owner Statement Generator (Ring 4)**
-Per `future-improvements.md` Ring 4 spec. `GET /owner-statement/{property_id}?month=` enhanced with:
-- Per-booking line items (check-in/out, OTA, gross, commission, net)
-- Management fee deduction (configurable %)
-- Owner net total for period
-- Payout status per booking
-- Epistemic tier on every figure
-- PDF export endpoint: `GET /owner-statement/{property_id}?month=&format=pdf`
-Role-scoped: owner accounts see only their properties. This turns iHouse Core into an owner-facing product.
-
-**Phase 122 — OTA Financial Health Comparison**
-Per `future-improvements.md` Ring 3 OTA comparison spec. `GET /financial/ota-comparison?period=`:
-- Average commission rate per OTA
-- Net-to-gross ratio per OTA
-- Average time-to-payout per OTA
-- Lifecycle distribution per OTA (which OTAs have more RECONCILIATION_PENDING?)
-- Revenue share by OTA
-Helps operators make smarter channel management decisions.
-
-**Phase 123 — Worker-Facing Task Surface**
-Per `worker-communication-layer.md`. `GET /worker/tasks?worker_role=&status=&date=` — role-scoped task view for workers. `PATCH /worker/tasks/{id}/acknowledge`, `PATCH /worker/tasks/{id}/complete`. Dashboard-first (not mobile-first yet). In-app task acknowledgement model — external channels not wired yet.
-
-**Phase 124 — External Channel Escalation (LINE first)**
-Per `worker-communication-layer.md` graded escalation model. Integrate LINE as first external fallback channel. Triggered only after in-app ack SLA breached (Phase 117 engine). iHouse Core remains source of truth — LINE is delivery only. LINE webhook response → write ack back to task_id in core system.
-
-**Phase 125 — Tier 3 Adapter (Hotelbeds)**
-`hotelbeds.py`: EU/Global B2B distribution adapter. 13th OTA provider. Hotelbeds is the largest B2B bedbank globally — connects with wholesalers, TMCs, tour operators. Different payload semantics (B2B vs. B2C) documented explicitly. Replay fixture contract included.
-
-**Phase 126 — Multi-Projection Read Models**
-Per `future-improvements.md` Multi Projection Support item. Introduce `availability_projection` (per-property, per-date occupancy state) as a second read model built from `event_log`. `GET /availability/{property_id}?from=&to=` — which dates are occupied, by which booking. Zero write-path changes. Foundation for channel sync, OTA calendar push, and rate management.
+**Phase 184 — Booking Conflict Auto-Resolution Engine**  
+Extend `conflict_detector.py` with resolution proposals: hold_newer, hold_older, flag_for_ops. Write proposed resolution to `conflict_resolution_queue`. `/admin/conflicts` gains `POST /admin/conflicts/{pair_id}/resolve`. Zero writes to booking_state without operator approval.
 
 ---
 
-## Where We Land After Phase 126
+> [!WARNING]
+> **Confirmed Tech Debt — Phase 185**
+>
+> Phase 182 intentionally introduced a **parallel-trigger architecture** for BOOKING_CANCELED and BOOKING_AMENDED:
+> - **Fast path** (Phases 151/152/154/155): `cancel_sync_trigger.py` + `amend_sync_trigger.py` call adapters directly — no rate-limit, no retry, no idempotency key, no sync log.
+> - **Guaranteed path** (Phase 182): `outbound_canceled_sync.py` + `outbound_amended_sync.py` via `execute_sync_plan` — full Phase 141–144 guarantees.
+>
+> Both paths currently fire on every BOOKING_CANCELED and BOOKING_AMENDED event, which means **double adapter calls per provider**. This is idempotent in most OTAs but is not sustainable as a long-term design — silent path divergence is the main risk.
+>
+> **Phase 185 exists to close this tech debt intentionally and on record.**
 
-**Adapter coverage:** 13 OTA providers (Booking.com, Airbnb, Expedia, Agoda, Trip.com, Vrbo, GVR, Traveloka, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds). Global + SE Asia + India + LATAM + Japan + EU B2B.
+---
 
-**Operational surfaces:** Reservation timeline, integration health, admin API, conflict detection, reconciliation inbox, payout timeline, task system, worker surfaces, SLA escalation engine.
+### Phase 185 — Outbound Sync Trigger Consolidation *(Tech Debt)*
 
-**Financial surfaces:** Financial facts (persisted), payment lifecycle (7 states), owner statements (PDF-export), financial aggregation API (Ring 1–4), RevPAR, cashflow view, OTA comparison.
+**Goal:** Remove the parallel fast-path triggers (`cancel_sync_trigger.py`, `amend_sync_trigger.py`) once `execute_sync_plan` is proven to fully cover the same behavior safely.
 
-**Product surfaces:** Guest intake, task automation, task query API, worker-facing task surface, LINE escalation (graded).
+**Entry condition:** `execute_sync_plan` must be verified to handle:
+- Direct `.cancel()` + `.amend()` API adapter calls (api_first providers)
+- iCal push cancellation + amendment (ical_fallback providers)
+- All Phase 141–144 guarantees active and tested under load
 
-**Architecture:** Canonical core unchanged — `apply_envelope` is the only write authority. All product and financial layers read from or wrap the canonical spine without mutating it. Availability projection added as second read model.
+**Work:**
+1. Audit `cancel_sync_trigger.py` and `amend_sync_trigger.py` line by line → confirm `execute_sync_plan` covers equivalent behavior
+2. Add missing behaviors to `execute_sync_plan` if any gaps found
+3. Remove `fire_amend_sync` and `fire_cancel_sync` calls from `service.py` (fast paths)
+4. Delete `cancel_sync_trigger.py` and `amend_sync_trigger.py` (or archive to `deprecated/`)
+5. Update `service.py` CANCELED + AMENDED blocks — single path only
+6. Full regression run on the 400+ outbound harness tests (Phase 174)
 
+**Risk:** Medium. The outbound stress harness (Phase 174, 449 tests) provides the safety net for this refactor.
+
+---
+
+### Phase 186–191 — Market + Product Depth
+
+**Phase 186 — Logout + Session Management**  
+`POST /auth/logout` (client-side token clear + cookie delete + redirect to `/login`). Token expiry detection in `apiFetch` — if 403, auto-logout. Required for production readiness.
+
+**Phase 187 — Rakuten Travel Adapter (Japan Market)**  
+Tier 3 adapter. Dominant Japanese OTA. Adds JP market coverage. Standard adapter pattern. RAK- prefix for booking_id.
+
+**Phase 188 — PDF Owner Statements**  
+`GET /owner-statement/{id}?format=pdf`. Lightweight PDF library (`reportlab` or `weasyprint`). PDF includes property name, month, line items, fee breakdown, owner net total. Owner Portal `/owner` gets download button.
+
+**Phase 189 — Booking Mutation Audit Events**  
+Every state-changing operation (acknowledge, complete, override, cancel, amend) emits a structured `AuditEvent` to `admin_audit_log`. Includes: actor, action, before/after state, timestamp. Closes the actor-level traceability gap.
+
+**Phase 190 — Manager Dashboard UI**  
+New `/manager` route: cross-property task overview, pending conflicts, unacknowledged CRITICAL tasks, outbound sync health summary. Manager can acknowledge on behalf, override conflicts, and download owner statements.
+
+**Phase 191 — Platform Checkpoint II**  
+Second platform audit. Update all docs. Evaluate: Hostelworld adapter, WhatsApp escalation channel, multi-property tenant onboarding, payment gateway webhook integration. Write forward plan Phase 192–200.
 
 ---
 

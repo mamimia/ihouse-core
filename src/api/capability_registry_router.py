@@ -1,6 +1,7 @@
 """
 Phase 136 — Provider Capability Registry API
 Phase 169 — Admin Settings UI (PATCH /admin/registry/providers/{provider} added)
+Phase 171 — Admin Audit Log (write_audit_event wired into PATCH)
 
 Read-only + admin-upsert API for `provider_capability_registry`.
 
@@ -468,6 +469,25 @@ async def patch_provider(
         rows: List[Dict[str, Any]] = result.data or []
         if not rows:
             return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+        # Phase 171 — audit trail (best-effort, never raises)
+        try:
+            from api.admin_router import write_audit_event  # noqa: PLC0415
+            before = {k: v for k, v in (check.data[0] if check.data else {}).items()
+                      if k in update}
+            write_audit_event(
+                db,
+                tenant_id=tenant_id,
+                actor_user_id=tenant_id,
+                action="patch_provider",
+                target_type="provider",
+                target_id=provider_key,
+                before_state=before,
+                after_state=update,
+                metadata={"fields_patched": list(update.keys())},
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
         return JSONResponse(status_code=200, content=_format_record(rows[0]))
 

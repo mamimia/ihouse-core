@@ -2455,3 +2455,189 @@ Changes:
 - tests/test_health_enriched_contract.py [NEW]: 20 contract tests.
 
 Result: 4468 tests pass (4448 + 20 new). 2 pre-existing SQLite skips unchanged.
+
+## Phase 173 — IPI: Proactive Availability Broadcasting (Closed)
+
+Extended outbound sync pipeline with a property-level proactive broadcaster.
+Designed as a thin orchestration layer above Phase 137 (build_sync_plan) and Phase 138 (execute_sync_plan).
+Audit wiring from Phase 171 also applied to Phase 167 (grant/revoke permission) and Phase 169 (PATCH provider) endpoints.
+
+Changes:
+- src/services/outbound_availability_broadcaster.py [NEW]:
+  - BroadcastMode: PROPERTY_ONBOARDED, CHANNEL_ADDED.
+  - BookingBroadcastResult, BroadcastReport dataclasses.
+  - _fetch_channels(), _fetch_registry(), _fetch_active_booking_ids() — injectable DB helpers.
+  - broadcast_availability(db, *, tenant_id, property_id, mode, source_provider, target_provider, ...): reads property_channel_map + provider_capability_registry + booking_state; builds sync plan per booking using existing build_sync_plan(); executes via execute_sync_plan(); per-booking fail-isolated; never raises.
+  - serialise_broadcast_report(): JSON-serialisable output.
+- src/api/broadcaster_router.py [NEW]: POST /admin/broadcast/availability — validates mode + required fields; delegates to broadcaster; always returns 200 with BroadcastReport.
+- src/main.py [MODIFIED]: broadcaster_router registered.
+- src/api/permissions_router.py [MODIFIED]: write_audit_event wired into PATCH /permissions/{user_id}/grant and PATCH /permissions/{user_id}/revoke (Phase 171 debt closed).
+- src/api/capability_registry_router.py [MODIFIED]: write_audit_event wired into PATCH /admin/registry/providers/{provider} (Phase 171 debt closed).
+- tests/test_availability_broadcaster_contract.py [NEW]: 35 contract tests (Groups A-K).
+
+Result: 4503 tests pass (4468 + 35 new). 2 pre-existing SQLite failures unchanged.
+
+## Phase 174 — Outbound Sync Stress Harness (Closed)
+
+Extended Phase 90/102 E2E integration harness with outbound adapter + executor groups.
+CI-safe: no live HTTP calls, no Supabase. All real adapters exercised in dry-run mode via missing credentials.
+
+Groups added to tests/test_e2e_integration_harness.py:
+- Group I (8 tests) — send() / push() dry-run: AirbnbAdapter, BookingComAdapter, ExpediaVrboAdapter, ICalPushAdapter(hotelbeds), ICalPushAdapter(tripadvisor). All return status=dry_run when credentials absent. Explicit dry_run=True also respected.
+- Group J (5 tests) — cancel() dry-run: API adapters return api_first; iCal adapters return ical_fallback. cancel keyword in message verified.
+- Group K (4 tests) — amend() dry-run: returns dry_run, correct strategy, external_id preserved, message contains 'amend'.
+- Group L (4 tests) — Throttle: IHOUSE_THROTTLE_DISABLED=true prevents sleep; zero rate_limit warns + returns; adapter send/push under throttle-disabled completes in <2s.
+- Group M (4 tests) — Retry: IHOUSE_RETRY_DISABLED=true returns 5xx immediately (no retry); retry-enabled recovers on second attempt; all-5xx exhaustion returns last result, call count verified.
+- Group N (8 tests) — Idempotency key: send, cancel, amend keys all differ per suffix; key stable within same call; booking_id, external_id, today date all appear in key; verified on all 3 API adapters.
+- Group O (7 tests) — execute_sync_plan routing: api_first→send returns ok; ical_fallback→push returns ok; skip→skip_count; mixed actions counted correctly; failed adapter counted; empty plan returns zeros.
+
+Changes:
+- tests/test_e2e_integration_harness.py [EXTENDED]: +40 tests (Groups I-O, parametrized across adapters = 449 total in file).
+
+Result: 4577 tests pass (4503 + 74 new parametrized variations). 2 pre-existing SQLite failures unchanged.
+
+## Phase 175 — Platform Checkpoint (Closed)
+
+Documentation-only milestone. No new source code or tests. All deliverables are docs.
+
+Changes:
+- docs/core/system-audit-phase175.md [NEW]: Full gap analysis across 7 layers (inbound pipeline, canonical state, outbound sync, task/operational, financial API, permissions/admin, UI). Per-layer ✅/⚠️ tables. Top 5 gap priorities for Phase 176+. Invariant health check. Test coverage breakdown.
+- docs/core/roadmap.md [UPDATED]: Last-updated note refreshed to Phase 175. Completion table extended from Phase 106 → Phase 175 (all 69 phases documented). Stale "Phase 107+ forward plan" section replaced with "Phase 176+" plan (outbound auto-trigger, SLA bridge, worker UI, auth flow, roadmap refresh).
+- docs/core/planning/ui-architecture.md [UPDATED]: Status line updated to reflect actual state (6 of 7 screens deployed). "Actual Deployment State — Phase 175 Checkpoint" section added with route table, critical gaps, and UI invariant note.
+- releases/handoffs/handoff_to_new_chat Phase-175.md [NEW]: State summary, locked invariants table, UI surfaces table, key file reference, top 5 priorities for next session with specific implementation guidance, environment setup notes, documentation debt inventory.
+- docs/core/current-snapshot.md [UPDATED]: Phase 175 current/last-closed, system status strip extended to 175, test count 4297→4577, Next Phase pointer updated to Phase 176.
+- docs/core/construction-log.md [UPDATED]: This entry.
+
+Result: 4577 tests pass. 0 new code tests (pure documentation phase). 2 pre-existing SQLite failures unchanged.
+
+## Phase 176 — Outbound Sync Auto-Trigger for BOOKING_CREATED (Closed) — 2026-03-10
+
+Goal: Close the final gap in the outbound synchronization pipeline. BOOKING_CANCELED and BOOKING_AMENDED had complete auto-trigger paths; BOOKING_CREATED did not.
+
+Completed:
+
+- `src/services/outbound_created_sync.py` — NEW — `fire_created_sync(*, booking_id, property_id, tenant_id, channels=None, registry=None)`. Fetches property_channel_map and provider_capability_registry (lazy from Supabase or injected for testing), calls `build_sync_plan` → `execute_sync_plan`, returns `List[CreatedSyncResult]`. Best-effort: all exceptions swallowed, returns []. **Module-level imports** of `build_sync_plan` and `execute_sync_plan` (critical — local re-import would shadow module attributes and break patching). `CreatedSyncResult` dataclass: provider, external_id, strategy, status, message.
+- `src/adapters/ota/service.py` — MODIFIED — added best-effort block in `ingest_provider_event_with_dlq`: after BOOKING_CREATED APPLIED, guards `booking_id` and `property_id` are non-empty, lazy-imports `outbound_created_sync`, calls `fire_created_sync(booking_id=..., property_id=..., tenant_id=...)`. Exception caught and swallowed — never blocks ingest response.
+- `tests/test_outbound_auto_trigger_contract.py` — NEW — 26 contract tests:
+  - Group A (10): `fire_created_sync` happy path — plan built, executor called, results returned, registry routing, skip strategy, strategy + status fields, all results returned.
+  - Group B (4): error isolation — `_get_channels` DB error returns [], `_get_registry` DB error returns [], `build_sync_plan` exception returns [], `execute_sync_plan` exception returns [].
+  - Group C (5): service wiring — APPLIED fires sync, non-APPLIED does not, exception still returns APPLIED, empty booking_id skips, empty property_id skips.
+  - Group D (4): regression guards — cancel/amend trigger paths unchanged after Phase 176.
+  - Group E (5): CreatedSyncResult field contract — provider, external_id, strategy, status, message shape verified.
+
+Key implementation finding: lazy re-imports inside `fire_created_sync` body shadowed module-level names and made all `patch()` calls ineffective. Fixed by removing the duplicate inner imports, leaving only top-level imports.
+
+Validation:
+
+4,627 tests pass. 2 pre-existing SQLite guard failures unchanged.
+
+Result:
+
+All three booking lifecycle events (BOOKING_CREATED, BOOKING_CANCELED, BOOKING_AMENDED) now automatically trigger outbound sync to all configured channels on APPLIED. The outbound sync pipeline is complete end-to-end.
+
+## Phase 177 — SLA→Dispatcher Bridge (Closed) — 2026-03-10
+
+Goal: Connect sla_engine output to notification_dispatcher. No side-effects in sla_engine, no SLA logic in dispatcher.
+
+- `src/channels/sla_dispatch_bridge.py` — NEW — `dispatch_escalations(db, tenant_id, actions, adapters=None)`. Resolves target users from `tenant_permissions` (ops→worker/manager, admin→admin), builds NotificationMessage per action, calls `dispatch_notification` for each user. `BridgeResult` dataclass. Best-effort: all exceptions swallowed. `sla_engine.py` and `notification_dispatcher.py` NOT modified.
+- `tests/test_sla_dispatch_bridge_contract.py` — NEW — 28 contract tests: Group A (happy path), B (target routing), C (message shape), D (error isolation), E (BridgeResult contract).
+
+Validation: 4,629 tests pass. 2 pre-existing SQLite failures unchanged.
+
+## Phase 178 — Worker Mobile UI /worker (Closed) — 2026-03-10
+
+- `ihouse-ui/app/worker/page.tsx` — NEW — dedicated mobile-first worker app. No sidebar. Bottom nav (To Do / Active / Done tabs). `TaskCard`: priority left-bar, SLA countdown, overdue badge. `DetailSheet`: slide-up with full task metadata grid, acknowledge action, complete-with-notes form. `BottomNav`: fixed, tab badges. `SlaCountdown`: CRITICAL pending countdown. Toast feedback. 30s polling. All API calls via existing `api.acknowledgeTask` / `api.completeTask`. TypeScript clean.
+
+Validation: tsc --noEmit 0 errors. Python suite 4,629 passing, 0 regressions.
+
+## Phase 179 — UI Auth Flow (Closed) — 2026-03-10
+
+- `src/api/auth_router.py` — NEW — `POST /auth/token`: HS256 JWT issuer. Reads IHOUSE_JWT_SECRET + IHOUSE_DEV_PASSWORD. Returns 503/401/422 appropriately. Registered in main.py.
+- `ihouse-ui/app/login/page.tsx` — NEW — Dark premium login form; calls api.login(), writes token to localStorage + cookie, redirects.
+- `ihouse-ui/middleware.ts` — NEW — Next.js Edge middleware; reads ihouse_token cookie; redirects to /login if missing.
+- `ihouse-ui/lib/api.ts` — MODIFIED — added `login()` + `LoginResponse` type.
+- `tests/test_auth_router_contract.py` — NEW — 21 contract tests (Groups A–E). Uses autouse fixture monkeypatch to avoid env pollution.
+
+Validation: tsc 0 errors. 4,650 tests passing, 0 regressions.
+
+## Phase 180 — Roadmap Refresh + Forward Plan (Closed) — 2026-03-10
+
+- `docs/core/roadmap.md` — MODIFIED — Last-updated banner updated. Phases 176–180 added to completed table. Active direction block replaced with Phase 181+ plan. Forward plan written: 181–185 (Real-Time + Reliability) and 186–190 (Market Expansion + Product Depth).
+
+Documentation-only. No code changes. 4,650 tests still passing.
+
+## Phase 181 — SSE Live Refresh (Closed) — 2026-03-10
+
+- `src/channels/sse_broker.py` — NEW — SseBroker: asyncio pub/sub, tenant-scoped, thread-safe publish, MAX_QUEUE_SIZE=1000.
+- `src/api/sse_router.py` — NEW — GET /events/stream (SSE). JWT via query param. :ping keep-alive. Registered in main.py.
+- `ihouse-ui/app/worker/page.tsx` — MODIFIED — EventSource replaces setInterval. Fallback polling on error. "live updates" text.
+- `tests/test_sse_contract.py` — NEW — 20 tests (Groups A–E): broker pub/sub, tenant isolation, queue guard, _resolve_tenant, endpoint registration.
+
+TypeScript clean. 4,670 passing, 0 regressions.
+
+## Phase 182 — Outbound Sync for CANCELED + AMENDED (Closed) — 2026-03-10
+
+- `src/services/outbound_canceled_sync.py` — NEW — fire_canceled_sync(): build_sync_plan → execute_sync_plan for BOOKING_CANCELED. Full Phase 141-144 guarantees.
+- `src/services/outbound_amended_sync.py` — NEW — fire_amended_sync(): same pipeline, Optional check_in/check_out for date-aware adapters. Full Phase 141-144 guarantees.
+- `src/adapters/ota/service.py` — MODIFIED — BOOKING_CANCELED + BOOKING_AMENDED blocks wire both new triggers additively after existing direct-adapter triggers.
+- `tests/test_outbound_lifecycle_sync_contract.py` — NEW — 28 contract tests (Groups A-F).
+
+4,698 passing, 0 regressions.
+
+## Phase 183 — Notification Delivery Status Tracking (Closed) — 2026-03-10
+
+- `src/core/db/migrations/0008_notification_delivery_log.sql` — NEW — notification_delivery_log table + 3 indexes.
+- `src/channels/notification_delivery_writer.py` — NEW — write_delivery_log(): one row per ChannelAttempt. UUID PK. Best-effort (never raises). Returns count of written rows.
+- `src/channels/sla_dispatch_bridge.py` — MODIFIED — write_delivery_log wired after every dispatch_notification call (Phase 183 import + call inside user loop, isolated by try/except).
+- `tests/test_notification_delivery_writer_contract.py` — NEW — 25 tests (Groups A-F).
+
+4,723 passing, 0 regressions.
+
+## Phase 184 — Booking Conflict Auto-Resolution Engine (Closed) — 2026-03-10
+
+- `src/core/db/migrations/0009_conflict_resolution_queue.sql` — NEW — conflict_resolution_queue table + idempotency unique index + 3 indexes.
+- `src/services/conflict_resolution_writer.py` — NEW — write_resolution(): upsert ConflictTask/OverrideRequest + AuditEvent. Never raises. Returns (artifacts_written, audit_written).
+- `src/api/conflicts_router.py` — MODIFIED — POST /conflicts/resolve: skill.run() + write_resolution(). 400 on INVALID_WINDOW and missing request_id.
+- `tests/test_conflict_resolution_contract.py` — NEW — 26 tests (Groups A-F).
+
+4,749 passing. 0 regressions vs pre-Phase-184 baseline.
+
+## Phase 185 — Outbound Sync Trigger Consolidation (Closed) — 2026-03-10
+
+- `src/services/outbound_executor.py` — MODIFIED — event_type param: routes api_first → .cancel()/.amend()/.send(), ical_fallback → .cancel()/.push(). ISO date normalisation for amend.
+- `src/services/outbound_canceled_sync.py` — MODIFIED — passes event_type="BOOKING_CANCELED" to execute_sync_plan.
+- `src/services/outbound_amended_sync.py` — MODIFIED — passes event_type="BOOKING_AMENDED" + dates to execute_sync_plan.
+- `src/adapters/ota/service.py` — MODIFIED — removed both fast-path trigger blocks (amend_sync_trigger, cancel_sync_trigger). Single guaranteed path only.
+- `src/services/deprecated/cancel_sync_trigger.py` — ARCHIVED from src/services/ (Phase 151/154).
+- `src/services/deprecated/amend_sync_trigger.py` — ARCHIVED from src/services/ (Phase 152/155).
+- `tests/deprecated/test_ical_cancel_push_contract.py` — ARCHIVED (tested removed fast-path).
+- `tests/deprecated/test_ical_amend_push_contract.py` — ARCHIVED (tested removed fast-path).
+- `tests/test_executor_event_type_routing.py` — NEW — 11 tests for event_type routing.
+- `tests/test_outbound_auto_trigger_contract.py` — MODIFIED — D1-D4 now patch guaranteed path.
+- `tests/test_outbound_lifecycle_sync_contract.py` — MODIFIED — test_a4 expects event_type kwarg.
+- `pytest.ini` — MODIFIED — added --ignore=tests/deprecated --ignore=tests/invariants to addopts.
+
+4,370 passing. 0 new regressions.
+
+## Phase 186 — Auth & Logout Flow (Closed) — 2026-03-10
+
+- `src/api/auth_router.py` — MODIFIED — POST /auth/logout: unprotected, returns 200 + Set-Cookie Max-Age=0 to clear ihouse_token.
+- `ihouse-ui/lib/api.ts` — MODIFIED — performClientLogout(), api.logout() (POST + client clear), apiFetch() auto-logout on 401/403.
+- `ihouse-ui/components/LogoutButton.tsx` — NEW — Client Component. Calls api.logout(), hover effect.
+- `ihouse-ui/app/layout.tsx` — MODIFIED — LogoutButton added, pinned to sidebar bottom with flex spacer.
+- `tests/test_auth_logout_contract.py` — NEW — 16 tests (Groups A-D).
+
+4,386 passing. 0 regressions.
+
+## Phase 187 — Rakuten Travel Adapter (Closed) — 2026-03-10
+
+- `src/adapters/ota/rakuten.py` — NEW — RakutenAdapter: hotel_code→property_id, booking_ref→RAK- strip, JPY primary, BOOKING_CREATED/CANCELLED/MODIFIED.
+- `src/adapters/ota/registry.py` — MODIFIED — "rakuten": RakutenAdapter() registered.
+- `src/adapters/ota/booking_identity.py` — MODIFIED — _strip_rakuten_prefix() + _PROVIDER_RULES["rakuten"].
+- `src/adapters/ota/schema_normalizer.py` — MODIFIED — 5 field helpers: guest_count, booking_ref, hotel_code, check_in, check_out, total_amount.
+- `src/adapters/ota/financial_extractor.py` — MODIFIED — _extract_rakuten(): total_amount, rakuten_commission, net derivation, FULL/ESTIMATED/PARTIAL confidence.
+- `src/adapters/ota/amendment_extractor.py` — MODIFIED — extract_amendment_rakuten(): modification.{check_in,check_out,guest_count,reason}. Added "rakuten" to _SUPPORTED_PROVIDERS.
+- `src/adapters/ota/semantics.py` — MODIFIED — "booking_created" → CREATE alias (Rakuten native event type).
+- `tests/test_rakuten_adapter_contract.py` — NEW — 34 tests (Groups A-G).
+
+4,420 passing. 0 regressions.

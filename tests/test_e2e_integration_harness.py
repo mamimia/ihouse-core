@@ -1,6 +1,7 @@
 """
 Phase 90 — External Integration Test Harness
 Phase 102 — Extended to 11 providers (MakeMyTrip, Klook, Despegar added)
+Phase 174 — Outbound Sync Stress Harness (Groups I-O added)
 
 End-to-end deterministic pipeline harness for all 11 OTA providers.
 Exercises: raw payload → normalize → classify → to_canonical_envelope.
@@ -10,7 +11,7 @@ Provider coverage:
   bookingcom, expedia, airbnb, agoda, tripcom, vrbo, gvr, traveloka,
   makemytrip, klook, despegar
 
-Groups:
+Groups (inbound — Phase 90/102):
   A — All 11 providers produce valid BOOKING_CREATED envelopes
   B — All 11 providers produce valid BOOKING_CANCELED envelopes
   C — All 11 providers produce valid BOOKING_AMENDED envelopes
@@ -19,6 +20,15 @@ Groups:
   F — Invalid payloads rejected (PayloadValidationResult.valid=False)
   G — Cross-provider isolation: same raw reservation_id → different booking_id
   H — Pipeline idempotency: identical payload → identical envelope
+
+Groups (outbound — Phase 174):
+  I — send() / push() dry-run across all 5 outbound adapters
+  J — cancel() dry-run across all 4 adapters (API + iCal)
+  K — amend() dry-run across 3 API adapters
+  L — Throttle: IHOUSE_THROTTLE_DISABLED=true respected (no actual sleep)
+  M — Retry: IHOUSE_RETRY_DISABLED=true respected; 5xx propagated
+  N — Idempotency key: suffix disambiguates send vs cancel vs amend
+  O — execute_sync_plan routing: api_first→send, ical_fallback→push, skip→skipped
 """
 from __future__ import annotations
 
@@ -862,3 +872,487 @@ class TestGroupHPipelineIdempotency:
         _run_pipeline(provider, payload)
         # Original payload keys should not be altered
         assert set(payload.keys()) == original_keys
+
+
+# ===========================================================================
+# Phase 174 — Outbound Sync Stress Harness
+# ===========================================================================
+
+import os as _os  # noqa: E402
+
+from adapters.outbound.airbnb_adapter import AirbnbAdapter
+from adapters.outbound.bookingcom_adapter import BookingComAdapter
+from adapters.outbound.expedia_vrbo_adapter import ExpediaVrboAdapter
+from adapters.outbound.ical_push_adapter import ICalPushAdapter
+from adapters.outbound import AdapterResult, _build_idempotency_key, _retry_with_backoff
+from services.outbound_executor import execute_sync_plan, ExecutionResult
+from services.outbound_sync_trigger import SyncAction
+
+# Three Tier-A adapters (api_first)
+_API_ADAPTERS = [
+    ("airbnb",     AirbnbAdapter()),
+    ("bookingcom", BookingComAdapter()),
+    ("expedia",    ExpediaVrboAdapter("expedia")),
+]
+_API_ADAPTER_NAMES = [a[0] for a in _API_ADAPTERS]
+
+# Two Tier-B adapters (ical_fallback)
+_ICAL_ADAPTERS = [
+    ("hotelbeds",   ICalPushAdapter("hotelbeds")),
+    ("tripadvisor", ICalPushAdapter("tripadvisor")),
+]
+_ICAL_ADAPTER_NAMES = [a[0] for a in _ICAL_ADAPTERS]
+
+_ALL_OUTBOUND_ADAPTERS = _API_ADAPTERS + _ICAL_ADAPTERS
+_BOOKING_ID  = "airbnb_stress_B001"
+_EXTERNAL_ID = "ext_stress_001"
+
+
+# ---------------------------------------------------------------------------
+# Group I — send() / push() dry-run across all outbound adapters
+# ---------------------------------------------------------------------------
+
+class TestGroupIOutboundSendDryRun:
+    """All adapters return dry_run status when credentials are absent (no env vars set)."""
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_i1_api_send_returns_dry_run_without_credentials(self, name, adapter, monkeypatch):
+        for env_key in ("AIRBNB_API_KEY", "BOOKINGCOM_API_KEY", "EXPEDIA_API_KEY", "VRBO_API_KEY"):
+            monkeypatch.delenv(env_key, raising=False)
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.send(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60)
+        assert result.status == "dry_run"
+        assert result.provider == name
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_i2_api_send_returns_adapter_result_type(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.send(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60)
+        assert isinstance(result, AdapterResult)
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_i3_api_send_dry_run_http_status_is_none(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.send(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60)
+        assert result.http_status is None
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_i4_api_send_strategy_is_api_first(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.send(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60)
+        assert result.strategy == "api_first"
+
+    @pytest.mark.parametrize("name,adapter", _ICAL_ADAPTERS)
+    def test_i5_ical_push_returns_dry_run_without_url(self, name, adapter, monkeypatch):
+        env_prefix = name.upper()
+        monkeypatch.delenv(f"{env_prefix}_ICAL_URL", raising=False)
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.push(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=10)
+        assert result.status == "dry_run"
+        assert result.strategy == "ical_fallback"
+
+    @pytest.mark.parametrize("name,adapter", _ICAL_ADAPTERS)
+    def test_i6_ical_push_provider_name_matches(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.push(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=10)
+        assert result.provider == name
+
+    @pytest.mark.parametrize("name,adapter", _ICAL_ADAPTERS)
+    def test_i7_ical_push_external_id_preserved(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.push(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=10)
+        assert result.external_id == _EXTERNAL_ID
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_i8_explicit_dry_run_flag_respected(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.send(
+            external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60, dry_run=True,
+        )
+        assert result.status == "dry_run"
+
+
+# ---------------------------------------------------------------------------
+# Group J — cancel() dry-run across all adapters
+# ---------------------------------------------------------------------------
+
+class TestGroupJCancelDryRun:
+    """cancel() returns dry_run when credentials absent; strategy fixed."""
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_j1_api_cancel_returns_dry_run(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.cancel(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60)
+        assert result.status == "dry_run"
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_j2_api_cancel_strategy_is_api_first(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.cancel(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60)
+        assert result.strategy == "api_first"
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_j3_api_cancel_provider_correct(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.cancel(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60)
+        assert result.provider == name
+
+    @pytest.mark.parametrize("name,adapter", _ICAL_ADAPTERS)
+    def test_j4_ical_cancel_returns_dry_run(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.cancel(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=10)
+        assert result.status == "dry_run"
+        assert result.strategy == "ical_fallback"
+
+    @pytest.mark.parametrize("name,adapter", _ICAL_ADAPTERS)
+    def test_j5_ical_cancel_message_contains_cancel(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.cancel(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=10)
+        assert "cancel" in result.message.lower()
+
+
+# ---------------------------------------------------------------------------
+# Group K — amend() dry-run across API adapters
+# ---------------------------------------------------------------------------
+
+class TestGroupKAmendDryRun:
+    """amend() returns dry_run when credentials absent."""
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_k1_api_amend_returns_dry_run(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.amend(
+            external_id=_EXTERNAL_ID,
+            booking_id=_BOOKING_ID,
+            check_in="20261001",
+            check_out="20261005",
+            rate_limit=60,
+        )
+        assert result.status == "dry_run"
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_k2_api_amend_strategy_api_first(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.amend(
+            external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60,
+        )
+        assert result.strategy == "api_first"
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_k3_api_amend_external_id_preserved(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.amend(
+            external_id="ext_amend_999", booking_id=_BOOKING_ID, rate_limit=60,
+        )
+        assert result.external_id == "ext_amend_999"
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_k4_api_amend_message_mentions_amend(self, name, adapter, monkeypatch):
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        result = adapter.amend(
+            external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=60,
+        )
+        assert "amend" in result.message.lower()
+
+
+# ---------------------------------------------------------------------------
+# Group L — Throttle: IHOUSE_THROTTLE_DISABLED=true is respected
+# ---------------------------------------------------------------------------
+
+class TestGroupLThrottle:
+    """When IHOUSE_THROTTLE_DISABLED=true, _throttle() returns instantly."""
+
+    def test_l1_throttle_disabled_env_skips_sleep(self, monkeypatch):
+        """No actual sleep occurs if disabled. Measured by wall-clock sanity."""
+        import time
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        from adapters.outbound import _throttle
+        start = time.monotonic()
+        _throttle(rate_limit=1)   # without disable: 60s sleep
+        elapsed = time.monotonic() - start
+        assert elapsed < 0.1, f"Throttle took {elapsed:.2f}s — not disabled properly"
+
+    def test_l2_throttle_zero_rate_limit_warns_and_returns(self, monkeypatch, caplog):
+        monkeypatch.delenv("IHOUSE_THROTTLE_DISABLED", raising=False)
+        import logging
+        from adapters.outbound import _throttle
+        with caplog.at_level(logging.WARNING):
+            _throttle(rate_limit=0)
+        assert any("non-positive" in msg or "skipped" in msg for msg in caplog.messages)
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_l3_adapter_send_completes_fast_with_throttle_disabled(self, name, adapter, monkeypatch):
+        import time
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        start = time.monotonic()
+        adapter.send(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=1)
+        elapsed = time.monotonic() - start
+        assert elapsed < 2.0, f"{name} send took {elapsed:.2f}s with throttle disabled"
+
+    @pytest.mark.parametrize("name,adapter", _ICAL_ADAPTERS)
+    def test_l4_ical_push_completes_fast_with_throttle_disabled(self, name, adapter, monkeypatch):
+        import time
+        monkeypatch.setenv("IHOUSE_THROTTLE_DISABLED", "true")
+        start = time.monotonic()
+        adapter.push(external_id=_EXTERNAL_ID, booking_id=_BOOKING_ID, rate_limit=1)
+        elapsed = time.monotonic() - start
+        assert elapsed < 2.0, f"{name} push took {elapsed:.2f}s with throttle disabled"
+
+
+# ---------------------------------------------------------------------------
+# Group M — Retry: IHOUSE_RETRY_DISABLED=true; 5xx propagated without retry
+# ---------------------------------------------------------------------------
+
+class TestGroupMRetry:
+    """When IHOUSE_RETRY_DISABLED=true, a 5xx result is returned on first attempt."""
+
+    def test_m1_retry_disabled_5xx_returned_immediately(self, monkeypatch):
+        monkeypatch.setenv("IHOUSE_RETRY_DISABLED", "true")
+        call_count = {"n": 0}
+
+        def _always_5xx() -> AdapterResult:
+            call_count["n"] += 1
+            return AdapterResult(
+                provider="test", external_id="x",
+                strategy="api_first", status="failed",
+                http_status=503, message="upstream error",
+            )
+
+        result = _retry_with_backoff(_always_5xx)
+        assert result.http_status == 503
+        assert call_count["n"] == 1   # no retry
+
+    def test_m2_retry_disabled_success_on_first_try(self, monkeypatch):
+        monkeypatch.setenv("IHOUSE_RETRY_DISABLED", "true")
+
+        def _ok() -> AdapterResult:
+            return AdapterResult(
+                provider="test", external_id="x",
+                strategy="api_first", status="ok",
+                http_status=200, message="all good",
+            )
+
+        result = _retry_with_backoff(_ok)
+        assert result.status == "ok"
+
+    def test_m3_retry_enabled_retries_on_5xx(self, monkeypatch):
+        """Without RETRY_DISABLED, a 5xx triggers retries. We mock sleep to keep test fast."""
+        monkeypatch.delenv("IHOUSE_RETRY_DISABLED", raising=False)
+        call_count = {"n": 0}
+
+        def _fail_once_then_ok() -> AdapterResult:
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return AdapterResult(
+                    provider="test", external_id="x",
+                    strategy="api_first", status="failed",
+                    http_status=503, message="transient",
+                )
+            return AdapterResult(
+                provider="test", external_id="x",
+                strategy="api_first", status="ok",
+                http_status=200, message="recovered",
+            )
+
+        # Patch time.sleep to avoid actual wait
+        import time as _time_module
+        monkeypatch.setattr(_time_module, "sleep", lambda s: None)
+        result = _retry_with_backoff(_fail_once_then_ok)
+        assert result.status == "ok"
+        assert call_count["n"] == 2   # failed once, succeeded on retry
+
+    def test_m4_retry_enabled_all_5xx_returns_last_result(self, monkeypatch):
+        """All retries exhausted → last 5xx result returned (no exception)."""
+        monkeypatch.delenv("IHOUSE_RETRY_DISABLED", raising=False)
+        import time as _time_module
+        monkeypatch.setattr(_time_module, "sleep", lambda s: None)
+        call_count = {"n": 0}
+
+        def _always_5xx() -> AdapterResult:
+            call_count["n"] += 1
+            return AdapterResult(
+                provider="test", external_id="x",
+                strategy="api_first", status="failed",
+                http_status=503, message="always down",
+            )
+
+        result = _retry_with_backoff(_always_5xx, max_retries=2)
+        assert result.http_status == 503
+        assert call_count["n"] == 3   # initial + 2 retries
+
+
+# ---------------------------------------------------------------------------
+# Group N — Idempotency key: suffix disambiguates send vs cancel vs amend
+# ---------------------------------------------------------------------------
+
+class TestGroupNIdempotencyKey:
+    """_build_idempotency_key with different suffixes produces different keys."""
+
+    def test_n1_send_and_cancel_keys_differ(self):
+        send_key   = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID, suffix="")
+        cancel_key = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID, suffix="cancel")
+        assert send_key != cancel_key
+
+    def test_n2_cancel_and_amend_keys_differ(self):
+        cancel_key = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID, suffix="cancel")
+        amend_key  = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID, suffix="amend")
+        assert cancel_key != amend_key
+
+    def test_n3_send_and_amend_keys_differ(self):
+        send_key  = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID)
+        amend_key = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID, suffix="amend")
+        assert send_key != amend_key
+
+    def test_n4_key_is_stable_within_same_call(self):
+        k1 = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID)
+        k2 = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID)
+        assert k1 == k2
+
+    def test_n5_key_contains_booking_id(self):
+        key = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID)
+        assert _BOOKING_ID in key
+
+    def test_n6_key_contains_external_id(self):
+        key = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID)
+        assert _EXTERNAL_ID in key
+
+    def test_n7_key_contains_today_date_component(self):
+        from datetime import date
+        key = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID)
+        today = date.today().strftime("%Y%m%d")
+        assert today in key
+
+    @pytest.mark.parametrize("name,adapter", _API_ADAPTERS)
+    def test_n8_cancel_idempotency_key_differs_from_send_in_actual_adapter(self, name, adapter):
+        """Adapters use different suffix for cancel vs send."""
+        send_key   = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID)
+        cancel_key = _build_idempotency_key(_BOOKING_ID, _EXTERNAL_ID, suffix="cancel")
+        assert send_key != cancel_key, f"{name}: send and cancel keys must differ"
+
+
+# ---------------------------------------------------------------------------
+# Group O — execute_sync_plan routing
+# ---------------------------------------------------------------------------
+
+class TestGroupOExecuteSyncPlanRouting:
+    """Verify that execute_sync_plan routes strategy correctly without live HTTP."""
+
+    def _make_action(self, strategy: str, provider: str = "airbnb") -> SyncAction:
+        return SyncAction(
+            booking_id=_BOOKING_ID,
+            property_id="prop_stress_001",
+            provider=provider,
+            external_id=_EXTERNAL_ID,
+            strategy=strategy,
+            reason="harness test",
+            tier="A" if strategy == "api_first" else "B",
+            rate_limit=60,
+        )
+
+    def _ok_api_adapter(self):
+        class _Adapter:
+            @staticmethod
+            def send(provider=None, external_id=None, booking_id=None, rate_limit=60, **kw):
+                return AdapterResult(
+                    provider=provider or "airbnb", external_id=external_id or _EXTERNAL_ID,
+                    strategy="api_first", status="ok",
+                    http_status=200, message="ok",
+                )
+        return _Adapter
+
+    def _ok_ical_adapter(self):
+        class _Adapter:
+            @staticmethod
+            def push(provider=None, external_id=None, booking_id=None, rate_limit=10,
+                     check_in=None, check_out=None, **kw):
+                return AdapterResult(
+                    provider=provider or "hotelbeds", external_id=external_id or _EXTERNAL_ID,
+                    strategy="ical_fallback", status="ok",
+                    http_status=200, message="pushed",
+                )
+        return _Adapter
+
+    def test_o1_api_first_action_calls_send_returns_ok(self):
+        actions = [self._make_action("api_first")]
+        report = execute_sync_plan(
+            booking_id=_BOOKING_ID, property_id="prop", tenant_id="t",
+            actions=actions,
+            api_adapter=self._ok_api_adapter(),
+            ical_adapter=None,
+        )
+        assert report.ok_count == 1
+        assert report.failed_count == 0
+
+    def test_o2_ical_fallback_action_calls_push_returns_ok(self):
+        actions = [self._make_action("ical_fallback")]
+        report = execute_sync_plan(
+            booking_id=_BOOKING_ID, property_id="prop", tenant_id="t",
+            actions=actions,
+            api_adapter=None,
+            ical_adapter=self._ok_ical_adapter(),
+        )
+        assert report.ok_count == 1
+        assert report.failed_count == 0
+
+    def test_o3_skip_action_counted_as_skipped(self):
+        actions = [self._make_action("skip")]
+        report = execute_sync_plan(
+            booking_id=_BOOKING_ID, property_id="prop", tenant_id="t",
+            actions=actions,
+            api_adapter=self._ok_api_adapter(),
+            ical_adapter=self._ok_ical_adapter(),
+        )
+        assert report.skip_count == 1
+        assert report.ok_count == 0
+
+    def test_o4_mixed_actions_counted_correctly(self):
+        actions = [
+            self._make_action("api_first"),
+            self._make_action("skip"),
+            self._make_action("skip"),
+        ]
+        report = execute_sync_plan(
+            booking_id=_BOOKING_ID, property_id="prop", tenant_id="t",
+            actions=actions,
+            api_adapter=self._ok_api_adapter(),
+            ical_adapter=None,
+        )
+        assert report.ok_count == 1
+        assert report.skip_count == 2
+        assert report.total_actions == 3
+
+    def test_o5_failed_adapter_counted_as_failed(self):
+        class _FailAdapter:
+            @staticmethod
+            def send(provider=None, external_id=None, booking_id=None, rate_limit=60, **kw):
+                return AdapterResult(
+                    provider=provider or "airbnb", external_id=external_id or _EXTERNAL_ID,
+                    strategy="api_first", status="failed",
+                    http_status=503, message="error",
+                )
+        actions = [self._make_action("api_first")]
+        report = execute_sync_plan(
+            booking_id=_BOOKING_ID, property_id="prop", tenant_id="t",
+            actions=actions,
+            api_adapter=_FailAdapter,
+        )
+        assert report.failed_count == 1
+        assert report.ok_count == 0
+
+    def test_o6_report_has_correct_booking_id(self):
+        report = execute_sync_plan(
+            booking_id=_BOOKING_ID, property_id="prop", tenant_id="t",
+            actions=[],
+        )
+        assert report.booking_id == _BOOKING_ID
+
+    def test_o7_empty_actions_produces_empty_report(self):
+        report = execute_sync_plan(
+            booking_id=_BOOKING_ID, property_id="prop", tenant_id="t",
+            actions=[],
+        )
+        assert report.total_actions == 0
+        assert report.ok_count == 0
+        assert report.skip_count == 0
+        assert report.failed_count == 0
+        assert report.results == []

@@ -1,7 +1,7 @@
 # iHouse Core — UI Architecture and Role-Based Product Surfaces
 
-**Status:** Forward Planning Note — not an immediate implementation command.
-**Date recorded:** 2026-03-09
+**Status:** 6 of 7 target screens deployed. Worker Mobile surface missing. No auth flow yet.
+**Date recorded:** 2026-03-09 | **Last updated:** 2026-03-10 (Phase 175 checkpoint)
 **Intent:** Keep this document as a standing architectural reference for all future
 UI phases, API design, and permission modeling decisions.
 
@@ -283,6 +283,32 @@ Implications:
 | Impressive dashboards that are slow to read | Defeats the 7AM rule |
 | Early UI decisions that block future delegation | Technical debt + permission regret |
 | Bloated first screens | Operators skip them, act on guesses |
+
+---
+
+## Actual Deployment State — Phase 175 Checkpoint
+
+The `ihouse-ui/` Next.js 14 App Router project was scaffolded in Phase 152 and has since grown to **6 deployed screens**:
+
+| Route | Screen | Deployed | Backend APIs |
+|-------|--------|----------|--------------|
+| `/dashboard` | Operations Dashboard | ✅ Phase 153 | /operations/today, /tasks, /admin/outbound-health, /admin/reconciliation, /admin/dlq |
+| `/tasks` | Task Center + Detail | ✅ Phase 157 | /tasks, /tasks/{id}, /worker/tasks |
+| `/bookings` | Bookings List | ✅ Phase 158 | /bookings, /bookings/{id}, /amendments/{id} |
+| `/financial` | Financial Dashboard | ✅ Phase 163 | /financial/summary, /financial/cashflow, /financial/ota-comparison |
+| `/owner` | Owner Portal | ✅ Phase 170 | /owner-statement/{property_id}, /financial/cashflow |
+| `/admin` | Admin Settings | ✅ Phase 169 | /admin/registry/providers, /admin/permissions, /admin/dlq |
+| `/worker` | Worker Mobile | ❌ Missing | /worker/tasks, /worker/tasks/{id}/acknowledge |
+| `/login` | Auth Flow | ❌ Missing | /auth/login or Supabase auth |
+
+### Critical Gaps (must close before production)
+
+1. **No auth flow** — JWT is assumed to be externally provided. No login page, no token collection, no redirect on 401.
+2. **No Worker Mobile screen** — The task model, worker router, and LINE channel are all complete. The UI surface is the only missing piece.
+
+### Invariant: UI never reads Supabase directly
+
+All data flows through FastAPI. This is enforced by architecture — the `ihouse-ui/lib/api.ts` client wraps fetch with `Authorization: Bearer` and targets the FastAPI base URL. No Supabase client is imported in any Next.js component.
 
 ---
 

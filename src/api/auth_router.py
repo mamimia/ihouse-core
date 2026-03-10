@@ -1,0 +1,169 @@
+"""
+Phase 179 — Auth Token Issuer
+Phase 186 — Auth Logout
+
+POST /auth/token  — Issues a signed HS256 JWT for a given tenant_id.
+POST /auth/logout — Client-side logout: clears ihouse_token cookie + returns 200.
+
+Contracts:
+    POST /auth/token
+        Request body: {"tenant_id": str, "secret": str}
+        Response 200: {"token": str, "tenant_id": str, "expires_in": int}
+        Response 401: wrong secret
+        Response 422: missing/invalid body
+
+    POST /auth/logout
+        Body: (none required)
+        Response 200: {"message": "Logged out"}
+        Sets Set-Cookie: ihouse_token=; Max-Age=0  (tells browser to delete cookie)
+        Not JWT-protected — must work even with expired / missing tokens.
+
+Invariants:
+    - Uses IHOUSE_JWT_SECRET as the signing key.
+    - If IHOUSE_JWT_SECRET is not set for /token, returns 503.
+    - The "secret" in the request body is compared against IHOUSE_DEV_PASSWORD
+      (defaults to "dev" when not set — safe for local use only).
+    - Token sub = tenant_id, exp = now + 24h.
+    - Production systems should replace this with Supabase Auth.
+    - /auth/logout is NOT protected by jwt_auth — clients call it even when
+      the token is expired or missing.
+"""
+from __future__ import annotations
+
+import logging
+import os
+import time
+
+import jwt
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+_ALGORITHM = "HS256"
+_TOKEN_TTL_SECONDS = 86_400  # 24 hours
+
+
+class TokenRequest(BaseModel):
+    tenant_id: str
+    secret: str
+
+
+@router.post(
+    "/auth/token",
+    tags=["auth"],
+    summary="Issue a dev JWT for a tenant (dev-only)",
+    responses={
+        200: {"description": "JWT issued"},
+        401: {"description": "Wrong secret"},
+        503: {"description": "Auth not configured — IHOUSE_JWT_SECRET not set"},
+    },
+)
+async def issue_token(body: TokenRequest) -> JSONResponse:
+    """
+    Issue a signed HS256 JWT for the given tenant_id.
+
+    **Request body:**
+    ```json
+    {"tenant_id": "my-tenant", "secret": "dev"}
+    ```
+
+    **Response:**
+    ```json
+    {"token": "eyJ...", "tenant_id": "my-tenant", "expires_in": 86400}
+    ```
+
+    The token is signed with IHOUSE_JWT_SECRET (HS256).
+    The request secret is validated against IHOUSE_DEV_PASSWORD (default: "dev").
+
+    This is a development-only endpoint. Replace with Supabase Auth in production.
+    """
+    jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
+    if not jwt_secret:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "AUTH_NOT_CONFIGURED",
+                "message": "IHOUSE_JWT_SECRET is not set. Auth endpoint unavailable.",
+            },
+        )
+
+    dev_password = os.environ.get("IHOUSE_DEV_PASSWORD", "dev")
+
+    if not body.tenant_id or not body.tenant_id.strip():
+        return JSONResponse(
+            status_code=422,
+            content={"error": "VALIDATION_ERROR", "message": "tenant_id is required"},
+        )
+
+    if body.secret != dev_password:
+        logger.warning("auth/token: wrong secret for tenant_id=%s", body.tenant_id)
+        return JSONResponse(
+            status_code=401,
+            content={"error": "UNAUTHORIZED", "message": "Invalid secret"},
+        )
+
+    now = int(time.time())
+    payload = {
+        "sub": body.tenant_id.strip(),
+        "iat": now,
+        "exp": now + _TOKEN_TTL_SECONDS,
+    }
+
+    token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
+
+    logger.info("auth/token: issued token for tenant_id=%s", body.tenant_id)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "token": token,
+            "tenant_id": body.tenant_id.strip(),
+            "expires_in": _TOKEN_TTL_SECONDS,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 186 — POST /auth/logout
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/auth/logout",
+    tags=["auth"],
+    summary="Log out and clear session token",
+    responses={
+        200: {"description": "Logged out successfully"},
+    },
+)
+async def logout() -> JSONResponse:
+    """
+    Phase 186: Client-side logout.
+
+    Returns 200 and instructs the browser to delete the `ihouse_token` cookie
+    via `Set-Cookie: ihouse_token=; Max-Age=0`.
+
+    The caller (UI/client) is expected to:
+      - Delete localStorage['ihouse_token']
+      - Redirect to /login
+
+    This endpoint is intentionally NOT protected by jwt_auth so that it can
+    be called even when the token is expired or missing.
+    """
+    response = JSONResponse(
+        status_code=200,
+        content={"message": "Logged out"},
+    )
+    # Tell the browser to delete the cookie (Max-Age=0 = expire immediately)
+    response.set_cookie(
+        key="ihouse_token",
+        value="",
+        max_age=0,
+        path="/",
+        samesite="lax",
+        httponly=False,   # must be readable by JS (same as login sets it)
+    )
+    logger.info("auth/logout: token cookie cleared")
+    return response

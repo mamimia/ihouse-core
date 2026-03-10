@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 172 — Health Check Enrichment (closed)
+Phase 187 — Rakuten Travel Adapter (closed)
 
 ## Last Closed Phase
-Phase 172 — Health Check Enrichment: probe_outbound_sync() + run_health_checks_enriched() + OutboundSyncProbeResult, 20 contract tests. Total: 4468 passing.
+Phase 187 — RakutenAdapter (Japan #1 OTA). booking_id=rakuten_{ref}, RAK- prefix strip, hotel_code→property_id, JPY primary. booking_created/booking_cancelled/booking_modified event types added to semantics. _extract_rakuten financial extractor. 34 tests. 4,420 passing.
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal VTIMEZONE Support (150). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal VTIMEZONE Support (150). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153). API-first Cancel Push (154). API-first Amend Push (155). Worker Task UI (157). Bookings View UI (158). Financial Dashboard UI (163). Owner Statement UI (164). Properties Metadata API (165). Role-Based Scoping (166). Permissions Routing (167). Push Notification Foundation (168). Admin Settings UI (169). Owner Portal UI (170). Admin Audit Log (171). Health Check Enrichment (172). IPI — Proactive Availability Broadcasting (173). Outbound Sync Stress Harness (174). Platform Checkpoint (175). Outbound Sync Auto-Trigger for BOOKING_CREATED (176). SLA→Dispatcher Bridge (177).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -95,7 +95,7 @@ apply_envelope is the only authority for canonical state mutations.
 | 148 | Sync Result Webhook Callback — `_fire_callback(booking_id, tenant_id, result, *, callback_url)` in `outbound_executor.py`; reads `IHOUSE_SYNC_CALLBACK_URL`; fires only on `ok`; payload `{event:sync.ok, booking_id, tenant_id, provider, external_id, strategy, http_status}` via `urllib.request.urlopen`; 5s timeout; HTTP/connection/timeout errors swallowed; never retried; called in `execute_sync_plan()` after `_persist()`; 30 contract tests | ✅ |
 | 153 | Operations Dashboard UI — `GET /operations/today` (arrivals/departures/cleanings, in-memory, `as_of` override); `ihouse-ui/` Next.js 14 App Router scaffolded; dashboard page: Urgent tasks, Today stats, Sync Health, Integration Alerts; typed `lib/api.ts` client; 30 contract tests (Groups A-I); UI build ✅ | ✅ |
 
-**4297 tests pass** (2 pre-existing SQLite guard failures, unrelated)
+**4577 tests pass** (2 pre-existing SQLite guard failures, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -204,8 +204,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 166** — Worker + Owner Role Scoping (enforce role visibility in worker_router, owner_statement_router, financial_aggregation_router)
+**Phase 185** — Outbound Sync Trigger Consolidation (Tech Debt) — remove fast-path cancel/amend triggers, verify execute_sync_plan covers full behavior, full regression run on Phase 174 harness.
 
 ## Tests
 
-**4297 passing** (2 pre-existing SQLite skips, unrelated)
+**4,749 passing** (0 regressions from Phase 181–184 vs pre-Phase-184 baseline)

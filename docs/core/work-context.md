@@ -2,15 +2,16 @@
 
 ## Current Active Phase
 
-Phase 167 — Manager Delegated Permissions (closed)
+Phase 187 — Rakuten Travel Adapter (closed)
 
 ## Last Closed Phase
 
-Phase 167 — Manager Delegated Permissions: PATCH /permissions/{user_id}/grant + /revoke, get_permission_flags() + has_permission() helpers in auth.py, 37 contract tests, 4378 total passing.
+Phase 187 — RakutenAdapter for Japan market. RAK- prefix stripping, hotel_code→property_id, JPY primary. booking_created/cancelled/modified events in semantics.py. _extract_rakuten financial extractor with net derivation. registry + all helper hooks. 34 tests. 4,420 passing.
 
 ## Current Objective
 
-**Phase 168 — Push Notification Foundation (LINE + FCM)**
+**Phase 188 — PDF Owner Statements** — GET /owner-statement/{id}?format=pdf. Lightweight PDF library (reportlab). PDF includes property name, month, line items, fee breakdown, owner net total. Owner Portal /owner gets download button.
+
 
 ## Roadmap Direction (Phase 149 → 175)
 

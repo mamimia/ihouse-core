@@ -237,6 +237,15 @@ app.include_router(financial_correction_router)
 from api.permissions_router import router as permissions_router  # noqa: E402  # Phase 165
 app.include_router(permissions_router)
 
+from api.broadcaster_router import router as broadcaster_router  # noqa: E402  # Phase 173
+app.include_router(broadcaster_router)
+
+from api.auth_router import router as auth_router  # noqa: E402  # Phase 179
+app.include_router(auth_router)
+
+from api.sse_router import router as sse_router  # noqa: E402  # Phase 181
+app.include_router(sse_router)
+
 
 # ---------------------------------------------------------------------------
 # OpenAPI — inject BearerAuth security scheme (Phase 63)

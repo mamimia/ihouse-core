@@ -73,11 +73,31 @@ def _strip_klook_prefix(ref: str) -> str:
 
 
 def _strip_despegar_prefix(ref: str) -> str:
-    """Despegar reservation codes may be prefixed with 'DSP-'. Strip it for a stable ref."""
-    lower = ref.lower()
-    if lower.startswith("dsp-"):
-        return ref[4:]
-    return ref
+    """Strip DSP- prefix from Despegar reservation codes.
+
+    Examples:
+      'DSP-AR-9988001' -> 'ar-9988001'
+      'dsp-mx-7654321' -> 'mx-7654321'
+    """
+    lowered = ref.lower()
+    if lowered.startswith("dsp-"):
+        return lowered[4:]
+    return lowered
+
+
+def _strip_rakuten_prefix(ref: str) -> str:
+    """Strip RAK- prefix from Rakuten Travel booking references.
+
+    Phase 187 — Rakuten Travel (Japan) uses RAK- prefix.
+
+    Examples:
+      'RAK-JP-20250815-001' -> 'jp-20250815-001'
+      'rak-sg-99001234'     -> 'sg-99001234'
+    """
+    lowered = ref.lower()
+    if lowered.startswith("rak-"):
+        return lowered[4:]
+    return lowered
 
 
 def _strip_hotelbeds_prefix(ref: str) -> str:
@@ -101,6 +121,7 @@ _PROVIDER_RULES: dict[str, list] = {
     "klook":      [_strip_klook_prefix],       # Klook booking refs prefixed with KL-
     "despegar":   [_strip_despegar_prefix],    # Despegar reservation codes prefixed with DSP-
     "hotelbeds":  [_strip_hotelbeds_prefix],    # Hotelbeds voucher refs prefixed with HB-
+    "rakuten":    [_strip_rakuten_prefix],      # Phase 187: Rakuten Travel booking refs prefixed with RAK-
 }
 
 

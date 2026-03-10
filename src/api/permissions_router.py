@@ -1,6 +1,7 @@
 """
 Phase 165 — Permissions Router
 Phase 167 — Manager Delegated Permissions
+Phase 171 — Admin Audit Log (write_audit_event wired into grant/revoke)
 
 Admin-managed CRUD for tenant_permissions.
 
@@ -454,6 +455,23 @@ async def grant_permission(
             .eq("user_id", user_id) \
             .execute()
 
+        # Phase 171 — audit trail (best-effort, never raises)
+        try:
+            from api.admin_router import write_audit_event  # noqa: PLC0415
+            write_audit_event(
+                db,
+                tenant_id=tenant_id,
+                actor_user_id=tenant_id,   # JWT sub is the actor
+                action="grant_permission",
+                target_type="permission",
+                target_id=user_id,
+                before_state={"permissions": existing_perms},
+                after_state={"permissions": merged},
+                metadata={"granted_flags": list(capabilities.keys())},
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
         return JSONResponse(status_code=200, content={
             "status":           "granted",
             "tenant_id":        tenant_id,
@@ -558,6 +576,23 @@ async def revoke_permission(
             .eq("tenant_id", tenant_id) \
             .eq("user_id", user_id) \
             .execute()
+
+        # Phase 171 — audit trail (best-effort, never raises)
+        try:
+            from api.admin_router import write_audit_event  # noqa: PLC0415
+            write_audit_event(
+                db,
+                tenant_id=tenant_id,
+                actor_user_id=tenant_id,
+                action="revoke_permission",
+                target_type="permission",
+                target_id=user_id,
+                before_state={"permissions": existing_perms},
+                after_state={"permissions": remaining},
+                metadata={"revoked_flags": actually_revoked},
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
         return JSONResponse(status_code=200, content={
             "status":           "revoked",

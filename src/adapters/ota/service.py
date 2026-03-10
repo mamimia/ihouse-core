@@ -224,6 +224,23 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
+        # Phase 176: fire full outbound sync plan for BOOKING_CREATED (best-effort)
+        # build_sync_plan → execute_sync_plan covers ALL configured channels:
+        # api_first (Airbnb, Booking.com, Expedia/VRBO) and ical_fallback (Hotelbeds,
+        # TripAdvisor, Despegar) with rate-limit, retry, idempotency, and log persistence.
+        try:
+            from services.outbound_created_sync import fire_created_sync
+            booking_id  = (emitted[0]["payload"].get("booking_id",  "") if emitted else "")
+            property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
+            if booking_id and property_id:
+                fire_created_sync(
+                    booking_id=booking_id,
+                    property_id=property_id,
+                    tenant_id=tenant_id,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
     # Phase 69: persist updated financial facts for BOOKING_AMENDED events (best-effort)
     if envelope.type == "BOOKING_AMENDED" and status == "APPLIED":
         try:
@@ -257,25 +274,27 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
-        # Phase 152: re-push iCal block with updated dates to ical_fallback providers (best-effort)
+        # Phase 185: Outbound Sync Trigger Consolidation
+        # fast-path (amend_sync_trigger.py Phase 152/155) removed — single guaranteed path only.
+        # Phase 182: fire full outbound sync plan for BOOKING_AMENDED (build_sync_plan → execute_sync_plan)
+        # Phase 185: event_type="BOOKING_AMENDED" passed through so adapters call .amend() not .send().
         try:
-            from services.amend_sync_trigger import fire_amend_sync
-            from .amendment_extractor import normalize_amendment as _normalize_amendment
-            booking_id  = (emitted[0]["payload"].get("booking_id",  "") if emitted else "")
-            property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
-            _amendment  = _normalize_amendment(provider, payload)
-            if booking_id and property_id:
-                fire_amend_sync(
-                    booking_id=booking_id,
-                    property_id=property_id,
+            from services.outbound_amended_sync import fire_amended_sync
+            from .amendment_extractor import normalize_amendment as _norm_amend
+            _booking_id  = (emitted[0]["payload"].get("booking_id",  "") if emitted else "")
+            _property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
+            _amendment   = _norm_amend(provider, payload)
+            if _booking_id and _property_id:
+                fire_amended_sync(
+                    booking_id=_booking_id,
+                    property_id=_property_id,
                     tenant_id=tenant_id,
-                    check_in=_amendment.new_check_in  if _amendment else None,
-                    check_out=_amendment.new_check_out if _amendment else None,
+                    check_in=_amendment.new_check_in   if _amendment else None,
+                    check_out=_amendment.new_check_out  if _amendment else None,
                 )
         except Exception:
             pass  # best-effort — never block the main response
 
-    # Phase 115: cancel PENDING tasks after BOOKING_CANCELED (best-effort)
     if envelope.type == "BOOKING_CANCELED" and status == "APPLIED":
         try:
             from tasks.task_writer import cancel_tasks_for_booking_canceled
@@ -288,15 +307,18 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
-        # Phase 151: push iCal cancellation to ical_fallback providers (best-effort)
+        # Phase 185: Outbound Sync Trigger Consolidation
+        # fast-path (cancel_sync_trigger.py Phase 151/154) removed — single guaranteed path only.
+        # Phase 182: fire full outbound sync plan for BOOKING_CANCELED (build_sync_plan → execute_sync_plan)
+        # Phase 185: event_type="BOOKING_CANCELED" passed through so adapters call .cancel() not .send().
         try:
-            from services.cancel_sync_trigger import fire_cancel_sync
-            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
-            property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
-            if booking_id and property_id:
-                fire_cancel_sync(
-                    booking_id=booking_id,
-                    property_id=property_id,
+            from services.outbound_canceled_sync import fire_canceled_sync
+            _booking_id  = (emitted[0]["payload"].get("booking_id",  "") if emitted else "")
+            _property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
+            if _booking_id and _property_id:
+                fire_canceled_sync(
+                    booking_id=_booking_id,
+                    property_id=_property_id,
                     tenant_id=tenant_id,
                 )
         except Exception:

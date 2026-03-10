@@ -687,6 +687,68 @@ _EXTRACTORS["hotelbeds"] = _extract_hotelbeds
 
 
 # ---------------------------------------------------------------------------
+# Rakuten Travel extractor (Phase 187)
+# ---------------------------------------------------------------------------
+
+def _extract_rakuten(payload: dict) -> BookingFinancialFacts:
+    """
+    Rakuten Travel financial fields (Japan market — primarily JPY):
+
+      total_amount        — gross booking amount (= total_price)
+      rakuten_commission  — Rakuten platform commission (optional)
+      net_amount          — net payout to property after commission (optional)
+      currency            — ISO 4217 currency code (primarily JPY, also USD/SGD/TWD)
+
+    When net_amount is absent but total_amount + rakuten_commission are present,
+    net is derived: net = total_amount - rakuten_commission → confidence = ESTIMATED.
+
+    Confidence: FULL if total_amount + currency + net_amount present,
+                ESTIMATED if net_amount derived,
+                PARTIAL if total_amount or currency missing.
+
+    JPY note: JPY has no subunit (1 JPY = smallest unit).
+    All monetary values are handled as Decimal — precision is preserved as-is.
+    No currency conversion is performed here.
+    """
+    total_amount = _to_decimal(payload.get("total_amount"))
+    rakuten_commission = _to_decimal(payload.get("rakuten_commission"))
+    net_amount_raw = payload.get("net_amount")
+    net_amount = _to_decimal(net_amount_raw)
+    currency = payload.get("currency")
+
+    raw: Dict[str, Any] = {}
+    for k in ("total_amount", "rakuten_commission", "net_amount", "currency"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    source_confidence: str
+    derived_net = net_amount
+
+    if net_amount is None and total_amount is not None and rakuten_commission is not None:
+        derived_net = (total_amount - rakuten_commission).quantize(Decimal("0.01"))
+        source_confidence = CONFIDENCE_ESTIMATED
+    elif total_amount is None or currency is None:
+        source_confidence = CONFIDENCE_PARTIAL
+    else:
+        source_confidence = CONFIDENCE_FULL
+
+    return BookingFinancialFacts(
+        provider="rakuten",
+        total_price=total_amount,
+        currency=currency,
+        ota_commission=rakuten_commission,
+        taxes=None,               # Rakuten does not expose taxes separately
+        fees=rakuten_commission,
+        net_to_property=derived_net,
+        source_confidence=source_confidence,
+        raw_financial_fields=raw,
+    )
+
+
+_EXTRACTORS["rakuten"] = _extract_rakuten
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 

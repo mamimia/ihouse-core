@@ -64,6 +64,9 @@ def classify_normalized_event(
         semantic = BookingSemanticKind.CANCEL
     elif event_type in {"booking_modified"}:
         semantic = BookingSemanticKind.BOOKING_AMENDED
+    # --- Rakuten Travel + Klook + Despegar native event_type aliases (Phase 187) ---
+    elif event_type in {"booking_created"}:
+        semantic = BookingSemanticKind.CREATE
     else:
         raise ValueError(f"Unknown OTA event type: {event_type}")
 

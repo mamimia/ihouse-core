@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import LogoutButton from '../components/LogoutButton';
 
 export const metadata: Metadata = {
   title: 'iHouse Core — Operations',
@@ -57,6 +58,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {label}
               </a>
             ))}
+            {/* Spacer pushes logout to bottom */}
+            <div style={{ flex: 1 }} />
+            <LogoutButton />
           </nav>
 
           {/* Main content area */}

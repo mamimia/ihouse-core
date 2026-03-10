@@ -270,6 +270,7 @@ def execute_sync_plan(
     ical_adapter: Optional[Any] = None,
     check_in: Optional[str] = None,   # Phase 140: YYYYMMDD from booking_state
     check_out: Optional[str] = None,  # Phase 140: YYYYMMDD from booking_state
+    event_type: str = "BOOKING_CREATED",  # Phase 185: route cancel/amend correctly
 ) -> ExecutionReport:
     """
     Execute a sync plan produced by build_sync_plan() (Phase 137).
@@ -282,10 +283,13 @@ def execute_sync_plan(
     actions      : list of SyncAction from build_sync_plan()
     api_adapter  : override for testing (defaults to ApiFirstAdapter)
     ical_adapter : override for testing (defaults to ICalAdapter)
-
-    Phase 140: check_in / check_out (YYYYMMDD strings) are forwarded to
-    iCal adapters so real DTSTART/DTEND appear in the VCALENDAR payload.
-    If None, adapters use safe placeholder dates.
+    check_in     : YYYYMMDD — forwarded to iCal adapters (Phase 140)
+    check_out    : YYYYMMDD — forwarded to iCal adapters (Phase 140)
+    event_type   : lifecycle event type — BOOKING_CREATED | BOOKING_CANCELED |
+                   BOOKING_AMENDED. Used to route to the correct adapter method:
+                     api_first   → .send() | .cancel() | .amend()
+                     ical_fallback → .push() | .cancel()
+                   Default: BOOKING_CREATED (backward compatible).
     """
     # Phase 139: prefer real adapter registry; fall back to class-level stubs
     # for backward compatibility with Phase 138 tests.
@@ -316,11 +320,33 @@ def execute_sync_plan(
                 if use_registry:
                     adapter = _build_registry().get(action.provider)
                     if adapter is not None:
-                        ar = adapter.send(
-                            external_id=action.external_id,
-                            booking_id=booking_id,
-                            rate_limit=action.rate_limit,
-                        )
+                        # Phase 185: route to the correct method based on event_type
+                        if event_type == "BOOKING_CANCELED" and hasattr(adapter, "cancel"):
+                            ar = adapter.cancel(
+                                external_id=action.external_id,
+                                booking_id=booking_id,
+                                rate_limit=action.rate_limit,
+                            )
+                        elif event_type == "BOOKING_AMENDED" and hasattr(adapter, "amend"):
+                            # Normalise check_in/check_out to ISO for API adapters
+                            def _to_iso(d: Optional[str]) -> Optional[str]:
+                                if not d:
+                                    return None
+                                s = str(d).replace("-", "")[:8]
+                                return f"{s[:4]}-{s[4:6]}-{s[6:8]}" if len(s) == 8 else d
+                            ar = adapter.amend(
+                                external_id=action.external_id,
+                                booking_id=booking_id,
+                                check_in=_to_iso(check_in),
+                                check_out=_to_iso(check_out),
+                                rate_limit=action.rate_limit,
+                            )
+                        else:
+                            ar = adapter.send(
+                                external_id=action.external_id,
+                                booking_id=booking_id,
+                                rate_limit=action.rate_limit,
+                            )
                         result = ExecutionResult(
                             provider=ar.provider,
                             external_id=ar.external_id,
@@ -348,13 +374,21 @@ def execute_sync_plan(
                 if use_registry:
                     adapter = _build_registry().get(action.provider)
                     if adapter is not None:
-                        ar = adapter.push(
-                            external_id=action.external_id,
-                            booking_id=booking_id,
-                            rate_limit=action.rate_limit,
-                            check_in=check_in,    # Phase 140
-                            check_out=check_out,  # Phase 140
-                        )
+                        # Phase 185: route to cancel() for BOOKING_CANCELED
+                        if event_type == "BOOKING_CANCELED" and hasattr(adapter, "cancel"):
+                            ar = adapter.cancel(
+                                external_id=action.external_id,
+                                booking_id=booking_id,
+                                rate_limit=action.rate_limit,
+                            )
+                        else:
+                            ar = adapter.push(
+                                external_id=action.external_id,
+                                booking_id=booking_id,
+                                rate_limit=action.rate_limit,
+                                check_in=check_in,    # Phase 140
+                                check_out=check_out,  # Phase 140
+                            )
                         result = ExecutionResult(
                             provider=ar.provider,
                             external_id=ar.external_id,

@@ -13,6 +13,7 @@ from .makemytrip import MakemytripAdapter
 from .klook import KlookAdapter
 from .despegar import DespegarAdapter
 from .hotelbeds import HotelbedsAdapter
+from .rakuten import RakutenAdapter
 
 
 _ADAPTERS: Dict[str, OTAAdapter] = {
@@ -28,6 +29,7 @@ _ADAPTERS: Dict[str, OTAAdapter] = {
     "klook": KlookAdapter(),
     "despegar": DespegarAdapter(),
     "hotelbeds": HotelbedsAdapter(),
+    "rakuten":   RakutenAdapter(),    # Phase 187: Japan market
 }
 
 

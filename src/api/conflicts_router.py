@@ -61,6 +61,8 @@ from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
 from api.error_models import ErrorCode, make_error_response
+from core.skills.booking_conflict_resolver.skill import run as _skill_run  # Phase 184
+from services.conflict_resolution_writer import write_resolution  # Phase 184
 
 import logging
 
@@ -267,5 +269,125 @@ async def get_conflicts(
                 "properties_affected": len(affected_properties),
                 "bookings_involved": len(involved_bookings),
             },
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 184 — POST /conflicts/resolve
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/conflicts/resolve",
+    tags=["conflicts"],
+    summary="Conflict Resolver — run skill + persist artifacts (Phase 184)",
+    description=(
+        "Evaluates a booking_candidate against existing bookings using the "
+        "booking_conflict_resolver skill. If conflicts are detected, enforces "
+        "PendingResolution, creates a ConflictTask, and optionally an OverrideRequest "
+        "(for admin/ops_admin actors with allow_admin_override=true). "
+        "Artifacts are written to conflict_resolution_queue. "
+        "AuditEvent is written to admin_audit_log (best-effort)."
+    ),
+    responses={
+        200: {"description": "Conflict resolution decision + created artifacts."},
+        400: {"description": "Invalid input payload."},
+        401: {"description": "Missing or invalid JWT token."},
+        500: {"description": "Internal server error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def resolve_conflict(
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    POST /conflicts/resolve
+
+    Body (JSON):
+        {
+            "actor": {"actor_id": "...", "role": "worker|manager|admin|ops_admin"},
+            "booking_candidate": {
+                "booking_id": "...",
+                "property_id": "...",
+                "start_utc": "2026-05-01",
+                "end_utc": "2026-05-05",
+                "requested_status": "ACTIVE"   // optional
+            },
+            "existing_bookings": [             // caller provides; use GET /conflicts to fetch
+                {
+                    "booking_id": "...",
+                    "property_id": "...",
+                    "start_utc": "...",
+                    "end_utc": "...",
+                    "status": "ACTIVE"
+                }
+            ],
+            "policy": {
+                "statuses_blocking": ["ACTIVE"],
+                "allow_admin_override": false,
+                "conflict_task_type_id": "CONFLICT_REVIEW",
+                "override_request_type_id": "CONFLICT_OVERRIDE"
+            },
+            "idempotency": {"request_id": "..."},
+            "time": {"now_utc": "2026-05-01T12:00:00Z"}
+        }
+    """
+    import json as _json
+    from datetime import datetime, timezone
+
+    # --- Parse body ---
+    try:
+        body = await request.json()
+    except Exception:
+        return make_error_response(400, "INVALID_INPUT", "Request body must be valid JSON.")
+
+    if not isinstance(body, dict):
+        return make_error_response(400, "INVALID_INPUT", "Request body must be a JSON object.")
+
+    # Inject tenant_id into idempotency and time defaults
+    if "idempotency" not in body or not body["idempotency"].get("request_id"):
+        return make_error_response(400, "INVALID_INPUT", "idempotency.request_id is required.")
+
+    if "time" not in body or not body["time"].get("now_utc"):
+        body.setdefault("time", {})
+        body["time"]["now_utc"] = datetime.now(timezone.utc).isoformat()
+
+    # --- Run skill (pure, no IO) ---
+    result = _skill_run(body)
+
+    if "error" in result:
+        return make_error_response(400, "INVALID_INPUT", f"Skill returned: {result['error']}")
+
+    # If allowed=False (e.g. INVALID_WINDOW), return 400 with denial_code
+    decision = result.get("decision", {})
+    if not decision.get("allowed", True) and decision.get("denial_code"):
+        return make_error_response(
+            400,
+            decision["denial_code"],
+            f"Booking window rejected: {decision['denial_code']}",
+        )
+
+    # --- Persist artifacts (best-effort) ---
+    try:
+        db = _get_supabase_client(request)
+        artifacts_written, audit_written = write_resolution(
+            db=db,
+            tenant_id=tenant_id,
+            artifacts_to_create=result.get("artifacts_to_create", []),
+            events_to_emit=result.get("events_to_emit", []),
+        )
+    except Exception as exc:
+        logger.warning("conflicts_router: write_resolution failed: %s", exc)
+        artifacts_written, audit_written = 0, 0
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "tenant_id":         tenant_id,
+            "decision":          result.get("decision", {}),
+            "artifacts_created": result.get("artifacts_to_create", []),
+            "artifacts_written": artifacts_written,
+            "audit_written":     audit_written,
         },
     )

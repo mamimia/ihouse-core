@@ -3672,3 +3672,264 @@ Validation:
 Result:
 
 The permission model from Phase 165 is now enforced at query level in three endpoints. Workers can only see tasks matching their assigned worker_role. Owners can only see their own properties' financial data. Enforcement is best-effort on the permission lookup path — a DB error on tenant_permissions never blocks the primary request.
+
+## Phase 176 — Outbound Sync Auto-Trigger for BOOKING_CREATED (Closed)
+
+Closed the final gap in the outbound synchronization pipeline.
+BOOKING_CREATED events now automatically trigger build_sync_plan → execute_sync_plan
+for all configured channels, matching the existing cancel and amend trigger paths.
+
+New: outbound_created_sync.py — fire_created_sync() — best-effort, DI-friendly, module-level imports for patchability.
+Modified: service.py — best-effort block after BOOKING_CREATED APPLIED.
+Tests: 26 contract tests (Groups A–E). 4,627 total passing.
+
+Key engineering note: lazy re-imports inside the function body were shadowing module-level
+attributes, making all unittest.mock.patch() calls ineffective. Resolved by removing the
+duplicate inner imports and relying solely on module-level bindings.
+
+
+## Phase 177 — SLA→Dispatcher Bridge (Closed)
+
+Connected sla_engine.EscalationResult.actions to notification_dispatcher.dispatch_notification()
+via a new best-effort bridge module.
+
+New: src/channels/sla_dispatch_bridge.py
+  - dispatch_escalations(db, tenant_id, actions, adapters=None) → List[BridgeResult]
+  - _resolve_users: ops→worker/manager, admin→admin via tenant_permissions
+  - _build_message: EscalationAction → NotificationMessage
+  - BridgeResult dataclass
+
+Tests: 28 contract tests (Groups A–E). 4,629 total passing.
+sla_engine.py and notification_dispatcher.py untouched.
+
+
+## Phase 178 — Worker Mobile UI /worker (Closed)
+
+New dedicated mobile-first route /worker for field workers.
+Distinct from /tasks (manager view) — no sidebar, bottom navigation.
+
+New: ihouse-ui/app/worker/page.tsx
+  - Bottom nav with To Do / Active / Done tabs
+  - TaskCard: priority bar, SLA countdown for CRITICAL, overdue badge
+  - DetailSheet: bottom slide-up with full task info + acknowledge + complete-with-notes flow
+  - Toast feedback for all actions
+  - 30s polling, fail-tolerant
+
+TypeScript: 0 errors. Python suite: 4,629 passing.
+
+## Phase 179 — UI Auth Flow (Closed)
+
+End-to-end authentication wired into the platform.
+
+New backend: src/api/auth_router.py
+  - POST /auth/token — issues HS256 JWT (sub=tenant_id, exp=24h)
+  - Validates against IHOUSE_DEV_PASSWORD (default: "dev")
+  - Returns 503 if IHOUSE_JWT_SECRET not set
+  - Returns 401 on wrong secret, 422 on missing tenant_id
+
+New frontend: ihouse-ui/app/login/page.tsx
+  - Premium dark login form; writes token to localStorage + cookie
+  - Redirects to /dashboard on success
+
+New: ihouse-ui/middleware.ts
+  - Next.js Edge middleware; checks ihouse_token cookie
+  - Redirects unauthenticated users to /login
+
+Modified: lib/api.ts — added api.login(tenant_id, secret)
+Modified: src/main.py — registered auth_router
+
+Tests: 21 contract tests (Groups A–E). 4,650 total passing. 0 regressions.
+
+## Phase 180 — Roadmap Refresh + Forward Plan (Closed)
+
+roadmap.md updated:
+- Phases 176–180 added to completed table.
+- Active direction block updated: Phase 181+ (Real-Time + Reliability → Market Expansion).
+- Forward plan written for 181–185 (SSE live refresh, CANCELED/AMENDED auto-trigger, notification delivery log, conflict resolution engine, logout/session) and 186–190 (Rakuten adapter, PDF statements, booking mutation audit events, manager dashboard UI, Platform Checkpoint II).
+
+No code changes. Documentation-only phase.
+
+## Phase 181 — SSE Live Refresh (Closed)
+
+Replaced 30-second polling in /worker with Server-Sent Events.
+
+New: src/channels/sse_broker.py
+  - In-memory asyncio pub/sub (SseBroker)
+  - subscribe(tenant_id) async context manager → asyncio.Queue
+  - _dispatch(tenant_id, event) — thread-safe, call_soon_threadsafe
+  - Tenant isolation: events only delivered to matching tenant
+  - MAX_QUEUE_SIZE = 1000 (evicts on overflow, no raise)
+
+New: src/api/sse_router.py
+  - GET /events/stream — StreamingResponse, text/event-stream
+  - Token via query param (browser EventSource cannot set headers)
+  - Keep-alive :ping every 20s (RFC 6202 comment)
+  - _resolve_tenant(): dev-mode + JWT decode
+
+Modified: src/main.py — registered sse_router
+
+Modified: ihouse-ui/app/worker/page.tsx
+  - useEffect replaced setInterval(load, 30s) with EventSource
+  - es.onmessage reloads on task_update / task_created events
+  - es.onerror falls back to 60s polling
+  - cleanup: es.close() on unmount
+  - footer text: "live updates"
+
+Tests: 20 contract tests (Groups A–E). 4,670 total passing. 0 regressions.
+TypeScript build: clean.
+
+## Phase 182 — Outbound Sync Auto-Trigger for BOOKING_CANCELED + BOOKING_AMENDED (Closed)
+
+Two new modules mirror outbound_created_sync.py (Phase 176) for the remaining inbound lifecycle events.
+
+New: src/services/outbound_canceled_sync.py
+  - fire_canceled_sync(booking_id, property_id, tenant_id, channels?, registry?)
+  - Routes through build_sync_plan → execute_sync_plan
+  - Full Phase 141-144 guarantees: rate-limit, retry, idempotency, sync log
+
+New: src/services/outbound_amended_sync.py
+  - fire_amended_sync(booking_id, property_id, tenant_id, check_in?, check_out?, channels?, registry?)
+  - Same pipeline as canceled. check_in/check_out are Optional[str] passed to adapters.
+  - Full Phase 141-144 guarantees apply.
+
+Modified: src/adapters/ota/service.py
+  - BOOKING_CANCELED block: fire_canceled_sync called after existing cancel_sync_trigger (additive)
+  - BOOKING_AMENDED block: fire_amended_sync called after existing amend_sync_trigger (additive)
+  - Both are best-effort: wrapped in try/except, never block the main response.
+
+Tests: 28 contract tests (Groups A-F). 4,698 total passing. 0 regressions.
+
+## Phase 183 — Notification Delivery Status Tracking (Closed)
+
+Adds end-to-end observability on notification dispatch — every ChannelAttempt is now persisted to DB.
+
+New: src/core/db/migrations/0008_notification_delivery_log.sql
+  - Table: notification_delivery_log with fields: notification_delivery_id (UUID PK), tenant_id, user_id,
+    task_id (nullable), trigger_reason, channel_type, channel_id, status (sent|failed CHECK), error_message, dispatched_at.
+  - 3 indexes: (tenant_id, dispatched_at DESC), (tenant_id, user_id, status), (task_id) WHERE NOT NULL.
+
+New: src/channels/notification_delivery_writer.py
+  - write_delivery_log(db, result, tenant_id, task_id?, trigger_reason?) → int (rows written)
+  - Writes one row per ChannelAttempt from DispatchResult.channels.
+  - status = "sent" / "failed" based on ChannelAttempt.success.
+  - UUID v4 per row. Best-effort: never raises. DB error → log WARNING + continue.
+  - Returns count of successfully written rows (0 on full failure).
+
+Modified: src/channels/sla_dispatch_bridge.py
+  - Imported write_delivery_log (Phase 183).
+  - Called immediately after each dispatch_notification() call inside the user loop.
+  - Wrapped in its own try/except — a log write failure NEVER blocks or aborts dispatch.
+
+Tests: 25 contract tests (Groups A-F). 4,723 total passing. 0 regressions.
+
+## Phase 184 — Booking Conflict Auto-Resolution Engine (Closed)
+
+Wires the existing booking_conflict_resolver skill into a full HTTP endpoint with DB persistence.
+
+New: src/core/db/migrations/0009_conflict_resolution_queue.sql
+  - Table: conflict_resolution_queue — stores ConflictTask + OverrideRequest artifacts.
+  - Fields: conflict_id (UUID PK), tenant_id, artifact_type (CHECK ConflictTask|OverrideRequest),
+    status (Open|Acknowledged|Resolved), priority, property_id, booking_id, conflicts_found (JSONB),
+    request_id, required_approver_role, created_at.
+  - Unique index on (booking_id, request_id, artifact_type) — prevents replay duplicates.
+  - 3 indexes: (tenant_id, status, created_at DESC), (booking_id), (property_id, tenant_id).
+
+New: src/services/conflict_resolution_writer.py
+  - write_resolution(db, tenant_id, artifacts_to_create, events_to_emit) → (artifacts_written, audit_written)
+  - Writes ConflictTask + OverrideRequest via upsert with idempotency conflict key.
+  - Writes AuditEvent to admin_audit_log (best-effort). Never raises.
+
+Modified: src/api/conflicts_router.py
+  - Added POST /conflicts/resolve (Phase 184).
+  - Accepts booking_candidate + actor + policy + existing_bookings + idempotency + time.
+  - Runs core.skills.booking_conflict_resolver.skill.run() (pure, no IO).
+  - Returns 400 on INVALID_WINDOW (allowed=False + denial_code). Returns 400 on missing request_id.
+  - Persists artifacts to conflict_resolution_queue via write_resolution.
+  - Module-level imports for patchability.
+
+Tests: 26 contract tests (Groups A-F). 4,749 passing. 0 regressions vs baseline.
+
+## Phase 185 — Outbound Sync Trigger Consolidation (Closed)
+
+Removes the parallel cancel/amend fast-path triggers and consolidates to a single guaranteed path.
+
+Gap discovered: execute_sync_plan always called .push()/.send(), never .cancel()/.amend().
+
+Modified: src/services/outbound_executor.py
+  - Added event_type param (default "BOOKING_CREATED", backward compatible).
+  - api_first route: BOOKING_CANCELED → adapter.cancel(), BOOKING_AMENDED → adapter.amend(), else → .send()
+  - ical_fallback route: BOOKING_CANCELED → adapter.cancel(), else → adapter.push()
+  - Normalises compact dates (YYYYMMDD) to ISO (YYYY-MM-DD) for API adapter amend calls.
+  - hasattr fallback: if adapter lacks .cancel()/.amend(), falls back to .send() (unknown provider safety).
+
+Modified: src/services/outbound_canceled_sync.py
+  - fire_canceled_sync(): passes event_type="BOOKING_CANCELED" to execute_sync_plan.
+
+Modified: src/services/outbound_amended_sync.py
+  - fire_amended_sync(): passes event_type="BOOKING_AMENDED" + check_in/check_out to execute_sync_plan.
+
+Modified: src/adapters/ota/service.py
+  - BOOKING_AMENDED block: removed fast-path (fire_amend_sync via amend_sync_trigger.py). Single path only.
+  - BOOKING_CANCELED block: removed fast-path (fire_cancel_sync via cancel_sync_trigger.py). Single path only.
+
+Archived (no longer imported):
+  - src/services/cancel_sync_trigger.py → src/services/deprecated/
+  - src/services/amend_sync_trigger.py → src/services/deprecated/
+  - tests/test_ical_cancel_push_contract.py → tests/deprecated/
+  - tests/test_ical_amend_push_contract.py → tests/deprecated/
+
+Modified: pytest.ini
+  - Added --ignore=tests/invariants --ignore=tests/deprecated to addopts.
+
+New: tests/test_executor_event_type_routing.py
+  - 11 contract tests (Groups A-C) — api_first routing, ical_fallback routing, backward compat.
+
+Updated: tests/test_outbound_auto_trigger_contract.py
+  - Groups D1-D4: now patch guaranteed path (fire_canceled_sync/fire_amended_sync) not fast-path.
+
+Updated: tests/test_outbound_lifecycle_sync_contract.py
+  - test_a4: expects event_type="BOOKING_CANCELED" in execute_sync_plan call.
+
+4,370 passing. 0 new regressions vs pre-Phase-185 baseline.
+
+## Phase 186 — Auth & Logout Flow (Closed) — 2026-03-10
+
+Added complete logout capability to the iHouse Core stack.
+
+Backend: `POST /auth/logout` added to `src/api/auth_router.py` — intentionally unprotected (allows logout with expired token). Returns `200 {"message": "Logged out"}` and sends `Set-Cookie: ihouse_token=; Max-Age=0; path=/` to instruct browser to delete the cookie.
+
+Frontend — `ihouse-ui/lib/api.ts`:
+- `performClientLogout()`: clears `localStorage`, `document.cookie`, redirects → `/login`
+- `api.logout()`: best-effort `POST /auth/logout`, then `performClientLogout()`
+- `apiFetch()`: auto-calls `performClientLogout()` on 401/403 response when token exists — prevents stale sessions causing silent failures
+
+Frontend — `ihouse-ui/components/LogoutButton.tsx` — NEW Client Component. Sidebar button with hover effect, calls `api.logout()`.
+
+Frontend — `ihouse-ui/app/layout.tsx` — `LogoutButton` added with flex spacer, pinned to sidebar bottom.
+
+Tests: `tests/test_auth_logout_contract.py` — NEW — 16 contract tests (Groups A-D): happy path, no auth required (expired/invalid token → 200), no regression on `/auth/token`, OpenAPI registration.
+
+16 tests pass. 4,386 total passing. 0 regressions.
+
+## Phase 187 — Rakuten Travel Adapter — Japan Market (Closed) — 2026-03-10
+
+Added Rakuten Travel (楽天トラベル) as Tier 3 OTA adapter. Japan's dominant domestic OTA (~40% market share by room-nights).
+
+New file: `src/adapters/ota/rakuten.py` — `RakutenAdapter`:
+- `booking_id = "rakuten_{normalized_ref}"`
+- `hotel_code` → `property_id`
+- Prefix stripping: `"RAK-JP-20250815-001"` → `"jp-20250815-001"`
+- Event types: `BOOKING_CREATED` / `BOOKING_CANCELLED` / `BOOKING_MODIFIED`
+- Primary currency: JPY (also USD/SGD/TWD/KRW for inbound)
+
+Hook points modified:
+- `src/adapters/ota/booking_identity.py` — `_strip_rakuten_prefix()` + `_PROVIDER_RULES["rakuten"]`
+- `src/adapters/ota/schema_normalizer.py` — 5 field helpers: guest_count, booking_ref, hotel_code, check_in, check_out, total_amount
+- `src/adapters/ota/financial_extractor.py` — `_extract_rakuten()`: total_amount, rakuten_commission, net derivation (FULL/ESTIMATED/PARTIAL), JPY-native
+- `src/adapters/ota/amendment_extractor.py` — `extract_amendment_rakuten()`: `modification.{check_in, check_out, guest_count, reason}`
+- `src/adapters/ota/semantics.py` — added `"booking_created"` → CREATE alias (covers Rakuten, Klook, Despegar)
+- `src/adapters/ota/registry.py` — `"rakuten": RakutenAdapter()`
+
+Tests: `tests/test_rakuten_adapter_contract.py` — NEW — 34 contract tests (Groups A-G): normalize/envelope (create/cancel/amend), RAK- prefix stripping, financial extractor (JPY, derived net, confidence levels), registry registration, semantic kind guard.
+
+34 tests pass. 4,420 total passing. 0 regressions.
