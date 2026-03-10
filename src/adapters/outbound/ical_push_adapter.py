@@ -256,3 +256,116 @@ class ICalPushAdapter(OutboundAdapter):
                 http_status=None,
                 message=f"{self.provider} iCal adapter exception: {exc}",
             )
+
+    def cancel(
+        self,
+        external_id: str,
+        booking_id: str,
+        rate_limit: int = 10,
+        dry_run: bool = False,
+    ) -> AdapterResult:
+        """
+        Phase 151 — iCal Cancellation Push.
+
+        Sends a VCALENDAR payload with STATUS:CANCELLED for the given booking.
+        Per RFC 5545 §3.8.1.11 — VEVENT STATUS:CANCELLED signals the booking
+        has been cancelled and providers should remove the blocked period.
+
+        Shares rate-limit (Phase 141), retry (Phase 142), and idempotency-key
+        (Phase 143) infrastructure with push(). Method is best-effort: errors are
+        logged but never re-raised to the caller.
+
+        Dry-run behaviour:
+          - dry_run=True → log + return dry_run immediately, no HTTP call.
+          - IHOUSE_DRY_RUN=true env var → same.
+          - Missing ICAL_URL env → treated as dry_run.
+        """
+        env_prefix = _PROVIDER_ENV.get(self.provider, self.provider.upper())
+        ical_url   = os.environ.get(f"{env_prefix}_ICAL_URL", "")
+        api_key: Optional[str] = os.environ.get(f"{env_prefix}_API_KEY")
+        global_dry_run = os.environ.get("IHOUSE_DRY_RUN", "false").lower() == "true"
+
+        if dry_run or global_dry_run or not ical_url:
+            reason = (
+                "IHOUSE_DRY_RUN=true" if global_dry_run
+                else f"{env_prefix}_ICAL_URL not configured — dry-run mode"
+                if not ical_url else "dry_run=True requested"
+            )
+            logger.info(
+                "[DRY-RUN] %s ical_cancel: external_id=%s reason=%s",
+                self.provider, external_id, reason,
+            )
+            return AdapterResult(
+                provider=self.provider, external_id=external_id,
+                strategy="ical_fallback", status="dry_run",
+                http_status=None,
+                message=f"[Phase 151 dry-run] {self.provider} iCal cancel: {reason}",
+            )
+
+        try:
+            if httpx is None:  # pragma: no cover
+                raise RuntimeError("httpx not available")
+
+            dtstamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
+            cancel_body = (
+                "BEGIN:VCALENDAR\r\n"
+                "VERSION:2.0\r\n"
+                "PRODID:-//iHouse Core//Phase 151//EN\r\n"
+                "CALSCALE:GREGORIAN\r\n"
+                "METHOD:CANCEL\r\n"
+                "BEGIN:VEVENT\r\n"
+                f"UID:{booking_id}@ihouse.core\r\n"
+                f"DTSTAMP:{dtstamp}\r\n"
+                "SEQUENCE:1\r\n"
+                "STATUS:CANCELLED\r\n"
+                f"SUMMARY:CANCELLED by iHouse Core\r\n"
+                f"DESCRIPTION:booking_id={booking_id} external_id={external_id}\r\n"
+                "END:VEVENT\r\n"
+                "END:VCALENDAR\r\n"
+            )
+
+            headers: dict[str, str] = {
+                "Content-Type":      "text/calendar; charset=utf-8",
+                "X-Idempotency-Key": _build_idempotency_key(booking_id, external_id),
+            }
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+
+            full_url = f"{ical_url}/{external_id}.ics"
+            _throttle(rate_limit)
+
+            def _do_cancel() -> AdapterResult:
+                resp = httpx.put(full_url, content=cancel_body.encode(), headers=headers, timeout=15)
+                if resp.status_code in (200, 201, 204):
+                    logger.info(
+                        "%s ical_cancel OK: external_id=%s status=%d",
+                        self.provider, external_id, resp.status_code,
+                    )
+                    return AdapterResult(
+                        provider=self.provider, external_id=external_id,
+                        strategy="ical_fallback", status="ok",
+                        http_status=resp.status_code,
+                        message=f"{self.provider} iCal cancel pushed. HTTP {resp.status_code}.",
+                    )
+                logger.warning(
+                    "%s ical_cancel error: external_id=%s status=%d",
+                    self.provider, external_id, resp.status_code,
+                )
+                return AdapterResult(
+                    provider=self.provider, external_id=external_id,
+                    strategy="ical_fallback", status="failed",
+                    http_status=resp.status_code,
+                    message=f"{self.provider} iCal cancel error HTTP {resp.status_code}: {resp.text[:200]}",
+                )
+
+            return _retry_with_backoff(_do_cancel)
+
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("%s ical_cancel exception: %s", self.provider, exc)
+            return AdapterResult(
+                provider=self.provider, external_id=external_id,
+                strategy="ical_fallback", status="failed",
+                http_status=None,
+                message=f"{self.provider} iCal cancel exception: {exc}",
+            )
+

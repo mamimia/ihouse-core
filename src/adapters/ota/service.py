@@ -243,4 +243,18 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
+        # Phase 151: push iCal cancellation to ical_fallback providers (best-effort)
+        try:
+            from services.cancel_sync_trigger import fire_cancel_sync
+            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
+            if booking_id and property_id:
+                fire_cancel_sync(
+                    booking_id=booking_id,
+                    property_id=property_id,
+                    tenant_id=tenant_id,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
     return result if isinstance(result, dict) else {"status": status}

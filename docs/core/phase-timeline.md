@@ -3351,3 +3351,29 @@ Design decisions:
 - UTC path unchanged — zero regression risk
 
 Result: 3890 tests pass (3836 + 54 new). 1 new DB column. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+---
+
+## Phase 151 — Closed
+
+**Phase 151 — iCal Cancellation Push**
+**Date closed:** 2026-03-10
+**Tests:** 3928 passing (3890 + 38 new), 2 pre-existing SQLite skips (unchanged)
+
+Goal: When BOOKING_CANCELED is APPLIED, fire a best-effort iCal cancellation push to all `ical_fallback` channels for the property. RFC 5545 §3.8.1.11 — VEVENT STATUS:CANCELLED with METHOD:CANCEL.
+
+Completed:
+
+- `src/services/cancel_sync_trigger.py` — NEW — `fire_cancel_sync(booking_id, property_id, tenant_id)`: fetches `ical_fallback` channels from `property_channel_map`, calls `ICalPushAdapter.cancel()` per provider; best-effort, swallows exceptions; returns `list[CancelSyncResult]`
+- `src/adapters/outbound/ical_push_adapter.py` — MODIFIED — `cancel(external_id, booking_id, rate_limit, dry_run)` method: emits VCALENDAR with METHOD:CANCEL, STATUS:CANCELLED, SEQUENCE:1; shares rate-limit/retry/idempotency-key infra from Phases 141-143
+- `src/adapters/ota/service.py` — MODIFIED — Phase 151 hook after BOOKING_CANCELED APPLIED (best-effort, never blocks)
+- `tests/test_ical_cancel_push_contract.py` — NEW — 38 contract tests Groups A-J
+
+Design decisions:
+- `METHOD:CANCEL` (not `METHOD:PUBLISH`) per RFC 5545 §3.7.2 — signals removal
+- `SEQUENCE:1` (one ahead of push SEQUENCE:0) per RFC 5545 §3.8.7.4 — signals update
+- `STATUS:CANCELLED` in VEVENT per RFC 5545 §3.8.1.11
+- Same UID `{booking_id}@ihouse.core` as the original push — providers correlate by UID
+- Never blocks main BOOKING_CANCELED response — wrapped in `try/except: pass`
+
+Result: 3928 tests pass (3890 + 38 new). No DB schema changes. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).

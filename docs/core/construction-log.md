@@ -2280,3 +2280,15 @@ Changes:
 - tests/test_ical_date_injection_contract.py [MODIFIED]: PRODID assertion →Phase 150
 
 Result: 3890 tests pass (3836 + 54 new). No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+## Phase 151 — iCal Cancellation Push (Closed)
+
+When BOOKING_CANCELED APPLIED: fire best-effort iCal cancel push to all ical_fallback channels. RFC 5545: METHOD:CANCEL, STATUS:CANCELLED, SEQUENCE:1, same UID as original push.
+
+Changes:
+- src/services/cancel_sync_trigger.py [NEW]: fire_cancel_sync() — fetches ical_fallback channels, calls ICalPushAdapter.cancel() per provider, returns list[CancelSyncResult]
+- src/adapters/outbound/ical_push_adapter.py [MODIFIED]: cancel() method with METHOD:CANCEL, STATUS:CANCELLED, SEQUENCE:1; reuses rate-limit/retry/idempotency-key infra
+- src/adapters/ota/service.py [MODIFIED]: Phase 151 best-effort hook after BOOKING_CANCELED APPLIED
+- tests/test_ical_cancel_push_contract.py [NEW]: 38 contract tests Groups A-J
+
+Result: 3928 tests pass (3890 + 38 new). No DB changes. No API changes.

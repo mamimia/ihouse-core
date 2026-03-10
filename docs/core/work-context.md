@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 150 — iCal VTIMEZONE Support (closed)
+Phase 151 — iCal Cancellation Push (closed)
 
 ## Last Closed Phase
 
-Phase 150 — iCal VTIMEZONE Support: `property_channel_map.timezone` nullable column; dual templates UTC+TZID; VTIMEZONE block + TZID-qualified DTSTART/DTEND; `_build_ical_body()` helper; PRODID Phase 150; 54 contract tests; 3890 passing
+Phase 151 — iCal Cancellation Push: `cancel_sync_trigger.fire_cancel_sync()`; `ICalPushAdapter.cancel()` METHOD:CANCEL + STATUS:CANCELLED + SEQUENCE:1; service.py hook after BOOKING_CANCELED APPLIED; 38 contract tests; 3928 passing
 
 ## Current Objective
 
-**Phase 151 — iCal Cancellation Push**
+**Phase 152 — iCal Sync-on-Amendment Push**
 
 ## Roadmap Direction (Phase 149 → 175)
 
@@ -125,5 +125,5 @@ Phase 150 — iCal VTIMEZONE Support: `property_channel_map.timezone` nullable c
 
 ## Tests
 
-**3890 passing** (2 pre-existing SQLite guard failures in `tests/invariants/test_invariant_suite.py` — unrelated)
+**3928 passing** (2 pre-existing SQLite guard failures in `tests/invariants/test_invariant_suite.py` — unrelated)
 
