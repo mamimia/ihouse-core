@@ -2395,3 +2395,14 @@ Changes:
 Known capability flags: can_approve_owner_statements, can_manage_integrations, can_view_financials, can_manage_workers, worker_role (str), property_ids (list).
 
 Result: 4378 tests pass (4341 + 37 new). 2 pre-existing SQLite skips unchanged.
+
+## Phase 168 — Push Notification Foundation (Closed)
+
+Multi-channel notification infrastructure (LINE + FCM + email).
+
+Changes:
+- migrations/phase_168_notification_channels.sql [NEW]: notification_channels table — UNIQUE(tenant_id, user_id, channel_type), channel_type CHECK ('line'|'fcm'|'email'), active BOOLEAN, RLS, updated_at trigger, 2 indexes.
+- src/channels/notification_dispatcher.py [NEW]: NotificationMessage, ChannelAttempt, DispatchResult dataclasses. dispatch_notification() — routes to channel adapters in LINE > FCM > email priority order, fail-isolated per channel, never raises. register_channel() + deregister_channel() upsert helpers. _lookup_channels() best-effort DB query. Injectable adapters for testing.
+- tests/test_notification_dispatcher_contract.py [NEW]: 27 contract tests.
+
+Result: 4405 tests pass (4378 + 27 new). 2 pre-existing SQLite skips unchanged.
