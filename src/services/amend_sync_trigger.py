@@ -1,17 +1,19 @@
 """
 Phase 152 — iCal Sync-on-Amendment Push Trigger
+Phase 155 — API-first Amendment Push (Airbnb, Booking.com, Expedia/VRBO)
 
-When BOOKING_AMENDED is APPLIED, this module fires a best-effort iCal
-re-push to all iCal (ical_fallback) providers mapped for the booking's
-property, using the updated check_in and check_out dates.
+When BOOKING_AMENDED is APPLIED, this module fires amendment notifications to:
+  1. All iCal (ical_fallback) providers via ICalPushAdapter.push()  [Phase 152]
+  2. All api_first API providers via their adapter's amend() method [Phase 155]
 
 Design:
-  - Mirrors cancel_sync_trigger.py (Phase 151) — best-effort, never blocks.
+  - Mirrors cancel_sync_trigger.py (Phase 154) — best-effort, never blocks.
   - Iterates property_channel_map for the (property_id, tenant_id) pair.
-  - Calls ICalPushAdapter(provider).push(external_id, booking_id, check_in,
-    check_out) for every channel whose sync_strategy is 'ical_fallback'.
+  - iCal providers: calls ICalPushAdapter(provider).push() with updated dates
+  - API providers:  calls <Adapter>(provider).amend(external_id, booking_id,
+    check_in, check_out) using the ISO date format they expect
   - Dates are accepted in YYYYMMDD (compact) or YYYY-MM-DD (ISO) format;
-    the helper _to_ical() normalises them.
+    _to_ical() normalises for iCal; _to_iso() normalises for API adapters.
   - On any exception → log warning, swallow, continue to next provider.
   - Returns a list of AmendSyncResult (pure data; not used for branching).
 
@@ -31,6 +33,9 @@ logger = logging.getLogger(__name__)
 # Providers served by ICalPushAdapter
 _ICAL_PROVIDERS = {"hotelbeds", "tripadvisor", "despegar"}
 
+# Providers served by API-first adapters (Phase 155)
+_API_PROVIDERS = {"airbnb", "bookingcom", "expedia", "vrbo"}
+
 
 def _to_ical(iso: Optional[str]) -> Optional[str]:
     """
@@ -42,6 +47,20 @@ def _to_ical(iso: Optional[str]) -> Optional[str]:
     return str(iso).replace("-", "")[:8]
 
 
+def _to_iso(date_str: Optional[str]) -> Optional[str]:
+    """
+    Convert compact (YYYYMMDD) or ISO (YYYY-MM-DD) date to YYYY-MM-DD.
+    API adapters (Airbnb, Booking.com, Expedia) expect ISO format.
+    Returns None if the input is empty or None.
+    """
+    if not date_str:
+        return None
+    s = str(date_str).replace("-", "")[:8]
+    if len(s) == 8:
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    return date_str  # fallback: return as-is
+
+
 @dataclass
 class AmendSyncResult:
     """Result of a single provider amendment re-push attempt."""
@@ -51,12 +70,10 @@ class AmendSyncResult:
     message: str
 
 
-def _get_ical_channels(property_id: str, tenant_id: str) -> list[dict]:
+def _get_channels(property_id: str, tenant_id: str) -> list[dict]:
     """
-    Fetch property_channel_map rows for this property/tenant where
-    sync_strategy = 'ical_fallback'.
-
-    Returns [] on any DB error (best-effort path).
+    Fetch ALL property_channel_map rows for this property/tenant,
+    regardless of sync_strategy. Returns [] on any DB error.
     """
     try:
         from supabase import create_client  # type: ignore[import]
@@ -70,13 +87,32 @@ def _get_ical_channels(property_id: str, tenant_id: str) -> list[dict]:
             .select("provider,external_id,sync_strategy,timezone")
             .eq("property_id", property_id)
             .eq("tenant_id", tenant_id)
-            .eq("sync_strategy", "ical_fallback")
             .execute()
         )
         return result.data or []
     except Exception as exc:
         logger.warning("amend_sync_trigger: DB lookup failed: %s", exc)
         return []
+
+
+def _get_api_adapter(provider: str):
+    """
+    Return an instantiated API-first adapter for the given provider, or None.
+    Lazy import to avoid circular dependencies.
+    """
+    try:
+        if provider == "airbnb":
+            from adapters.outbound.airbnb_adapter import AirbnbAdapter
+            return AirbnbAdapter()
+        if provider == "bookingcom":
+            from adapters.outbound.bookingcom_adapter import BookingComAdapter
+            return BookingComAdapter()
+        if provider in ("expedia", "vrbo"):
+            from adapters.outbound.expedia_vrbo_adapter import ExpediaVrboAdapter
+            return ExpediaVrboAdapter(provider)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("amend_sync_trigger: could not load adapter for %s: %s", provider, exc)
+    return None
 
 
 def fire_amend_sync(
@@ -90,7 +126,10 @@ def fire_amend_sync(
     channels: Optional[list[dict]] = None,
 ) -> list[AmendSyncResult]:
     """
-    Re-push iCal block with updated dates for all ical_fallback channels.
+    Push amendment to all mapped channels.
+
+    - ical_fallback channels  → ICalPushAdapter.push() with updated dates
+    - api_first channels      → {Provider}Adapter.amend() with ISO dates
 
     Args:
         booking_id:   Canonical booking_id.
@@ -105,18 +144,19 @@ def fire_amend_sync(
     """
     from adapters.outbound.ical_push_adapter import ICalPushAdapter
 
-    resolved_channels = channels if channels is not None else _get_ical_channels(property_id, tenant_id)
+    resolved_channels = channels if channels is not None else _get_channels(property_id, tenant_id)
     results: list[AmendSyncResult] = []
 
-    # Normalise dates to YYYYMMDD; ICalPushAdapter.push() handles fallback
-    # internally when None is passed in.
+    # Normalise dates for both paths
     ical_check_in  = _to_ical(check_in)
     ical_check_out = _to_ical(check_out)
+    api_check_in   = _to_iso(check_in)
+    api_check_out  = _to_iso(check_out)
 
     for ch in resolved_channels:
         provider    = ch.get("provider", "")
         external_id = ch.get("external_id", "")
-        timezone    = ch.get("timezone")  # nullable — may be None
+        timezone    = ch.get("timezone")   # nullable — may be None
 
         if not provider or not external_id:
             logger.warning(
@@ -130,43 +170,89 @@ def fire_amend_sync(
             ))
             continue
 
-        if provider not in _ICAL_PROVIDERS:
-            logger.warning(
-                "amend_sync_trigger: provider %s is not an iCal provider — skipping", provider
-            )
-            results.append(AmendSyncResult(
-                provider=provider,
-                external_id=external_id,
-                status="skipped",
-                message=f"Provider {provider!r} is not an ical_fallback provider.",
-            ))
+        # ------------------------------------------------------------------
+        # Route: iCal providers (Phase 152)
+        # ------------------------------------------------------------------
+        if provider in _ICAL_PROVIDERS:
+            try:
+                adapter = ICalPushAdapter(provider)
+                adapter_result = adapter.push(
+                    external_id=external_id,
+                    booking_id=booking_id,
+                    check_in=ical_check_in,
+                    check_out=ical_check_out,
+                    timezone=timezone,
+                )
+                results.append(AmendSyncResult(
+                    provider=provider,
+                    external_id=external_id,
+                    status=adapter_result.status,
+                    message=adapter_result.message,
+                ))
+            except Exception as exc:
+                logger.warning(
+                    "amend_sync_trigger: iCal push failed for %s/%s: %s",
+                    provider, external_id, exc,
+                )
+                results.append(AmendSyncResult(
+                    provider=provider,
+                    external_id=external_id,
+                    status="failed",
+                    message=f"Exception during iCal amend push: {exc}",
+                ))
             continue
 
-        try:
-            adapter = ICalPushAdapter(provider)
-            adapter_result = adapter.push(
-                external_id=external_id,
-                booking_id=booking_id,
-                check_in=ical_check_in,
-                check_out=ical_check_out,
-                timezone=timezone,
-            )
-            results.append(AmendSyncResult(
-                provider=provider,
-                external_id=external_id,
-                status=adapter_result.status,
-                message=adapter_result.message,
-            ))
-        except Exception as exc:
-            logger.warning(
-                "amend_sync_trigger: push failed for %s/%s: %s",
-                provider, external_id, exc,
-            )
-            results.append(AmendSyncResult(
-                provider=provider,
-                external_id=external_id,
-                status="failed",
-                message=f"Exception during amend push: {exc}",
-            ))
+        # ------------------------------------------------------------------
+        # Route: API-first providers (Phase 155)
+        # ------------------------------------------------------------------
+        if provider in _API_PROVIDERS:
+            adapter = _get_api_adapter(provider)
+            if adapter is None:
+                results.append(AmendSyncResult(
+                    provider=provider,
+                    external_id=external_id,
+                    status="skipped",
+                    message=f"Could not load API adapter for {provider!r}.",
+                ))
+                continue
+            try:
+                adapter_result = adapter.amend(
+                    external_id=external_id,
+                    booking_id=booking_id,
+                    check_in=api_check_in,
+                    check_out=api_check_out,
+                )
+                results.append(AmendSyncResult(
+                    provider=provider,
+                    external_id=external_id,
+                    status=adapter_result.status,
+                    message=adapter_result.message,
+                ))
+            except Exception as exc:
+                logger.warning(
+                    "amend_sync_trigger: API amend failed for %s/%s: %s",
+                    provider, external_id, exc,
+                )
+                results.append(AmendSyncResult(
+                    provider=provider,
+                    external_id=external_id,
+                    status="failed",
+                    message=f"Exception during API amend: {exc}",
+                ))
+            continue
+
+        # ------------------------------------------------------------------
+        # Unknown provider
+        # ------------------------------------------------------------------
+        logger.warning(
+            "amend_sync_trigger: provider %s is not a known amend provider — skipping",
+            provider,
+        )
+        results.append(AmendSyncResult(
+            provider=provider,
+            external_id=external_id,
+            status="skipped",
+            message=f"Provider {provider!r} is not a known amend provider.",
+        ))
 
     return results

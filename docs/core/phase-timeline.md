@@ -3450,3 +3450,24 @@ Completed:
 - `tests/test_ical_cancel_push_contract.py` — UPDATED — 2 test expectations updated to reflect Phase 154 routing change (airbnb no longer skipped, now routes via API adapter)
 
 Result: 4028 tests pass (3993 + 35 new). No DB schema changes. No new endpoints.
+
+---
+
+## Phase 155 — Closed
+
+**Phase 155 — API-first Amendment Push**
+**Date closed:** 2026-03-10
+**Tests:** 4065 passing (4028 + 37 new), 2 pre-existing SQLite skips (unchanged)
+
+Goal: Airbnb, Booking.com, Expedia/VRBO send amendment notification via API on BOOKING_AMENDED.
+
+Completed:
+- `src/adapters/outbound/__init__.py` — NOTE — _build_idempotency_key "amend" suffix already available from Phase 154
+- `src/adapters/outbound/airbnb_adapter.py` — MODIFIED — `amend()` method: PATCH /v2/calendar_operations/{external_id} with updated blocked_dates
+- `src/adapters/outbound/bookingcom_adapter.py` — MODIFIED — `amend()` method + `Optional` import: PATCH /v1/hotels/reservations/{external_id} with check_in/check_out
+- `src/adapters/outbound/expedia_vrbo_adapter.py` — MODIFIED — `amend()` method + `Optional` import: PATCH /v1/properties/{id}/reservations/{booking_id}
+- `src/services/amend_sync_trigger.py` — REWRITTEN — Routes ical_fallback → ICalPushAdapter.push() [Phase 152], api_first → {Provider}Adapter.amend() [Phase 155]; _to_iso() helper for API date format; DB fetches all channels
+- `tests/test_sync_amend_contract.py` — NEW — 37 contract tests (Groups A-N)
+- `tests/test_ical_amend_push_contract.py` — UPDATED — 2 test expectations updated (airbnb now routes via API adapter)
+
+Result: 4065 tests pass (4028 + 37 new). No DB schema changes. No new endpoints.

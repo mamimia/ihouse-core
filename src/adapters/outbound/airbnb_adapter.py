@@ -218,3 +218,100 @@ class AirbnbAdapter(OutboundAdapter):
                 http_status=None,
                 message=f"Airbnb cancel exception: {exc}",
             )
+
+    # ------------------------------------------------------------------
+    # Phase 155 — amend()
+    # ------------------------------------------------------------------
+
+    def amend(
+        self,
+        external_id: str,
+        booking_id: str,
+        check_in: Optional[str] = None,
+        check_out: Optional[str] = None,
+        rate_limit: int = 120,
+        dry_run: bool = False,
+    ) -> AdapterResult:
+        """
+        Notify Airbnb of updated booking dates.
+
+        Endpoint: PATCH /v2/calendar_operations/<external_id>
+        Body: {
+            "listing_id": "<external_id>",
+            "blocked_dates": ["<check_in>", "<check_out>"],
+            "notes": "Updated by iHouse Core (booking_id=<booking_id>)"
+        }
+
+        Returns dry_run if AIRBNB_API_KEY not configured or DRY_RUN=true.
+        Shares throttle / retry / idempotency-key infrastructure.
+        """
+        api_key  = os.environ.get("AIRBNB_API_KEY", "")
+        base_url = os.environ.get("AIRBNB_API_BASE", _DEFAULT_BASE)
+        global_dry_run = os.environ.get("IHOUSE_DRY_RUN", "false").lower() == "true"
+
+        if dry_run or global_dry_run or not api_key:
+            reason = (
+                "IHOUSE_DRY_RUN=true" if global_dry_run
+                else "AIRBNB_API_KEY not configured — dry-run mode"
+                if not api_key else "dry_run=True requested"
+            )
+            logger.info(
+                "[DRY-RUN] airbnb amend: external_id=%s booking_id=%s reason=%s",
+                external_id, booking_id, reason,
+            )
+            return AdapterResult(
+                provider=_PROVIDER, external_id=external_id,
+                strategy="api_first", status="dry_run",
+                http_status=None,
+                message=f"[Phase 155 dry-run] airbnb amend: {reason}",
+            )
+
+        try:
+            if httpx is None:  # pragma: no cover
+                raise RuntimeError("httpx not available")
+            url = f"{base_url}/calendar_operations/{external_id}"
+            payload = {
+                "listing_id":    external_id,
+                "blocked_dates": [d for d in [check_in, check_out] if d],
+                "notes":         f"Updated by iHouse Core (booking_id={booking_id})",
+            }
+            headers = {
+                "X-Airbnb-API-Key":  api_key,
+                "Content-Type":      "application/json",
+                "X-Idempotency-Key": _build_idempotency_key(booking_id, external_id, suffix="amend"),
+            }
+            _throttle(rate_limit)
+
+            def _do_amend() -> AdapterResult:
+                resp = httpx.patch(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in (200, 201, 204):
+                    logger.info(
+                        "airbnb amend OK: external_id=%s status=%d",
+                        external_id, resp.status_code,
+                    )
+                    return AdapterResult(
+                        provider=_PROVIDER, external_id=external_id,
+                        strategy="api_first", status="ok",
+                        http_status=resp.status_code,
+                        message=f"Airbnb amend sent. HTTP {resp.status_code}.",
+                    )
+                logger.warning(
+                    "airbnb amend error: external_id=%s status=%d body=%s",
+                    external_id, resp.status_code, resp.text[:200],
+                )
+                return AdapterResult(
+                    provider=_PROVIDER, external_id=external_id,
+                    strategy="api_first", status="failed",
+                    http_status=resp.status_code,
+                    message=f"Airbnb amend HTTP {resp.status_code}: {resp.text[:200]}",
+                )
+
+            return _retry_with_backoff(_do_amend)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("airbnb amend exception: external_id=%s: %s", external_id, exc)
+            return AdapterResult(
+                provider=_PROVIDER, external_id=external_id,
+                strategy="api_first", status="failed",
+                http_status=None,
+                message=f"Airbnb amend exception: {exc}",
+            )

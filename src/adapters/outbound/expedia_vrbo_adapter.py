@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Optional
 
 try:
     import httpx  # type: ignore[import]
@@ -182,4 +183,90 @@ class ExpediaVrboAdapter(OutboundAdapter):
                 strategy="api_first", status="failed",
                 http_status=None,
                 message=f"{self.provider} cancel exception: {exc}",
+            )
+
+    # ------------------------------------------------------------------
+    # Phase 155 — amend()
+    # ------------------------------------------------------------------
+
+    def amend(
+        self,
+        external_id: str,
+        booking_id: str,
+        check_in: Optional[str] = None,
+        check_out: Optional[str] = None,
+        rate_limit: int = 60,
+        dry_run: bool = False,
+    ) -> AdapterResult:
+        """
+        Notify Expedia/VRBO of updated booking dates.
+
+        Endpoint: PATCH /v1/properties/<external_id>/reservations/<booking_id>
+        Body: {"check_in": "<YYYY-MM-DD>", "check_out": "<YYYY-MM-DD>"}
+
+        Returns dry_run if API key not configured or DRY_RUN=true.
+        Shares throttle / retry / idempotency-key infrastructure.
+        """
+        env_prefix = _PROVIDER_MAP.get(self.provider, "EXPEDIA")
+        api_key  = os.environ.get(f"{env_prefix}_API_KEY", "")
+        base_url = os.environ.get(f"{env_prefix}_API_BASE", _DEFAULT_BASE)
+        global_dry_run = os.environ.get("IHOUSE_DRY_RUN", "false").lower() == "true"
+
+        if dry_run or global_dry_run or not api_key:
+            reason = (
+                "IHOUSE_DRY_RUN=true" if global_dry_run
+                else f"{env_prefix}_API_KEY not configured — dry-run mode"
+                if not api_key else "dry_run=True requested"
+            )
+            logger.info(
+                "[DRY-RUN] %s amend: external_id=%s reason=%s",
+                self.provider, external_id, reason,
+            )
+            return AdapterResult(
+                provider=self.provider, external_id=external_id,
+                strategy="api_first", status="dry_run",
+                http_status=None,
+                message=f"[Phase 155 dry-run] {self.provider} amend: {reason}",
+            )
+
+        try:
+            if httpx is None:  # pragma: no cover
+                raise RuntimeError("httpx not available")
+            url = f"{base_url}/properties/{external_id}/reservations/{booking_id}"
+            payload: dict = {}
+            if check_in:
+                payload["check_in"] = check_in
+            if check_out:
+                payload["check_out"] = check_out
+            headers = {
+                "Authorization":     f"Bearer {api_key}",
+                "Content-Type":      "application/json",
+                "X-Idempotency-Key": _build_idempotency_key(booking_id, external_id, suffix="amend"),
+            }
+            _throttle(rate_limit)
+
+            def _do_amend() -> AdapterResult:
+                resp = httpx.patch(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in (200, 201, 204):
+                    return AdapterResult(
+                        provider=self.provider, external_id=external_id,
+                        strategy="api_first", status="ok",
+                        http_status=resp.status_code,
+                        message=f"{self.provider} amend sent. HTTP {resp.status_code}.",
+                    )
+                return AdapterResult(
+                    provider=self.provider, external_id=external_id,
+                    strategy="api_first", status="failed",
+                    http_status=resp.status_code,
+                    message=f"{self.provider} amend HTTP {resp.status_code}: {resp.text[:200]}",
+                )
+
+            return _retry_with_backoff(_do_amend)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("%s amend exception: %s", self.provider, exc)
+            return AdapterResult(
+                provider=self.provider, external_id=external_id,
+                strategy="api_first", status="failed",
+                http_status=None,
+                message=f"{self.provider} amend exception: {exc}",
             )

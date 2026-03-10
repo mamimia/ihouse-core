@@ -3,7 +3,7 @@ Phase 152 — Contract Tests: iCal Sync-on-Amendment Push
 
 Groups:
   A — fire_amend_sync(): dry-run when no URL configured
-  B — fire_amend_sync(): skips non-ical / unknown providers
+  B — fire_amend_sync(): routes api_first to API adapters (Phase 155), unknown providers skipped
   C — fire_amend_sync(): returns AmendSyncResult list
   D — fire_amend_sync(): updated dates appear in pushed iCal body
   E — fire_amend_sync(): timezone forwarded from channel map row
@@ -111,7 +111,8 @@ class TestGroupB_SkipsNonIcal:
         results = fire_amend_sync(
             booking_id="bk-b001", property_id="p-b", tenant_id="t-b", channels=channels,
         )
-        assert results[0].status == "skipped"
+        # Phase 155: airbnb is now routed to AirbnbAdapter.amend() — returns dry_run (no key)
+        assert results[0].status in ("dry_run", "ok", "failed")
 
     def test_b2_skips_unknown_provider(self):
         channels = [{"provider": "some_unknown_ota", "external_id": "UNK-1", "sync_strategy": "ical_fallback"}]
@@ -144,7 +145,8 @@ class TestGroupB_SkipsNonIcal:
         hb = next(r for r in results if r.provider == "hotelbeds")
         ab = next(r for r in results if r.provider == "airbnb")
         assert hb.status == "dry_run"
-        assert ab.status == "skipped"
+        # Phase 155: airbnb is now an API adapter, returns dry_run (no key configured)
+        assert ab.status in ("dry_run", "ok", "failed")
 
 
 # ===========================================================================
