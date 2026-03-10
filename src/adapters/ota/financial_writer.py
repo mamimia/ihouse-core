@@ -1,14 +1,23 @@
 """
 Phase 66 — booking_financial_facts Supabase Writer
+Phase 162 — OPERATOR_MANUAL confidence tier support
 
 Persists BookingFinancialFacts to the booking_financial_facts table
-after a successful BOOKING_CREATED or BOOKING_AMENDED event.
+after a successful BOOKING_CREATED or BOOKING_AMENDED event, or as an
+operator correction (BOOKING_CORRECTED, confidence=OPERATOR_MANUAL).
 
 Rules:
 - Best-effort, non-blocking: exceptions are caught and logged to stderr.
 - Never raises. Financial write failure must NEVER block canonical ingest.
 - Append-only: no UPDATE or DELETE.
 - Only called when financial_facts is not None.
+- OPERATOR_MANUAL rows are always append-only like all other rows.
+
+Confidence tiers:
+  FULL            — all key fields present from OTA payload
+  PARTIAL         — some fields missing from OTA payload
+  ESTIMATED       — fields inferred / computed
+  OPERATOR_MANUAL — operator-entered correction (Phase 162)
 
 Invariant (locked Phase 62+):
   booking_state must NEVER contain financial data.
@@ -22,6 +31,9 @@ from decimal import Decimal
 from typing import Any, Optional
 
 from .financial_extractor import BookingFinancialFacts
+
+# Phase 162: additional confidence tier for operator corrections
+CONFIDENCE_OPERATOR_MANUAL = "OPERATOR_MANUAL"
 
 
 def _decimal_to_str(value: Optional[Decimal]) -> Optional[str]:

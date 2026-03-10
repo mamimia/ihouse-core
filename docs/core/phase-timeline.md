@@ -3585,3 +3585,19 @@ Completed:
   - GET /financial/by-provider: same
   - GET /financial/by-property: same
 - `tests/test_multicurrency_conversion_contract.py` — NEW — 38 contract tests (Groups A-T)
+
+---
+
+## Phase 162 — Closed
+
+**Phase 162 — Financial Correction Event**
+**Date closed:** 2026-03-10
+**Tests:** 4266 passing (4229 + 37 new). 2 pre-existing SQLite skips (unchanged).
+
+Goal: Operator-submitted financial corrections, append-only, OPERATOR_MANUAL confidence tier, audit-logged.
+
+Completed:
+- `src/adapters/ota/financial_writer.py` — MODIFIED — added CONFIDENCE_OPERATOR_MANUAL="OPERATOR_MANUAL" constant and updated docstring with confidence tier table
+- `src/api/financial_correction_router.py` — NEW — POST /financial/corrections (validates booking_id, currency, at least one amount; 404 on missing booking; inserts BOOKING_CORRECTED / OPERATOR_MANUAL row into booking_financial_facts; best-effort audit event to event_log)
+- `src/main.py` — MODIFIED — registered financial_correction_router
+- `tests/test_financial_correction_contract.py` — NEW — 37 contract tests (Groups A-T)
