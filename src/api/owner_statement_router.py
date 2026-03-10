@@ -1,5 +1,6 @@
 """
 Phase 121 — Owner Statement Generator (Ring 4)
+Phase 166 — Owner Role Scoping
 
 GET /owner-statement/{property_id}?month=YYYY-MM[&management_fee_pct=X.X][&format=pdf]
 
@@ -337,6 +338,7 @@ async def get_owner_statement(
     ),
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
+    user_id: Optional[str] = None,
 ) -> Any:
     """
     Return a monthly financial owner statement for a property.
@@ -388,6 +390,27 @@ async def get_owner_statement(
 
     try:
         db = client if client is not None else _get_supabase_client()
+
+        # ------------------------------------------------------------------
+        # Phase 166 — Owner role scoping
+        # If the caller's permission record has role='owner', they may only
+        # access properties listed in their permissions.property_ids array.
+        # Any other role (admin / manager / no record) is unrestricted.
+        # ------------------------------------------------------------------
+        caller_id = user_id or tenant_id
+        try:
+            from api.permissions_router import get_permission_record  # lazy import
+            perm = get_permission_record(db, tenant_id, caller_id)
+            if perm and perm.get("role") == "owner":
+                allowed_properties = (perm.get("permissions") or {}).get("property_ids", [])
+                if isinstance(allowed_properties, list) and property_id not in allowed_properties:
+                    return make_error_response(
+                        status_code=403,
+                        code=ErrorCode.FORBIDDEN,
+                        extra={"detail": "You do not have access to this property."},
+                    )
+        except Exception:  # noqa: BLE001
+            pass  # best-effort — never block the request
         month_start, month_end = _month_bounds(month)
 
         # Query: filter by tenant_id AND property_id AND month range

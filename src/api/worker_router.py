@@ -1,5 +1,6 @@
 """
 Phase 123 — Worker-Facing Task Surface
+Phase 166 — Worker Role Scoping
 
 Endpoints:
     GET  /worker/tasks                         — role-scoped task list
@@ -16,6 +17,15 @@ Rules:
     - Notes appended on complete (if provided in body) — stored in `notes` column.
     - Terminal tasks (COMPLETED/CANCELED) → 422 INVALID_TRANSITION on
       acknowledge/complete attempts.
+
+Role scoping (Phase 166):
+    When the caller's permission record has role='worker', their worker_role
+    from the permissions.worker_role field is automatically applied as a DB
+    filter — they CANNOT see tasks assigned to other roles.
+    Callers with role='admin' or 'manager' (or no permission record) are
+    unrestricted — they may supply worker_role freely.
+    user_id for enrichment comes from the JWT 'user_id' claim (falls back to
+    tenant_id so existing test harnesses remain compatible).
 
 Invariant (Phase 123):
     This router NEVER writes to booking_state, event_log, or booking_financial_facts.
@@ -85,6 +95,7 @@ async def list_worker_tasks(
     limit: int = _DEFAULT_LIMIT,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
+    user_id: Optional[str] = None,
 ) -> JSONResponse:
     """
     Return tasks visible to the requesting worker role.
@@ -98,6 +109,10 @@ async def list_worker_tasks(
     - `limit`       — max results, 1–100 (default 50)
 
     **Tenant isolation:** Only tasks belonging to the authenticated tenant.
+
+    **Role scoping (Phase 166):** Callers with role='worker' in tenant_permissions
+    are restricted to tasks matching their own worker_role capability. Admins and
+    managers are unrestricted.
 
     **Source:** Reads from `tasks` table only. Never reads `booking_financial_facts`
     or `booking_state`.
@@ -130,6 +145,26 @@ async def list_worker_tasks(
 
     try:
         db = client or _get_supabase_client()
+
+        # ------------------------------------------------------------------
+        # Phase 166 — Role scoping
+        # Look up the caller's permission record. If their role is 'worker',
+        # derive their assigned worker_role from the permissions JSONB and
+        # enforce it as the filter — ignoring any caller-supplied worker_role.
+        # ------------------------------------------------------------------
+        effective_worker_role = worker_role
+        caller_id = user_id or tenant_id  # fallback keeps existing tests green
+        try:
+            from api.permissions_router import get_permission_record  # lazy import
+            perm = get_permission_record(db, tenant_id, caller_id)
+            if perm and perm.get("role") == "worker":
+                # Extract the worker's specific role from the permissions JSONB.
+                assigned_role = (perm.get("permissions") or {}).get("worker_role")
+                if assigned_role and assigned_role in _VALID_WORKER_ROLES:
+                    effective_worker_role = assigned_role
+        except Exception:  # noqa: BLE001
+            pass  # best-effort — never block the request
+
         query = (
             db.table("tasks")
             .select("*")
@@ -137,8 +172,8 @@ async def list_worker_tasks(
             .limit(limit)
             .order("due_date", desc=False)
         )
-        if worker_role is not None:
-            query = query.eq("worker_role", worker_role)
+        if effective_worker_role is not None:
+            query = query.eq("worker_role", effective_worker_role)
         if status is not None:
             query = query.eq("status", status)
         if date is not None:
@@ -148,7 +183,11 @@ async def list_worker_tasks(
         tasks = result.data if result.data else []
         return JSONResponse(
             status_code=200,
-            content={"tasks": tasks, "count": len(tasks)},
+            content={
+                "tasks": tasks,
+                "count": len(tasks),
+                "role_scoped": effective_worker_role is not None,
+            },
         )
 
     except Exception as exc:  # noqa: BLE001

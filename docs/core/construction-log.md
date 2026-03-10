@@ -2369,3 +2369,16 @@ Changes:
 - tests/test_permissions_contract.py [NEW]: 29 contract tests.
 
 Result: 4297 tests pass (4191 + 29 new + prior phase tests). 2 pre-existing SQLite skips unchanged. All work committed locally. ⚠️ git push pending.
+
+## Phase 166 — Worker + Owner Role Scoping (Closed)
+
+Role-based visibility enforcement in existing API endpoints.
+
+Changes:
+- src/api/worker_router.py [MODIFIED]: GET /worker/tasks auto-scopes to caller's worker_role when permission record has role='worker'. Caller's supplied worker_role param overridden by permission. Admin/manager unrestricted. Response includes role_scoped bool. Best-effort.
+- src/api/owner_statement_router.py [MODIFIED]: GET /owner-statement/{property_id} checks permissions.property_ids for owner role. property_id not in allow-list → 403 FORBIDDEN. Admin/manager/no-record → unrestricted. user_id param added.
+- src/api/financial_aggregation_router.py [MODIFIED]: _get_owner_property_filter() new helper. _fetch_period_rows() gains property_ids param → .in_() DB filter. All 4 financial endpoints apply owner property scoping via user_id param.
+- tests/test_worker_role_scoping_contract.py [NEW]: 22 contract tests.
+- tests/test_owner_role_scoping_contract.py [NEW]: 22 contract tests.
+
+Result: 4341 tests pass (4297 + 44 new). 2 pre-existing SQLite skips unchanged.

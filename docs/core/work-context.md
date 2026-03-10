@@ -2,15 +2,15 @@
 
 ## Current Active Phase
 
-Phase 165 — Permission Model Foundation (closed)
+Phase 166 — Worker + Owner Role Scoping (closed)
 
 ## Last Closed Phase
 
-Phase 165 — Permission Model Foundation: tenant_permissions table DDL (local only, ⚠️ Supabase migration pending), permissions CRUD router, get_jwt_scope() enrichment helper, 29 contract tests, 4297 total passing.
+Phase 166 — Worker + Owner Role Scoping: worker_router auto-scoped to permissions.worker_role, owner_statement_router + financial_aggregation_router property-scoped via permissions.property_ids, 44 new contract tests, 4341 total passing.
 
 ## Current Objective
 
-**Phase 166 — Worker + Owner Role Scoping**
+**Phase 167 — Manager Delegated Permissions**
 
 ## Roadmap Direction (Phase 149 → 175)
 

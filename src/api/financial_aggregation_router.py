@@ -1,6 +1,7 @@
 """
 Phase 116 — Financial Aggregation API (Ring 1)
 Phase 161 — Multi-Currency Conversion Layer
+Phase 166 — Owner Property Scoping
 
 Aggregation endpoints over booking_financial_facts for the authenticated tenant.
 
@@ -178,19 +179,55 @@ def _validate_period(period: Optional[str]) -> Optional[JSONResponse]:
     return None
 
 
-def _fetch_period_rows(db: Any, tenant_id: str, period: str) -> List[dict]:
-    """Fetch all booking_financial_facts rows for the tenant + period."""
+def _fetch_period_rows(
+    db: Any,
+    tenant_id: str,
+    period: str,
+    property_ids: Optional[List[str]] = None,
+) -> List[dict]:
+    """Fetch all booking_financial_facts rows for the tenant + period.
+
+    Phase 166: if property_ids is provided (non-None, non-empty), only rows
+    matching those property IDs are returned.
+    """
     month_start, month_end = _month_bounds(period)
-    result = (
+    query = (
         db.table("booking_financial_facts")
         .select("*")
         .eq("tenant_id", tenant_id)
         .gte("recorded_at", month_start)
         .lt("recorded_at", month_end)
         .order("recorded_at", desc=False)
-        .execute()
     )
+    if property_ids is not None and len(property_ids) > 0:
+        query = query.in_("property_id", property_ids)
+    result = query.execute()
     return result.data or []
+
+
+def _get_owner_property_filter(
+    db: Any,
+    tenant_id: str,
+    user_id: Optional[str],
+) -> Optional[List[str]]:
+    """Phase 166: return the list of allowed property_ids for an owner role caller.
+
+    Returns:
+        - None  → no restriction (admin / manager / no record)
+        - list  → caller is 'owner'; restrict to these property_ids
+    Best-effort: returns None on any error.
+    """
+    if not user_id:
+        return None
+    try:
+        from api.permissions_router import get_permission_record  # lazy import
+        perm = get_permission_record(db, tenant_id, user_id)
+        if perm and perm.get("role") == "owner":
+            allowed = (perm.get("permissions") or {}).get("property_ids", [])
+            return allowed if isinstance(allowed, list) else []
+    except Exception:  # noqa: BLE001
+        pass
+    return None
 
 
 def _validate_base_currency(base_currency: Optional[str]) -> Optional[JSONResponse]:
@@ -297,6 +334,7 @@ async def get_financial_summary(
     base_currency: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
+    user_id: Optional[str] = None,
 ) -> JSONResponse:
     """
     Aggregate financial totals for the authenticated tenant for the given month.
@@ -328,7 +366,8 @@ async def get_financial_summary(
 
     try:
         db = client if client is not None else _get_supabase_client()
-        rows = _fetch_period_rows(db, tenant_id, period)  # type: ignore[arg-type]
+        property_ids = _get_owner_property_filter(db, tenant_id, user_id)
+        rows = _fetch_period_rows(db, tenant_id, period, property_ids)  # type: ignore[arg-type]
         deduped = _dedup_latest(rows)
 
         # Aggregate per currency
@@ -402,6 +441,7 @@ async def get_financial_by_provider(
     base_currency: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
+    user_id: Optional[str] = None,
 ) -> JSONResponse:
     """
     Per-OTA-provider financial breakdown for the authenticated tenant.
@@ -426,7 +466,8 @@ async def get_financial_by_provider(
 
     try:
         db = client if client is not None else _get_supabase_client()
-        rows = _fetch_period_rows(db, tenant_id, period)  # type: ignore[arg-type]
+        property_ids = _get_owner_property_filter(db, tenant_id, user_id)
+        rows = _fetch_period_rows(db, tenant_id, period, property_ids)  # type: ignore[arg-type]
         deduped = _dedup_latest(rows)
 
         # Aggregate per (provider, currency)
@@ -509,6 +550,7 @@ async def get_financial_by_property(
     base_currency: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
+    user_id: Optional[str] = None,
 ) -> JSONResponse:
     """
     Per-property financial breakdown for the authenticated tenant.
@@ -534,7 +576,8 @@ async def get_financial_by_property(
 
     try:
         db = client if client is not None else _get_supabase_client()
-        rows = _fetch_period_rows(db, tenant_id, period)  # type: ignore[arg-type]
+        property_ids = _get_owner_property_filter(db, tenant_id, user_id)
+        rows = _fetch_period_rows(db, tenant_id, period, property_ids)  # type: ignore[arg-type]
         deduped = _dedup_latest(rows)
 
         # Aggregate per (property_id, currency)

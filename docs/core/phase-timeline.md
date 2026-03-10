@@ -3648,3 +3648,27 @@ Completed:
 - `src/api/auth.py` — MODIFIED — get_jwt_scope(db, tenant_id, user_id) → {role, permissions} scope dict. Best-effort (never raises). Lazy import of get_permission_record to avoid circular import. Added `from typing import Any`.
 - `src/main.py` — MODIFIED — registered permissions_router.
 - `tests/test_permissions_contract.py` — NEW — 29 contract tests: list/get/upsert/delete, role validation, 400/404/500, tenant isolation (dependency_overrides pattern), get_permission_record(), get_jwt_scope().
+
+---
+
+## Phase 166 — Worker + Owner Role Scoping (Closed) — 2026-03-10
+
+Goal: enforce role-based data visibility in existing API endpoints using the tenant_permissions table from Phase 165.
+
+Completed:
+
+- `src/api/worker_router.py` — MODIFIED — GET /worker/tasks now reads the caller's permission record via get_permission_record(). When role='worker', their permissions.worker_role is applied as the DB filter automatically; caller-supplied worker_role param is overridden. Admin/manager have unrestricted access. Response now includes role_scoped boolean field. Best-effort: permission lookup error never blocks the request.
+- `src/api/owner_statement_router.py` — MODIFIED — GET /owner-statement/{property_id} checks permissions.property_ids when caller has role='owner'. If property_id is not in the allow-list → 403 FORBIDDEN. Admin/manager unrestricted. No permission record → unrestricted (backward compat). user_id param for enrichment added (falls back to tenant_id).
+- `src/api/financial_aggregation_router.py` — MODIFIED — New _get_owner_property_filter() helper reads permission record for owner role → returns allowed property_ids or None (unrestricted). _fetch_period_rows() gains optional property_ids param → calls .in_('property_id', ids) if non-empty. All four financial endpoints (summary, by-provider, by-property, lifecycle-distribution) apply owner property filter via new user_id param.
+- `tests/test_worker_role_scoping_contract.py` — NEW — 22 contract tests: backward compat (no perm record), admin/manager unrestricted, worker auto-scoped by worker_role from permissions, invalid role value skipped, caller-supplied role overridden, response shape, validation errors (limit, worker_role), best-effort error handling.
+- `tests/test_owner_role_scoping_contract.py` — NEW — 22 contract tests: owner allow-list pass/block, 403 FORBIDDEN response, empty property_ids blocks all, admin/manager unrestricted, no perm record unrestricted, _get_owner_property_filter() unit tests, _fetch_period_rows() .in_() call verification, best-effort DB error handling.
+
+DB migration: Supabase migration applied in Phase 166 boot (was pending from Phase 165 → now confirmed applied).
+
+Validation:
+
+4341 tests pass. 2 pre-existing SQLite invariant failures unchanged. 44 new Phase 166 tests.
+
+Result:
+
+The permission model from Phase 165 is now enforced at query level in three endpoints. Workers can only see tasks matching their assigned worker_role. Owners can only see their own properties' financial data. Enforcement is best-effort on the permission lookup path — a DB error on tenant_permissions never blocks the primary request.
