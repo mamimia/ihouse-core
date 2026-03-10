@@ -1,14 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 152 — iCal Sync-on-Amendment Push (closed)
+Phase 153 — Operations Dashboard UI (closed)
 
 ## Last Closed Phase
-Phase 152 — iCal Sync-on-Amendment Push: `amend_sync_trigger.fire_amend_sync()`; reuses `ICalPushAdapter.push()` with updated dates + timezone; `_to_ical()` ISO/compact normaliser; wired into service.py after BOOKING_AMENDED APPLIED; 35 contract tests (Groups A-J)
+Phase 153 — Operations Dashboard UI: `GET /operations/today` (arrivals/departures/cleanings); Next.js 14 `ihouse-ui/` scaffolded; dashboard page with Urgent, Today, Sync Health, Integration Alerts sections; 30 contract tests (Groups A-I)
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal VTIMEZONE Support (150). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal VTIMEZONE Support (150). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153).**
 apply_envelope is the only authority for canonical state mutations.
 
 ## HTTP API Layer — Complete
@@ -93,9 +93,9 @@ apply_envelope is the only authority for canonical state mutations.
 | 146 | Sync Health Dashboard — `GET /admin/outbound-health` added to `outbound_log_router.py`; `_compute_health()` in-memory aggregation of `outbound_sync_log` rows; per-provider: ok/failed/dry_run/skipped counts, last_sync_at, failure_rate_7d (7-day window, None if no ok+failed); alphabetical sort; malformed timestamps skipped; 33 contract tests | ✅ |
 | 147 | Failed Sync Replay — `POST /admin/outbound-replay` in `outbound_log_router.py`; `_fetch_last_log_row()` helper + `execute_single_provider()` in `outbound_executor.py`; reconstructs SyncAction from log row; all Phase 141-144 guarantees apply; 400 on missing body fields; 404 when no prior log row; best-effort persistence; 33 contract tests | ✅ |
 | 148 | Sync Result Webhook Callback — `_fire_callback(booking_id, tenant_id, result, *, callback_url)` in `outbound_executor.py`; reads `IHOUSE_SYNC_CALLBACK_URL`; fires only on `ok`; payload `{event:sync.ok, booking_id, tenant_id, provider, external_id, strategy, http_status}` via `urllib.request.urlopen`; 5s timeout; HTTP/connection/timeout errors swallowed; never retried; called in `execute_sync_plan()` after `_persist()`; 30 contract tests | ✅ |
-| 152 | iCal Sync-on-Amendment Push — `amend_sync_trigger.fire_amend_sync()`; reuses `ICalPushAdapter.push()` with updated dates + timezone; `_to_ical()` ISO/compact helper; wired best-effort in service.py after BOOKING_AMENDED APPLIED; 35 contract tests (Groups A-J) | ✅ |
+| 153 | Operations Dashboard UI — `GET /operations/today` (arrivals/departures/cleanings, in-memory, `as_of` override); `ihouse-ui/` Next.js 14 App Router scaffolded; dashboard page: Urgent tasks, Today stats, Sync Health, Integration Alerts; typed `lib/api.ts` client; 30 contract tests (Groups A-I); UI build ✅ | ✅ |
 
-**3963 tests pass** (2 pre-existing SQLite guard failures, unrelated)
+**3993 tests pass** (2 pre-existing SQLite guard failures, unrelated)
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -204,8 +204,8 @@ Tenant isolation: `.eq("tenant_id", tenant_id)` enforced at DB query level.
 
 ## Next Phase
 
-**Phase 153** — iCal Provider Sync-Status API
+**Phase 154** — API-first Cancellation Push (Airbnb, Booking.com, Expedia/VRBO `cancel()` adapters)
 
 ## Tests
 
-**3963 passing** (2 pre-existing SQLite skips, unrelated)
+**3993 passing** (2 pre-existing SQLite skips, unrelated)

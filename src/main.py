@@ -222,6 +222,9 @@ app.include_router(outbound_executor_router)
 from api.outbound_log_router import router as outbound_log_router  # noqa: E402  # Phase 145
 app.include_router(outbound_log_router)
 
+from api.operations_router import router as operations_router  # noqa: E402  # Phase 153
+app.include_router(operations_router)
+
 
 # ---------------------------------------------------------------------------
 # OpenAPI — inject BearerAuth security scheme (Phase 63)

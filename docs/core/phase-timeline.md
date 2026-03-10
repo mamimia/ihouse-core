@@ -3401,3 +3401,31 @@ Design decisions:
 - Never blocks main BOOKING_AMENDED response — wrapped in `try/except: pass`
 
 Result: 3963 tests pass (3928 + 35 new). No DB schema changes. No API changes. 2 pre-existing SQLite failures (unrelated, unchanged).
+
+---
+
+## Phase 153 — Closed
+
+**Phase 153 — Operations Dashboard UI**
+**Date closed:** 2026-03-10
+**Tests:** 3993 passing (3963 + 30 new), 2 pre-existing SQLite skips (unchanged)
+
+Goal: The 7AM screen. Exception-first operational view with 4 sections: Urgent, Today, Sync Health, Integration Alerts.
+
+Completed:
+
+Backend:
+- `src/api/operations_router.py` — NEW — `GET /operations/today`: arrivals_today, departures_today, cleanings_due_today; in-memory aggregation of booking_state; `as_of` date override param; read-only, tenant-scoped
+- `src/main.py` — MODIFIED — registered operations_router (Phase 153)
+- `tests/test_operations_today_contract.py` — NEW — 30 contract tests Groups A-I
+
+UI (ihouse-ui/):
+- `ihouse-ui/` — NEW — Next.js 14 App Router project scaffolded
+- `ihouse-ui/lib/api.ts` — NEW — typed fetch client for all backend endpoints
+- `ihouse-ui/styles/tokens.css` — NEW — design system tokens (colour, typography, spacing)
+- `ihouse-ui/app/globals.css` — NEW — Inter font import + CSS reset
+- `ihouse-ui/app/layout.tsx` — NEW — root layout with fixed sidebar nav
+- `ihouse-ui/app/dashboard/page.tsx` — NEW — Operations Dashboard (7AM screen)
+- UI build: ✅ `npm run build` passes cleanly, /dashboard route compiled
+
+Result: 3993 tests pass (3963 + 30 new). No DB schema changes. 1 new API endpoint. UI build green.
