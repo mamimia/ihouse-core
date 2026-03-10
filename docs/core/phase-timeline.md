@@ -4073,3 +4073,111 @@ Documentation-and-audit phase. No source code changes. Full system sync after 22
 - 4,906 tests collected / ~4,900 passing / 6 pre-existing failures (exit 0)
 
 **Correction note:** Phase 196 phase-timeline entry (appended in prior conversation) described the now-removed global WhatsApp fallback chain. The correct architecture (per-worker channel_type from notification_channels, no global chain) is documented in current-snapshot.md and work-context.md. The phase-timeline entry is preserved unchanged per append-only rule. This note supersedes it.
+
+## Phase 198 — Test Suite Stabilization (Closed) — 2026-03-11
+
+Fixed 6 pre-existing test failures from the Phase 197 baseline. Cleaned up env var leaks (`SUPABASE_URL`/`SUPABASE_KEY` mock pollution across test isolation boundaries), deprecated import warnings (`DeprecationWarning` on `datetime.utcnow`), and stale fixture assertions (provider count mismatches in `test_webhook_endpoint.py`). Rakuten replay fixture added. Hostelworld extended into E2E harness Group I.
+
+Tests: 4,903 collected / 4,903 passing / 0 failures. Exit 0.
+
+## Phase 199 — Supabase RLS Systematic Audit (Closed) — 2026-03-11
+
+Full RLS audit of all public tables. 24 tables checked. 4 DB migrations applied. RLS now enabled on: `guests`, `booking_guest_link`, `notification_channels`, `notification_delivery_log`, `admin_audit_log`, `conflict_resolution_queue`. Supabase security advisor: 0 findings (was 24).
+
+Tests: 0 regressions.
+
+## Phase 200 — Booking Calendar UI (Closed) — 2026-03-11
+
+New `/calendar` route in ihouse-ui. Month-view CSS grid. Property picker dropdown. Booking blocks color-coded by lifecycle_status (ACTIVE=blue, CHECKED_IN=green, CANCELED=gray). Reads from existing `GET /availability/{property_id}` + `GET /bookings` APIs. No new backend.
+
+TypeScript: 0 errors. 0 regressions.
+
+## Phase 201 — Worker Channel Preference UI (Closed) — 2026-03-11
+
+`notification_channels` table migration. Three new backend endpoints:
+- `GET /worker/preferences` — list worker's channel configs
+- `PUT /worker/preferences` — upsert (create or update) channel preference
+- `DELETE /worker/preferences/{channel_type}` — remove a channel
+
+Channel 🔔 tab added to `/worker` page in ihouse-ui. Workers self-select LINE/WhatsApp/Telegram and provide their external IDs.
+
+Tests: +25 → 4,928 passing. Exit 0.
+
+## Phase 202 — Notification History Inbox (Closed) — 2026-03-11
+
+`notification_delivery_log` table migration (tenant_id, worker_id, task_id, channel_type, status, delivered_at, payload_preview). New endpoint: `GET /worker/notifications` — returns chronological list of past escalation deliveries for the authenticated worker. History section added to Channel tab in `/worker` page. Relative timestamps (e.g. "2h ago").
+
+Tests: +21 → 4,949 passing. Exit 0.
+
+## Phase 203 — Telegram Escalation Channel (Closed) — 2026-03-11
+
+Third live escalation channel. `telegram_escalation.py` — pure module following exact LINE/WhatsApp pattern: `should_escalate`, `build_telegram_message`, `format_telegram_text` (Markdown), `is_priority_eligible`, `dispatch_dry_run`. Telegram Bot API `sendMessage`. `notification_dispatcher.py` extended: CHANNEL_TELEGRAM routes to telegram module. `sla_dispatch_bridge.py` extended. `main.py` unchanged (router-less, dispatch-only).
+
+Tests: +34 → 4,983 passing. Exit 0.
+
+## Phase 204 — Docs Sync (Closed) — 2026-03-11
+
+Documentation catch-up phase. No source code changes. `live-system.md` rewritten to reflect 14-adapter state and all new API endpoints. `current-snapshot.md` updated through Phase 203. `work-context.md` updated.
+
+Tests: 0 regressions.
+
+## Phase 205 — DLQ Replay from UI (Closed) — 2026-03-11
+
+New backend endpoint: `POST /admin/dlq/{envelope_id}/replay` — wraps `replay_dlq_row()` (Phase 39). Guards: 404 if unknown, 400 if already applied, 500 on replay error. Idempotent.
+
+New frontend page: `/admin/dlq` — dark admin UI. Lists DLQ entries from `GET /admin/dlq`. Status filter tabs (pending/applied/error). Per-entry ▶ Replay button with spinner. Inline confirmation + result badge. TypeScript types: `DlqEntry`, `DlqListResponse`, `ReplayResult`. API methods: `getDlqEntries`, `replayDlqEntry`.
+
+Files: `src/api/dlq_router.py` — MODIFIED (replay endpoint added). `ihouse-ui/app/admin/dlq/page.tsx` — NEW. `ihouse-ui/lib/api.ts` — MODIFIED (new types + methods).
+
+Tests: +18 → 5,001 passing. TypeScript: 0 errors. Exit 0.
+
+## Phase 206 — Pre-Arrival Guest Task Workflow (Closed) — 2026-03-11
+
+New `TaskKind.GUEST_WELCOME` added to `task_model.py` (HIGH priority, PROPERTY_MANAGER role). Total TaskKinds: 6.
+
+New pure module: `src/tasks/pre_arrival_tasks.py` — `tasks_for_pre_arrival(tenant_id, booking_id, property_id, check_in, guest_name, special_requests, created_at)` → deterministic list of Task objects (GUEST_WELCOME + enriched CHECKIN_PREP). Guest name falls back to "Guest" if none.
+
+New endpoint: `POST /tasks/pre-arrival/{booking_id}` in `task_router.py`. Flow: JWT auth → fetch booking_state → fetch guest via `booking_guest_link` + `guests` (best-effort) → call `tasks_for_pre_arrival` → batch upsert via `_task_to_row` on `on_conflict="task_id"` → return `{booking_id, guest_name, tasks_created}`.
+
+Files: `src/tasks/task_model.py` MODIFIED. `src/tasks/pre_arrival_tasks.py` NEW. `src/tasks/task_router.py` MODIFIED. `tests/test_pre_arrival_tasks_contract.py` NEW (25 tests, 8 groups). `tests/test_task_model_contract.py` MODIFIED (enum count 5→6).
+
+Tests: +25 → 5,026 passing. Exit 0.
+
+## Phase 207 — Conflict Auto-Resolution Engine (Closed) — 2026-03-11
+
+Automatic conflict detection wired into the ingestion pipeline. When `BOOKING_CREATED` or `BOOKING_AMENDED` is APPLIED, a best-effort hook calls `run_auto_check()`. No existing modules modified.
+
+New pure orchestration module: `src/services/conflict_auto_resolver.py` — `run_auto_check(db, tenant_id, booking_id, property_id, event_kind, now_utc)`. Flow: calls `detect_conflicts()` (Phase 86) → filters DATE_OVERLAP on property+booking → builds `ConflictTask` artifact → persists via `write_resolution()` (Phase 184). Returns `ConflictAutoCheckResult(conflicts_found, artifacts_written, partial)`. Never raises.
+
+`src/adapters/ota/service.py` MODIFIED — two best-effort hooks added:
+- After BOOKING_CREATED APPLIED (after outbound sync, ~line 242)
+- After BOOKING_AMENDED APPLIED (after outbound amended sync)
+
+New endpoint: `POST /conflicts/auto-check/{booking_id}` in `api/conflicts_router.py`. Manual operator trigger. 404 if booking not found. Returns `{booking_id, property_id, conflicts_found, artifacts_written, partial}`.
+
+Files: `src/services/conflict_auto_resolver.py` NEW. `src/adapters/ota/service.py` MODIFIED. `src/api/conflicts_router.py` MODIFIED. `tests/test_conflict_auto_resolver_contract.py` NEW (23 tests, 8 groups).
+
+Tests: +23 → 5,049 passing. Exit 0. 0 regressions.
+
+## Phase 208 — Platform Checkpoint III (Closed) — 2026-03-11
+
+Documentation and audit phase. No source code changes. Full system sync after 11 phases since Checkpoint II (Phase 197).
+
+**Scope completed:**
+
+- `docs/core/current-snapshot.md` — Phase 208 as current. Phases 204–208 added to feature table. Task layer files updated (6 TaskKinds, pre_arrival_tasks.py, conflict_auto_resolver.py). Test count → 5,049. Next phase reference updated.
+- `docs/core/work-context.md` — fully rewritten. Phase 208 current. All key file tables updated (channels, task layer, HTTP API). IHOUSE_TELEGRAM_BOT_TOKEN env var added. Test count → 5,049.
+- `docs/core/live-system.md` — OTA adapter count corrected to 14. Hostelworld + Rakuten added. Full API surface table updated (all endpoints through Phase 207).
+- `docs/core/roadmap.md` — Phases 198–208 marked complete. System Numbers at Checkpoint III added. Forward plan updated to Phases 209–218.
+- `docs/core/construction-log.md` — Phases 198–208 appended.
+- `docs/core/phase-timeline.md` — Phases 198–208 appended (this entry).
+- `releases/handoffs/handoff_to_new_chat Phase-208.md` — written with system shape, what was built, protocol for next chat.
+
+**System state at closure:**
+- 14 OTA adapters live
+- 3 escalation channels live (LINE + WhatsApp + Telegram), per-worker routing
+- CHANNEL_SMS stub registered (future phase)
+- 6 TaskKinds (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME)
+- 12 UI surfaces
+- 5,049 tests collected / 5,049 passing / 0 failures. Exit 0.
+

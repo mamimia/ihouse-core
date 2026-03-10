@@ -336,6 +336,26 @@ export interface AuditEventListResponse {
     events: AuditEvent[];
 }
 
+// Phase 200 — Booking Calendar
+export interface Booking {
+    booking_id: string;
+    source: string | null;
+    reservation_ref: string | null;
+    property_id: string | null;
+    status: string | null;
+    check_in: string | null;
+    check_out: string | null;
+    version: number | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+export interface BookingListResponse {
+    tenant_id: string;
+    count: number;
+    bookings: Booking[];
+}
+
 // ---------------------------------------------------------------------------
 // API calls
 // ---------------------------------------------------------------------------
@@ -502,9 +522,100 @@ export const api = {
         apiFetch("/guests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
     patchGuest: (id: string, body: Partial<Omit<Guest, "id" | "tenant_id" | "created_at" | "updated_at">>): Promise<Guest> =>
         apiFetch(`/guests/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+
+    // Phase 200 — Booking Calendar
+    getBookings: (params?: {
+        property_id?: string;
+        status?: string;
+        check_in_from?: string;
+        check_in_to?: string;
+        limit?: number;
+    }): Promise<BookingListResponse> => {
+        const q = new URLSearchParams();
+        if (params?.property_id) q.set('property_id', params.property_id);
+        if (params?.status) q.set('status', params.status);
+        if (params?.check_in_from) q.set('check_in_from', params.check_in_from);
+        if (params?.check_in_to) q.set('check_in_to', params.check_in_to);
+        if (params?.limit) q.set('limit', String(params.limit));
+        return apiFetch(`/bookings${q.size ? '?' + q : ''}`);
+    },
+
+    // Phase 201 — Worker Channel Preferences
+    getWorkerPreferences: (): Promise<WorkerPreferencesResponse> =>
+        apiFetch('/worker/preferences'),
+
+    setWorkerPreference: (channel_type: string, channel_id: string): Promise<{ status: string; channel_type: string; channel_id: string }> =>
+        apiFetch('/worker/preferences', {
+            method: 'PUT',
+            body: JSON.stringify({ channel_type, channel_id }),
+        }),
+
+    deleteWorkerPreference: (channel_type: string): Promise<{ status: string; channel_type: string }> =>
+        apiFetch(`/worker/preferences/${encodeURIComponent(channel_type)}`, {
+            method: 'DELETE',
+        }),
+
+    // Phase 202 — Notification History
+    getWorkerNotifications: (params?: { limit?: number; status?: string }): Promise<NotificationHistoryResponse> => {
+        const q = new URLSearchParams();
+        if (params?.limit) q.set('limit', String(params.limit));
+        if (params?.status) q.set('status', params.status);
+        return apiFetch(`/worker/notifications${q.size ? '?' + q : ''}`);
+    },
+
+    // Phase 205 — DLQ Inspector + Replay
+    getDlqEntries: (params?: {
+        source?: string;
+        status?: 'all' | 'pending' | 'applied' | 'error';
+        limit?: number;
+    }): Promise<DlqListResponse> => {
+        const q = new URLSearchParams();
+        if (params?.source) q.set('source', params.source);
+        if (params?.status) q.set('status', params.status);
+        if (params?.limit) q.set('limit', String(params.limit));
+        const qs = q.toString() ? `?${q}` : '';
+        return apiFetch(`/admin/dlq${qs}`);
+    },
+
+    replayDlqEntry: (envelope_id: string): Promise<ReplayResult> =>
+        apiFetch(`/admin/dlq/${encodeURIComponent(envelope_id)}/replay`, {
+            method: 'POST',
+        }),
 };
 
 // Phase 157 — Worker task types
+// Phase 201 — Worker channel preference types
+export interface WorkerChannel {
+    channel_type: string;  // 'line' | 'whatsapp' | 'telegram'
+    channel_id: string;
+    active: boolean;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+export interface WorkerPreferencesResponse {
+    user_id: string;
+    channels: WorkerChannel[];
+}
+
+// Phase 202 — Notification delivery types
+export interface NotificationDelivery {
+    notification_delivery_id: string;
+    channel_type: string;
+    channel_id: string;
+    status: 'sent' | 'failed';
+    error_message: string | null;
+    trigger_reason: string | null;
+    task_id: string | null;
+    dispatched_at: string;
+}
+
+export interface NotificationHistoryResponse {
+    user_id: string;
+    notifications: NotificationDelivery[];
+    count: number;
+}
+
 export interface WorkerTask {
     task_id: string;
     kind: string;         // CLEANING | CHECKIN_PREP | CHECKOUT_PREP | MAINTENANCE
@@ -528,4 +639,35 @@ export interface WorkerTaskListResponse {
     tenant_id: string;
     count: number;
     tasks: WorkerTask[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 205 — DLQ Inspector + Replay (types — methods added to api object above)
+// ---------------------------------------------------------------------------
+
+export interface DlqEntry {
+    envelope_id: string | null;
+    source: string | null;
+    replay_result: string | null;
+    status: string; // 'pending' | 'applied' | 'error'
+    error_reason: string | null;
+    created_at: string | null;
+    replayed_at: string | null;
+    payload_preview: string | null;
+    raw_payload?: string | null;
+}
+
+export interface DlqListResponse {
+    total: number;
+    status_filter: string;
+    source_filter: string | null;
+    entries: DlqEntry[];
+}
+
+export interface ReplayResult {
+    envelope_id: string;
+    row_id: number;
+    replay_result: string | null;
+    replay_trace_id: string | null;
+    already_replayed: boolean;
 }

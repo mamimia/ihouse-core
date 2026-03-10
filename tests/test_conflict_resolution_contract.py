@@ -311,7 +311,10 @@ class TestGroupDEndpointNoConflict:
         assert data["artifacts_created"] == []
 
     def test_d4_response_contains_tenant_id(self):
-        with patch("api.conflicts_router._get_supabase_client") as mock_db, \
+        import os
+        from unittest.mock import patch as _patch
+        with _patch.dict(os.environ, {"IHOUSE_JWT_SECRET": "dev-secret"}), \
+             patch("api.conflicts_router._get_supabase_client") as mock_db, \
              patch("api.conflicts_router.write_resolution", return_value=(0, 0)):
             mock_db.return_value = _make_db()
             resp = client.post(
@@ -409,7 +412,10 @@ class TestGroupFValidation:
         assert resp.status_code == 400
 
     def test_f2_missing_auth_returns_401(self):
-        resp = client.post("/conflicts/resolve", json=_BASE_PAYLOAD)
+        import os
+        from unittest.mock import patch as _patch
+        with _patch.dict(os.environ, {"IHOUSE_JWT_SECRET": "test-secret-for-auth-check"}):
+            resp = client.post("/conflicts/resolve", json=_BASE_PAYLOAD)
         assert resp.status_code in {401, 403}
 
     def test_f3_invalid_json_returns_400(self):

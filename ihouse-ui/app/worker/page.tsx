@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { api, WorkerTask } from '../../lib/api';
+import { api, WorkerTask, WorkerChannel, NotificationDelivery } from '../../lib/api';
 
 // ---------------------------------------------------------------------------
 // Colour helpers
@@ -424,13 +424,14 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
 // Bottom Nav
 // ---------------------------------------------------------------------------
 
-type Tab = 'todo' | 'active' | 'done';
+type Tab = 'todo' | 'active' | 'done' | 'channel';
 
-function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void; counts: Record<Tab, number> }) {
+function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void; counts: Record<'todo' | 'active' | 'done', number> }) {
     const tabs: { id: Tab; label: string; icon: string }[] = [
         { id: 'todo', label: 'To Do', icon: '📋' },
         { id: 'active', label: 'Active', icon: '🔄' },
         { id: 'done', label: 'Done', icon: '✅' },
+        { id: 'channel', label: 'Channel', icon: '🔔' },
     ];
 
     return (
@@ -459,7 +460,7 @@ function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void
                 >
                     <span style={{ fontSize: 22 }}>{t.icon}</span>
                     <span style={{ fontSize: 11, fontWeight: tab === t.id ? 700 : 400 }}>{t.label}</span>
-                    {counts[t.id] > 0 && (
+                    {(counts as Record<string, number>)[t.id] > 0 && (
                         <span style={{
                             position: 'absolute', top: 2, right: '50%', transform: 'translate(18px, 0)',
                             background: t.id === 'todo' ? '#ef4444' : '#3b82f6',
@@ -467,12 +468,333 @@ function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void
                             fontSize: 10, fontWeight: 700,
                             padding: '1px 5px', minWidth: 16, textAlign: 'center',
                         }}>
-                            {counts[t.id]}
+                            {(counts as Record<string, number>)[t.id]}
                         </span>
                     )}
                 </button>
             ))}
         </nav>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Channel Tab
+// ---------------------------------------------------------------------------
+
+const CHANNEL_OPTIONS = [
+    { value: 'line', label: 'LINE', hint: 'LINE User ID (starts with U)' },
+    { value: 'whatsapp', label: 'WhatsApp', hint: 'Phone number with country code (+66...)' },
+    { value: 'telegram', label: 'Telegram', hint: 'Telegram Chat ID (numeric)' },
+];
+
+function ChannelTab({ showToast }: { showToast: (msg: string) => void }) {
+    const [channels, setChannels] = useState<WorkerChannel[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [channelType, setChannelType] = useState('line');
+    const [channelId, setChannelId] = useState('');
+    const hint = CHANNEL_OPTIONS.find(o => o.value === channelType)?.hint ?? '';
+
+    // Notification history
+    const [history, setHistory] = useState<NotificationDelivery[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
+    const [expandedError, setExpandedError] = useState<string | null>(null);
+
+    const loadChannels = useCallback(async () => {
+        try {
+            const resp = await api.getWorkerPreferences();
+            setChannels(resp.channels ?? []);
+        } catch { /* noop */ } finally { setLoading(false); }
+    }, []);
+
+    const loadHistory = useCallback(async () => {
+        try {
+            const resp = await api.getWorkerNotifications({ limit: 20 });
+            setHistory(resp.notifications ?? []);
+        } catch { /* noop */ } finally { setHistoryLoading(false); }
+    }, []);
+
+    useEffect(() => { loadChannels(); loadHistory(); }, [loadChannels, loadHistory]);
+
+    const handleSave = async () => {
+        if (!channelId.trim()) return;
+        setSaving(true);
+        try {
+            await api.setWorkerPreference(channelType, channelId.trim());
+            showToast('✓ Channel saved');
+            setChannelId('');
+            await Promise.all([loadChannels(), loadHistory()]);
+        } catch { showToast('⚠ Failed to save'); } finally { setSaving(false); }
+    };
+
+    const handleRemove = async (type: string) => {
+        setSaving(true);
+        try {
+            await api.deleteWorkerPreference(type);
+            showToast('Channel removed');
+            await Promise.all([loadChannels(), loadHistory()]);
+        } catch { showToast('⚠ Failed to remove'); } finally { setSaving(false); }
+    };
+
+    const cardStyle: React.CSSProperties = {
+        background: '#1a1f2e',
+        border: '1px solid #ffffff12',
+        borderRadius: 16,
+        padding: '16px',
+        marginBottom: 12,
+    };
+
+    const channelLabel = (type: string) =>
+        CHANNEL_OPTIONS.find(o => o.value === type)?.label ?? type;
+
+    return (
+        <div style={{ padding: '0 20px', paddingBottom: 100 }}>
+            {/* Current channels */}
+            <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                    Active Channels
+                </div>
+
+                {loading && (
+                    <div style={{ height: 80, background: '#1a1f2e', borderRadius: 16, animation: 'pulse 1.5s infinite' }} />
+                )}
+
+                {!loading && channels.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '32px 0', color: '#4b5563' }}>
+                        <div style={{ fontSize: 32, marginBottom: 8 }}>🔔</div>
+                        <div style={{ fontSize: 14, color: '#6b7280' }}>No channels configured yet</div>
+                        <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>Add one below to receive task notifications</div>
+                    </div>
+                )}
+
+                {channels.map(ch => (
+                    <div key={ch.channel_type} style={cardStyle}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <div style={{
+                                    display: 'inline-block',
+                                    background: ch.channel_type === 'line' ? '#00B900' : ch.channel_type === 'whatsapp' ? '#25D366' : '#229ED9',
+                                    color: '#fff',
+                                    borderRadius: 99,
+                                    padding: '2px 10px',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    marginBottom: 6,
+                                }}>
+                                    {channelLabel(ch.channel_type)}
+                                </div>
+                                <div style={{ fontSize: 13, color: '#9ca3af', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                    {ch.channel_id.length > 20 ? ch.channel_id.slice(0, 10) + '…' + ch.channel_id.slice(-6) : ch.channel_id}
+                                </div>
+                            </div>
+                            <button
+                                id={`remove-channel-${ch.channel_type}`}
+                                disabled={saving}
+                                onClick={() => handleRemove(ch.channel_type)}
+                                style={{
+                                    background: '#ef444415',
+                                    border: '1px solid #ef444430',
+                                    borderRadius: 10,
+                                    color: '#ef4444',
+                                    fontSize: 12,
+                                    padding: '6px 12px',
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Set channel form */}
+            <div style={cardStyle}>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+                    Set Notification Channel
+                </div>
+
+                {/* Channel type selector */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                    {CHANNEL_OPTIONS.map(o => (
+                        <button
+                            key={o.value}
+                            id={`select-channel-${o.value}`}
+                            onClick={() => { setChannelType(o.value); setChannelId(''); }}
+                            style={{
+                                flex: 1,
+                                padding: '10px 4px',
+                                borderRadius: 12,
+                                border: channelType === o.value ? `2px solid ${o.value === 'line' ? '#00B900' : o.value === 'whatsapp' ? '#25D366' : '#229ED9'}` : '1px solid #374151',
+                                background: channelType === o.value ? '#111827' : 'transparent',
+                                color: channelType === o.value ? '#f9fafb' : '#6b7280',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                            }}
+                        >
+                            {o.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Channel ID input */}
+                <div style={{ marginBottom: 12 }}>
+                    <input
+                        id="channel-id-input"
+                        value={channelId}
+                        onChange={e => setChannelId(e.target.value)}
+                        placeholder={hint}
+                        style={{
+                            width: '100%',
+                            background: '#111827',
+                            border: '1px solid #374151',
+                            borderRadius: 12,
+                            color: '#f9fafb',
+                            fontSize: 14,
+                            padding: '12px 14px',
+                            outline: 'none',
+                            fontFamily: 'monospace',
+                            boxSizing: 'border-box',
+                        }}
+                    />
+                </div>
+
+                <button
+                    id="save-channel-btn"
+                    disabled={saving || !channelId.trim()}
+                    onClick={handleSave}
+                    style={{
+                        width: '100%',
+                        padding: '14px',
+                        borderRadius: 14,
+                        border: 'none',
+                        background: (!channelId.trim() || saving)
+                            ? '#1f2937'
+                            : 'linear-gradient(135deg,#3b82f6,#2563eb)',
+                        color: (!channelId.trim() || saving) ? '#6b7280' : '#fff',
+                        fontWeight: 700,
+                        fontSize: 16,
+                        cursor: saving || !channelId.trim() ? 'not-allowed' : 'pointer',
+                        boxShadow: channelId.trim() ? '0 0 16px rgba(59,130,246,0.3)' : 'none',
+                        transition: 'all 0.15s',
+                    }}
+                >
+                    {saving ? 'Saving…' : 'Save Channel'}
+                </button>
+            </div>
+
+            {/* Info */}
+            <div style={{ fontSize: 12, color: '#374151', textAlign: 'center', marginTop: 16, lineHeight: 1.5 }}>
+                Set your preferred channel to receive task notifications.
+                Only one channel per type can be active at a time.
+            </div>
+
+            {/* ── Notification History ── */}
+            <div style={{ marginTop: 28 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Recent Notifications
+                    </div>
+                    {history.length > 0 && (
+                        <span style={{
+                            background: '#1f2937',
+                            color: '#9ca3af',
+                            borderRadius: 99,
+                            fontSize: 10,
+                            padding: '1px 7px',
+                            fontWeight: 700,
+                        }}>{history.length}</span>
+                    )}
+                </div>
+
+                {historyLoading && (
+                    <div style={{ height: 60, background: '#1a1f2e', borderRadius: 12, animation: 'pulse 1.5s infinite' }} />
+                )}
+
+                {!historyLoading && history.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '20px 0', color: '#4b5563', fontSize: 13 }}>
+                        No notifications sent yet.
+                    </div>
+                )}
+
+                {history.map(n => {
+                    const isExpanded = expandedError === n.notification_delivery_id;
+                    const labelColor = n.channel_type === 'line' ? '#00B900' : n.channel_type === 'whatsapp' ? '#25D366' : '#229ED9';
+                    const sentAt = new Date(n.dispatched_at);
+                    const diffMs = Date.now() - sentAt.getTime();
+                    const diffMin = Math.floor(diffMs / 60000);
+                    const relTime = diffMin < 60
+                        ? `${diffMin}m ago`
+                        : diffMin < 1440
+                            ? `${Math.floor(diffMin / 60)}h ago`
+                            : `${Math.floor(diffMin / 1440)}d ago`;
+
+                    return (
+                        <div
+                            key={n.notification_delivery_id}
+                            style={{
+                                background: '#111827',
+                                border: `1px solid ${n.status === 'failed' ? '#ef444430' : '#ffffff0a'}`,
+                                borderRadius: 12,
+                                padding: '10px 14px',
+                                marginBottom: 8,
+                                cursor: n.status === 'failed' ? 'pointer' : 'default',
+                            }}
+                            onClick={() => n.status === 'failed' && setExpandedError(isExpanded ? null : n.notification_delivery_id)}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {/* Channel badge */}
+                                    <span style={{
+                                        background: labelColor + '22',
+                                        color: labelColor,
+                                        borderRadius: 6,
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                        padding: '2px 7px',
+                                        textTransform: 'uppercase',
+                                    }}>{n.channel_type}</span>
+                                    {/* Trigger reason */}
+                                    <span style={{ fontSize: 12, color: '#6b7280' }}>
+                                        {n.trigger_reason ?? 'notification'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {/* Status badge */}
+                                    <span style={{
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        color: n.status === 'sent' ? '#10b981' : '#ef4444',
+                                    }}>
+                                        {n.status === 'sent' ? '✓' : '✗'}
+                                    </span>
+                                    {/* Time */}
+                                    <span style={{ fontSize: 11, color: '#4b5563' }}>{relTime}</span>
+                                </div>
+                            </div>
+                            {/* Error details (failed only, expanded on tap) */}
+                            {n.status === 'failed' && isExpanded && n.error_message && (
+                                <div style={{
+                                    marginTop: 8,
+                                    fontSize: 11,
+                                    color: '#ef4444',
+                                    background: '#ef444410',
+                                    borderRadius: 8,
+                                    padding: '6px 10px',
+                                    wordBreak: 'break-all',
+                                    fontFamily: 'monospace',
+                                }}>
+                                    {n.error_message}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
     );
 }
 
@@ -488,6 +810,7 @@ export default function WorkerPage() {
     const [tab, setTab] = useState<Tab>('todo');
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
+    const [channels, setChannels] = useState<WorkerChannel[]>([]);
 
     const showToast = (msg: string) => {
         setToast(msg);
@@ -697,8 +1020,8 @@ export default function WorkerPage() {
                     </div>
                 )}
 
-                {/* Task list */}
-                {!loading && (
+                {/* Task list (not shown for channel tab) */}
+                {!loading && tab !== 'channel' && (
                     <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {visible.length === 0 && (
                             <div style={{
@@ -728,6 +1051,9 @@ export default function WorkerPage() {
                         )}
                     </div>
                 )}
+
+                {/* Channel tab */}
+                {tab === 'channel' && <ChannelTab showToast={showToast} />}
 
                 {/* Detail Sheet */}
                 {selected && (

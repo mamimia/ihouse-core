@@ -512,15 +512,15 @@ class TestGroupF_OTACollectingExclusion:
 
 class TestGroupG_PDFExport:
 
-    def test_g1_format_pdf_returns_text_plain(self) -> None:
-        """G1: ?format=pdf → Content-Type: text/plain."""
+    def test_g1_format_pdf_returns_application_pdf(self) -> None:
+        """G1: ?format=pdf → Content-Type: application/pdf (Phase 188 upgrade)."""
         c = _make_app()
         db = _mock_db([_row()])
         with patch("api.owner_statement_router._get_supabase_client", return_value=db):
             resp = c.get("/owner-statement/prop-A",
                          params={"month": "2026-03", "format": "pdf"})
         assert resp.status_code == 200
-        assert "text/plain" in resp.headers.get("content-type", "")
+        assert "application/pdf" in resp.headers.get("content-type", "")
 
     def test_g2_format_pdf_has_content_disposition_attachment(self) -> None:
         """G2: ?format=pdf → Content-Disposition: attachment."""
@@ -545,24 +545,27 @@ class TestGroupG_PDFExport:
         assert "prop-C" in resp.text
 
     def test_g4_format_pdf_body_contains_owner_statement_header(self) -> None:
-        """G4: PDF body contains 'OWNER STATEMENT' header."""
+        """G4: PDF body contains 'OWNER STATEMENT' header (embedded in PDF binary)."""
         c = _make_app()
         db = _mock_db([_row()])
         with patch("api.owner_statement_router._get_supabase_client", return_value=db):
             resp = c.get("/owner-statement/prop-A",
                          params={"month": "2026-03", "format": "pdf"})
         assert resp.status_code == 200
-        assert "OWNER STATEMENT" in resp.text
+        # Phase 188: real PDF — check binary content for embedded text
+        assert b"OWNER" in resp.content or b"Owner" in resp.content or b"owner" in resp.content
 
-    def test_g5_format_pdf_body_contains_booking_id(self) -> None:
-        """G5: PDF body contains booking_id from the row."""
+    def test_g5_format_pdf_body_is_valid_pdf(self) -> None:
+        """G5: PDF body is a valid, non-empty PDF document (Phase 188 real PDF)."""
         c = _make_app()
         db = _mock_db([_row(booking_id="bookingcom_RES999")])
         with patch("api.owner_statement_router._get_supabase_client", return_value=db):
             resp = c.get("/owner-statement/prop-A",
                          params={"month": "2026-03", "format": "pdf"})
         assert resp.status_code == 200
-        assert "bookingcom_RES999" in resp.text
+        # Phase 188: real PDF — verify it starts with %PDF magic and is non-trivial
+        assert resp.content[:5] == b"%PDF-"
+        assert len(resp.content) > 500  # real PDF has substantial content
 
     def test_g6_format_pdf_404_returns_json_not_text(self) -> None:
         """G6: ?format=pdf with no rows → 404 JSON (not text/plain)."""

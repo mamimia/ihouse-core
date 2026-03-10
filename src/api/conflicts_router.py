@@ -391,3 +391,90 @@ async def resolve_conflict(
             "audit_written":     audit_written,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 207 — POST /conflicts/auto-check/{booking_id}
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/conflicts/auto-check/{booking_id}",
+    tags=["conflicts"],
+    summary="Manually trigger conflict auto-check for a booking (Phase 207)",
+    description=(
+        "Runs the conflict auto-resolver for the given booking. "
+        "Useful for retroactively checking bookings that existed before "
+        "Phase 207 was deployed, or for operator debugging.\n\n"
+        "**Flow:** Looks up `booking_state` for `property_id`, runs "
+        "`conflict_auto_resolver.run_auto_check()`, returns result.\n\n"
+        "**Idempotent:** Artifacts are upserted on `(booking_id, request_id, artifact_type)` — "
+        "safe to call multiple times. Each call generates a new `request_id` so a fresh "
+        "ConflictTask row is written per invocation (not de-duped across calls)."
+    ),
+    responses={
+        200: {"description": "Auto-check completed."},
+        401: {"description": "Missing or invalid JWT."},
+        404: {"description": "Booking not found for this tenant."},
+        500: {"description": "Internal server error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def auto_check_conflict(
+    booking_id: str,
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    POST /conflicts/auto-check/{booking_id}
+
+    Trigger the conflict auto-resolver for a specific booking.
+    JWT auth required (tenant isolation).
+    """
+    from datetime import datetime, timezone
+    from services.conflict_auto_resolver import run_auto_check
+
+    try:
+        db = _get_supabase_client(request)
+
+        # --- Step 1: Resolve booking ---
+        booking_result = (
+            db.table("booking_state")
+            .select("booking_id, property_id, tenant_id")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not booking_result.data:
+            return make_error_response(
+                404, ErrorCode.NOT_FOUND,
+                f"Booking '{booking_id}' not found for this tenant",
+            )
+
+        property_id: str = booking_result.data[0].get("property_id") or ""
+
+        # --- Step 2: Run auto-check ---
+        result = run_auto_check(
+            db=db,
+            tenant_id=tenant_id,
+            booking_id=booking_id,
+            property_id=property_id,
+            event_kind="MANUAL",
+            now_utc=datetime.now(tz=timezone.utc).isoformat(),
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "booking_id":       booking_id,
+                "property_id":      property_id,
+                "conflicts_found":  result.conflicts_found,
+                "artifacts_written": result.artifacts_written,
+                "partial":          result.partial,
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("auto_check_conflict error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to run auto-check")
+

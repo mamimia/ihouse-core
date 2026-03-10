@@ -378,3 +378,259 @@ async def _transition_task(
     except Exception as exc:  # noqa: BLE001
         logger.exception("_transition_task error for %s: %s", task_id, exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to update task")
+
+
+# ---------------------------------------------------------------------------
+# Phase 201 — Worker Channel Preferences
+# ---------------------------------------------------------------------------
+
+_SELECTABLE_CHANNELS = {"line", "whatsapp", "telegram"}  # UI-exposed channels
+
+
+@router.get(
+    "/worker/preferences",
+    tags=["worker"],
+    summary="Get notification channel preferences for the authenticated worker",
+    responses={
+        200: {"description": "Active channels for the worker"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_worker_preferences(
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+    user_id: Optional[str] = None,
+) -> JSONResponse:
+    """
+    Return all active notification_channels rows for the requesting worker.
+
+    The user_id is taken from the JWT 'user_id' claim, falling back to tenant_id
+    for backward compatibility with existing test harnesses.
+    """
+    effective_user_id = user_id or tenant_id
+    try:
+        db = client or _get_supabase_client()
+        result = (
+            db.table("notification_channels")
+            .select("channel_type, channel_id, active, created_at, updated_at")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", effective_user_id)
+            .eq("active", True)
+            .execute()
+        )
+        channels = result.data if result.data else []
+        return JSONResponse(
+            status_code=200,
+            content={
+                "user_id": effective_user_id,
+                "channels": channels,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("get_worker_preferences error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to get preferences")
+
+
+@router.put(
+    "/worker/preferences",
+    tags=["worker"],
+    summary="Set (upsert) a notification channel for the authenticated worker",
+    responses={
+        200: {"description": "Channel registered"},
+        400: {"description": "Invalid channel_type or missing fields"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def set_worker_preference(
+    body: Optional[dict] = None,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+    user_id: Optional[str] = None,
+) -> JSONResponse:
+    """
+    Upsert a notification channel for the requesting worker.
+
+    **Request body:**
+    ```json
+    { "channel_type": "line", "channel_id": "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }
+    ```
+
+    **channel_type** must be one of: line, whatsapp, telegram.
+
+    Upserts on (tenant_id, user_id, channel_type) — safe to call repeatedly.
+    """
+    if not isinstance(body, dict):
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR, "Request body required")
+
+    channel_type = body.get("channel_type", "").strip().lower()
+    channel_id_val = body.get("channel_id", "").strip()
+
+    if not channel_type:
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR, "channel_type is required")
+    if channel_type not in _SELECTABLE_CHANNELS:
+        return make_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            f"Invalid channel_type '{channel_type}'. Must be one of: {', '.join(sorted(_SELECTABLE_CHANNELS))}",
+        )
+    if not channel_id_val:
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR, "channel_id is required")
+
+    effective_user_id = user_id or tenant_id
+    try:
+        from channels.notification_dispatcher import register_channel  # lazy import
+        db = client or _get_supabase_client()
+        result = register_channel(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=effective_user_id,
+            channel_type=channel_type,
+            channel_id=channel_id_val,
+        )
+        return JSONResponse(status_code=200, content=result)
+    except ValueError as ve:
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR, str(ve))
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("set_worker_preference error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to set preference")
+
+
+@router.delete(
+    "/worker/preferences/{channel_type}",
+    tags=["worker"],
+    summary="Deregister a notification channel for the authenticated worker",
+    responses={
+        200: {"description": "Channel deregistered"},
+        400: {"description": "Invalid channel_type"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def delete_worker_preference(
+    channel_type: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+    user_id: Optional[str] = None,
+) -> JSONResponse:
+    """
+    Deregister (set active=False) the specified channel for the requesting worker.
+
+    **channel_type** must be one of: line, whatsapp, telegram.
+
+    Idempotent — if no row exists, returns status='not_found'.
+    """
+    channel_type = channel_type.strip().lower()
+    if channel_type not in _SELECTABLE_CHANNELS:
+        return make_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            f"Invalid channel_type '{channel_type}'. Must be one of: {', '.join(sorted(_SELECTABLE_CHANNELS))}",
+        )
+
+    effective_user_id = user_id or tenant_id
+    try:
+        from channels.notification_dispatcher import deregister_channel  # lazy import
+        db = client or _get_supabase_client()
+        result = deregister_channel(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=effective_user_id,
+            channel_type=channel_type,
+        )
+        return JSONResponse(status_code=200, content=result)
+    except ValueError as ve:
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR, str(ve))
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("delete_worker_preference error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to deregister preference")
+
+
+# ---------------------------------------------------------------------------
+# Phase 202 — Worker Notification History
+# ---------------------------------------------------------------------------
+
+_MAX_NOTIFICATIONS = 50
+_DEFAULT_NOTIFICATIONS = 20
+_VALID_DELIVERY_STATUSES = {"sent", "failed"}
+
+
+@router.get(
+    "/worker/notifications",
+    tags=["worker"],
+    summary="List notification delivery history for the authenticated worker",
+    responses={
+        200: {"description": "Notification delivery history"},
+        400: {"description": "Invalid query parameter"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def list_worker_notifications(
+    limit: int = _DEFAULT_NOTIFICATIONS,
+    status: Optional[str] = None,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+    user_id: Optional[str] = None,
+) -> JSONResponse:
+    """
+    Return recent notification delivery log entries for the requesting worker.
+
+    **Query parameters (all optional):**
+    - `limit`  — max results, 1–50 (default 20)
+    - `status` — filter by delivery status: `sent` or `failed`
+
+    Ordered by `dispatched_at DESC` (newest first).
+    Reads from `notification_delivery_log` only.
+    """
+    if not (1 <= limit <= _MAX_NOTIFICATIONS):
+        return make_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            f"limit must be between 1 and {_MAX_NOTIFICATIONS}",
+        )
+
+    if status is not None and status not in _VALID_DELIVERY_STATUSES:
+        return make_error_response(
+            400,
+            ErrorCode.VALIDATION_ERROR,
+            f"Invalid status '{status}'. Must be one of: {', '.join(sorted(_VALID_DELIVERY_STATUSES))}",
+        )
+
+    effective_user_id = user_id or tenant_id
+    try:
+        db = client or _get_supabase_client()
+        query = (
+            db.table("notification_delivery_log")
+            .select(
+                "notification_delivery_id, channel_type, channel_id, status, "
+                "error_message, trigger_reason, task_id, dispatched_at"
+            )
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", effective_user_id)
+            .order("dispatched_at", desc=True)
+            .limit(limit)
+        )
+        if status is not None:
+            query = query.eq("status", status)
+
+        result = query.execute()
+        notifications = result.data if result.data else []
+        return JSONResponse(
+            status_code=200,
+            content={
+                "user_id": effective_user_id,
+                "notifications": notifications,
+                "count": len(notifications),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("list_worker_notifications error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to list notifications")
+
+

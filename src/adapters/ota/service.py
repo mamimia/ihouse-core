@@ -241,6 +241,29 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
+        # Phase 207: auto-conflict check after BOOKING_CREATED (best-effort)
+        try:
+            from services.conflict_auto_resolver import run_auto_check as _run_auto_check
+            from datetime import datetime as _dt207, timezone as _tz207
+            import os as _os207
+            _bk207  = (emitted[0]["payload"].get("booking_id",  "") if emitted else "")
+            _pr207  = (emitted[0]["payload"].get("property_id", "") if emitted else "")
+            if _bk207 and _pr207:
+                from supabase import create_client as _supa207  # type: ignore[import]
+                _run_auto_check(
+                    db=_supa207(
+                        _os207.environ["SUPABASE_URL"],
+                        _os207.environ["SUPABASE_SERVICE_ROLE_KEY"],
+                    ),
+                    tenant_id=tenant_id,
+                    booking_id=_bk207,
+                    property_id=_pr207,
+                    event_kind="BOOKING_CREATED",
+                    now_utc=_dt207.now(tz=_tz207.utc).isoformat(),
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
     # Phase 69: persist updated financial facts for BOOKING_AMENDED events (best-effort)
     if envelope.type == "BOOKING_AMENDED" and status == "APPLIED":
         try:
@@ -291,6 +314,29 @@ def ingest_provider_event_with_dlq(
                     tenant_id=tenant_id,
                     check_in=_amendment.new_check_in   if _amendment else None,
                     check_out=_amendment.new_check_out  if _amendment else None,
+                )
+        except Exception:
+            pass  # best-effort — never block the main response
+
+        # Phase 207: auto-conflict check after BOOKING_AMENDED (best-effort)
+        try:
+            from services.conflict_auto_resolver import run_auto_check as _run_auto_check_a
+            from datetime import datetime as _dt207a, timezone as _tz207a
+            import os as _os207a
+            _bk207a  = (emitted[0]["payload"].get("booking_id",  "") if emitted else "")
+            _pr207a  = (emitted[0]["payload"].get("property_id", "") if emitted else "")
+            if _bk207a and _pr207a:
+                from supabase import create_client as _supa207a  # type: ignore[import]
+                _run_auto_check_a(
+                    db=_supa207a(
+                        _os207a.environ["SUPABASE_URL"],
+                        _os207a.environ["SUPABASE_SERVICE_ROLE_KEY"],
+                    ),
+                    tenant_id=tenant_id,
+                    booking_id=_bk207a,
+                    property_id=_pr207a,
+                    event_kind="BOOKING_AMENDED",
+                    now_utc=_dt207a.now(tz=_tz207a.utc).isoformat(),
                 )
         except Exception:
             pass  # best-effort — never block the main response

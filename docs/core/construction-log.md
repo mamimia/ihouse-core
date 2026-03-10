@@ -2716,3 +2716,131 @@ Documentation and audit phase. No source code changes.
 - `docs/archive/phases/phase-197-spec.md` — created.
 - `releases/handoffs/handoff_to_new_chat Phase-197.md` — written.
 - `releases/phase-zips/iHouse-Core-Docs-Phase-197.zip` — created.
+
+
+## Phase 198 — Test Suite Stabilization (2026-03-11)
+
+Fixed 6 pre-existing test failures from Phase 197 baseline.
+
+- `tests/test_webhook_endpoint.py` — MODIFIED — fixture provider count mismatch fixed (5→6 with Hostelworld).
+- `tests/test_conflicts_router_contract.py` — MODIFIED — mock patching corrected.
+- `tests/test_outbound_*.py` (3 files) — MODIFIED — status/strategy edge case assertions corrected.
+- `tests/fixtures/ota_replay/rakuten.yaml` — NEW — Rakuten replay fixture (CREATE + CANCEL events).
+- `tests/test_e2e_harness_contract.py` — MODIFIED — Group I added for Hostelworld.
+- All env var leaks cleaned (SUPABASE_URL/KEY mock pollution across test isolation boundaries).
+- `datetime.utcnow` deprecation warnings eliminated (replaced with `datetime.now(tz=timezone.utc)`).
+
+Tests: 4,903 collected / 4,903 passing / 0 failures. Exit 0.
+
+
+## Phase 199 — Supabase RLS Systematic Audit (2026-03-11)
+
+Full RLS enablement and policy review for all public tables added since Phase 87.
+
+- DB migration 1: RLS enabled on `guests` + tenant_id isolation policy.
+- DB migration 2: RLS enabled on `booking_guest_link` + tenant_id isolation policy.
+- DB migration 3: RLS enabled on `notification_channels` + `notification_delivery_log` + `admin_audit_log`.
+- DB migration 4: RLS enabled on `conflict_resolution_queue`.
+- Supabase Security Advisor: 0 findings (previously 24).
+
+Tests: 0 regressions.
+
+
+## Phase 200 — Booking Calendar UI (2026-03-11)
+
+- `ihouse-ui/app/calendar/page.tsx` — NEW — Month-view CSS grid. Property picker. Color-coded booking blocks by lifecycle_status.
+- `ihouse-ui/lib/api.ts` — MODIFIED — CalendarBooking interface + api.getCalendarBookings().
+- No new backend endpoints (reads existing `GET /availability/{property_id}` + `GET /bookings`).
+
+TypeScript: 0 errors. 0 regressions.
+
+
+## Phase 201 — Worker Channel Preference UI (2026-03-11)
+
+- `src/api/worker_preferences_router.py` — NEW — GET/PUT/DELETE /worker/preferences. Reads/writes `notification_channels` table. JWT auth, tenant_id isolation.
+- `src/main.py` — MODIFIED — preferences router registered.
+- DB migration: `notification_channels` table (tenant_id, worker_id, channel_type, external_id, enabled, created_at, updated_at). Unique on (tenant_id, worker_id, channel_type).
+- `ihouse-ui/app/worker/page.tsx` — MODIFIED — Channel 🔔 tab added with preference form.
+- `tests/test_worker_preferences_contract.py` — NEW — 25 tests (8 groups).
+
+Tests: +25 → 4,928 passing. Exit 0.
+
+
+## Phase 202 — Notification History Inbox (2026-03-11)
+
+- `src/api/worker_notifications_router.py` — NEW — GET /worker/notifications. Reads `notification_delivery_log`. JWT auth.
+- `src/main.py` — MODIFIED — notifications router registered.
+- DB migration: `notification_delivery_log` table (tenant_id, worker_id, task_id, channel_type, status, delivered_at, payload_preview).
+- `ihouse-ui/app/worker/page.tsx` — MODIFIED — Notification history list in Channel tab.
+- `tests/test_worker_notifications_contract.py` — NEW — 21 tests (7 groups).
+
+Tests: +21 → 4,949 passing. Exit 0.
+
+
+## Phase 203 — Telegram Escalation Channel (2026-03-11)
+
+- `src/channels/telegram_escalation.py` — NEW — Pure module: should_escalate, build_telegram_message, format_telegram_text (Markdown), is_priority_eligible, dispatch_dry_run. Telegram Bot API sendMessage.
+- `src/channels/notification_dispatcher.py` — MODIFIED — CHANNEL_TELEGRAM constant + telegram routing arm.
+- `src/channels/sla_dispatch_bridge.py` — MODIFIED — Telegram routing added alongside LINE/WhatsApp.
+- `tests/test_telegram_escalation_contract.py` — NEW — 34 tests (8 groups).
+- Env: IHOUSE_TELEGRAM_BOT_TOKEN (required for live dispatch; absent = dry-run mode).
+
+Tests: +34 → 4,983 passing. Exit 0.
+
+
+## Phase 204 — Docs Sync (2026-03-11)
+
+Documentation-only phase. No source code changes.
+
+- `docs/core/live-system.md` — MODIFIED — OTA adapter table corrected (12→14 providers, Rakuten + Hostelworld added). API surface table extended.
+- `docs/core/current-snapshot.md` — MODIFIED — Updated through Phase 203.
+- `docs/core/work-context.md` — MODIFIED — Updated through Phase 204.
+
+Tests: 0 regressions.
+
+
+## Phase 205 — DLQ Replay from UI (2026-03-11)
+
+- `src/api/dlq_router.py` — MODIFIED — POST /admin/dlq/{envelope_id}/replay endpoint added. Wraps replay_dlq_row(). Guards: 404 unknown, 400 already_applied, 500 replay_error.
+- `ihouse-ui/app/admin/dlq/page.tsx` — NEW — Dark admin UI: DLQ list, status filter tabs, ▶ Replay button with spinner, inline result badge.
+- `ihouse-ui/lib/api.ts` — MODIFIED — DlqEntry, DlqListResponse, ReplayResult interfaces + getDlqEntries(), replayDlqEntry() methods.
+- `tests/test_dlq_replay_contract.py` — NEW — 18 tests (6 groups).
+
+Tests: +18 → 5,001 passing. TypeScript: 0 errors. Exit 0.
+
+
+## Phase 206 — Pre-Arrival Guest Task Workflow (2026-03-11)
+
+- `src/tasks/task_model.py` — MODIFIED — TaskKind.GUEST_WELCOME added (HIGH priority, PROPERTY_MANAGER role). Total TaskKinds: 6.
+- `src/tasks/pre_arrival_tasks.py` — NEW — Pure module: tasks_for_pre_arrival(). Generates GUEST_WELCOME + enriched CHECKIN_PREP. Guest name fallback to "Guest".
+- `src/tasks/task_router.py` — MODIFIED — POST /tasks/pre-arrival/{booking_id} endpoint added. JWT auth, booking lookup, guest lookup (best-effort), task batch upsert via _task_to_row.
+- `tests/test_pre_arrival_tasks_contract.py` — NEW — 25 tests (8 groups).
+- `tests/test_task_model_contract.py` — MODIFIED — enum count 5→6, GUEST_WELCOME added to expected set.
+
+Tests: +25 → 5,026 passing. Exit 0.
+
+
+## Phase 207 — Conflict Auto-Resolution Engine (2026-03-11)
+
+- `src/services/conflict_auto_resolver.py` — NEW — run_auto_check(db, tenant_id, booking_id, property_id, event_kind, now_utc) → ConflictAutoCheckResult. Calls detect_conflicts() → filters DATE_OVERLAP → writes ConflictTask via write_resolution(). Never raises.
+- `src/adapters/ota/service.py` — MODIFIED — Two best-effort auto-check hooks added:
+  - After BOOKING_CREATED APPLIED (post outbound sync).
+  - After BOOKING_AMENDED APPLIED (post outbound amended sync).
+- `src/api/conflicts_router.py` — MODIFIED — POST /conflicts/auto-check/{booking_id} added. Manual trigger. JWT auth. 404 if booking not found.
+- `tests/test_conflict_auto_resolver_contract.py` — NEW — 23 tests (8 groups: no-conflict, conflict detected, partial scan, 404, happy paths, auth guard, idempotency).
+
+Tests: +23 → 5,049 passing. Exit 0. 0 regressions.
+
+
+## Phase 208 — Platform Checkpoint III (2026-03-11)
+
+Documentation and audit phase. No source code changes.
+
+- `docs/core/current-snapshot.md` — MODIFIED — Phase 208 current. Phases 204–208 added. Task layer + conflict_auto_resolver files added. Test count → 5,049.
+- `docs/core/work-context.md` — REWRITTEN — Phase 208 current. IHOUSE_TELEGRAM_BOT_TOKEN added. All key file tables updated.
+- `docs/core/live-system.md` — MODIFIED — 14 adapters (Hostelworld + Rakuten restored). Full API surface table rewritten through Phase 207.
+- `docs/core/roadmap.md` — MODIFIED — Phases 198–208 marked complete. System Numbers at Checkpoint III section added. Forward plan 209–218 written.
+- `docs/core/construction-log.md` — this entry.
+- `docs/core/phase-timeline.md` — Phase 198–208 entries appended.
+- `releases/handoffs/handoff_to_new_chat Phase-208.md` — NEW — full handoff document.
+

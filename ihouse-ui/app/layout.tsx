@@ -41,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               { label: 'Dashboard', href: '/dashboard', icon: '⬛' },
               { label: 'Tasks', href: '/tasks', icon: '✓' },
               { label: 'Bookings', href: '/bookings', icon: '📅' },
+              { label: 'Calendar', href: '/calendar', icon: '📆' },
               { label: 'Financial', href: '/financial', icon: '₿' },
               { label: 'Owner', href: '/owner', icon: '🏠' },
               { label: 'Manager', href: '/manager', icon: '📋' },

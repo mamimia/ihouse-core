@@ -25,10 +25,23 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture(scope="module")
 def client():
-    os.environ.setdefault("IHOUSE_JWT_SECRET", "test-logout-secret-min32chars!!")
-    os.environ.setdefault("IHOUSE_DEV_PASSWORD", "dev")
+    # Save originals to restore after module tests complete — prevents leaking
+    # the JWT secret into subsequent test files in the full suite.
+    _orig_secret = os.environ.get("IHOUSE_JWT_SECRET")
+    _orig_pw = os.environ.get("IHOUSE_DEV_PASSWORD")
+    os.environ["IHOUSE_JWT_SECRET"] = os.environ.get("IHOUSE_JWT_SECRET", "test-logout-secret-min32chars!!")
+    os.environ["IHOUSE_DEV_PASSWORD"] = os.environ.get("IHOUSE_DEV_PASSWORD", "dev")
     from main import app
-    return TestClient(app, raise_server_exceptions=True)
+    yield TestClient(app, raise_server_exceptions=True)
+    # Restore originals
+    if _orig_secret is None:
+        os.environ.pop("IHOUSE_JWT_SECRET", None)
+    else:
+        os.environ["IHOUSE_JWT_SECRET"] = _orig_secret
+    if _orig_pw is None:
+        os.environ.pop("IHOUSE_DEV_PASSWORD", None)
+    else:
+        os.environ["IHOUSE_DEV_PASSWORD"] = _orig_pw
 
 
 @pytest.fixture(scope="module")

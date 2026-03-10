@@ -293,7 +293,7 @@ class TestGroupJ_TriggerApiPath:
 
     def test_j1_airbnb_channel_calls_cancel(self, monkeypatch):
         monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
-        from services.cancel_sync_trigger import fire_cancel_sync
+        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
         results = fire_cancel_sync(
             booking_id="bk-j1",
             property_id="prop-1",
@@ -305,7 +305,7 @@ class TestGroupJ_TriggerApiPath:
 
     def test_j2_bookingcom_channel_calls_cancel(self, monkeypatch):
         monkeypatch.delenv("BOOKINGCOM_API_KEY", raising=False)
-        from services.cancel_sync_trigger import fire_cancel_sync
+        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
         results = fire_cancel_sync(
             booking_id="bk-j2",
             property_id="prop-1",
@@ -317,7 +317,7 @@ class TestGroupJ_TriggerApiPath:
 
     def test_j3_expedia_channel_calls_cancel(self, monkeypatch):
         monkeypatch.delenv("EXPEDIA_API_KEY", raising=False)
-        from services.cancel_sync_trigger import fire_cancel_sync
+        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
         results = fire_cancel_sync(
             booking_id="bk-j3",
             property_id="prop-1",
@@ -337,7 +337,7 @@ class TestGroupK_TriggerIcalPath:
     def test_k1_hotelbeds_ical_channel_uses_ical_adapter(self, monkeypatch):
         monkeypatch.setenv("HOTELBEDS_ICAL_URL", "https://hotelbeds.example.com/ical")
         monkeypatch.setenv("IHOUSE_DRY_RUN", "true")
-        from services.cancel_sync_trigger import fire_cancel_sync
+        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
         results = fire_cancel_sync(
             booking_id="bk-k1",
             property_id="prop-1",
@@ -357,7 +357,7 @@ class TestGroupK_TriggerIcalPath:
 class TestGroupL_TriggerUnknown:
 
     def test_l1_unknown_provider_is_skipped(self):
-        from services.cancel_sync_trigger import fire_cancel_sync
+        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
         results = fire_cancel_sync(
             booking_id="bk-l1",
             property_id="prop-1",
@@ -368,7 +368,7 @@ class TestGroupL_TriggerUnknown:
         assert results[0].provider == "UNKNOWN_OTA"
 
     def test_l2_missing_provider_skipped(self):
-        from services.cancel_sync_trigger import fire_cancel_sync
+        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
         results = fire_cancel_sync(
             booking_id="bk-l2",
             property_id="prop-1",
@@ -387,7 +387,7 @@ class TestGroupM_TriggerMixed:
     def test_m1_two_channels_two_results(self, monkeypatch):
         monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
         monkeypatch.setenv("IHOUSE_DRY_RUN", "true")
-        from services.cancel_sync_trigger import fire_cancel_sync
+        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
         channels = [
             {"provider": "airbnb",    "external_id": "listing-m1", "sync_strategy": "api_first"},
             {"provider": "hotelbeds", "external_id": "ext-m1",     "sync_strategy": "ical_fallback"},
@@ -402,7 +402,7 @@ class TestGroupM_TriggerMixed:
     def test_m2_all_providers_present(self, monkeypatch):
         monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
         monkeypatch.delenv("BOOKINGCOM_API_KEY", raising=False)
-        from services.cancel_sync_trigger import fire_cancel_sync
+        from services.deprecated.cancel_sync_trigger import fire_cancel_sync
         channels = [
             {"provider": "airbnb",    "external_id": "a1", "sync_strategy": "api_first"},
             {"provider": "bookingcom","external_id": "b1", "sync_strategy": "api_first"},

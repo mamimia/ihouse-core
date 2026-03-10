@@ -75,6 +75,13 @@ class TaskKind(str, Enum):
     Used as a catch-all for operator-created tasks.
     """
 
+    GUEST_WELCOME = "GUEST_WELCOME"
+    """
+    Pre-arrival guest welcome preparation, informed by the linked guest profile.
+    Includes personalized title/description from guest name and special_requests.
+    Typical trigger: manual operator action or booking with linked guest (Phase 206).
+    """
+
 
 class TaskStatus(str, Enum):
     """
@@ -175,6 +182,7 @@ KIND_DEFAULT_WORKER_ROLE: dict[TaskKind, WorkerRole] = {
     TaskKind.CHECKOUT_VERIFY: WorkerRole.INSPECTOR,
     TaskKind.MAINTENANCE: WorkerRole.MAINTENANCE_TECH,
     TaskKind.GENERAL: WorkerRole.GENERAL_STAFF,
+    TaskKind.GUEST_WELCOME: WorkerRole.PROPERTY_MANAGER,
 }
 
 #: Default priority for each task kind.
@@ -184,6 +192,7 @@ KIND_DEFAULT_PRIORITY: dict[TaskKind, TaskPriority] = {
     TaskKind.CHECKOUT_VERIFY: TaskPriority.MEDIUM,
     TaskKind.MAINTENANCE: TaskPriority.MEDIUM,
     TaskKind.GENERAL: TaskPriority.LOW,
+    TaskKind.GUEST_WELCOME: TaskPriority.HIGH,
 }
 
 #: Valid status transitions. Key = current state, value = allowed next states.

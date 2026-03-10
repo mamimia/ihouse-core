@@ -1,14 +1,15 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 197 — Platform Checkpoint II (closed)
+Phase 208 — Platform Checkpoint III (closed)
 
 ## Last Closed Phase
-Phase 197 — Platform Checkpoint II (closed)
+Phase 208 — Platform Checkpoint III (closed)
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter Tier 3 (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153). iCal Timezone Support (150). API-first Cancel Push (154). API-first Amend Push (155). Worker Task UI (157). Bookings View UI (158). Financial Dashboard UI (163). Owner Statement UI (164). Properties Metadata API (165). Role-Based Scoping (166). Permissions Routing (167). Push Notification Foundation (168). Admin Settings UI (169). Owner Portal UI (170). Admin Audit Log (171). Health Check Enrichment (172). IPI — Proactive Availability Broadcasting (173). Outbound Sync Stress Harness (174). Platform Checkpoint I (175). Outbound Sync Auto-Trigger for BOOKING_CREATED (176). SLA→Dispatcher Bridge (177). Notification Delivery Writer (178-183 range). PDF Owner Statements (188). Booking Mutation Audit Events (189). Manager Activity Feed UI (190). Multi-Currency Financial Overview (191). Guest Profile Foundation (192). Guest Profile UI (193). Booking→Guest Link (194). Hostelworld Adapter (195). WhatsApp Escalation Channel — Per-Worker Architecture (196). Platform Checkpoint II (197).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153). iCal Timezone Support (150). API-first Cancel Push (154). API-first Amend Push (155). Worker Task UI (157). Bookings View UI (158). Financial Dashboard UI (163). Owner Statement UI (164). Properties Metadata API (165). Role-Based Scoping (166). Permissions Routing (167). Push Notification Foundation (168). Admin Settings UI (169). Owner Portal UI (170). Admin Audit Log (171). Health Check Enrichment (172). IPI — Proactive Availability Broadcasting (173). Outbound Sync Stress Harness (174). Platform Checkpoint I (175). Outbound Sync Auto-Trigger for BOOKING_CREATED (176). SLA→Dispatcher Bridge (177). Notification Delivery Writer (178–183). PDF Owner Statements (188). Booking Mutation Audit Events (189). Manager Activity Feed UI (190). Multi-Currency Financial Overview (191). Guest Profile Foundation (192). Guest Profile UI (193). Booking→Guest Link (194). Hostelworld Adapter (195). WhatsApp Escalation Channel — Per-Worker Architecture (196). Platform Checkpoint II (197). Test Suite Stabilization (198). Supabase RLS Audit — 0 findings (199). Booking Calendar UI (200). Worker Channel Preference UI — notification_channels, GET/PUT/DELETE /worker/preferences (201). Notification History Inbox — notification_delivery_log, GET /worker/notifications (202). Telegram Escalation Channel — telegram_escalation.py pure module (203). Docs Sync (204). DLQ Replay from UI — POST /admin/dlq/{envelope_id}/replay, /admin/dlq UI page (205). Pre-Arrival Guest Task Workflow — GUEST_WELCOME TaskKind, pre_arrival_tasks.py, POST /tasks/pre-arrival/{booking_id} (206). Conflict Auto-Resolution Engine — conflict_auto_resolver.py, POST /conflicts/auto-check/{booking_id}, service.py hooks (207). Platform Checkpoint III — full docs sync, handoff, forward plan 209–218 (208).**
+
 
 apply_envelope is the only authority for canonical state mutations.
 
@@ -140,6 +141,17 @@ apply_envelope is the only authority for canonical state mutations.
 | 195 | Hostelworld Adapter (Tier 3, 12th adapter) | ✅ |
 | 196 | WhatsApp Escalation Channel — Per-Worker Architecture | ✅ |
 | 197 | Platform Checkpoint II — docs sync, handoff | ✅ |
+| 198 | Test Suite Stabilization — 4903 passing, 0 failed | ✅ |
+| 199 | Supabase RLS Systematic Audit — 0 security findings | ✅ |
+| 200 | Booking Calendar UI — `/calendar` month-view + filters | ✅ |
+| 201 | Worker Channel Preference UI — notification_channels table, GET/PUT/DELETE /worker/preferences, Channel 🔔 tab | ✅ |
+| 202 | Notification History Inbox — notification_delivery_log table, GET /worker/notifications, history in Channel tab | ✅ |
+| 203 | Telegram Escalation Channel — telegram_escalation.py pure module, dispatcher upgraded | ✅ |
+| 204 | Docs Sync — live-system.md, current-snapshot.md refreshed | ✅ |
+| 205 | DLQ Replay from UI — POST /admin/dlq/{envelope_id}/replay, /admin/dlq page | ✅ |
+| 206 | Pre-Arrival Guest Task Workflow — GUEST_WELCOME kind, pre_arrival_tasks.py, POST /tasks/pre-arrival/{booking_id} | ✅ |
+| 207 | Conflict Auto-Resolution Engine — conflict_auto_resolver.py, POST /conflicts/auto-check/{booking_id}, service.py auto-hooks | ✅ |
+| 208 | Platform Checkpoint III — docs audit, handoff, forward plan | ✅ |
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -199,7 +211,7 @@ Tier 1 — in-app (always first, iHouse task acknowledgement)
 Tier 2 — preferred external channel (per worker, one of:)
             LINE       → channel_type="line"      (Thailand/JP dominant)
             WhatsApp   → channel_type="whatsapp"  (SEA/EU/Global)
-            Telegram   → channel_type="telegram"  (future, stub ready)
+            Telegram   → channel_type="telegram"  (live — Phase 203)
 Tier 3 — SMS / Email  (future phases, stubs registered)
 ```
 
@@ -213,9 +225,10 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 | `src/api/line_webhook_router.py` | GET+POST /line/webhook |
 | `src/channels/whatsapp_escalation.py` | WhatsApp pure module — same pattern as LINE |
 | `src/api/whatsapp_router.py` | GET+POST /whatsapp/webhook |
+| `src/channels/telegram_escalation.py` | Telegram pure module — should_escalate, build_telegram_message, format_telegram_text (Markdown), is_priority_eligible (Phase 203) |
 | `src/channels/notification_dispatcher.py` | Core dispatcher — routes by worker's channel_type. CHANNEL_LINE/WHATSAPP/TELEGRAM/SMS constants. No global chain. |
 | `src/channels/sla_dispatch_bridge.py` | Connects sla_engine.evaluate() → dispatch_notification(). Per-worker routing. |
-| `src/channels/notification_delivery_writer.py` | Best-effort delivery log writer |
+| `src/channels/notification_delivery_writer.py` | Best-effort delivery log writer (notification_delivery_log table) |
 
 ## Key Files — API Layer
 
@@ -233,11 +246,13 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 | File | Role |
 |------|------|
-| `src/tasks/task_model.py` | TaskKind, TaskStatus, TaskPriority, WorkerRole, Task dataclass |
+| `src/tasks/task_model.py` | TaskKind (6 kinds incl GUEST_WELCOME), TaskStatus, TaskPriority, WorkerRole, Task dataclass |
 | `src/tasks/task_automator.py` | Pure tasks_for_booking_created / canceled / amended |
+| `src/tasks/pre_arrival_tasks.py` | Pure tasks_for_pre_arrival — GUEST_WELCOME + enriched CHECKIN_PREP (Phase 206) |
 | `src/tasks/task_writer.py` | Supabase upsert/cancel/reschedule |
-| `src/tasks/task_router.py` | GET /tasks, GET /tasks/{id}, PATCH /tasks/{id}/status |
+| `src/tasks/task_router.py` | GET /tasks, GET /tasks/{id}, PATCH /tasks/{id}/status, POST /tasks/pre-arrival/{booking_id} |
 | `src/tasks/sla_engine.py` | evaluate() — ACK_SLA_BREACH + COMPLETION_SLA_BREACH. CRITICAL_ACK_SLA_MINUTES=5. |
+| `src/services/conflict_auto_resolver.py` | Phase 207 — run_auto_check() — auto-conflict on BOOKING_CREATED/AMENDED |
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -279,10 +294,10 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 ## Next Phase
 
-**The next chat must NOT continue automatically from Phase 198.**
+**The next chat must NOT continue automatically from Phase 209.**
 
-See: `releases/handoffs/handoff_to_new_chat Phase-197.md` for full protocol.
+See: `releases/handoffs/handoff_to_new_chat Phase-208.md` for full protocol.
 
 ## Tests
 
-**4,906 collected. ~4,900 passing. 6 pre-existing failures (outbound / conflicts / webhook fixtures — unrelated to core invariants). Exit 0.**
+**5,049 collected. 5,049 passing. 0 failures. Exit 0.**

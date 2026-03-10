@@ -321,3 +321,139 @@ async def patch_task_status(
     except Exception as exc:  # noqa: BLE001
         logger.exception("patch_task_status error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to update task status")
+
+
+# ---------------------------------------------------------------------------
+# Phase 206 — POST /tasks/pre-arrival/{booking_id}
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/tasks/pre-arrival/{booking_id}",
+    tags=["tasks"],
+    summary="Generate pre-arrival guest tasks for a booking (Phase 206)",
+    description=(
+        "Generate GUEST_WELCOME + CHECKIN_PREP tasks enriched with the guest "
+        "profile linked to this booking.\n\n"
+        "**Flow:** Looks up `booking_state` for property_id + check_in, resolves"
+        " linked guest via `booking_guest_link`, calls `tasks_for_pre_arrival()`, "
+        "upserts tasks via `task_writer`.\n\n"
+        "**No guest linked?** Falls back to name `'Guest'` — tasks are still created.\n\n"
+        "**Idempotent:** Same inputs → same deterministic task_ids → upsert is safe to call again."
+    ),
+    responses={
+        200: {"description": "Pre-arrival tasks created/upserted."},
+        401: {"description": "Missing or invalid JWT."},
+        404: {"description": "Booking not found for this tenant."},
+        500: {"description": "Unexpected internal error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def trigger_pre_arrival_tasks(
+    booking_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    POST /tasks/pre-arrival/{booking_id}
+
+    Look up booking + optional guest. Emit and upsert pre-arrival tasks.
+    JWT auth required (tenant isolation).
+    """
+    try:
+        db = client or _get_supabase_client()
+
+        # --- Step 1: Resolve booking ---
+        booking_result = (
+            db.table("booking_state")
+            .select("booking_id, property_id, check_in, tenant_id")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not booking_result.data:
+            return make_error_response(
+                404, ErrorCode.NOT_FOUND,
+                f"Booking '{booking_id}' not found for this tenant",
+            )
+
+        booking = booking_result.data[0]
+        property_id: str = booking.get("property_id") or ""
+        check_in: str = booking.get("check_in") or ""
+
+        # --- Step 2: Resolve guest (optional) ---
+        guest_name: Optional[str] = None
+        special_requests: Optional[str] = None
+
+        try:
+            link_result = (
+                db.table("booking_guest_link")
+                .select("guest_id")
+                .eq("booking_id", booking_id)
+                .limit(1)
+                .execute()
+            )
+            if link_result.data and link_result.data[0].get("guest_id"):
+                guest_id = link_result.data[0]["guest_id"]
+                guest_result = (
+                    db.table("guests")
+                    .select("first_name, special_requests")
+                    .eq("guest_id", guest_id)
+                    .eq("tenant_id", tenant_id)
+                    .limit(1)
+                    .execute()
+                )
+                if guest_result.data:
+                    g = guest_result.data[0]
+                    guest_name = g.get("first_name")
+                    special_requests = g.get("special_requests")
+        except Exception:  # noqa: BLE001
+            # Guest lookup is best-effort — proceed without guest data
+            logger.warning("pre_arrival: guest lookup failed for booking %s — using fallback", booking_id)
+
+        # --- Step 3: Generate tasks ---
+        from tasks.pre_arrival_tasks import tasks_for_pre_arrival  # noqa: PLC0415
+        now = datetime.now(tz=timezone.utc).isoformat()
+        tasks = tasks_for_pre_arrival(
+            tenant_id=tenant_id,
+            booking_id=booking_id,
+            property_id=property_id,
+            check_in=check_in,
+            guest_name=guest_name,
+            special_requests=special_requests,
+            created_at=now,
+        )
+
+        # --- Step 4: Upsert tasks ---
+        from tasks.task_writer import _task_to_row  # noqa: PLC0415
+        rows = [_task_to_row(t) for t in tasks]
+        try:
+            db.table("tasks").upsert(rows, on_conflict="task_id").execute()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pre_arrival: task upsert failed for booking %s: %s", booking_id, exc)
+
+        tasks_created = [
+            {
+                "task_id": t.task_id,
+                "kind": t.kind.value,
+                "title": t.title,
+                "priority": t.priority.value,
+                "due_date": t.due_date,
+            }
+            for t in tasks
+        ]
+
+        resolved_name = guest_name.strip() if guest_name and guest_name.strip() else "Guest"
+        return JSONResponse(
+            status_code=200,
+            content={
+                "booking_id": booking_id,
+                "guest_name": resolved_name,
+                "tasks_created": tasks_created,
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("trigger_pre_arrival_tasks error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to generate pre-arrival tasks")
+

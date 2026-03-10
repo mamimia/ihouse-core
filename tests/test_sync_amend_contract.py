@@ -300,7 +300,7 @@ class TestGroupJ_TriggerApiPath:
 
     def test_j1_airbnb_channel_returns_dry_run(self, monkeypatch):
         monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         results = fire_amend_sync(
             booking_id="bk-j1",
             property_id="prop-1",
@@ -315,7 +315,7 @@ class TestGroupJ_TriggerApiPath:
 
     def test_j2_bookingcom_channel_returns_dry_run(self, monkeypatch):
         monkeypatch.delenv("BOOKINGCOM_API_KEY", raising=False)
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         results = fire_amend_sync(
             booking_id="bk-j2",
             property_id="prop-1",
@@ -327,7 +327,7 @@ class TestGroupJ_TriggerApiPath:
 
     def test_j3_expedia_channel_returns_dry_run(self, monkeypatch):
         monkeypatch.delenv("EXPEDIA_API_KEY", raising=False)
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         results = fire_amend_sync(
             booking_id="bk-j3",
             property_id="prop-1",
@@ -339,7 +339,7 @@ class TestGroupJ_TriggerApiPath:
 
     def test_j4_vrbo_channel_returns_dry_run(self, monkeypatch):
         monkeypatch.delenv("EXPEDIA_API_KEY", raising=False)
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         results = fire_amend_sync(
             booking_id="bk-j4",
             property_id="prop-1",
@@ -358,7 +358,7 @@ class TestGroupK_TriggerIcalPath:
 
     def test_k1_hotelbeds_ical_uses_ical_adapter(self, monkeypatch):
         monkeypatch.setenv("IHOUSE_DRY_RUN", "true")
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         results = fire_amend_sync(
             booking_id="bk-k1",
             property_id="prop-1",
@@ -384,7 +384,7 @@ class TestGroupK_TriggerIcalPath:
 class TestGroupL_TriggerUnknown:
 
     def test_l1_unknown_provider_skipped(self):
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         results = fire_amend_sync(
             booking_id="bk-l1",
             property_id="prop-1",
@@ -395,7 +395,7 @@ class TestGroupL_TriggerUnknown:
         assert results[0].provider == "UNKNOWN_OTA"
 
     def test_l2_missing_provider_skipped(self):
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         results = fire_amend_sync(
             booking_id="bk-l2",
             property_id="prop-1",
@@ -405,7 +405,7 @@ class TestGroupL_TriggerUnknown:
         assert results[0].status == "skipped"
 
     def test_l3_empty_channels_empty_result(self):
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         results = fire_amend_sync(
             booking_id="bk-l3",
             property_id="prop-1",
@@ -424,7 +424,7 @@ class TestGroupM_TriggerMixed:
     def test_m1_two_channels_two_results(self, monkeypatch):
         monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
         monkeypatch.setenv("IHOUSE_DRY_RUN", "true")
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         channels = [
             {"provider": "airbnb",    "external_id": "listing-m1", "sync_strategy": "api_first"},
             {"provider": "hotelbeds", "external_id": "ext-m1",     "sync_strategy": "ical_fallback"},
@@ -442,7 +442,7 @@ class TestGroupM_TriggerMixed:
         monkeypatch.delenv("AIRBNB_API_KEY", raising=False)
         monkeypatch.delenv("BOOKINGCOM_API_KEY", raising=False)
         monkeypatch.delenv("EXPEDIA_API_KEY", raising=False)
-        from services.amend_sync_trigger import fire_amend_sync
+        from services.deprecated.amend_sync_trigger import fire_amend_sync
         channels = [
             {"provider": "airbnb",    "external_id": "a1", "sync_strategy": "api_first"},
             {"provider": "bookingcom","external_id": "b1", "sync_strategy": "api_first"},
@@ -466,17 +466,17 @@ class TestGroupM_TriggerMixed:
 class TestGroupN_ToIso:
 
     def test_n1_iso_passthrough(self):
-        from services.amend_sync_trigger import _to_iso
+        from services.deprecated.amend_sync_trigger import _to_iso
         assert _to_iso("2025-06-01") == "2025-06-01"
 
     def test_n2_compact_to_iso(self):
-        from services.amend_sync_trigger import _to_iso
+        from services.deprecated.amend_sync_trigger import _to_iso
         assert _to_iso("20250601") == "2025-06-01"
 
     def test_n3_none_returns_none(self):
-        from services.amend_sync_trigger import _to_iso
+        from services.deprecated.amend_sync_trigger import _to_iso
         assert _to_iso(None) is None
 
     def test_n4_empty_string_returns_none(self):
-        from services.amend_sync_trigger import _to_iso
+        from services.deprecated.amend_sync_trigger import _to_iso
         assert _to_iso("") is None

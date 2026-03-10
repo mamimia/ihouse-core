@@ -304,7 +304,7 @@ def test_g2_register_fcm_channel():
 def test_g3_register_invalid_channel_type_raises():
     db = _make_db()
     with pytest.raises(ValueError, match="Invalid channel_type"):
-        register_channel(db, "t1", "u1", "whatsapp", "wa-token")
+        register_channel(db, "t1", "u1", "carrier_pigeon", "pigeon-token")
 
 
 def test_g4_register_returns_correct_user_and_tenant():
@@ -328,7 +328,7 @@ def test_h1_deregister_returns_deregistered():
 def test_h2_deregister_invalid_type_raises():
     db = _make_db()
     with pytest.raises(ValueError):
-        deregister_channel(db, "t1", "u1", "telegram")
+        deregister_channel(db, "t1", "u1", "carrier_pigeon")
 
 
 # ---------------------------------------------------------------------------

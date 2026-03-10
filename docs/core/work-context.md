@@ -2,45 +2,16 @@
 
 ## Current Active Phase
 
-Phase 197 — Platform Checkpoint II (closed)
+Phase 208 — Platform Checkpoint III (closed)
 
 ## Last Closed Phase
 
-Phase 197 — Platform Checkpoint II — docs sync, handoff written, ZIP created. Full audit of all canonical docs. Current snapshot rewritten to reflect true Phase 176–197 state. next-phase protocol documented in handoff.
+Phase 208 — Platform Checkpoint III — docs audit, handoff document, forward plan (Phases 209–218). Test count: 5049 (0 failures). current-snapshot.md and work-context.md updated to reflect Phases 198–208.
 
 ## Current Objective
 
-**The next conversation must follow the Phase 197 handoff protocol.**
-See `releases/handoffs/handoff_to_new_chat Phase-197.md` — read it first.
-
-## What Was Done Since Platform Checkpoint I (Phase 175)
-
-| Phase | Feature | Key Files |
-|-------|---------|-----------|
-| 176 | Outbound Sync Auto-Trigger (BOOKING_CREATED) | `outbound_sync_trigger.py`, `service.py` |
-| 177 | SLA→Dispatcher Bridge | `src/channels/sla_dispatch_bridge.py` |
-| 178–183 | Notification Delivery Writer + Channel Infra | `src/channels/notification_delivery_writer.py` |
-| 188 | PDF Owner Statements | `src/api/owner_statement_router.py` (format=pdf), `reportlab` |
-| 189 | Booking Mutation Audit Events | `src/services/audit_writer.py`, `src/api/audit_router.py` |
-| 190 | Manager Activity Feed UI | `ihouse-ui/app/manager/page.tsx` |
-| 191 | Multi-Currency Financial Overview | `GET /financial/multi-currency-overview` |
-| 192 | Guest Profile Foundation | `src/api/guests_router.py`, `guests` Supabase table |
-| 193 | Guest Profile UI | `ihouse-ui/app/guests/page.tsx`, `/guests/[id]` |
-| 194 | Booking→Guest Link | `src/api/booking_guest_link_router.py`, `guest_id` on `booking_state` |
-| 195 | Hostelworld Adapter | `src/adapters/ota/hostelworld.py` (14th OTA adapter) |
-| 196 | WhatsApp Escalation Channel | `src/channels/whatsapp_escalation.py`, `src/api/whatsapp_router.py` |
-| 196-patch | Per-Worker Channel Architecture | `notification_dispatcher.py` CHANNEL_WHATSAPP/TELEGRAM/SMS. `sla_dispatch_bridge.py` global chain removed. |
-| 197 | Platform Checkpoint II | All canonical docs updated, handoff written, ZIP created. |
-
-## Roadmap Direction (Phase 198+)
-
-The next conversation is responsible for:
-1. Reading the full system (Layer A → construction-log latest)
-2. Proposing 20 next phases with rationale
-3. Getting user approval
-4. Only then executing
-
-See handoff for full detail on protocol.
+Continue executing the next phases from the roadmap.
+Next up: Phase 209 (see handoff document for Phases 209–218 plan).
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -60,7 +31,7 @@ See handoff for full detail on protocol.
 - **No global fallback chain**: each worker has their preferred `channel_type` in `notification_channels`
 - CRITICAL_ACK_SLA_MINUTES = 5 (locked)
 
-## Key Files — Channel Layer (Phases 124, 168, 177, 196)
+## Key Files — Channel Layer (Phases 124, 168, 177, 196, 203)
 
 | File | Role |
 |------|------|
@@ -68,6 +39,7 @@ See handoff for full detail on protocol.
 | `src/api/line_webhook_router.py` | GET+POST /line/webhook |
 | `src/channels/whatsapp_escalation.py` | WhatsApp pure module — same pattern as LINE |
 | `src/api/whatsapp_router.py` | GET+POST /whatsapp/webhook |
+| `src/channels/telegram_escalation.py` | Telegram pure module — should_escalate, build_telegram_message (Phase 203) |
 | `src/channels/notification_dispatcher.py` | Core dispatcher — routes by worker's channel_type. No global chain. |
 | `src/channels/sla_dispatch_bridge.py` | SLA → dispatcher bridge. Per-worker routing. |
 | `src/channels/notification_delivery_writer.py` | Best-effort delivery log writer |
@@ -83,16 +55,18 @@ See handoff for full detail on protocol.
 | `src/api/owner_statement_router.py` | Ring 4: Per-booking line items + PDF export (Phase 188) |
 | `src/api/ota_comparison_router.py` | Ring 3: Per-OTA commission rate, net-to-gross, revenue share |
 
-## Key Files — Task Layer (Phases 111–117)
+## Key Files — Task Layer (Phases 111–117, 206–207)
 
 | File | Role |
 |------|------|
-| `src/tasks/task_model.py` | TaskKind, TaskStatus, TaskPriority, WorkerRole, Task dataclass |
+| `src/tasks/task_model.py` | TaskKind (6 kinds incl GUEST_WELCOME), TaskStatus, TaskPriority, WorkerRole, Task dataclass |
 | `src/tasks/task_automator.py` | Pure tasks_for_booking_created / canceled / amended |
+| `src/tasks/pre_arrival_tasks.py` | Pure tasks_for_pre_arrival — GUEST_WELCOME + enriched CHECKIN_PREP (Phase 206) |
 | `src/tasks/task_writer.py` | Supabase upsert/cancel/reschedule — wired into service.py |
-| `src/tasks/task_router.py` | GET /tasks, GET /tasks/{id}, PATCH /tasks/{id}/status |
+| `src/tasks/task_router.py` | GET /tasks, GET /tasks/{id}, PATCH /tasks/{id}/status, POST /tasks/pre-arrival/{booking_id} |
 | `src/tasks/sla_engine.py` | evaluate() — ACK_SLA_BREACH + COMPLETION_SLA_BREACH. CRITICAL_ACK_SLA_MINUTES=5. |
 | `src/api/worker_router.py` | GET /worker/tasks, PATCH /acknowledge, PATCH /complete |
+| `src/services/conflict_auto_resolver.py` | Phase 207 — run_auto_check() — auto-conflict on BOOKING_CREATED/AMENDED |
 
 ## Key Files — HTTP API Layer (Phases 58–64)
 
@@ -121,6 +95,7 @@ See handoff for full detail on protocol.
 | `IHOUSE_WHATSAPP_PHONE_NUMBER_ID` | unset | Meta Cloud API phone ID |
 | `IHOUSE_WHATSAPP_APP_SECRET` | unset | HMAC sig verification |
 | `IHOUSE_WHATSAPP_VERIFY_TOKEN` | unset | Meta webhook challenge token |
+| `IHOUSE_TELEGRAM_BOT_TOKEN` | unset | Telegram bot API token |
 | `IHOUSE_DRY_RUN` | unset | skip real outbound API calls |
 | `IHOUSE_THROTTLE_DISABLED` | unset | skip rate limiting in outbound |
 | `IHOUSE_RETRY_DISABLED` | unset | skip exponential backoff |
@@ -130,4 +105,4 @@ See handoff for full detail on protocol.
 
 ## Tests
 
-**4,906 collected. ~4,900 passing. 6 pre-existing failures (outbound / conflicts / webhook fixture providers — unrelated to core). Exit 0.**
+**5,049 collected. 5,049 passing. 0 failures. Exit 0.**

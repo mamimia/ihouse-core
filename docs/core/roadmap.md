@@ -585,45 +585,41 @@ Full detail: `docs/core/planning/worker-communication-layer.md`
 | 195 | Hostelworld Adapter | Adapter | ✅ Closed |
 | 196 | WhatsApp Escalation Channel — Per-Worker Architecture | Backend | ✅ Closed |
 | 197 | Platform Checkpoint II | Docs | ✅ Closed |
+| 198 | Test Suite Stabilization | Infra | ✅ Closed |
+| 199 | Supabase RLS Systematic Audit | Security | ✅ Closed |
+| 200 | Booking Calendar UI | UI | ✅ Closed |
+| 201 | Worker Channel Preference UI | Backend+UI | ✅ Closed |
+| 202 | Notification History Inbox | Backend+UI | ✅ Closed |
+| 203 | Telegram Escalation Channel | Backend | ✅ Closed |
+| 204 | Docs Sync | Docs | ✅ Closed |
+| 205 | DLQ Replay from UI | Backend+UI | ✅ Closed |
+| 206 | Pre-Arrival Guest Task Workflow | Backend | ✅ Closed |
+| 207 | Conflict Auto-Resolution Engine | Backend | ✅ Closed |
+| 208 | Platform Checkpoint III | Docs | ✅ Closed |
 
-### System Numbers at Checkpoint II
+### System Numbers at Checkpoint III (Phase 208)
 
-- **14 OTA adapters** live (Airbnb, Booking.com, Expedia, Agoda, Trip.com, Vrbo, GVR, Traveloka, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld)
-- **2 escalation channels** live (LINE + WhatsApp), per-worker preference model
-- **CHANNEL_TELEGRAM + CHANNEL_SMS** stubs registered, ready to wire
-- **4,906 tests** collected / ~4,900 passing / 6 pre-existing failures / exit 0
+- **14 OTA adapters** live (Airbnb, Booking.com, Expedia, Agoda, Trip.com, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld)
+- **3 escalation channels** live (LINE + WhatsApp + Telegram), per-worker preference model
+- **CHANNEL_SMS** stub registered, ready to wire
+- **6 TaskKinds** (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME)
+- **12 UI surfaces** (ops dashboard, bookings, calendar, tasks, worker, financial, owner statement, owner portal, guests, admin settings, manager feed, admin DLQ)
+- **5,049 tests** collected / 5,049 passing / 0 failures / exit 0
 
-### Forward Plan — Directions for Phase 198+
+### Forward Plan — Phases 209–218
 
 > [!IMPORTANT]
-> The next conversation must read the full system first, then propose 20 phases, then get user approval. See `releases/handoffs/handoff_to_new_chat Phase-197.md`.
+> The next conversation must read the full system first (BOOT.md → current-snapshot.md → work-context.md), then verify baseline (`pytest tests/ --tb=no -q`), then begin Phase 209. See `releases/handoffs/handoff_to_new_chat Phase-208.md`.
 
-The following are candidate areas — the next conversation evaluates and orders them:
-
-**Channel & Escalation Completion**
-- Telegram real adapter (Bot API, stub ready)
-- SMS via Twilio (tier-3 final escalation)
-- Per-worker channel preference UI (worker self-selects LINE/WhatsApp)
-- Notification history inbox for workers
-
-**Operator & Management Surfaces**
-- Booking calendar view (UI for existing availability projection)
-- OTA webhook DLQ replay from UI
-- Pre-arrival guest task workflow
-
-**Integration Management (Wave 1)**
-- Credentials/secrets management UI
-- Webhook provisioning UI
-- Property-channel mapping UI
-- Per-property sync status dashboard
-
-**Platform Reliability**
-- Fix 6 pre-existing test failures
-- Rakuten replay fixture
-- Hostelworld E2E harness extension
-- RLS policy systematic audit
-
-**Product Growth**
-- Worker mobile foundation (PWA)
-- Rate/pricing OTA push (outbound)
-- Multi-property onboarding flow
+| Phase | Title | Type |
+|-------|-------|------|
+| 209 | SMS Escalation Channel | Backend |
+| 210 | Email Notification Channel | Backend |
+| 211 | Property Onboarding Wizard UI | Backend+UI |
+| 212 | Guest Communication Templates | Backend |
+| 213 | Automated Revenue Reports | Backend |
+| 214 | Portfolio Dashboard UI | UI |
+| 215 | Integration Management UI (Wave 2 Start) | Backend+UI |
+| 216 | Credential/Secret Management | Backend+UI |
+| 217 | Worker Mobile PWA | UI |
+| 218 | Platform Checkpoint IV | Docs |

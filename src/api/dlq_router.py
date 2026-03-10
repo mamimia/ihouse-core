@@ -315,3 +315,117 @@ async def get_dlq_entry(
         status_code=200,
         content=_format_entry(rows[0], include_full_payload=True),
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 205 — DLQ Replay Endpoint
+# ---------------------------------------------------------------------------
+
+_ALREADY_APPLIED_REPLAY_STATUSES = frozenset({
+    "APPLIED",
+    "ALREADY_APPLIED",
+    "ALREADY_EXISTS",
+    "ALREADY_EXISTS_BUSINESS",
+})
+
+
+@router.post(
+    "/admin/dlq/{envelope_id}/replay",
+    tags=["admin"],
+    summary="DLQ Replay — trigger replay of a single dead letter entry (Phase 205)",
+    description=(
+        "Trigger a replay of a single DLQ entry through the canonical "
+        "`apply_envelope` pipeline.\n\n"
+        "**Idempotent:** If the entry is already successfully applied, "
+        "returns 200 with `already_replayed=true` — no re-processing.\n\n"
+        "**Safety:** Only entry with status `pending` or `error` are "
+        "re-processed. Never bypasses `apply_envelope`. Never mutates "
+        "canonical state outside the canonical write gate.\n\n"
+        "**Source:** `ota_dead_letter` — global. Requires JWT auth (admin surface)."
+    ),
+    responses={
+        200: {"description": "Replay triggered. Check replay_result for outcome."},
+        400: {"description": "Entry already successfully applied — use idempotency guard."},
+        401: {"description": "Missing or invalid JWT token."},
+        404: {"description": "No DLQ entry found for this envelope_id."},
+        500: {"description": "Unexpected internal error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def replay_dlq_entry(
+    envelope_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+    _replay_fn: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    POST /admin/dlq/{envelope_id}/replay
+
+    Trigger replay for a single DLQ entry via envelope_id.
+    Resolves to the numeric DB row id, then calls replay_dlq_row().
+    JWT auth required (admin surface).
+    """
+    # --- Resolve envelope_id → DB row ---
+    try:
+        db = client if client is not None else _get_supabase_client()
+        result = (
+            db.table("ota_dead_letter")
+            .select("id, envelope_id, replay_result")
+            .eq("envelope_id", envelope_id)
+            .limit(1)
+            .execute()
+        )
+        rows = result.data or []
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("replay_dlq_entry: DB lookup error: %s", exc)
+        return make_error_response(500, "INTERNAL_ERROR", "Failed to look up DLQ entry")
+
+    if not rows:
+        return make_error_response(
+            404,
+            "NOT_FOUND",
+            f"No DLQ entry found with envelope_id: {envelope_id}",
+        )
+
+    row = rows[0]
+    row_id: int = row["id"]
+    current_result: Optional[str] = row.get("replay_result")
+
+    # --- Guard: already successfully applied ---
+    if current_result in _ALREADY_APPLIED_REPLAY_STATUSES:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "envelope_id": envelope_id,
+                "row_id": row_id,
+                "replay_result": current_result,
+                "replay_trace_id": None,
+                "already_replayed": True,
+            },
+        )
+
+    # --- Trigger replay ---
+    try:
+        replay_fn = _replay_fn or _get_replay_fn()
+        outcome = replay_fn(row_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("replay_dlq_entry: replay error for row_id=%s: %s", row_id, exc)
+        return make_error_response(500, "INTERNAL_ERROR", "Replay execution failed")
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "envelope_id": envelope_id,
+            "row_id": row_id,
+            "replay_result": outcome.get("replay_result"),
+            "replay_trace_id": outcome.get("replay_trace_id"),
+            "already_replayed": outcome.get("already_replayed", False),
+        },
+    )
+
+
+def _get_replay_fn() -> Any:
+    """Lazy import of replay_dlq_row — avoids circular imports at module load."""
+    from adapters.ota.dlq_replay import replay_dlq_row  # noqa: PLC0415
+    return replay_dlq_row
+

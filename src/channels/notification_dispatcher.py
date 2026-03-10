@@ -193,12 +193,26 @@ def _default_whatsapp_adapter(channel_id: str, message: NotificationMessage) -> 
 
 def _default_telegram_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
     """
-    Telegram Bot API adapter stub (future phase).
+    Telegram Bot API adapter stub (Phase 203).
 
-    In production: POST to api.telegram.org/bot{TOKEN}/sendMessage.
-    Stub — infrastructure reserved for when Telegram support is wired.
+    Constructs the full Telegram Bot API payload using Markdown formatting.
+    In production: POST to api.telegram.org/bot{TOKEN}/sendMessage with:
+        {"chat_id": channel_id, "text": text, "parse_mode": "Markdown"}
+
+    channel_id is the Telegram chat_id registered in notification_channels.
+    Stub — returns success=True; tests inject mocks via `adapters` parameter.
     """
-    logger.info("Telegram dispatch to chat_id=%s (stub)", channel_id)
+    from channels.telegram_escalation import TELEGRAM_PARSE_MODE  # lazy import
+    # Build the Telegram Bot API payload structure (production would POST this)
+    payload = {
+        "chat_id": channel_id,
+        "text": f"*{message.title}*\n{message.body}",
+        "parse_mode": TELEGRAM_PARSE_MODE,
+    }
+    logger.debug(
+        "Telegram dispatch to chat_id=%s text_len=%d parse_mode=%s",
+        channel_id, len(payload["text"]), TELEGRAM_PARSE_MODE,
+    )
     return ChannelAttempt(
         channel_type=CHANNEL_TELEGRAM,
         channel_id=channel_id,
