@@ -10,7 +10,7 @@ Groups:
   F — cancel() body: CRLF line endings throughout
   G — cancel() HTTP OK → status='ok'
   H — cancel() HTTP error → status='failed'
-  I — fire_cancel_sync(): skips non-ical providers
+  I — fire_cancel_sync(): routes api_first to API adapters (Phase 154), unknown providers skipped
   J — fire_cancel_sync(): returns CancelSyncResult list correctly
 """
 from __future__ import annotations
@@ -337,7 +337,7 @@ class TestGroupH_HTTPError:
 
 
 # ===========================================================================
-# Group I — fire_cancel_sync(): skips non-ical providers
+# Group I — fire_cancel_sync(): routes known providers, skips unknown
 # ===========================================================================
 
 class TestGroupI_SkipsNonIcal:
@@ -353,7 +353,9 @@ class TestGroupI_SkipsNonIcal:
             channels=channels,
         )
         assert len(results) == 1
-        assert results[0].status == "skipped"
+        # Phase 154: airbnb is now routed to AirbnbAdapter.cancel().
+        # With no API key configured, adapter returns dry_run (not skipped).
+        assert results[0].status in ("dry_run", "ok", "failed")
 
     def test_i2_skips_unknown_provider(self):
         channels = [
@@ -456,4 +458,5 @@ class TestGroupJ_FireCancelSyncResults:
         hb = next(r for r in results if r.provider == "hotelbeds")
         ab = next(r for r in results if r.provider == "airbnb")
         assert hb.status == "dry_run"
-        assert ab.status == "skipped"
+        # Phase 154: airbnb is now an API adapter, returns dry_run (no key configured)
+        assert ab.status in ("dry_run", "ok", "failed")

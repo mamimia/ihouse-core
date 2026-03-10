@@ -3429,3 +3429,24 @@ UI (ihouse-ui/):
 - UI build: ✅ `npm run build` passes cleanly, /dashboard route compiled
 
 Result: 3993 tests pass (3963 + 30 new). No DB schema changes. 1 new API endpoint. UI build green.
+
+---
+
+## Phase 154 — Closed
+
+**Phase 154 — API-first Cancellation Push**
+**Date closed:** 2026-03-10
+**Tests:** 4028 passing (3993 + 35 new), 2 pre-existing SQLite skips (unchanged)
+
+Goal: Airbnb, Booking.com, Expedia/VRBO send cancellation via API on BOOKING_CANCELED.
+
+Completed:
+- `src/adapters/outbound/__init__.py` — MODIFIED — `_build_idempotency_key()` gains optional `suffix` param; cancel ops get key suffix "cancel" to avoid collision with send() keys
+- `src/adapters/outbound/airbnb_adapter.py` — MODIFIED — `cancel()` method: DELETE /v2/calendar_operations/{external_id}, dry-run when no key, idempotency key with suffix="cancel"
+- `src/adapters/outbound/bookingcom_adapter.py` — MODIFIED — `cancel()` method: DELETE /v1/hotels/reservations/{external_id}
+- `src/adapters/outbound/expedia_vrbo_adapter.py` — MODIFIED — `cancel()` method: DELETE /v1/properties/{external_id}/reservations/{booking_id}, both expedia+vrbo sub-providers
+- `src/services/cancel_sync_trigger.py` — REWRITTEN — Routes ical_fallback → ICalPushAdapter.cancel() [Phase 151], api_first → {Provider}Adapter.cancel() [Phase 154], unknown → skipped
+- `tests/test_sync_cancel_contract.py` — NEW — 35 contract tests (Groups A-N)
+- `tests/test_ical_cancel_push_contract.py` — UPDATED — 2 test expectations updated to reflect Phase 154 routing change (airbnb no longer skipped, now routes via API adapter)
+
+Result: 4028 tests pass (3993 + 35 new). No DB schema changes. No new endpoints.

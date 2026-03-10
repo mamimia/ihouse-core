@@ -1,5 +1,6 @@
 """
 Phase 143 — Airbnb Outbound Adapter (Idempotency Key)
+Phase 154 — cancel() method for BOOKING_CANCELED API-first push
 
 Implements availability locking via the Airbnb Partner API (api_first).
 
@@ -14,6 +15,10 @@ Airbnb availability block endpoint (simplified):
         "blocked_dates": ["<check_in>", "<check_out>"],
         "notes": "Blocked by iHouse Core (booking_id=<booking_id>)"
     }
+
+Cancellation endpoint (Phase 154):
+    DELETE /v2/calendar_operations/<external_id>
+    Body: {"booking_id": "<booking_id>", "action": "cancel"}
 
 Phase 139 sends a well-formed request. If AIRBNB_API_KEY is absent or
 IHOUSE_DRY_RUN=true, the adapter returns dry_run status without hitting the API.
@@ -125,4 +130,91 @@ class AirbnbAdapter(OutboundAdapter):
                 strategy="api_first", status="failed",
                 http_status=None,
                 message=f"Airbnb adapter exception: {exc}",
+            )
+
+    # ------------------------------------------------------------------
+    # Phase 154 — cancel()
+    # ------------------------------------------------------------------
+
+    def cancel(
+        self,
+        external_id: str,
+        booking_id: str,
+        rate_limit: int = 120,
+        dry_run: bool = False,
+    ) -> AdapterResult:
+        """
+        Cancel a booking on Airbnb by releasing the calendar block.
+
+        Endpoint: DELETE /v2/calendar_operations/<external_id>
+        Body: {"booking_id": "<booking_id>", "action": "cancel"}
+
+        Returns dry_run if AIRBNB_API_KEY not configured or DRY_RUN=true.
+        Shares throttle / retry / idempotency-key infrastructure from send().
+        """
+        api_key  = os.environ.get("AIRBNB_API_KEY", "")
+        base_url = os.environ.get("AIRBNB_API_BASE", _DEFAULT_BASE)
+        global_dry_run = os.environ.get("IHOUSE_DRY_RUN", "false").lower() == "true"
+
+        if dry_run or global_dry_run or not api_key:
+            reason = (
+                "IHOUSE_DRY_RUN=true" if global_dry_run
+                else "AIRBNB_API_KEY not configured — dry-run mode"
+                if not api_key else "dry_run=True requested"
+            )
+            logger.info(
+                "[DRY-RUN] airbnb cancel: external_id=%s booking_id=%s reason=%s",
+                external_id, booking_id, reason,
+            )
+            return AdapterResult(
+                provider=_PROVIDER, external_id=external_id,
+                strategy="api_first", status="dry_run",
+                http_status=None,
+                message=f"[Phase 154 dry-run] airbnb cancel: {reason}",
+            )
+
+        try:
+            if httpx is None:  # pragma: no cover
+                raise RuntimeError("httpx not available")
+            url = f"{base_url}/calendar_operations/{external_id}"
+            payload = {"booking_id": booking_id, "action": "cancel"}
+            headers = {
+                "X-Airbnb-API-Key":  api_key,
+                "Content-Type":      "application/json",
+                "X-Idempotency-Key": _build_idempotency_key(booking_id, external_id, suffix="cancel"),
+            }
+            _throttle(rate_limit)
+
+            def _do_cancel() -> AdapterResult:
+                resp = httpx.delete(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in (200, 201, 204):
+                    logger.info(
+                        "airbnb cancel OK: external_id=%s status=%d",
+                        external_id, resp.status_code,
+                    )
+                    return AdapterResult(
+                        provider=_PROVIDER, external_id=external_id,
+                        strategy="api_first", status="ok",
+                        http_status=resp.status_code,
+                        message=f"Airbnb cancel sent. HTTP {resp.status_code}.",
+                    )
+                logger.warning(
+                    "airbnb cancel error: external_id=%s status=%d body=%s",
+                    external_id, resp.status_code, resp.text[:200],
+                )
+                return AdapterResult(
+                    provider=_PROVIDER, external_id=external_id,
+                    strategy="api_first", status="failed",
+                    http_status=resp.status_code,
+                    message=f"Airbnb cancel HTTP {resp.status_code}: {resp.text[:200]}",
+                )
+
+            return _retry_with_backoff(_do_cancel)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("airbnb cancel exception: external_id=%s: %s", external_id, exc)
+            return AdapterResult(
+                provider=_PROVIDER, external_id=external_id,
+                strategy="api_first", status="failed",
+                http_status=None,
+                message=f"Airbnb cancel exception: {exc}",
             )

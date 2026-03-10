@@ -111,3 +111,82 @@ class BookingComAdapter(OutboundAdapter):
                 http_status=None,
                 message=f"Booking.com adapter exception: {exc}",
             )
+
+    # ------------------------------------------------------------------
+    # Phase 154 — cancel()
+    # ------------------------------------------------------------------
+
+    def cancel(
+        self,
+        external_id: str,
+        booking_id: str,
+        rate_limit: int = 60,
+        dry_run: bool = False,
+    ) -> AdapterResult:
+        """
+        Cancel a reservation on Booking.com Connectivity Partner API.
+
+        Endpoint: DELETE /v1/hotels/reservations/<external_id>
+        Body: {"booking_id": "<booking_id>", "status": "cancelled"}
+
+        Returns dry_run if BOOKINGCOM_API_KEY not configured or DRY_RUN=true.
+        Shares throttle / retry / idempotency-key infrastructure from send().
+        """
+        api_key  = os.environ.get("BOOKINGCOM_API_KEY", "")
+        base_url = os.environ.get("BOOKINGCOM_API_BASE", _DEFAULT_BASE)
+        global_dry_run = os.environ.get("IHOUSE_DRY_RUN", "false").lower() == "true"
+
+        if dry_run or global_dry_run or not api_key:
+            reason = (
+                "IHOUSE_DRY_RUN=true" if global_dry_run
+                else "BOOKINGCOM_API_KEY not configured — dry-run mode"
+                if not api_key else "dry_run=True requested"
+            )
+            logger.info(
+                "[DRY-RUN] bookingcom cancel: external_id=%s reason=%s",
+                external_id, reason,
+            )
+            return AdapterResult(
+                provider=_PROVIDER, external_id=external_id,
+                strategy="api_first", status="dry_run",
+                http_status=None,
+                message=f"[Phase 154 dry-run] bookingcom cancel: {reason}",
+            )
+
+        try:
+            if httpx is None:  # pragma: no cover
+                raise RuntimeError("httpx not available")
+            url = f"{base_url}/hotels/reservations/{external_id}"
+            payload = {"booking_id": booking_id, "status": "cancelled"}
+            headers = {
+                "Authorization":     f"Bearer {api_key}",
+                "Content-Type":      "application/json",
+                "X-Idempotency-Key": _build_idempotency_key(booking_id, external_id, suffix="cancel"),
+            }
+            _throttle(rate_limit)
+
+            def _do_cancel() -> AdapterResult:
+                resp = httpx.delete(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in (200, 201, 204):
+                    return AdapterResult(
+                        provider=_PROVIDER, external_id=external_id,
+                        strategy="api_first", status="ok",
+                        http_status=resp.status_code,
+                        message=f"Booking.com cancel sent. HTTP {resp.status_code}.",
+                    )
+                return AdapterResult(
+                    provider=_PROVIDER, external_id=external_id,
+                    strategy="api_first", status="failed",
+                    http_status=resp.status_code,
+                    message=f"Booking.com cancel HTTP {resp.status_code}: {resp.text[:200]}",
+                )
+
+            return _retry_with_backoff(_do_cancel)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("bookingcom cancel exception: %s", exc)
+            return AdapterResult(
+                provider=_PROVIDER, external_id=external_id,
+                strategy="api_first", status="failed",
+                http_status=None,
+                message=f"Booking.com cancel exception: {exc}",
+            )

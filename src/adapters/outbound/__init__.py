@@ -128,11 +128,13 @@ def _retry_with_backoff(fn: Callable[[], _T], max_retries: int = 3) -> _T:
 _idem_logger = logging.getLogger(__name__ + ".idempotency")
 
 
-def _build_idempotency_key(booking_id: str, external_id: str) -> str:
+def _build_idempotency_key(booking_id: str, external_id: str, suffix: str = "") -> str:
     """
     Phase 143 — Build a stable idempotency key for an outbound request.
+    Phase 154 — Added optional suffix to distinguish cancel from send.
 
-    Format: ``{booking_id}:{external_id}:{YYYYMMDD}``
+    Format: ``{booking_id}:{external_id}:{YYYYMMDD}`` or
+            ``{booking_id}:{external_id}:{YYYYMMDD}:{suffix}`` when suffix given.
 
     The key is stable within the same calendar day (UTC).  Adapters that
     support idempotency headers should attach it as ``X-Idempotency-Key``.
@@ -142,6 +144,7 @@ def _build_idempotency_key(booking_id: str, external_id: str) -> str:
       returns a best-effort key if either is missing).
     - The date component rolls over at UTC midnight, ensuring a fresh key
       per day even if the same booking is synced multiple times.
+    - suffix (e.g. "cancel") disambiguates different operation types.
     """
     if not booking_id or not external_id:
         _idem_logger.warning(
@@ -149,7 +152,8 @@ def _build_idempotency_key(booking_id: str, external_id: str) -> str:
             booking_id, external_id,
         )
     day = _date.today().strftime("%Y%m%d")
-    return f"{booking_id}:{external_id}:{day}"
+    base = f"{booking_id}:{external_id}:{day}"
+    return f"{base}:{suffix}" if suffix else base
 
 
 @dataclass

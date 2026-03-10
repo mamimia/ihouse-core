@@ -103,3 +103,83 @@ class ExpediaVrboAdapter(OutboundAdapter):
                 http_status=None,
                 message=f"{self.provider} adapter exception: {exc}",
             )
+
+    # ------------------------------------------------------------------
+    # Phase 154 — cancel()
+    # ------------------------------------------------------------------
+
+    def cancel(
+        self,
+        external_id: str,
+        booking_id: str,
+        rate_limit: int = 60,
+        dry_run: bool = False,
+    ) -> AdapterResult:
+        """
+        Cancel a booking on Expedia/VRBO Partner Solutions API.
+
+        Endpoint: DELETE /v1/properties/<external_id>/reservations/<booking_id>
+        Body: {"status": "cancelled"}
+
+        Returns dry_run if API key not configured or DRY_RUN=true.
+        Shares throttle / retry / idempotency-key infrastructure from send().
+        """
+        env_prefix = _PROVIDER_MAP.get(self.provider, "EXPEDIA")
+        api_key  = os.environ.get(f"{env_prefix}_API_KEY", "")
+        base_url = os.environ.get(f"{env_prefix}_API_BASE", _DEFAULT_BASE)
+        global_dry_run = os.environ.get("IHOUSE_DRY_RUN", "false").lower() == "true"
+
+        if dry_run or global_dry_run or not api_key:
+            reason = (
+                "IHOUSE_DRY_RUN=true" if global_dry_run
+                else f"{env_prefix}_API_KEY not configured — dry-run mode"
+                if not api_key else "dry_run=True requested"
+            )
+            logger.info(
+                "[DRY-RUN] %s cancel: external_id=%s reason=%s",
+                self.provider, external_id, reason,
+            )
+            return AdapterResult(
+                provider=self.provider, external_id=external_id,
+                strategy="api_first", status="dry_run",
+                http_status=None,
+                message=f"[Phase 154 dry-run] {self.provider} cancel: {reason}",
+            )
+
+        try:
+            if httpx is None:  # pragma: no cover
+                raise RuntimeError("httpx not available")
+            url = f"{base_url}/properties/{external_id}/reservations/{booking_id}"
+            payload = {"status": "cancelled"}
+            headers = {
+                "Authorization":     f"Bearer {api_key}",
+                "Content-Type":      "application/json",
+                "X-Idempotency-Key": _build_idempotency_key(booking_id, external_id, suffix="cancel"),
+            }
+            _throttle(rate_limit)
+
+            def _do_cancel() -> AdapterResult:
+                resp = httpx.delete(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in (200, 201, 204):
+                    return AdapterResult(
+                        provider=self.provider, external_id=external_id,
+                        strategy="api_first", status="ok",
+                        http_status=resp.status_code,
+                        message=f"{self.provider} cancel sent. HTTP {resp.status_code}.",
+                    )
+                return AdapterResult(
+                    provider=self.provider, external_id=external_id,
+                    strategy="api_first", status="failed",
+                    http_status=resp.status_code,
+                    message=f"{self.provider} cancel HTTP {resp.status_code}: {resp.text[:200]}",
+                )
+
+            return _retry_with_backoff(_do_cancel)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("%s cancel exception: %s", self.provider, exc)
+            return AdapterResult(
+                provider=self.provider, external_id=external_id,
+                strategy="api_first", status="failed",
+                http_status=None,
+                message=f"{self.provider} cancel exception: {exc}",
+            )
