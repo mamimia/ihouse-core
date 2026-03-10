@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 171 — Admin Audit Log (closed)
+Phase 172 — Health Check Enrichment (closed)
 
 ## Last Closed Phase
-Phase 171 — Admin Audit Log: admin_audit_log DDL + write_audit_event() + GET /admin/audit-log, 28 contract tests. Total: 4448 passing.
+Phase 172 — Health Check Enrichment: probe_outbound_sync() + run_health_checks_enriched() + OutboundSyncProbeResult, 20 contract tests. Total: 4468 passing.
 
 ## System Status
 

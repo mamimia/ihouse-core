@@ -2441,3 +2441,17 @@ Changes:
 - tests/test_admin_audit_log_contract.py [NEW]: 28 contract tests.
 
 Result: 4448 tests pass (4420 + 28 new). 2 pre-existing SQLite skips unchanged.
+
+## Phase 172 — Health Check Enrichment (Closed)
+
+Outbound sync probes added to GET /health response.
+
+Changes:
+- src/api/health.py [MODIFIED]:
+  - OutboundSyncProbeResult dataclass: provider, last_sync_at, failure_rate_7d, log_lag_seconds, status.
+  - probe_outbound_sync(client, providers, now): reads outbound_sync_log per provider. Derives status: idle (no entries) / ok / degraded (>20% failure rate OR >3600s lag) / error (DB failure). Best-effort, never raises. Injectable now for testing.
+  - run_health_checks_enriched(version, env, outbound_client, outbound_providers, now): wraps run_health_checks() + outbound probes. Adds checks['outbound'] with providers list. Propagates degraded to result.status. Skips probes if no client.
+  - _DEFAULT_PROVIDERS: ['airbnb','bookingcom','expedia','agoda','tripcom']
+- tests/test_health_enriched_contract.py [NEW]: 20 contract tests.
+
+Result: 4468 tests pass (4448 + 20 new). 2 pre-existing SQLite skips unchanged.
