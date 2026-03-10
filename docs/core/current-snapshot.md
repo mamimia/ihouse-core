@@ -1,12 +1,12 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 219 — Documentation Integrity Repair (closed)
+Phase 220 — CI/CD Pipeline Foundation (closed)
 
 ## Last Closed Phase
 Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
 
-Phase 219 — Documentation Integrity Repair (closed) — repaired missing phase-timeline + construction-log entries for Phases 211–218, updated live-system.md with 11 missing endpoints. All canonical docs synced.
+Phase 220 — CI/CD Pipeline Foundation (closed) — `.github/workflows/ci.yml` upgraded to 3-job pipeline (test/lint/smoke).
 
 ## System Status
 
@@ -306,7 +306,7 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 ## Next Phase
 
-Phase 220 — CI/CD Pipeline Foundation (next after Phase 219 closure).
+Phase 221 — Scheduled Job Runner (next).
 
 ## Tests
 

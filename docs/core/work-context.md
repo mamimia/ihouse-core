@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 219 — Documentation Integrity Repair (closed)
+Phase 220 — CI/CD Pipeline Foundation (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 219 closed. Next: Phase 220 — CI/CD Pipeline Foundation.
+Phase 220 closed. Next: Phase 221 — Scheduled Job Runner.
 
 ## Key Invariants (Locked — Do Not Change)
 

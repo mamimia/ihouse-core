@@ -2978,3 +2978,13 @@ Documentation-only phase. No source code changes.
 
 Tests: 5,179 (no code changes, docs-only phase). Exit 0.
 
+
+## Phase 220 — CI/CD Pipeline Foundation (2026-03-11)
+
+- `.github/workflows/ci.yml` — MODIFIED — Upgraded from 1-job to 3-job pipeline:
+  - `test` job: Python 3.12, pip cache (`cache: "pip"`), `IHOUSE_JWT_SECRET` env stub, e2e test ignores (test_booking_amended_e2e.py + test_e2e_integration_harness.py), `pytest -v --tb=short`.
+  - `lint` job: `ruff check src/ --output-format=github || true` + `ruff format src/ --check --diff || true`. Non-blocking report-only (no build failure until lint baseline is established).
+  - `smoke` job: `needs: test`, `if: ${{ secrets.IHOUSE_API_KEY != '' }}`. Boots FastAPI, polls `/health`, runs `scripts/dev/smoke_http.sh`. Secrets-guarded, transparent no-op for forks.
+
+Tests: 5,179 (no code changes). Exit 0.
+

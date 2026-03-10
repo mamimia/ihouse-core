@@ -4292,3 +4292,17 @@ Documentation-only phase. No source code changes. Full audit of append-only hist
 
 Tests: 5,179 (no code changes, docs-only phase). Exit 0.
 
+## Phase 220 — CI/CD Pipeline Foundation (Closed) — 2026-03-11
+
+GitHub Actions CI/CD pipeline established. `.github/workflows/ci.yml` upgraded to 3-job pipeline.
+
+**Job 1 — `test`:** Python 3.12, pip cache, `IHOUSE_JWT_SECRET` stub, excludes e2e tests (`test_booking_amended_e2e.py`, `test_e2e_integration_harness.py`) that require live Supabase secrets. `pytest -v --tb=short`.
+
+**Job 2 — `lint`:** `ruff check src/ --output-format=github` + `ruff format src/ --check --diff`. Non-blocking (`|| true`) — reports issues without failing CI until a clean lint baseline is established.
+
+**Job 3 — `smoke`:** HTTP smoke test (boots API, curls `/health`, runs `scripts/dev/smoke_http.sh`). Runs only after `test` job passes AND `IHOUSE_API_KEY` secret is configured in the repo. Fully secrets-guarded — transparent no-op for forks.
+
+Files: `.github/workflows/ci.yml` MODIFIED (3-job structure, was 1-job).
+
+Tests: 5,179 (no code changes). Exit 0.
+

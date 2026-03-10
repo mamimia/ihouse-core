@@ -122,6 +122,9 @@ Full system audit (Phases 210–217), documentation sync across all canonical do
 ### Phase 219 — Documentation Integrity Repair *(closed)*
 Repaired missing phase-timeline + construction-log entries for Phases 211–218. Updated live-system.md with 11 missing endpoints. All canonical docs synced. 0 new code files.
 
+### Phase 220 — CI/CD Pipeline Foundation *(closed)*
+`.github/workflows/ci.yml` upgraded to 3-job pipeline: `test` (pip cache, e2e ignores), `lint` (ruff, non-blocking), `smoke` (secrets-guarded HTTP). 0 new source files.
+
 
 ---
 
