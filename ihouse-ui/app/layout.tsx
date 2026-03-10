@@ -41,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               { label: 'Tasks', href: '/tasks', icon: '✓' },
               { label: 'Bookings', href: '/bookings', icon: '📅' },
               { label: 'Financial', href: '/financial', icon: '₿' },
+              { label: 'Owner', href: '/owner', icon: '🏠' },
               { label: 'Admin', href: '/admin', icon: '⚙' },
             ].map(({ label, href, icon }) => (
               <a key={href} href={href} style={{

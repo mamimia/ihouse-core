@@ -2420,3 +2420,13 @@ Changes:
 - tests/test_admin_settings_contract.py [NEW]: 15 contract tests.
 
 Result: 4420 tests pass (4405 + 15 new). 2 pre-existing SQLite skips unchanged.
+
+## Phase 170 — Owner Portal UI (Closed)
+
+Owner-facing revenue and payout dashboard. Role-scoped via Phase 165–166.
+
+Changes:
+- ihouse-ui/app/owner/page.tsx [NEW]: Owner Portal — portfolio summary (properties, total bookings, gross revenue, owner net), responsive property cards (gross/commission/net per property, booking count, Statement → link), statement slide-out drawer (summary table + per-booking line items with epistemic tier badges), month picker, payout timeline section (links to Financial Dashboard cashflow).
+- ihouse-ui/app/layout.tsx [MODIFIED]: Added Owner nav link (🏠).
+
+TypeScript: 0 errors. No backend tests (UI-only phase per spec).

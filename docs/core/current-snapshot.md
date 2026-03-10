@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 169 — Admin Settings UI (closed)
+Phase 170 — Owner Portal UI (closed)
 
 ## Last Closed Phase
-Phase 169 — Admin Settings UI: PATCH /admin/registry/providers/{provider} + ihouse-ui/app/admin/page.tsx + api.ts Provider/Permission types, 15 contract tests. Total: 4420 passing.
+Phase 170 — Owner Portal UI: ihouse-ui/app/owner/page.tsx — portfolio summary, property cards, statement drawer, month picker. Owner nav added. TypeScript clean. Tests: 4420 (unchanged — UI phase).
 
 ## System Status
 
