@@ -2406,3 +2406,17 @@ Changes:
 - tests/test_notification_dispatcher_contract.py [NEW]: 27 contract tests.
 
 Result: 4405 tests pass (4378 + 27 new). 2 pre-existing SQLite skips unchanged.
+
+## Phase 168 — Push Notification Foundation (Closed) [see above]
+
+## Phase 169 — Admin Settings UI (Closed)
+
+PATCH /admin/registry/providers/{provider} endpoint + Admin Settings Next.js page.
+
+Changes:
+- src/api/capability_registry_router.py [MODIFIED]: PATCH /admin/registry/providers/{provider} partial update (no tier required). Validates auth_method, tier (optional), boolean fields, rate_limit_per_min. 404 if provider not registered. Only known patchable fields accepted.
+- ihouse-ui/app/admin/page.tsx [NEW]: Admin Settings page — Provider Registry (live toggle for supports_api_write and supports_ical_push, rate/tier/auth display), User Permissions list with role chips, DLQ alert section. Calls api.getProviders(), api.getPermissions(), api.getDlq(), api.patchProvider().
+- ihouse-ui/lib/api.ts [MODIFIED]: Provider, ProviderListResponse, Permission, PermissionListResponse types. getProviders(), getPermissions(), patchProvider() API methods.
+- tests/test_admin_settings_contract.py [NEW]: 15 contract tests.
+
+Result: 4420 tests pass (4405 + 15 new). 2 pre-existing SQLite skips unchanged.

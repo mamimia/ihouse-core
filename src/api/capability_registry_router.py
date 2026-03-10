@@ -1,5 +1,6 @@
 """
 Phase 136 — Provider Capability Registry API
+Phase 169 — Admin Settings UI (PATCH /admin/registry/providers/{provider} added)
 
 Read-only + admin-upsert API for `provider_capability_registry`.
 
@@ -17,7 +18,8 @@ strategy to use for each provider.
 Endpoints:
     GET  /admin/registry/providers               — list all providers
     GET  /admin/registry/providers/{provider}    — single provider detail
-    PUT  /admin/registry/providers/{provider}    — upsert provider record (admin)
+    PUT  /admin/registry/providers/{provider}    — full upsert (admin)
+    PATCH /admin/registry/providers/{provider}   — partial update (Phase 169)
 
 Tiers:
     A — Full write API (api_first capable)
@@ -334,5 +336,143 @@ async def upsert_provider(
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "PUT /admin/registry/providers/%s error: %s", provider, exc,
+        )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# PATCH /admin/registry/providers/{provider}  (Phase 169)
+# ---------------------------------------------------------------------------
+
+_PATCH_ALLOWED_FIELDS = frozenset({
+    "is_active", "rate_limit_per_min", "auth_method", "notes",
+    "supports_api_write", "supports_ical_push", "supports_ical_pull",
+    "write_api_base_url",
+})
+
+
+@router.patch(
+    "/admin/registry/providers/{provider}",
+    tags=["registry"],
+    summary="Partially update provider capability record (Phase 169)",
+    description=(
+        "Apply a partial update to an existing provider capability record.\\n\\n"
+        "Unlike `PUT`, this endpoint does not require `tier` and only updates "
+        "the supplied fields. Useful for toggling `supports_api_write`, "
+        "adjusting `rate_limit_per_min`, or updating `notes`.\\n\\n"
+        "**404** if provider is not registered (use `PUT` to create).\\n\\n"
+        "Allowed fields: `is_active`, `rate_limit_per_min`, `auth_method`, `notes`, "
+        "`supports_api_write`, `supports_ical_push`, `supports_ical_pull`, `write_api_base_url`."
+    ),
+    responses={
+        200: {"description": "Updated provider record."},
+        400: {"description": "Invalid field value."},
+        401: {"description": "Missing or invalid JWT token."},
+        404: {"description": "Provider not registered."},
+        500: {"description": "Internal server error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def patch_provider(
+    provider: str,
+    body: Dict[str, Any],
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    PATCH /admin/registry/providers/{provider}
+
+    Partial update on an existing provider capability record.
+    Provider must already exist (404 if not). Does not require tier.
+    """
+    if not isinstance(body, dict) or not body:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "Request body must be a non-empty JSON object."},
+        )
+
+    # Validate auth_method if supplied
+    if "auth_method" in body and body["auth_method"] not in _VALID_AUTH_METHODS:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"'auth_method' must be one of: {sorted(_VALID_AUTH_METHODS)}"},
+        )
+
+    # Validate tier if supplied (optional in PATCH)
+    if "tier" in body and body["tier"] not in _VALID_TIERS:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"'tier' must be one of: {sorted(_VALID_TIERS)}"},
+        )
+
+    # Validate boolean fields
+    for bool_field in ("supports_api_write", "supports_ical_push", "supports_ical_pull"):
+        if bool_field in body and not isinstance(body[bool_field], bool):
+            return make_error_response(
+                status_code=400,
+                code=ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"'{bool_field}' must be a boolean."},
+            )
+
+    if "rate_limit_per_min" in body:
+        val = body["rate_limit_per_min"]
+        if not isinstance(val, int) or val < 0:
+            return make_error_response(
+                status_code=400,
+                code=ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "'rate_limit_per_min' must be a non-negative integer."},
+            )
+
+    # Only allow known patchable fields
+    update: Dict[str, Any] = {
+        k: v for k, v in body.items()
+        if k in _PATCH_ALLOWED_FIELDS or k == "tier"
+    }
+
+    if not update:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "No patchable fields supplied."},
+        )
+
+    provider_key = provider.lower().strip()
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # Check existence
+        check = (
+            db.table("provider_capability_registry")
+            .select("provider")
+            .eq("provider", provider_key)
+            .limit(1)
+            .execute()
+        )
+        if not (check.data or []):
+            return make_error_response(
+                status_code=404,
+                code="NOT_FOUND",
+                extra={"detail": f"Provider '{provider}' is not registered. Use PUT to create."},
+            )
+
+        result = (
+            db.table("provider_capability_registry")
+            .update(update)
+            .eq("provider", provider_key)
+            .execute()
+        )
+        rows: List[Dict[str, Any]] = result.data or []
+        if not rows:
+            return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+        return JSONResponse(status_code=200, content=_format_record(rows[0]))
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "PATCH /admin/registry/providers/%s error: %s", provider, exc
         )
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 167 — Manager Delegated Permissions (closed)
+Phase 169 — Admin Settings UI (closed)
 
 ## Last Closed Phase
-Phase 167 — Manager Delegated Permissions: PATCH /permissions/{user_id}/grant + /revoke, get_permission_flags() + has_permission() helpers, 37 contract tests. Total: 4378 passing.
+Phase 169 — Admin Settings UI: PATCH /admin/registry/providers/{provider} + ihouse-ui/app/admin/page.tsx + api.ts Provider/Permission types, 15 contract tests. Total: 4420 passing.
 
 ## System Status
 

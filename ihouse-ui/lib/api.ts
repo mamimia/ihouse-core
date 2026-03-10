@@ -1,5 +1,6 @@
 // Phase 153 — iHouse Core API client
 // Phase 163 — Financial Dashboard API methods added
+// Phase 169 — Admin Settings: getProviders, getPermissions, patchProvider
 // Typed fetch wrapper for all backend endpoints.
 // Base URL: NEXT_PUBLIC_API_URL env var (or http://localhost:8000 for dev).
 
@@ -217,6 +218,39 @@ export interface OwnerStatementResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 169 — Admin Settings types
+// ---------------------------------------------------------------------------
+
+export interface Provider {
+    provider: string;
+    tier: string;
+    supports_api_write: boolean;
+    supports_ical_push: boolean;
+    supports_ical_pull: boolean;
+    rate_limit_per_min: number;
+    auth_method: string;
+    notes: string | null;
+    updated_at: string | null;
+}
+
+export interface ProviderListResponse {
+    total: number;
+    providers: Provider[];
+}
+
+export interface Permission {
+    user_id: string;
+    role: string;
+    permissions: Record<string, unknown>;
+    created_at?: string;
+}
+
+export interface PermissionListResponse {
+    tenant_id: string;
+    permissions: Permission[];
+}
+
+// ---------------------------------------------------------------------------
 // API calls
 // ---------------------------------------------------------------------------
 
@@ -309,6 +343,22 @@ export const api = {
         if (managementFeePct) q.set("management_fee_pct", managementFeePct);
         return apiFetch(`/owner-statement/${encodeURIComponent(propertyId)}?${q}`);
     },
+
+    // Phase 169 — Admin Settings
+    getProviders: (): Promise<ProviderListResponse> =>
+        apiFetch("/admin/registry/providers"),
+
+    getPermissions: (): Promise<PermissionListResponse> =>
+        apiFetch("/permissions"),
+
+    patchProvider: (
+        provider: string,
+        updates: Record<string, unknown>,
+    ): Promise<Provider> =>
+        apiFetch(`/admin/registry/providers/${encodeURIComponent(provider)}`, {
+            method: "PATCH",
+            body: JSON.stringify(updates),
+        }),
 };
 
 // Phase 157 — Worker task types
