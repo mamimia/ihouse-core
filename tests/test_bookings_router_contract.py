@@ -131,11 +131,11 @@ class TestGetBooking200:
         assert resp.json()["version"] == 3
 
     def test_200_reads_booking_state_table(self) -> None:
-        """Verifies the endpoint queries booking_state, not event_log."""
+        """Verifies the endpoint queries booking_state (Phase 160: also queries booking_flags)."""
         db = _mock_db([_row()])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             _make_app().get("/bookings/bookingcom_res1")
-        db.table.assert_called_with("booking_state")
+        db.table.assert_any_call("booking_state")
 
 
 # ---------------------------------------------------------------------------

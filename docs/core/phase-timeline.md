@@ -3546,3 +3546,21 @@ Completed:
 - `tests/test_guest_profile_contract.py` — NEW — 49 contract tests (Groups A-Q)
 
 ⚠️ Migration applied manually via Supabase dashboard (apply_migration restricted).
+
+---
+
+## Phase 160 — Closed
+
+**Phase 160 — Booking Flag API**
+**Date closed:** 2026-03-10
+**Tests:** 4191 passing (4164 + 27 new). 2 pre-existing SQLite skips (unchanged).
+
+Goal: Operator annotations on bookings — VIP, disputed, needs-review flags, free-text note.
+
+Completed:
+- `migrations/phase_160_booking_flags.sql` — NEW — CREATE TABLE booking_flags, RLS, UNIQUE(booking_id, tenant_id), index
+- `src/api/bookings_router.py` — MODIFIED — (1) GET /bookings/{id} enriched with flags field (best-effort, None if no row); (2) PATCH /bookings/{id}/flags added (validates booleans, 404 on missing booking, upsert with on_conflict)
+- `tests/test_booking_flags_contract.py` — NEW — 27 contract tests (Groups A-M)
+- `tests/test_bookings_router_contract.py` — FIXED — test_200_reads_booking_state_table updated to assert_any_call since GET now also queries booking_flags
+
+⚠️ Migration applied manually via Supabase dashboard.

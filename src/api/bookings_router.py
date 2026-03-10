@@ -3,9 +3,13 @@ Phase 71 — Booking State Query API
 Phase 106 — Booking List Query API
 Phase 109 — Booking Date Range Search
 Phase 129 — Booking Search: source filter, check_out range, sort_by/sort_dir
+Phase 158 — Amendment History sub-endpoint
+Phase 160 — Booking Flags: PATCH /{id}/flags + GET enriched with flags
 
-GET /bookings/{booking_id}    — single booking state (Phase 71)
+GET /bookings/{booking_id}    — single booking state (Phase 71), with flags (Phase 160)
 GET /bookings                 — list bookings by tenant, with filters (106/109/129)
+GET /bookings/{booking_id}/amendments — amendment history (Phase 158)
+PATCH /bookings/{booking_id}/flags    — set operator flags (Phase 160)
 
 Filters (Phase 106): property_id, status, limit
 Filters (Phase 109 addition): check_in_from, check_in_to (ISO 8601 YYYY-MM-DD)
@@ -111,6 +115,31 @@ async def get_booking(
             )
 
         row = result.data[0]
+
+        # Phase 160: enrich with operator flags (best-effort — None if no flags row)
+        flags = None
+        try:
+            flags_result = (
+                db.table("booking_flags")
+                .select("*")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+            if flags_result.data:
+                fr = flags_result.data[0]
+                flags = {
+                    "is_vip":       fr.get("is_vip"),
+                    "is_disputed":  fr.get("is_disputed"),
+                    "needs_review": fr.get("needs_review"),
+                    "operator_note": fr.get("operator_note"),
+                    "flagged_by":   fr.get("flagged_by"),
+                    "updated_at":   fr.get("updated_at"),
+                }
+        except Exception:
+            pass  # best-effort — never block the booking response
+
         return JSONResponse(
             status_code=200,
             content={
@@ -125,6 +154,7 @@ async def get_booking(
                 "version": row.get("version"),
                 "created_at": row.get("created_at"),
                 "updated_at": row.get("updated_at"),
+                "flags": flags,
             },
         )
 
@@ -394,6 +424,140 @@ async def list_booking_amendments(
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "GET /bookings/%s/amendments error for tenant=%s: %s",
+            booking_id, tenant_id, exc,
+        )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# PATCH /bookings/{booking_id}/flags  (Phase 160)
+# ---------------------------------------------------------------------------
+
+_FLAG_BOOLEANS = frozenset({"is_vip", "is_disputed", "needs_review"})
+_FLAG_STRINGS  = frozenset({"operator_note", "flagged_by"})
+_ALL_FLAG_KEYS = _FLAG_BOOLEANS | _FLAG_STRINGS
+
+
+@router.patch(
+    "/bookings/{booking_id}/flags",
+    tags=["bookings"],
+    summary="Set operator flags on a booking (Phase 160)",
+    description=(
+        "Upserts the operator annotation row in `booking_flags` for a booking.\n\n"
+        "**Body fields (all optional):**\n"
+        "- `is_vip` (bool)\n"
+        "- `is_disputed` (bool)\n"
+        "- `needs_review` (bool)\n"
+        "- `operator_note` (string)\n"
+        "- `flagged_by` (string — username / operator ID)\n\n"
+        "**400** if no recognised flag fields are present.\n"
+        "**404** if the booking does not exist for this tenant.\n"
+        "**Idempotent:** repeated calls with same values are safe (upsert on_conflict)."
+    ),
+    responses={
+        200: {"description": "Flags upserted successfully."},
+        400: {"description": "No valid flag fields in request body."},
+        401: {"description": "Missing or invalid JWT."},
+        404: {"description": "Booking not found for this tenant."},
+        500: {"description": "Internal server error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def patch_booking_flags(
+    booking_id: str,
+    body: dict,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    PATCH /bookings/{booking_id}/flags
+
+    Upsert operator annotations on `booking_flags` table.
+    Tenant-isolated. Booking must exist for this tenant.
+    """
+    from datetime import datetime, timezone
+
+    # --- validate body has at least one recognised key ---
+    if not isinstance(body, dict):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "Request body must be a JSON object."},
+        )
+
+    recognised = {k: v for k, v in body.items() if k in _ALL_FLAG_KEYS}
+    if not recognised:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"Body must contain at least one of: {sorted(_ALL_FLAG_KEYS)}"},
+        )
+
+    # --- type checks for boolean flags ---
+    for key in _FLAG_BOOLEANS:
+        if key in body and not isinstance(body[key], bool):
+            return make_error_response(
+                status_code=400,
+                code=ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"'{key}' must be a boolean."},
+            )
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # Verify booking exists for this tenant
+        bk = (
+            db.table("booking_state")
+            .select("booking_id")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not (bk.data or []):
+            return make_error_response(
+                status_code=404,
+                code=ErrorCode.BOOKING_NOT_FOUND,
+                extra={"booking_id": booking_id},
+            )
+
+        # Build upsert payload
+        now = datetime.now(tz=timezone.utc).isoformat()
+        upsert_data: dict = {
+            "booking_id": booking_id,
+            "tenant_id":  tenant_id,
+            "updated_at": now,
+        }
+        for key in _ALL_FLAG_KEYS:
+            if key in body:
+                upsert_data[key] = body[key]
+
+        result = (
+            db.table("booking_flags")
+            .upsert(upsert_data, on_conflict="booking_id,tenant_id")
+            .execute()
+        )
+
+        saved = result.data[0] if (result.data or []) else upsert_data
+        return JSONResponse(
+            status_code=200,
+            content={
+                "booking_id":   booking_id,
+                "tenant_id":    tenant_id,
+                "flags": {
+                    "is_vip":       saved.get("is_vip"),
+                    "is_disputed":  saved.get("is_disputed"),
+                    "needs_review": saved.get("needs_review"),
+                    "operator_note": saved.get("operator_note"),
+                    "flagged_by":   saved.get("flagged_by"),
+                    "updated_at":   saved.get("updated_at", now),
+                },
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "PATCH /bookings/%s/flags error for tenant=%s: %s",
             booking_id, tenant_id, exc,
         )
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
