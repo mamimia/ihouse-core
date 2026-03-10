@@ -228,6 +228,9 @@ app.include_router(operations_router)
 from api.properties_router import router as properties_router  # noqa: E402  # Phase 156
 app.include_router(properties_router)
 
+from api.guest_profile_router import router as guest_profile_router  # noqa: E402  # Phase 159
+app.include_router(guest_profile_router)
+
 
 # ---------------------------------------------------------------------------
 # OpenAPI — inject BearerAuth security scheme (Phase 63)

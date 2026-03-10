@@ -197,6 +197,33 @@ def ingest_provider_event_with_dlq(
         except Exception:
             pass  # best-effort — never block the main response
 
+        # Phase 159: persist guest profile (PII) after BOOKING_CREATED (best-effort)
+        try:
+            from .guest_profile_extractor import extract_guest_profile
+            import os as _os
+            booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
+            if booking_id:
+                profile = extract_guest_profile(provider, payload)
+                if not profile.is_empty():
+                    from supabase import create_client as _create_client  # type: ignore[import]
+                    _db = _create_client(
+                        _os.environ["SUPABASE_URL"],
+                        _os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+                    )
+                    _db.table("guest_profile").upsert(
+                        {
+                            "booking_id":  booking_id,
+                            "tenant_id":   tenant_id,
+                            "guest_name":  profile.guest_name,
+                            "guest_email": profile.guest_email,
+                            "guest_phone": profile.guest_phone,
+                            "source":      profile.source or provider,
+                        },
+                        on_conflict="booking_id,tenant_id",
+                    ).execute()
+        except Exception:
+            pass  # best-effort — never block the main response
+
     # Phase 69: persist updated financial facts for BOOKING_AMENDED events (best-effort)
     if envelope.type == "BOOKING_AMENDED" and status == "APPLIED":
         try:

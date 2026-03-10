@@ -3526,3 +3526,23 @@ Completed:
 - `ihouse-ui/app/bookings/page.tsx` — NEW — booking list, filterable by property/status/source/check-in range, OTA colour chips, table layout, click-to-detail
 - `ihouse-ui/app/bookings/[id]/page.tsx` — NEW — 5-tab booking detail (Overview, Sync Log, Tasks, Financial, History), lazy-loaded panels, amendment timeline, status chips
 
+
+---
+
+## Phase 159 — Closed
+
+**Phase 159 — Guest Profile Normalisation**
+**Date closed:** 2026-03-10
+**Tests:** 4164 passing (4115 + 49 new). 2 pre-existing SQLite skips (unchanged).
+
+Goal: Extract canonical guest PII from OTA payloads. Store in guest_profile table, never in event_log.
+
+Completed:
+- `migrations/phase_159_guest_profile.sql` — NEW — CREATE TABLE guest_profile, RLS, UNIQUE(booking_id, tenant_id), index
+- `src/adapters/ota/guest_profile_extractor.py` — NEW — GuestProfile dataclass, per-provider extractors (Airbnb, Booking.com, Expedia, VRBO, generic fallback), never raises
+- `src/adapters/ota/service.py` — MODIFIED — best-effort guest profile upsert after BOOKING_CREATED APPLIED (Phase 159 block)
+- `src/api/guest_profile_router.py` — NEW — GET /bookings/{id}/guest-profile, tenant-scoped, 404 on missing, never reads event_log
+- `src/main.py` — MODIFIED — registered guest_profile_router
+- `tests/test_guest_profile_contract.py` — NEW — 49 contract tests (Groups A-Q)
+
+⚠️ Migration applied manually via Supabase dashboard (apply_migration restricted).
