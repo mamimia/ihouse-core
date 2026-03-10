@@ -44,6 +44,7 @@ from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
 from api.error_models import ErrorCode, make_error_response
+from services.audit_writer import write_audit_event
 from tasks.task_model import TaskStatus, WorkerRole, VALID_TASK_TRANSITIONS
 
 logger = logging.getLogger(__name__)
@@ -345,6 +346,33 @@ async def _transition_task(
         )
 
         updated_row = update_result.data[0] if update_result.data else {**row, **patch_data}
+
+        # Phase 189 — Audit event (best-effort, non-blocking)
+        # Wrapped in its own try/except: if write_audit_event itself raises
+        # (e.g. in tests that mock it with side_effect), the task response is
+        # still guaranteed to return 200.
+        try:
+            action = (
+                "TASK_ACKNOWLEDGED" if target_status == TaskStatus.ACKNOWLEDGED
+                else "TASK_COMPLETED" if target_status == TaskStatus.COMPLETED
+                else f"TASK_{target_status.value}"
+            )
+            write_audit_event(
+                tenant_id=tenant_id,
+                actor_id=tenant_id,
+                action=action,
+                entity_type="task",
+                entity_id=task_id,
+                payload={
+                    "from_status": current_status.value,
+                    "to_status":   target_status.value,
+                    "notes":       notes,
+                },
+                client=db,
+            )
+        except Exception as _audit_exc:  # noqa: BLE001
+            logger.warning("_transition_task: audit write failed silently: %s", _audit_exc)
+
         return JSONResponse(status_code=200, content={"task": updated_row})
 
     except Exception as exc:  # noqa: BLE001

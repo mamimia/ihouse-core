@@ -14,6 +14,7 @@ from .klook import KlookAdapter
 from .despegar import DespegarAdapter
 from .hotelbeds import HotelbedsAdapter
 from .rakuten import RakutenAdapter
+from .hostelworld import HostelworldAdapter  # Phase 195: Hostelworld global hostel OTA
 
 
 _ADAPTERS: Dict[str, OTAAdapter] = {
@@ -30,6 +31,7 @@ _ADAPTERS: Dict[str, OTAAdapter] = {
     "despegar": DespegarAdapter(),
     "hotelbeds": HotelbedsAdapter(),
     "rakuten":   RakutenAdapter(),    # Phase 187: Japan market
+    "hostelworld": HostelworldAdapter(),
 }
 
 

@@ -107,6 +107,21 @@ def _strip_hotelbeds_prefix(ref: str) -> str:
         return ref[3:]
     return ref
 
+
+def _strip_hostelworld_prefix(ref: str) -> str:
+    """Strip HW- prefix from Hostelworld booking reservation IDs.
+
+    Phase 195 — Hostelworld uses HW- prefix.
+
+    Examples:
+      'HW-2025-0081234' -> '2025-0081234'
+      'hw-eu-99001234'  -> 'eu-99001234'
+    """
+    lowered = ref.lower()
+    if lowered.startswith("hw-"):
+        return lowered[3:]
+    return lowered
+
 # Registry: provider → list of extra normalization steps after base
 _PROVIDER_RULES: dict[str, list] = {
     "bookingcom": [_strip_bookingcom_prefix],
@@ -121,7 +136,8 @@ _PROVIDER_RULES: dict[str, list] = {
     "klook":      [_strip_klook_prefix],       # Klook booking refs prefixed with KL-
     "despegar":   [_strip_despegar_prefix],    # Despegar reservation codes prefixed with DSP-
     "hotelbeds":  [_strip_hotelbeds_prefix],    # Hotelbeds voucher refs prefixed with HB-
-    "rakuten":    [_strip_rakuten_prefix],      # Phase 187: Rakuten Travel booking refs prefixed with RAK-
+    "rakuten":      [_strip_rakuten_prefix],      # Phase 187: Rakuten Travel booking refs prefixed with RAK-
+    "hostelworld":  [_strip_hostelworld_prefix],  # Phase 195: Hostelworld booking refs prefixed with HW-
 }
 
 

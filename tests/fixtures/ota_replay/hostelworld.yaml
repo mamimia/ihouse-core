@@ -1,0 +1,33 @@
+# Phase 195 — Hostelworld OTA replay fixture
+# Used by contract tests Group G to validate full round-trip normalization.
+
+provider: hostelworld
+
+events:
+  - event_type: BOOKING_CREATED
+    reservation_id: "HW-2025-0081234"
+    property_id: "HW-PROP-TH-007"
+    event_id: "evt-hw-create-0081234"
+    check_in: "2026-04-10"
+    check_out: "2026-04-14"
+    guest_count: 2
+    total_price: "180.00"
+    hostelworld_fee: "27.00"
+    net_price: "153.00"
+    currency: "EUR"
+    occurred_at: "2026-03-10T08:00:00"
+    tenant_id: "tenant-bkk-01"
+
+  - event_type: BOOKING_CANCELLED
+    reservation_id: "HW-2025-0081235"
+    property_id: "HW-PROP-TH-007"
+    event_id: "evt-hw-cancel-0081235"
+    check_in: "2026-05-01"
+    check_out: "2026-05-05"
+    guest_count: 1
+    total_price: "90.00"
+    hostelworld_fee: "13.50"
+    net_price: "76.50"
+    currency: "EUR"
+    occurred_at: "2026-03-10T09:00:00"
+    tenant_id: "tenant-bkk-01"

@@ -37,6 +37,17 @@ async function apiFetch<T>(path: string): Promise<T> {
     return body;
 }
 
+async function apiFetchMut<T>(method: string, path: string, bodyObj?: unknown): Promise<T> {
+    const resp = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+        ...(bodyObj !== undefined ? { body: JSON.stringify(bodyObj) } : {}),
+    });
+    const body = await resp.json();
+    if (!resp.ok) throw new Error(body?.error ?? `HTTP ${resp.status}`);
+    return body;
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -53,6 +64,7 @@ interface BookingState {
     version: number | null;
     created_at: string | null;
     updated_at: string | null;
+    guest_id: string | null;  // Phase 194 — nullable guest link
 }
 
 interface OutboundLogEntry {
@@ -335,6 +347,99 @@ function HistoryPanel({ booking_id }: { booking_id: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Guest Link Panel (Phase 194)
+// ---------------------------------------------------------------------------
+
+function GuestLinkPanel({ booking_id, initial_guest_id }: { booking_id: string; initial_guest_id: string | null }) {
+    const [guestId, setGuestId] = useState<string | null>(initial_guest_id);
+    const [input, setInput] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+    const flash = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 3000); };
+
+    const link = async () => {
+        if (!input.trim()) { setErr('Enter a guest UUID'); return; }
+        setSaving(true); setErr(null);
+        try {
+            const res = await apiFetchMut<{ guest_id: string; guest_name: string; linked: boolean }>(
+                'POST', `/bookings/${booking_id}/link-guest`, { guest_id: input.trim() }
+            );
+            setGuestId(res.guest_id);
+            setInput('');
+            flash(`Linked to: ${res.guest_name}`);
+        } catch (e) {
+            setErr(e instanceof Error ? e.message : 'Failed to link guest');
+        } finally { setSaving(false); }
+    };
+
+    const unlink = async () => {
+        setSaving(true); setErr(null);
+        try {
+            await apiFetchMut('DELETE', `/bookings/${booking_id}/link-guest`);
+            setGuestId(null);
+            flash('Guest unlinked');
+        } catch (e) {
+            setErr(e instanceof Error ? e.message : 'Failed to unlink');
+        } finally { setSaving(false); }
+    };
+
+    return (
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-5)', marginTop: 'var(--space-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                <span style={{ fontSize: '1.1em' }}>👤</span>
+                <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>Guest Link</span>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginLeft: 2 }}>(best-effort annotation)</span>
+            </div>
+
+            {successMsg && (
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ok)', background: 'rgba(16,185,129,0.08)', borderRadius: 'var(--radius-md)', padding: '6px 10px', marginBottom: 'var(--space-3)' }}>
+                    ✓ {successMsg}
+                </div>
+            )}
+            {err && (
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)', background: 'rgba(239,68,68,0.08)', borderRadius: 'var(--radius-md)', padding: '6px 10px', marginBottom: 'var(--space-3)' }}>
+                    ⚠ {err}
+                </div>
+            )}
+
+            {guestId ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                    <div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Linked Guest</div>
+                        <a href={`/guests/${guestId}`} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--color-primary)', textDecoration: 'none' }}>
+                            {guestId} →
+                        </a>
+                    </div>
+                    <button
+                        id="unlink-guest-btn"
+                        onClick={unlink} disabled={saving}
+                        style={{ padding: '6px 14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger)', fontWeight: 600, fontSize: 'var(--text-xs)', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}
+                    >{saving ? 'Unlinking…' : 'Unlink Guest'}</button>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                        id="link-guest-input"
+                        value={input}
+                        onChange={e => { setInput(e.target.value); setErr(null); }}
+                        placeholder="Guest UUID…"
+                        style={{ flex: 1, minWidth: 240, padding: '7px 10px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-mono)' }}
+                    />
+                    <button
+                        id="link-guest-btn"
+                        onClick={link} disabled={saving}
+                        style={{ padding: '7px 18px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: 'var(--text-sm)', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, whiteSpace: 'nowrap' }}
+                    >{saving ? 'Linking…' : 'Link Guest'}</button>
+                    <a href="/guests" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', textDecoration: 'none' }}>Browse guests →</a>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Loading skeleton
 // ---------------------------------------------------------------------------
 
@@ -452,6 +557,9 @@ export default function BookingDetailPage() {
                         {activeTab === 'financial' && <FinancialPanel booking_id={booking.booking_id} />}
                         {activeTab === 'history' && <HistoryPanel booking_id={booking.booking_id} />}
                     </div>
+
+                    {/* Guest Link panel — Phase 194 */}
+                    <GuestLinkPanel booking_id={booking.booking_id} initial_guest_id={booking.guest_id ?? null} />
                 </div>
             )}
         </div>

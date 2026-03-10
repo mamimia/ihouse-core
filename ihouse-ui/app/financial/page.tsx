@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api } from '../../lib/api';
+import { api, CurrencyOverviewRow } from '../../lib/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -336,6 +336,134 @@ function LifecycleBar({ distribution, total }: { distribution: Record<string, nu
 // Main page
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Portfolio Overview component (Phase 191)
+// ---------------------------------------------------------------------------
+
+function PortfolioOverview({ rows, loading }: { rows: CurrencyOverviewRow[]; loading: boolean }) {
+    if (loading) {
+        return (
+            <div style={{
+                display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 'var(--space-5) var(--space-6)',
+            }}>
+                {[1, 2, 3].map(i => (
+                    <div key={i} style={{ height: 36, background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', animation: 'shimmer 1.4s infinite' }} />
+                ))}
+            </div>
+        );
+    }
+    if (!rows.length) {
+        return (
+            <div style={{
+                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-lg)', padding: 'var(--space-8)',
+            }}>
+                <EmptyState label="No multi-currency data for this period." />
+            </div>
+        );
+    }
+
+    // For bar width: normalise against largest gross
+    const maxGross = Math.max(...rows.map(r => parseFloat(r.gross_total) || 0)) || 1;
+
+    const CCY_COLOURS: Record<string, string> = {
+        THB: '#f59e0b', USD: '#3b82f6', EUR: '#6366f1', GBP: '#8b5cf6',
+        JPY: '#ec4899', SGD: '#14b8a6', AUD: '#22c55e', CNY: '#ef4444',
+    };
+
+    return (
+        <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            overflow: 'hidden',
+        }}>
+            {/* Table header */}
+            <div style={{
+                display: 'grid', gridTemplateColumns: '70px 1fr 130px 130px 110px 80px',
+                gap: 'var(--space-4)',
+                padding: 'var(--space-3) var(--space-5)',
+                background: 'var(--color-surface-2)',
+                borderBottom: '1px solid var(--color-border)',
+            }}>
+                {['Currency', 'Revenue bar', 'Gross', 'Net', 'Avg Commission', 'Bookings'].map(h => (
+                    <span key={h} style={{
+                        fontSize: 'var(--text-xs)', fontWeight: 600,
+                        color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                    }}>{h}</span>
+                ))}
+            </div>
+
+            {/* Rows */}
+            {rows.map(r => {
+                const pct = ((parseFloat(r.gross_total) || 0) / maxGross) * 100;
+                const col = CCY_COLOURS[r.currency] ?? '#6b7280';
+                return (
+                    <div key={r.currency} style={{
+                        display: 'grid', gridTemplateColumns: '70px 1fr 130px 130px 110px 80px',
+                        gap: 'var(--space-4)',
+                        padding: 'var(--space-3) var(--space-5)',
+                        borderBottom: '1px solid var(--color-border)',
+                        alignItems: 'center',
+                        transition: 'background var(--transition-fast)',
+                    }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-2)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                        {/* Currency badge */}
+                        <span style={{
+                            fontSize: 'var(--text-xs)', fontWeight: 700,
+                            padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                            background: col + '22', color: col,
+                            fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
+                        }}>{r.currency}</span>
+
+                        {/* Mini bar */}
+                        <div style={{ position: 'relative', height: 8, background: 'var(--color-surface-3)', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{
+                                position: 'absolute', top: 0, left: 0, bottom: 0,
+                                width: `${pct}%`, background: col,
+                                borderRadius: 4, transition: 'width .5s ease',
+                            }} />
+                        </div>
+
+                        {/* Gross */}
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                            {parseFloat(r.gross_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+
+                        {/* Net */}
+                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ok)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                            {parseFloat(r.net_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+
+                        {/* Avg commission rate */}
+                        <span style={{ textAlign: 'right' }}>
+                            {r.avg_commission_rate !== null
+                                ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, background: '#f59e0b22', color: '#f59e0b', padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>{r.avg_commission_rate}%</span>
+                                : <span style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)' }}>—</span>
+                            }
+                        </span>
+
+                        {/* Booking count */}
+                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                            {r.booking_count}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function FinancialDashboardPage() {
     const [period, setPeriod] = useState<string>(today());
     const [currency, setCurrency] = useState<string>('USD');
@@ -345,6 +473,7 @@ export default function FinancialDashboardPage() {
     const [byProperty, setByProperty] = useState<PropertyData | null>(null);
     const [lifecycle, setLifecycle] = useState<LifecycleData | null>(null);
     const [recon, setRecon] = useState<ReconciliationData | null>(null);
+    const [overview, setOverview] = useState<CurrencyOverviewRow[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -353,12 +482,13 @@ export default function FinancialDashboardPage() {
         setLoading(true);
         setError(null);
         try {
-            const [sumRes, provRes, propRes, lcRes, recRes] = await Promise.allSettled([
+            const [sumRes, provRes, propRes, lcRes, recRes, ovRes] = await Promise.allSettled([
                 api.getFinancialSummary(p, cur),
                 api.getFinancialByProvider(p, cur),
                 api.getFinancialByProperty(p, cur),
                 api.getLifecycleDistribution(p),
                 api.getReconciliation(p),
+                api.getMultiCurrencyOverview(p),
             ]);
 
             if (sumRes.status === 'fulfilled') setSummary(sumRes.value as SummaryData);
@@ -366,6 +496,7 @@ export default function FinancialDashboardPage() {
             if (propRes.status === 'fulfilled') setByProperty(propRes.value as PropertyData);
             if (lcRes.status === 'fulfilled') setLifecycle(lcRes.value as LifecycleData);
             if (recRes.status === 'fulfilled') setRecon(recRes.value as ReconciliationData);
+            if (ovRes.status === 'fulfilled') setOverview(ovRes.value.currencies);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : 'Unexpected error');
         } finally {
@@ -504,6 +635,15 @@ export default function FinancialDashboardPage() {
                     </span>
                 </div>
             )}
+
+            {/* ── Section 0: Portfolio Overview (Phase 191) ── */}
+            <div className="fin-section" style={{ marginBottom: 'var(--space-8)' }}>
+                <SectionHeader
+                    title="Portfolio Overview"
+                    sub="All currencies · sorted by gross revenue · each currency independent"
+                />
+                <PortfolioOverview rows={overview} loading={loading} />
+            </div>
 
             {/* ── Section 1: Summary Bar ── */}
             <div className="fin-section" style={{ marginBottom: 'var(--space-8)' }}>

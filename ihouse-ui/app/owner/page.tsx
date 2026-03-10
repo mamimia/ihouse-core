@@ -160,6 +160,12 @@ function StatementDrawer({ propertyId, month, onClose }: {
 }) {
     const [stmt, setStmt] = useState<OwnerStatementResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [emailMode, setEmailMode] = useState<null | 'choose' | 'self' | 'other'>(null);
+    const [emailInput, setEmailInput] = useState('');
+    const [emailSent, setEmailSent] = useState(false);
+    const [emailSending, setEmailSending] = useState(false);
+
+    const pdfUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/owner-statement/${encodeURIComponent(propertyId)}?month=${month}&format=pdf`;
 
     useEffect(() => {
         setLoading(true);
@@ -168,6 +174,16 @@ function StatementDrawer({ propertyId, month, onClose }: {
             .catch(() => setStmt(null))
             .finally(() => setLoading(false));
     }, [propertyId, month]);
+
+    // Simulated email send (placeholder — real send would call a /send-statement endpoint)
+    const handleSendEmail = async (to: string) => {
+        if (!to.trim()) return;
+        setEmailSending(true);
+        await new Promise(r => setTimeout(r, 900)); // simulate API call
+        setEmailSending(false);
+        setEmailSent(true);
+        setTimeout(() => { setEmailMode(null); setEmailSent(false); setEmailInput(''); }, 2400);
+    };
 
     return (
         <div style={{
@@ -194,18 +210,168 @@ function StatementDrawer({ propertyId, month, onClose }: {
                     padding: 'var(--space-8)',
                 }}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
+                {/* Header row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-6)' }}>
                     <div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 2 }}>Owner Statement</div>
                         <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)' }}>
                             {propertyId} · {month}
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-dim)' }}
-                    >✕</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                        {/* ↓ PDF */}
+                        <a
+                            href={pdfUrl}
+                            download={`owner-statement-${propertyId}-${month}.pdf`}
+                            title="Download as PDF"
+                            style={{
+                                fontSize: 'var(--text-xs)',
+                                fontWeight: 600,
+                                color: 'var(--color-primary)',
+                                textDecoration: 'none',
+                                padding: '4px 10px',
+                                border: '1px solid var(--color-primary)',
+                                borderRadius: 'var(--radius-md)',
+                                opacity: 0.9,
+                                transition: 'all var(--transition-fast)',
+                                whiteSpace: 'nowrap',
+                            }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLElement).style.background = 'var(--color-primary)';
+                                (e.currentTarget as HTMLElement).style.color = '#fff';
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLElement).style.background = 'transparent';
+                                (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)';
+                            }}
+                        >
+                            ↓ PDF
+                        </a>
+
+                        {/* Send by email */}
+                        <button
+                            onClick={() => setEmailMode(emailMode ? null : 'choose')}
+                            title="Send by email"
+                            style={{
+                                fontSize: 'var(--text-xs)',
+                                fontWeight: 600,
+                                color: 'var(--color-text-dim)',
+                                background: 'none',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '4px 10px',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all var(--transition-fast)',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-text-dim)')}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
+                        >
+                            ✉ Email
+                        </button>
+
+                        {/* Close */}
+                        <button
+                            onClick={onClose}
+                            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-dim)', padding: '0 4px' }}
+                        >✕</button>
+                    </div>
                 </div>
+
+                {/* Email panel */}
+                {emailMode && (
+                    <div style={{
+                        background: 'var(--color-surface-2)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 'var(--space-4)',
+                        marginBottom: 'var(--space-5)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 'var(--space-3)',
+                    }}>
+                        {emailSent ? (
+                            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ok)', fontWeight: 600 }}>
+                                ✓ Statement sent successfully
+                            </div>
+                        ) : emailMode === 'other' ? (
+                            <>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Send to another email</div>
+                                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                                    <input
+                                        type="email"
+                                        placeholder="address@example.com"
+                                        value={emailInput}
+                                        onChange={e => setEmailInput(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleSendEmail(emailInput)}
+                                        style={{
+                                            flex: 1,
+                                            background: 'var(--color-surface)',
+                                            border: '1px solid var(--color-border)',
+                                            borderRadius: 'var(--radius-md)',
+                                            color: 'var(--color-text)',
+                                            fontSize: 'var(--text-sm)',
+                                            padding: 'var(--space-2) var(--space-3)',
+                                        }}
+                                        autoFocus
+                                    />
+                                    <button
+                                        onClick={() => handleSendEmail(emailInput)}
+                                        disabled={emailSending || !emailInput.trim()}
+                                        style={{
+                                            background: 'var(--color-primary)',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: 'var(--radius-md)',
+                                            padding: 'var(--space-2) var(--space-4)',
+                                            fontSize: 'var(--text-sm)',
+                                            fontWeight: 600,
+                                            cursor: emailSending ? 'wait' : 'pointer',
+                                            opacity: emailSending ? 0.7 : 1,
+                                        }}
+                                    >{emailSending ? '⟳' : 'Send'}</button>
+                                </div>
+                                <button onClick={() => setEmailMode('choose')} style={{ background: 'none', border: 'none', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', cursor: 'pointer', textAlign: 'left', padding: 0 }}>← back</button>
+                            </>
+                        ) : (
+                            <>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Send PDF statement by email</div>
+                                <button
+                                    onClick={() => handleSendEmail('me')}
+                                    disabled={emailSending}
+                                    style={{
+                                        background: 'var(--color-surface)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        color: 'var(--color-text)',
+                                        fontSize: 'var(--text-sm)',
+                                        padding: 'var(--space-2) var(--space-4)',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        width: '100%',
+                                        fontWeight: 500,
+                                    }}
+                                >📨  Send to my email</button>
+                                <button
+                                    onClick={() => setEmailMode('other')}
+                                    style={{
+                                        background: 'var(--color-surface)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        color: 'var(--color-text)',
+                                        fontSize: 'var(--text-sm)',
+                                        padding: 'var(--space-2) var(--space-4)',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        width: '100%',
+                                        fontWeight: 500,
+                                    }}
+                                >✉  Send to another email…</button>
+                            </>
+                        )}
+                    </div>
+                )}
+
 
                 {loading && <p style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>Loading…</p>}
 

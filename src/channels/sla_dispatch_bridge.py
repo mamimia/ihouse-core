@@ -1,5 +1,6 @@
 """
 Phase 177 — SLA→Dispatcher Bridge
+Phase 196 patch — Per-Worker Channel Architecture
 
 Connects the output of sla_engine.evaluate() (EscalationResult.actions)
 to notification_dispatcher.dispatch_notification().
@@ -13,6 +14,12 @@ Architecture:
           2. Build a NotificationMessage from the action fields
           3. Call dispatch_notification for each resolved user
         Returns list[BridgeResult] — one per action.
+
+Per-worker channel routing:
+    WhatsApp, LINE, Telegram routing is determined by each worker's  
+    notification_channels registration, not by a global fallback chain.
+    The bridge simply calls dispatch_notification; the dispatcher reads
+    the worker's registered channel_type and routes accordingly.
 
 Invariants:
     - sla_engine.py is NOT modified (remains pure/no-side-effects).
@@ -209,3 +216,4 @@ def dispatch_escalations(
         ))
 
     return bridge_results
+

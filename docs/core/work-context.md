@@ -2,103 +2,97 @@
 
 ## Current Active Phase
 
-Phase 187 — Rakuten Travel Adapter (closed)
+Phase 197 — Platform Checkpoint II (closed)
 
 ## Last Closed Phase
 
-Phase 187 — RakutenAdapter for Japan market. RAK- prefix stripping, hotel_code→property_id, JPY primary. booking_created/cancelled/modified events in semantics.py. _extract_rakuten financial extractor with net derivation. registry + all helper hooks. 34 tests. 4,420 passing.
+Phase 197 — Platform Checkpoint II — docs sync, handoff written, ZIP created. Full audit of all canonical docs. Current snapshot rewritten to reflect true Phase 176–197 state. next-phase protocol documented in handoff.
 
 ## Current Objective
 
-**Phase 188 — PDF Owner Statements** — GET /owner-statement/{id}?format=pdf. Lightweight PDF library (reportlab). PDF includes property name, month, line items, fee breakdown, owner net total. Owner Portal /owner gets download button.
+**The next conversation must follow the Phase 197 handoff protocol.**
+See `releases/handoffs/handoff_to_new_chat Phase-197.md` — read it first.
 
+## What Was Done Since Platform Checkpoint I (Phase 175)
 
-## Roadmap Direction (Phase 149 → 175)
+| Phase | Feature | Key Files |
+|-------|---------|-----------|
+| 176 | Outbound Sync Auto-Trigger (BOOKING_CREATED) | `outbound_sync_trigger.py`, `service.py` |
+| 177 | SLA→Dispatcher Bridge | `src/channels/sla_dispatch_bridge.py` |
+| 178–183 | Notification Delivery Writer + Channel Infra | `src/channels/notification_delivery_writer.py` |
+| 188 | PDF Owner Statements | `src/api/owner_statement_router.py` (format=pdf), `reportlab` |
+| 189 | Booking Mutation Audit Events | `src/services/audit_writer.py`, `src/api/audit_router.py` |
+| 190 | Manager Activity Feed UI | `ihouse-ui/app/manager/page.tsx` |
+| 191 | Multi-Currency Financial Overview | `GET /financial/multi-currency-overview` |
+| 192 | Guest Profile Foundation | `src/api/guests_router.py`, `guests` Supabase table |
+| 193 | Guest Profile UI | `ihouse-ui/app/guests/page.tsx`, `/guests/[id]` |
+| 194 | Booking→Guest Link | `src/api/booking_guest_link_router.py`, `guest_id` on `booking_state` |
+| 195 | Hostelworld Adapter | `src/adapters/ota/hostelworld.py` (14th OTA adapter) |
+| 196 | WhatsApp Escalation Channel | `src/channels/whatsapp_escalation.py`, `src/api/whatsapp_router.py` |
+| 196-patch | Per-Worker Channel Architecture | `notification_dispatcher.py` CHANNEL_WHATSAPP/TELEGRAM/SMS. `sla_dispatch_bridge.py` global chain removed. |
+| 197 | Platform Checkpoint II | All canonical docs updated, handoff written, ZIP created. |
 
-**Revised plan:** `docs/core/planning/phases-150-175.md`  
-**Key change:** Backend/UI/Backend/UI rhythm introduced. 8 UI phases (Next.js) across Phases 152–170.  
-**Supersedes:** `phases-141-190.md` Phases 150–175 section.  
-**Rhythm:** Backend A (150–151) → UI 1 (152–153) → Backend B (154–156) → UI 2 (157–158) → Backend C (159–162) → UI 3 (163–164) → Backend D (165–168) → UI 4 (169–170) → Backend E (171–174) → Milestone (175)
+## Roadmap Direction (Phase 198+)
 
-## What Was Done in This Session (Phases 118–122)
+The next conversation is responsible for:
+1. Reading the full system (Layer A → construction-log latest)
+2. Proposing 20 next phases with rationale
+3. Getting user approval
+4. Only then executing
 
-| Phase | Feature | Files |
-|-------|---------|-------|
-| 118 | Financial Dashboard API | `src/api/financial_dashboard_router.py`, `tests/test_financial_dashboard_router_contract.py` |
-| 119 | Reconciliation Inbox API | `src/api/reconciliation_router.py`, `tests/test_reconciliation_router_contract.py` |
-| 120 | Cashflow / Payout Timeline | `src/api/cashflow_router.py`, `tests/test_cashflow_router_contract.py` |
-| 121 | Owner Statement Generator (Ring 4) | `src/api/owner_statement_router.py`, `tests/test_owner_statement_phase121_contract.py` |
-| 122 | OTA Financial Health Comparison | `src/api/ota_comparison_router.py`, `tests/test_ota_comparison_router_contract.py` |
-| 123 | Worker-Facing Task Surface | `src/api/worker_router.py`, `tests/test_worker_router_contract.py` |
-| 124 | LINE Escalation Channel | `src/channels/line_escalation.py`, `src/api/line_webhook_router.py`, `tests/test_line_*` |
-| 125 | Hotelbeds Adapter (Tier 3 B2B) | `src/adapters/ota/hotelbeds.py`, `tests/test_hotelbeds_adapter_contract.py` |
-| 126 | Availability Projection | `src/api/availability_router.py`, `tests/test_availability_router_contract.py` |
-| 127 | Integration Health Dashboard | `src/api/integration_health_router.py`, `tests/test_integration_health_router_contract.py` |
-| 128 | Conflict Center | `src/api/conflicts_router.py`, `tests/test_conflicts_router_contract.py` |
-| 129 | Booking Search Enhancement | `src/api/bookings_router.py`, `tests/test_booking_search_contract.py` |
-| 130 | Properties Summary Dashboard | `src/api/properties_summary_router.py`, `tests/test_properties_summary_router_contract.py` |
-| 131 | DLQ Inspector | `src/api/dlq_router.py`, `tests/test_dlq_router_contract.py` |
-| 132 | Booking Audit Trail | `src/api/booking_history_router.py`, `tests/test_booking_history_contract.py` |
-| 133 | Buffer Inspector | `src/api/buffer_router.py`, `tests/test_buffer_router_contract.py` |
-| 135 | Property-Channel Map Foundation | `migrations/phase_135_property_channel_map.sql`, `src/api/channel_map_router.py`, `tests/test_channel_map_contract.py` |
-| 136 | Provider Capability Registry | `migrations/phase_136_provider_capability_registry.sql`, `src/api/capability_registry_router.py`, `tests/test_capability_registry_contract.py` |
-| 137 | Outbound Sync Trigger | `src/services/outbound_sync_trigger.py`, `src/api/sync_trigger_router.py`, `tests/test_sync_trigger_contract.py` |
-| 138 | Outbound Executor | `src/services/outbound_executor.py`, `src/api/outbound_executor_router.py`, `tests/test_outbound_executor_contract.py` |
-| 139 | Real Outbound Adapters | `src/adapters/outbound/__init__.py`, `airbnb_adapter.py`, `bookingcom_adapter.py`, `expedia_vrbo_adapter.py`, `ical_push_adapter.py`, `registry.py`, `tests/test_outbound_adapters_contract.py` |
-| 149 | RFC 5545 VCALENDAR Compliance | `src/adapters/outbound/ical_push_adapter.py` (CALSCALE, METHOD, DTSTAMP, SEQUENCE:0 in template), `tests/test_rfc5545_compliance_contract.py`, `tests/test_ical_date_injection_contract.py` (PRODID assertion updated) |
-| docs | Outbound Sync Architecture | `docs/core/planning/outbound-sync-layer.md`, appended to `future-improvements.md` |
+See handoff for full detail on protocol.
 
 ## Key Invariants (Locked — Do Not Change)
 
 - `apply_envelope` is the single write authority — no adapter reads/writes booking_state directly
-- `event_log` is append-only
+- `event_log` is append-only — no updates, no deletes ever
 - `booking_id = "{source}_{reservation_ref}"` — deterministic, canonical (Phase 36)
-- `reservation_ref` is normalized by `normalize_reservation_ref()` before use (Phase 68)
-- HTTP endpoint routes through `ingest_provider_event` → pipeline → `IngestAPI.append_event` → `CoreExecutor.execute` → `apply_envelope`
-- `tenant_id` comes from verified JWT `sub` claim, NOT from payload body (Phase 61+)
-- `booking_state` is an operational read model ONLY — must never contain financial calculations (Phase 62+ invariant)
+- `reservation_ref` normalized by `normalize_reservation_ref()` before use (Phase 68)
+- HTTP endpoint routes through `ingest_provider_event` → pipeline → `apply_envelope`
+- `tenant_id` from verified JWT `sub` claim only — NEVER from payload body (Phase 61+)
+- `booking_state` is a read model ONLY — must NEVER contain financial calculations
 - All financial read endpoints query `booking_financial_facts` ONLY — never `booking_state`
-- Deduplication rule: most-recent `recorded_at` per `booking_id` (shared across Phase 116–121)
+- Deduplication rule: most-recent `recorded_at` per `booking_id`
 - Epistemic tier: FULL→A, ESTIMATED→B, PARTIAL→C. Worst tier wins in aggregated endpoints.
-- Management fee is applied AFTER OTA commission on the aggregated net_to_property (Phase 121)
-- OTA_COLLECTING net is NEVER included in owner_net_total — honesty invariant (Phase 121)
+- Management fee applied AFTER OTA commission on net_to_property (Phase 121)
+- OTA_COLLECTING net NEVER included in owner_net_total — honesty invariant (Phase 121)
+- External channels (LINE, WhatsApp, Telegram) are escalation fallbacks ONLY — never source of truth
+- **No global fallback chain**: each worker has their preferred `channel_type` in `notification_channels`
+- CRITICAL_ACK_SLA_MINUTES = 5 (locked)
 
-## Key Files — Financial API Layer (Phases 116–121)
+## Key Files — Channel Layer (Phases 124, 168, 177, 196)
 
 | File | Role |
 |------|------|
-| `src/api/financial_aggregation_router.py` | Ring 1: summary/by-provider/by-property/lifecycle-distribution. Shared helpers: `_fetch_period_rows`, `_dedup_latest`, `_validate_period`, `_fmt`, `_to_decimal` |
-| `src/api/financial_dashboard_router.py` | Ring 2–3: GET /financial/status/{id}, /revpar, /lifecycle-by-property. Exports: `_tier`, `_worst_tier`, `_monetary`, `_project_lifecycle_status` |
-| `src/api/reconciliation_router.py` | Ring 3: GET /admin/reconciliation — exception-first inbox |
-| `src/api/cashflow_router.py` | Ring 3: GET /financial/cashflow — weekly inflow buckets, confirmed released, overdue, 30/60/90-day projection |
-| `src/api/owner_statement_router.py` | Ring 4: GET /owner-statement/{property_id} — per-booking line items, epistemic tier, management fee, PDF export |
-| `src/api/ota_comparison_router.py` | Ring 3: GET /financial/ota-comparison — per-OTA commission rate, net-to-gross, revenue share, lifecycle distribution |
-| `src/api/worker_router.py` | Phase 123: GET /worker/tasks, PATCH /worker/tasks/{id}/acknowledge, PATCH /worker/tasks/{id}/complete |
-| `src/channels/line_escalation.py` | Phase 124: pure LINE module — should_escalate, build_line_message, format_line_text, is_priority_eligible |
-| `src/api/line_webhook_router.py` | Phase 124: POST /line/webhook — LINE ack callback → PENDING→ACKNOWLEDGED, dev/prod sig validation |
-| `src/adapters/ota/hotelbeds.py` | Phase 125: Tier 3 B2B bedbank adapter — voucher_ref, hotel_code, net_rate/contract_price/markup_amount |
-| `src/api/availability_router.py` | Phase 126: GET /availability/{property_id}?from=&to= — per-date occupancy from booking_state, CONFLICT detection, zero write-path |
-| `src/api/integration_health_router.py` | Phase 127: GET /integration-health — all 13 OTA providers, lag_seconds, buffer_count, dlq_count, stale_alert (24h), summary block, JWT required |
-| `src/api/conflicts_router.py` | Phase 128: GET /conflicts — cross-property tenant-scoped booking overlap detection; CRITICAL(>=3nights)/WARNING(1-2); itertools.combinations; dedup; JWT required |
-| `src/api/bookings_router.py` | Phase 129: GET /bookings enhanced — source filter, check_out_from/to, sort_by(check_in|check_out|updated_at|created_at), sort_dir(asc|desc); backward compatible |
-| `src/api/properties_summary_router.py` | Phase 130: GET /properties/summary — per-property: active_count, canceled_count, next_check_in, next_check_out, has_conflict; portfolio totals; sorted by property_id; limit 1–200 |
-| `src/api/dlq_router.py` | Phase 131: GET /admin/dlq (list, source/status/limit filters) + GET /admin/dlq/{envelope_id} (full payload); status derived from replay_result (pending/applied/error); reads ota_dead_letter; payload_preview 200 chars |
+| `src/channels/line_escalation.py` | LINE pure module — should_escalate, build_line_message, HMAC-SHA256 verify |
+| `src/api/line_webhook_router.py` | GET+POST /line/webhook |
+| `src/channels/whatsapp_escalation.py` | WhatsApp pure module — same pattern as LINE |
+| `src/api/whatsapp_router.py` | GET+POST /whatsapp/webhook |
+| `src/channels/notification_dispatcher.py` | Core dispatcher — routes by worker's channel_type. No global chain. |
+| `src/channels/sla_dispatch_bridge.py` | SLA → dispatcher bridge. Per-worker routing. |
+| `src/channels/notification_delivery_writer.py` | Best-effort delivery log writer |
 
-## Key Files — Task Layer (Phases 111–115)
+## Key Files — Financial API Layer (Phases 116–122)
+
+| File | Role |
+|------|------|
+| `src/api/financial_aggregation_router.py` | Ring 1: summary / by-provider / by-property / lifecycle-distribution / multi-currency-overview |
+| `src/api/financial_dashboard_router.py` | Ring 2–3: status card, revpar, lifecycle-by-property |
+| `src/api/reconciliation_router.py` | Ring 3: Exception-first reconciliation inbox |
+| `src/api/cashflow_router.py` | Ring 3: Weekly inflow buckets, 30/60/90-day projection |
+| `src/api/owner_statement_router.py` | Ring 4: Per-booking line items + PDF export (Phase 188) |
+| `src/api/ota_comparison_router.py` | Ring 3: Per-OTA commission rate, net-to-gross, revenue share |
+
+## Key Files — Task Layer (Phases 111–117)
 
 | File | Role |
 |------|------|
 | `src/tasks/task_model.py` | TaskKind, TaskStatus, TaskPriority, WorkerRole, Task dataclass |
-| `src/tasks/task_automator.py` | Pure tasks_for_booking_created / actions_for_booking_canceled / amended |
+| `src/tasks/task_automator.py` | Pure tasks_for_booking_created / canceled / amended |
 | `src/tasks/task_writer.py` | Supabase upsert/cancel/reschedule — wired into service.py |
 | `src/tasks/task_router.py` | GET /tasks, GET /tasks/{id}, PATCH /tasks/{id}/status |
-| `src/tasks/sla_engine.py` | evaluate() — pure SLA escalation logic, ACK_SLA_BREACH + COMPLETION_SLA_BREACH |
-
-## Key Files — Booking Identity Layer (Phase 68)
-
-| File | Role |
-|------|------|
-| `src/adapters/ota/booking_identity.py` | `normalize_reservation_ref(provider, raw_ref)` + `build_booking_id(source, ref)` |
+| `src/tasks/sla_engine.py` | evaluate() — ACK_SLA_BREACH + COMPLETION_SLA_BREACH. CRITICAL_ACK_SLA_MINUTES=5. |
+| `src/api/worker_router.py` | GET /worker/tasks, PATCH /acknowledge, PATCH /complete |
 
 ## Key Files — HTTP API Layer (Phases 58–64)
 
@@ -120,11 +114,20 @@ Phase 187 — RakutenAdapter for Japan market. RAK- prefix stripping, hotel_code
 | `IHOUSE_JWT_SECRET` | unset | dev-mode JWT skip → "dev-tenant" |
 | `IHOUSE_RATE_LIMIT_RPM` | 60 | req/min per tenant, 0 = disabled |
 | `IHOUSE_ENV` | "development" | health response label |
-| `SUPABASE_URL` | required | Supabase project URL |
+| `SUPABASE_URL` | required | Supabase URL |
 | `SUPABASE_KEY` | required | Supabase anon key |
+| `IHOUSE_LINE_SECRET` | unset | dev-mode LINE sig skip |
+| `IHOUSE_WHATSAPP_TOKEN` | unset | production WhatsApp dispatch |
+| `IHOUSE_WHATSAPP_PHONE_NUMBER_ID` | unset | Meta Cloud API phone ID |
+| `IHOUSE_WHATSAPP_APP_SECRET` | unset | HMAC sig verification |
+| `IHOUSE_WHATSAPP_VERIFY_TOKEN` | unset | Meta webhook challenge token |
+| `IHOUSE_DRY_RUN` | unset | skip real outbound API calls |
+| `IHOUSE_THROTTLE_DISABLED` | unset | skip rate limiting in outbound |
+| `IHOUSE_RETRY_DISABLED` | unset | skip exponential backoff |
+| `IHOUSE_SYNC_LOG_DISABLED` | unset | skip persistence of sync results |
+| `IHOUSE_SYNC_CALLBACK_URL` | unset | webhook URL for sync.ok events |
 | `PORT` | 8000 | uvicorn port |
 
 ## Tests
 
-**3963 passing** (2 pre-existing SQLite guard failures in `tests/invariants/test_invariant_suite.py` — unrelated)
-
+**4,906 collected. ~4,900 passing. 6 pre-existing failures (outbound / conflicts / webhook fixture providers — unrelated to core). Exit 0.**

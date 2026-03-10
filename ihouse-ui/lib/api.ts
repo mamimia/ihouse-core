@@ -284,6 +284,58 @@ export interface LoginResponse {
     expires_in: number;
 }
 
+// Phase 191 — Multi-Currency Overview types
+export interface CurrencyOverviewRow {
+    currency: string;
+    booking_count: number;
+    gross_total: string;
+    net_total: string;
+    avg_commission_rate: string | null;
+}
+
+export interface MultiCurrencyOverviewResponse {
+    tenant_id: string;
+    period: string;
+    total_bookings: number;
+    currencies: CurrencyOverviewRow[];
+}
+
+// Phase 192/193 — Guest Profile types
+export interface Guest {
+    id: string;
+    tenant_id?: string;
+    full_name: string;
+    email: string | null;
+    phone: string | null;
+    nationality: string | null;
+    passport_no: string | null;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface GuestListResponse {
+    count: number;
+    guests: Guest[];
+}
+
+// Phase 190 — Audit Event types
+export interface AuditEvent {
+    id: number;
+    actor_id: string;
+    action: string;
+    entity_type: string;
+    entity_id: string;
+    payload: Record<string, unknown>;
+    occurred_at: string;
+}
+
+export interface AuditEventListResponse {
+    tenant_id: string;
+    count: number;
+    events: AuditEvent[];
+}
+
 // ---------------------------------------------------------------------------
 // API calls
 // ---------------------------------------------------------------------------
@@ -411,6 +463,45 @@ export const api = {
             method: "PATCH",
             body: JSON.stringify(updates),
         }),
+
+    // Phase 190 — Audit Events (Manager UI)
+    getAuditEvents: (params?: {
+        entity_type?: string;
+        entity_id?: string;
+        actor_id?: string;
+        limit?: number;
+    }): Promise<AuditEventListResponse> => {
+        const q = new URLSearchParams();
+        if (params?.entity_type) q.set("entity_type", params.entity_type);
+        if (params?.entity_id) q.set("entity_id", params.entity_id);
+        if (params?.actor_id) q.set("actor_id", params.actor_id);
+        if (params?.limit) q.set("limit", String(params.limit));
+        return apiFetch(`/admin/audit${q.size ? "?" + q : ""}`);
+    },
+
+    // Phase 191 — Multi-Currency Financial Overview
+    getMultiCurrencyOverview: (
+        period: string,
+        currency?: string,
+    ): Promise<MultiCurrencyOverviewResponse> => {
+        const q = new URLSearchParams({ period });
+        if (currency) q.set("currency", currency);
+        return apiFetch(`/financial/multi-currency-overview?${q}`);
+    },
+
+    // Phase 193 — Guest Profile
+    listGuests: (search?: string, limit?: number): Promise<GuestListResponse> => {
+        const q = new URLSearchParams();
+        if (search) q.set("search", search);
+        if (limit) q.set("limit", String(limit));
+        return apiFetch(`/guests${q.size ? "?" + q : ""}`);
+    },
+    getGuest: (id: string): Promise<Guest> =>
+        apiFetch(`/guests/${id}`),
+    createGuest: (body: { full_name: string; email?: string; phone?: string; nationality?: string; passport_no?: string; notes?: string }): Promise<Guest> =>
+        apiFetch("/guests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+    patchGuest: (id: string, body: Partial<Omit<Guest, "id" | "tenant_id" | "created_at" | "updated_at">>): Promise<Guest> =>
+        apiFetch(`/guests/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
 };
 
 // Phase 157 — Worker task types

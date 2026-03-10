@@ -2641,3 +2641,78 @@ TypeScript clean. 4,670 passing, 0 regressions.
 - `tests/test_rakuten_adapter_contract.py` — NEW — 34 tests (Groups A-G).
 
 4,420 passing. 0 regressions.
+
+## Phase 188 — PDF Owner Statements (Closed) — 2026-03-10
+
+- `src/services/statement_generator.py` — NEW — `generate_owner_statement_pdf()`: pure function (data → bytes), reportlab platypus. Layout: header (title, property, period, timestamp), summary table (gross/commission/net/fee/owner net), line items table (booking ID, provider, check-in/out, gross, commission, net, tier), footer attribution.
+- `src/api/owner_statement_router.py` — MODIFIED — `format=pdf` branch now calls `generate_owner_statement_pdf()`; `media_type="application/pdf"`; `Content-Disposition` filename `.pdf`; added `datetime` import + `generate_owner_statement_pdf` import from `services.statement_generator`.
+- `ihouse-ui/app/owner/page.tsx` — MODIFIED — `StatementDrawer` gains "↓ PDF" anchor with `download` attribute; hover fill effect; beside close button.
+- `tests/test_pdf_owner_statement_contract.py` — NEW — 9 contract tests (Groups F1–F9): 200 status, Content-Type application/pdf, attachment disposition, .pdf filename, non-empty body, real %PDF magic bytes (f6 — no mock), JSON fallback (f7), JSON-explicit (f8), 404-still-JSON on empty data (f9).
+
+37 owner-statement tests pass (9 new + 28 existing). Full suite exits 0. 4,429 passing. 0 regressions.
+
+## Phase 189 — Booking Mutation Audit Events (Closed) — 2026-03-10
+
+- `src/services/audit_writer.py` — NEW — `write_audit_event(tenant_id, actor_id, action, entity_type, entity_id, payload, client)`. Best-effort: double-guarded (internal + call-site). Logs to stderr on failure. Never re-raises. Pattern mirrors `dead_letter.py`.
+- `src/api/audit_router.py` — NEW — `GET /admin/audit`. JWT auth, tenant-isolated, optional filters: `entity_type`, `entity_id`, `actor_id`. Max limit 100. Ordered `occurred_at DESC`. Returns `{tenant_id, count, events[]}`.
+- `src/api/worker_router.py` — MODIFIED — `_transition_task()`: best-effort `write_audit_event` call (wrapped in own try/except) after successful DB update. Actions: `TASK_ACKNOWLEDGED`, `TASK_COMPLETED`. `actor_id = JWT sub` (Phase 190 will wire proper `user_id` claim).
+- `src/api/bookings_router.py` — MODIFIED — `patch_booking_flags()`: best-effort `write_audit_event` after successful upsert. Action: `BOOKING_FLAGS_UPDATED`. Payload contains applied flag key/values.
+- `src/main.py` — MODIFIED — registers `audit_router` with `/admin` prefix + `audit` OpenAPI tag.
+- Supabase: migration `phase189_audit_events` — table `public.audit_events` (id BIGSERIAL, tenant_id, actor_id, action, entity_type, entity_id, payload JSONB, occurred_at TIMESTAMPTZ). RLS: service_role only. Indexes: `ix_audit_events_entity`, `ix_audit_events_actor`.
+- `tests/test_audit_events_contract.py` — NEW — 15 tests. Group A (5): audit_writer happy path, correct payload, exception swallowed, stderr logged, empty payload default. Group B (7): 200 shape, entity_type filter, entity_id filter, actor_id filter, invalid entity_type→422, limit, empty result. Group C (3): worker transition calls audit, flags patch calls audit, audit failure does not block task response.
+
+15 new tests. Full suite exits 0. 0 regressions.
+
+
+## Phase 190 — Manager Activity Feed UI (Closed) — 2026-03-10
+
+- `ihouse-ui/app/manager/page.tsx` — NEW — Manager Activity Feed. Components: MetricChip (stat row), ActionBadge (colour-coded by mutation type), EntityChip, AuditRow (expandable payload), BookingAuditLookup panel. Entity-type filter pills (All/Tasks/Bookings). New-entry left-border highlight.
+- `ihouse-ui/lib/api.ts` — MODIFIED — `AuditEvent` + `AuditEventListResponse` interfaces + `api.getAuditEvents()` → `GET /admin/audit`.
+- `ihouse-ui/app/layout.tsx` — MODIFIED — Manager nav link (��) added to sidebar.
+
+Build: `/manager` static. 0 regressions. Full suite exits 0.
+
+
+
+## Phase 190 — Manager Activity Feed UI (Closed) — 2026-03-10
+
+- ihouse-ui/app/manager/page.tsx — NEW — MetricChip, ActionBadge, EntityChip, AuditRow (expandable payload), BookingAuditLookup. Entity-type filter pills. New-entry highlight.
+- ihouse-ui/lib/api.ts — MODIFIED — AuditEvent + AuditEventListResponse + api.getAuditEvents() -> GET /admin/audit.
+- ihouse-ui/app/layout.tsx — MODIFIED — Manager nav link added.
+
+Build: /manager static. 0 regressions.
+
+
+## Phase 191 — Multi-Currency Financial Overview (Closed) — 2026-03-10
+
+- src/api/financial_aggregation_router.py — MODIFIED — appended GET /financial/multi-currency-overview. Aggregates booking_financial_facts per currency (reuses _fetch_period_rows, _dedup_latest, _canonical_currency, _fmt). Sorted by gross DESC. avg_commission_rate null-safe. Optional ?currency filter with 3-letter validation.
+- tests/test_multi_currency_overview_contract.py — NEW — 15 tests (Groups A-G).
+- ihouse-ui/lib/api.ts — MODIFIED — CurrencyOverviewRow + MultiCurrencyOverviewResponse interfaces + api.getMultiCurrencyOverview().
+- ihouse-ui/app/financial/page.tsx — MODIFIED — PortfolioOverview component + Section 0 above Summary Bar. CSS mini-bar chart, colour-coded per currency badge, avg commission rate pill.
+
+15 new tests. Full suite exits 0. Build: /financial compiles static. 0 regressions.
+
+
+
+## Phase 196-patch — Per-Worker Channel Architecture (2026-03-10)
+
+Corrected the Phase 196 WhatsApp implementation to match the user's intended architecture. Removed global fallback chain from `sla_dispatch_bridge.py`. Registered WhatsApp, Telegram, and SMS as first-class channels in `notification_dispatcher.py`. Each worker is routed to their own preferred `channel_type` — no sequential all-workers chain.
+
+- `src/channels/notification_dispatcher.py` — CHANNEL_WHATSAPP, CHANNEL_TELEGRAM, CHANNEL_SMS constants + adapters added. Docstring updated.
+- `src/channels/sla_dispatch_bridge.py` — `_attempt_whatsapp_second_channel` removed. `BridgeResult.whatsapp_attempted/whatsapp_result` removed. WhatsApp import removed. Per-worker model described in docstring.
+- `tests/test_whatsapp_escalation_contract.py` — Group H replaced (6 old global-chain tests → 10 per-worker architecture tests). 61 tests pass.
+- Fixed orphaned docstring fragment in `notification_dispatcher.py`.
+
+
+## Phase 197 — Platform Checkpoint II (2026-03-10)
+
+Documentation and audit phase. No source code changes.
+
+- `docs/core/current-snapshot.md` — fully rewritten: all phases 58–197, 14 OTA adapters table, per-worker channel architecture section, complete invariants and env vars, correct test count (4,906 collected).
+- `docs/core/work-context.md` — fully rewritten: stale 118–122 era cleared, phases 176–197 table added, all key file tables updated.
+- `docs/core/roadmap.md` — phases 176–196 marked complete, forward plan 198–210 written.
+- `docs/core/construction-log.md` — this entry.
+- `docs/core/phase-timeline.md` — Phase 197 entry appended.
+- `docs/archive/phases/phase-197-spec.md` — created.
+- `releases/handoffs/handoff_to_new_chat Phase-197.md` — written.
+- `releases/phase-zips/iHouse-Core-Docs-Phase-197.zip` — created.

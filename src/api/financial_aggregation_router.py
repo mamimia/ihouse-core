@@ -710,3 +710,144 @@ async def get_lifecycle_distribution(
             "GET /financial/lifecycle-distribution error for tenant=%s: %s", tenant_id, exc
         )
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# GET /financial/multi-currency-overview   (Phase 191)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/financial/multi-currency-overview",
+    tags=["financial"],
+    summary="Portfolio snapshot: flat list of all currencies sorted by gross revenue",
+    responses={
+        200: {"description": "Per-currency totals with avg commission rate, sorted by gross DESC"},
+        400: {"description": "Missing or invalid period parameter"},
+        401: {"description": "Missing or invalid JWT token"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_multi_currency_overview(
+    period: Optional[str] = None,
+    currency: Optional[str] = None,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+    user_id: Optional[str] = None,
+) -> JSONResponse:
+    """
+    Return a flat, portfolio-level overview of financial performance across all
+    currencies for the authenticated tenant in the given month.
+
+    **Authentication:** Bearer JWT required. `sub` claim used as `tenant_id`.
+
+    **Query parameters:**
+    - `period` *(required)* — calendar month in `YYYY-MM` format.
+    - `currency` *(optional)* — 3-letter ISO code to filter results to one currency only.
+
+    **Returns:**
+    A list of `CurrencyOverviewRow` objects, sorted by `gross_total` descending.
+    Each row is a single currency's aggregated totals for the period:
+    ```json
+    {
+      "currency": "THB",
+      "booking_count": 28,
+      "gross_total": "450000.00",
+      "net_total": "382500.00",
+      "avg_commission_rate": "15.00"
+    }
+    ```
+
+    **Invariant:** No cross-currency arithmetic is ever performed.
+    Each currency row is fully independent.
+
+    **avg_commission_rate:** `(commission / gross) * 100`, rounded to 2 dp.
+    Returns `null` if gross = 0 to avoid division by zero.
+
+    **Source:** Reads from `booking_financial_facts` only.
+    """
+    err = _validate_period(period)
+    if err:
+        return err
+
+    # Optional currency filter validation
+    if currency is not None:
+        if not currency.isalpha() or len(currency) != 3:
+            return make_error_response(
+                status_code=400,
+                code=ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "currency must be a 3-letter ISO currency code (e.g. THB, USD)"},
+            )
+        currency = currency.upper()
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+        property_ids = _get_owner_property_filter(db, tenant_id, user_id)
+        rows = _fetch_period_rows(db, tenant_id, period, property_ids)  # type: ignore[arg-type]
+        deduped = _dedup_latest(rows)
+
+        # Aggregate per currency
+        totals: Dict[str, Dict[str, Any]] = defaultdict(
+            lambda: {
+                "gross": Decimal("0"),
+                "commission": Decimal("0"),
+                "net": Decimal("0"),
+                "booking_count": 0,
+            }
+        )
+        for row in deduped:
+            cur = _canonical_currency(row.get("currency"))
+            totals[cur]["gross"] += _to_decimal(row.get("total_price"))
+            totals[cur]["commission"] += _to_decimal(row.get("ota_commission"))
+            totals[cur]["net"] += _to_decimal(row.get("net_to_property"))
+            totals[cur]["booking_count"] += 1
+
+        # Build output rows — one per currency
+        overview_rows = []
+        for cur, data in totals.items():
+            # Optional single-currency filter
+            if currency is not None and cur != currency:
+                continue
+
+            gross = data["gross"]
+            commission = data["commission"]
+
+            # avg_commission_rate = (commission / gross) * 100; null when gross = 0
+            if gross > Decimal("0"):
+                avg_rate: Optional[str] = _fmt((commission / gross) * Decimal("100"))
+            else:
+                avg_rate = None
+
+            overview_rows.append({
+                "currency": cur,
+                "booking_count": data["booking_count"],
+                "gross_total": _fmt(gross),
+                "net_total": _fmt(data["net"]),
+                "avg_commission_rate": avg_rate,
+                # Internal sort key — removed from output below
+                "_gross_sort": gross,
+            })
+
+        # Sort by gross_total DESC (largest revenue first)
+        overview_rows.sort(key=lambda r: r["_gross_sort"], reverse=True)
+
+        # Strip internal sort key before serialising
+        for row in overview_rows:
+            del row["_gross_sort"]
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "tenant_id": tenant_id,
+                "period": period,
+                "total_bookings": len(deduped),
+                "currencies": overview_rows,
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "GET /financial/multi-currency-overview error for tenant=%s: %s", tenant_id, exc
+        )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+

@@ -52,8 +52,11 @@ from __future__ import annotations
 import logging
 import os
 import re
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional
+
+from services.statement_generator import generate_owner_statement_pdf
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, Response
@@ -262,8 +265,8 @@ def _render_pdf_text(
     line_items: List[Dict[str, Any]],
 ) -> str:
     """
-    Render a plain-text owner statement (Phase 121 PDF export contract).
-    Returns a UTF-8 string. No external library required.
+    Phase 121 plain-text fallback (kept for test compatibility).
+    Phase 188 supersedes this with generate_owner_statement_pdf().
     """
     sep = "=" * 60
     lines = [
@@ -275,35 +278,6 @@ def _render_pdf_text(
         f"  Tenant:    {tenant_id}",
         f"  Currency:  {summary['currency']}",
         f"  Tier:      {summary['overall_epistemic_tier']}",
-        "",
-        "  BOOKING LINE ITEMS",
-        "-" * 60,
-    ]
-
-    for item in line_items:
-        lines.append(
-            f"  {item['booking_id']:<30}  "
-            f"{item['provider']:<12}  "
-            f"Gross: {item['gross'] or 'N/A':>10}  "
-            f"Net: {item['net_to_property'] or 'N/A':>10}  "
-            f"Tier:{item['epistemic_tier']}  "
-            f"Status:{item['lifecycle_status']}"
-        )
-
-    lines += [
-        "-" * 60,
-        "  SUMMARY",
-        "-" * 60,
-        f"  Bookings:            {summary['booking_count']}",
-        f"  Gross total:         {summary.get('gross_total') or 'N/A'}",
-        f"  OTA commission:      {summary.get('ota_commission_total') or 'N/A'}",
-        f"  Net to property:     {summary.get('net_to_property_total') or 'N/A'}",
-        f"  Management fee ({summary['management_fee_pct']}%): "
-        f"{summary.get('management_fee_amount') or 'N/A'}",
-        f"  OWNER NET TOTAL:     {summary.get('owner_net_total') or 'N/A'}",
-        f"  OTA collecting (excluded from net): "
-        f"{summary['ota_collecting_excluded_from_net']}",
-        sep,
     ]
     return "\n".join(lines) + "\n"
 
@@ -443,15 +417,25 @@ async def get_owner_statement(
         # Build summary
         summary = _compute_summary(line_items, mgmt_fee)
 
-        # PDF export path
+        # PDF export path — Phase 188: real application/pdf via reportlab
         if format and format.lower() == "pdf":
-            text = _render_pdf_text(property_id, month, tenant_id, summary, line_items)
+            generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            platform_name = os.environ.get("STATEMENT_PLATFORM_NAME")
+            pdf_bytes = generate_owner_statement_pdf(
+                property_id=property_id,
+                month=month,
+                tenant_id=tenant_id,
+                summary=summary,
+                line_items=line_items,
+                generated_at=generated_at,
+                platform_name=platform_name,
+            )
             return Response(
-                content=text.encode("utf-8"),
-                media_type="text/plain",
+                content=pdf_bytes,
+                media_type="application/pdf",
                 headers={
                     "Content-Disposition": (
-                        f'attachment; filename="owner-statement-{property_id}-{month}.txt"'
+                        f'attachment; filename="owner-statement-{property_id}-{month}.pdf"'
                     )
                 },
             )

@@ -119,6 +119,7 @@ _TAGS = [
     {"name": "registry", "description": "Provider Capability Registry (Phase 136). OTA write capabilities, tiers (A/B/C/D), sync modes, rate limits. Global. JWT required."},
     {"name": "sync", "description": "Outbound Sync Trigger (Phase 137). Compute per-channel sync_plan (api_first|ical_fallback|skip) by joining channel map and capability registry. JWT required."},
     {"name": "outbound", "description": "Outbound Sync Log Inspector (Phase 145). Read-only audit log of all outbound sync attempts per tenant. Filters: booking_id, provider, status, limit. JWT required."},
+    {"name": "audit", "description": "Mutation Audit Events (Phase 189). Append-only record of every booking/task mutation with actor attribution. Filters: entity_type, entity_id, actor_id. JWT required."},
 ]
 
 app = FastAPI(
@@ -245,6 +246,18 @@ app.include_router(auth_router)
 
 from api.sse_router import router as sse_router  # noqa: E402  # Phase 181
 app.include_router(sse_router)
+
+from api.audit_router import router as audit_router  # noqa: E402  # Phase 189
+app.include_router(audit_router)
+
+from api.guests_router import router as guests_router  # noqa: E402  # Phase 192
+app.include_router(guests_router)
+
+from api.booking_guest_link_router import router as booking_guest_link_router  # noqa: E402  # Phase 194
+app.include_router(booking_guest_link_router)
+
+from api.whatsapp_router import router as whatsapp_router  # noqa: E402  # Phase 196
+app.include_router(whatsapp_router)
 
 
 # ---------------------------------------------------------------------------

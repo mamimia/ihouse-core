@@ -10,7 +10,7 @@ from .schemas import AmendmentFields
 # Known providers
 # ---------------------------------------------------------------------------
 
-_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka", "makemytrip", "klook", "despegar", "hotelbeds", "rakuten"}
+_SUPPORTED_PROVIDERS = {"bookingcom", "expedia", "airbnb", "agoda", "tripcom", "vrbo", "gvr", "traveloka", "makemytrip", "klook", "despegar", "hotelbeds", "rakuten", "hostelworld"}
 
 
 # ---------------------------------------------------------------------------
@@ -330,6 +330,25 @@ def extract_amendment_rakuten(provider_payload: Dict[str, Any]) -> AmendmentFiel
     )
 
 
+def extract_amendment_hostelworld(provider_payload: Dict[str, Any]) -> AmendmentFields:
+    """
+    Extract normalized amendment fields from a Hostelworld BOOKING_MODIFIED payload.
+
+    Phase 195 — Hostelworld sends modification data under 'amendment':
+      amendment.check_in    — new check-in date
+      amendment.check_out   — new check-out date
+      amendment.guest_count — new guest count
+      amendment.reason      — reason for modification
+    """
+    amend = provider_payload.get("amendment") or {}
+    return AmendmentFields(
+        new_check_in=normalize_date(_nonempty(amend.get("check_in"))),
+        new_check_out=normalize_date(_nonempty(amend.get("check_out"))),
+        new_guest_count=_int_or_none(amend.get("guest_count")),
+        amendment_reason=_nonempty(amend.get("reason")),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -376,6 +395,8 @@ def normalize_amendment(provider: str, payload: Dict[str, Any]) -> AmendmentFiel
         return extract_amendment_hotelbeds(payload)
     elif normalized_provider == "rakuten":
         return extract_amendment_rakuten(payload)
+    elif normalized_provider == "hostelworld":
+        return extract_amendment_hostelworld(payload)
     else:
         raise ValueError(
             f"Unknown provider '{provider}' — cannot extract amendment fields. "

@@ -40,6 +40,7 @@ from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
 from api.error_models import ErrorCode, make_error_response
+from services.audit_writer import write_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -539,6 +540,18 @@ async def patch_booking_flags(
         )
 
         saved = result.data[0] if (result.data or []) else upsert_data
+
+        # Phase 189 — Audit event (best-effort, non-blocking)
+        write_audit_event(
+            tenant_id=tenant_id,
+            actor_id=tenant_id,
+            action="BOOKING_FLAGS_UPDATED",
+            entity_type="booking",
+            entity_id=booking_id,
+            payload={k: v for k, v in recognised.items()},
+            client=db,
+        )
+
         return JSONResponse(
             status_code=200,
             content={

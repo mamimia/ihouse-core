@@ -60,6 +60,8 @@ def _guest_count(provider: str, payload: dict) -> int | None:
             return int(payload["passenger_count"])  # Despegar: LATAM travel term
         elif provider == "rakuten":
             return int(payload["guest_count"])  # Rakuten: standard guest_count
+        elif provider == "hostelworld":
+            return int(payload["guest_count"])  # Hostelworld: standard guest_count
         return None
     except (KeyError, TypeError, ValueError):
         return None
@@ -94,6 +96,8 @@ def _booking_ref(provider: str, payload: dict) -> str | None:
             return str(payload["reservation_code"])  # Despegar uses reservation_code
         elif provider == "rakuten":
             return str(payload["booking_ref"])  # Rakuten: booking_ref
+        elif provider == "hostelworld":
+            return str(payload["reservation_id"])  # Hostelworld: reservation_id
         return None
     except (KeyError, TypeError):
         return None
@@ -126,6 +130,8 @@ def _property_id(provider: str, payload: dict) -> str | None:
             return str(payload["hotel_id"])  # Despegar uses hotel_id
         elif provider == "rakuten":
             return str(payload["hotel_code"])  # Rakuten: hotel_code
+        elif provider == "hostelworld":
+            return str(payload["property_id"])  # Hostelworld: direct property_id
         return None
     except (KeyError, TypeError):
         return None

@@ -748,6 +748,63 @@ def _extract_rakuten(payload: dict) -> BookingFinancialFacts:
 _EXTRACTORS["rakuten"] = _extract_rakuten
 
 
+def _extract_hostelworld(payload: dict) -> BookingFinancialFacts:
+    """
+    Hostelworld financial fields (global hostel/budget market):
+
+      total_price       — gross booking amount
+      hostelworld_fee   — Hostelworld platform commission (optional)
+      net_price         — net payout to property after commission (optional)
+      currency          — ISO 4217 currency code (EUR, GBP, USD, THB, AUD, etc.)
+
+    When net_price is absent but total_price + hostelworld_fee are present,
+    net is derived: net = total_price - hostelworld_fee → confidence = ESTIMATED.
+
+    Confidence: FULL if total_price + currency + net_price present,
+                ESTIMATED if net derived,
+                PARTIAL if total_price or currency missing.
+
+    No currency conversion is performed. EUR/GBP/USD values are preserved as-is.
+    """
+    total_price = _to_decimal(payload.get("total_price"))
+    hostelworld_fee = _to_decimal(payload.get("hostelworld_fee"))
+    net_price_raw = payload.get("net_price")
+    net_price = _to_decimal(net_price_raw)
+    currency = payload.get("currency")
+
+    raw: Dict[str, Any] = {}
+    for k in ("total_price", "hostelworld_fee", "net_price", "currency"):
+        if k in payload:
+            raw[k] = payload[k]
+
+    source_confidence: str
+    derived_net = net_price
+
+    if net_price is None and total_price is not None and hostelworld_fee is not None:
+        derived_net = (total_price - hostelworld_fee).quantize(Decimal("0.01"))
+        source_confidence = CONFIDENCE_ESTIMATED
+    elif total_price is None or currency is None:
+        source_confidence = CONFIDENCE_PARTIAL
+    else:
+        source_confidence = CONFIDENCE_FULL
+
+    return BookingFinancialFacts(
+        provider="hostelworld",
+        total_price=total_price,
+        currency=currency,
+        ota_commission=hostelworld_fee,
+        taxes=None,               # Hostelworld does not expose taxes separately
+        fees=hostelworld_fee,
+        net_to_property=derived_net,
+        source_confidence=source_confidence,
+        raw_financial_fields=raw,
+    )
+
+
+_EXTRACTORS["hostelworld"] = _extract_hostelworld
+
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------

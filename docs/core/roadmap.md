@@ -564,3 +564,66 @@ When designing:
 - **Notification infrastructure** → architect as pluggable channels with in-app always first
 
 Full detail: `docs/core/planning/worker-communication-layer.md`
+---
+
+## Platform Checkpoint II — Phase 197 (2026-03-10)
+
+### Completed Phases Since Checkpoint I (Phase 175)
+
+| Phase | Title | Type | Status |
+|-------|-------|------|--------|
+| 176 | Outbound Sync Auto-Trigger for BOOKING_CREATED | Backend | ✅ Closed |
+| 177 | SLA→Dispatcher Bridge | Backend | ✅ Closed |
+| 178–183 | Notification Delivery Writer + Channel Infra | Backend | ✅ Closed |
+| 188 | PDF Owner Statements | Backend+UI | ✅ Closed |
+| 189 | Booking Mutation Audit Events | Backend | ✅ Closed |
+| 190 | Manager Activity Feed UI | UI | ✅ Closed |
+| 191 | Multi-Currency Financial Overview | Backend+UI | ✅ Closed |
+| 192 | Guest Profile Foundation | Backend | ✅ Closed |
+| 193 | Guest Profile UI | UI | ✅ Closed |
+| 194 | Booking→Guest Link | Backend+UI | ✅ Closed |
+| 195 | Hostelworld Adapter | Adapter | ✅ Closed |
+| 196 | WhatsApp Escalation Channel — Per-Worker Architecture | Backend | ✅ Closed |
+| 197 | Platform Checkpoint II | Docs | ✅ Closed |
+
+### System Numbers at Checkpoint II
+
+- **14 OTA adapters** live (Airbnb, Booking.com, Expedia, Agoda, Trip.com, Vrbo, GVR, Traveloka, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld)
+- **2 escalation channels** live (LINE + WhatsApp), per-worker preference model
+- **CHANNEL_TELEGRAM + CHANNEL_SMS** stubs registered, ready to wire
+- **4,906 tests** collected / ~4,900 passing / 6 pre-existing failures / exit 0
+
+### Forward Plan — Directions for Phase 198+
+
+> [!IMPORTANT]
+> The next conversation must read the full system first, then propose 20 phases, then get user approval. See `releases/handoffs/handoff_to_new_chat Phase-197.md`.
+
+The following are candidate areas — the next conversation evaluates and orders them:
+
+**Channel & Escalation Completion**
+- Telegram real adapter (Bot API, stub ready)
+- SMS via Twilio (tier-3 final escalation)
+- Per-worker channel preference UI (worker self-selects LINE/WhatsApp)
+- Notification history inbox for workers
+
+**Operator & Management Surfaces**
+- Booking calendar view (UI for existing availability projection)
+- OTA webhook DLQ replay from UI
+- Pre-arrival guest task workflow
+
+**Integration Management (Wave 1)**
+- Credentials/secrets management UI
+- Webhook provisioning UI
+- Property-channel mapping UI
+- Per-property sync status dashboard
+
+**Platform Reliability**
+- Fix 6 pre-existing test failures
+- Rakuten replay fixture
+- Hostelworld E2E harness extension
+- RLS policy systematic audit
+
+**Product Growth**
+- Worker mobile foundation (PWA)
+- Rate/pricing OTA push (outbound)
+- Multi-property onboarding flow

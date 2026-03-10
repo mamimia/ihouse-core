@@ -1,8 +1,10 @@
 """
 Phase 168 — Push Notification Foundation
+Phase 196 — Per-Worker Channel Architecture (patch)
 
 Notification dispatcher: routes push messages to the correct channel
-(LINE, FCM, or email) based on the user's registered notification_channels.
+(LINE, WhatsApp, Telegram, FCM, email, or SMS) based on the user's
+registered notification_channels.
 
 This module is PURE infrastructure — it does not define SLA logic or task
 trigger decisions. Those live in sla_engine.py and line_escalation.py.
@@ -10,16 +12,22 @@ trigger decisions. Those live in sla_engine.py and line_escalation.py.
 Architecture:
     dispatch_notification(db, tenant_id, user_id, message) → DispatchResult
         1. Looks up active notification_channels for (tenant_id, user_id).
-        2. Attempts delivery via each active channel in priority order:
-              line → fcm → email
+        2. Attempts delivery via each registered channel in order.
         3. Returns a DispatchResult summarising which channels were attempted
            and which succeeded.
 
-Channel priority order: LINE > FCM > email
-    LINE: wraps channels/line_escalation.py payload building.
-          HTTP dispatch is a best-effort stub in tests (injected via LineAdapter).
-    FCM:  stub — infrastructure reserved for Phase 168+.
-    email: stub — infrastructure reserved for Phase 168+.
+Per-worker channel preference:
+    Each worker has their own channel registered in notification_channels.
+    Worker A → channel_type="line"      → LINE only
+    Worker B → channel_type="whatsapp"  → WhatsApp only
+    Worker C → channel_type="telegram"  → Telegram only (future)
+    Worker D → channel_type="sms"       → SMS only (tier-2 escalation)
+    No global fallback chain — each worker gets their preferred channel.
+
+Escalation tiers (SLA engine responsibility, not this module):
+    Tier 1 — in-app (always first)
+    Tier 2 — preferred external channel (line / whatsapp / telegram)
+    Tier 3 — SMS or email (higher SLA threshold, future phases)
 
 Invariants:
     - NEVER raises. All exceptions caught and reported in DispatchResult.
@@ -27,13 +35,6 @@ Invariants:
     - If no active channels found, DispatchResult.sent=False, channels=[].
     - A single failed channel does not abort other channels (fail-isolated).
     - dispatch_notification fallback: if DB lookup fails, returns empty result.
-
-Message format:
-    NotificationMessage(
-        title: str,
-        body: str,
-        data: dict   ← arbitrary payload forwarded to FCM/LINE
-    )
 """
 from __future__ import annotations
 
@@ -47,14 +48,31 @@ logger = logging.getLogger(__name__)
 # Channel type constants
 # ---------------------------------------------------------------------------
 
-CHANNEL_LINE  = "line"
-CHANNEL_FCM   = "fcm"
-CHANNEL_EMAIL = "email"
+# Tier 1 — Preferred external channels (per-worker, registered at onboarding)
+CHANNEL_LINE     = "line"       # LINE Messaging API — dominant in Thailand/JP
+CHANNEL_WHATSAPP = "whatsapp"   # WhatsApp Cloud API — dominant in SEA/EU markets
+CHANNEL_TELEGRAM = "telegram"   # Telegram Bot API — future phase
 
-_ALL_CHANNELS = {CHANNEL_LINE, CHANNEL_FCM, CHANNEL_EMAIL}
+# Tier 1 — App/device push
+CHANNEL_FCM   = "fcm"           # Firebase Cloud Messaging
+CHANNEL_EMAIL = "email"         # Email — low-latency fallback
 
-# Priority order for multi-channel delivery
-_CHANNEL_PRIORITY = [CHANNEL_LINE, CHANNEL_FCM, CHANNEL_EMAIL]
+# Tier 2 — High-threshold escalation (SMS requires longer unresponsive window)
+CHANNEL_SMS = "sms"             # Direct SMS — future phase, last-resort escalation
+
+_ALL_CHANNELS = {
+    CHANNEL_LINE, CHANNEL_WHATSAPP, CHANNEL_TELEGRAM,
+    CHANNEL_FCM, CHANNEL_EMAIL, CHANNEL_SMS,
+}
+
+# Default dispatch order when a user has multiple channels registered.
+# The SLA engine decides WHICH tier to invoke — this is just the ordering
+# within a dispatch call for a given user.
+_CHANNEL_PRIORITY = [
+    CHANNEL_LINE, CHANNEL_WHATSAPP, CHANNEL_TELEGRAM,  # preferred external
+    CHANNEL_FCM, CHANNEL_EMAIL,                         # app / email
+    CHANNEL_SMS,                                        # tier-2 last-resort
+]
 
 
 # ---------------------------------------------------------------------------
@@ -83,9 +101,9 @@ class ChannelAttempt:
     Records a single channel dispatch attempt.
 
     Args:
-        channel_type: 'line' | 'fcm' | 'email'
-        channel_id:   The channel token/identifier (LINE user_id, FCM token, email)
-        success:      True if deliver was accepted without error.
+        channel_type: 'line' | 'whatsapp' | 'telegram' | 'fcm' | 'email' | 'sms'
+        channel_id:   The channel token/identifier (LINE user_id, WhatsApp number, etc.)
+        success:      True if delivery was accepted without error.
         error:        Error message on failure, else None.
     """
     channel_type: str
@@ -156,10 +174,60 @@ def _default_email_adapter(channel_id: str, message: NotificationMessage) -> Cha
     )
 
 
+def _default_whatsapp_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+    """
+    WhatsApp Cloud API adapter stub (Phase 196).
+
+    In production: HTTP POST to graph.facebook.com/v19.0/{phone_number_id}/messages
+    with Authorization: Bearer {IHOUSE_WHATSAPP_TOKEN}.
+    Stub returns success=True; tests inject mocks via `adapters` parameter.
+    """
+    text = f"{message.title}\n{message.body}"
+    logger.info("WhatsApp dispatch to number=%s text_len=%d", channel_id, len(text))
+    return ChannelAttempt(
+        channel_type=CHANNEL_WHATSAPP,
+        channel_id=channel_id,
+        success=True,
+    )
+
+
+def _default_telegram_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+    """
+    Telegram Bot API adapter stub (future phase).
+
+    In production: POST to api.telegram.org/bot{TOKEN}/sendMessage.
+    Stub — infrastructure reserved for when Telegram support is wired.
+    """
+    logger.info("Telegram dispatch to chat_id=%s (stub)", channel_id)
+    return ChannelAttempt(
+        channel_type=CHANNEL_TELEGRAM,
+        channel_id=channel_id,
+        success=True,
+    )
+
+
+def _default_sms_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+    """
+    SMS adapter stub — tier-2 last-resort escalation (future phase).
+
+    In production: Twilio / AWS SNS. Only triggered after longer unresponsive
+    window than tier-1 channels. Stub reserved for future SLA tier wiring.
+    """
+    logger.info("SMS dispatch to number=%s (stub)", channel_id)
+    return ChannelAttempt(
+        channel_type=CHANNEL_SMS,
+        channel_id=channel_id,
+        success=True,
+    )
+
+
 _DEFAULT_ADAPTERS: dict[str, Callable[[str, NotificationMessage], ChannelAttempt]] = {
-    CHANNEL_LINE:  _default_line_adapter,
-    CHANNEL_FCM:   _default_fcm_adapter,
-    CHANNEL_EMAIL: _default_email_adapter,
+    CHANNEL_LINE:     _default_line_adapter,
+    CHANNEL_WHATSAPP: _default_whatsapp_adapter,
+    CHANNEL_TELEGRAM: _default_telegram_adapter,
+    CHANNEL_FCM:      _default_fcm_adapter,
+    CHANNEL_EMAIL:    _default_email_adapter,
+    CHANNEL_SMS:      _default_sms_adapter,
 }
 
 
@@ -276,9 +344,14 @@ def dispatch_notification(
     adapters: Optional[dict[str, Callable[[str, NotificationMessage], ChannelAttempt]]] = None,
 ) -> DispatchResult:
     """
-    Dispatch a notification to all active channels for the user.
+    Dispatch a notification to all active channels registered for the user.
 
-    Channels are tried in priority order: LINE → FCM → email.
+    Each worker has their own preferred channel registered in notification_channels.
+    This function dispatches to whatever that user has registered — no global
+    fallback chain. Worker A gets LINE, Worker B gets WhatsApp, Worker C gets
+    Telegram, based solely on what is in notification_channels for their user_id.
+
+    Channels are tried in priority order if the user has multiple registered.
     A failure on one channel does not abort others (fail-isolated).
 
     Args:
