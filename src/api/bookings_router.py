@@ -304,3 +304,97 @@ async def list_bookings(
         logger.exception("GET /bookings error for tenant=%s: %s", tenant_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
 
+
+# ---------------------------------------------------------------------------
+# GET /bookings/{booking_id}/amendments  (Phase 158)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/bookings/{booking_id}/amendments",
+    tags=["bookings"],
+    summary="List amendment history for a booking (Phase 158)",
+    description=(
+        "Returns all `BOOKING_AMENDED` events from the `event_log` for a specific booking.\\n\\n"
+        "Events are sorted by `received_at` ascending (oldest first).\\n\\n"
+        "**Source:** `event_log` table — tenant-scoped. Read-only.\\n\\n"
+        "**404** if the booking does not exist for this tenant.\\n\\n"
+        "Empty list returned when the booking exists but has no amendments."
+    ),
+    responses={
+        200: {"description": "List of BOOKING_AMENDED events."},
+        401: {"description": "Missing or invalid JWT token."},
+        404: {"description": "Booking not found for this tenant."},
+        500: {"description": "Internal server error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def list_booking_amendments(
+    booking_id: str,
+    limit: int = 50,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """GET /bookings/{booking_id}/amendments — BOOKING_AMENDED event history."""
+    limit = max(1, min(limit, 100))
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # Verify booking exists for this tenant
+        bk = (
+            db.table("booking_state")
+            .select("booking_id")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not (bk.data or []):
+            return make_error_response(
+                status_code=404,
+                code=ErrorCode.BOOKING_NOT_FOUND,
+                extra={"booking_id": booking_id},
+            )
+
+        # Fetch BOOKING_AMENDED events from event_log
+        ev = (
+            db.table("event_log")
+            .select("*")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .eq("event_type", "BOOKING_AMENDED")
+            .order("received_at", desc=False)
+            .limit(limit)
+            .execute()
+        )
+        rows = ev.data or []
+
+        amendments = [
+            {
+                "envelope_id": r.get("envelope_id"),
+                "booking_id":  r.get("booking_id"),
+                "tenant_id":   r.get("tenant_id"),
+                "event_type":  r.get("event_type"),
+                "version":     r.get("version"),
+                "received_at": r.get("received_at"),
+                "payload":     r.get("payload"),
+            }
+            for r in rows
+        ]
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "booking_id": booking_id,
+                "tenant_id":  tenant_id,
+                "count":      len(amendments),
+                "amendments": amendments,
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "GET /bookings/%s/amendments error for tenant=%s: %s",
+            booking_id, tenant_id, exc,
+        )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+

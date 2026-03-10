@@ -8,6 +8,7 @@ Endpoints:
 
 Filters for GET /tasks:
     property_id   - filter by property (optional)
+    booking_id    - filter by booking (optional, Phase 158)
     status        - filter by TaskStatus value (optional, all statuses allowed)
     kind          - filter by TaskKind (optional)
     due_date      - filter by due_date (YYYY-MM-DD, optional)
@@ -87,6 +88,7 @@ def _get_supabase_client() -> Any:
 )
 async def list_tasks(
     property_id: Optional[str] = None,
+    booking_id: Optional[str] = None,
     status: Optional[str] = None,
     kind: Optional[str] = None,
     due_date: Optional[str] = None,
@@ -142,6 +144,8 @@ async def list_tasks(
         )
         if property_id is not None:
             query = query.eq("property_id", property_id)
+        if booking_id is not None:
+            query = query.eq("booking_id", booking_id)
         if status is not None:
             query = query.eq("status", status)
         if kind is not None:

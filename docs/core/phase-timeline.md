@@ -3508,3 +3508,21 @@ Completed:
 - `ihouse-ui/app/tasks/[id]/page.tsx` — NEW — Task detail with full metadata grid, SLA countdown, single-tap action flow (Acknowledge → Start → Complete), notes textarea on completion, success/error toasts, back navigation
 
 TypeScript: 0 errors.
+
+---
+
+## Phase 158 — Closed
+
+**Phase 158 — Manager Booking View UI**
+**Date closed:** 2026-03-10
+**Tests:** 4115 passing (4098 + 17 new). TS: 0 errors. 2 pre-existing SQLite skips (unchanged).
+
+Goal: Booking list + detail UI for managers. New GET /bookings/{id}/amendments backend endpoint.
+
+Completed:
+- `src/api/bookings_router.py` — EXTENDED — GET /bookings/{booking_id}/amendments (reads event_log BOOKING_AMENDED events, tenant-scoped, 404 on missing booking, ascending sort)
+- `src/tasks/task_router.py` — MODIFIED — added booking_id filter to GET /tasks (Phase 158 addition)
+- `tests/test_booking_amendment_history_contract.py` — NEW — 17 contract tests (Groups A-I)
+- `ihouse-ui/app/bookings/page.tsx` — NEW — booking list, filterable by property/status/source/check-in range, OTA colour chips, table layout, click-to-detail
+- `ihouse-ui/app/bookings/[id]/page.tsx` — NEW — 5-tab booking detail (Overview, Sync Log, Tasks, Financial, History), lazy-loaded panels, amendment timeline, status chips
+
