@@ -4828,7 +4828,7 @@ Handoff: releases/handoffs/handoff_to_new_chat Phase-254.md
 - `docs/core/BOOT.md` — MODIFIED — brand-handoff.md added to Layer C
 - `docs/core/planning/next-10-phases-255-264.md` — NEW — forward plan for phases 255–264
 - `docs/archive/phases/phase-255-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-255.zip` — NEW (first ZIP under new naming convention)
+- `releases/phase-zips/iHouse-Core-Docs-Phase-255.zip` — NEW (first ZIP under new naming convention)
 
 Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 
@@ -4841,7 +4841,7 @@ Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 - `src/main.py` — MODIFIED — app title "iHouse Core" → "Domaniqo Core"; logger "ihouse-core" → "domaniqo-core"; startup/shutdown logs updated; OpenAPI description header updated; contact block updated
 - `tests/test_main_app.py` — MODIFIED — test_app_title asserts "Domaniqo Core"
 - `docs/archive/phases/phase-256-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-256.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-256.zip` — NEW
 
 Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 
@@ -4855,7 +4855,7 @@ Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 - `ihouse-ui/app/layout.tsx` — MODIFIED — metadata title/description updated; Google Fonts import (Manrope+Inter); sidebar logo → "Domaniqo" (Manrope brand font)
 - `ihouse-ui/app/login/page.tsx` — REPLACED — full Domaniqo login: Cloud White bg, Deep Moss CTA, Manrope 800 wordmark, "Calm command for modern hospitality." tagline, "See every stay." footer
 - `docs/archive/phases/phase-257-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-257.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-257.zip` — NEW
 
 Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 
@@ -4867,7 +4867,7 @@ Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 - `src/i18n/__init__.py` — NEW — package exports
 - `tests/test_i18n_contract.py` — NEW — 22 contract tests (5 groups)
 - `docs/archive/phases/phase-258-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-258.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-258.zip` — NEW
 
 Tests: ~5,922 collected. ~5,922 passing. Exit 0.
 
@@ -4880,7 +4880,7 @@ Tests: ~5,922 collected. ~5,922 passing. Exit 0.
 - `src/main.py` — MODIFIED — bulk_operations_router registered
 - `tests/test_bulk_operations_contract.py` — NEW — 16 contract tests (4 groups)
 - `docs/archive/phases/phase-259-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-259.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-259.zip` — NEW
 
 Tests: ~5,938 collected. ~5,938 passing. Exit 0.
 
@@ -4895,7 +4895,7 @@ Tests: ~5,938 collected. ~5,938 passing. Exit 0.
 - `ihouse-ui/app/layout.tsx` — MODIFIED — wrapped in LanguageProvider, uses Sidebar client component
 - `ihouse-ui/app/worker/page.tsx` — MODIFIED — all worker UI strings use t() for EN/TH/HE
 - `docs/archive/phases/phase-260-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-260.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-260.zip` — NEW
 
 TypeScript: 0 errors (`npx tsc --noEmit`). UI phase — no backend tests added.
 
@@ -4908,7 +4908,7 @@ TypeScript: 0 errors (`npx tsc --noEmit`). UI phase — no backend tests added.
 - `src/main.py` — MODIFIED — webhook_event_log_router registered
 - `tests/test_webhook_event_log_contract.py` — NEW — 19 tests (5 groups)
 - `docs/archive/phases/phase-261-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-261.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-261.zip` — NEW
 
 Tests: ~5,957 collected. ~5,957 passing. Exit 0.
 
@@ -4921,7 +4921,7 @@ Tests: ~5,957 collected. ~5,957 passing. Exit 0.
 - `src/main.py` — MODIFIED — guest_portal_router registered
 - `tests/test_guest_portal_contract.py` — NEW — 22 tests (5 groups)
 - `docs/archive/phases/phase-262-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-262.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-262.zip` — NEW
 
 Tests: ~5,979 collected. ~5,979 passing. Exit 0.
 
@@ -4934,7 +4934,7 @@ Tests: ~5,979 collected. ~5,979 passing. Exit 0.
 - `src/main.py` — MODIFIED — monitoring_router registered
 - `tests/test_monitoring_contract.py` — NEW — 18 tests (5 groups)
 - `docs/archive/phases/phase-263-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-263.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-263.zip` — NEW
 
 Tests: ~5,997 collected. ~5,997 passing. Exit 0.
 

@@ -140,7 +140,7 @@
 - Update Layer C docs (current-snapshot, live-system, roadmap, work-context)
 - Append to phase-timeline.md and construction-log.md (all phases 255–264)
 - Create phase specs + ZIP archives for all phases (255–264)
-  - ZIP naming: `Domaniqo-Core-Docs-Phase-N.zip` (new naming convention)
+  - ZIP naming: `iHouse-Core-Docs-Phase-N.zip` (new naming convention)
 - Write handoff document: `releases/handoffs/handoff_to_new_chat Phase-264.md`
 
 ---

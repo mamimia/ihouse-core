@@ -3397,7 +3397,7 @@ Full documentation integrity repair. No code changes.
 - `docs/core/BOOT.md` — MODIFIED — brand-handoff.md added to Layer C list
 - `docs/core/planning/next-10-phases-255-264.md` — NEW
 - `docs/archive/phases/phase-255-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-255.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-255.zip` — NEW
 
 Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 
@@ -3409,7 +3409,7 @@ Customer-facing brand strings → Domaniqo. Internal identifiers (IHOUSE_* env v
 - `src/main.py` — MODIFIED — title "Domaniqo Core"; logger "domaniqo-core"; startup/shutdown logs; OpenAPI description; contact block
 - `tests/test_main_app.py` — MODIFIED — test_app_title asserts "Domaniqo Core"
 - `docs/archive/phases/phase-256-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-256.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-256.zip` — NEW
 
 Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 
@@ -3422,7 +3422,7 @@ Full Domaniqo design system applied to ihouse-ui. Dark blue → warm minimal lig
 - `ihouse-ui/app/layout.tsx` — MODIFIED — metadata; Google Fonts; sidebar logo "Domaniqo"
 - `ihouse-ui/app/login/page.tsx` — REPLACED — Domaniqo login: Cloud White bg, Deep Moss CTA, Manrope wordmark, tagline + footer
 - `docs/archive/phases/phase-257-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-257.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-257.zip` — NEW
 
 Tests: ~5,900 collected. ~5,900 passing. Exit 0.
 
@@ -3435,7 +3435,7 @@ Pure in-memory i18n foundation. 7 language packs. No new tables.
 - `src/i18n/__init__.py` — NEW
 - `tests/test_i18n_contract.py` — NEW — 22 contract tests (5 groups)
 - `docs/archive/phases/phase-258-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-258.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-258.zip` — NEW
 
 Tests: ~5,922 collected. ~5,922 passing. Exit 0.
 
@@ -3449,7 +3449,7 @@ Batch wrappers with per-item outcome reporting. Max 50 items per operation.
 - `src/main.py` — MODIFIED — bulk_operations_router registered
 - `tests/test_bulk_operations_contract.py` — NEW — 16 contract tests (4 groups)
 - `docs/archive/phases/phase-259-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-259.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-259.zip` — NEW
 
 Tests: ~5,938 collected. ~5,938 passing. Exit 0.
 
@@ -3463,7 +3463,7 @@ Append-only in-memory event log. No PII stored. Max 5000 entries.
 - `src/main.py` — MODIFIED — webhook_event_log_router registered
 - `tests/test_webhook_event_log_contract.py` — NEW — 19 tests (5 groups)
 - `docs/archive/phases/phase-261-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-261.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-261.zip` — NEW
 
 Tests: ~5,957 collected. ~5,957 passing. Exit 0.
 
@@ -3477,7 +3477,7 @@ Read-only guest-facing API gated by X-Guest-Token header.
 - `src/main.py` — MODIFIED — guest_portal_router registered
 - `tests/test_guest_portal_contract.py` — NEW — 22 tests (5 groups)
 - `docs/archive/phases/phase-262-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-262.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-262.zip` — NEW
 
 Tests: ~5,979 collected. ~5,979 passing. Exit 0.
 
@@ -3491,7 +3491,7 @@ In-process stdlib-only monitoring. No external dependencies. Route prefix bucket
 - `src/main.py` — MODIFIED — monitoring_router registered (prefix /admin/monitor, avoids /admin/metrics conflict)
 - `tests/test_monitoring_contract.py` — NEW — 18 tests (5 groups)
 - `docs/archive/phases/phase-263-spec.md` — NEW
-- `releases/phase-zips/Domaniqo-Core-Docs-Phase-263.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-263.zip` — NEW
 
 Tests: ~5,997 collected. ~5,997 passing. Exit 0.
 

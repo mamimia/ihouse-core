@@ -1,5 +1,5 @@
 """
-Domaniqo Core — FastAPI Application Entrypoint
+iHouse Core — FastAPI Application Entrypoint
 ===============================================
 
 This is the unified production entrypoint for the OTA webhook ingestion stack.
@@ -43,7 +43,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
-logger = logging.getLogger("domaniqo-core")
+logger = logging.getLogger("ihouse-core")
 
 # ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
@@ -54,12 +54,12 @@ _ENV = os.getenv("IHOUSE_ENV", "development")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
-    logger.info("Domaniqo Core API starting — env=%s version=%s", _ENV, app.version)
+    logger.info("iHouse Core API starting — env=%s version=%s", _ENV, app.version)
     from services.scheduler import start_scheduler, stop_scheduler
     start_scheduler()
     yield
     stop_scheduler()
-    logger.info("Domaniqo Core API shutting down")
+    logger.info("iHouse Core API shutting down")
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 # ---------------------------------------------------------------------------
 
 _DESCRIPTION = """
-## Domaniqo Core — Hospitality Operations API
+## iHouse Core — Hospitality Operations API
 
 Canonical event pipeline for property management.
 All OTA provider webhooks enter the system through this API,
@@ -134,12 +134,12 @@ _TAGS = [
 ]
 
 app = FastAPI(
-    title="Domaniqo Core",
+    title="iHouse Core",
     version="0.1.0",
     description=_DESCRIPTION,
     contact={
-        "name": "Domaniqo Engineering",
-        "url": "https://domaniqo.com",
+        "name": "iHouse Engineering",
+        "url": "https://ihouse.dev",
     },
     license_info={
         "name": "Proprietary",
