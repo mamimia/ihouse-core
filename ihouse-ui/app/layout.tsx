@@ -1,81 +1,42 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import LogoutButton from '../components/LogoutButton';
+import { LanguageProvider } from '../lib/LanguageContext';
+import Sidebar from '../components/Sidebar';
 
 export const metadata: Metadata = {
-  title: 'iHouse Core — Operations',
-  description: 'Property management operations dashboard for iHouse Core',
+  title: 'Domaniqo — Operations',
+  description: 'Property operations platform — calm command for modern hospitality.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-          <nav style={{
-            width: 'var(--sidebar-width)',
-            background: 'var(--color-surface)',
-            borderRight: '1px solid var(--color-border)',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: 'var(--space-6) 0',
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            height: '100vh',
-            zIndex: 40,
-          }}>
-            {/* Logo */}
-            <div style={{ padding: '0 var(--space-6)', marginBottom: 'var(--space-8)' }}>
-              <div style={{
-                fontSize: 'var(--text-lg)',
-                fontWeight: 700,
-                color: 'var(--color-primary)',
-                letterSpacing: '-0.02em',
-              }}>
-                iHouse<span style={{ color: 'var(--color-text-dim)', fontWeight: 400 }}> Core</span>
-              </div>
-            </div>
-            {/* Nav links */}
-            {[
-              { label: 'Dashboard', href: '/dashboard', icon: '⬛' },
-              { label: 'Tasks', href: '/tasks', icon: '✓' },
-              { label: 'Bookings', href: '/bookings', icon: '📅' },
-              { label: 'Calendar', href: '/calendar', icon: '📆' },
-              { label: 'Financial', href: '/financial', icon: '₿' },
-              { label: 'Owner', href: '/owner', icon: '🏠' },
-              { label: 'Manager', href: '/manager', icon: '📋' },
-              { label: 'Guests', href: '/guests', icon: '👤' },
-              { label: 'Admin', href: '/admin', icon: '⚙' },
-            ].map(({ label, href, icon }) => (
-              <a key={href} href={href} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                padding: 'var(--space-3) var(--space-6)',
-                fontSize: 'var(--text-sm)',
-                color: 'var(--color-text-dim)',
-                transition: 'all var(--transition-fast)',
-              }}>
-                <span style={{ fontSize: '1em', opacity: 0.7 }}>{icon}</span>
-                {label}
-              </a>
-            ))}
-            {/* Spacer pushes logout to bottom */}
-            <div style={{ flex: 1 }} />
-            <LogoutButton />
-          </nav>
+      <head>
+        <link
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        />
+      </head>
+      <body style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <LanguageProvider>
+          <div style={{ display: 'flex', minHeight: '100vh' }}>
+            <Sidebar />
 
-          {/* Main content area */}
-          <main style={{
-            marginLeft: 'var(--sidebar-width)',
-            flex: 1,
-            padding: 'var(--space-8)',
-            maxWidth: 'var(--content-max)',
-          }}>
-            {children}
-          </main>
-        </div>
+            {/* Main content area */}
+            <main style={{
+              marginLeft: 'var(--sidebar-width)',
+              flex: 1,
+              padding: 'var(--space-8)',
+              maxWidth: 'var(--content-max)',
+            }}>
+              {children}
+            </main>
+          </div>
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -20,6 +20,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, WorkerTask, WorkerChannel, NotificationDelivery } from '../../lib/api';
+import { useLanguage } from '../../lib/LanguageContext';
 
 // ---------------------------------------------------------------------------
 // Colour helpers
@@ -34,7 +35,9 @@ function priorityBg(p: string) {
     }
 }
 
-function statusLabel(s: string) {
+// statusLabel is now handled via t() in components that have access to the language context.
+// This standalone version is kept for the SlaCountdown which doesn't use useLanguage.
+function statusLabelEn(s: string) {
     const m: Record<string, string> = {
         pending: 'Pending',
         acknowledged: 'Acknowledged',
@@ -109,7 +112,7 @@ function SlaCountdown({ task }: { task: WorkerTask }) {
             marginTop: 6,
         }}>
             <span>⏱</span>
-            <span>{gone ? 'SLA EXPIRED' : `${mins}:${String(s).padStart(2, '0')} to acknowledge`}</span>
+            <span>{gone ? 'SLA EXPIRED' : `${mins}:${String(s).padStart(2, '0')} to ack`}</span>
         </div>
     );
 }
@@ -172,7 +175,7 @@ function TaskCard({ task, onTap }: CardProps) {
                         fontSize: 11, color: task.status === 'completed' ? '#22c55e' : '#9ca3af',
                         background: task.status === 'completed' ? '#22c55e18' : '#ffffff0a',
                         borderRadius: 99, padding: '2px 9px',
-                    }}>{statusLabel(task.status)}</span>
+                    }}>{statusLabelEn(task.status)}</span>
                 </div>
             </div>
 
@@ -270,7 +273,7 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
                             ['Property', task.property_id],
                             ['Due', task.due_time ? fmtTime(`${task.due_date}T${task.due_time}`) : fmtDate(task.due_date)],
                             ['Priority', task.priority],
-                            ['Status', statusLabel(task.status)],
+                            ['Status', statusLabelEn(task.status)],
                             ['Role', task.worker_role?.replace(/_/g, ' ')],
                             ['Booking', task.booking_id ?? '—'],
                         ].map(([label, value]) => (
@@ -427,11 +430,12 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
 type Tab = 'todo' | 'active' | 'done' | 'channel';
 
 function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void; counts: Record<'todo' | 'active' | 'done', number> }) {
+    const { t } = useLanguage();
     const tabs: { id: Tab; label: string; icon: string }[] = [
-        { id: 'todo', label: 'To Do', icon: '📋' },
-        { id: 'active', label: 'Active', icon: '🔄' },
-        { id: 'done', label: 'Done', icon: '✅' },
-        { id: 'channel', label: 'Channel', icon: '🔔' },
+        { id: 'todo',    label: t('worker.tab_todo'),    icon: '📋' },
+        { id: 'active',  label: t('worker.tab_active'),  icon: '🔄' },
+        { id: 'done',    label: t('worker.tab_done'),    icon: '✅' },
+        { id: 'channel', label: t('worker.tab_channel'), icon: '🔔' },
     ];
 
     return (
@@ -474,6 +478,24 @@ function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void
                 </button>
             ))}
         </nav>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// i18n helper components (Phase 260)
+// ---------------------------------------------------------------------------
+
+function WorkerHeader() {
+    const { t } = useLanguage();
+    return <>{t('worker.my_tasks')}</>;
+}
+
+function ChannelLabel({ str }: { str: 'channel.active' | 'channel.set' }) {
+    const { t } = useLanguage();
+    return (
+        <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+            {t(str)}
+        </div>
     );
 }
 
@@ -551,9 +573,7 @@ function ChannelTab({ showToast }: { showToast: (msg: string) => void }) {
         <div style={{ padding: '0 20px', paddingBottom: 100 }}>
             {/* Current channels */}
             <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-                    Active Channels
-                </div>
+                <ChannelLabel str="channel.active" />
 
                 {loading && (
                     <div style={{ height: 80, background: '#1a1f2e', borderRadius: 16, animation: 'pulse 1.5s infinite' }} />
@@ -611,9 +631,7 @@ function ChannelTab({ showToast }: { showToast: (msg: string) => void }) {
 
             {/* Set channel form */}
             <div style={cardStyle}>
-                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
-                    Set Notification Channel
-                </div>
+                <ChannelLabel str="channel.set" />
 
                 {/* Channel type selector */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -682,7 +700,7 @@ function ChannelTab({ showToast }: { showToast: (msg: string) => void }) {
                         transition: 'all 0.15s',
                     }}
                 >
-                    {saving ? 'Saving…' : 'Save Channel'}
+                    {saving ? '…' : '💾 Save'}
                 </button>
             </div>
 
@@ -959,7 +977,7 @@ export default function WorkerPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <h1 style={{ fontSize: 24, fontWeight: 800, color: '#f9fafb', margin: 0, letterSpacing: '-0.03em' }}>
-                                My Tasks
+                                <WorkerHeader />
                             </h1>
                             <p style={{ fontSize: 13, color: '#6b7280', margin: '2px 0 0' }}>
                                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}

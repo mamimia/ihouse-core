@@ -1,35 +1,55 @@
-/* Phase 153 — iHouse Design Tokens */
+/* Phase 257 — Domaniqo Design System Tokens */
+/* Brand: Domaniqo — quiet, precise, architectural, premium hospitality */
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  /* ---------- Colour palette ---------- */
-  --color-bg:           #0b0f1a;
-  --color-surface:      #111827;
-  --color-surface-2:    #1a2236;
-  --color-surface-3:    #243049;
-  --color-border:       #2a3a55;
-  --color-border-light: #3a4f70;
+  /* ---------- Domaniqo Colour Palette ---------- */
 
-  /* Brand */
-  --color-primary:      #3b82f6;
-  --color-primary-dim:  #1e40af;
-  --color-accent:       #06b6d4;
+  /* Core Neutrals */
+  --color-midnight:     #171A1F;   /* Midnight Graphite — primary dark */
+  --color-stone:        #EAE5DE;   /* Stone Mist — soft premium light */
+  --color-sand:         #D6C8B7;   /* Soft Sand — warm secondary neutral */
+  --color-white:        #F8F6F2;   /* Cloud White — main background */
+
+  /* Brand Greens */
+  --color-moss:         #334036;   /* Deep Moss — CTAs, strong actions */
+  --color-olive:        #66715F;   /* Quiet Olive — secondary operational tone */
+
+  /* Accent */
+  --color-copper:       #B56E45;   /* Signal Copper — premium highlight only */
+  --color-sky:          #9FB7C9;   /* Muted Sky — secondary info, optional */
+
+  /* ---------- Semantic Roles (light mode: warm minimal) ---------- */
+  --color-bg:           var(--color-white);
+  --color-surface:      #FFFFFF;
+  --color-surface-2:    var(--color-stone);
+  --color-surface-3:    var(--color-sand);
+  --color-border:       #DDD8D0;
+  --color-border-light: #EAE5DE;
+
+  /* Brand primary = Deep Moss */
+  --color-primary:      var(--color-moss);
+  --color-primary-dim:  var(--color-olive);
+  --color-accent:       var(--color-copper);
 
   /* Status */
-  --color-ok:      #10b981;
-  --color-warn:    #f59e0b;
-  --color-danger:  #ef4444;
-  --color-muted:   #6b7280;
-  --color-info:    #60a5fa;
+  --color-ok:      #4A7C59;
+  --color-warn:    #B56E45;
+  --color-danger:  #9B3A3A;
+  --color-muted:   var(--color-olive);
+  --color-info:    var(--color-sky);
 
   /* Text */
-  --color-text:         #e2e8f0;
-  --color-text-dim:     #94a3b8;
-  --color-text-faint:   #4b5563;
-  --color-text-inverse: #0b0f1a;
+  --color-text:         var(--color-midnight);
+  --color-text-dim:     #5A5A52;
+  --color-text-faint:   #9A958E;
+  --color-text-inverse: var(--color-white);
 
   /* ---------- Typography ---------- */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-brand: 'Manrope', system-ui, sans-serif;     /* headlines, brand UI */
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;  /* body, UI */
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
 
   --text-xs:   0.70rem;
   --text-sm:   0.825rem;
@@ -58,13 +78,12 @@
   --radius-xl:  1.25rem;
   --radius-full: 9999px;
 
-  /* ---------- Shadows ---------- */
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.35);
-  --shadow-md:  0 4px 16px rgba(0,0,0,0.45);
-  --shadow-lg:  0 8px 32px rgba(0,0,0,0.55);
-  --shadow-glow-blue:  0 0 20px rgba(59,130,246,0.25);
-  --shadow-glow-red:   0 0 20px rgba(239,68,68,0.2);
-  --shadow-glow-green: 0 0 20px rgba(16,185,129,0.2);
+  /* ---------- Shadows (warm, restrained) ---------- */
+  --shadow-sm:  0 1px 3px rgba(23,26,31,0.08);
+  --shadow-md:  0 4px 16px rgba(23,26,31,0.12);
+  --shadow-lg:  0 8px 32px rgba(23,26,31,0.16);
+  --shadow-glow-moss:   0 0 20px rgba(51,64,54,0.15);
+  --shadow-glow-copper: 0 0 20px rgba(181,110,69,0.18);
 
   /* ---------- Transitions ---------- */
   --transition-fast: 120ms ease;

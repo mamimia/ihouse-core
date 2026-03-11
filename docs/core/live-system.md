@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 239 — Platform Checkpoint VII (2026-03-11)**
+**Last updated: Phase 255 — Documentation Audit (2026-03-11)**
 
 ## Core Architecture
 
@@ -301,6 +301,58 @@ All **14 providers** implemented at full parity:
 |----------|-------------|-------|
 | `POST /guest-messages/{booking_id}` | Log a guest message | 236 |
 | `GET /guest-messages/{booking_id}` | Guest message timeline for booking | 236 |
+
+### Analytics Dashboards (Phases 241–244)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/reconciliation/dashboard` | Stale/missing/mismatched reconciliation counts grouped by property | 241 |
+| `GET /admin/bookings/lifecycle-states` | Booking lifecycle state machine visualization | 242 |
+| `GET /admin/properties/performance` | Per-property occupancy, ADR, RevPAR, SLA compliance, sync success | 243 |
+| `GET /admin/ota/revenue-mix` | All-time OTA gross/net/commission, revenue share, net-to-gross ratio | 244 |
+
+### Pricing (Phases 246, 251)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /properties/{id}/rate-cards` | List rate cards for a property | 246 |
+| `POST /properties/{id}/rate-cards` | Upsert rate card (room_type + season) | 246 |
+| `GET /properties/{id}/rate-cards/check` | Price deviation check vs rate card | 246 |
+| `GET /pricing/suggestion/{property_id}` | Heuristic suggested rates for next 30 days | 251 |
+
+### Guest Feedback (Phase 247)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /guest-feedback/{booking_id}` | Submit guest feedback (token-gated, no JWT) | 247 |
+| `GET /admin/guest-feedback` | Aggregated feedback with NPS, category, property breakdown | 247 |
+
+### Task Templates (Phase 248)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/task-templates` | List maintenance/housekeeping task templates | 248 |
+| `POST /admin/task-templates` | Create task template | 248 |
+| `DELETE /admin/task-templates/{id}` | Soft-delete task template | 248 |
+
+### Content Push (Phase 250)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /admin/content/push/{property_id}` | Push property content to Booking.com Partner API | 250 |
+
+### Owner Reports (Phase 252)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /owner/financial-report` | Owner financial report v2 — custom date range, drill-down by property/OTA/booking | 252 |
+
+### Staff Performance (Phase 253)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/staff/performance` | Aggregated worker metrics (ACK time, SLA compliance, tasks/day, channel) | 253 |
+| `GET /admin/staff/performance/{worker_id}` | Individual worker performance drill-down | 253 |
 
 ## Future Evolution
 

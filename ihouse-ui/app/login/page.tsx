@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * Phase 179 — Login Page
+ * Phase 257 — Login Page (Domaniqo Rebrand)
  * Route: /login
  *
- * Collects tenant_id + secret → POST /auth/token → stores JWT → redirects.
- * Role-based redirect: workers → /worker, others → /dashboard.
+ * Domaniqo brand: Midnight Graphite, Stone Mist, Cloud White, Deep Moss, Signal Copper.
+ * Typography: Manrope (brand headlines) + Inter (UI body).
+ * Tone: calm, precise, premium, architectural.
  */
 
 import { useState, useEffect } from 'react';
@@ -34,15 +35,13 @@ export default function LoginPage() {
         try {
             const resp = await api.login(tenantId.trim(), secret);
             setToken(resp.token);
-            // Write cookie for middleware (edge runtime cannot read localStorage)
             document.cookie = `ihouse_token=${resp.token}; path=/; max-age=${resp.expires_in}; SameSite=Lax`;
-            // Redirect
             window.location.href = '/dashboard';
         } catch (err: unknown) {
             if (err instanceof Error && err.message.includes('401')) {
                 setError('Invalid credentials. Check your tenant ID and secret.');
             } else if (err instanceof Error && err.message.includes('503')) {
-                setError('Auth not configured on server. Set IHOUSE_JWT_SECRET.');
+                setError('Auth not configured. Contact your administrator.');
             } else {
                 setError(err instanceof Error ? err.message : 'Login failed');
             }
@@ -56,63 +55,71 @@ export default function LoginPage() {
     return (
         <>
             <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500&display=swap');
         * { box-sizing: border-box }
-        body { background: #0d1117 !important; margin: 0 }
+        body { background: #F8F6F2 !important; margin: 0 }
         /* Hide desktop sidebar on login page */
         nav { display: none !important }
         main { margin-left: 0 !important; padding: 0 !important; max-width: 100% !important }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes shimmer {
-          0% { background-position: -400px 0 }
-          100% { background-position: 400px 0 }
-        }
-        .login-card { animation: fadeUp 300ms ease forwards }
-        input:focus { outline: none; border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.15) }
-        .login-btn:hover:not(:disabled) { background: linear-gradient(135deg,#2563eb,#1d4ed8) !important }
-        .login-btn:active:not(:disabled) { transform: scale(0.98) }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
+        .login-card { animation: fadeUp 280ms ease forwards }
+        input:focus { outline: none; border-color: #334036 !important; box-shadow: 0 0 0 3px rgba(51,64,54,0.12) }
+        .login-btn:hover:not(:disabled) { background: #2a3630 !important; box-shadow: 0 4px 20px rgba(51,64,54,0.28) !important }
+        .login-btn:active:not(:disabled) { transform: scale(0.985) }
       `}</style>
             <div style={{
-                minHeight: '100vh', background: '#0d1117',
+                minHeight: '100vh', background: '#F8F6F2',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 padding: '24px',
                 fontFamily: "'Inter', -apple-system, sans-serif",
             }}>
-                <div className="login-card" style={{ width: '100%', maxWidth: 420 }}>
-                    {/* Logo */}
-                    <div style={{ textAlign: 'center', marginBottom: 40 }}>
+                <div className="login-card" style={{ width: '100%', maxWidth: 400 }}>
+
+                    {/* Brand wordmark */}
+                    <div style={{ textAlign: 'center', marginBottom: 44 }}>
                         <div style={{
-                            fontSize: 32, fontWeight: 800, color: '#f9fafb',
-                            letterSpacing: '-0.04em', marginBottom: 8,
+                            fontFamily: "'Manrope', sans-serif",
+                            fontSize: 28, fontWeight: 800,
+                            color: '#171A1F',
+                            letterSpacing: '-0.04em', marginBottom: 10,
                         }}>
-                            iHouse<span style={{ color: '#3b82f6' }}>Core</span>
+                            Domaniqo
                         </div>
-                        <div style={{ fontSize: 14, color: '#6b7280' }}>
-                            Operations Platform
+                        <div style={{
+                            fontSize: 13, color: '#66715F',
+                            fontFamily: "'Inter', sans-serif",
+                            letterSpacing: '0.01em',
+                        }}>
+                            Calm command for modern hospitality.
                         </div>
                     </div>
 
                     {/* Card */}
                     <div style={{
-                        background: '#111827',
-                        border: '1px solid #1f2937',
-                        borderRadius: 20,
+                        background: '#FFFFFF',
+                        border: '1px solid #DDD8D0',
+                        borderRadius: 16,
                         padding: '32px 28px',
-                        boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
+                        boxShadow: '0 8px 32px rgba(23,26,31,0.10)',
                     }}>
                         <h1 style={{
-                            fontSize: 22, fontWeight: 700, color: '#f9fafb',
+                            fontFamily: "'Manrope', sans-serif",
+                            fontSize: 20, fontWeight: 700, color: '#171A1F',
                             margin: '0 0 6px',
+                            letterSpacing: '-0.02em',
                         }}>Sign in</h1>
-                        <p style={{ fontSize: 14, color: '#6b7280', margin: '0 0 28px' }}>
-                            Enter your tenant credentials to continue
+                        <p style={{ fontSize: 13, color: '#9A958E', margin: '0 0 28px', fontFamily: "'Inter', sans-serif" }}>
+                            Enter your credentials to continue
                         </p>
 
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             {/* Tenant ID */}
                             <div>
                                 <label style={{
-                                    display: 'block', fontSize: 13, fontWeight: 600,
-                                    color: '#9ca3af', marginBottom: 6,
+                                    display: 'block', fontSize: 12, fontWeight: 600,
+                                    color: '#5A5A52', marginBottom: 6,
+                                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                                    fontFamily: "'Inter', sans-serif",
                                 }}>
                                     Tenant ID
                                 </label>
@@ -126,10 +133,10 @@ export default function LoginPage() {
                                     disabled={loading}
                                     style={{
                                         width: '100%', padding: '12px 14px',
-                                        background: '#1a1f2e',
-                                        border: '1px solid #374151',
+                                        background: '#F8F6F2',
+                                        border: '1px solid #DDD8D0',
                                         borderRadius: 10,
-                                        color: '#f9fafb', fontSize: 15,
+                                        color: '#171A1F', fontSize: 14,
                                         transition: 'border-color 0.15s, box-shadow 0.15s',
                                         fontFamily: 'monospace',
                                     }}
@@ -139,8 +146,10 @@ export default function LoginPage() {
                             {/* Secret */}
                             <div>
                                 <label style={{
-                                    display: 'block', fontSize: 13, fontWeight: 600,
-                                    color: '#9ca3af', marginBottom: 6,
+                                    display: 'block', fontSize: 12, fontWeight: 600,
+                                    color: '#5A5A52', marginBottom: 6,
+                                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                                    fontFamily: "'Inter', sans-serif",
                                 }}>
                                     Secret
                                 </label>
@@ -154,25 +163,26 @@ export default function LoginPage() {
                                     disabled={loading}
                                     style={{
                                         width: '100%', padding: '12px 14px',
-                                        background: '#1a1f2e',
-                                        border: '1px solid #374151',
+                                        background: '#F8F6F2',
+                                        border: '1px solid #DDD8D0',
                                         borderRadius: 10,
-                                        color: '#f9fafb', fontSize: 15,
+                                        color: '#171A1F', fontSize: 14,
                                         transition: 'border-color 0.15s, box-shadow 0.15s',
                                     }}
                                 />
-                                <div style={{ fontSize: 12, color: '#4b5563', marginTop: 6 }}>
-                                    Default: <code style={{ color: '#6b7280' }}>dev</code> (local only)
+                                <div style={{ fontSize: 12, color: '#9A958E', marginTop: 6, fontFamily: "'Inter', sans-serif" }}>
+                                    Default: <code style={{ color: '#66715F' }}>dev</code> (local only)
                                 </div>
                             </div>
 
                             {/* Error */}
                             {error && (
                                 <div style={{
-                                    background: '#ef444415',
-                                    border: '1px solid #ef444440',
+                                    background: '#9B3A3A15',
+                                    border: '1px solid #9B3A3A30',
                                     borderRadius: 10, padding: '10px 14px',
-                                    fontSize: 13, color: '#ef4444',
+                                    fontSize: 13, color: '#9B3A3A',
+                                    fontFamily: "'Inter', sans-serif",
                                 }}>
                                     ⚠ {error}
                                 </div>
@@ -186,13 +196,15 @@ export default function LoginPage() {
                                 disabled={loading || !tenantId.trim()}
                                 style={{
                                     padding: '14px',
-                                    background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
-                                    border: 'none', borderRadius: 12,
-                                    color: '#fff', fontSize: 16, fontWeight: 700,
+                                    background: '#334036',
+                                    border: 'none', borderRadius: 10,
+                                    color: '#F8F6F2', fontSize: 15, fontWeight: 600,
+                                    fontFamily: "'Manrope', sans-serif",
+                                    letterSpacing: '-0.01em',
                                     cursor: loading || !tenantId.trim() ? 'not-allowed' : 'pointer',
-                                    opacity: loading || !tenantId.trim() ? 0.6 : 1,
+                                    opacity: loading || !tenantId.trim() ? 0.5 : 1,
                                     transition: 'all 0.15s',
-                                    boxShadow: '0 0 20px rgba(59,130,246,0.25)',
+                                    boxShadow: '0 2px 12px rgba(51,64,54,0.20)',
                                     marginTop: 4,
                                 }}
                             >
@@ -201,12 +213,12 @@ export default function LoginPage() {
                         </form>
                     </div>
 
-                    {/* Footer note */}
+                    {/* Footer */}
                     <p style={{
-                        textAlign: 'center', fontSize: 12, color: '#374151',
-                        marginTop: 20,
+                        textAlign: 'center', fontSize: 12, color: '#9A958E',
+                        marginTop: 20, fontFamily: "'Inter', sans-serif",
                     }}>
-                        iHouse Core · Property Operations Platform
+                        Domaniqo · See every stay.
                     </p>
                 </div>
             </div>

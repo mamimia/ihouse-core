@@ -102,7 +102,7 @@ def test_health_requires_no_auth(client):
 # ---------------------------------------------------------------------------
 
 def test_app_title():
-    assert app.title == "iHouse Core"
+    assert app.title == "Domaniqo Core"  # Phase 256 — customer-facing brand migration
 
 
 def test_app_version():

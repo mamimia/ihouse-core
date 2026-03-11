@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 254 — Platform Checkpoint X: Audit & Handoff (closed)
+Phase 264 — Advanced Analytics + Platform Checkpoint XI (closed)
 
 ## Last Closed Phase
 
-Phase 254 — Platform Checkpoint X: Audit & Handoff (closed)
+Phase 264 — Advanced Analytics + Platform Checkpoint XI (closed)
 
 ## Current Objective
 
-Phase 254 closed. Phases 246–253 completed in this session. Next planning cycle starts from Phase 255+. See `docs/core/planning/` for phase plans.
+Phase 264 closed. Block 255–264 complete. All 10 phases documented, tested, zipped, pushed. Next planning cycle starts Phase 265+.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -99,7 +99,7 @@ Phase 254 closed. Phases 246–253 completed in this session. Next planning cycl
 | `docker-compose.staging.yml` | Phase 237: Staging environment |
 | `src/adapters/ota/tripcom.py` | Phase 238: Ctrip/Trip.com enhanced adapter |
 
-## Key Files — Recent Additions (Phases 246–253)
+## Key Files — Recent Additions (Phases 246–264)
 
 | File | Role |
 |------|------|
@@ -112,6 +112,16 @@ Phase 254 closed. Phases 246–253 completed in this session. Next planning cycl
 | `src/api/pricing_suggestion_router.py` | Phase 251: GET /pricing/suggestion/{property_id} |
 | `src/api/owner_financial_report_v2_router.py` | Phase 252: GET /owner/financial-report |
 | `src/api/staff_performance_router.py` | Phase 253: GET /admin/staff/performance + /{worker_id} |
+| `src/services/bulk_operations.py` | Phase 255: bulk_cancel_bookings, bulk_assign_tasks, bulk_trigger_sync |
+| `src/api/bulk_operations_router.py` | Phase 255: POST /admin/bulk/cancel, /tasks/assign, /sync/trigger |
+| `src/services/webhook_event_log.py` | Phase 261: append-only event log, no PII, max 5000 entries |
+| `src/api/webhook_event_log_router.py` | Phase 261: GET /admin/webhook-log, /stats; POST /test |
+| `src/services/guest_portal.py` | Phase 262: GuestBookingView, token validation, stub_lookup |
+| `src/api/guest_portal_router.py` | Phase 262: GET /guest/booking/{ref}, /wifi, /rules |
+| `src/services/monitoring.py` | Phase 263: record_request(), latency histogram, health metrics |
+| `src/api/monitoring_router.py` | Phase 263: GET /admin/monitor, /health, /latency |
+| `src/services/analytics.py` | Phase 264: top_properties(), ota_mix(), revenue_summary() |
+| `src/api/analytics_router.py` | Phase 264: GET /admin/analytics/top-properties, /ota-mix, /revenue-summary |
 
 ## Key Files — HTTP API Layer (Phases 58–64)
 
@@ -151,4 +161,4 @@ Phase 254 closed. Phases 246–253 completed in this session. Next planning cycl
 
 ## Tests
 
-**~5,900 collected. ~5,900 passing. 0 failures. Exit 0.**
+**~6,015 collected. ~6,015 passing. 0 failures. Exit 0.**

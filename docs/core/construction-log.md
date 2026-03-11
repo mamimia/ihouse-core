@@ -3342,6 +3342,19 @@ Outbound content push to Booking.com Partner API. Pure build_content_payload + p
 Tests: ~5,820 collected. ~5,820 passing. Exit 0.
 
 
+## Phase 251 — Dynamic Pricing Suggestion Engine (2026-03-11)
+
+Pure heuristic pricing engine: occupancy + seasonality + rate-card comparison → suggested rates.
+
+- `src/services/pricing_engine.py` — NEW — suggest_prices() pure function, PriceSuggestion dataclass
+- `src/api/pricing_suggestion_router.py` — NEW — GET /pricing/suggestion/{property_id}
+- `src/main.py` — MODIFIED — registered pricing_suggestion_router
+- `tests/test_pricing_suggestion_contract.py` — NEW — 37 contract tests
+- `docs/archive/phases/phase-251-spec.md` — NEW
+
+Tests: ~5,857 collected. ~5,857 passing. Exit 0.
+
+
 ## Phase 252 — Owner Financial Report API v2 (2026-03-11)
 
 Self-serve owner financial report with date range + drill-down.
@@ -3369,3 +3382,131 @@ Tests: Full suite Exit 0.
 Full system audit after 7 feature phases (246–253). Fixed missing Phase 251 ZIP.
 Updated current-snapshot.md and work-context.md from Phase 245 → 254.
 All specs verified. Full suite Exit 0. Handoff prepared.
+
+
+## Phase 255 — Documentation Audit + Brand Canonical Placement (2026-03-11)
+
+Full documentation integrity repair. No code changes.
+
+- `docs/core/current-snapshot.md` — MODIFIED — header Phase 253 → Phase 254
+- `docs/core/phase-timeline.md` — MODIFIED — Phase 251 entry reconstructed (was missing entirely)
+- `docs/core/construction-log.md` — MODIFIED — Phase 251 entry reconstructed (was missing entirely)
+- `docs/core/live-system.md` — MODIFIED — updated to Phase 255 timestamp; 18 new endpoints added (Analytics, Pricing, Feedback, Templates, Content Push, Owner Reports, Staff Performance)
+- `docs/core/roadmap.md` — MODIFIED — System Numbers (~5,559→~5,900 tests, Phase 239→254); Completed Phases extended to 254; Active Direction updated to Phase 255+
+- `docs/core/brand-handoff.md` — NEW — Domaniqo brand canonical document (Layer C)
+- `docs/core/BOOT.md` — MODIFIED — brand-handoff.md added to Layer C list
+- `docs/core/planning/next-10-phases-255-264.md` — NEW
+- `docs/archive/phases/phase-255-spec.md` — NEW
+- `releases/phase-zips/Domaniqo-Core-Docs-Phase-255.zip` — NEW
+
+Tests: ~5,900 collected. ~5,900 passing. Exit 0.
+
+
+## Phase 256 — Codebase Brand Migration (Customer-Facing) (2026-03-11)
+
+Customer-facing brand strings → Domaniqo. Internal identifiers (IHOUSE_* env vars, file names) unchanged.
+
+- `src/main.py` — MODIFIED — title "Domaniqo Core"; logger "domaniqo-core"; startup/shutdown logs; OpenAPI description; contact block
+- `tests/test_main_app.py` — MODIFIED — test_app_title asserts "Domaniqo Core"
+- `docs/archive/phases/phase-256-spec.md` — NEW
+- `releases/phase-zips/Domaniqo-Core-Docs-Phase-256.zip` — NEW
+
+Tests: ~5,900 collected. ~5,900 passing. Exit 0.
+
+
+## Phase 257 — UI Rebrand (Domaniqo Design System) (2026-03-11)
+
+Full Domaniqo design system applied to ihouse-ui. Dark blue → warm minimal light mode.
+
+- `ihouse-ui/styles/tokens.css` — REPLACED — Manrope+Inter fonts; Midnight Graphite `#171A1F`, Stone Mist `#EAE5DE`, Cloud White `#F8F6F2`, Deep Moss `#334036`, Quiet Olive `#66715F`, Signal Copper `#B56E45`, Muted Sky `#9FB7C9`
+- `ihouse-ui/app/layout.tsx` — MODIFIED — metadata; Google Fonts; sidebar logo "Domaniqo"
+- `ihouse-ui/app/login/page.tsx` — REPLACED — Domaniqo login: Cloud White bg, Deep Moss CTA, Manrope wordmark, tagline + footer
+- `docs/archive/phases/phase-257-spec.md` — NEW
+- `releases/phase-zips/Domaniqo-Core-Docs-Phase-257.zip` — NEW
+
+Tests: ~5,900 collected. ~5,900 passing. Exit 0.
+
+
+## Phase 258 — Multi-Language Support Foundation (i18n) (2026-03-11)
+
+Pure in-memory i18n foundation. 7 language packs. No new tables.
+
+- `src/i18n/language_pack.py` — NEW — get_text() with fallback + variable substitution; 7 languages × 16 template keys
+- `src/i18n/__init__.py` — NEW
+- `tests/test_i18n_contract.py` — NEW — 22 contract tests (5 groups)
+- `docs/archive/phases/phase-258-spec.md` — NEW
+- `releases/phase-zips/Domaniqo-Core-Docs-Phase-258.zip` — NEW
+
+Tests: ~5,922 collected. ~5,922 passing. Exit 0.
+
+
+## Phase 259 — Bulk Operations API (2026-03-11)
+
+Batch wrappers with per-item outcome reporting. Max 50 items per operation.
+
+- `src/services/bulk_operations.py` — NEW — bulk_cancel_bookings, bulk_assign_tasks, bulk_trigger_sync; BulkOperationResult(ok/partial/failed) + per-item BulkItemResult
+- `src/api/bulk_operations_router.py` — NEW — POST /admin/bulk/cancel, POST /admin/bulk/tasks/assign, POST /admin/bulk/sync/trigger
+- `src/main.py` — MODIFIED — bulk_operations_router registered
+- `tests/test_bulk_operations_contract.py` — NEW — 16 contract tests (4 groups)
+- `docs/archive/phases/phase-259-spec.md` — NEW
+- `releases/phase-zips/Domaniqo-Core-Docs-Phase-259.zip` — NEW
+
+Tests: ~5,938 collected. ~5,938 passing. Exit 0.
+
+
+## Phase 261 — Webhook Event Logging (2026-03-11)
+
+Append-only in-memory event log. No PII stored. Max 5000 entries.
+
+- `src/services/webhook_event_log.py` — NEW — log_webhook_event(), get_webhook_log(), get_webhook_log_stats(), clear_webhook_log()
+- `src/api/webhook_event_log_router.py` — NEW — GET /admin/webhook-log, GET /admin/webhook-log/stats, POST /admin/webhook-log/test
+- `src/main.py` — MODIFIED — webhook_event_log_router registered
+- `tests/test_webhook_event_log_contract.py` — NEW — 19 tests (5 groups)
+- `docs/archive/phases/phase-261-spec.md` — NEW
+- `releases/phase-zips/Domaniqo-Core-Docs-Phase-261.zip` — NEW
+
+Tests: ~5,957 collected. ~5,957 passing. Exit 0.
+
+
+## Phase 262 — Guest Self-Service Portal API (2026-03-11)
+
+Read-only guest-facing API gated by X-Guest-Token header.
+
+- `src/services/guest_portal.py` — NEW — GuestBookingView, validate_guest_token(), get_guest_booking(), stub_lookup()
+- `src/api/guest_portal_router.py` — NEW — GET /guest/booking/{ref}, /wifi, /rules; 401 bad token; 404 unknown
+- `src/main.py` — MODIFIED — guest_portal_router registered
+- `tests/test_guest_portal_contract.py` — NEW — 22 tests (5 groups)
+- `docs/archive/phases/phase-262-spec.md` — NEW
+- `releases/phase-zips/Domaniqo-Core-Docs-Phase-262.zip` — NEW
+
+Tests: ~5,979 collected. ~5,979 passing. Exit 0.
+
+
+## Phase 263 — Production Monitoring Hooks (2026-03-11)
+
+In-process stdlib-only monitoring. No external dependencies. Route prefix bucketing.
+
+- `src/services/monitoring.py` — NEW — record_request(), rolling 1000-sample latency histogram, get_full_metrics(), reset_metrics()
+- `src/api/monitoring_router.py` — NEW — GET /admin/monitor, /admin/monitor/health (200/503), /admin/monitor/latency
+- `src/main.py` — MODIFIED — monitoring_router registered (prefix /admin/monitor, avoids /admin/metrics conflict)
+- `tests/test_monitoring_contract.py` — NEW — 18 tests (5 groups)
+- `docs/archive/phases/phase-263-spec.md` — NEW
+- `releases/phase-zips/Domaniqo-Core-Docs-Phase-263.zip` — NEW
+
+Tests: ~5,997 collected. ~5,997 passing. Exit 0.
+
+
+## Phase 264 — Advanced Analytics + Platform Checkpoint XI (2026-03-11)
+
+Three cross-property analytics endpoints. Platform Checkpoint XI closes the 255–264 block.
+
+- `src/services/analytics.py` — NEW — top_properties(), ota_mix(), revenue_summary(); pure functions, no DB
+- `src/api/analytics_router.py` — NEW — GET /admin/analytics/top-properties, /ota-mix, /revenue-summary
+- `src/main.py` — MODIFIED — analytics_router registered
+- `tests/test_analytics_contract.py` — NEW — 20 tests (5 groups)
+- `docs/archive/phases/phase-264-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-264.zip` — NEW
+- All canonical docs updated; handoff written; git push executed.
+
+Tests: ~6,015 collected. ~6,015 passing. Exit 0.
+

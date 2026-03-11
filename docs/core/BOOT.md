@@ -23,6 +23,7 @@ This file is the only context you should need at the start of a new chat.
 - docs/core/work-context.md
 - docs/core/live-system.md
 - docs/core/roadmap.md
+- docs/core/brand-handoff.md
 
 ### Layer D — History (append only, never rewrite)
 - docs/core/phase-timeline.md

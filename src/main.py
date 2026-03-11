@@ -1,6 +1,6 @@
 """
-iHouse Core — FastAPI Application Entrypoint
-=============================================
+Domaniqo Core — FastAPI Application Entrypoint
+===============================================
 
 This is the unified production entrypoint for the OTA webhook ingestion stack.
 
@@ -43,7 +43,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
-logger = logging.getLogger("ihouse-core")
+logger = logging.getLogger("domaniqo-core")
 
 # ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
@@ -54,12 +54,12 @@ _ENV = os.getenv("IHOUSE_ENV", "development")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
-    logger.info("iHouse Core API starting — env=%s version=%s", _ENV, app.version)
+    logger.info("Domaniqo Core API starting — env=%s version=%s", _ENV, app.version)
     from services.scheduler import start_scheduler, stop_scheduler
     start_scheduler()
     yield
     stop_scheduler()
-    logger.info("iHouse Core API shutting down")
+    logger.info("Domaniqo Core API shutting down")
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 # ---------------------------------------------------------------------------
 
 _DESCRIPTION = """
-## iHouse Core — OTA Webhook Ingestion API
+## Domaniqo Core — Hospitality Operations API
 
 Canonical event pipeline for property management.
 All OTA provider webhooks enter the system through this API,
@@ -134,12 +134,12 @@ _TAGS = [
 ]
 
 app = FastAPI(
-    title="iHouse Core",
+    title="Domaniqo Core",
     version="0.1.0",
     description=_DESCRIPTION,
     contact={
-        "name": "iHouse Engineering",
-        "url": "https://github.com/mamimia/ihouse-core",
+        "name": "Domaniqo Engineering",
+        "url": "https://domaniqo.com",
     },
     license_info={
         "name": "Proprietary",
@@ -218,6 +218,21 @@ app.include_router(owner_financial_report_v2_router)
 
 from api.staff_performance_router import router as staff_performance_router  # noqa: E402  # Phase 253
 app.include_router(staff_performance_router)
+
+from api.bulk_operations_router import router as bulk_operations_router  # noqa: E402  # Phase 259
+app.include_router(bulk_operations_router)
+
+from api.webhook_event_log_router import router as webhook_event_log_router  # noqa: E402  # Phase 261
+app.include_router(webhook_event_log_router)
+
+from api.guest_portal_router import router as guest_portal_router  # noqa: E402  # Phase 262
+app.include_router(guest_portal_router)
+
+from api.monitoring_router import router as monitoring_router  # noqa: E402  # Phase 263
+app.include_router(monitoring_router)
+
+from api.analytics_router import router as analytics_router  # noqa: E402  # Phase 264
+app.include_router(analytics_router)
 
 from api.cashflow_router import router as cashflow_router  # noqa: E402
 app.include_router(cashflow_router)
