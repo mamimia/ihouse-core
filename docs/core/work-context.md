@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 228 — Platform Checkpoint V (closing)
+Phase 228 — Platform Checkpoint V (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 227 — Guest Messaging Copilot v1 (closed)
 
 ## Current Objective
 
-Phase 228 closing. Full audit + doc sync + next 10 phases plan.
+Phase 228 closed. Next: Phase 229 — AI Audit Trail.
 
 ## Key Invariants (Locked — Do Not Change)
 

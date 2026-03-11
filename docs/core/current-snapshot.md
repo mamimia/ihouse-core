@@ -1,7 +1,7 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 227 — Guest Messaging Copilot v1 (closed)
+Phase 228 — Platform Checkpoint V (closed)
 
 ## Last Closed Phase
 Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
