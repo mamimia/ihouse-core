@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 270 (2026-03-11)
+## System Numbers — Phase 271 (2026-03-11)
 
 | Metric | Value |
 |--------|-------|
@@ -36,13 +36,13 @@
 | **API Routers** | 77 files in `src/api/` |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | ~6,161 collected / ~6,161 passing / 0 failures |
+| **Tests** | ~6,183 collected / ~6,183 passing / 0 failures |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
 
 ---
 
-## ✅ Completed Phases (1–270)
+## ✅ Completed Phases (1–271)
 
 ### Foundation (Phases 21–64)
 OTA ingestion boundary, adapter layer, DLQ, replay, canonical events (BOOKING_CREATED/CANCELED/AMENDED), service pipeline, FastAPI app, JWT auth, rate limiting, OpenAPI, health checks.

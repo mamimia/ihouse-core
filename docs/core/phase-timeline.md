@@ -5037,3 +5037,12 @@ Tests: 6,132 passed. 13 skipped. 0 failures. Exit 0.
 - `releases/phase-zips/iHouse-Core-Docs-Phase-270.zip` — NEW
 
 Tests: 6,161 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 271 — E2E DLQ & Replay Integration Test (Closed) — 2026-03-11
+
+**Actions:**
+- `tests/test_dlq_e2e.py` — NEW — 22 tests, 3 groups (A-C), 100% on first run
+- `docs/archive/phases/phase-271-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-271.zip` — NEW
+
+Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0.

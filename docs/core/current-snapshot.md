@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 270 — E2E Admin & Properties Integration Test (closed)
+Phase 271 — E2E DLQ & Replay Integration Test (closed)
 
 ## Last Closed Phase
-Phase 270 — E2E Admin & Properties Integration Test (closed) — 29 tests (Groups A-F): admin summary/metrics/DLQ/health/timeline, properties list/get/create. Discoveries: updated_at required in booking rows, property_id required in create body. 6,161 tests passing.
+Phase 271 — E2E DLQ & Replay Integration Test (closed) — 22 tests (Groups A-C): list_dlq_entries (validation guards, filter propagation), get_dlq_entry (200/404), replay_dlq_entry (_replay_fn injection, already_replayed guard). 6,183 tests passing.
 
 ## System Status
 

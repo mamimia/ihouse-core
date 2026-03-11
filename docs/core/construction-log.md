@@ -3597,3 +3597,15 @@ Tests: 6,132 passed. 13 skipped. 0 failures. Exit 0.
 
 Key: get_tenant_summary requires updated_at in booking rows; create_property requires property_id in body.
 Tests: 6,161 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 271 closure — E2E DLQ & Replay Integration Test
+
+- `tests/test_dlq_e2e.py` — NEW — 22 tests, 3 groups (A-C), 100% pass first run
+  - Group A (7): list_dlq_entries — shape, total, empty 0, status/limit validation 400, filter propagation
+  - Group B (4): get_dlq_entry — 200, envelope_id present, source field, 404 ghost
+  - Group C (7): replay_dlq_entry — SUCCESS result, envelope_id, trace_id, 404 ghost, already_replayed guard, FAILED result
+- `docs/archive/phases/phase-271-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-271.zip` — NEW
+
+Design: _replay_fn= injectable param allows deterministic replay simulation without Supabase.
+Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0.
