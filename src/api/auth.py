@@ -1,34 +1,44 @@
 """
 JWT Authentication — FastAPI Dependency
-Phase 167 — Capability flag helpers
-========================================
+Phase 276 — Supabase Auth JWT Integration
+==========================================
 
-Provides `verify_jwt` — a FastAPI Depends-injectable function that:
+Provides `verify_jwt` / `jwt_auth` — FastAPI Depends-injectable functions that:
 
-1. Reads the `Authorization: Bearer <token>` header
-2. Verifies the JWT against IHOUSE_JWT_SECRET (HMAC-HS256, Supabase-compatible)
-3. Returns `tenant_id` = the `sub` claim of the validated token
+1. Read the `Authorization: Bearer <token>` header
+2. Verify the JWT against IHOUSE_JWT_SECRET (HMAC-HS256, Supabase-compatible)
+3. Accept both:
+   - Self-issued tokens (sub = tenant_id, from POST /auth/token)
+   - Supabase Auth tokens (aud="authenticated", role="authenticated", sub = user UUID)
+4. Return `tenant_id` = the `sub` claim of the validated token
 
-Dev mode:
-    If IHOUSE_JWT_SECRET is not set, verification is SKIPPED and "dev-tenant"
-    is returned with a warning. This allows local development without secrets.
-    Identical pattern to signature_verifier.py.
+Dev mode (IHOUSE_DEV_MODE=true):
+    If IHOUSE_DEV_MODE is explicitly set to "true", verification is SKIPPED and
+    "dev-tenant" is returned. Requires deliberate opt-in. Secret is not required.
 
-Production mode:
-    Secret must be set. Missing, malformed, expired, or wrong-secret tokens
-    all result in HTTP 403.
+Production mode (IHOUSE_DEV_MODE unset or false):
+    IHOUSE_JWT_SECRET must be set. If absent, raises HTTP 503 (not configured).
+    Missing, malformed, expired, or wrong-secret tokens raise HTTP 403.
+
+Supabase JWT compatibility (Phase 276):
+    Supabase signs tokens with the project JWT Secret (HS256). They include:
+      - aud: "authenticated"
+      - role: "authenticated"
+      - sub: user UUID (used as tenant_id)
+    Both Supabase Auth tokens and internally-issued tokens are accepted.
 
 Environment variables:
-    IHOUSE_JWT_SECRET   — HMAC-HS256 secret (Supabase JWT secret)
+    IHOUSE_JWT_SECRET   — HMAC-HS256 secret (Supabase project JWT secret)
+    IHOUSE_DEV_MODE     — Set to "true" to skip verification (dev/test only)
 
 Usage:
-    from api.auth import verify_jwt
+    from api.auth import jwt_auth
     from fastapi import Depends
 
     @router.post("/webhooks/{provider}")
     async def my_route(
         ...,
-        tenant_id: str = Depends(verify_jwt),
+        tenant_id: str = Depends(jwt_auth),
     ): ...
 """
 from __future__ import annotations
@@ -45,9 +55,20 @@ logger = logging.getLogger(__name__)
 
 _bearer = HTTPBearer(auto_error=False)
 
-_ENV_VAR = "IHOUSE_JWT_SECRET"
+_ENV_SECRET = "IHOUSE_JWT_SECRET"
+_ENV_VAR = _ENV_SECRET  # backward-compat alias (used in older tests)
+_ENV_DEV_MODE = "IHOUSE_DEV_MODE"
 _DEV_TENANT = "dev-tenant"
 _ALGORITHM = "HS256"
+
+# Supabase Auth expected claims (Phase 276)
+_SUPABASE_AUD = "authenticated"
+_SUPABASE_ROLE = "authenticated"
+
+
+def _is_dev_mode() -> bool:
+    """Return True only when IHOUSE_DEV_MODE is explicitly 'true'."""
+    return os.environ.get(_ENV_DEV_MODE, "").lower().strip() == "true"
 
 
 def verify_jwt(
@@ -56,6 +77,10 @@ def verify_jwt(
     """
     FastAPI dependency: verifies JWT Bearer token → returns tenant_id (sub claim).
 
+    Accepts:
+      - Self-issued HS256 tokens (sub = tenant_id)
+      - Supabase Auth HS256 tokens (aud="authenticated", role="authenticated", sub = user UUID)
+
     Args:
         credentials: Injected by FastAPI HTTPBearer security scheme.
 
@@ -63,24 +88,36 @@ def verify_jwt(
         tenant_id (str) — the `sub` claim of the validated JWT.
 
     Raises:
+        HTTPException(503): IHOUSE_JWT_SECRET not set and IHOUSE_DEV_MODE is not true.
         HTTPException(403): token missing, malformed, expired, or wrong secret.
     """
-    secret = os.environ.get(_ENV_VAR, "")
-
     # ------------------------------------------------------------------ #
-    # Dev mode: secret not configured → skip, return sentinel tenant      #
+    # Dev mode: explicit IHOUSE_DEV_MODE=true → skip, return sentinel     #
     # ------------------------------------------------------------------ #
-    if not secret:
+    if _is_dev_mode():
         logger.warning(
-            "JWT verification SKIPPED — %s not set. "
-            "Returning '%s'. Expected in local/test environments only.",
-            _ENV_VAR,
+            "JWT verification SKIPPED — IHOUSE_DEV_MODE=true. "
+            "Returning '%s'. NEVER use in production.",
             _DEV_TENANT,
         )
         return _DEV_TENANT
 
+    secret = os.environ.get(_ENV_SECRET, "")
+
     # ------------------------------------------------------------------ #
-    # Production mode: secret present → must verify                       #
+    # No secret and not in dev mode → auth not configured                 #
+    # ------------------------------------------------------------------ #
+    if not secret:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "AUTH_NOT_CONFIGURED: IHOUSE_JWT_SECRET is not set. "
+                "Set IHOUSE_DEV_MODE=true for local development."
+            ),
+        )
+
+    # ------------------------------------------------------------------ #
+    # Token required                                                       #
     # ------------------------------------------------------------------ #
     if credentials is None or not credentials.credentials:
         raise HTTPException(
@@ -90,17 +127,22 @@ def verify_jwt(
 
     token = credentials.credentials
 
+    # ------------------------------------------------------------------ #
+    # Validate — accept both internal tokens and Supabase Auth tokens     #
+    # ------------------------------------------------------------------ #
     try:
         payload = jwt.decode(
             token,
             secret,
             algorithms=[_ALGORITHM],
+            options={"verify_aud": False},  # aud varies: "authenticated" vs absent
         )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=403, detail="Token has expired")
     except jwt.InvalidTokenError as exc:
         raise HTTPException(status_code=403, detail=f"Invalid token: {exc}")
 
+    # Extract tenant_id from sub claim
     tenant_id: str | None = payload.get("sub")
     if not tenant_id or not str(tenant_id).strip():
         raise HTTPException(
@@ -108,7 +150,36 @@ def verify_jwt(
             detail="Token missing 'sub' claim (tenant_id)",
         )
 
-    return str(tenant_id).strip()
+    tenant_id = str(tenant_id).strip()
+
+    # Phase 276: log Supabase Auth tokens distinctly for audit trail
+    aud = payload.get("aud")
+    role = payload.get("role")
+    if aud == _SUPABASE_AUD or role == _SUPABASE_ROLE:
+        logger.info(
+            "Supabase Auth JWT accepted: sub=%s aud=%s role=%s",
+            tenant_id, aud, role,
+        )
+
+    return tenant_id
+
+
+def decode_jwt_claims(token: str, secret: str) -> dict:
+    """
+    Decode and return all JWT claims without raising HTTPException.
+    Used for introspection in /auth/supabase-verify endpoint.
+
+    Returns empty dict on any error.
+    """
+    try:
+        return jwt.decode(
+            token,
+            secret,
+            algorithms=[_ALGORITHM],
+            options={"verify_aud": False},
+        )
+    except Exception:
+        return {}
 
 
 def _make_bearer_dependency():
@@ -124,7 +195,6 @@ def _make_bearer_dependency():
         return verify_jwt(credentials)
 
     return _dep
-
 
 
 # The canonical Depends-injectable for route use
@@ -180,13 +250,6 @@ def get_permission_flags(
     Returns a dict of {flag_name: value} for each flag in `flags`.
     Missing flags get a default of None.
     Never raises — returns {flag: None, ...} on any error.
-
-    Usage (route-level guard):
-        flags = get_permission_flags(db, tenant_id, user_id, ["can_approve_owner_statements"])
-        if not flags.get("can_approve_owner_statements"):
-            return 403
-
-    Phase 167: used to enforce delegated-permission guards on manager-facing endpoints.
     """
     try:
         scope = get_jwt_scope(db, tenant_id, user_id)
@@ -202,8 +265,6 @@ def has_permission(db: Any, tenant_id: str, user_id: str, flag: str) -> bool:
 
     Convenience wrapper around get_permission_flags().
     Never raises — returns False on any error.
-
-    Phase 167: sugar for simple boolean capability checks in route guards.
     """
     try:
         flags = get_permission_flags(db, tenant_id, user_id, [flag])

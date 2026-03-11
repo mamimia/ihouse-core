@@ -55,6 +55,7 @@ def _make_token(
 
 def test_valid_jwt_returns_tenant_id(monkeypatch):
     monkeypatch.setenv(_ENV_VAR, _SECRET)
+    monkeypatch.delenv("IHOUSE_DEV_MODE", raising=False)
     token = _make_token(sub="tenant-from-jwt")
     creds = _make_credentials(token)
     result = verify_jwt(creds)
@@ -67,6 +68,7 @@ def test_valid_jwt_returns_tenant_id(monkeypatch):
 
 def test_missing_credentials_raises_403(monkeypatch):
     monkeypatch.setenv(_ENV_VAR, _SECRET)
+    monkeypatch.delenv("IHOUSE_DEV_MODE", raising=False)
     with pytest.raises(HTTPException) as exc_info:
         verify_jwt(None)
     assert exc_info.value.status_code == 403
@@ -116,6 +118,8 @@ def test_expired_token_raises_403(monkeypatch):
 
 def test_dev_mode_returns_dev_tenant(monkeypatch):
     monkeypatch.delenv(_ENV_VAR, raising=False)
+    # Phase 276: dev mode now requires explicit IHOUSE_DEV_MODE=true
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
     # In dev mode, credentials are not checked at all
     result = verify_jwt(None)
     assert result == _DEV_TENANT

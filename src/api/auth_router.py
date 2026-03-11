@@ -167,3 +167,98 @@ async def logout() -> JSONResponse:
     )
     logger.info("auth/logout: token cookie cleared")
     return response
+
+
+# ---------------------------------------------------------------------------
+# Phase 276 — POST /auth/supabase-verify
+# ---------------------------------------------------------------------------
+
+class SupabaseVerifyRequest(BaseModel):
+    token: str
+
+
+@router.post(
+    "/auth/supabase-verify",
+    tags=["auth"],
+    summary="Verify a Supabase-issued JWT and return decoded claims",
+    responses={
+        200: {"description": "JWT valid — returns decoded claims"},
+        403: {"description": "Invalid, expired, or malformed token"},
+        503: {"description": "IHOUSE_JWT_SECRET not configured"},
+    },
+)
+async def supabase_verify(body: SupabaseVerifyRequest) -> JSONResponse:
+    """
+    Phase 276: Verify a Supabase Auth JWT and return its decoded claims.
+
+    Accepts the JWT issued by Supabase Auth (aud="authenticated") and validates
+    it against IHOUSE_JWT_SECRET. Returns decoded claims on success.
+
+    **Request body:**
+    ```json
+    {"token": "eyJ..."}
+    ```
+
+    **Response (200):**
+    ```json
+    {
+        "valid": true,
+        "sub": "user-uuid",
+        "aud": "authenticated",
+        "role": "authenticated",
+        "email": "user@example.com",
+        "exp": 1234567890,
+        "token_type": "supabase"
+    }
+    ```
+
+    Used for integration testing and debugging. The `token_type` field
+    is `"supabase"` for Supabase Auth tokens and `"internal"` for
+    tokens issued by POST /auth/token.
+    """
+    from api.auth import decode_jwt_claims  # avoid circular at module level
+
+    jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
+    if not jwt_secret:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "AUTH_NOT_CONFIGURED",
+                "message": "IHOUSE_JWT_SECRET is not set.",
+            },
+        )
+
+    if not body.token or not body.token.strip():
+        return JSONResponse(
+            status_code=403,
+            content={"error": "TOKEN_REQUIRED", "message": "token field is required"},
+        )
+
+    claims = decode_jwt_claims(body.token.strip(), jwt_secret)
+    if not claims:
+        return JSONResponse(
+            status_code=403,
+            content={"error": "INVALID_TOKEN", "message": "Token is invalid or expired"},
+        )
+
+    sub = claims.get("sub", "")
+    aud = claims.get("aud", "")
+    role = claims.get("role", "")
+    token_type = "supabase" if (aud == "authenticated" or role == "authenticated") else "internal"
+
+    logger.info(
+        "auth/supabase-verify: validated token sub=%s type=%s",
+        sub, token_type,
+    )
+    return JSONResponse(
+        status_code=200,
+        content={
+            "valid": True,
+            "sub": sub,
+            "aud": aud,
+            "role": role,
+            "email": claims.get("email", ""),
+            "exp": claims.get("exp"),
+            "token_type": token_type,
+        },
+    )
