@@ -4328,3 +4328,20 @@ Files:
 
 Tests: 5,179 + 32 = 5,211 passing. Exit 0.
 
+## Phase 222 — AI Context Aggregation Endpoints (Closed) — 2026-03-11
+
+Read-only composition layer over existing data surfaces. No new tables.
+
+**Endpoints:**
+- `GET /ai/context/property/{property_id}` — bundles property meta, active bookings, open tasks (+ age_minutes), sync health, financial snapshot (grouped by currency), 30-day availability, `ai_hints` flags.
+- `GET /ai/context/operations-day` — tenant-wide arrivals/departures/cleanings, task counts by priority + kind, critical-past-SLA count, DLQ alert status, 24h outbound sync failure rate, `ai_hints` flags.
+
+**9 best-effort sub-query helpers.** All degrade gracefully on DB error (never fail the bundle). PII-free (no guest names/emails). `ai_hints` encode LLM-ready boolean flags for conditional briefing logic.
+
+Files:
+- `src/api/ai_context_router.py` — NEW — 2 endpoints, 9 helpers
+- `src/main.py` — MODIFIED — ai_context_router registered, ai-context tag added
+- `tests/test_ai_context_contract.py` — NEW — 32 contract tests
+
+Tests: 5,211 + 32 = 5,243 passing. Exit 0.
+

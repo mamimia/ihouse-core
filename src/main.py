@@ -128,6 +128,7 @@ _TAGS = [
     {"name": "registry", "description": "Provider Capability Registry (Phase 136). OTA write capabilities, tiers (A/B/C/D), sync modes, rate limits. Global. JWT required."},
     {"name": "sync", "description": "Outbound Sync Trigger (Phase 137). Compute per-channel sync_plan (api_first|ical_fallback|skip) by joining channel map and capability registry. JWT required."},
     {"name": "outbound", "description": "Outbound Sync Log Inspector (Phase 145). Read-only audit log of all outbound sync attempts per tenant. Filters: booking_id, provider, status, limit. JWT required."},
+    {"name": "ai-context", "description": "AI Context Aggregation (Phase 222). LLM-ready context bundles: property snapshot + daily operations. JWT Bearer required. Read-only. No new tables."},
     {"name": "audit", "description": "Mutation Audit Events (Phase 189). Append-only record of every booking/task mutation with actor attribution. Filters: entity_type, entity_id, actor_id. JWT required."},
 ]
 
@@ -285,6 +286,9 @@ app.include_router(portfolio_dashboard_router)
 
 from api.integration_management_router import router as integration_management_router  # noqa: E402  # Phase 217
 app.include_router(integration_management_router)
+
+from api.ai_context_router import router as ai_context_router  # noqa: E402  # Phase 222
+app.include_router(ai_context_router)
 
 
 # ---------------------------------------------------------------------------

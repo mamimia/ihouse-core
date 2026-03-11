@@ -2998,3 +2998,12 @@ Tests: 5,179 (no code changes). Exit 0.
 
 Tests: 5,179 + 32 = 5,211 passing. Exit 0.
 
+
+## Phase 222 — AI Context Aggregation Endpoints (2026-03-11)
+
+- `src/api/ai_context_router.py` — NEW — `GET /ai/context/property/{property_id}` + `GET /ai/context/operations-day`. 9 best-effort sub-query helpers: property_meta, active_bookings, open_tasks (+age_minutes), sync_health, financial_snapshot (grouped by currency), availability_summary (30d), tenant_tasks_summary (by priority/kind/SLA breach count), tenant_operations (arrivals/departures), dlq_summary, sync_summary (24h failure rate). `ai_hints` flags per response.
+- `src/main.py` — MODIFIED — `ai_context_router` registered, `ai-context` OpenAPI tag added.
+- `tests/test_ai_context_contract.py` — NEW — 32 contract tests covering all sub-queries, endpoint shapes, 403 on not-found property, `ai_hints` sync_degraded flag.
+
+Tests: 5,211 + 32 = 5,243 passing. Exit 0.
+

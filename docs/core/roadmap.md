@@ -128,6 +128,9 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 ### Phase 221 — Scheduled Job Runner *(closed)*
 `AsyncIOScheduler` (APScheduler 3.x) wired into FastAPI lifespan. 3 jobs: SLA sweep (2min), DLQ threshold alert (10min), health log (15min). `GET /admin/scheduler-status` added. 32 contract tests.
 
+### Phase 222 — AI Context Aggregation Endpoints *(closed)*
+`GET /ai/context/property/{property_id}` + `GET /ai/context/operations-day`. Read-only composition layer, no new tables. 9 best-effort sub-query helpers. `ai_hints` flags for LLM conditional logic. PII-free. 32 contract tests.
+
 
 ---
 

@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 221 — Scheduled Job Runner (closed)
+Phase 222 — AI Context Aggregation Endpoints (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 221 closed. Next: Phase 222 — AI Context Aggregation Endpoints.
+Phase 222 closed. Next: Phase 223 — Manager Copilot v1 — Morning Briefing.
 
 ## Key Invariants (Locked — Do Not Change)
 
