@@ -147,6 +147,12 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 ### Phase 227 — Guest Messaging Copilot v1 *(closed)*
 `POST /ai/copilot/guest-message-draft`. 6 intents. Context: booking_state + properties (access code, Wi-Fi, check-in/out times). 5-language salutation/closing. 3 tones. Email subject line. LLM prose overlay + template fallback. 26 contract tests.
 
+### Phase 228 — Platform Checkpoint V *(closed)*
+Full audit + doc sync. 8 discrepancies fixed across all canonical docs. Test count corrected 5,179→5,382. AI table realigned. Next 10 phases plan written. 0 new code files.
+
+### Phase 229 — Platform Checkpoint VI *(closed)*
+Verification audit. All docs confirmed. Phase plan shifted (229→checkpoint, old 229–238→230–239). Handoff written. 0 new code files.
+
 
 ---
 

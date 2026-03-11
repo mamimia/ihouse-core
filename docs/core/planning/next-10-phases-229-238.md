@@ -1,7 +1,8 @@
-# iHouse Core — Next 10 Phases (229–238)
+# iHouse Core — Next 11 Phases (229–239)
 
 > **Written:** Phase 228 Platform Checkpoint V — 2026-03-11
-> **Based on:** Full system audit of 227 completed phases, 5,382 tests, 55 API files, 122 test files, 14 OTA adapters, 5 escalation channels, 6 AI copilot endpoints.
+> **Updated:** Phase 229 Platform Checkpoint VI — 2026-03-11
+> **Based on:** Full system audit of 228 completed phases, 5,382 tests, 55 API files, 122 test files, 14 OTA adapters, 5 escalation channels, 6 AI copilot endpoints.
 
 ---
 
@@ -23,7 +24,13 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 229 — AI Audit Trail
+## Phase 229 — Platform Checkpoint VI *(closed)*
+
+Full audit + docs sync + handoff. Verification that Phases 226–228 are properly documented. All canonical docs verified. Handoff written.
+
+---
+
+## Phase 230 — AI Audit Trail
 
 **Why now:** Every AI copilot endpoint (223–227) produces recommendations and drafts. Without a log, there's no accountability. This is the #1 governance gap.
 
@@ -36,7 +43,7 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 230 — Worker Task Copilot
+## Phase 231 — Worker Task Copilot
 
 **Why now:** Workers currently see a flat task list. This phase adds contextual intelligence on the worker's mobile surface.
 
@@ -51,7 +58,7 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 231 — Guest Pre-Arrival Automation Chain
+## Phase 232 — Guest Pre-Arrival Automation Chain
 
 **Why now:** Phase 206 created pre-arrival tasks. Phase 227 drafts guest messages. This phase chains them: when a booking approaches check-in, auto-generate tasks + auto-draft a check-in message.
 
@@ -64,7 +71,7 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 232 — Revenue Forecast Engine
+## Phase 233 — Revenue Forecast Engine
 
 **Why now:** Revenue reports (Phase 215) show historical data. This phase adds forward-looking projections using confirmed + pending bookings.
 
@@ -78,7 +85,7 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 233 — Shift & Availability Scheduler
+## Phase 234 — Shift & Availability Scheduler
 
 **Why now:** Workers exist, tasks exist, SLAs exist — but there's no concept of who is available when. This creates an availability layer.
 
@@ -92,7 +99,7 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 234 — Multi-Property Conflict Dashboard
+## Phase 235 — Multi-Property Conflict Dashboard
 
 **Why now:** Conflict detection exists (Phase 86/128/207) but only per-booking. Managers with 10+ properties need a cross-property view.
 
@@ -106,7 +113,7 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 235 — Guest Communication History
+## Phase 236 — Guest Communication History
 
 **Why now:** Phase 227 drafts messages. This phase stores what was actually sent and tracks the guest communication timeline.
 
@@ -119,9 +126,9 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 236 — Staging Environment & Integration Tests
+## Phase 237 — Staging Environment & Integration Tests
 
-**Why now:** 236 phases of development with 0 integration tests against a real database. Time to add a staging layer.
+**Why now:** 237 phases of development with 0 integration tests against a real database. Time to add a staging layer.
 
 **Scope:**
 - `docker-compose.staging.yml` — Supabase local + app + test runner
@@ -135,9 +142,9 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 237 — Platform Checkpoint VI
+## Phase 238 — Platform Checkpoint VII
 
-**Why now:** Every 10 phases we audit. Phases 228–236 introduce AI audit trail, worker copilot, pre-arrival automation, revenue forecasting, scheduling, conflict dashboard, guest comms, and staging.
+**Why now:** Every 10 phases we audit. Phases 229–237 introduce AI audit trail, worker copilot, pre-arrival automation, revenue forecasting, scheduling, conflict dashboard, guest comms, and staging.
 
 **Scope:**
 - Full documentation sync (roadmap, current-snapshot, phase-timeline, work-context)
@@ -147,7 +154,7 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 ---
 
-## Phase 238 — Ctrip / Trip.com Enhanced Adapter
+## Phase 239 — Ctrip / Trip.com Enhanced Adapter
 
 **Why now:** Trip.com adapter exists (Phase 1.5 tier) but uses the generic `tripcom.py` adapter. The Chinese market (Ctrip) has unique requirements: Chinese guest names, CNY pricing, specific cancellation policies. This phase upgrades the adapter.
 
@@ -164,13 +171,14 @@ The AI assistive layer (Phases 221–227) is complete. The system now has:
 
 | Phase | Domain | Why this order |
 |-------|--------|----------------|
-| 229 | AI Governance | Must come first — every AI endpoint needs accountability |
-| 230 | Worker AI | Extends copilot to the other user persona (workers) |
-| 231 | Automation | Chains existing capabilities (tasks + messaging) |
-| 232 | Revenue | High business value — forward-looking intelligence |
-| 233 | Scheduling | Fills the biggest operational gap (worker availability) |
-| 234 | Conflicts | Cross-property view for multi-property managers |
-| 235 | Guest Comms | Completes the messaging lifecycle (draft → send → log) |
-| 236 | Infrastructure | Overdue — staging + integration tests for quality confidence |
-| 237 | Checkpoint | Regular audit cadence |
-| 238 | Adapters | Market expansion (China) with concrete business justification |
+| 229 | Checkpoint | Clean handoff after AI layer completion |
+| 230 | AI Governance | Must come first — every AI endpoint needs accountability |
+| 231 | Worker AI | Extends copilot to the other user persona (workers) |
+| 232 | Automation | Chains existing capabilities (tasks + messaging) |
+| 233 | Revenue | High business value — forward-looking intelligence |
+| 234 | Scheduling | Fills the biggest operational gap (worker availability) |
+| 235 | Conflicts | Cross-property view for multi-property managers |
+| 236 | Guest Comms | Completes the messaging lifecycle (draft → send → log) |
+| 237 | Infrastructure | Overdue — staging + integration tests for quality confidence |
+| 238 | Checkpoint | Regular audit cadence |
+| 239 | Adapters | Market expansion (China) with concrete business justification |

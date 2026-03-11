@@ -1,7 +1,7 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 228 — Platform Checkpoint V (closed)
+Phase 229 — Platform Checkpoint VI (closed)
 
 ## Last Closed Phase
 Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
@@ -317,7 +317,7 @@ Tier 3 — External (one of:)
 
 ## Next Phase
 
-Phase 228 — TBD (next).
+Phase 230 — AI Audit Trail (next).
 
 ## Tests
 
