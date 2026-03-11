@@ -5046,3 +5046,13 @@ Tests: 6,161 passed. 13 skipped. 0 failures. Exit 0.
 - `releases/phase-zips/iHouse-Core-Docs-Phase-271.zip` — NEW
 
 Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 272 — Platform Checkpoint XII (Closed) — 2026-03-11
+
+**Actions:**
+- Full audit of all canonical docs (12 files in docs/core/)
+- Verified all phase specs + ZIPs for Phases 265-271
+- Fixed stale test count in current-snapshot.md
+- Full test suite: 6,183 passed, 13 skipped, 0 failures
+- Created handoff document for next chat session
+- Session closed: 8 phases (265-272), 159 new E2E tests, 0 regressions

@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 271 (2026-03-11)
+## System Numbers — Phase 272 (2026-03-11)
 
 | Metric | Value |
 |--------|-------|
@@ -42,7 +42,7 @@
 
 ---
 
-## ✅ Completed Phases (1–271)
+## ✅ Completed Phases (1–272)
 
 ### Foundation (Phases 21–64)
 OTA ingestion boundary, adapter layer, DLQ, replay, canonical events (BOOKING_CREATED/CANCELED/AMENDED), service pipeline, FastAPI app, JWT auth, rate limiting, OpenAPI, health checks.

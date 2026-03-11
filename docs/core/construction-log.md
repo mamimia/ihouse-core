@@ -3609,3 +3609,15 @@ Tests: 6,161 passed. 13 skipped. 0 failures. Exit 0.
 
 Design: _replay_fn= injectable param allows deterministic replay simulation without Supabase.
 Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 272 closure — Platform Checkpoint XII (Documentation + Handoff)
+
+- Verified all phase specs 265-271 exist in `docs/archive/phases/`
+- Verified all phase ZIPs 265-271 exist in `releases/phase-zips/`
+- Fixed stale test count in `docs/core/current-snapshot.md` (6,015 → 6,183)
+- Full test suite: **6,183 passed, 0 failed, 13 skipped, exit 0**
+- `releases/handoffs/handoff_to_new_chat Phase-272.md` — NEW
+- `docs/archive/phases/phase-272-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-272.zip` — NEW
+
+Session stats: 8 phases closed (265-272). 159 new E2E tests. 0 regressions.

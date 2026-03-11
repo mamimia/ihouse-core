@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 271 — E2E DLQ & Replay Integration Test (closed)
+Phase 272 — Platform Checkpoint XII (closed)
 
 ## Last Closed Phase
-Phase 271 — E2E DLQ & Replay Integration Test (closed) — 22 tests (Groups A-C): list_dlq_entries (validation guards, filter propagation), get_dlq_entry (200/404), replay_dlq_entry (_replay_fn injection, already_replayed guard). 6,183 tests passing.
+Phase 272 — Platform Checkpoint XII (closed) — Full audit, handoff for next chat. 8 phases this session (265-272), 159 new E2E tests, 0 regressions. 6,183 tests passing.
 
 ## System Status
 
@@ -351,4 +351,4 @@ Phase 265 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**~6,015 collected. ~6,015 passing. 0 failures. Exit 0.**
+**~6,183 collected. ~6,183 passing. 0 failures. Exit 0.**
