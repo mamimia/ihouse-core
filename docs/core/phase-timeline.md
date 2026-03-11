@@ -4988,3 +4988,20 @@ Tests: 6,024 collected. 6,024 passing. 13 skipped. 0 failures. Exit 0.
 - `docs/core/roadmap.md` — MODIFIED — test count updated to ~6,050
 
 Tests: 6,050 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 267 — E2E Financial Summary Integration Test (Closed) — 2026-03-11
+
+**Actions:**
+- `tests/test_financial_flow_e2e.py` — NEW — 30 tests, 7 groups (A-G)
+  - Groups A-E: direct async function calls on financial_aggregation_router handlers (asyncio.run + mocked Supabase client arg)
+  - Group F (3): GET /financial/{booking_id} — 200 shape/keys, 404 (HTTP TestClient)
+  - Group G (4): GET /financial — records/count/limit, 400 invalid month, 0 count empty (HTTP TestClient)
+- `docs/archive/phases/phase-267-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-267.zip` — NEW
+- `docs/core/construction-log.md` — APPENDED — Phase 267 closure entry
+- `docs/core/current-snapshot.md` — MODIFIED — Last Closed Phase → 267
+- `docs/core/roadmap.md` — MODIFIED — test count updated to ~6,080
+
+Key discovery: GET /financial/{booking_id} in financial_router.py shadows /financial/summary and other aggregation routes via path-param capture. Documented in phase-267-spec.md.
+
+Tests: 6,080 passed. 13 skipped. 0 failures. Exit 0.

@@ -3540,3 +3540,18 @@ Tests: 6,024 passed. 13 skipped. 0 failures. Exit 0.
 - `releases/phase-zips/iHouse-Core-Docs-Phase-266.zip` — NEW
 
 Tests: 6,050 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 267 closure — E2E Financial Summary Integration Test
+
+- `tests/test_financial_flow_e2e.py` — NEW — 30 tests, 7 groups (A-G)
+  - Groups A-E: direct function calls on aggregation handlers (asyncio.run + mocked client)
+  - Group F (3 tests): GET /financial/{booking_id} — 200 shape, keys, 404
+  - Group G (4 tests): GET /financial — records key, count/limit, invalid month 400, empty
+- `docs/archive/phases/phase-267-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-267.zip` — NEW
+
+Key discovery: GET /financial/{booking_id} in financial_router.py shadows HTTP paths like
+/financial/summary, /financial/by-provider etc. Aggregation endpoints tested via direct
+async function calls to avoid route ordering issue.
+
+Tests: 6,080 passed. 13 skipped. 0 failures. Exit 0.

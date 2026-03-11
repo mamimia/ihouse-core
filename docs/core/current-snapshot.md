@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 266 — E2E Booking Flow Integration Test (closed)
+Phase 267 — E2E Financial Summary Integration Test (closed)
 
 ## Last Closed Phase
-Phase 266 — E2E Booking Flow Integration Test (closed) — 26 new HTTP-level E2E tests via FastAPI TestClient + mocked Supabase (Groups A-D: GET /bookings/{id}, GET /bookings, GET /bookings/{id}/amendments, PATCH /bookings/{id}/flags). CI-safe. 6,050 tests passing.
+Phase 267 — E2E Financial Summary Integration Test (closed) — 30 tests (Groups A-G): financial aggregation handler function tests (asyncio.run + mocked client), HTTP-level GET /financial/{id} and GET /financial list. CI-safe. 6,080 tests passing.
 
 ## System Status
 
