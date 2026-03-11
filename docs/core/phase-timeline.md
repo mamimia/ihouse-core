@@ -5070,3 +5070,18 @@ Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0.
 - `docs/archive/phases/phase-273-spec.md` — NEW
 
 Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0. (Documentation-only phase, no new tests.)
+
+## Phase 274 — Supabase Migration Reproducibility (Closed) — 2026-03-11
+
+**Actions:**
+- Created canonical baseline migration for all core tables (Phases 1-50):
+  - `supabase/migrations/20260311220000_phase274_core_schema_baseline.sql` — NEW
+  - Covers: `event_kind` enum, `event_log`, `booking_state`, `booking_overrides`, `bookings`,
+    `conflict_tasks`, `envelope_gate`, `event_kind_registry`, `event_kind_versions`,
+    `notifications`, `outbox` — all idempotent (`CREATE TABLE IF NOT EXISTS`)
+  - Includes all indexes, constraints, and seed data for `event_kind_registry`
+- Created bootstrap documentation:
+  - `supabase/BOOTSTRAP.md` — NEW — complete 3-step sequence to reproduce fresh Supabase DB
+- `docs/archive/phases/phase-274-spec.md` — NEW
+
+Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0. (No new code tests — migration is SQL-only.)

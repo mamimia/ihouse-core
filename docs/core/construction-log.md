@@ -3635,3 +3635,14 @@ Full system assessment identified 8 stale documentation items across 4 canonical
 - `docs/archive/phases/phase-273-spec.md` — NEW
 
 Tests: 6,183 (no code changes, docs-only phase). Exit 0.
+
+
+## Phase 274 — Supabase Migration Reproducibility (2026-03-11)
+
+Created canonical migration baseline and bootstrap guide. No Python code changes.
+
+- `supabase/migrations/20260311220000_phase274_core_schema_baseline.sql` — NEW — covers all 10 core tables (event_log, booking_state, booking_overrides, bookings, conflict_tasks, envelope_gate, event_kind_registry, event_kind_versions, notifications, outbox), event_kind enum, all indexes, constraints, and event_kind_registry seed data. Idempotent.
+- `supabase/BOOTSTRAP.md` — NEW — 3-step sequence (core baseline → app tables → timestamped migrations) to reproduce full Supabase DB from scratch
+- `docs/archive/phases/phase-274-spec.md` — NEW
+
+Tests: 6,183 (no code changes, SQL-only migration). Exit 0.
