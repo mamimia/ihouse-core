@@ -134,6 +134,9 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 ### Phase 223 — Manager Copilot v1: Morning Briefing *(closed)*
 `POST /ai/copilot/morning-briefing`. First LLM integration. OpenAI via `services.llm_client` (provider-agnostic). Heuristic static briefing fallback when unconfigured. 5-language support (en/th/ja/es/ko). `action_items` always deterministic. 21 contract tests.
 
+### Phase 224 — Financial Explainer *(closed)*
+`GET /ai/copilot/financial/explain/{booking_id}` + `GET /ai/copilot/financial/reconciliation-summary`. 7 deterministic anomaly flags. Confidence tier (A/B/C) explanation. LLM overlay + heuristic fallback. Source: `booking_financial_facts` only. 37 contract tests.
+
 
 ---
 

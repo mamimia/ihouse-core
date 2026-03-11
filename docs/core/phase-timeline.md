@@ -4368,3 +4368,20 @@ Files:
 
 Tests: 5,243 + 21 = 5,264 passing. Exit 0.
 
+## Phase 224 — Financial Explainer (Closed) — 2026-03-11
+
+LLM-powered (or heuristic) plain-language financial explanation for managers.
+
+**Endpoints:**
+- `GET /ai/copilot/financial/explain/{booking_id}` — per-booking explanation: financial breakdown + confidence tier (A/B/C) + 7 anomaly flags + `explanation_text` + `recommended_action`.
+- `GET /ai/copilot/financial/reconciliation-summary?period=YYYY-MM` — period-level reconciliation narrative: stats + exception items (sorted Tier C first) + `narrative`.
+
+**7 anomaly flags (deterministic):** RECONCILIATION_PENDING, PARTIAL_CONFIDENCE, MISSING_NET_TO_PROPERTY, UNKNOWN_LIFECYCLE, COMMISSION_HIGH (>25%), COMMISSION_ZERO, NET_NEGATIVE. Both LLM and heuristic paths return same response shape. Source: `booking_financial_facts` only. Zero-risk, no writes.
+
+Files:
+- `src/api/financial_explainer_router.py` — NEW — 2 endpoints, 7 flag types, heuristic engine
+- `src/main.py` — MODIFIED — financial_explainer_router registered
+- `tests/test_financial_explainer_contract.py` — NEW — 37 contract tests
+
+Tests: 5,264 + 37 = 5,301 passing. Exit 0.
+

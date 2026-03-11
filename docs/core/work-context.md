@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 223 — Manager Copilot v1: Morning Briefing (closed)
+Phase 224 — Financial Explainer (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 223 closed. Next: Phase 224 — Financial Explainer.
+Phase 224 closed. Next: Phase 225 — Task Recommendation Engine.
 
 ## Key Invariants (Locked — Do Not Change)
 

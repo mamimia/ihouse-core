@@ -294,6 +294,9 @@ app.include_router(ai_context_router)
 from api.manager_copilot_router import router as manager_copilot_router  # noqa: E402  # Phase 223
 app.include_router(manager_copilot_router)
 
+from api.financial_explainer_router import router as financial_explainer_router  # noqa: E402  # Phase 224
+app.include_router(financial_explainer_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint
