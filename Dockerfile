@@ -1,6 +1,6 @@
 # =============================================================================
 # iHouse Core — Production Dockerfile
-# Phase 211 — Production Deployment Foundation
+# Phase 275 — Deployment Readiness Audit
 # =============================================================================
 #
 # Multi-stage build:
@@ -51,9 +51,9 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy application source
+# Copy application source — ONLY src/ (the live production codebase)
+# Note: app/ is the old Phase 13C SQLite entrypoint — NOT used in production.
 COPY src/ ./src/
-COPY app/ ./app/
 COPY pytest.ini ./
 
 # Set PYTHONPATH so imports resolve correctly
@@ -77,11 +77,12 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health')" || exit 1
 
-# Run uvicorn — production mode (no reload, workers configurable)
-CMD ["uvicorn", "main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--workers", "2", \
-     "--log-level", "info", \
-     "--access-log", \
-     "--no-use-colors"]
+# Run uvicorn — production mode (no reload, workers configurable via UVICORN_WORKERS)
+CMD ["sh", "-c", \
+    "uvicorn main:app \
+     --host 0.0.0.0 \
+     --port ${PORT:-8000} \
+     --workers ${UVICORN_WORKERS:-2} \
+     --log-level info \
+     --access-log \
+     --no-use-colors"]

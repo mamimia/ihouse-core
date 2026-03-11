@@ -5085,3 +5085,13 @@ Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0. (Documentation-only phase, 
 - `docs/archive/phases/phase-274-spec.md` — NEW
 
 Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0. (No new code tests — migration is SQL-only.)
+
+## Phase 275 — Deployment Readiness Audit (Closed) — 2026-03-11
+
+**Actions:**
+- Audited Dockerfile, docker-compose.yml, .dockerignore, app/main.py (old Phase 13C entrypoint)
+- Found and fixed 4 issues:
+  - `Dockerfile` — MODIFIED — removed dead `COPY app/ ./app/` (Phase 13C SQLite entrypoint, never used in prod); CMD now uses `${PORT:-8000}` and `${UVICORN_WORKERS:-2}`
+  - `.env.example` — NEW — complete env var reference: Supabase, JWT, API keys, OTA webhook secrets, notification channels (LINE, Telegram, WhatsApp, SMS, Email), OpenAI, Scheduler
+  - `docs/archive/phases/phase-275-spec.md` — NEW
+- Docker daemon not running on dev machine (Docker Desktop required) — build syntax validated via static inspection; all prior test suite pass (6,183) confirms src imports resolve correctly

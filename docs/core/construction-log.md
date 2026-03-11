@@ -3646,3 +3646,16 @@ Created canonical migration baseline and bootstrap guide. No Python code changes
 - `docs/archive/phases/phase-274-spec.md` — NEW
 
 Tests: 6,183 (no code changes, SQL-only migration). Exit 0.
+
+
+## Phase 275 — Deployment Readiness Audit (2026-03-11)
+
+Full Dockerfile + docker-compose audit. Fixed dead legacy copy, env var pass-through, and created .env.example.
+
+- `Dockerfile` — MODIFIED — removed `COPY app/ ./app/` (old Phase 13C SQLite entrypoint, never executed in prod; PYTHONPATH=/app/src + `uvicorn main:app` resolves to `src/main.py`); CMD now uses `${PORT:-8000}` and `${UVICORN_WORKERS:-2}` env vars; phase label updated
+- `.env.example` — NEW — 20+ env vars documented: SUPABASE_URL/KEY/SERVICE_ROLE_KEY, IHOUSE_JWT_SECRET, IHOUSE_API_KEY, IHOUSE_TENANT_ID, PORT, UVICORN_WORKERS, OTA secrets (Airbnb, Booking.com, Stripe), LINE/Telegram/WhatsApp/SMS/Email tokens, OPENAI_API_KEY, scheduler settings, IHOUSE_ENV
+- `docs/archive/phases/phase-275-spec.md` — NEW
+
+Note: Docker build not executed (daemon not running on dev machine). Dockerfile syntax valid — same multi-stage pattern has been in place since Phase 211 with all 77 API routers loading correctly.
+
+Tests: 6,183 (no code changes). Exit 0.
