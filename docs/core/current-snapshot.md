@@ -1,12 +1,12 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 226 — Anomaly Alert Broadcaster (closed)
+Phase 227 — Guest Messaging Copilot v1 (closed)
 
 ## Last Closed Phase
 Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
 
-Phase 226 — Anomaly Alert Broadcaster (closed) — POST /ai/copilot/anomaly-alerts. 3-domain scanner: tasks SLA breach + financial 7 flags + bookings confidence. Severity CRITICAL→LOW. Health score 0–100. 26 tests.
+Phase 227 — Guest Messaging Copilot v1 (closed) — POST /ai/copilot/guest-message-draft. 6 intents. 5-language salutations. 3 tones. Email subject line. LLM prose + template fallback. 26 tests.
 
 ## System Status
 
@@ -306,7 +306,7 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 ## Next Phase
 
-Phase 227 — TBD (next).
+Phase 228 — TBD (next).
 
 ## Tests
 

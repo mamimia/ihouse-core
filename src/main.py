@@ -303,6 +303,9 @@ app.include_router(task_recommendation_router)
 from api.anomaly_alert_broadcaster import router as anomaly_alert_router  # noqa: E402  # Phase 226
 app.include_router(anomaly_alert_router)
 
+from api.guest_messaging_copilot import router as guest_messaging_router  # noqa: E402  # Phase 227
+app.include_router(guest_messaging_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

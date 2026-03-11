@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 226 — Anomaly Alert Broadcaster (closed)
+Phase 227 — Guest Messaging Copilot v1 (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 226 closed. Next: Phase 227 (TBD).
+Phase 227 closed. Next: Phase 228 (TBD).
 
 ## Key Invariants (Locked — Do Not Change)
 

@@ -143,6 +143,9 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 ### Phase 226 — Anomaly Alert Broadcaster *(closed)*
 `POST /ai/copilot/anomaly-alerts`. 3-domain scanner (tasks SLA breach + financial 7 flags + booking confidence). Severity: CRITICAL→HIGH→MEDIUM→LOW. Health score 0–100. LLM summary overlay. 26 contract tests.
 
+### Phase 227 — Guest Messaging Copilot v1 *(closed)*
+`POST /ai/copilot/guest-message-draft`. 6 intents. Context: booking_state + properties (access code, Wi-Fi, check-in/out times). 5-language salutation/closing. 3 tones. Email subject line. LLM prose overlay + template fallback. 26 contract tests.
+
 
 ---
 

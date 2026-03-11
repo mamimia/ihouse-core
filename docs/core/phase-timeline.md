@@ -4432,3 +4432,27 @@ Files:
 
 Tests: 5,327 + 26 = 5,353 passing. Exit 0.
 
+## Phase 227 — Guest Messaging Copilot v1 (Closed) — 2026-03-11
+
+Context-aware draft message generator for guest communications.
+
+**Endpoint:** `POST /ai/copilot/guest-message-draft`
+
+**6 intents:** check_in_instructions · booking_confirmation · pre_arrival_info · check_out_reminder · issue_apology · custom
+
+**Features:**
+- Context fetched from `booking_state` + `properties` (property name, access code, Wi-Fi, check-in/out times)
+- 5-language salutation + closing system (en/th/ja/es/ko)
+- 3 tones: friendly | professional | brief
+- Email subject line generated per intent
+- `character_count` included in response
+- LLM overlay: personalised prose. Heuristic template always available.
+- Draft-only — no messages sent. JWT required. Zero-risk.
+
+Files:
+- `src/api/guest_messaging_copilot.py` — NEW — template engine + endpoint
+- `src/main.py` — MODIFIED — guest_messaging_router registered
+- `tests/test_guest_messaging_copilot_contract.py` — NEW — 26 contract tests
+
+Tests: 5,353 + 26 = 5,379 passing. Exit 0.
+
