@@ -27,6 +27,7 @@ import sys
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("IHOUSE_ENV", "test")
+os.environ.setdefault("IHOUSE_DEV_MODE", "true")   # Phase 276/282: explicit dev bypass
 
 import pytest
 from fastapi.testclient import TestClient

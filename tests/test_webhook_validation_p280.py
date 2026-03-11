@@ -32,12 +32,15 @@ from datetime import datetime, timezone
 from typing import Optional
 from unittest.mock import patch
 
+import os
+
 import jwt
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.webhooks import router
+
 
 _JWT_SECRET = "phase280-test-jwt-secret-must-be-64-chars-long-here-padding0000"
 _WEBHOOK_SECRET = "phase280-webhook-secret-xyz"
@@ -77,6 +80,20 @@ _VALID_PAYLOAD = {
     "event_type": "reservation_create",
     "property_id": "PROP-280",
 }
+
+
+@pytest.fixture(autouse=True)
+def _clean_env(monkeypatch):
+    """
+    Phase 280/282: Ensure a clean env state for every test in this module.
+    Clears all webhook provider secrets so prior tests in the full suite
+    cannot pollute the env state read inside the FastAPI app.
+    """
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
+    for provider in ("BOOKINGCOM", "AIRBNB", "EXPEDIA", "AGODA", "TRIPCOM"):
+        monkeypatch.delenv(f"IHOUSE_WEBHOOK_SECRET_{provider}", raising=False)
+    monkeypatch.delenv("IHOUSE_JWT_SECRET", raising=False)
+
 
 
 def _make_jwt(sub: str = "p280-tenant", exp_offset: int = 3600) -> str:
