@@ -1,12 +1,12 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 222 — AI Context Aggregation Endpoints (closed)
+Phase 223 — Manager Copilot v1: Morning Briefing (closed)
 
 ## Last Closed Phase
 Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
 
-Phase 222 — AI Context Aggregation Endpoints (closed) — 2 read-only endpoints: GET /ai/context/property/{id} + GET /ai/context/operations-day. No new tables. 32 tests.
+Phase 223 — Manager Copilot v1: Morning Briefing (closed) — POST /ai/copilot/morning-briefing. First LLM integration. OpenAI + heuristic fallback. 5-language. 21 tests.
 
 ## System Status
 
@@ -306,7 +306,7 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 ## Next Phase
 
-Phase 223 — Manager Copilot v1 — Morning Briefing (next).
+Phase 224 — Financial Explainer (next).
 
 ## Tests
 

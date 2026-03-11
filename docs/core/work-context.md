@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 222 — AI Context Aggregation Endpoints (closed)
+Phase 223 — Manager Copilot v1: Morning Briefing (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 222 closed. Next: Phase 223 — Manager Copilot v1 — Morning Briefing.
+Phase 223 closed. Next: Phase 224 — Financial Explainer.
 
 ## Key Invariants (Locked — Do Not Change)
 

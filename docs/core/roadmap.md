@@ -131,6 +131,9 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 ### Phase 222 — AI Context Aggregation Endpoints *(closed)*
 `GET /ai/context/property/{property_id}` + `GET /ai/context/operations-day`. Read-only composition layer, no new tables. 9 best-effort sub-query helpers. `ai_hints` flags for LLM conditional logic. PII-free. 32 contract tests.
 
+### Phase 223 — Manager Copilot v1: Morning Briefing *(closed)*
+`POST /ai/copilot/morning-briefing`. First LLM integration. OpenAI via `services.llm_client` (provider-agnostic). Heuristic static briefing fallback when unconfigured. 5-language support (en/th/ja/es/ko). `action_items` always deterministic. 21 contract tests.
+
 
 ---
 

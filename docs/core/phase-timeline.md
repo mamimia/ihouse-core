@@ -4345,3 +4345,26 @@ Files:
 
 Tests: 5,211 + 32 = 5,243 passing. Exit 0.
 
+## Phase 223 — Manager Copilot v1: Morning Briefing (Closed) — 2026-03-11
+
+First LLM integration. `POST /ai/copilot/morning-briefing` — returns 7AM manager briefing.
+
+**Architecture:** Provider-agnostic `src/services/llm_client.py` wraps OpenAI. Returns `None` (never raises) when unconfigured or on error. Router calls `is_configured()` and falls back to `_build_heuristic_briefing()` — a deterministic static briefing from context signals.
+
+**Both paths return the same response shape:** `briefing_text` + `generated_by` (`'llm'`|`'heuristic'`) + `action_items` (always structured, not LLM-generated) + `context_signals` + `language` + `generated_at`.
+
+**Languages:** en (default), th, ja, es, ko. LLM instructed to respond in the requested language.
+
+**Heuristic fallback:** Covers critical SLA breach, DLQ alert, sync degraded, high arrival/departure day, open task summary. Priority ordering invariant: CRITICAL SLA > DLQ > sync > arrival.
+
+**Zero-risk endpoint:** Pure read + explain. No writes. JWT required.
+
+Files:
+- `src/services/llm_client.py` — NEW — provider-agnostic OpenAI wrapper
+- `src/api/manager_copilot_router.py` — NEW — briefing endpoint + heuristic engine
+- `src/main.py` — MODIFIED — copilot router + tag
+- `requirements.txt` — MODIFIED — `openai>=1.0.0`
+- `tests/test_manager_copilot_contract.py` — NEW — 21 tests
+
+Tests: 5,243 + 21 = 5,264 passing. Exit 0.
+
