@@ -59,6 +59,8 @@ supabase/migrations/20260311164500_phase246_rate_cards.sql
 supabase/migrations/20260311165100_phase247_guest_feedback.sql
 supabase/migrations/20260311165500_phase248_task_templates.sql
 supabase/migrations/20260311220000_phase274_core_schema_baseline.sql
+supabase/migrations/20260311230000_phase277_event_kind_booking_amended.sql  ← Phase 277 addendum
+supabase/migrations/20260311230100_phase277_booking_state_guest_id.sql       ← Phase 277 addendum
 ```
 
 ## Environment Variables Required
