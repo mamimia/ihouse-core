@@ -52,7 +52,23 @@ Always read in this order:
 
 ## Phase closure protocol (when user says a phase is closed)
 
-Do these in order:
+### Phase closure checklist (do NOT skip any step)
+
+Every closed phase MUST produce ALL of these:
+1. ✅ `docs/archive/phases/phase-N-spec.md` — spec file (see template below)
+2. ✅ `releases/phase-zips/iHouse-Core-Docs-Phase-N.zip` — full `docs/core/` ZIP
+3. ✅ `releases/handoffs/handoff_to_new_chat Phase-N.md` — handoff (if switching chat)
+4. ✅ Append to `docs/core/phase-timeline.md`
+5. ✅ Update `docs/core/current-snapshot.md`
+6. ✅ Update `docs/core/work-context.md`
+7. ✅ Git commit + push
+
+> [!CAUTION]
+> A phase is NOT closed until steps 1–2 are done. No exceptions.
+> Step 3 is required whenever the user says "handoff" or "new chat".
+> Do NOT place handoff files in `docs/core/`. Do NOT place ZIPs in the repo root.
+
+### Closure steps in order:
 1. Append a new "Phase X — Closed" section to docs/core/phase-timeline.md (append only).
 2. Append a short "Phase X closure" entry to docs/core/construction-log.md (append only).
 3. Update docs/core/current-snapshot.md
@@ -60,7 +76,9 @@ Do these in order:
    - set Current Phase
    - set Last Closed Phase
    - update only the minimal invariants / pointers that actually changed
-4. If there was any phase spec file, move it to docs/archive/phases/phase-X-spec.md
+5. Create `docs/archive/phases/phase-X-spec.md` (if not already created at phase start).
+6. Create `releases/phase-zips/iHouse-Core-Docs-Phase-X.zip` (entire `docs/core/` tree).
+7. If handoff needed: create `releases/handoffs/handoff_to_new_chat Phase-X.md`.
 
 ## Safety rails
 
@@ -129,8 +147,12 @@ Any side-effects or non-changes explicitly noted.
 ### Context limit — handoff protocol
 - When approaching ~80% of context window capacity, STOP all work immediately.
 - Write a handoff file into `releases/handoffs/` with name: `handoff_to_new_chat Phase-<N>.md`
-- **Location: always `releases/handoffs/` — never the repo root.**
+- **Location: always `releases/handoffs/` — never `docs/core/`, never the repo root.**
 - The handoff must include: current phase, last closed phase, next objective, key files, and any in-progress state.
+- **The FIRST LINE of every handoff file must be:**
+  ```
+  > ⚠️ FIRST: Read `docs/core/BOOT.md` before doing anything else.
+  ```
 - Notify the user explicitly: "Context at ~80% — writing handoff now."
 - Do NOT wait until context is exhausted. Early handoff preserves quality.
 
