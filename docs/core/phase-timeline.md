@@ -5028,3 +5028,12 @@ Tests: 6,107 passed. 13 skipped. 0 failures. Exit 0.
 
 Key discovery: `occurred_at` is required by the shared payload_validator for all providers.
 Tests: 6,132 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 270 — E2E Admin & Properties Integration Test (Closed) — 2026-03-11
+
+**Actions:**
+- `tests/test_admin_properties_e2e.py` — NEW — 29 tests, 6 groups (A-F)
+- `docs/archive/phases/phase-270-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-270.zip` — NEW
+
+Tests: 6,161 passed. 13 skipped. 0 failures. Exit 0.

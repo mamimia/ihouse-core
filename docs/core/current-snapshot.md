@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 269 — E2E Webhook Ingestion Integration Test (closed)
+Phase 270 — E2E Admin & Properties Integration Test (closed)
 
 ## Last Closed Phase
-Phase 269 — E2E Webhook Ingestion Integration Test (closed) — 25 tests (Groups A-E): happy path 3 providers 200, unknown provider 403, bad JSON/payload 400, response shape. `occurred_at` discovery. 6,132 tests passing.
+Phase 270 — E2E Admin & Properties Integration Test (closed) — 29 tests (Groups A-F): admin summary/metrics/DLQ/health/timeline, properties list/get/create. Discoveries: updated_at required in booking rows, property_id required in create body. 6,161 tests passing.
 
 ## System Status
 

@@ -3582,3 +3582,18 @@ Full suite: 6,107 passed. 13 skipped. 0 failures. Exit 0.
 
 Key: payload_validator requires `occurred_at` ISO 8601 in all payloads regardless of provider.
 Tests: 6,132 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 270 closure — E2E Admin & Properties Integration Test
+
+- `tests/test_admin_properties_e2e.py` — NEW — 29 tests, 6 groups (A-F)
+  - Group A (3): get_tenant_summary — 200, summary keys, empty DB
+  - Group B (3): get_admin_metrics — 200, is dict, empty DB
+  - Group C (3): get_admin_dlq — 200, is dict, empty DB
+  - Group D (3): get_provider_health — 200, is dict, empty DB
+  - Group E (3): get_booking_timeline — 200/404 for ghost, 200 with data
+  - Group F (5): list_properties (200, empty), get_property (200, 404), create_property (200/201)
+- `docs/archive/phases/phase-270-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-270.zip` — NEW
+
+Key: get_tenant_summary requires updated_at in booking rows; create_property requires property_id in body.
+Tests: 6,161 passed. 13 skipped. 0 failures. Exit 0.
