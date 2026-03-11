@@ -297,6 +297,9 @@ app.include_router(manager_copilot_router)
 from api.financial_explainer_router import router as financial_explainer_router  # noqa: E402  # Phase 224
 app.include_router(financial_explainer_router)
 
+from api.task_recommendation_router import router as task_recommendation_router  # noqa: E402  # Phase 225
+app.include_router(task_recommendation_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

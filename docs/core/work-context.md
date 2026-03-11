@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 224 — Financial Explainer (closed)
+Phase 225 — Task Recommendation Engine (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 224 closed. Next: Phase 225 — Task Recommendation Engine.
+Phase 225 closed. Next: Phase 226 (TBD).
 
 ## Key Invariants (Locked — Do Not Change)
 

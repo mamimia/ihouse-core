@@ -4385,3 +4385,27 @@ Files:
 
 Tests: 5,264 + 37 = 5,301 passing. Exit 0.
 
+## Phase 225 — Task Recommendation Engine (Closed) — 2026-03-11
+
+AI Copilot endpoint that ranks all open tasks and tells workers/managers what to tackle next and why.
+
+**Endpoint:** `POST /ai/copilot/task-recommendations`
+
+**Scoring (deterministic):**
+- Priority score: CRITICAL=1000, HIGH=500, MEDIUM=200, LOW=50
+- SLA score: BREACHED=+800, ≤25% remaining=+400, ≤50%=+200, ≤75%=+100, OK=0
+- Recency score: max(0, 50 - days_old) capped at +50
+
+**LLM overlay:** When configured, each task gets a one-sentence JSON-array rationale (per-task). Heuristic fallback on parse failure or no API key.
+
+**Request filters:** `worker_role`, `property_id`, `limit` (1-50), `language` (5 languages).
+
+**Response:** `tenant_id`, `generated_by`, `filter_applied`, `total_open_tasks`, per-task `score`, `sla_status`, `score_breakdown`, `rationale`, + 1-2 sentence `summary`.
+
+Files:
+- `src/api/task_recommendation_router.py` — NEW — scoring engine + endpoint
+- `src/main.py` — MODIFIED — task_recommendation_router registered
+- `tests/test_task_recommendation_contract.py` — NEW — 26 contract tests
+
+Tests: 5,301 + 26 = 5,327 passing. Exit 0.
+

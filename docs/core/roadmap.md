@@ -137,6 +137,9 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 ### Phase 224 — Financial Explainer *(closed)*
 `GET /ai/copilot/financial/explain/{booking_id}` + `GET /ai/copilot/financial/reconciliation-summary`. 7 deterministic anomaly flags. Confidence tier (A/B/C) explanation. LLM overlay + heuristic fallback. Source: `booking_financial_facts` only. 37 contract tests.
 
+### Phase 225 — Task Recommendation Engine *(closed)*
+`POST /ai/copilot/task-recommendations`. Deterministic scoring: CRITICAL=1000, HIGH=500, MEDIUM=200, LOW=50 + SLA breach +800 + recency +50. LLM JSON-array rationale overlay (5 tasks, per-task). 26 contract tests.
+
 
 ---
 

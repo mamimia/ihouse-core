@@ -1,12 +1,12 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 224 — Financial Explainer (closed)
+Phase 225 — Task Recommendation Engine (closed)
 
 ## Last Closed Phase
 Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
 
-Phase 224 — Financial Explainer (closed) — GET /ai/copilot/financial/explain/{id} + GET /ai/copilot/financial/reconciliation-summary. 7 anomaly flags. 37 tests.
+Phase 225 — Task Recommendation Engine (closed) — POST /ai/copilot/task-recommendations. Deterministic scoring: CRITICAL=1000/HIGH=500/MEDIUM=200/LOW=50 + SLA breach +800 + recency +50. LLM JSON-array rationale overlay. 26 tests.
 
 ## System Status
 
@@ -306,7 +306,7 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 ## Next Phase
 
-Phase 225 — Task Recommendation Engine (next).
+Phase 226 — TBD (next).
 
 ## Tests
 
