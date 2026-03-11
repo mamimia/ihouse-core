@@ -5018,3 +5018,13 @@ Tests: 6,080 passed. 13 skipped. 0 failures. Exit 0.
 
 Key: ACKNOWLEDGED→COMPLETED invalid transition (422 enforced by state machine).
 Tests: 6,107 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 269 — E2E Webhook Ingestion Integration Test (Closed) — 2026-03-11
+
+**Actions:**
+- `tests/test_webhook_ingestion_e2e.py` — NEW — 25 tests, 5 groups (A-E)
+- `docs/archive/phases/phase-269-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-269.zip` — NEW
+
+Key discovery: `occurred_at` is required by the shared payload_validator for all providers.
+Tests: 6,132 passed. 13 skipped. 0 failures. Exit 0.

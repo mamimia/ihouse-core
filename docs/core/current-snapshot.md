@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 268 — E2E Task System Integration Test (closed)
+Phase 269 — E2E Webhook Ingestion Integration Test (closed)
 
 ## Last Closed Phase
-Phase 268 — E2E Task System Integration Test (closed) — 27 tests (Groups A-F): task_router direct async + worker_router HTTP TestClient. State machine discovery: ACKNOWLEDGED→COMPLETED invalid (422). 6,107 tests passing.
+Phase 269 — E2E Webhook Ingestion Integration Test (closed) — 25 tests (Groups A-E): happy path 3 providers 200, unknown provider 403, bad JSON/payload 400, response shape. `occurred_at` discovery. 6,132 tests passing.
 
 ## System Status
 

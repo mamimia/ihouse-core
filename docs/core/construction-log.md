@@ -3568,3 +3568,17 @@ Tests: 6,080 passed. 13 skipped. 0 failures. Exit 0.
 
 Discovery: ACKNOWLEDGED→COMPLETED is invalid transition (422); must go via IN_PROGRESS.
 Full suite: 6,107 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 269 closure — E2E Webhook Ingestion Integration Test
+
+- `tests/test_webhook_ingestion_e2e.py` — NEW — 25 tests, 5 groups (A-E)
+  - Group A (5): POST /webhooks/airbnb|bookingcom|agoda — 200 ACCEPTED
+  - Group B (3): unknown provider → 403; sig secret set + no header → 403
+  - Group C (3): invalid JSON (empty, malformed, non-JSON) → 400
+  - Group D (4): payload validation failures (empty dict, missing fields, no occurred_at) → 400
+  - Group E (5): response shape invariants (JSON content-type, idempotency_key str, error key)
+- `docs/archive/phases/phase-269-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-269.zip` — NEW
+
+Key: payload_validator requires `occurred_at` ISO 8601 in all payloads regardless of provider.
+Tests: 6,132 passed. 13 skipped. 0 failures. Exit 0.
