@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 267 — E2E Financial Summary Integration Test (closed)
+Phase 268 — E2E Task System Integration Test (closed)
 
 ## Last Closed Phase
-Phase 267 — E2E Financial Summary Integration Test (closed) — 30 tests (Groups A-G): financial aggregation handler function tests (asyncio.run + mocked client), HTTP-level GET /financial/{id} and GET /financial list. CI-safe. 6,080 tests passing.
+Phase 268 — E2E Task System Integration Test (closed) — 27 tests (Groups A-F): task_router direct async + worker_router HTTP TestClient. State machine discovery: ACKNOWLEDGED→COMPLETED invalid (422). 6,107 tests passing.
 
 ## System Status
 

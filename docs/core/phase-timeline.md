@@ -5005,3 +5005,16 @@ Tests: 6,050 passed. 13 skipped. 0 failures. Exit 0.
 Key discovery: GET /financial/{booking_id} in financial_router.py shadows /financial/summary and other aggregation routes via path-param capture. Documented in phase-267-spec.md.
 
 Tests: 6,080 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 268 — E2E Task System Integration Test (Closed) — 2026-03-11
+
+**Actions:**
+- `tests/test_task_system_e2e.py` — NEW — 27 tests, 6 groups (A-F)
+- `docs/archive/phases/phase-268-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-268.zip` — NEW
+- `docs/core/construction-log.md` — APPENDED
+- `docs/core/current-snapshot.md` — MODIFIED — Last Closed Phase → 268
+- `docs/core/roadmap.md` — MODIFIED — test count → ~6,107
+
+Key: ACKNOWLEDGED→COMPLETED invalid transition (422 enforced by state machine).
+Tests: 6,107 passed. 13 skipped. 0 failures. Exit 0.

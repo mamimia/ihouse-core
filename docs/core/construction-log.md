@@ -3555,3 +3555,16 @@ Key discovery: GET /financial/{booking_id} in financial_router.py shadows HTTP p
 async function calls to avoid route ordering issue.
 
 Tests: 6,080 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 268 closure — E2E Task System Integration Test
+
+- `tests/test_task_system_e2e.py` — NEW — 27 tests, 6 groups (A-F)
+  - Groups A-C: task_router direct async calls (list_tasks, get_task, patch_task_status)
+  - Group D (3): GET /worker/tasks — 200+shape, count, empty 0 (TestClient)
+  - Group E (3): PATCH .../acknowledge (200/404), .../complete (200/422)
+  - Group F (3): GET /worker/preferences (200), GET /worker/notifications (200)
+- `docs/archive/phases/phase-268-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-268.zip` — NEW
+
+Discovery: ACKNOWLEDGED→COMPLETED is invalid transition (422); must go via IN_PROGRESS.
+Full suite: 6,107 passed. 13 skipped. 0 failures. Exit 0.
