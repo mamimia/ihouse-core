@@ -1,0 +1,94 @@
+# =============================================================================
+# iHouse Core — Production Docker Compose
+# Phase 278 — Production Environment Configuration
+# =============================================================================
+#
+# Production-hardened compose file.
+# Differs from docker-compose.yml:
+#   - workers=4 (vs 2 in dev)
+#   - restart: always (vs unless-stopped)
+#   - read_only filesystem + tmpfs for writable dirs
+#   - no-new-privileges security option
+#   - tighter memory limits (1GB limit vs 512M dev)
+#   - structured JSON logging
+#   - explicit IHOUSE_ENV=production
+#   - IHOUSE_DEV_MODE not set (disabled)
+#
+# Usage:
+#   docker compose -f docker-compose.production.yml up -d
+#   docker compose -f docker-compose.production.yml ps
+#   docker compose -f docker-compose.production.yml logs -f api
+#   docker compose -f docker-compose.production.yml down
+#
+# Required: .env file with all production secrets (see .env.production.example)
+# =============================================================================
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ihouse-core:production
+    container_name: ihouse-core-api-prod
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      - IHOUSE_ENV=production
+      - PORT=8000
+      - UVICORN_WORKERS=4
+      # Explicitly disable dev mode in production
+      - IHOUSE_DEV_MODE=false
+
+    # Always restart on crash — production reliability
+    restart: always
+
+    # Health check — tighter timing for production
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
+    # Resource limits — production sizing
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+
+    # Read-only filesystem — prevents container writes to host layers
+    # tmpfs provides writable space for Python runtime needs
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+      - /run:noexec,nosuid,size=16m
+
+    # Structured JSON logging for production log aggregation
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+        labels: "service=ihouse-core,env=production"
+
+    # Labels for reverse proxy / service discovery
+    labels:
+      - "com.ihouse.service=api"
+      - "com.ihouse.env=production"
+      - "com.ihouse.version=phase278"
