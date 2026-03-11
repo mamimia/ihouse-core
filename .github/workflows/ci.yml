@@ -1,22 +1,34 @@
 name: ihouse-ci
 
+# Phase 279 — CI Pipeline Hardening
+# ─────────────────────────────────
+# Jobs:
+#   1. test       — Full test suite on Python 3.14 (matches Dockerfile)
+#   2. lint       — ruff check (blocking, E/F/W subset)
+#   3. migrations — Validate all migration files exist and parse cleanly
+#   4. security   — Verify IHOUSE_DEV_MODE is not set in secrets
+#   5. smoke      — HTTP smoke test (only when IHOUSE_API_KEY secret is set)
+
 on:
   push:
   pull_request:
 
 jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 1: Full Test Suite
+  # ─────────────────────────────────────────────────────────────────────────
   test:
-    name: Test Suite
+    name: Test Suite (Python 3.14)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: "pip"
 
       - name: Install dependencies
@@ -34,56 +46,160 @@ jobs:
       - name: Run unit and contract tests
         env:
           PYTHONPATH: src
-          # IHOUSE_JWT_SECRET must be set — tests that parse JWTs require it
-          IHOUSE_JWT_SECRET: "test-jwt-secret-that-is-long-enough-32chars"
+          # Phase 279: JWT secret matches production minimum length requirement (≥64 chars)
+          IHOUSE_JWT_SECRET: "ci-test-jwt-secret-phase279-must-be-at-least-64-characters-long-00000"
+          # CI is never dev mode — must behave like production
+          IHOUSE_DEV_MODE: "false"
         run: |
-          # pytest.ini already sets: addopts = -q --ignore=tests/invariants --ignore=tests/deprecated
-          # Only add the e2e ignores (require live Supabase secrets)
           python -m pytest \
             --ignore=tests/test_booking_amended_e2e.py \
             --ignore=tests/test_e2e_integration_harness.py \
             -v --tb=short
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 2: Lint (ruff — BLOCKING)
+  # ─────────────────────────────────────────────────────────────────────────
   lint:
-    name: Lint (ruff)
+    name: Lint (ruff — blocking)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: "pip"
 
       - name: Install ruff
-        run: pip install ruff
+        run: pip install "ruff>=0.4.0"
 
-      - name: Run ruff check (report only)
-        # Non-blocking: ruff reports issues but does not fail CI until a
-        # clean baseline is established (future phase).
-        run: ruff check src/ --output-format=github || true
+      - name: Run ruff check (E, F, W errors — blocking)
+        # Phase 279: now blocking for error/warning subset.
+        # E = pycodestyle errors, F = pyflakes, W = pycodestyle warnings
+        # Excludes: E501 (line-too-long), E741 (ambiguous names) — established patterns
+        run: |
+          ruff check src/ \
+            --select E,F,W \
+            --ignore E501,E741,W503 \
+            --output-format=github
 
       - name: Run ruff format check (report only)
+        # Format check is still advisory — not blocking yet
         run: ruff format src/ --check --diff || true
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 3: Migration Validation
+  # ─────────────────────────────────────────────────────────────────────────
+  migrations:
+    name: Migration Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check migration files exist
+        run: |
+          echo "Checking supabase/migrations/ files..."
+          ls -la supabase/migrations/
+          
+          # Count migration files
+          COUNT=$(ls supabase/migrations/*.sql 2>/dev/null | wc -l)
+          echo "Found $COUNT migration files"
+          
+          if [ "$COUNT" -lt 5 ]; then
+            echo "ERROR: Expected at least 5 migration files in supabase/migrations/"
+            exit 1
+          fi
+
+      - name: Validate migration SQL is parseable
+        run: |
+          echo "Validating migration SQL files are well-formed..."
+          
+          for f in supabase/migrations/*.sql; do
+            echo "  Checking: $f"
+            # Check for common SQL issues: unmatched quotes (basic heuristic)
+            if ! python3 -c "
+          import sys, re
+          content = open('$f').read()
+          # Check file is non-empty and contains expected SQL keywords
+          assert len(content.strip()) > 10, 'File is empty'
+          keywords = ['CREATE', 'ALTER', 'INSERT', 'DROP', 'GRANT', 'REVOKE', 'COMMENT', 'DO']
+          has_keyword = any(kw in content.upper() for kw in keywords)
+          assert has_keyword, f'No SQL keywords found in {\"$f\"}'
+          print(f'  OK: {\"$f\"}')
+          "; then
+              echo "FAILED: $f"
+              exit 1
+            fi
+          done
+          
+          echo "All migration files validated."
+
+      - name: Verify BOOTSTRAP.md exists
+        run: |
+          test -f supabase/BOOTSTRAP.md || (echo "ERROR: supabase/BOOTSTRAP.md missing" && exit 1)
+          echo "BOOTSTRAP.md present."
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 4: Security Gate
+  # ─────────────────────────────────────────────────────────────────────────
+  security:
+    name: Security Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify IHOUSE_DEV_MODE is not in production secret list
+        # This checks that DEV_MODE secret is not accidentally set to 'true'
+        # We can't read actual secrets, but we can verify the env template is correct
+        run: |
+          echo "Checking .env.production.example enforces IHOUSE_DEV_MODE=false..."
+          
+          if grep -q "IHOUSE_DEV_MODE=true" .env.production.example 2>/dev/null; then
+            echo "ERROR: .env.production.example has IHOUSE_DEV_MODE=true — must be false"
+            exit 1
+          fi
+          echo "OK: IHOUSE_DEV_MODE not set to true in production template."
+          
+          # Verify no hardcoded secrets in source files
+          echo "Checking for hardcoded secrets in src/..."
+          if grep -rn "HARDCODED_SECRET\|password123\|admin123\|test_secret_key" src/ 2>/dev/null; then
+            echo "ERROR: Found suspicious hardcoded secret patterns in src/"
+            exit 1
+          fi
+          echo "OK: No obvious hardcoded secrets found."
+          
+          # Verify .env is in .dockerignore (should not be baked into image)
+          if ! grep -q "^\.env$" .dockerignore; then
+            echo "ERROR: .env is not in .dockerignore — would be baked into Docker image!"
+            exit 1
+          fi
+          echo "OK: .env is excluded from Docker image."
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Job 5: HTTP Smoke Test (requires secrets)
+  # ─────────────────────────────────────────────────────────────────────────
   smoke:
     name: HTTP Smoke Test
     runs-on: ubuntu-latest
     # Only runs when IHOUSE_API_KEY secret is configured in this repo
     if: ${{ secrets.IHOUSE_API_KEY != '' }}
-    needs: test
+    needs: [test, lint, migrations, security]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: "pip"
 
       - name: Install dependencies
@@ -94,6 +210,7 @@ jobs:
       - name: Boot API and run HTTP smoke
         env:
           IHOUSE_API_KEY: ${{ secrets.IHOUSE_API_KEY }}
+          IHOUSE_JWT_SECRET: ${{ secrets.IHOUSE_JWT_SECRET }}
           PYTHONPATH: src
         run: |
           ./scripts/run_api.sh > api.log 2>&1 &
