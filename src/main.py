@@ -300,6 +300,9 @@ app.include_router(financial_explainer_router)
 from api.task_recommendation_router import router as task_recommendation_router  # noqa: E402  # Phase 225
 app.include_router(task_recommendation_router)
 
+from api.anomaly_alert_broadcaster import router as anomaly_alert_router  # noqa: E402  # Phase 226
+app.include_router(anomaly_alert_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

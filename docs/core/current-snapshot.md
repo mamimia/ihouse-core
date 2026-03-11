@@ -1,12 +1,12 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 225 — Task Recommendation Engine (closed)
+Phase 226 — Anomaly Alert Broadcaster (closed)
 
 ## Last Closed Phase
 Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
 
-Phase 225 — Task Recommendation Engine (closed) — POST /ai/copilot/task-recommendations. Deterministic scoring: CRITICAL=1000/HIGH=500/MEDIUM=200/LOW=50 + SLA breach +800 + recency +50. LLM JSON-array rationale overlay. 26 tests.
+Phase 226 — Anomaly Alert Broadcaster (closed) — POST /ai/copilot/anomaly-alerts. 3-domain scanner: tasks SLA breach + financial 7 flags + bookings confidence. Severity CRITICAL→LOW. Health score 0–100. 26 tests.
 
 ## System Status
 
@@ -306,7 +306,7 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 ## Next Phase
 
-Phase 226 — TBD (next).
+Phase 227 — TBD (next).
 
 ## Tests
 

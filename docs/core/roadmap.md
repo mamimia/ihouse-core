@@ -140,6 +140,9 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 ### Phase 225 — Task Recommendation Engine *(closed)*
 `POST /ai/copilot/task-recommendations`. Deterministic scoring: CRITICAL=1000, HIGH=500, MEDIUM=200, LOW=50 + SLA breach +800 + recency +50. LLM JSON-array rationale overlay (5 tasks, per-task). 26 contract tests.
 
+### Phase 226 — Anomaly Alert Broadcaster *(closed)*
+`POST /ai/copilot/anomaly-alerts`. 3-domain scanner (tasks SLA breach + financial 7 flags + booking confidence). Severity: CRITICAL→HIGH→MEDIUM→LOW. Health score 0–100. LLM summary overlay. 26 contract tests.
+
 
 ---
 

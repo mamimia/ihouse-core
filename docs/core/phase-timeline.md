@@ -4409,3 +4409,26 @@ Files:
 
 Tests: 5,301 + 26 = 5,327 passing. Exit 0.
 
+## Phase 226 — Anomaly Alert Broadcaster (Closed) — 2026-03-11
+
+Cross-domain platform scanner. `POST /ai/copilot/anomaly-alerts`.
+
+**3 domains scanned:**
+- `tasks` — CRITICAL/HIGH tasks with breached ACK SLA
+- `financial` — 7 anomaly flags (NET_NEGATIVE, COMMISSION_HIGH, RECONCILIATION_PENDING, MISSING_NET_TO_PROPERTY, PARTIAL_CONFIDENCE, COMMISSION_ZERO, UNKNOWN_LIFECYCLE)
+- `bookings` — PARTIAL/UNKNOWN confidence bookings older than 24 hours
+
+**Features:**
+- Severity ranking: CRITICAL → HIGH → MEDIUM → LOW
+- Health score: 0–100 (CRITICAL=-20/cap60, HIGH=-10/cap30, MEDIUM=-3/cap20, LOW=-1/cap10)
+- Request filters: `domains`, `severity_filter`, `limit`
+- LLM overlay: 2-3 sentence platform health summary. Heuristic fallback always.
+- Zero-risk: read-only. JWT required.
+
+Files:
+- `src/api/anomaly_alert_broadcaster.py` — NEW — 3-domain scanner + health score
+- `src/main.py` — MODIFIED — anomaly_alert_router registered
+- `tests/test_anomaly_alert_broadcaster_contract.py` — NEW — 26 contract tests
+
+Tests: 5,327 + 26 = 5,353 passing. Exit 0.
+

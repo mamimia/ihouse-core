@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 225 — Task Recommendation Engine (closed)
+Phase 226 — Anomaly Alert Broadcaster (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 225 closed. Next: Phase 226 (TBD).
+Phase 226 closed. Next: Phase 227 (TBD).
 
 ## Key Invariants (Locked — Do Not Change)
 
