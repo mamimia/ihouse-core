@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 272 (2026-03-11)
+## System Numbers — Phase 282 (2026-03-11)
 
 | Metric | Value |
 |--------|-------|
@@ -36,9 +36,11 @@
 | **API Routers** | 77 files in `src/api/` |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | ~6,183 collected / ~6,183 passing / 0 failures / 13 skipped |
+| **Tests** | ~6,250 collected / ~6,250 passing / 0 failures / exit 0 |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) — 159 tests added in Phases 265–271 |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
+| **Production Infra** | Dockerfile, docker-compose.production.yml, .env.production.example (Phases 275-278) |
+| **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
 
 ---
@@ -94,13 +96,13 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 273+
+## Active Direction — Phase 283+
 
-Phase 272 (Platform Checkpoint XII) confirmed the system is architecturally clean at 272 phases, ~6,183 tests, with comprehensive E2E coverage across all major API surfaces.
+Phase 282 (Platform Checkpoint XIII) confirmed the system is architecturally clean at 282 phases, ~6,250 tests, with operational maturity infrastructure (JWT auth, CI hardening, production config, schema alignment, first live OTA integration).
 
-The next wave (Phases 273–282) focuses on **operational maturity**: documentation integrity, Supabase migration reproducibility, deployment validation, real JWT auth, schema alignment, production configuration, CI hardening, real webhook validation, first live OTA integration, and a final audit checkpoint.
+The next wave (Phases 283–292) focuses on **test isolation**, **Supabase schema truth sync**, **production Docker hardening**, and the **first real Domaniqo frontend** (Operations Dashboard, Booking Management, Worker Task View, Financial Dashboard).
 
-Full plan: `docs/core/planning/next-10-phases-273-282.md`
+Full plan: `docs/core/planning/next-10-phases-283-292.md`
 
 ### Phase 210 — Roadmap & Documentation Cleanup *(closed)*
 Full audit of 20 canonical documents. Archived 10 stale files. Fixed Layer A claims (BOOKING_AMENDED, MODIFY semantics). Created AI strategy canonical document (`docs/core/planning/ai-strategy.md`).
@@ -239,8 +241,8 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 273-282):** Documentation sync, Supabase migration reproducibility, deployment validation, real JWT auth, schema alignment verification, production environment config, CI hardening, real webhook validation, first live OTA integration, audit checkpoint.
+**Short-term (Phases 283-292):** Test isolation fix, Supabase schema truth sync, docs integrity, production Docker hardening, first real Domaniqo frontend (Operations Dashboard, Booking Management, Worker Task View, Financial Dashboard), audit checkpoint.
 
-**Medium-term (Phases 283+):** Real frontend framework (Next.js/Vite), mobile PWA, multi-tenant org structure, production monitoring consumers, ML-based anomaly detection.
+**Medium-term (Phases 293+):** Guest portal frontend, owner portal frontend, multi-tenant org structure, production monitoring consumers, ML-based anomaly detection.
 
-**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from surface expansion to operational depth.
+**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from API surface expansion to real product surfaces and operational depth.

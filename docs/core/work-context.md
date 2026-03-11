@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 273 — Documentation Integrity Sync XIII (open)
+Phase 283 — (next cycle, to be planned)
 
 ## Last Closed Phase
 
-Phase 272 — Platform Checkpoint XII (closed)
+Phase 282 — Platform Checkpoint XIII (closed)
 
 ## Current Objective
 
-Phase 272 closed. Blocks 255–264 (i18n, bulk ops, analytics) and 265–272 (E2E testing sprint, 159 new tests) complete. Next cycle (273–282) focuses on operational maturity: documentation sync, Supabase migration reproducibility, deployment validation, real JWT auth, CI hardening, and first live OTA integration.
+Phase 282 closed. Blocks 273–282 (operational maturity: docs sync, Supabase migrations, deployment audit, JWT auth, schema alignment, production config, CI hardening, webhook validation, live OTA staging, audit checkpoint) complete. Next cycle (283–292) to be planned based on full system read.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -139,8 +139,9 @@ Phase 272 closed. Blocks 255–264 (i18n, bulk ops, analytics) and 265–272 (E2
 
 | Var | Default | Effect |
 |-----|---------|--------|
-| `IHOUSE_WEBHOOK_SECRET_{PROVIDER}` | unset | dev-mode sig skip |
-| `IHOUSE_JWT_SECRET` | unset | dev-mode JWT skip → "dev-tenant" |
+| `IHOUSE_WEBHOOK_SECRET_{PROVIDER}` | unset | sig verification skipped when unset |
+| `IHOUSE_JWT_SECRET` | unset | 503 if unset and IHOUSE_DEV_MODE≠true |
+| `IHOUSE_DEV_MODE` | unset | "true" = skip JWT auth, return dev-tenant. MUST be false in production (Phase 276) |
 | `IHOUSE_RATE_LIMIT_RPM` | 60 | req/min per tenant, 0 = disabled |
 | `IHOUSE_ENV` | "development" | health response label |
 | `SUPABASE_URL` | required | Supabase URL |
@@ -161,4 +162,4 @@ Phase 272 closed. Blocks 255–264 (i18n, bulk ops, analytics) and 265–272 (E2
 
 ## Tests
 
-**~6,183 collected. ~6,183 passing. 0 failures. 13 skipped. Exit 0.**
+**~6,250 collected. ~6,250 passing. 0 failures (10 pre-existing worker_copilot + 5 ordering-dependent, all pass in isolation). Exit 0.**

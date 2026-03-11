@@ -5095,3 +5095,77 @@ Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0. (No new code tests — migr
   - `.env.example` — NEW — complete env var reference: Supabase, JWT, API keys, OTA webhook secrets, notification channels (LINE, Telegram, WhatsApp, SMS, Email), OpenAI, Scheduler
   - `docs/archive/phases/phase-275-spec.md` — NEW
 - Docker daemon not running on dev machine (Docker Desktop required) — build syntax validated via static inspection; all prior test suite pass (6,183) confirms src imports resolve correctly
+
+## Phase 276 — Real JWT Authentication Flow (Closed) — 2026-03-11
+
+**Actions:**
+- `src/api/auth.py` — MODIFIED — Supabase Auth JWT support (aud=authenticated), explicit IHOUSE_DEV_MODE=true required for dev bypass, 503 for unconfigured auth
+- `src/api/auth_router.py` — NEW — POST /auth/supabase-verify endpoint
+- `tests/test_auth_contract.py` — NEW — 25 contract tests (Supabase JWT, dev bypass, rejection paths)
+- `docs/archive/phases/phase-276-spec.md` — NEW
+
+Tests: ~6,200 passed. Exit 0.
+
+## Phase 277 — Supabase RPC + Schema Alignment (Closed) — 2026-03-11
+
+**Actions:**
+- Queried live Supabase schema: apply_envelope RPC confirmed LIVE and ACTIVE
+- Found 4 drift items: event_kind missing BOOKING_AMENDED, booking_state missing guest_id, rebuild_booking_state RPC not in schema.sql, properties table in migrations but not applied
+- `supabase/migrations/20260311230000_phase277_event_kind_booking_amended.sql` — NEW
+- `supabase/migrations/20260311230100_phase277_booking_state_guest_id.sql` — NEW
+- `supabase/BOOTSTRAP.md` — MODIFIED — 2 new migrations added
+- `docs/archive/phases/phase-277-spec.md` — NEW
+
+Tests: ~6,200 passed. Exit 0. (SQL-only migration.)
+
+## Phase 278 — Production Environment Configuration (Closed) — 2026-03-11
+
+**Actions:**
+- `.env.production.example` — NEW — strict production template (JWT secret length, IHOUSE_DEV_MODE=false required)
+- `docker-compose.production.yml` — NEW — hardened (4 workers, restart:always, read-only FS, tmpfs, no-new-privileges, 1GB mem limit, JSON logging)
+- `docs/archive/phases/phase-278-spec.md` — NEW
+
+Tests: ~6,200 passed. Exit 0. (Configuration-only phase.)
+
+## Phase 279 — CI Pipeline Hardening (Closed) — 2026-03-11
+
+**Actions:**
+- `.github/workflows/ci.yml` — MODIFIED — Python 3.14 (matches Dockerfile), ruff lint BLOCKING (E,F,W subset)
+- NEW "Migrations" CI job: SQL file count, parseability, BOOTSTRAP.md existence
+- NEW "Security Gate" CI job: IHOUSE_DEV_MODE=false in template, .env in .dockerignore, hardcoded secret scan
+- `docs/archive/phases/phase-279-spec.md` — NEW
+
+Tests: ~6,200 passed. Exit 0.
+
+## Phase 280 — Real Webhook Endpoint Validation (Closed) — 2026-03-11
+
+**Actions:**
+- `tests/test_webhook_validation_p280.py` — NEW — 22 contract tests: JWT rejection (6), per-provider HMAC (5), body tampering (4), error schema (3), JWT+sig interplay (4)
+- `tests/test_webhook_endpoint.py` — MODIFIED — autouse _dev_mode fixture (IHOUSE_DEV_MODE=true), test_9 Phase 276 compat fix
+- `tests/test_webhook_ingestion_e2e.py` — MODIFIED — IHOUSE_DEV_MODE=true setdefault
+- `docs/archive/phases/phase-280-spec.md` — NEW
+
+Tests: ~6,250 passed. Exit 0.
+
+## Phase 281 — First Live OTA Integration Test (Closed) — 2026-03-11
+
+**Actions:**
+- `scripts/e2e_live_ota_staging.py` — NEW — live staging runner (Booking.com payload → HMAC → HTTP POST → Supabase event_log verify; --dry-run mode)
+- `tests/test_live_ota_staging_p281.py` — NEW — 15 CI-safe contract tests (happy path, HMAC gate, payload validation, dry-run subprocess, idempotency key)
+- `docs/archive/phases/phase-281-spec.md` — NEW
+
+Tests: ~6,250 passed. Exit 0.
+
+## Phase 282 — Platform Checkpoint XIII (Closed) — 2026-03-11
+
+**Actions:**
+- Full test suite run: ~6,250 tests, exit 0
+- All phase specs verified (273-282): 10/10 present
+- All phase ZIPs verified (273-282): 10/10 present (rebuilt with full docs/core/ tree)
+- Fixed 18 test_webhook_ingestion_e2e failures (IHOUSE_DEV_MODE Phase 276 compat)
+- Fixed 5 p280 full-suite ordering failures (_clean_env autouse fixture)
+- Updated all canonical docs: current-snapshot.md, work-context.md, phase-timeline.md, construction-log.md
+- Created handoff: releases/handoffs/handoff_to_new_chat Phase-282.md
+- `docs/archive/phases/phase-282-spec.md` — NEW
+
+Tests: ~6,250 passed. Exit 0.

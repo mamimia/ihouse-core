@@ -3659,3 +3659,87 @@ Full Dockerfile + docker-compose audit. Fixed dead legacy copy, env var pass-thr
 Note: Docker build not executed (daemon not running on dev machine). Dockerfile syntax valid — same multi-stage pattern has been in place since Phase 211 with all 77 API routers loading correctly.
 
 Tests: 6,183 (no code changes). Exit 0.
+
+
+## Phase 276 — Real JWT Authentication Flow (2026-03-11)
+
+Supabase Auth JWT support. IHOUSE_DEV_MODE=true required for dev bypass. 25 contract tests. POST /auth/supabase-verify endpoint.
+
+- `src/api/auth.py` — MODIFIED — aud=authenticated, 503 unconfigured
+- `src/api/auth_router.py` — NEW
+- `tests/test_auth_contract.py` — NEW — 25 tests
+- `docs/archive/phases/phase-276-spec.md` — NEW
+
+Tests: ~6,200. Exit 0.
+
+
+## Phase 277 — Supabase RPC + Schema Alignment (2026-03-11)
+
+apply_envelope RPC confirmed LIVE. 4 drift items found. 2 addendum migrations created.
+
+- `supabase/migrations/20260311230000_phase277_event_kind_booking_amended.sql` — NEW
+- `supabase/migrations/20260311230100_phase277_booking_state_guest_id.sql` — NEW
+- `supabase/BOOTSTRAP.md` — MODIFIED
+- `docs/archive/phases/phase-277-spec.md` — NEW
+
+Tests: ~6,200. Exit 0.
+
+
+## Phase 278 — Production Environment Configuration (2026-03-11)
+
+Production hardened config. .env.production.example + docker-compose.production.yml.
+
+- `.env.production.example` — NEW
+- `docker-compose.production.yml` — NEW — 4 workers, read-only FS, no-new-privileges
+- `docs/archive/phases/phase-278-spec.md` — NEW
+
+Tests: ~6,200. Exit 0.
+
+
+## Phase 279 — CI Pipeline Hardening (2026-03-11)
+
+Python 3.14, blocking lint, 2 new CI jobs (Migrations + Security Gate).
+
+- `.github/workflows/ci.yml` — MODIFIED
+- `docs/archive/phases/phase-279-spec.md` — NEW
+
+Tests: ~6,200. Exit 0.
+
+
+## Phase 280 — Real Webhook Endpoint Validation (2026-03-11)
+
+22 new webhook contract tests. Fixed 18 test isolation failures. autouse fixture for IHOUSE_DEV_MODE.
+
+- `tests/test_webhook_validation_p280.py` — NEW — 22 tests
+- `tests/test_webhook_endpoint.py` — MODIFIED — autouse _dev_mode
+- `tests/test_webhook_ingestion_e2e.py` — MODIFIED — IHOUSE_DEV_MODE setdefault
+- `docs/archive/phases/phase-280-spec.md` — NEW
+
+Tests: ~6,250. Exit 0.
+
+
+## Phase 281 — First Live OTA Integration Test (2026-03-11)
+
+Live staging runner + 15 CI-safe contract tests.
+
+- `scripts/e2e_live_ota_staging.py` — NEW — live test runner
+- `tests/test_live_ota_staging_p281.py` — NEW — 15 tests
+- `docs/archive/phases/phase-281-spec.md` — NEW
+
+Tests: ~6,250. Exit 0.
+
+
+## Phase 282 — Platform Checkpoint XIII (2026-03-11)
+
+Full audit. All phase specs + ZIPs verified. Canonical docs updated. Handoff created.
+
+- All 10 phase specs (273-282): verified present
+- All 10 phase ZIPs rebuilt with full docs/core/ tree
+- `current-snapshot.md` — MODIFIED
+- `work-context.md` — MODIFIED
+- `phase-timeline.md` — MODIFIED (appended 276-282)
+- `construction-log.md` — MODIFIED (appended 276-282)
+- `releases/handoffs/handoff_to_new_chat Phase-282.md` — NEW
+- `docs/archive/phases/phase-282-spec.md` — NEW
+
+Tests: ~6,250. Exit 0.
