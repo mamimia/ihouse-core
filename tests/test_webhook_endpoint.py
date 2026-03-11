@@ -53,6 +53,16 @@ def client():
     return TestClient(_make_app(), raise_server_exceptions=False)
 
 
+@pytest.fixture(autouse=True)
+def _dev_mode(monkeypatch):
+    """
+    Phase 276/280: All tests in this suite test signature/payload logic —
+    not JWT auth. Set IHOUSE_DEV_MODE=true so auth is bypassed consistently.
+    Tests that explicitly need JWT auth should set IHOUSE_DEV_MODE=false.
+    """
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
+
+
 @dataclass
 class _FakeEnvelope:
     """Minimal stand-in for CanonicalEnvelope returned by ingest_provider_event."""
@@ -228,9 +238,10 @@ def test_ingest_error_returns_500(client, monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_tenant_id_propagated(client, monkeypatch):
-    """Phase 61: tenant_id comes from JWT (dev-mode returns 'dev-tenant')."""
+    """Phase 276: tenant_id comes from JWT; dev-mode returns 'dev-tenant'."""
     monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
-    monkeypatch.delenv("IHOUSE_JWT_SECRET", raising=False)  # dev-mode
+    monkeypatch.delenv("IHOUSE_JWT_SECRET", raising=False)
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")   # Phase 276: explicit dev mode
     with patch(_MOCK_TARGET, return_value=_FakeEnvelope()) as mock_ingest:
         client.post(
             "/webhooks/bookingcom",
@@ -238,7 +249,7 @@ def test_tenant_id_propagated(client, monkeypatch):
             headers={"Content-Type": "application/json"},
         )
     _args, kwargs = mock_ingest.call_args
-    # In dev-mode (no JWT secret), jwt_auth returns "dev-tenant"
+    # In dev-mode (IHOUSE_DEV_MODE=true), jwt_auth returns "dev-tenant"
     assert kwargs.get("tenant_id") == "dev-tenant"
 
 
