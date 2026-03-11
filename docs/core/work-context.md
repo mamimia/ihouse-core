@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 227 — Guest Messaging Copilot v1 (closed)
+Phase 228 — Platform Checkpoint V (closing)
 
 ## Last Closed Phase
 
-Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff. 0 new code files.
+Phase 227 — Guest Messaging Copilot v1 (closed)
 
 ## Current Objective
 
-Phase 227 closed. Next: Phase 228 (TBD).
+Phase 228 closing. Full audit + doc sync + next 10 phases plan.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -124,4 +124,4 @@ Phase 227 closed. Next: Phase 228 (TBD).
 
 ## Tests
 
-**5,179 collected. 5,179 passing. 0 failures. Exit 0.**
+**5,382 collected. 5,382 passing. 0 failures. Exit 0.**

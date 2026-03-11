@@ -26,16 +26,17 @@
 
 ---
 
-## System Numbers — Phase 218 (2026-03-11)
+## System Numbers — Phase 228 (2026-03-11)
 
 | Metric | Value |
 |--------|-------|
 | **OTA Adapters** | 14 live (Airbnb, Booking.com, Expedia, Agoda, Trip.com, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld) |
-| **Escalation Channels** | 5 live/stubbed (LINE, WhatsApp, Telegram, SMS — Phase 212, Email — Phase 213) |
+| **Escalation Channels** | 5 live (LINE, WhatsApp, Telegram, SMS, Email) |
 | **Task Kinds** | 6 (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME) |
-| **UI/Product Surfaces** | 16 (ops dashboard, bookings, calendar, tasks, worker, financial, owner statement, owner portal, guests, admin settings, manager feed, admin DLQ, onboarding wizard, revenue reports, portfolio dashboard, integration management) |
+| **UI/Product Surfaces** | 16 |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
-| **Tests** | 5,179 collected / 5,179 passing / 0 failures |
+| **AI Copilot Endpoints** | 6 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging) |
+| **Tests** | 5,382 collected / 5,382 passing / 0 failures |
 
 ---
 
@@ -149,21 +150,22 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 
 ---
 
-## AI Assistive Layer (Phases 220+)
+## AI Assistive Layer (Phases 220–227) — Complete ✅
 
 > [!IMPORTANT]
 > Full detail: `docs/core/planning/ai-strategy.md`
 >
 > Core principle: **Deterministic core = truth. AI = explanation, prioritization, recommendation, drafting.**
 
-| Phase | Title | Key Deliverable |
-|-------|-------|----------------|
-| 220 | AI Strategy Document | Canonical placement (done — Phase 210) |
-| 221 | AI Context Aggregation Endpoints | Composite read endpoints assembling booking/property/financial/task snapshots |
-| 222 | Manager Copilot v1 | 7AM morning briefing — explains urgent items, blocked tasks, sync health |
-| 223 | Financial Explainer | Confidence tier explanations, reconciliation narration |
-| 224 | Guest Messaging Copilot v1 | Context-aware draft replies using booking + property + guest data |
-| 225 | AI Audit Trail | Log what AI saw, suggested, who approved, what happened |
+| Phase | Title | Status |
+|-------|-------|--------|
+| 221 | Scheduled Job Runner (SLA sweep, DLQ alerts, health log) | ✅ Closed |
+| 222 | AI Context Aggregation — `/ai/context/property` + `/ai/context/operations-day` | ✅ Closed |
+| 223 | Manager Copilot v1 — Morning Briefing (`POST /ai/copilot/morning-briefing`) | ✅ Closed |
+| 224 | Financial Explainer — 7 anomaly flags, A/B/C tiers | ✅ Closed |
+| 225 | Task Recommendation Engine — deterministic scoring | ✅ Closed |
+| 226 | Anomaly Alert Broadcaster — 3-domain health scanner | ✅ Closed |
+| 227 | Guest Messaging Copilot v1 — 6 intents, 5 languages, 3 tones | ✅ Closed |
 
 
 ---
@@ -189,10 +191,10 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 219+):** AI assistive layer — Manager Copilot, Financial Explainer, Guest Messaging Copilot. Alternative: additional channel integrations, CI/CD pipeline, staging environment.
+**Short-term (Phases 228+):** AI Audit Trail (log AI decisions + approvals), Worker Copilot (mobile contextual assists), Shift Scheduling (availability-based), Guest Pre-Arrival Automation (chain pre-arrival tasks to draft messages).
 
-**Medium-term (Phases 220–225):** AI assistive layer — Manager Copilot, Financial Explainer, Guest Messaging Copilot. AI explains and prioritizes; deterministic system executes.
+**Medium-term (Phases 232+):** Revenue forecasting from historical data, advanced conflict resolution UX, multi-property portfolio analytics, CI/CD staging environment.
 
-**Long-term:** CI/CD pipeline, staging environment, advanced conflict resolution UX, revenue analytics, Tier 3 adapter expansion, guest-facing pre-arrival flows, multi-language support, mobile PWA.
+**Long-term:** Mobile PWA, guest-facing self-service portal, Tier 3 adapter expansion (Ctrip, HRS, eDreams), advanced multi-language support, ML-based anomaly detection.
 
 **Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it.
