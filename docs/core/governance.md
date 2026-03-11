@@ -161,3 +161,16 @@ vision.md
 system-identity.md  
 canonical-event-architecture.md  
 current-snapshot.md
+
+---
+
+## Branding Boundary — Irrevocable
+
+**inside = iHouse Core** — all internal system names, file names, module names, env vars, loggers, OpenAPI metadata, router names, test files, technical documentation, archives.
+
+**outside = Domaniqo** — all user-facing surfaces: UI, login, sidebar, PDFs, emails, marketing, graphics, guest-facing portals.
+
+No internal system artifact may be renamed to Domaniqo. This rule is non-negotiable.
+
+See `docs/core/brand-handoff.md` § Hard Branding Boundary for the full policy.
+

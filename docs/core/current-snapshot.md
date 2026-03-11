@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 264 — Advanced Analytics + Platform Checkpoint XI (closed)
+Phase 266 — E2E Booking Flow Integration Test (closed)
 
 ## Last Closed Phase
-Phase 264 — Advanced Analytics + Platform Checkpoint XI (closed) — 10 phases closed (255–264), i18n + monitoring + guest portal + analytics; docs synced.
+Phase 266 — E2E Booking Flow Integration Test (closed) — 26 new HTTP-level E2E tests via FastAPI TestClient + mocked Supabase (Groups A-D: GET /bookings/{id}, GET /bookings, GET /bookings/{id}/amendments, PATCH /bookings/{id}/flags). CI-safe. 6,050 tests passing.
 
 ## System Status
 

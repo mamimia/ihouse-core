@@ -4956,3 +4956,35 @@ Tests: ~5,997 collected. ~5,997 passing. Exit 0.
 
 Tests: ~6,015 collected. ~6,015 passing. Exit 0.
 
+
+## Phase 265 — Test Suite Repair + Documentation Integrity Sync (Closed) — 2026-03-11
+
+**Actions:**
+- `pytest.ini` — MODIFIED — added `pythonpath = src` (root cause of 5 broken test collections)
+- `src/main.py` — MODIFIED — rebranded iHouse Core → Domaniqo Core (title, description, contact, logger, log messages)
+- `docs/core/live-system.md` — MODIFIED — updated header to Phase 265; added 5 missing API endpoint groups (Bulk Ops P259, Webhook Log P261, Guest Portal P262, Monitoring P263, Analytics P264)
+- `docs/core/roadmap.md` — MODIFIED — system numbers updated (72→77 routers, ~5,900→~6,024 tests, Phase 254→265)
+- `docs/core/current-snapshot.md` — MODIFIED — Phase 264→265 as last closed phase
+- `docs/core/brand-handoff.md` — REPLACED — Domaniqo Brand Handoff v2 (full rewrite with motion, sound, error states, data viz, i18n, expanded agent onboarding)
+
+Tests: 6,024 collected. 6,024 passing. 13 skipped. 0 failures. Exit 0.
+
+
+## Phase 266 — E2E Booking Flow Integration Test (Closed) — 2026-03-11
+
+**Actions:**
+- `tests/test_booking_flow_e2e.py` — NEW — 26 HTTP-level E2E tests using FastAPI TestClient + mocked Supabase
+  - Group A (6 tests): GET /bookings/{id} — 200 shape, required keys, flags=None, 404, status values
+  - Group B (10 tests): GET /bookings — count/limit defaults, filter validation, sort meta, empty result
+  - Group C (4 tests): GET /bookings/{id}/amendments — shape, empty list, 404
+  - Group D (6 tests): PATCH /bookings/{id}/flags — 200 upsert, 400 empty/unknown/non-bool, 404
+- `docs/archive/phases/phase-265-spec.md` — NEW (Phase 265 spec created at closure)
+- `docs/archive/phases/phase-266-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-265.zip` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-266.zip` — NEW
+- `docs/core/construction-log.md` — APPENDED — Phase 265 and 266 closure entries
+- `docs/core/phase-timeline.md` — APPENDED — Phase 266 entry
+- `docs/core/current-snapshot.md` — MODIFIED — Last Closed Phase → 266
+- `docs/core/roadmap.md` — MODIFIED — test count updated to ~6,050
+
+Tests: 6,050 passed. 13 skipped. 0 failures. Exit 0.

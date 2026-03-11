@@ -88,6 +88,25 @@ Every closed phase MUST produce ALL of these:
 - Never downgrade invariants already declared as canonical.
 - If anything is ambiguous, ask one concrete question, then proceed.
 
+## Branding boundary — hard rule
+
+The external brand is **Domaniqo**. The internal system is **iHouse Core**.
+
+These two names serve different scopes and must never be mixed:
+
+| Scope | Name | What it covers |
+|-------|------|----------------|
+| **Internal** | iHouse Core | File names, folder names, module names, router names, env vars, logger names, OpenAPI title, ZIP archives, imports, docstrings, technical docs, test files, phase-timeline, construction-log |
+| **External** | Domaniqo | UI screens, login page, sidebar brand, external headings, PDFs to clients, emails, marketing copy, graphic assets, any product-facing or client-facing surface |
+
+**Rules:**
+- Do NOT rename any internal system artifact to Domaniqo — ever.
+- Updating `brand-handoff.md` does NOT trigger changes to core docs, file names, or module names.
+- When building new product surfaces (UI, emails, PDFs), use Domaniqo branding.
+- When building new backend code (routers, services, adapters), use iHouse Core naming.
+
+See `docs/core/brand-handoff.md` and `docs/core/governance.md` for the full policy.
+
 ## Operational discipline — enforced every phase, no exceptions
 
 ### Git push cadence

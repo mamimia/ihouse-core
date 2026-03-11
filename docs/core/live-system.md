@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 255 — Documentation Audit (2026-03-11)**
+**Last updated: Phase 265 — Test Suite Repair + Doc Sync (2026-03-11)**
 
 ## Core Architecture
 
@@ -353,6 +353,46 @@ All **14 providers** implemented at full parity:
 |----------|-------------|-------|
 | `GET /admin/staff/performance` | Aggregated worker metrics (ACK time, SLA compliance, tasks/day, channel) | 253 |
 | `GET /admin/staff/performance/{worker_id}` | Individual worker performance drill-down | 253 |
+
+### Bulk Operations (Phase 259)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /admin/bulk/cancel` | Bulk cancel bookings by IDs | 259 |
+| `POST /admin/bulk/tasks/assign` | Bulk assign tasks to worker | 259 |
+| `POST /admin/bulk/sync/trigger` | Bulk trigger outbound sync | 259 |
+
+### Webhook Event Log (Phase 261)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/webhook-log` | Recent webhook events (keys only, no PII) | 261 |
+| `GET /admin/webhook-log/stats` | Webhook event statistics | 261 |
+| `POST /admin/webhook-log/test` | Test webhook event injection | 261 |
+
+### Guest Self-Service Portal (Phase 262)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /guest/booking/{ref}` | Guest booking view (X-Guest-Token gated) | 262 |
+| `GET /guest/booking/{ref}/wifi` | Guest WiFi info | 262 |
+| `GET /guest/booking/{ref}/rules` | House rules | 262 |
+
+### Production Monitoring (Phase 263)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/monitor` | Full system metrics | 263 |
+| `GET /admin/monitor/health` | Monitoring health (200/503) | 263 |
+| `GET /admin/monitor/latency` | Latency histogram | 263 |
+
+### Advanced Analytics (Phase 264)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/analytics/top-properties` | Top properties by revenue/occupancy | 264 |
+| `GET /admin/analytics/ota-mix` | OTA booking mix trends | 264 |
+| `GET /admin/analytics/revenue-summary` | Revenue summary aggregation | 264 |
 
 ## Future Evolution
 

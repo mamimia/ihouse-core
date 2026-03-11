@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 264 — Advanced Analytics + Platform Checkpoint XI (closed)
+Phase 266 — E2E Booking Flow Integration Test (closed)
 
 ## Last Closed Phase
 
-Phase 264 — Advanced Analytics + Platform Checkpoint XI (closed)
+Phase 266 — E2E Booking Flow Integration Test (closed)
 
 ## Current Objective
 
@@ -161,4 +161,4 @@ Phase 264 closed. Block 255–264 complete. All 10 phases documented, tested, zi
 
 ## Tests
 
-**~6,015 collected. ~6,015 passing. 0 failures. Exit 0.**
+**~6,050 collected. ~6,050 passing. 0 failures. Exit 0.**

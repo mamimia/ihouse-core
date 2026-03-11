@@ -3510,3 +3510,33 @@ Three cross-property analytics endpoints. Platform Checkpoint XI closes the 255�
 
 Tests: ~6,015 collected. ~6,015 passing. Exit 0.
 
+
+## Phase 265 closure — Test Suite Repair + Documentation Integrity Sync
+
+- `pytest.ini` — MODIFIED — added `pythonpath = src` (fixed 5 broken test collections)
+- `src/main.py` — MODIFIED — branding reverted to iHouse Core (title, logger, description, contact, log messages)
+- `tests/test_main_app.py` — MODIFIED — `test_app_title` reverted to expect "iHouse Core"
+- `docs/core/BOOT.md` — MODIFIED — added "Branding boundary — hard rule" section
+- `docs/core/governance.md` — MODIFIED — added "Branding Boundary — Irrevocable" section
+- `docs/core/brand-handoff.md` — MODIFIED — added "Hard Branding Boundary" inside/outside table
+- `docs/core/live-system.md` — MODIFIED — updated to Phase 265, added 5 missing API groups (P259-264)
+- `docs/core/roadmap.md` — MODIFIED — system numbers: 77 routers, ~6,024 tests, completed through Phase 265
+- `docs/core/current-snapshot.md` — MODIFIED — Last Closed Phase → 265
+- `docs/core/phase-timeline.md` — APPENDED — Phase 265 entry
+- `docs/archive/phases/phase-265-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-265.zip` — NEW
+
+Tests: 6,024 passed. 13 skipped. 0 failures. Exit 0.
+
+## Phase 266 closure — E2E Booking Flow Integration Test
+
+- `tests/test_booking_flow_e2e.py` — NEW — 26 tests (Groups A-D): HTTP-level E2E booking flow using FastAPI TestClient + mocked Supabase. CI-safe. No live DB required.
+  - Group A (6 tests): GET /bookings/{id} — 200 shape, 404, flags=None, status values
+  - Group B (10 tests): GET /bookings — count, limit, filter validation, sort meta, empty result
+  - Group C (4 tests): GET /bookings/{id}/amendments — shape, empty list, 404
+  - Group D (6 tests): PATCH /bookings/{id}/flags — 200, 400, 404 paths
+- `docs/archive/phases/phase-265-spec.md` — created at Phase 265 closure
+- `docs/archive/phases/phase-266-spec.md` — NEW
+- `releases/phase-zips/iHouse-Core-Docs-Phase-266.zip` — NEW
+
+Tests: 6,050 passed. 13 skipped. 0 failures. Exit 0.
