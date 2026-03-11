@@ -1,12 +1,12 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 220 — CI/CD Pipeline Foundation (closed)
+Phase 221 — Scheduled Job Runner (closed)
 
 ## Last Closed Phase
 Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
 
-Phase 220 — CI/CD Pipeline Foundation (closed) — `.github/workflows/ci.yml` upgraded to 3-job pipeline (test/lint/smoke).
+Phase 221 — Scheduled Job Runner (closed) — APScheduler wired into lifespan, 3 jobs (SLA sweep/DLQ alert/health log), GET /admin/scheduler-status. 32 tests.
 
 ## System Status
 
@@ -306,7 +306,7 @@ Tier 3 — SMS / Email  (future phases, stubs registered)
 
 ## Next Phase
 
-Phase 221 — Scheduled Job Runner (next).
+Phase 222 — AI Context Aggregation Endpoints (next).
 
 ## Tests
 

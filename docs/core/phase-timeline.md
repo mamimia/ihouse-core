@@ -4306,3 +4306,25 @@ Files: `.github/workflows/ci.yml` MODIFIED (3-job structure, was 1-job).
 
 Tests: 5,179 (no code changes). Exit 0.
 
+## Phase 221 — Scheduled Job Runner (Closed) — 2026-03-11
+
+APScheduler 3.10.4 `AsyncIOScheduler` wired into FastAPI lifespan. Three background jobs running continuously in production.
+
+**Job 1 — `sla_sweep` (every 2 min):** Queries open/in-progress tasks, evaluates each against `sla_engine.evaluate()`, logs WARNING on ACK_SLA_BREACH or COMPLETION_SLA_BREACH. ACK SLA = 5 min (CRITICAL invariant). Completion SLA: CLEANING/GENERAL=24h, CHECKIN_PREP/CHECKOUT_VERIFY=2h, MAINTENANCE=48h.
+
+**Job 2 — `dlq_threshold_alert` (every 10 min):** Counts unprocessed `ota_dead_letter` rows. Logs WARNING if count ≥ `IHOUSE_DLQ_ALERT_THRESHOLD` (default: 5).
+
+**Job 3 — `health_log` (every 15 min):** Logs `run_health_checks()` result. Degraded/unhealthy logs at WARNING.
+
+All jobs: best-effort, non-raising. Scheduler disabled via `IHOUSE_SCHEDULER_ENABLED=false`. All intervals overridable via env vars.
+
+New endpoint: `GET /admin/scheduler-status` — returns enabled/running state + next_run_utc per job.
+
+Files:
+- `src/services/scheduler.py` — NEW — scheduler module (3 jobs, lifecycle, status)
+- `src/main.py` — MODIFIED — lifespan wired, `GET /admin/scheduler-status` added
+- `requirements.txt` — MODIFIED — `apscheduler==3.10.4`
+- `tests/test_scheduler_contract.py` — NEW — 32 contract tests
+
+Tests: 5,179 + 32 = 5,211 passing. Exit 0.
+

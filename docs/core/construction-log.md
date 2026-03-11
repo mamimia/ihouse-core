@@ -2988,3 +2988,13 @@ Tests: 5,179 (no code changes, docs-only phase). Exit 0.
 
 Tests: 5,179 (no code changes). Exit 0.
 
+
+## Phase 221 — Scheduled Job Runner (2026-03-11)
+
+- `src/services/scheduler.py` — NEW — `AsyncIOScheduler` with 3 jobs: `sla_sweep` (120s), `dlq_threshold_alert` (600s), `health_log` (900s). `build_scheduler()`, `start_scheduler()`, `stop_scheduler()`, `get_scheduler_status()`. All jobs best-effort, non-raising. `IHOUSE_SCHEDULER_ENABLED` kill switch. All intervals env-configurable.
+- `src/main.py` — MODIFIED — lifespan calls `start_scheduler()` on startup, `stop_scheduler()` on shutdown. New `GET /admin/scheduler-status` endpoint added.
+- `requirements.txt` — MODIFIED — `apscheduler==3.10.4` added.
+- `tests/test_scheduler_contract.py` — NEW — 32 contract tests: config helpers, build_scheduler, get_scheduler_status, DLQ check, health log, SLA sweep (no-creds, DB error, no tasks, ACK breach, fresh task, summary log).
+
+Tests: 5,179 + 32 = 5,211 passing. Exit 0.
+

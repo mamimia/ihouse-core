@@ -125,6 +125,9 @@ Repaired missing phase-timeline + construction-log entries for Phases 211–218.
 ### Phase 220 — CI/CD Pipeline Foundation *(closed)*
 `.github/workflows/ci.yml` upgraded to 3-job pipeline: `test` (pip cache, e2e ignores), `lint` (ruff, non-blocking), `smoke` (secrets-guarded HTTP). 0 new source files.
 
+### Phase 221 — Scheduled Job Runner *(closed)*
+`AsyncIOScheduler` (APScheduler 3.x) wired into FastAPI lifespan. 3 jobs: SLA sweep (2min), DLQ threshold alert (10min), health log (15min). `GET /admin/scheduler-status` added. 32 contract tests.
+
 
 ---
 

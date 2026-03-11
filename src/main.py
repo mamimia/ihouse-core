@@ -55,7 +55,10 @@ _ENV = os.getenv("IHOUSE_ENV", "development")
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
     logger.info("iHouse Core API starting — env=%s version=%s", _ENV, app.version)
+    from services.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
     yield
+    stop_scheduler()
     logger.info("iHouse Core API shutting down")
 
 
@@ -282,6 +285,27 @@ app.include_router(portfolio_dashboard_router)
 
 from api.integration_management_router import router as integration_management_router  # noqa: E402  # Phase 217
 app.include_router(integration_management_router)
+
+
+# ---------------------------------------------------------------------------
+# Phase 221 — Scheduler status endpoint
+# ---------------------------------------------------------------------------
+
+@app.get(
+    "/admin/scheduler-status",
+    tags=["admin"],
+    summary="Scheduled job runner status (Phase 221)",
+)
+async def scheduler_status() -> JSONResponse:
+    """
+    GET /admin/scheduler-status
+
+    Returns the current state of the background job scheduler:
+    whether it is running, and next_run_utc for each registered job.
+    JWT auth not required (ops surface, no sensitive data).
+    """
+    from services.scheduler import get_scheduler_status
+    return JSONResponse(status_code=200, content=get_scheduler_status())
 
 
 # ---------------------------------------------------------------------------

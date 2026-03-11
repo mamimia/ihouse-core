@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 220 — CI/CD Pipeline Foundation (closed)
+Phase 221 — Scheduled Job Runner (closed)
 
 ## Last Closed Phase
 
@@ -8,7 +8,7 @@ Phase 218 — Platform Checkpoint IV (closed) — full audit, docs sync, handoff
 
 ## Current Objective
 
-Phase 220 closed. Next: Phase 221 — Scheduled Job Runner.
+Phase 221 closed. Next: Phase 222 — AI Context Aggregation Endpoints.
 
 ## Key Invariants (Locked — Do Not Change)
 
