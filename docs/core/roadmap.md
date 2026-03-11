@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 255 (2026-03-11). [Antigravity]
+> Last updated: Phase 273 (2026-03-11). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -36,7 +36,8 @@
 | **API Routers** | 77 files in `src/api/` |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | ~6,183 collected / ~6,183 passing / 0 failures |
+| **Tests** | ~6,183 collected / ~6,183 passing / 0 failures / 13 skipped |
+| **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) — 159 tests added in Phases 265–271 |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
 
@@ -80,8 +81,8 @@ Roadmap refreshes, system audits, documentation sync, handoff documents.
 ### AI Assistive Layer (Phases 220–231)
 CI/CD pipeline, scheduled job runner, AI context aggregation, Manager Copilot v1 (morning briefing), Financial Explainer, Task Recommendation Engine, Anomaly Alert Broadcaster, Guest Messaging Copilot v1, AI Audit Trail, Worker Task Copilot. All AI reads from or wraps the canonical spine — never mutates it.
 
-### Recent — Phases 198–254
-Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, outbound sync trigger consolidation (tech debt closure, Phase 209), documentation cleanup (Phase 210), production deployment foundation (Phase 211), SMS+Email channels (Phases 212-213), property onboarding wizard (Phase 214), revenue reports + portfolio dashboard + integration management (Phases 215-217), CI/CD pipeline (Phase 220), scheduled job runner (Phase 221), full AI copilot suite (Phases 222-227), AI audit trail + worker copilot (Phases 230-231), guest pre-arrival automation (Phase 232), revenue forecast engine (Phase 233), shift & availability scheduler (Phase 234), multi-property conflict dashboard (Phase 235), guest communication history (Phase 236), staging environment (Phase 237), Ctrip/Trip.com enhanced adapter (Phase 238). Platform Checkpoint VII (Phase 239). Documentation Integrity Sync (240). Reconciliation Dashboard API (241). Booking Lifecycle Visualization API (242). Property Performance Analytics API (243). OTA Revenue Mix Analytics API (244). Platform Checkpoint VIII (245). Rate Card & Pricing Rules Engine (246). Guest Feedback Collection API (247). Maintenance Task Templates (248). Booking.com Content Push Adapter (250). Dynamic Pricing Suggestion Engine (251). Owner Financial Report API v2 (252). Staff Performance Dashboard API (253). Platform Checkpoint X: Audit & Handoff (254).
+### Recent — Phases 198–272
+Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, outbound sync trigger consolidation (tech debt closure, Phase 209), documentation cleanup (Phase 210), production deployment foundation (Phase 211), SMS+Email channels (Phases 212-213), property onboarding wizard (Phase 214), revenue reports + portfolio dashboard + integration management (Phases 215-217), CI/CD pipeline (Phase 220), scheduled job runner (Phase 221), full AI copilot suite (Phases 222-227), AI audit trail + worker copilot (Phases 230-231), guest pre-arrival automation (Phase 232), revenue forecast engine (Phase 233), shift & availability scheduler (Phase 234), multi-property conflict dashboard (Phase 235), guest communication history (Phase 236), staging environment (Phase 237), Ctrip/Trip.com enhanced adapter (Phase 238). Platform Checkpoint VII (Phase 239). Documentation Integrity Sync (240). Reconciliation Dashboard API (241). Booking Lifecycle Visualization API (242). Property Performance Analytics API (243). OTA Revenue Mix Analytics API (244). Platform Checkpoint VIII (245). Rate Card & Pricing Rules Engine (246). Guest Feedback Collection API (247). Maintenance Task Templates (248). Booking.com Content Push Adapter (250). Dynamic Pricing Suggestion Engine (251). Owner Financial Report API v2 (252). Staff Performance Dashboard API (253). Platform Checkpoint X: Audit & Handoff (254). Bulk Operations (255). i18n + Language Switcher + Thai/Hebrew RTL UI (256–260). Webhook Event Logging (261). Guest Self-Service Portal (262). Production Monitoring (263). Advanced Analytics (264). Test Suite Repair + Doc Sync (265). **E2E Testing Sprint (266–271):** 159 new integration tests covering booking flow, financial summary, task system, webhook ingestion, admin/properties, DLQ/replay. Platform Checkpoint XII (272).
 
 ---
 
@@ -93,13 +94,13 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 255+
+## Active Direction — Phase 273+
 
-Phase 254 (Platform Checkpoint X) confirmed the system is architecturally clean at 254 phases, ~5,900 tests. The Phases 240–254 plan is now **fully executed**.
+Phase 272 (Platform Checkpoint XII) confirmed the system is architecturally clean at 272 phases, ~6,183 tests, with comprehensive E2E coverage across all major API surfaces.
 
-The next wave (Phases 255–264) focuses on: **documentation integrity, brand migration (Domaniqo), i18n foundation, bulk operations, observability, guest self-service, and production monitoring.**
+The next wave (Phases 273–282) focuses on **operational maturity**: documentation integrity, Supabase migration reproducibility, deployment validation, real JWT auth, schema alignment, production configuration, CI hardening, real webhook validation, first live OTA integration, and a final audit checkpoint.
 
-Full plan: `docs/core/planning/next-10-phases-255-264.md`
+Full plan: `docs/core/planning/next-10-phases-273-282.md`
 
 ### Phase 210 — Roadmap & Documentation Cleanup *(closed)*
 Full audit of 20 canonical documents. Archived 10 stale files. Fixed Layer A claims (BOOKING_AMENDED, MODIFY semantics). Created AI strategy canonical document (`docs/core/planning/ai-strategy.md`).
@@ -238,8 +239,8 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 255-264):** Documentation audit, Domaniqo brand migration (UI + OpenAPI), i18n foundation, bulk operations, webhook event log, guest self-service portal, production monitoring & alerting, advanced analytics.
+**Short-term (Phases 273-282):** Documentation sync, Supabase migration reproducibility, deployment validation, real JWT auth, schema alignment verification, production environment config, CI hardening, real webhook validation, first live OTA integration, audit checkpoint.
 
-**Medium-term (Phases 265+):** Mobile PWA, multi-tenant org structure, Tier 3 adapter expansion, ML-based anomaly detection, advanced guest-facing features.
+**Medium-term (Phases 283+):** Real frontend framework (Next.js/Vite), mobile PWA, multi-tenant org structure, production monitoring consumers, ML-based anomaly detection.
 
-**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it.
+**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from surface expansion to operational depth.

@@ -3621,3 +3621,17 @@ Tests: 6,183 passed. 13 skipped. 0 failures. Exit 0.
 - `releases/phase-zips/iHouse-Core-Docs-Phase-272.zip` — NEW
 
 Session stats: 8 phases closed (265-272). 159 new E2E tests. 0 regressions.
+
+
+## Phase 273 — Documentation Integrity Sync XIII (2026-03-11)
+
+Full system assessment identified 8 stale documentation items across 4 canonical docs. All fixed.
+
+- `docs/core/work-context.md` — MODIFIED — Phase 266→273, test count 6,050→6,183, objective updated to 273-282 operational maturity cycle
+- `docs/core/current-snapshot.md` — MODIFIED — Current Phase→273, system status paragraph extended to include Phases 265-272
+- `docs/core/roadmap.md` — MODIFIED — Last updated→273, system numbers updated (added E2E test files row, 13 skipped), Active Direction→273+, Recent section extended to 198-272, Where We're Headed updated for 273-282 cycle
+- `docs/core/live-system.md` — MODIFIED — Header→Phase 273
+- `docs/core/planning/next-10-phases-273-282.md` — NEW — Operational maturity planning doc (Phases 273-282)
+- `docs/archive/phases/phase-273-spec.md` — NEW
+
+Tests: 6,183 (no code changes, docs-only phase). Exit 0.

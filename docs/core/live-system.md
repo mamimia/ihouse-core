@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 265 — Test Suite Repair + Doc Sync (2026-03-11)**
+**Last updated: Phase 273 — Documentation Integrity Sync XIII (2026-03-11)**
 
 ## Core Architecture
 
