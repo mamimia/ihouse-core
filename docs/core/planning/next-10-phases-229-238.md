@@ -142,21 +142,9 @@ Full audit + docs sync + handoff. Verification that Phases 226–228 are properl
 
 ---
 
-## Phase 238 — Platform Checkpoint VII
+## Phase 238 — Ctrip / Trip.com Enhanced Adapter
 
-**Why now:** Every 10 phases we audit. Phases 229–237 introduce AI audit trail, worker copilot, pre-arrival automation, revenue forecasting, scheduling, conflict dashboard, guest comms, and staging.
-
-**Scope:**
-- Full documentation sync (roadmap, current-snapshot, phase-timeline, work-context)
-- Test count verification
-- Handoff document for next AI session
-- 0 new code files
-
----
-
-## Phase 239 — Ctrip / Trip.com Enhanced Adapter
-
-**Why now:** Trip.com adapter exists (Phase 1.5 tier) but uses the generic `tripcom.py` adapter. The Chinese market (Ctrip) has unique requirements: Chinese guest names, CNY pricing, specific cancellation policies. This phase upgrades the adapter.
+**Why now:** Trip.com adapter exists but uses the generic `tripcom.py`. The Chinese market (Ctrip) has unique requirements that the generic adapter can’t handle.
 
 **Scope:**
 - Enhanced `tripcom.py` — Chinese-locale field normalization
@@ -167,10 +155,28 @@ Full audit + docs sync + handoff. Verification that Phases 226–228 are properl
 
 ---
 
+## Phase 239 — Platform Checkpoint VII *(Audit → Fix → Roadmap → Handoff)*
+
+**Why now:** After phases 229–238, the system has grown significantly. Time for a deep audit before defining the next chapter.
+
+**Execution order (strictly sequential):**
+
+1. **Read everything** — all canonical docs, all routers, all services, all test files
+2. **Full audit** — test count, API coverage, missing spec files, doc inconsistencies, deprecated code, broken invariants
+3. **Fix everything found** — doc corrections, spec gaps, code cleanup, construction-log alignment
+4. **Run full test suite** — Exit 0 required before proceeding
+5. **Write next-15-phases-240-254.md** — based on *actual system state post-fix*, not assumptions
+6. **Handoff document** — `releases/handoffs/handoff_to_new_chat Phase-239.md`
+7. **Notify user** — “Ready for new chat”
+
+**Invariant:** Steps 5–7 MUST NOT happen before steps 1–4 are complete.
+
+---
+
 ## Priority Rationale
 
 | Phase | Domain | Why this order |
-|-------|--------|----------------|
+|-------|--------|-----------------|
 | 229 | Checkpoint | Clean handoff after AI layer completion |
 | 230 | AI Governance | Must come first — every AI endpoint needs accountability |
 | 231 | Worker AI | Extends copilot to the other user persona (workers) |
@@ -180,5 +186,5 @@ Full audit + docs sync + handoff. Verification that Phases 226–228 are properl
 | 235 | Conflicts | Cross-property view for multi-property managers |
 | 236 | Guest Comms | Completes the messaging lifecycle (draft → send → log) |
 | 237 | Infrastructure | Overdue — staging + integration tests for quality confidence |
-| 238 | Checkpoint | Regular audit cadence |
-| 239 | Adapters | Market expansion (China) with concrete business justification |
+| 238 | Adapters | Market expansion (China) with concrete business justification |
+| 239 | Checkpoint | Deep audit + fix + roadmap + handoff before next chapter |

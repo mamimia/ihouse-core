@@ -325,6 +325,26 @@ async def post_morning_briefing(
         briefing_text, action_items = _build_heuristic_briefing(context)
         generated_by = "heuristic"
 
+    # Phase 230 — AI Audit Trail
+    try:
+        from services.ai_audit_log import log_ai_interaction
+        log_ai_interaction(
+            tenant_id=tenant_id,
+            endpoint="POST /ai/copilot/morning-briefing",
+            request_type="morning_briefing",
+            input_summary=f"language={lang}",
+            output_summary=(
+                f"generated_by={generated_by}, "
+                f"action_items={len(action_items)}, "
+                f"critical_sla={context.get('ai_hints', {}).get('critical_tasks_over_sla', 0)}"
+            ),
+            generated_by=generated_by,
+            language=lang,
+            client=client,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     return JSONResponse(
         status_code=200,
         content={

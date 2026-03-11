@@ -1,0 +1,62 @@
+# =============================================================================
+# iHouse Core — Docker Compose (Staging)
+# Phase 237 — Staging Environment & Integration Tests
+# =============================================================================
+#
+# Usage:
+#   docker compose -f docker-compose.staging.yml up         — start staging
+#   docker compose -f docker-compose.staging.yml run tests  — run integration tests
+#   docker compose -f docker-compose.staging.yml down       — tear down
+#
+# Requires: .env.staging (see .env.staging.example)
+#   SUPABASE_URL must point to a local or staging Supabase instance (not prod).
+#
+# =============================================================================
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ihouse-core-staging-api
+    ports:
+      - "${PORT:-8001}:8000"
+    env_file:
+      - .env.staging
+    environment:
+      - IHOUSE_ENV=staging
+      - PORT=8000
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ihouse-core-staging-tests
+    env_file:
+      - .env.staging
+    environment:
+      - IHOUSE_ENV=staging
+    command:
+      - "python"
+      - "-m"
+      - "pytest"
+      - "tests/integration/"
+      - "-v"
+      - "--tb=short"
+      - "-m"
+      - "integration"
+    depends_on:
+      api:
+        condition: service_healthy

@@ -4509,3 +4509,294 @@ Files:
 
 Tests: 5,382 collected. 5,382 passing. Exit 0.
 
+
+## Phase 230 — AI Audit Trail (2026-03-11)
+
+Append-only AI interaction logging for all 5 AI copilot endpoints. Provides accountability and observability for LLM-generated and heuristic-fallback outputs.
+
+**Actions:**
+- Supabase migration applied: `ai_audit_log` table with RLS (service_role only), indexes on `tenant_id`, `request_type`, `generated_by`, `created_at`
+- `src/services/ai_audit_log.py` — `log_ai_interaction()` helper, best-effort (never raises), caps text fields at 500 chars
+- `src/api/ai_audit_log_router.py` — `GET /admin/ai-audit-log` with filters (endpoint, request_type, generated_by, from/to date) and pagination
+- `docs/archive/phases/phase-230-spec.md` — Phase specification
+- `log_ai_interaction()` wired into 5 routers at 7 call sites: manager_copilot, task_recommendation, anomaly_alert_broadcaster, guest_messaging_copilot, financial_explainer (explain + reconciliation-summary)
+- `src/main.py` — `ai_audit_log_router` registered (Phase 230)
+- `tests/test_ai_audit_log_contract.py` — 18 contract tests
+
+Files:
+- `supabase/migrations/20260311120000_phase230_ai_audit_log.sql` — NEW
+- `src/services/ai_audit_log.py` — NEW
+- `src/api/ai_audit_log_router.py` — NEW
+- `docs/archive/phases/phase-230-spec.md` — NEW
+- `tests/test_ai_audit_log_contract.py` — NEW
+- `src/api/manager_copilot_router.py` — MODIFIED — added log_ai_interaction call
+- `src/api/task_recommendation_router.py` — MODIFIED — added log_ai_interaction call
+- `src/api/anomaly_alert_broadcaster.py` — MODIFIED — added log_ai_interaction call
+- `src/api/guest_messaging_copilot.py` — MODIFIED — added log_ai_interaction call
+- `src/api/financial_explainer_router.py` — MODIFIED — added log_ai_interaction calls (2)
+- `src/main.py` — MODIFIED — registered ai_audit_log_router
+
+Tests: 5,400 collected. 5,400 passing. Exit 0.
+
+
+## Phase 231 — Worker Task Copilot (Closed) — 2026-03-11
+
+Contextual assist card for field workers executing tasks.
+
+**Actions:**
+- `POST /ai/copilot/worker-assist` — given task_id, returns: property access info (access code, Wi-Fi, times), guest context (name, dates, provider), recent task history (last 5 completions at property), priority justification, heuristic narrative or LLM overlay
+- Dual-path: heuristic per task kind + LLM overlay when OPENAI_API_KEY set
+- Read-only: never writes to any table
+- Phase 230 audit logging wired (best-effort)
+- History capped at 5 items
+
+Files:
+- `src/api/worker_copilot_router.py` — NEW
+- `docs/archive/phases/phase-231-spec.md` — NEW
+- `tests/test_worker_copilot_contract.py` — NEW (27 tests)
+- `src/main.py` — MODIFIED
+
+Tests: 5,427 collected. 5,427 passing. Exit 0.
+
+
+## Phase 232 — Guest Pre-Arrival Automation Chain (Closed) — 2026-03-11
+
+Daily scanner chains pre-arrival task creation (Phase 206) + check-in draft generation (Phase 227).
+
+**Actions:**
+- `pre_arrival_queue` table: unique per (tenant, booking, check_in) — enforces idempotency
+- `run_pre_arrival_scan()`: queries bookings with check_in in 1–3 days, creates CHECKIN_PREP + GUEST_WELCOME tasks, writes heuristic check-in draft, records in queue
+- Scheduler Job 4: daily cron at 06:00 UTC (env-configurable IHOUSE_PRE_ARRIVAL_SCAN_HOUR)
+- `GET /admin/pre-arrival-queue`: filterable by date/draft_written/limit
+- 22 contract tests; scheduler test updated for CronTrigger
+
+Tests: 5,449 collected. 5,449 passing. Exit 0.
+
+
+## Phase 233 — Revenue Forecast Engine (Closed) — 2026-03-11
+
+30/60/90-day forward revenue projection API.
+
+**Actions:**
+- `GET /ai/copilot/revenue-forecast` — window param (30/60/90), property_id filter, currency filter
+- Confirmed bookings from `booking_state` + historical avg from `booking_financial_facts` (90-day lookback)
+- Occupancy pct = booked_nights / (window_days × property_count)
+- Heuristic narrative always; LLM overlay when OPENAI_API_KEY present
+- 24 contract tests; best-effort graceful degradation on DB failure
+
+Tests: 5,473 collected. 5,473 passing. Exit 0.
+
+
+## Phase 234 — Shift & Availability Scheduler (Closed) — 2026-03-11
+
+**Actions:**
+- `POST /worker/availability` — upsert own slot (date, status, start_time, end_time, notes)
+- `GET /worker/availability?from=&to=` — own slots in range (max 90 days)
+- `GET /admin/schedule/overview?date=` — all workers grouped by AVAILABLE/UNAVAILABLE/ON_LEAVE
+- `worker_availability` table: UNIQUE(tenant_id, worker_id, date); RLS service_role
+- 30 contract tests; no LLM dependency
+
+Tests: 5,503 collected. 5,503 passing. Exit 0.
+
+
+## Phase 235 — Multi-Property Conflict Dashboard (Closed) — 2026-03-11
+
+**Actions:**
+- `GET /admin/conflicts/dashboard?property_id=&severity=` — conflicts grouped by property, severity breakdown, 4-week timeline, heuristic narrative
+- `_compute_dashboard()` pure helper added to `conflicts_router.py`
+- 21 contract tests; read-only; no LLM dependency
+
+Tests: 5,524 collected. 5,524 passing. Exit 0.
+
+
+## Phase 236 — Guest Communication History (Closed) — 2026-03-11
+
+**Actions:**
+- `guest_messages_log` table — direction (OUTBOUND|INBOUND), channel, intent, content_preview, draft_id, sent_by
+- `POST /guest-messages/{booking_id}` — log a sent/received message
+- `GET /guest-messages/{booking_id}` — chronological timeline, oldest first
+- 19 contract tests; no LLM; links to Phase 227 draft_id optionally
+
+Tests: 5,543 collected. 5,543 passing. Exit 0.
+
+
+## Phase 237 — Staging Environment & Integration Tests (Closed) — 2026-03-11
+
+**Actions:**
+- `docker-compose.staging.yml` + `.env.staging.example` — staging infrastructure
+- `tests/integration/conftest.py` — `@pytest.mark.integration` + skipif guard
+- `tests/integration/test_smoke_integration.py` — 10 smoke tests (auto-skipped unless IHOUSE_ENV=staging)
+- Full unit suite: 5,543 pass. Integration tests: 10 written, require staging env to run.
+
+Unit suite: 5,543 collected. 5,543 passing. Exit 0.
+
+
+## Phase 238 — Ctrip / Trip.com Enhanced Adapter (Closed) — 2026-03-11
+
+**Actions:**
+- Enhanced `tripcom.py` — CTRIP- prefix stripping, CNY default, Chinese guest name fallback, cancellation codes (NC/FC/PC)
+- `booking_identity.py` — CTRIP- prefix handling added
+- `registry.py` — "ctrip" alias for TripComAdapter
+- 16 contract tests; backward-compatible with legacy Trip.com payloads
+
+Tests: 5,559 collected. 5,559 passing. Exit 0.
+
+
+## Phase 239 — Platform Checkpoint VII (Closed) — 2026-03-11
+
+**Actions:**
+- Full system audit: fixed 5 issues in current-snapshot.md
+- next-15-phases-240-254.md written based on post-audit system state
+- Handoff document: `releases/handoffs/handoff_to_new_chat Phase-239.md`
+
+Tests: ~5,559 collected. ~5,559 passing. Exit 0.
+
+
+## Phase 240 — Documentation Integrity Sync (Closed) — 2026-03-11
+
+**Actions:**
+- Fixed `work-context.md`: full rewrite from Phase 229 to Phase 239/240 — added AI Copilot section, recent additions (232-238), updated test count, env vars
+- Fixed `roadmap.md`: added Phases 229-239 entries, system numbers (5,382→~5,559), direction heading (210+→240+), long-term vision (Ctrip now live)
+- Fixed `live-system.md`: updated header to Phase 239, fixed Rakuten phase (198→187), added ~10 missing endpoints
+- Fixed `current-snapshot.md`: added IHOUSE_TELEGRAM_BOT_TOKEN, updated Next Phase
+
+Tests: ~5,559 collected. ~5,559 passing. Exit 0.
+
+
+## Phase 241 — Booking Financial Reconciliation Dashboard API (Closed) — 2026-03-11
+
+**Actions:**
+- New `src/api/admin_reconciliation_router.py` — GET /admin/reconciliation/dashboard
+- Wraps run_reconciliation() (Phase 110) — read-only, tenant scoped, no new tables
+- Response: total_findings, critical_count, warning_count, info_count, findings_by_kind, by_provider (sorted worst-first), severity tiers (HIGH≥3, MEDIUM 1-2, OK 0)
+- `src/main.py` — registered admin_reconciliation_router
+- `tests/test_reconciliation_dashboard_contract.py` — 28 contract tests (5 groups)
+
+Tests: ~5,587 collected. ~5,587 passing. Exit 0.
+
+
+## Phase 242 — Booking Lifecycle State Machine Visualization API (Closed) — 2026-03-11
+
+**Actions:**
+- New `src/api/booking_lifecycle_router.py` — GET /admin/bookings/lifecycle-states
+- Reads booking_state (state_distribution, by_provider) + event_log (BOOKING_CREATED/AMENDED/CANCELED counts)
+- Computes amendment_rate_pct and cancellation_rate_pct; by_provider sorted worst-first
+- `src/main.py` — registered booking_lifecycle_router
+- `tests/test_booking_lifecycle_contract.py` — 32 contract tests (8 groups)
+
+Tests: ~5,619 collected. ~5,619 passing. Exit 0.
+
+
+## Phase 243 — Property Performance Analytics API (Closed) — 2026-03-11
+
+**Actions:**
+- New `src/api/property_performance_router.py` — GET /admin/properties/performance
+- Joins booking_state (counts, top_provider) + booking_financial_facts (gross/net revenue per currency)
+- Computes avg_booking_value, cancellation_rate_pct; by_properties sorted by active_bookings desc
+- Portfolio totals: total_active/canceled bookings + revenue aggregated by currency
+- `src/main.py` — registered property_performance_router
+- `tests/test_property_performance_contract.py` — 35 contract tests (8 groups)
+
+Tests: ~5,654 collected. ~5,654 passing. Exit 0.
+
+
+## Phase 244 — OTA Revenue Mix Analytics API (Closed) — 2026-03-11
+
+**Actions:**
+- New `src/api/ota_revenue_mix_router.py` — GET /admin/ota/revenue-mix
+- All-time OTA breakdown: gross/net/commission per channel per currency + revenue_share_pct, avg_commission_rate, net_to_gross_ratio
+- Fully standalone router — no cross-router imports. Dedup: latest recorded_at per booking_id
+- `src/main.py` — registered ota_revenue_mix_router
+- `tests/test_ota_revenue_mix_contract.py` — 41 contract tests (9 groups)
+
+Tests: ~5,695 collected. ~5,695 passing. Exit 0.
+
+
+## Phase 245 — Platform Checkpoint VIII (Closed) — 2026-03-11
+
+**Type:** Documentation audit — no new code.
+
+**Actions:**
+- `docs/core/current-snapshot.md` — system status narrative updated (Phase 241 → 245), phase table rows 239-245 added, Next Phase set to 246
+- `docs/core/work-context.md` — current phase updated to 245, objective updated
+- `docs/archive/phases/phase-245-spec.md` — NEW
+
+System state confirmed: ~5,695 tests passing. Exit 0. No regressions.
+
+
+## Phase 246 — Rate Card & Pricing Rules Engine (Closed) — 2026-03-11
+
+**Actions:**
+- `supabase/migrations/20260311164500_phase246_rate_cards.sql` — NEW — rate_cards table (UQ constraint, RLS, auto-updated_at trigger)
+- `src/services/price_deviation_detector.py` — NEW — pure function: ±15% deviation alert vs rate card
+- `src/api/rate_card_router.py` — NEW — GET list, POST upsert, GET /check
+- `src/main.py` — MODIFIED — registered rate_card_router
+- `tests/test_rate_card_contract.py` — NEW — 35 contract tests (10 groups)
+
+Tests: ~5,730 collected. ~5,730 passing. Exit 0.
+
+
+## Phase 247 — Guest Feedback Collection API (Closed) — 2026-03-11
+
+**Actions:**
+- `supabase/migrations/20260311165100_phase247_guest_feedback.sql` — NEW — guest_feedback table (token UQ, RLS, property index)
+- `src/api/guest_feedback_router.py` — NEW — POST /guest-feedback/{id} (token-gated, no JWT) + GET /admin/guest-feedback (NPS, category breakdown, by_property)
+- `src/main.py` — MODIFIED — registered guest_feedback_router
+- `tests/test_guest_feedback_contract.py` — NEW — 30 contract tests (9 groups)
+
+Tests: ~5,760 collected. ~5,760 passing. Exit 0.
+
+
+## Phase 248 — Maintenance & Housekeeping Task Templates (Closed) — 2026-03-11
+
+**Actions:**
+- `supabase/migrations/20260311165500_phase248_task_templates.sql` — NEW
+- `src/api/task_template_router.py` — NEW — GET list, POST upsert, DELETE soft-delete
+- `src/main.py` — MODIFIED — registered task_template_router
+- `tests/test_task_template_contract.py` — NEW — 26 contract tests (8 groups)
+
+Tests: ~5,790 collected. ~5,790 passing. Exit 0.
+
+
+## Phase 250 — Booking.com Content API Adapter (Outbound) (Closed) — 2026-03-11
+
+**Actions:**
+- `src/adapters/outbound/bookingcom_content.py` — NEW — pure payload builder + PushResult + push_property_content (dry_run support)
+- `src/api/content_push_router.py` — NEW — POST /admin/content/push/{property_id}
+- `src/main.py` — MODIFIED — registered content_push_router
+- `tests/test_content_push_contract.py` — NEW — 32 contract tests (8 groups)
+
+Tests: ~5,820 collected. ~5,820 passing. Exit 0.
+
+
+## Phase 252 — Owner Financial Report API v2 (Closed) — 2026-03-11
+
+**Actions:**
+- `src/api/owner_financial_report_v2_router.py` — NEW — GET /owner/financial-report, drill-down by property/ota/booking
+- `src/main.py` — MODIFIED — registered owner_financial_report_v2_router
+- `tests/test_owner_financial_report_v2_contract.py` — NEW — 31 contract tests (9 groups)
+
+Tests: Full suite Exit 0.
+
+
+## Phase 253 — Staff Performance Dashboard API (Closed) — 2026-03-11
+
+**Actions:**
+- `src/api/staff_performance_router.py` — NEW — GET /admin/staff/performance + /{worker_id}
+- `src/main.py` — MODIFIED — registered staff_performance_router
+- `tests/test_staff_performance_contract.py` — NEW — 24 contract tests (7 groups)
+
+Tests: Full suite Exit 0.
+
+
+## Phase 254 — Platform Checkpoint X: Audit & Handoff (Closed) — 2026-03-11
+
+**Actions:**
+- Fixed missing Phase 251 ZIP
+- Updated current-snapshot.md — phases 246–254, test count ~5,900
+- Updated work-context.md — phases 246–253 key files, current phase
+- Verified all phase specs (246–248, 250–253, 254) exist
+- Verified all phase ZIPs (246–248, 250–253) exist
+- Full test suite Exit 0
+
+Handoff: releases/handoffs/handoff_to_new_chat Phase-254.md

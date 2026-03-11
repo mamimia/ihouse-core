@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 218 (2026-03-11). [Antigravity]
+> Last updated: Phase 239 (2026-03-11). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,21 +26,22 @@
 
 ---
 
-## System Numbers — Phase 228 (2026-03-11)
+## System Numbers — Phase 239 (2026-03-11)
 
 | Metric | Value |
 |--------|-------|
-| **OTA Adapters** | 14 live (Airbnb, Booking.com, Expedia, Agoda, Trip.com, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld) |
+| **OTA Adapters** | 15 (14 unique + ctrip alias): Airbnb, Booking.com, Expedia, Agoda, Trip.com/Ctrip, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld |
 | **Escalation Channels** | 5 live (LINE, WhatsApp, Telegram, SMS, Email) |
 | **Task Kinds** | 6 (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME) |
-| **UI/Product Surfaces** | 16 |
+| **UI/Product Surfaces** | 16+ |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
-| **AI Copilot Endpoints** | 6 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging) |
-| **Tests** | 5,382 collected / 5,382 passing / 0 failures |
+| **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
+| **Tests** | ~5,559 collected / ~5,559 passing / 0 failures |
+| **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
 
 ---
 
-## ✅ Completed Phases (1–209)
+## ✅ Completed Phases (1–239)
 
 ### Foundation (Phases 21–64)
 OTA ingestion boundary, adapter layer, DLQ, replay, canonical events (BOOKING_CREATED/CANCELED/AMENDED), service pipeline, FastAPI app, JWT auth, rate limiting, OpenAPI, health checks.
@@ -51,8 +52,8 @@ BookingFinancialFacts extraction + persistence, payment lifecycle (7 states), ow
 ### Schema + Monitoring (Phases 77–82)
 Canonical schema normalization, idempotency monitoring, structured logging, integration health dashboard, admin query API.
 
-### Adapters (Phases 83, 85, 88, 94, 96, 98, 125, 187, 195)
-Vrbo, GVR, Traveloka, MakeMyTrip, Klook, Despegar, Hotelbeds, Rakuten, Hostelworld — 14 total adapters live.
+### Adapters (Phases 83, 85, 88, 94, 96, 98, 125, 187, 195, 238)
+Vrbo, GVR, Traveloka, MakeMyTrip, Klook, Despegar, Hotelbeds, Rakuten, Hostelworld — 14 unique adapters live. Phase 238 added Ctrip alias with enhanced Chinese market support.
 
 ### Test Infrastructure (Phases 84, 86–87, 89–92, 105, 174)
 Audit trail, conflict detection, tenant isolation, reconciliation discovery, E2E harness (11 providers), replay fixtures, outbound stress harness (449 tests).
@@ -72,11 +73,14 @@ Payment status, amendment history, booking list+search, reconciliation, conflict
 ### UI (Phases 153, 157–158, 160, 163–164, 169–170, 178–179, 190, 193, 200–202, 205)
 Operations dashboard, worker mobile, booking view, guest profile, financial dashboard, owner statement, admin settings, owner portal, auth flow, manager feed, booking calendar, channel preferences, notification inbox, DLQ replay UI.
 
-### Platform Checkpoints (Phases 92, 107, 175, 180, 191, 197, 204, 208)
+### Platform Checkpoints (Phases 92, 107, 175, 180, 191, 197, 204, 208, 218, 228, 229, 239)
 Roadmap refreshes, system audits, documentation sync, handoff documents.
 
-### Recent — Phases 198–209
-Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, Phase 209 outbound sync trigger consolidation (tech debt closure).
+### AI Assistive Layer (Phases 220–231)
+CI/CD pipeline, scheduled job runner, AI context aggregation, Manager Copilot v1 (morning briefing), Financial Explainer, Task Recommendation Engine, Anomaly Alert Broadcaster, Guest Messaging Copilot v1, AI Audit Trail, Worker Task Copilot. All AI reads from or wraps the canonical spine — never mutates it.
+
+### Recent — Phases 198–239
+Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, outbound sync trigger consolidation (tech debt closure, Phase 209), documentation cleanup (Phase 210), production deployment foundation (Phase 211), SMS+Email channels (Phases 212-213), property onboarding wizard (Phase 214), revenue reports + portfolio dashboard + integration management (Phases 215-217), CI/CD pipeline (Phase 220), scheduled job runner (Phase 221), full AI copilot suite (Phases 222-227), AI audit trail + worker copilot (Phases 230-231), guest pre-arrival automation (Phase 232), revenue forecast engine (Phase 233), shift & availability scheduler (Phase 234), multi-property conflict dashboard (Phase 235), guest communication history (Phase 236), staging environment (Phase 237), Ctrip/Trip.com enhanced adapter (Phase 238).
 
 ---
 
@@ -88,9 +92,11 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, P
 
 ---
 
-## Active Direction — Phase 210+
+## Active Direction — Phase 240+
 
-Phase 209 closed the last open tech debt item. The system is architecturally clean. The next wave focuses on **documentation hygiene, production deployment foundation, and expanding communication channels**.
+Phase 239 (Platform Checkpoint VII) confirmed the system is architecturally clean. The next wave focuses on **operational analytics dashboards, batch operations, pricing foundations, and closing the guest feedback loop**.
+
+Full plan: `docs/core/planning/next-15-phases-240-254.md`
 
 ### Phase 210 — Roadmap & Documentation Cleanup *(closed)*
 Full audit of 20 canonical documents. Archived 10 stale files. Fixed Layer A claims (BOOKING_AMENDED, MODIFY semantics). Created AI strategy canonical document (`docs/core/planning/ai-strategy.md`).
@@ -153,6 +159,36 @@ Full audit + doc sync. 8 discrepancies fixed across all canonical docs. Test cou
 ### Phase 229 — Platform Checkpoint VI *(closed)*
 Verification audit. All docs confirmed. Phase plan shifted (229→checkpoint, old 229–238→230–239). Handoff written. 0 new code files.
 
+### Phase 230 — AI Audit Trail *(closed)*
+`ai_audit_log` Supabase table + `GET /ai/audit-log` endpoint. Records AI decisions: request context, suggestion, confidence, approval status. Append-only. 26 contract tests.
+
+### Phase 231 — Worker Task Copilot *(closed)*
+`POST /ai/copilot/worker-assist` — mobile contextual assists for field workers. Task-aware suggestions based on current assignment, property context, and historical patterns. LLM + heuristic fallback. 23 contract tests.
+
+### Phase 232 — Guest Pre-Arrival Automation Chain *(closed)*
+`pre_arrival_scanner.py` — chains pre-arrival task generation (Phase 206) with guest message drafting (Phase 227). Scheduled via job runner. `pre_arrival_queue` Supabase table. 28 contract tests.
+
+### Phase 233 — Revenue Forecast Engine *(closed)*
+`GET /revenue/forecast/{property_id}` — 30/60/90-day forward projection from booking pipeline + historical patterns. Heuristic confidence scoring. 22 contract tests.
+
+### Phase 234 — Shift & Availability Scheduler *(closed)*
+`worker_shifts` Supabase table + 3 endpoints (GET/POST/DELETE /worker/availability). Worker availability windows for task assignment optimization. 30 contract tests.
+
+### Phase 235 — Multi-Property Conflict Dashboard *(closed)*
+`GET /admin/conflicts/dashboard` — cross-property conflict aggregation with grouping, severity, age, and 30-day timeline. 20 contract tests.
+
+### Phase 236 — Guest Communication History *(closed)*
+`guest_messages_log` Supabase table + `POST/GET /guest-messages/{booking_id}`. Persistence layer for guest messaging timeline. 19 contract tests.
+
+### Phase 237 — Staging Environment & Integration Tests *(closed)*
+`docker-compose.staging.yml` + `.env.staging.example` + 10 integration smoke tests (auto-skipped unless `IHOUSE_ENV=staging`). First staging layer.
+
+### Phase 238 — Ctrip / Trip.com Enhanced Adapter *(closed)*
+Upgraded `tripcom.py` for Chinese market: CTRIP- prefix stripping, CNY currency default, Chinese name romanization fallback, Ctrip cancellation codes (NC/FC/PC). Added "ctrip" alias to registry. 16 tests.
+
+### Phase 239 — Platform Checkpoint VII *(closed)*
+Full system audit. 5 snapshot fixes. Wrote `next-15-phases-240-254.md` and handoff document. ~5,559 tests, 0 failures.
+
 
 ---
 
@@ -180,6 +216,8 @@ Verification audit. All docs confirmed. Phase plan shifted (229→checkpoint, ol
 
 > [!IMPORTANT]
 > Full detail: `docs/core/planning/worker-communication-layer.md`
+>
+> **Status (Phase 229):** This plan has been largely realized. All 5 escalation channels are live (LINE Phase 124, WhatsApp Phase 196, Telegram Phase 203, SMS Phase 212, Email Phase 213). The graded urgency pattern below describes the target model; the current system routes by worker `channel_type` preference.
 
 The escalation model follows a **graded urgency pattern**:
 
@@ -197,10 +235,10 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 228+):** AI Audit Trail (log AI decisions + approvals), Worker Copilot (mobile contextual assists), Shift Scheduling (availability-based), Guest Pre-Arrival Automation (chain pre-arrival tasks to draft messages).
+**Short-term (Phases 240-249):** Reconciliation dashboard, booking lifecycle visualization, property performance analytics, bulk operations, rate cards & pricing, guest feedback, maintenance task templates.
 
-**Medium-term (Phases 232+):** Revenue forecasting from historical data, advanced conflict resolution UX, multi-property portfolio analytics, CI/CD staging environment.
+**Medium-term (Phases 250+):** Content push to OTAs (outbound beyond availability), dynamic pricing suggestions, owner self-serve financial reports, staff performance dashboards, i18n foundation.
 
-**Long-term:** Mobile PWA, guest-facing self-service portal, Tier 3 adapter expansion (Ctrip, HRS, eDreams), advanced multi-language support, ML-based anomaly detection.
+**Long-term:** Mobile PWA, guest-facing self-service portal, Tier 3 adapter expansion (HRS, eDreams), advanced multi-language support, ML-based anomaly detection.
 
 **Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it.

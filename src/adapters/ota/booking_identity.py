@@ -41,8 +41,11 @@ def _strip_agoda_prefix(ref: str) -> str:
 
 
 def _strip_tripcom_prefix(ref: str) -> str:
-    """Trip.com uses numeric order_id but occasionally adds 'TC-' prefix."""
+    """Trip.com uses numeric order_id but occasionally adds 'TC-' prefix.
+    Ctrip (Phase 238) uses 'CTRIP-' prefix for Chinese market bookings."""
     lower = ref.lower()
+    if lower.startswith("ctrip-"):
+        return ref[6:]
     if lower.startswith("tc-"):
         return ref[3:]
     return ref

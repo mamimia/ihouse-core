@@ -531,6 +531,30 @@ async def post_task_recommendations(
         if llm_summary:
             summary = llm_summary
 
+    # Phase 230 — AI Audit Trail
+    try:
+        from services.ai_audit_log import log_ai_interaction
+        log_ai_interaction(
+            tenant_id=tenant_id,
+            endpoint="POST /ai/copilot/task-recommendations",
+            request_type="task_recommendations",
+            input_summary=(
+                f"worker_role={worker_role or 'all'}, "
+                f"property_id={property_id or 'all'}, "
+                f"limit={limit}, language={language}"
+            ),
+            output_summary=(
+                f"generated_by={generated_by}, "
+                f"recommendations={len(recommendations)}, "
+                f"total_open={total_open}"
+            ),
+            generated_by=generated_by,
+            language=language,
+            client=client,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     return JSONResponse(
         status_code=200,
         content={

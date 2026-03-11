@@ -67,6 +67,9 @@ DLQ_CHECK_INTERVAL_S: int = _int_env("IHOUSE_DLQ_CHECK_INTERVAL_S", 600)     # 1
 HEALTH_LOG_INTERVAL_S: int = _int_env("IHOUSE_HEALTH_LOG_INTERVAL_S", 900)   # 15 min
 DLQ_ALERT_THRESHOLD: int = _int_env("IHOUSE_DLQ_ALERT_THRESHOLD", 5)
 
+# Phase 232 — Pre-arrival scan: UTC hour to run daily (default 06:00 UTC)
+PRE_ARRIVAL_SCAN_HOUR: int = _int_env("IHOUSE_PRE_ARRIVAL_SCAN_HOUR", 6)
+
 SCHEDULER_ENABLED: bool = _bool_env("IHOUSE_SCHEDULER_ENABLED", True)
 
 
@@ -295,6 +298,34 @@ def _run_health_log() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Job 4: Pre-arrival scan (Phase 232)
+# ---------------------------------------------------------------------------
+
+def _run_pre_arrival_scan() -> None:
+    """
+    Daily pre-arrival automation scan.
+
+    Finds bookings with check-in in 1–3 days, auto-creates prep tasks,
+    and auto-drafts a check-in message (draft only — never sent).
+
+    Targets: booking_state, tasks, pre_arrival_queue.
+    Best-effort: exceptions are caught and logged, never propagated.
+    """
+    try:
+        from services.pre_arrival_scanner import run_pre_arrival_scan
+        summary = run_pre_arrival_scan()
+        logger.info(
+            "pre_arrival_scan: found=%d processed=%d tasks_created=%d drafts=%d",
+            summary.get("bookings_found", 0),
+            summary.get("bookings_processed", 0),
+            summary.get("tasks_created", 0),
+            summary.get("drafts_written", 0),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("pre_arrival_scan: job failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
 # Scheduler lifecycle
 # ---------------------------------------------------------------------------
 
@@ -349,11 +380,25 @@ def build_scheduler() -> Any:
         misfire_grace_time=60,
     )
 
+    # Phase 232 — Pre-arrival automation scan (daily cron at PRE_ARRIVAL_SCAN_HOUR UTC)
+    sched.add_job(
+        _run_pre_arrival_scan,
+        "cron",
+        hour=PRE_ARRIVAL_SCAN_HOUR,
+        minute=0,
+        id="pre_arrival_scan",
+        name="Pre-Arrival Scan",
+        replace_existing=True,
+        max_instances=1,
+        misfire_grace_time=300,
+    )
+
     logger.info(
-        "Scheduler built: sla_sweep=%ds, dlq_check=%ds, health_log=%ds",
+        "Scheduler built: sla_sweep=%ds, dlq_check=%ds, health_log=%ds, pre_arrival_scan=daily@%02d:00UTC",
         SLA_SWEEP_INTERVAL_S,
         DLQ_CHECK_INTERVAL_S,
         HEALTH_LOG_INTERVAL_S,
+        PRE_ARRIVAL_SCAN_HOUR,
     )
     return sched
 

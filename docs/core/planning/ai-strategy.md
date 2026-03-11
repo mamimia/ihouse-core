@@ -155,7 +155,13 @@ This follows the existing `admin_audit_log` append-only pattern.
 
 ## Suggested Phase Mapping
 
-| Phase | Title | Effort |
+> **Note (Phase 229):** The original mapping below was directional. Actual execution shifted:
+> Phase 219 → Documentation Integrity Repair, Phase 220 → CI/CD Pipeline, Phase 221 → Scheduled Job Runner,
+> Phase 222 → AI Context Aggregation, Phase 223 → Manager Copilot, Phase 224 → Financial Explainer,
+> Phase 225 → Task Recommendations, Phase 226 → Anomaly Alerts, Phase 227 → Guest Messaging Copilot.
+> AI Audit Trail was deferred to Phase 230.
+
+| Phase | Title (original estimate) | Effort |
 |---|---|---|
 | **220** | AI Strategy Document — Canonical Placement | S (this document) |
 | **221** | AI Context Aggregation Endpoints | M |

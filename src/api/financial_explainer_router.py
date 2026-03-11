@@ -429,6 +429,26 @@ async def get_booking_financial_explanation(
         explanation_text = _build_booking_explanation(row, flags, lifecycle)
         generated_by = "heuristic"
 
+    # Phase 230 — AI Audit Trail
+    try:
+        from services.ai_audit_log import log_ai_interaction
+        log_ai_interaction(
+            tenant_id=tenant_id,
+            endpoint="GET /ai/copilot/financial/explain/{booking_id}",
+            request_type="financial_explain",
+            input_summary=f"booking_id={booking_id}",
+            output_summary=(
+                f"generated_by={generated_by}, "
+                f"tier={tier}, flags={len(flags)}, lifecycle={lifecycle}"
+            ),
+            generated_by=generated_by,
+            entity_type="booking",
+            entity_id=booking_id,
+            client=client,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     return JSONResponse(
         status_code=200,
         content={
@@ -602,6 +622,25 @@ async def get_reconciliation_summary(
     if not narrative:
         narrative = _build_reconciliation_narrative(stats)
         generated_by = "heuristic"
+
+    # Phase 230 — AI Audit Trail
+    try:
+        from services.ai_audit_log import log_ai_interaction
+        log_ai_interaction(
+            tenant_id=tenant_id,
+            endpoint="GET /ai/copilot/financial/reconciliation-summary",
+            request_type="financial_reconciliation_summary",
+            input_summary=f"period={period}",
+            output_summary=(
+                f"generated_by={generated_by}, "
+                f"total_checked={stats['total_checked']}, "
+                f"exceptions={stats['exception_count']}"
+            ),
+            generated_by=generated_by,
+            client=client,
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
     return JSONResponse(
         status_code=200,

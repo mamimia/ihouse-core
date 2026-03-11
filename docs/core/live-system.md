@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 219 — Documentation Integrity Repair (2026-03-11)**
+**Last updated: Phase 239 — Platform Checkpoint VII (2026-03-11)**
 
 ## Core Architecture
 
@@ -115,7 +115,7 @@ All **14 providers** implemented at full parity:
 | Despegar | ✅ | ✅ | ✅ | Phase 98 |
 | Hotelbeds | ✅ | ✅ | ✅ | Phase 125 |
 | Hostelworld | ✅ | ✅ | ✅ | Phase 195 |
-| Rakuten Travel | ✅ | ✅ | ✅ | Phase 198 |
+| Rakuten Travel | ✅ | ✅ | ✅ | Phase 187 |
 
 ## Current API Surface
 
@@ -248,6 +248,59 @@ All **14 providers** implemented at full parity:
 | `POST /sms/webhook` | SMS inbound task acknowledgement (Twilio) | 212 |
 | `GET /email/webhook` | Email channel health check | 213 |
 | `GET /email/ack` | One-click email task acknowledgement | 213 |
+
+### AI Copilot
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /ai/context/property/{property_id}` | Composite property context: bookings, tasks, sync health, financial, availability | 222 |
+| `GET /ai/context/operations-day` | Tenant-level operations day snapshot: arrivals, departures, tasks, DLQ, sync | 222 |
+| `POST /ai/copilot/morning-briefing` | Manager 7AM briefing: urgent items, action items, 5 languages | 223 |
+| `GET /ai/copilot/financial/explain/{booking_id}` | Per-booking financial explanation: tiers, anomaly flags | 224 |
+| `GET /ai/copilot/financial/reconciliation-summary` | Period-level reconciliation narrative | 224 |
+| `POST /ai/copilot/task-recommendations` | Ranked task list with deterministic scoring + LLM rationale | 225 |
+| `POST /ai/copilot/anomaly-alerts` | Cross-domain health scanner: tasks + financial + bookings | 226 |
+| `POST /ai/copilot/guest-message-draft` | Context-aware guest message drafts: 6 intents, 5 languages, 3 tones | 227 |
+
+### Scheduler
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/scheduler-status` | APScheduler status: 3 jobs (SLA sweep, DLQ alert, health log) | 221 |
+
+### AI Audit Trail
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /ai/audit-log` | AI decision audit trail (request context, suggestion, confidence) | 230 |
+| `POST /ai/copilot/worker-assist` | Worker copilot — mobile contextual task assists | 231 |
+
+### Revenue & Forecasting
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /revenue/forecast/{property_id}` | 30/60/90-day revenue projection | 233 |
+
+### Worker Scheduling
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /worker/availability` | Worker shift availability windows | 234 |
+| `POST /worker/availability` | Create availability window | 234 |
+| `DELETE /worker/availability/{id}` | Remove availability window | 234 |
+
+### Conflict Dashboard
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/conflicts/dashboard` | Cross-property conflict aggregation + 30-day timeline | 235 |
+
+### Guest Messages
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /guest-messages/{booking_id}` | Log a guest message | 236 |
+| `GET /guest-messages/{booking_id}` | Guest message timeline for booking | 236 |
 
 ## Future Evolution
 

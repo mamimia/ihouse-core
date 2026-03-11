@@ -186,6 +186,39 @@ app.include_router(financial_dashboard_router)
 from api.reconciliation_router import router as reconciliation_router  # noqa: E402
 app.include_router(reconciliation_router)
 
+from api.admin_reconciliation_router import router as admin_reconciliation_router  # noqa: E402  # Phase 241
+app.include_router(admin_reconciliation_router)
+
+from api.booking_lifecycle_router import router as booking_lifecycle_router  # noqa: E402  # Phase 242
+app.include_router(booking_lifecycle_router)
+
+from api.property_performance_router import router as property_performance_router  # noqa: E402  # Phase 243
+app.include_router(property_performance_router)
+
+from api.ota_revenue_mix_router import router as ota_revenue_mix_router  # noqa: E402  # Phase 244
+app.include_router(ota_revenue_mix_router)
+
+from api.rate_card_router import router as rate_card_router  # noqa: E402  # Phase 246
+app.include_router(rate_card_router)
+
+from api.guest_feedback_router import router as guest_feedback_router  # noqa: E402  # Phase 247
+app.include_router(guest_feedback_router)
+
+from api.task_template_router import router as task_template_router  # noqa: E402  # Phase 248
+app.include_router(task_template_router)
+
+from api.content_push_router import router as content_push_router  # noqa: E402  # Phase 250
+app.include_router(content_push_router)
+
+from api.pricing_suggestion_router import router as pricing_suggestion_router  # noqa: E402  # Phase 251
+app.include_router(pricing_suggestion_router)
+
+from api.owner_financial_report_v2_router import router as owner_financial_report_v2_router  # noqa: E402  # Phase 252
+app.include_router(owner_financial_report_v2_router)
+
+from api.staff_performance_router import router as staff_performance_router  # noqa: E402  # Phase 253
+app.include_router(staff_performance_router)
+
 from api.cashflow_router import router as cashflow_router  # noqa: E402
 app.include_router(cashflow_router)
 
@@ -305,6 +338,24 @@ app.include_router(anomaly_alert_router)
 
 from api.guest_messaging_copilot import router as guest_messaging_router  # noqa: E402  # Phase 227
 app.include_router(guest_messaging_router)
+
+from api.ai_audit_log_router import router as ai_audit_log_router  # noqa: E402  # Phase 230
+app.include_router(ai_audit_log_router)
+
+from api.worker_copilot_router import router as worker_copilot_router  # noqa: E402  # Phase 231
+app.include_router(worker_copilot_router)
+
+from api.pre_arrival_router import router as pre_arrival_router  # noqa: E402  # Phase 232
+app.include_router(pre_arrival_router)
+
+from api.revenue_forecast_router import router as revenue_forecast_router  # noqa: E402  # Phase 233
+app.include_router(revenue_forecast_router)
+
+from api.worker_availability_router import router as worker_availability_router  # noqa: E402  # Phase 234
+app.include_router(worker_availability_router)
+
+from api.guest_messages_router import router as guest_messages_router  # noqa: E402  # Phase 236
+app.include_router(guest_messages_router)
 
 
 # ---------------------------------------------------------------------------

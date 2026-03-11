@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 229 — Platform Checkpoint VI (closed)
+Phase 254 — Platform Checkpoint X: Audit & Handoff (closed)
 
 ## Last Closed Phase
 
-Phase 228 — Platform Checkpoint V (closed)
+Phase 254 — Platform Checkpoint X: Audit & Handoff (closed)
 
 ## Current Objective
 
-Phase 229 closed. Next: Phase 230 — AI Audit Trail.
+Phase 254 closed. Phases 246–253 completed in this session. Next planning cycle starts from Phase 255+. See `docs/core/planning/` for phase plans.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -24,11 +24,11 @@ Phase 229 closed. Next: Phase 230 — AI Audit Trail.
 - Epistemic tier: FULL→A, ESTIMATED→B, PARTIAL→C. Worst tier wins in aggregated endpoints.
 - Management fee applied AFTER OTA commission on net_to_property (Phase 121)
 - OTA_COLLECTING net NEVER included in owner_net_total — honesty invariant (Phase 121)
-- External channels (LINE, WhatsApp, Telegram) are escalation fallbacks ONLY — never source of truth
+- External channels (LINE, WhatsApp, Telegram, SMS, Email) are escalation fallbacks ONLY — never source of truth
 - **No global fallback chain**: each worker has their preferred `channel_type` in `notification_channels`
 - CRITICAL_ACK_SLA_MINUTES = 5 (locked)
 
-## Key Files — Channel Layer (Phases 124, 168, 177, 196, 203)
+## Key Files — Channel Layer (Phases 124, 168, 177, 196, 203, 212, 213)
 
 | File | Role |
 |------|------|
@@ -37,14 +37,18 @@ Phase 229 closed. Next: Phase 230 — AI Audit Trail.
 | `src/channels/whatsapp_escalation.py` | WhatsApp pure module — same pattern as LINE |
 | `src/api/whatsapp_router.py` | GET+POST /whatsapp/webhook |
 | `src/channels/telegram_escalation.py` | Telegram pure module — should_escalate, build_telegram_message (Phase 203) |
+| `src/channels/sms_escalation.py` | SMS pure module — mirrors LINE/WhatsApp/Telegram pattern (Phase 212) |
+| `src/api/sms_router.py` | GET challenge + POST inbound ACK via Twilio form fields |
+| `src/channels/email_escalation.py` | Email pure module — one-click ACK token flow (Phase 213) |
+| `src/api/email_router.py` | GET /email/webhook health + GET /email/ack token ACK |
 | `src/channels/notification_dispatcher.py` | Core dispatcher — routes by worker's channel_type. No global chain. |
 | `src/channels/sla_dispatch_bridge.py` | SLA → dispatcher bridge. Per-worker routing. |
 | `src/channels/notification_delivery_writer.py` | Best-effort delivery log writer |
 
-## Key Files — Financial API Layer (Phases 116–122)
+## Key Files — Financial API Layer (Phases 116–122, 191)
 
 | File | Role |
-|------|›----|
+|------|------|
 | `src/api/financial_aggregation_router.py` | Ring 1: summary / by-provider / by-property / lifecycle-distribution / multi-currency-overview |
 | `src/api/financial_dashboard_router.py` | Ring 2–3: status card, revpar, lifecycle-by-property |
 | `src/api/reconciliation_router.py` | Ring 3: Exception-first reconciliation inbox |
@@ -58,7 +62,7 @@ Phase 229 closed. Next: Phase 230 — AI Audit Trail.
 ## Key Files — Task Layer (Phases 111–117, 206–207)
 
 | File | Role |
-|------|›----|
+|------|------|
 | `src/tasks/task_model.py` | TaskKind (6 kinds incl GUEST_WELCOME), TaskStatus, TaskPriority, WorkerRole, Task dataclass |
 | `src/tasks/task_automator.py` | Pure tasks_for_booking_created / canceled / amended |
 | `src/tasks/pre_arrival_tasks.py` | Pure tasks_for_pre_arrival — GUEST_WELCOME + enriched CHECKIN_PREP (Phase 206) |
@@ -68,23 +72,46 @@ Phase 229 closed. Next: Phase 230 — AI Audit Trail.
 | `src/api/worker_router.py` | GET /worker/tasks, PATCH /acknowledge, PATCH /complete |
 | `src/services/conflict_auto_resolver.py` | Phase 207 — run_auto_check() — auto-conflict on BOOKING_CREATED/AMENDED |
 
-## Key Files — Communication Channels (Phases 212, 213)
+## Key Files — AI Copilot Layer (Phases 222–227, 230–231)
 
 | File | Role |
-|------|›----|
-| `src/channels/sms_escalation.py` | SMS pure module — mirrors LINE/WhatsApp/Telegram pattern (Phase 212) |
-| `src/api/sms_router.py` | GET challenge + POST inbound ACK via Twilio form fields |
-| `src/channels/email_escalation.py` | Email pure module — one-click ACK token flow (Phase 213) |
-| `src/api/email_router.py` | GET /email/webhook health + GET /email/ack token ACK |
+|------|------|
+| `src/api/ai_context_router.py` | GET /ai/context/property/{id} + GET /ai/context/operations-day |
+| `src/api/manager_copilot_router.py` | POST /ai/copilot/morning-briefing — 5 languages, LLM + heuristic |
+| `src/api/financial_explainer_router.py` | GET /ai/copilot/financial/explain/{booking_id} + reconciliation-summary |
+| `src/api/task_recommendation_router.py` | POST /ai/copilot/task-recommendations — deterministic scoring |
+| `src/api/anomaly_alert_broadcaster.py` | POST /ai/copilot/anomaly-alerts — 3-domain health scanner |
+| `src/api/guest_messaging_copilot.py` | POST /ai/copilot/guest-message-draft — 6 intents, 5 langs, 3 tones |
+| `src/api/ai_audit_log_router.py` | Phase 230: GET /ai/audit-log — AI decision audit trail |
+| `src/api/worker_copilot_router.py` | Phase 231: POST /ai/copilot/worker-assist — mobile contextual assists |
+| `src/services/llm_client.py` | Provider-agnostic LLM client (OpenAI) |
+| `src/services/ai_audit_log.py` | AI audit log writer |
 
-## Key Files — Onboarding + Product Surfaces (Phases 214–217)
+## Key Files — Recent Additions (Phases 232–238)
 
 | File | Role |
-|------|›----|
-| `src/api/onboarding_router.py` | Phase 214: 4-step wizard — POST /onboarding/start, /{id}/channels, /{id}/workers, GET /{id}/status |
-| `src/api/revenue_report_router.py` | Phase 215: GET /revenue-report/portfolio + /revenue-report/{id} |
-| `src/api/portfolio_dashboard_router.py` | Phase 216: GET /portfolio/dashboard — occupancy+revenue+tasks+sync health per property |
-| `src/api/integration_management_router.py` | Phase 217: GET /admin/integrations (OTA connection view) + /admin/integrations/summary |
+|------|------|
+| `src/services/pre_arrival_scanner.py` | Phase 232: Guest pre-arrival automation chain |
+| `src/api/revenue_forecast_router.py` | Phase 233: Revenue forecast engine |
+| `src/api/worker_availability_router.py` | Phase 234: Shift & Availability Scheduler — worker_shifts table |
+| `src/api/conflicts_router.py` | Phase 235: Enhanced — GET /admin/conflicts/dashboard |
+| `src/api/guest_messages_router.py` | Phase 236: POST+GET /guest-messages/{booking_id} |
+| `docker-compose.staging.yml` | Phase 237: Staging environment |
+| `src/adapters/ota/tripcom.py` | Phase 238: Ctrip/Trip.com enhanced adapter |
+
+## Key Files — Recent Additions (Phases 246–253)
+
+| File | Role |
+|------|------|
+| `src/api/rate_card_router.py` | Phase 246: GET/POST /properties/{id}/rate-cards |
+| `src/api/guest_feedback_router.py` | Phase 247: GET/POST/DELETE /admin/guest-feedback |
+| `src/api/task_template_router.py` | Phase 248: GET/POST/DELETE /admin/task-templates |
+| `src/adapters/outbound/bookingcom_content.py` | Phase 250: Booking.com content push builder |
+| `src/api/content_push_router.py` | Phase 250: POST /admin/content/push/{property_id} |
+| `src/services/pricing_engine.py` | Phase 251: Pure suggest_prices() + PriceSuggestion |
+| `src/api/pricing_suggestion_router.py` | Phase 251: GET /pricing/suggestion/{property_id} |
+| `src/api/owner_financial_report_v2_router.py` | Phase 252: GET /owner/financial-report |
+| `src/api/staff_performance_router.py` | Phase 253: GET /admin/staff/performance + /{worker_id} |
 
 ## Key Files — HTTP API Layer (Phases 58–64)
 
@@ -124,4 +151,4 @@ Phase 229 closed. Next: Phase 230 — AI Audit Trail.
 
 ## Tests
 
-**5,382 collected. 5,382 passing. 0 failures. Exit 0.**
+**~5,900 collected. ~5,900 passing. 0 failures. Exit 0.**

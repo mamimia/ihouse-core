@@ -478,3 +478,187 @@ async def auto_check_conflict(
         logger.exception("auto_check_conflict error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to run auto-check")
 
+
+# ---------------------------------------------------------------------------
+# Phase 235 — GET /admin/conflicts/dashboard
+# ---------------------------------------------------------------------------
+
+def _compute_dashboard(
+    conflicts: List[Dict[str, Any]],
+    severity_filter: Optional[str],
+    today: date,
+) -> Dict[str, Any]:
+    """
+    Take a flat conflicts list (each has property_id, severity, overlap_start, …)
+    and return aggregated dashboard data.
+    """
+    # Optional severity filter
+    if severity_filter:
+        conflicts = [c for c in conflicts if c.get("severity") == severity_filter.upper()]
+
+    # --- Summary ---
+    critical = sum(1 for c in conflicts if c.get("severity") == "CRITICAL")
+    warning = sum(1 for c in conflicts if c.get("severity") == "WARNING")
+    affected_props = {c["property_id"] for c in conflicts}
+    involved: set = set()
+    for c in conflicts:
+        involved.add(c.get("booking_a", ""))
+        involved.add(c.get("booking_b", ""))
+    involved.discard("")
+
+    summary = {
+        "total_conflicts": len(conflicts),
+        "critical": critical,
+        "warning": warning,
+        "properties_affected": len(affected_props),
+        "bookings_involved": len(involved),
+    }
+
+    # --- By property ---
+    by_prop: Dict[str, Dict[str, Any]] = {}
+    for c in conflicts:
+        pid = c["property_id"]
+        if pid not in by_prop:
+            by_prop[pid] = {"property_id": pid, "conflicts": [], "critical": 0, "warning": 0, "oldest_days": -1}
+        entry = by_prop[pid]
+        entry["conflicts"].append(c)
+        if c.get("severity") == "CRITICAL":
+            entry["critical"] += 1
+        else:
+            entry["warning"] += 1
+        # Age in days since overlap_start
+        try:
+            age = (today - date.fromisoformat(c["overlap_start"])).days
+            if entry["oldest_days"] < age:
+                entry["oldest_days"] = age
+        except (ValueError, KeyError):
+            pass
+
+    by_property = []
+    for pid in sorted(by_prop.keys()):
+        e = by_prop[pid]
+        by_property.append({
+            "property_id": pid,
+            "conflicts": e["conflicts"],
+            "critical": e["critical"],
+            "warning": e["warning"],
+            "oldest_conflict_days": max(0, e["oldest_days"]),
+        })
+
+    # --- Weekly timeline (last 4 ISO weeks) ---
+    timeline = []
+    for weeks_ago in range(3, -1, -1):
+        week_start = today - timedelta(days=today.weekday() + weeks_ago * 7)
+        week_end = week_start + timedelta(days=7)
+        count = sum(
+            1 for c in conflicts
+            if c.get("overlap_start") and
+            week_start <= date.fromisoformat(c["overlap_start"]) < week_end
+        )
+        timeline.append({"week_start": week_start.isoformat(), "conflict_count": count})
+
+    # --- Heuristic narrative ---
+    if len(conflicts) == 0:
+        narrative = "No active conflicts detected across your portfolio."
+    else:
+        most_props = sorted(by_prop.keys(),
+                            key=lambda p: by_prop[p]["critical"] * 10 + by_prop[p]["warning"],
+                            reverse=True)
+        top_prop = most_props[0] if most_props else "unknown"
+        this_week = timeline[-1]["conflict_count"] if timeline else 0
+        narrative = (
+            f"{len(conflicts)} active conflict{'s' if len(conflicts) != 1 else ''} "
+            f"({critical} CRITICAL, {warning} WARNING) across "
+            f"{len(affected_props)} propert{'ies' if len(affected_props) != 1 else 'y'}. "
+            f"{this_week} conflict{'s' if this_week != 1 else ''} this week. "
+            f"Property with most conflicts: {top_prop}."
+        )
+
+    return {
+        "summary": summary,
+        "by_property": by_property,
+        "timeline": timeline,
+        "narrative": narrative,
+    }
+
+
+@router.get(
+    "/admin/conflicts/dashboard",
+    tags=["conflicts"],
+    summary="Multi-Property Conflict Dashboard (Phase 235)",
+    description=(
+        "Cross-property conflict aggregation dashboard. "
+        "Groups active conflicts by property, computes severity breakdown, "
+        "age of oldest conflict, and a 4-week timeline. "
+        "Includes a heuristic narrative summary.\n\n"
+        "**Filters:** `property_id` (optional), `severity=CRITICAL|WARNING` (optional).\n\n"
+        "**Source:** `booking_state` — read-only. Never writes."
+    ),
+    responses={
+        200: {"description": "Dashboard data"},
+        400: {"description": "Invalid severity parameter"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_conflict_dashboard(
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+    property_id: Optional[str] = None,
+    severity: Optional[str] = None,
+) -> JSONResponse:
+    """
+    GET /admin/conflicts/dashboard?property_id=&severity=CRITICAL|WARNING
+
+    Multi-property conflict dashboard. Reuses Phase 128 conflict detection logic
+    and adds grouping, age tracking, weekly timeline, and a heuristic narrative.
+    """
+    from datetime import datetime, timezone
+
+    if severity and severity.upper() not in ("CRITICAL", "WARNING"):
+        return make_error_response(
+            400, ErrorCode.VALIDATION_ERROR,
+            "severity must be CRITICAL or WARNING"
+        )
+
+    try:
+        db = _get_supabase_client(request)
+
+        query = (
+            db.table("booking_state")
+            .select(
+                "booking_id, property_id, "
+                "canonical_check_in, canonical_check_out, "
+                "check_in, check_out, "
+                "lifecycle_status, tenant_id"
+            )
+            .eq("tenant_id", tenant_id)
+            .eq("lifecycle_status", "ACTIVE")
+        )
+        if property_id:
+            query = query.eq("property_id", property_id)
+
+        result = query.execute()
+        bookings = result.data or []
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("conflict_dashboard: DB error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to query booking state")
+
+    conflicts = _find_all_conflicts(bookings)
+    today = datetime.now(tz=timezone.utc).date()
+    dashboard = _compute_dashboard(conflicts, severity, today)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "tenant_id": tenant_id,
+            "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+            "filters": {
+                "property_id": property_id,
+                "severity": severity,
+            },
+            **dashboard,
+        },
+    )

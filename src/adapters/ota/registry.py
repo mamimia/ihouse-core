@@ -23,6 +23,7 @@ _ADAPTERS: Dict[str, OTAAdapter] = {
     "airbnb": AirbnbAdapter(),
     "agoda": AgodaAdapter(),
     "tripcom": TripComAdapter(),
+    "ctrip":   TripComAdapter(),          # Phase 238: Ctrip alias (same adapter, China market)
     "vrbo": VrboAdapter(),
     "gvr": GVRAdapter(),
     "traveloka": TravelokaAdapter(),

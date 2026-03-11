@@ -87,13 +87,18 @@ class TestBuildScheduler:
         assert "sla_sweep" in job_ids
         assert "dlq_threshold_alert" in job_ids
         assert "health_log" in job_ids
+        assert "pre_arrival_scan" in job_ids  # Phase 232 cron job
         # shutdown is a no-op on an unstarted APScheduler — just skip it
 
     def test_each_job_has_interval_trigger(self, monkeypatch):
+        """All jobs use either IntervalTrigger or CronTrigger (Phase 232 added cron)."""
         monkeypatch.setattr(sched_module, "SCHEDULER_ENABLED", True)
         sched = build_scheduler()
         for job in sched.get_jobs():
-            assert job.trigger.__class__.__name__ == "IntervalTrigger"
+            trigger_name = job.trigger.__class__.__name__
+            assert trigger_name in ("IntervalTrigger", "CronTrigger"), (
+                f"Job {job.id} has unexpected trigger: {trigger_name}"
+            )
         # no shutdown needed for unstarted scheduler
 
     def test_max_instances_one(self, monkeypatch):

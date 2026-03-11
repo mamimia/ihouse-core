@@ -1,16 +1,14 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 229 — Platform Checkpoint VI (closed)
+Phase 253 — Staff Performance Dashboard API (closed)
 
 ## Last Closed Phase
-Phase 218 — Platform Checkpoint IV (closed) — audit + docs sync + handoff. Phases 210–217 fully documented. `handoff_to_new_chat_Phase-218.md` written.
-
-Phase 227 — Guest Messaging Copilot v1 (closed) — POST /ai/copilot/guest-message-draft. 6 intents. 5-language salutations. 3 tones. Email subject line. LLM prose + template fallback. 26 tests.
+Phase 253 — Staff Performance Dashboard API (closed) — GET /admin/staff/performance, 24 tests.
 
 ## System Status
 
-**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal Timezone Support (150). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153). API-first Cancel Push (154). API-first Amend Push (155). Worker Task UI (157). Bookings View UI (158). Financial Dashboard UI (163). Owner Statement UI (164). Properties Metadata API (165). Role-Based Scoping (166). Permissions Routing (167). Push Notification Foundation (168). Admin Settings UI (169). Owner Portal UI (170). Admin Audit Log (171). Health Check Enrichment (172). IPI — Proactive Availability Broadcasting (173). Outbound Sync Stress Harness (174). Platform Checkpoint I (175). Outbound Sync Auto-Trigger for BOOKING_CREATED (176). SLA→Dispatcher Bridge (177). Notification Delivery Writer (178–183). PDF Owner Statements (188). Booking Mutation Audit Events (189). Manager Activity Feed UI (190). Multi-Currency Financial Overview (191). Guest Profile Foundation (192). Guest Profile UI (193). Booking→Guest Link (194). Hostelworld Adapter (195). WhatsApp Escalation Channel (196). Platform Checkpoint II (197). Test Suite Stabilization (198). Supabase RLS Audit (199). Booking Calendar UI (200). Worker Channel Preference UI (201). Notification History Inbox (202). Telegram Escalation Channel (203). Docs Sync (204). DLQ Replay from UI (205). Pre-Arrival Guest Task Workflow (206). Conflict Auto-Resolution Engine (207). Platform Checkpoint III (208). Outbound Sync Trigger Consolidation (209). Roadmap & Documentation Cleanup (210). Production Deployment Foundation (211). SMS Escalation Channel (212). Email Notification Channel (213). Property Onboarding Wizard API (214). Automated Revenue Reports (215). Portfolio Dashboard UI (216). Integration Management UI (217). Platform Checkpoint IV (218). Documentation Integrity Repair (219). CI/CD Pipeline Foundation (220). Scheduled Job Runner (221). AI Context Aggregation (222). Manager Copilot v1 (223). Financial Explainer (224). Task Recommendation Engine (225). Anomaly Alert Broadcaster (226). Guest Messaging Copilot v1 (227). Platform Checkpoint V (228, current).**
+**Full HTTP ingestion stack (58–64). Financial Layer (65–67). booking_id Stability (68). BOOKING_AMENDED live (69). Booking Query API (71). Tenant Dashboard (72). Financial Aggregation (116). SLA Engine (117). Financial Dashboard (118). Reconciliation Inbox (119). Cashflow View (120). Owner Statement Generator (121). OTA Financial Health Comparison (122). Worker-Facing Task Surface (123). LINE Escalation Channel (124). Hotelbeds Adapter (125). Availability Projection (126). Integration Health Dashboard (127). Conflict Center (128). Booking Search (129). Properties Summary Dashboard (130). DLQ Inspector (131). Booking Audit Trail (132). OTA Ordering Buffer Inspector (133). Property-Channel Map Foundation (135). Provider Capability Registry (136). Outbound Sync Trigger (137). Outbound Executor (138). Real Outbound Adapters (139). iCal Date Injection (140). Rate-Limit Enforcement (141). Retry + Exponential Backoff (142). Idempotency Key (143). Outbound Sync Result Persistence (144). Outbound Sync Log Inspector (145). Sync Health Dashboard (146). Failed Sync Replay (147). Sync Result Webhook Callback (148). RFC 5545 VCALENDAR Compliance (149). iCal Timezone Support (150). iCal Cancellation Push (151). iCal Sync-on-Amendment Push (152). Operations Dashboard UI (153). API-first Cancel Push (154). API-first Amend Push (155). Worker Task UI (157). Bookings View UI (158). Financial Dashboard UI (163). Owner Statement UI (164). Properties Metadata API (165). Role-Based Scoping (166). Permissions Routing (167). Push Notification Foundation (168). Admin Settings UI (169). Owner Portal UI (170). Admin Audit Log (171). Health Check Enrichment (172). IPI — Proactive Availability Broadcasting (173). Outbound Sync Stress Harness (174). Platform Checkpoint I (175). Outbound Sync Auto-Trigger for BOOKING_CREATED (176). SLA→Dispatcher Bridge (177). Notification Delivery Writer (178–183). PDF Owner Statements (188). Booking Mutation Audit Events (189). Manager Activity Feed UI (190). Multi-Currency Financial Overview (191). Guest Profile Foundation (192). Guest Profile UI (193). Booking→Guest Link (194). Hostelworld Adapter (195). WhatsApp Escalation Channel (196). Platform Checkpoint II (197). Test Suite Stabilization (198). Supabase RLS Audit (199). Booking Calendar UI (200). Worker Channel Preference UI (201). Notification History Inbox (202). Telegram Escalation Channel (203). Docs Sync (204). DLQ Replay from UI (205). Pre-Arrival Guest Task Workflow (206). Conflict Auto-Resolution Engine (207). Platform Checkpoint III (208). Outbound Sync Trigger Consolidation (209). Roadmap & Documentation Cleanup (210). Production Deployment Foundation (211). SMS Escalation Channel (212). Email Notification Channel (213). Property Onboarding Wizard API (214). Automated Revenue Reports (215). Portfolio Dashboard UI (216). Integration Management UI (217). Platform Checkpoint IV (218). Documentation Integrity Repair (219). CI/CD Pipeline Foundation (220). Scheduled Job Runner (221). AI Context Aggregation (222). Manager Copilot v1 (223). Financial Explainer (224). Task Recommendation Engine (225). Anomaly Alert Broadcaster (226). Guest Messaging Copilot v1 (227). Platform Checkpoint V (228). Platform Checkpoint VI (229). AI Audit Trail (230). Worker Task Copilot (231). Guest Pre-Arrival Automation Chain (232). Revenue Forecast Engine (233). Shift & Availability Scheduler (234). Multi-Property Conflict Dashboard (235). Guest Communication History (236). Staging Environment & Integration Tests (237). Ctrip / Trip.com Enhanced Adapter (238). Platform Checkpoint VII (239). Documentation Integrity Sync (240). Booking Financial Reconciliation Dashboard API (241). Booking Lifecycle State Machine Visualization API (242). Property Performance Analytics API (243). OTA Revenue Mix Analytics API (244). Platform Checkpoint VIII (245). Rate Card & Pricing Rules Engine (246). Guest Feedback Collection API (247). Maintenance & Housekeeping Task Templates (248). Booking.com Content API Adapter (250). Dynamic Pricing Suggestion Engine (251). Owner Financial Report API v2 (252). Staff Performance Dashboard API (253). Platform Checkpoint X (254, current).**
 
 
 apply_envelope is the only authority for canonical state mutations.
@@ -173,6 +171,32 @@ apply_envelope is the only authority for canonical state mutations.
 | 225 | Task Recommendation Engine — deterministic scoring + LLM rationale | ✅ |
 | 226 | Anomaly Alert Broadcaster — 3-domain scanner, health score 0–100 | ✅ |
 | 227 | Guest Messaging Copilot v1 — 6 intents, 5 langs, 3 tones, draft-only | ✅ |
+| 228 | Platform Checkpoint V | ✅ |
+| 229 | Platform Checkpoint VI | ✅ |
+| 230 | AI Audit Trail | ✅ |
+| 231 | Worker Task Copilot | ✅ |
+| 232 | Guest Pre-Arrival Automation Chain | ✅ |
+| 233 | Revenue Forecast Engine | ✅ |
+| 234 | Shift & Availability Scheduler | ✅ |
+| 235 | Multi-Property Conflict Dashboard | ✅ |
+| 236 | Guest Communication History | ✅ |
+| 237 | Staging Environment & Integration Tests | ✅ |
+| 238 | Ctrip / Trip.com Enhanced Adapter | ✅ |
+| 239 | Platform Checkpoint VII — full audit, phase-timeline/construction-log fixed, handoff created | ✅ |
+| 240 | Documentation Integrity Sync — work-context, roadmap, live-system updated to Phase 239 reality | ✅ |
+| 241 | Booking Financial Reconciliation Dashboard API — GET /admin/reconciliation/dashboard, 28 tests | ✅ |
+| 242 | Booking Lifecycle State Machine Visualization API — GET /admin/bookings/lifecycle-states, 32 tests | ✅ |
+| 243 | Property Performance Analytics API — GET /admin/properties/performance (booking_state + financial_facts), 35 tests | ✅ |
+| 244 | OTA Revenue Mix Analytics API — GET /admin/ota/revenue-mix (all-time gross/net/commission per OTA), 41 tests | ✅ |
+| 245 | Platform Checkpoint VIII — docs audit, canonical docs updated, ~5,695 tests passing | ✅ |
+| 246 | Rate Card & Pricing Rules Engine — rate_cards table, GET/POST, price deviation alerts, 35 tests | ✅ |
+| 247 | Guest Feedback Collection API — guest_feedback table, GET/POST/DELETE, 30 tests | ✅ |
+| 248 | Maintenance & Housekeeping Task Templates — task_templates table, GET/POST/DELETE, 26 tests | ✅ |
+| 250 | Booking.com Content API Adapter — bookingcom_content.py, POST /admin/content/push, 32 tests | ✅ |
+| 251 | Dynamic Pricing Suggestion Engine — pricing_engine.py, GET /pricing/suggestion, 37 tests | ✅ |
+| 252 | Owner Financial Report API v2 — GET /owner/financial-report, drill-down, 31 tests | ✅ |
+| 253 | Staff Performance Dashboard API — GET /admin/staff/performance, 24 tests | ✅ |
+| 254 | Platform Checkpoint X — full audit + handoff | ✅ |
 
 ## Request Flow (POST /webhooks/{provider})
 
@@ -214,7 +238,7 @@ HTTP  →  Logging middleware (X-Request-ID)
 | Booking.com | Global | 1 |
 | Expedia | Global | 1 |
 | Agoda | Asia | 1.5 |
-| Trip.com | Asia | 1.5 |
+| Trip.com / Ctrip | China / Global | 2 |
 | Traveloka | SE Asia | 1.5 |
 | Vrbo | Global vacation | 2 |
 | Google Vacation Rentals | Global | 2 |
@@ -303,11 +327,13 @@ Tier 3 — External (one of:)
 | `IHOUSE_ENV` | "development" | health response label |
 | `SUPABASE_URL` | required | Supabase project URL |
 | `SUPABASE_KEY` | required | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | required | Used by all financial/admin routers (Phases 116+) |
 | `IHOUSE_LINE_SECRET` | unset | dev-mode LINE sig skip |
 | `IHOUSE_WHATSAPP_TOKEN` | unset | production WhatsApp dispatch |
 | `IHOUSE_WHATSAPP_PHONE_NUMBER_ID` | unset | Meta Cloud API phone ID |
 | `IHOUSE_WHATSAPP_APP_SECRET` | unset | HMAC sig verification |
 | `IHOUSE_WHATSAPP_VERIFY_TOKEN` | unset | Meta webhook challenge token |
+| `IHOUSE_TELEGRAM_BOT_TOKEN` | unset | Telegram bot API token |
 | `IHOUSE_DRY_RUN` | unset | skip real outbound API calls |
 | `IHOUSE_THROTTLE_DISABLED` | unset | skip rate limiting in outbound |
 | `IHOUSE_RETRY_DISABLED` | unset | skip exponential backoff |
@@ -317,8 +343,8 @@ Tier 3 — External (one of:)
 
 ## Next Phase
 
-Phase 230 — AI Audit Trail (next).
+Phase 255 — next planning cycle (see docs/core/planning/).
 
 ## Tests
 
-**5,382 collected. 5,382 passing. 0 failures. Exit 0.**
+**~5,900 collected. ~5,900 passing. 0 failures. Exit 0.**

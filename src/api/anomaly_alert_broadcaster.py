@@ -587,6 +587,30 @@ async def post_anomaly_alerts(
             summary = llm_summary
             generated_by = "llm"
 
+    # Phase 230 — AI Audit Trail
+    try:
+        from services.ai_audit_log import log_ai_interaction
+        log_ai_interaction(
+            tenant_id=tenant_id,
+            endpoint="POST /ai/copilot/anomaly-alerts",
+            request_type="anomaly_alerts",
+            input_summary=(
+                f"domains={','.join(sorted(domains))}, "
+                f"severity_filter={severity_filter or 'all'}, "
+                f"limit={limit}"
+            ),
+            output_summary=(
+                f"generated_by={generated_by}, "
+                f"total_alerts={len(response_alerts)}, "
+                f"health_score={health_score}, "
+                f"critical={critical_count}"
+            ),
+            generated_by=generated_by,
+            client=client,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     return JSONResponse(
         status_code=200,
         content={

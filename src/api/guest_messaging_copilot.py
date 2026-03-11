@@ -449,6 +449,30 @@ async def post_guest_message_draft(
             draft = llm_raw
             generated_by = "llm"
 
+    # Phase 230 — AI Audit Trail
+    try:
+        from services.ai_audit_log import log_ai_interaction
+        log_ai_interaction(
+            tenant_id=tenant_id,
+            endpoint="POST /ai/copilot/guest-message-draft",
+            request_type="guest_message_draft",
+            input_summary=(
+                f"booking_id={booking_id}, intent={intent}, "
+                f"language={language}, tone={tone}"
+            ),
+            output_summary=(
+                f"generated_by={generated_by}, "
+                f"chars={len(draft)}, intent={intent}"
+            ),
+            generated_by=generated_by,
+            entity_type="booking",
+            entity_id=booking_id,
+            language=language,
+            client=client,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     return JSONResponse(
         status_code=200,
         content={
