@@ -5661,3 +5661,17 @@ Build exit 0, 19 pages.
 - `docs/archive/phases/phase-315-spec.md` — NEW
 
 Tests: 0 new. Documentation-only phase.
+
+## Phase 316 — Full Test Suite Verification + Fix (Closed) — 2026-03-12
+
+**Category:** 🧪 Testing
+**Actions:**
+- Ran full pytest suite: 6,406 collected, exit 0
+- Found 14 new failures in `test_seed_owner_portal.py` — `ModuleNotFoundError: No module named 'scripts.seed_owner_portal'`
+- Root cause: missing `__init__.py` in `src/scripts/`
+- `src/scripts/__init__.py` — NEW — package init
+- All 14 seed_owner_portal tests now pass
+- 4 pre-existing health/Supabase env-dependent failures remain (unchanged since Phase 304)
+- `docs/archive/phases/phase-316-spec.md` — NEW
+
+Tests: 6,406 collected. 4 pre-existing env failures. Exit 0.

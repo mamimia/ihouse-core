@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 316 — (Next)
+Phase 317 — (Next)
 
 ## Last Closed Phase
-Phase 315 — Layer C Documentation Sync XVII (closed) — Full Layer C doc sync for Phases 306-314.
+Phase 316 — Full Test Suite Verification + Fix (closed) — Fixed `test_seed_owner_portal.py` (14 tests, missing `__init__.py`). 6,406 tests, exit 0.
 
 ## System Status
 
