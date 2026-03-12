@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 333 — (Next)
+Phase 334 — (Next)
 
 ## Last Closed Phase
-Phase 332 — Bulk Operations Service Integration Tests (closed) — 17 tests, all pass.
+Phase 333 — Booking.com Content Adapter Integration Tests (closed) — 19 tests, all pass.
 
 ## System Status
 

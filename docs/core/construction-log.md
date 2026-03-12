@@ -4279,3 +4279,7 @@ Documentation checkpoint after Phases 315-330 (16 phases, ~225 new tests). Updat
 ## Phase 332 — Bulk Operations Service Integration Tests — 2026-03-12
 
 Integration tests for services/bulk_operations.py (Phase 259). 17 tests: aggregate status (4), bulk cancel (6), bulk assign (4), bulk trigger (3). All pass in 0.07s.
+
+## Phase 333 — Booking.com Content Adapter Integration Tests — 2026-03-12
+
+First-ever tests for bookingcom_content.py (Phase 250, 262 lines). 19 tests: field validation (6), payload shape (9), list_pushed_fields (2), PushResult (2). All pass in 0.08s.

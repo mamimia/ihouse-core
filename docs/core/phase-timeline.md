@@ -5852,3 +5852,13 @@ Tests added: 0 (documentation phase).
 - `docs/archive/phases/phase-332-spec.md` — NEW
 
 Tests: 17 passed. 0 failed. 0.07s.
+
+## Phase 333 — Booking.com Content Adapter Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🔌 Outbound / Adapters / Testing
+**Actions:**
+- `tests/test_bookingcom_content_integration.py` — NEW — 19 tests (FIRST-EVER)
+- Field validation (6), payload shape (9), list_pushed_fields (2), PushResult (2)
+- `docs/archive/phases/phase-333-spec.md` — NEW
+
+Tests: 19 passed. 0 failed. 0.08s.
