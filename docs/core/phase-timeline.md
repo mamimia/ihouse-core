@@ -5894,3 +5894,14 @@ Tests: 38 passed. 0 failed. 0.25s.
 - `docs/archive/phases/phase-336-spec.md` — NEW
 
 Tests added: 0 (documentation phase). 11 discrepancies resolved.
+
+## Phase 337 — Supabase Artifacts Refresh + Schema Audit (Closed) — 2026-03-12
+
+**Category:** 🗄️ Supabase / Schema / Audit
+**Actions:**
+- `artifacts/supabase/schema.sql` — MODIFIED — added 7 missing table DDL (Phases 296-299): organizations, org_members, tenant_org_map, user_sessions, guest_tokens, owner_portal_access, notification_log
+- `docs/core/roadmap.md` — MODIFIED — Supabase Tables: 33 + 1 view → 40 + 2 views
+- `docs/core/current-snapshot.md` — MODIFIED — table count updated
+- `docs/archive/phases/phase-337-spec.md` — NEW
+
+Tests added: 0 (schema audit). Live Supabase: 40 tables, all RLS enabled.

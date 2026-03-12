@@ -458,3 +458,101 @@ CREATE TABLE IF NOT EXISTS worker_availability (
   created_at                     TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at                     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- =====================================================================
+-- Phase 296 — Multi-Tenant Organization Foundation
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.organizations (
+    org_id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name            TEXT        NOT NULL,
+    slug            TEXT        UNIQUE NOT NULL,
+    description     TEXT,
+    created_by      TEXT        NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.org_members (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id          UUID        NOT NULL REFERENCES public.organizations(org_id) ON DELETE CASCADE,
+    tenant_id       TEXT        NOT NULL,
+    role            TEXT        NOT NULL DEFAULT 'member'
+                    CHECK (role IN ('org_admin', 'manager', 'member')),
+    invited_by      TEXT,
+    joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (org_id, tenant_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.tenant_org_map (
+    tenant_id       TEXT        PRIMARY KEY,
+    org_id          UUID        NOT NULL REFERENCES public.organizations(org_id) ON DELETE CASCADE,
+    role            TEXT        NOT NULL DEFAULT 'member',
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- Phase 297 — Auth Session Management
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.user_sessions (
+    session_id      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       TEXT        NOT NULL,
+    token_hash      TEXT        NOT NULL UNIQUE,
+    user_agent      TEXT,
+    ip_address      TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ NOT NULL,
+    revoked_at      TIMESTAMPTZ,
+    revoked_reason  TEXT
+);
+
+-- =====================================================================
+-- Phase 298 — Guest Portal + Owner Portal Real Authentication
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.guest_tokens (
+    token_id        UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    booking_ref     TEXT        NOT NULL,
+    tenant_id       TEXT        NOT NULL,
+    guest_email     TEXT,
+    token_hash      TEXT        UNIQUE NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ NOT NULL,
+    revoked_at      TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS public.owner_portal_access (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       TEXT        NOT NULL,
+    owner_id        TEXT        NOT NULL,
+    property_id     TEXT        NOT NULL,
+    role            TEXT        NOT NULL DEFAULT 'owner'
+                    CHECK (role IN ('owner', 'viewer')),
+    granted_by      TEXT        NOT NULL,
+    granted_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at      TIMESTAMPTZ,
+    UNIQUE (owner_id, property_id)
+);
+
+-- =====================================================================
+-- Phase 299 — Notification Dispatch Layer
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.notification_log (
+    notification_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       TEXT        NOT NULL,
+    channel         TEXT        NOT NULL
+                    CHECK (channel IN ('sms', 'email', 'whatsapp')),
+    recipient       TEXT        NOT NULL,
+    subject         TEXT,
+    body_preview    TEXT,
+    notification_type TEXT      NOT NULL,
+    reference_id    TEXT,
+    status          TEXT        NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'sent', 'failed', 'dry_run')),
+    provider_id     TEXT,
+    error_message   TEXT,
+    sent_at         TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

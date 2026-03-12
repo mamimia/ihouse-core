@@ -39,7 +39,7 @@
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
 | **Tests** | 6,726 collected / all passing / 4 pre-existing health failures / exit 0 |
 | **Test Files** | 223 test files |
-| **Supabase Tables** | 33 tables + 1 view (`ota_dlq_summary`), 29 migrations |
+| **Supabase Tables** | 40 tables + 2 views (`ota_dlq_summary`, `active_sessions`), 29 migrations |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
 | **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh |

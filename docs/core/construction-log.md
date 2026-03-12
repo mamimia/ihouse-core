@@ -4295,3 +4295,7 @@ First-ever tests for adapters/outbound/airbnb_adapter.py (Phase 139, 318 lines),
 ## Phase 336 — Layer C Documentation Sync XVIII — 2026-03-12
 
 Fixed all 11 Layer C documentation discrepancies: test counts (6,406 → 6,726), phase pointers (304/315 → 336/337), SSE endpoint (Phase 181 → Phase 306), frontend pages (19 → 17), Active Direction (315+ → 337+). Verified all metrics against actual codebase: 223 test files, 81 API files, 17 frontend pages, 15 OTA adapters.
+
+## Phase 337 — Supabase Artifacts Refresh + Schema Audit — 2026-03-12
+
+Verified live Supabase: 40 tables, all rls_enabled=true. Local schema.sql had only 33 — missing 7 tables from Phases 296-299 (organizations, org_members, tenant_org_map, user_sessions, guest_tokens, owner_portal_access, notification_log). Appended DDL. Updated roadmap.md and current-snapshot.md table counts (33 → 40, views 1 → 2).
