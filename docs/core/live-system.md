@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 295 — Documentation Truth Sync XV (2026-03-12)**
+**Last updated: Phase 305 — Documentation Truth Sync XVI (2026-03-12)**
 
 ## Core Architecture
 
@@ -425,6 +425,38 @@ All **14 providers** implemented at full parity:
 | Endpoint | Description | Phase |
 |----------|-------------|-------|
 | `GET /sse/tasks` | Server-Sent Events for real-time worker task updates | 181 |
+
+### Auth & Session (Phases 296–298)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /auth/login` | Supabase email/password login, returns access + refresh tokens | 297 |
+| `POST /auth/refresh` | Refresh JWT token | 297 |
+| `POST /auth/logout` | Invalidate session | 297 |
+| `GET /session/me` | Current user session info (email, role, tenant_id) | 297 |
+| `POST /guest/verify-token` | Verify HMAC-SHA256 guest portal token | 298 |
+
+### Organization (Phase 296)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /org` | Organization details for current tenant | 296 |
+| `POST /org` | Create organization | 296 |
+
+### Notification Dispatch (Phase 299)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /notifications/send-sms` | Send SMS via Twilio (dry-run if env vars absent) | 299 |
+| `POST /notifications/send-email` | Send email via SendGrid (dry-run if env vars absent) | 299 |
+| `POST /notifications/guest-token-send` | Send guest portal token via SMS or email | 299 |
+| `GET /notifications/log` | Notification delivery log | 299 |
+
+### Owner Portal (Phases 170, 301)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /owner/portal/{property_id}/summary` | Enriched owner summary: occupancy, financials, booking breakdown | 301 |
 
 ## Future Evolution
 

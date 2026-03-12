@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 305 — TBD (next cycle to be planned)
+Phase 306 — Real-Time Event Bus (SSE/WebSocket Foundation)
 
 ## Last Closed Phase
 
-Phase 304 — Platform Checkpoint XV (closed) — Full audit: 6,406 tests collected, ~6,385 passed, 4 pre-existing health-check failures. All docs synced.
+Phase 305 — Documentation Truth Sync XVI (closed) — Synced all Layer C docs to Phase 304 reality.
 
 ## Current Objective
 
-Plan next development cycle (Phases 305-314). Phases 295-304 completed: Documentation Truth Sync XV (295), Multi-Tenant Org Foundation (296), Auth Session Management (297), Guest Portal + Owner Portal Real Auth (298), Notification Layer SMS/Email (299), Platform Checkpoint XIV (300), Owner Portal Rich Data Service (301), Guest Token E2E Tests (302), Booking State Seeder (303), Platform Checkpoint XV (304).
+Build a general-purpose SSE event bus extending `src/channels/sse_broker.py` into a multi-channel event system for real-time dashboard updates, booking notifications, sync status, and SLA breach alerts.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -99,7 +99,7 @@ Plan next development cycle (Phases 305-314). Phases 295-304 completed: Document
 | `docker-compose.staging.yml` | Phase 237: Staging environment |
 | `src/adapters/ota/tripcom.py` | Phase 238: Ctrip/Trip.com enhanced adapter |
 
-## Key Files — Recent Additions (Phases 246–294)
+## Key Files — Recent Additions (Phases 246–304)
 
 | File | Role |
 |------|------|
@@ -124,6 +124,14 @@ Plan next development cycle (Phases 305-314). Phases 295-304 completed: Document
 | `src/api/analytics_router.py` | Phase 264: GET /admin/analytics/top-properties, /ota-mix, /revenue-summary |
 | `tests/conftest.py` | Phase 283: Session-scoped env var management, rate limiter reset |
 | `deploy_checklist.sh` | Phase 286: Production Docker hardening validation script |
+| `src/api/org_router.py` | Phase 296: GET/POST /org endpoints |
+| `src/api/auth_router.py` | Phase 297: POST /auth/login, /auth/refresh, /auth/logout |
+| `src/api/session_router.py` | Phase 297: GET /session/me, session validation |
+| `src/api/guest_token_router.py` | Phase 298: POST /guest/verify-token, issue/verify HMAC tokens |
+| `src/api/notification_router.py` | Phase 299: POST /notifications/send-sms, /send-email, /guest-token-send, GET /notifications/log |
+| `src/services/owner_portal_data.py` | Phase 301: 6 functions for owner portal rich summary |
+| `tests/test_guest_token_e2e.py` | Phase 302: 7 test suites, real HMAC crypto, live Supabase integration |
+| `src/scripts/seed_owner_portal.py` | Phase 303: deterministic booking seeder (20 bookings, 3 properties) |
 
 ## Key Files — Frontend (ihouse-ui/, Phases 287–291)
 
@@ -194,7 +202,13 @@ Plan next development cycle (Phases 305-314). Phases 295-304 completed: Document
 | `SENTRY_DSN` | unset | Sentry error tracking DSN |
 | `PORT` | 8000 | uvicorn port |
 | `UVICORN_WORKERS` | 1 | number of uvicorn worker processes |
+| `IHOUSE_GUEST_TOKEN_SECRET` | required | HMAC-SHA256 secret for guest portal tokens (Phase 298) |
+| `IHOUSE_TWILIO_SID` | unset | Twilio Account SID (Phase 299) |
+| `IHOUSE_TWILIO_TOKEN` | unset | Twilio Auth Token (Phase 299) |
+| `IHOUSE_TWILIO_FROM` | unset | Sending phone number E.164 (Phase 299) |
+| `IHOUSE_SENDGRID_KEY` | unset | SendGrid API key (Phase 299) |
+| `IHOUSE_SENDGRID_FROM` | unset | Sending email address (Phase 299) |
 
 ## Tests
 
-**6,216 collected. 6,216 passing. 0 failures. Exit 0. (Phase 294)**
+**6,406 collected. ~6,385 passing (~17 skipped). 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 304)**

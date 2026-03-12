@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 294 (2026-03-12). [Antigravity]
+> Last updated: Phase 305 (2026-03-12). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,17 +26,17 @@
 
 ---
 
-## System Numbers — Phase 295 (2026-03-12)
+## System Numbers — Phase 305 (2026-03-12)
 
 | Metric | Value |
 |--------|-------|
 | **OTA Adapters** | 15 (14 unique + ctrip alias): Airbnb, Booking.com, Expedia, Agoda, Trip.com/Ctrip, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld |
 | **Escalation Channels** | 5 live (LINE, WhatsApp, Telegram, SMS, Email) |
 | **Task Kinds** | 6 (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME) |
-| **API Routers** | 77 files in `src/api/` |
+| **API Files** | 80 files in `src/api/` (78 routers registered in main.py) |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | 6,216 collected / 6,216 passing / 0 failures / exit 0 |
+| **Tests** | 6,406 collected / ~6,385 passing / ~17 skipped / 4 pre-existing health failures / exit 0 |
 | **Supabase Tables** | 33 tables + 1 view (`ota_dlq_summary`), 29 migrations |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) — 159 tests added in Phases 265–271 |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
@@ -98,13 +98,13 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 285+
+## Active Direction — Phase 305+
 
-Phase 284 (Supabase Schema Truth Sync) aligned the live Supabase database with all documented migrations (33 tables + 1 view, 29 migrations). Phase 283 fixed all test isolation failures (conftest.py, rate limiter, env var leakage). 6,216 tests passing, exit 0.
+Phases 295–304 completed: Documentation Truth Sync XV (295), Multi-Tenant Organization Foundation (296), Auth Session Management + Real Login Flow (297), Guest Portal + Owner Portal Real Authentication (298), Notification Layer SMS/Email Dispatch via Twilio + SendGrid (299), Platform Checkpoint XIV (300), Owner Portal Rich Data Service with 6 enrichment functions (301), Guest Token Flow E2E Tests with real HMAC crypto (302), Booking State Seeder for Owner Portal (303), Platform Checkpoint XV full audit (304).
 
-The current wave (Phases 285–292) continues with **documentation sync**, **production Docker hardening**, and the **first real Domaniqo frontend** (Operations Dashboard, Booking Management, Worker Task View, Financial Dashboard).
+The current wave (Phases 305–314) focuses on **documentation alignment**, **real-time event bus**, **frontend real data integration** (dashboard, bookings, financial, tasks, owner portal, guest portal), **notification management UI**, **AI copilot UI**, and **production readiness hardening**.
 
-Full plan: `docs/core/planning/next-10-phases-283-292.md`
+Full plan: see handoff document or planning artifact.
 
 ### Phase 283 — Test Suite Isolation Fix + conftest.py *(closed)*
 Created `tests/conftest.py` with session-scoped env var management. Fixed 4 root causes: IHOUSE_DEV_MODE leaking from module-level `os.environ.setdefault`, 7 test files missing dev mode fixtures, auth enforcement tests not disabling dev mode, InMemoryRateLimiter singleton (60 RPM) accumulating hits across full suite. 16 files modified. +0 tests, 0 failures.
@@ -249,6 +249,6 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 295+):** Guest portal frontend, owner portal frontend, multi-tenant org structure, production monitoring consumers, ML-based anomaly detection.
+**Short-term (Phases 305–314):** Documentation sync, real-time SSE event bus, frontend real data integration (dashboard, bookings, financial, tasks), owner portal frontend, guest portal frontend (Domaniqo-branded), notification UI, AI copilot UI, production readiness hardening, platform checkpoint.
 
 **Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from API surface expansion to real product surfaces and operational depth.

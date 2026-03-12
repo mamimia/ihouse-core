@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 305 — TBD
+Phase 306 — Real-Time Event Bus (SSE/WebSocket Foundation)
 
 ## Last Closed Phase
-Phase 304 — Platform Checkpoint XV (closed) — Full audit: 6,406 tests collected, 4 pre-existing failures, all docs synced.
+Phase 305 — Documentation Truth Sync XVI (closed) — Synced all Layer C docs to Phase 304 reality: test count, env vars, missing endpoints, API router count, forward direction.
 
 ## System Status
 
@@ -369,4 +369,4 @@ Phase 295 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,329 collected. 6,329 passing (13 skipped). 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0 on code tests. (Phase 300)**
+**6,406 collected. ~6,385 passing (~17 skipped). 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0 on code tests. (Phase 304)**

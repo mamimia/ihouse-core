@@ -5546,3 +5546,14 @@ Tests: 14 passed, 0 failed. Exit 0.
 - Docs updated: current-snapshot, phase-timeline, construction-log
 
 Tests: ~6,385 passed, ~17 skipped, 4 pre-existing failures. Exit 0.
+
+## Phase 305 — Documentation Truth Sync XVI (Closed) — 2026-03-12
+
+**Category:** 📝 Documentation
+**Actions:**
+- Updated `current-snapshot.md`: test count 6,329→6,406 (Phase 304 ground truth)
+- Updated `work-context.md`: added 8 missing key files (Phases 296-303), added 6 missing env vars (GUEST_TOKEN_SECRET, TWILIO, SENDGRID), updated test count from Phase 294 to Phase 304
+- Updated `live-system.md`: added 6 missing endpoint sections (auth, session, org, guest-token, notifications, owner portal enriched), bumped last-updated to Phase 305
+- Updated `roadmap.md`: System Numbers corrected (API files 77→80, tests 6,216→6,406), added Phases 295-304 completion summary, updated forward direction to Phases 305-314
+
+Tests: 0 new. Documentation-only phase.

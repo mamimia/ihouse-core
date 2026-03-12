@@ -4074,3 +4074,14 @@ seed_owner_portal.py: deterministic seeder creating 20 bookings across 3 propert
 ## Phase 304 — Platform Checkpoint XV: Full Audit (2026-03-12)
 
 Full system audit: 6,406 tests collected (~6,385 passed, ~17 skipped), 4 pre-existing health-check failures (Supabase connectivity, since Phase 64). All docs synced.
+
+## Phase 305 — Documentation Truth Sync XVI (Closed) — 2026-03-12
+
+Implemented:
+- Synchronized all 4 Layer C documents to Phase 304 ground truth:
+  - current-snapshot.md: test count corrected 6,329→6,406
+  - work-context.md: +8 key files (Phases 296-303), +6 env vars (GUEST_TOKEN_SECRET, TWILIO_SID/TOKEN/FROM, SENDGRID_KEY/FROM), test count 6,216→6,406
+  - live-system.md: +6 endpoint sections (auth/session/org/guest-token/notifications/owner-portal), last-updated bumped
+  - roadmap.md: System Numbers API count 77→80, tests 6,216→6,406, Phases 295-304 summary added
+
+No code changes. No new tests. No schema changes.
