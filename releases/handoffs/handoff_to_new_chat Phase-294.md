@@ -1,3 +1,5 @@
+> ⚠️ FIRST: Read `docs/core/BOOT.md` before doing anything else.
+
 # Handoff — Phase 294 → New Chat
 
 **Date:** 2026-03-12
