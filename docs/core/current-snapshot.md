@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 304 — TBD
+Phase 305 — TBD
 
 ## Last Closed Phase
-Phase 303 — Booking State Seeder for Owner Portal (closed) — seed_owner_portal.py (20 bookings, 3 properties, 2 owners), 14 tests.
+Phase 304 — Platform Checkpoint XV (closed) — Full audit: 6,406 tests collected, 4 pre-existing failures, all docs synced.
 
 ## System Status
 
