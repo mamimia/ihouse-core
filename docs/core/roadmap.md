@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 282 (2026-03-11)
+## System Numbers — Phase 292 (2026-03-12)
 
 | Metric | Value |
 |--------|-------|
@@ -36,12 +36,14 @@
 | **API Routers** | 77 files in `src/api/` |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | ~6,250 collected / ~6,250 passing / 0 failures / exit 0 |
+| **Tests** | 6,216 collected / 6,216 passing / 0 failures / exit 0 |
+| **Supabase Tables** | 33 tables + 1 view (`ota_dlq_summary`), 29 migrations |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) — 159 tests added in Phases 265–271 |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
-| **Production Infra** | Dockerfile, docker-compose.production.yml, .env.production.example (Phases 275-278) |
+| **Production Infra** | Dockerfile, docker-compose.production.yml, .env.production.example, deploy_checklist.sh (Phases 275-278, 286) |
 | **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
+| **Frontend** | Next.js 16 / React 19, 18 pages, Domaniqo branding, 60s auto-refresh, SSE live worker, OTA donut (ihouse-ui/) |
 
 ---
 
@@ -96,13 +98,19 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 283+
+## Active Direction — Phase 285+
 
-Phase 282 (Platform Checkpoint XIII) confirmed the system is architecturally clean at 282 phases, ~6,250 tests, with operational maturity infrastructure (JWT auth, CI hardening, production config, schema alignment, first live OTA integration).
+Phase 284 (Supabase Schema Truth Sync) aligned the live Supabase database with all documented migrations (33 tables + 1 view, 29 migrations). Phase 283 fixed all test isolation failures (conftest.py, rate limiter, env var leakage). 6,216 tests passing, exit 0.
 
-The next wave (Phases 283–292) focuses on **test isolation**, **Supabase schema truth sync**, **production Docker hardening**, and the **first real Domaniqo frontend** (Operations Dashboard, Booking Management, Worker Task View, Financial Dashboard).
+The current wave (Phases 285–292) continues with **documentation sync**, **production Docker hardening**, and the **first real Domaniqo frontend** (Operations Dashboard, Booking Management, Worker Task View, Financial Dashboard).
 
 Full plan: `docs/core/planning/next-10-phases-283-292.md`
+
+### Phase 283 — Test Suite Isolation Fix + conftest.py *(closed)*
+Created `tests/conftest.py` with session-scoped env var management. Fixed 4 root causes: IHOUSE_DEV_MODE leaking from module-level `os.environ.setdefault`, 7 test files missing dev mode fixtures, auth enforcement tests not disabling dev mode, InMemoryRateLimiter singleton (60 RPM) accumulating hits across full suite. 16 files modified. +0 tests, 0 failures.
+
+### Phase 284 — Supabase Schema Truth Sync *(closed)*
+Applied 5 missing migrations to live Supabase: `worker_availability` (Phase 234), `guest_messages_log` (Phase 236), `rate_cards` (Phase 246), `guest_feedback` (Phase 247), `task_templates` (Phase 248). Re-exported `artifacts/supabase/schema.sql` (34 objects). Updated `BOOTSTRAP.md`. Fixed `test_stale_property_sorted_first` datetime bug. 33 tables + 1 view, 29 migrations. 6,216 tests, 0 failures.
 
 ### Phase 210 — Roadmap & Documentation Cleanup *(closed)*
 Full audit of 20 canonical documents. Archived 10 stale files. Fixed Layer A claims (BOOKING_AMENDED, MODIFY semantics). Created AI strategy canonical document (`docs/core/planning/ai-strategy.md`).
@@ -241,8 +249,6 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 283-292):** Test isolation fix, Supabase schema truth sync, docs integrity, production Docker hardening, first real Domaniqo frontend (Operations Dashboard, Booking Management, Worker Task View, Financial Dashboard), audit checkpoint.
-
-**Medium-term (Phases 293+):** Guest portal frontend, owner portal frontend, multi-tenant org structure, production monitoring consumers, ML-based anomaly detection.
+**Short-term (Phases 295+):** Guest portal frontend, owner portal frontend, multi-tenant org structure, production monitoring consumers, ML-based anomaly detection.
 
 **Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from API surface expansion to real product surfaces and operational depth.

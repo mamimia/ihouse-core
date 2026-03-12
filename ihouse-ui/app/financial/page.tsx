@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Phase 163 — Financial Dashboard UI
+ * Phase 291 — Financial Dashboard UI (Phase 163 + Phase 191 + Phase 291 audit)
  * Route: /financial
  *
  * Portfolio-level financial view for managers and admins.
@@ -680,6 +680,59 @@ export default function FinancialDashboardPage() {
                 </div>
             </div>
 
+            {/* ── Section 1.5: OTA Mix Donut (Phase 291) ── */}
+            {!loading && byProvider && Object.keys(byProvider.providers ?? {}).length > 1 && (() => {
+                const entries = Object.entries(byProvider.providers)
+                    .map(([prov, curMap]) => ({
+                        prov,
+                        count: Object.values(curMap)[0]?.booking_count ?? 0,
+                        gross: parseFloat(Object.values(curMap)[0]?.gross ?? '0') || 0,
+                    }))
+                    .filter(e => e.count > 0)
+                    .sort((a, b) => b.gross - a.gross);
+                const total = entries.reduce((s, e) => s + e.gross, 0) || 1;
+
+                // Build SVG donut
+                const R = 54; const cx = 70; const cy = 70;
+                let angle = -Math.PI / 2;
+                const slices = entries.map(e => {
+                    const pct = e.gross / total;
+                    const a1 = angle; const a2 = angle + pct * 2 * Math.PI;
+                    angle = a2;
+                    const x1 = cx + R * Math.cos(a1); const y1 = cy + R * Math.sin(a1);
+                    const x2 = cx + R * Math.cos(a2); const y2 = cy + R * Math.sin(a2);
+                    const large = pct > 0.5 ? 1 : 0;
+                    return { prov: e.prov, pct, d: `M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${R},${R} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z`, col: otaColour(e.prov) };
+                });
+
+                return (
+                    <div className="fin-section" style={{ marginBottom: 'var(--space-8)', animationDelay: '.04s' }}>
+                        <SectionHeader title="OTA Mix" sub="Revenue share by channel · hover slice for detail" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-6)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5) var(--space-6)' }}>
+                            <svg width={140} height={140} viewBox="0 0 140 140">
+                                {slices.map(s => (
+                                    <path key={s.prov} d={s.d} fill={s.col} stroke="var(--color-surface)" strokeWidth={2}>
+                                        <title>{s.prov}: {(s.pct * 100).toFixed(1)}%</title>
+                                    </path>
+                                ))}
+                                <circle cx={cx} cy={cy} r={30} fill="var(--color-surface)" />
+                                <text x={cx} y={cy - 4} textAnchor="middle" fontSize={9} fill="var(--color-text-dim)" fontFamily="var(--font-body)">MIX</text>
+                                <text x={cx} y={cy + 10} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--color-text)" fontFamily="var(--font-body)">{entries.length} OTAs</text>
+                            </svg>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                {slices.map(s => (
+                                    <div key={s.prov} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <div style={{ width: 10, height: 10, borderRadius: 2, background: s.col, flexShrink: 0 }} />
+                                        <span style={{ fontSize: 'var(--text-xs)', textTransform: 'capitalize', color: 'var(--color-text)', minWidth: 90 }}>{s.prov}</span>
+                                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-dim)', fontVariantNumeric: 'tabular-nums' }}>{(s.pct * 100).toFixed(1)}%</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* ── Section 2: Provider Breakdown ── */}
             <div className="fin-section" style={{ marginBottom: 'var(--space-8)', animationDelay: '.05s' }}>
                 <SectionHeader title="By OTA Provider" sub="Gross, commission, net and commission ratio per channel" />
@@ -852,6 +905,25 @@ export default function FinancialDashboardPage() {
                             )}
                         </>
                     )}
+                </div>
+            </div>
+
+            {/* ── Quick nav: Owner Statements (Phase 291) ── */}
+            <div className="fin-section" style={{ marginTop: 'var(--space-8)', animationDelay: '.25s' }}>
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-lg)', padding: 'var(--space-4) var(--space-6)',
+                }}>
+                    <div>
+                        <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>Owner Statements</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>Per-property net payout reports with management fee breakdown</div>
+                    </div>
+                    <a href="/financial/statements" style={{
+                        background: 'var(--color-primary)', color: '#fff',
+                        borderRadius: 'var(--radius-md)', padding: '6px 16px',
+                        fontSize: 'var(--text-sm)', fontWeight: 600, textDecoration: 'none',
+                    }}>View statements →</a>
                 </div>
             </div>
         </div>

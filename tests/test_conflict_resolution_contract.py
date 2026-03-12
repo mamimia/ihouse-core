@@ -313,7 +313,7 @@ class TestGroupDEndpointNoConflict:
     def test_d4_response_contains_tenant_id(self):
         import os
         from unittest.mock import patch as _patch
-        with _patch.dict(os.environ, {"IHOUSE_JWT_SECRET": "dev-secret"}), \
+        with _patch.dict(os.environ, {"IHOUSE_JWT_SECRET": "dev-secret", "IHOUSE_DEV_MODE": "false"}), \
              patch("api.conflicts_router._get_supabase_client") as mock_db, \
              patch("api.conflicts_router.write_resolution", return_value=(0, 0)):
             mock_db.return_value = _make_db()
@@ -414,7 +414,7 @@ class TestGroupFValidation:
     def test_f2_missing_auth_returns_401(self):
         import os
         from unittest.mock import patch as _patch
-        with _patch.dict(os.environ, {"IHOUSE_JWT_SECRET": "test-secret-for-auth-check"}):
+        with _patch.dict(os.environ, {"IHOUSE_JWT_SECRET": "test-secret-for-auth-check", "IHOUSE_DEV_MODE": "false"}):
             resp = client.post("/conflicts/resolve", json=_BASE_PAYLOAD)
         assert resp.status_code in {401, 403}
 

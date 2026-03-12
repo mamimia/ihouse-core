@@ -285,7 +285,7 @@ def test_list_write_api_url_null():
 
 
 def test_list_403_no_jwt():
-    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret"}):
+    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret", "IHOUSE_DEV_MODE": "false"}):
         r = _client.get("/admin/registry/providers")
     assert r.status_code == 403
 
@@ -354,7 +354,7 @@ def test_get_single_notes_propagated():
 
 
 def test_get_single_403_no_jwt():
-    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret"}):
+    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret", "IHOUSE_DEV_MODE": "false"}):
         r = _client.get("/admin/registry/providers/airbnb")
     assert r.status_code == 403
 
@@ -459,7 +459,7 @@ def test_put_tier_d_no_sync():
 
 
 def test_put_403_no_jwt():
-    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret"}):
+    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret", "IHOUSE_DEV_MODE": "false"}):
         r = _client.put("/admin/registry/providers/airbnb", json={"tier": "A"})
     assert r.status_code == 403
 

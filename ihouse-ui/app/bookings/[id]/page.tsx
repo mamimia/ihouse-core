@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Phase 158 — Manager Booking Detail View
+ * Phase 289 — Manager Booking Detail View (Phase 158 + expanded)
  * Route: /bookings/[id]
  *
  * Tabs:

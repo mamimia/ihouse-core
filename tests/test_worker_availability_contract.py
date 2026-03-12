@@ -54,6 +54,12 @@ IN_30 = (date.today() + timedelta(days=30)).isoformat()
 IN_91 = (date.today() + timedelta(days=91)).isoformat()
 
 
+@pytest.fixture(autouse=True)
+def _dev_mode(monkeypatch):
+    """Phase 283: set dev mode per-test so auth doesn't block."""
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

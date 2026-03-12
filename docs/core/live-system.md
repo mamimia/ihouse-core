@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 273 — Documentation Integrity Sync XIII (2026-03-11)**
+**Last updated: Phase 292 — Platform Checkpoint XIV (2026-03-12)**
 
 ## Core Architecture
 
@@ -393,6 +393,38 @@ All **14 providers** implemented at full parity:
 | `GET /admin/analytics/top-properties` | Top properties by revenue/occupancy | 264 |
 | `GET /admin/analytics/ota-mix` | OTA booking mix trends | 264 |
 | `GET /admin/analytics/revenue-summary` | Revenue summary aggregation | 264 |
+
+### Outbound Sync (Phases 135–155)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /outbound/trigger` | Manual outbound sync trigger | 137 |
+| `POST /outbound/execute/{property_id}` | Execute sync for property | 138 |
+| `GET /admin/outbound-log` | Outbound sync log (booking_id, status, filters) | 145 |
+| `GET /admin/sync-health` | Per-property sync health dashboard | 146 |
+| `POST /admin/outbound/replay/{log_id}` | Replay a failed outbound sync | 147 |
+| `GET /admin/channel-map` | Property-to-channel mappings | 135 |
+| `POST /admin/channel-map` | Upsert property-channel mapping | 135 |
+| `GET /admin/capabilities` | Provider capability registry | 136 |
+
+### Booking Search & Calendar (Phases 109, 129, 200)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /bookings/search` | Date range + property + status search | 109/129 |
+| `GET /booking-history/{booking_id}` | Chronological booking event history | 132 |
+
+### Cashflow Projection (Phase 120)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /cashflow/projection` | ISO week cashflow buckets (30/60/90d) | 120 |
+
+### SSE (Phase 181)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /sse/tasks` | Server-Sent Events for real-time worker task updates | 181 |
 
 ## Future Evolution
 

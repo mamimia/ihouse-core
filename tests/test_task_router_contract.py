@@ -37,11 +37,18 @@ from fastapi.testclient import TestClient
 # App fixture
 # ---------------------------------------------------------------------------
 
+@pytest.fixture(autouse=True)
+def _dev_mode(monkeypatch):
+    """Phase 283: set dev mode per-test so auth doesn't block."""
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
+
+
 @pytest.fixture(scope="module")
 def client():
     import os
     os.environ.setdefault("SUPABASE_URL", "https://fake.supabase.co")
     os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "fake-key")
+    os.environ.setdefault("IHOUSE_DEV_MODE", "true")  # Phase 283
     from main import app
     return TestClient(app, raise_server_exceptions=False)
 

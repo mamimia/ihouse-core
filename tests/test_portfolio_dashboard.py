@@ -316,8 +316,14 @@ class TestPortfolioDashboard:
                 _sync_row("prop-stale", executed_at="2026-03-08T00:00:00"),
             ]
         )
+        from datetime import datetime as _dt, timezone as _tz
+        frozen = _dt(2026, 3, 11, 2, 0, 0, tzinfo=_tz.utc)
         with patch("api.portfolio_dashboard_router._get_supabase_client", return_value=db), \
-             patch("api.auth.jwt_auth", return_value=_TENANT):
+             patch("api.auth.jwt_auth", return_value=_TENANT), \
+             patch("api.portfolio_dashboard_router.datetime") as mock_dt:
+            mock_dt.now.return_value = frozen
+            mock_dt.fromisoformat = _dt.fromisoformat
+            mock_dt.side_effect = lambda *a, **kw: _dt(*a, **kw)
             resp = _make_client().get(
                 "/portfolio/dashboard",
                 params={"as_of": "2026-03-11"},

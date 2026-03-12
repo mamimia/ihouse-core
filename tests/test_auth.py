@@ -80,6 +80,7 @@ def test_missing_credentials_raises_403(monkeypatch):
 
 def test_malformed_token_raises_403(monkeypatch):
     monkeypatch.setenv(_ENV_VAR, _SECRET)
+    monkeypatch.delenv("IHOUSE_DEV_MODE", raising=False)
     creds = _make_credentials("not.a.valid.jwt.token.here")
     with pytest.raises(HTTPException) as exc_info:
         verify_jwt(creds)
@@ -92,6 +93,7 @@ def test_malformed_token_raises_403(monkeypatch):
 
 def test_wrong_secret_raises_403(monkeypatch):
     monkeypatch.setenv(_ENV_VAR, "correct-secret")
+    monkeypatch.delenv("IHOUSE_DEV_MODE", raising=False)
     token = _make_token(secret="wrong-secret")
     creds = _make_credentials(token)
     with pytest.raises(HTTPException) as exc_info:
@@ -105,6 +107,7 @@ def test_wrong_secret_raises_403(monkeypatch):
 
 def test_expired_token_raises_403(monkeypatch):
     monkeypatch.setenv(_ENV_VAR, _SECRET)
+    monkeypatch.delenv("IHOUSE_DEV_MODE", raising=False)
     token = _make_token(exp_delta=timedelta(seconds=-1))
     creds = _make_credentials(token)
     with pytest.raises(HTTPException) as exc_info:
@@ -131,6 +134,7 @@ def test_dev_mode_returns_dev_tenant(monkeypatch):
 
 def test_no_sub_claim_raises_403(monkeypatch):
     monkeypatch.setenv(_ENV_VAR, _SECRET)
+    monkeypatch.delenv("IHOUSE_DEV_MODE", raising=False)
     token = _make_token(sub=None)  # no sub claim
     creds = _make_credentials(token)
     with pytest.raises(HTTPException) as exc_info:
@@ -144,6 +148,7 @@ def test_no_sub_claim_raises_403(monkeypatch):
 
 def test_empty_sub_claim_raises_403(monkeypatch):
     monkeypatch.setenv(_ENV_VAR, _SECRET)
+    monkeypatch.delenv("IHOUSE_DEV_MODE", raising=False)
     token = _make_token(sub="   ")  # whitespace-only
     creds = _make_credentials(token)
     with pytest.raises(HTTPException) as exc_info:

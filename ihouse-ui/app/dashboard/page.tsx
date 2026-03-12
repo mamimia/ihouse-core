@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { api, OperationsToday, Task, OutboundHealthProvider, DlqEntry } from '@/lib/api';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { api, OperationsToday, Task, OutboundHealthProvider, DlqEntry, PortfolioProperty } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,6 +12,7 @@ interface DashboardData {
     criticalTasks: Task[];
     syncProviders: OutboundHealthProvider[];
     dlqPending: DlqEntry[];
+    portfolio: PortfolioProperty[];
 }
 
 // ---------------------------------------------------------------------------
@@ -141,18 +142,21 @@ export default function DashboardPage() {
         criticalTasks: [],
         syncProviders: [],
         dlqPending: [],
+        portfolio: [],
     });
     const [loading, setLoading] = useState(true);
     const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [todayRes, tasksRes, healthRes, dlqRes] = await Promise.allSettled([
+            const [todayRes, tasksRes, healthRes, dlqRes, portfolioRes] = await Promise.allSettled([
                 api.getOperationsToday(),
                 api.getTasks({ status: 'pending', priority: 'critical', limit: 10 }),
                 api.getOutboundHealth(),
                 api.getDlq({ status: 'pending', limit: 50 }),
+                api.getPortfolioDashboard(),
             ]);
 
             setData({
@@ -160,6 +164,7 @@ export default function DashboardPage() {
                 criticalTasks: tasksRes.status === 'fulfilled' ? tasksRes.value.tasks : [],
                 syncProviders: healthRes.status === 'fulfilled' ? healthRes.value.providers : [],
                 dlqPending: dlqRes.status === 'fulfilled' ? dlqRes.value.entries : [],
+                portfolio: portfolioRes.status === 'fulfilled' ? portfolioRes.value.properties : [],
             });
             setLastRefresh(new Date());
         } finally {
@@ -167,7 +172,12 @@ export default function DashboardPage() {
         }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        load();
+        // 60s auto-refresh
+        timerRef.current = setInterval(load, 60_000);
+        return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }, [load]);
 
     const now = new Date();
     const hour = now.getHours();
@@ -367,6 +377,64 @@ export default function DashboardPage() {
 
             </div>
 
+            {/* Section 5 — Portfolio Overview */}
+            {data.portfolio.length > 0 && (
+                <SectionCard
+                    title="Portfolio overview"
+                    badge={data.portfolio.length}
+                >
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                        gap: 'var(--space-3)',
+                    }}>
+                        {data.portfolio.map(prop => (
+                            <div key={prop.property_id} style={{
+                                background: 'var(--color-surface-2)',
+                                border: `1px solid ${prop.sync_health.stale ? '#f59e0b44' : 'var(--color-border)'}`,
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--space-3) var(--space-4)',
+                            }}>
+                                <div style={{
+                                    fontSize: 'var(--text-xs)',
+                                    fontWeight: 700,
+                                    color: 'var(--color-text-dim)',
+                                    marginBottom: 'var(--space-2)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.06em',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                }}>
+                                    <span style={{
+                                        maxWidth: 140,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                    }}>{prop.property_id}</span>
+                                    {prop.sync_health.stale && (
+                                        <span style={{ color: 'var(--color-warn)', fontSize: 11 }}>STALE</span>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                                        🛏 {prop.occupancy.active_bookings} active
+                                    </span>
+                                    <span style={{ fontSize: 'var(--text-xs)', color: prop.tasks.pending_tasks > 0 ? 'var(--color-warn)' : 'var(--color-text-dim)' }}>
+                                        ✓ {prop.tasks.pending_tasks} tasks
+                                    </span>
+                                    {prop.revenue.gross_total && (
+                                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ok)' }}>
+                                            {prop.revenue.currency} {prop.revenue.gross_total}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </SectionCard>
+            )}
+
             {/* Footer */}
             <div style={{
                 marginTop: 'var(--space-10)',
@@ -377,8 +445,8 @@ export default function DashboardPage() {
                 display: 'flex',
                 justifyContent: 'space-between',
             }}>
-                <span>iHouse Core — Operations Dashboard · Phase 153</span>
-                <span>Auto-refresh: manual</span>
+                <span>Domaniqo — Operations Dashboard · Phase 288</span>
+                <span>Auto-refresh: 60s</span>
             </div>
         </div>
     );

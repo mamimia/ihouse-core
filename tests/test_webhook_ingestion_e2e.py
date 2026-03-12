@@ -27,7 +27,6 @@ import sys
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("IHOUSE_ENV", "test")
-os.environ.setdefault("IHOUSE_DEV_MODE", "true")   # Phase 276/282: explicit dev bypass
 
 import pytest
 from fastapi.testclient import TestClient
@@ -38,6 +37,12 @@ from main import app  # noqa: E402
 client = TestClient(app, raise_server_exceptions=False)
 
 TENANT = "dev-tenant"
+
+
+@pytest.fixture(autouse=True)
+def _dev_mode(monkeypatch):
+    """Phase 283: set dev mode per-test so it doesn't leak to other files."""
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
 
 
 # ---------------------------------------------------------------------------

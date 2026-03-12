@@ -91,4 +91,4 @@ services:
     labels:
       - "com.ihouse.service=api"
       - "com.ihouse.env=production"
-      - "com.ihouse.version=phase278"
+      - "com.ihouse.version=phase286"

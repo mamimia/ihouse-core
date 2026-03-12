@@ -346,7 +346,7 @@ def test_history_many_amendments():
 # ===========================================================================
 def test_history_401_no_jwt():
     """Without dependency override — HTTPBearer returns 403 when no token."""
-    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret-for-auth"}):
+    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret-for-auth", "IHOUSE_DEV_MODE": "false"}):
         resp = _client.get(f"/bookings/{_BOOKING_ID}/history")
     assert resp.status_code == 403
 

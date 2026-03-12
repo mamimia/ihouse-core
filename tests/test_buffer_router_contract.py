@@ -330,7 +330,7 @@ def test_buffer_list_post_not_allowed():
 
 # TC-23 — 403 when JWT missing (prod mode)
 def test_buffer_list_403_no_jwt():
-    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret"}):
+    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret", "IHOUSE_DEV_MODE": "false"}):
         resp = _client.get("/admin/buffer")
     assert resp.status_code == 403
 

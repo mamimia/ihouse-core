@@ -5169,3 +5169,246 @@ Tests: ~6,250 passed. Exit 0.
 - `docs/archive/phases/phase-282-spec.md` — NEW
 
 Tests: ~6,250 passed. Exit 0.
+
+## Phase 283 — Test Suite Isolation Fix + conftest.py (Closed) — 2026-03-12
+
+**Category:** 🔧 Tech debt
+**Actions:**
+- `tests/conftest.py` — NEW — session-scoped env var management (IHOUSE_DEV_MODE=true, IHOUSE_RATE_LIMIT_RPM=0, per-test cleanup)
+- `tests/test_webhook_ingestion_e2e.py` — MODIFIED — removed module-level os.environ.setdefault, added _dev_mode fixture
+- `tests/test_worker_availability_contract.py` — MODIFIED — added _dev_mode fixture
+- `tests/test_worker_copilot_contract.py` — MODIFIED — added _dev_mode fixture
+- `tests/test_task_template_contract.py` — MODIFIED — added _dev_mode fixture + client fixture env var
+- `tests/test_task_router_contract.py` — MODIFIED — added _dev_mode fixture + client fixture env var
+- `tests/test_task_system_e2e.py` — MODIFIED — fixed import, added _dev_mode fixture
+- `tests/test_task_recommendation_contract.py` — MODIFIED — added _dev_mode fixture
+- `tests/test_auth.py` — MODIFIED — monkeypatch.delenv("IHOUSE_DEV_MODE") on 5 auth enforcement tests
+- `tests/test_outbound_executor_contract.py` — MODIFIED — IHOUSE_DEV_MODE: false in patch.dict
+- `tests/test_sync_trigger_contract.py` — MODIFIED — IHOUSE_DEV_MODE: false in patch.dict
+- `tests/test_conflict_resolution_contract.py` — MODIFIED — IHOUSE_DEV_MODE: false in 2 patch.dict calls
+- `tests/test_buffer_router_contract.py` — MODIFIED — IHOUSE_DEV_MODE: false in patch.dict
+- `tests/test_channel_map_contract.py` — MODIFIED — IHOUSE_DEV_MODE: false in patch.dict
+- `tests/test_capability_registry_contract.py` — MODIFIED — IHOUSE_DEV_MODE: false in 3 patch.dict calls
+- `tests/test_booking_history_contract.py` — MODIFIED — IHOUSE_DEV_MODE: false in patch.dict
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 284 — Supabase Schema Truth Sync (Closed) — 2026-03-12
+
+**Category:** 🔧 Schema alignment
+**Actions:**
+- Applied 5 missing Supabase migrations: worker_availability (234), guest_messages_log (236), rate_cards (246), guest_feedback (247), task_templates (248)
+- `artifacts/supabase/schema.sql` — MODIFIED — re-exported from live DB (34 objects, was stale since Phase 50)
+- `supabase/BOOTSTRAP.md` — MODIFIED — updated to Phase 284 (33 tables + 1 view, 29 migrations)
+- `tests/test_portfolio_dashboard.py` — MODIFIED — fixed datetime.now mock in test_stale_property_sorted_first
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 285 — Documentation Integrity Sync XIV (Closed) — 2026-03-12
+
+**Category:** 📝 Documentation
+**Actions:**
+- `docs/core/roadmap.md` — MODIFIED — System Numbers to Phase 285 (6,216 tests, 33 tables), Active Direction updated with 283-284 summaries
+- `docs/core/current-snapshot.md` — MODIFIED — current phase → 286, last closed → 285
+- `docs/core/live-system.md` — MODIFIED — header to Phase 285
+- `docs/core/phase-timeline.md` — MODIFIED — appended Phases 283-285
+- `docs/core/construction-log.md` — MODIFIED — appended Phases 283-285
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 286 — Production Docker Hardening (Closed) — 2026-03-12
+
+**Category:** 🔧 Infrastructure
+**Actions:**
+- `scripts/deploy_checklist.sh` — NEW — 7-step pre-deploy validation (env vars, Supabase ping, port check, Docker, compose syntax, Dockerfile structure, .env.example completeness)
+- `docker-compose.production.yml` — MODIFIED — version label updated to phase286
+- Confirmed: healthcheck already correct from Phase 278, depends_on N/A (single service)
+- `docs/archive/phases/phase-286-spec.md` — NEW
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 287 — Frontend Foundation (Closed) — 2026-03-12
+
+**Category:** 🎨 Frontend
+**Actions:**
+- Audited `ihouse-ui/` — 18 pages already built (Phases 153-257), protected routes, Domaniqo branding, full API client
+- `ihouse-ui/app/page.tsx` — MODIFIED — replaced Next.js boilerplate with redirect('/dashboard')
+- `ihouse-ui/.env.local.example` — NEW — NEXT_PUBLIC_API_URL documentation
+- `docs/archive/phases/phase-287-spec.md` — NEW
+- TypeScript: tsc --noEmit → 0 errors
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 288 — Operations Dashboard UI (Closed) — 2026-03-12
+
+**Category:** 🎨 Frontend
+**Actions:**
+- `ihouse-ui/lib/api.ts` — MODIFIED — added getPortfolioDashboard() + PortfolioProperty/PortfolioDashboardResponse types
+- `ihouse-ui/app/dashboard/page.tsx` — MODIFIED — portfolio grid section (stale indicator, occupancy, tasks, revenue), 60s auto-refresh via setInterval, footer bumped to Phase 288
+- `docs/archive/phases/phase-288-spec.md` — NEW
+- TypeScript: 0 errors
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 289 — Booking Management UI (Closed) — 2026-03-12
+
+**Category:** 🎨 Frontend
+**Actions:**
+- Audited /bookings + /bookings/[id] — fully built (Phases 158-194), 4 filters + 5-tab detail + guest link
+- `ihouse-ui/lib/api.ts` — MODIFIED — added getBookingHistory, getBookingAmendments, getBookingFinancial + 3 types
+- `ihouse-ui/app/bookings/[id]/page.tsx` — MODIFIED — header bumped to Phase 289
+- `docs/archive/phases/phase-289-spec.md` — NEW
+- TypeScript: 0 errors
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 290 — Worker Task View UI (Closed) — 2026-03-12
+
+**Category:** 🎨 Frontend
+**Actions:**
+- Audited worker page (1,114 lines) — already complete: SSE live refresh, SLA countdown, priority colors, bottom sheet, acknowledge/complete, bilingual
+- `ihouse-ui/app/worker/page.tsx` — MODIFIED — header bumped to Phase 290
+- `docs/archive/phases/phase-290-spec.md` — NEW
+- TypeScript: 0 errors
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 291 — Financial Dashboard UI (Closed) — 2026-03-12
+
+**Category:** 🎨 Frontend
+**Actions:**
+- Audited financial page (870 lines, Phases 163-191) — 5 sections already built
+- `ihouse-ui/app/financial/page.tsx` — MODIFIED — OTA Mix SVG donut (Section 1.5, inline computed pie chart), owner-statement quick-nav card, header bumped to Phase 291
+- `ihouse-ui/lib/api.ts` — MODIFIED — getCashflowProjection() + CashflowProjectionResponse type
+- `docs/archive/phases/phase-291-spec.md` — NEW
+- TypeScript: 0 errors
+
+Tests: 6,216 passed. Exit 0.
+
+## Phase 292 — Platform Checkpoint XIV (Closed) — 2026-03-12
+
+**Category:** 📝 Documentation / Audit
+**Actions:**
+- `docs/core/roadmap.md` — MODIFIED — System Numbers → Phase 292 (added Frontend + deploy_checklist rows)
+- `docs/core/current-snapshot.md` — MODIFIED — Current Phase → 293, Last Closed → 292
+- `docs/core/live-system.md` — MODIFIED — header → Phase 292
+- `docs/archive/phases/phase-292-spec.md` — NEW
+
+Tests: 6,216 passed. Exit 0.
+
+--- BATCH END: Phases 283–292 complete ---
+
+## Phase 293 — Full Archive Integrity Repair (Closed) — 2026-03-12
+
+**Category:** 📝 Documentation / Archive
+**Actions:**
+- Reconstructed 59 missing phase specs (1-18, 20-21, 70, 92, 94-96, 134, 143-147, 180, 184-185, 198-218, 249, 283-285) — now 293 total
+- Generated 292 phase ZIPs in docs/archive/zips/
+- live-system.md — added 4 API sections (outbound sync, booking search, cashflow, SSE) — now 100+ endpoints
+- current-snapshot.md — system status extended to Phase 292
+
+Tests: 6,216 passed. Exit 0.
+
+
+# Gap Fill — Reconstructed Entries (Phase 294)
+
+## Phase 52 — Booking State Projection v3 (Closed)
+
+Reconstructed during Phase 294. See phase-52-spec.md for details.
+
+## Phase 53 — Event Replay Foundation (Closed)
+
+Reconstructed during Phase 294. See phase-53-spec.md for details.
+
+## Phase 54 — State Rebuild v1 (Closed)
+
+Reconstructed during Phase 294. See phase-54-spec.md for details.
+
+## Phase 55 — DLQ Foundation (Closed)
+
+Reconstructed during Phase 294. See phase-55-spec.md for details.
+
+## Phase 56 — Error Recovery Pipeline (Closed)
+
+Reconstructed during Phase 294. See phase-56-spec.md for details.
+
+## Phase 70 — Booking Query Enhancement (Closed)
+
+Reconstructed during Phase 294. See phase-70-spec.md for details.
+
+## Phase 94 — MakeMyTrip Adapter (Closed)
+
+Reconstructed during Phase 294. See phase-94-spec.md for details.
+
+## Phase 132 — Booking Audit Trail (Closed)
+
+Reconstructed during Phase 294. See phase-132-spec.md for details.
+
+## Phase 133 — OTA Ordering Buffer Inspector (Closed)
+
+Reconstructed during Phase 294. See phase-133-spec.md for details.
+
+## Phase 134 — Outbound Sync Foundation (Gap Phase) (Closed)
+
+Reconstructed during Phase 294. See phase-134-spec.md for details.
+
+## Phase 135 — Property-Channel Map Foundation (Closed)
+
+Reconstructed during Phase 294. See phase-135-spec.md for details.
+
+## Phase 136 — Provider Capability Registry (Closed)
+
+Reconstructed during Phase 294. See phase-136-spec.md for details.
+
+## Phase 137 — Outbound Sync Trigger (Closed)
+
+Reconstructed during Phase 294. See phase-137-spec.md for details.
+
+## Phase 167 — Permissions Routing (Closed)
+
+Reconstructed during Phase 294. See phase-167-spec.md for details.
+
+## Phase 168 — Push Notification Foundation (Closed)
+
+Reconstructed during Phase 294. See phase-168-spec.md for details.
+
+## Phase 169 — Admin Settings UI (Closed)
+
+Reconstructed during Phase 294. See phase-169-spec.md for details.
+
+## Phase 170 — Owner Portal UI (Closed)
+
+Reconstructed during Phase 294. See phase-170-spec.md for details.
+
+## Phase 171 — Admin Audit Log (Closed)
+
+Reconstructed during Phase 294. See phase-171-spec.md for details.
+
+## Phase 172 — Health Check Enrichment (Closed)
+
+Reconstructed during Phase 294. See phase-172-spec.md for details.
+
+## Phase 173 — IPI — Proactive Availability Broadcasting (Closed)
+
+Reconstructed during Phase 294. See phase-173-spec.md for details.
+
+## Phase 174 — Outbound Sync Stress Harness (Closed)
+
+Reconstructed during Phase 294. See phase-174-spec.md for details.
+
+## Phase 249 — Guest Communication Enhancement (Closed)
+
+Reconstructed during Phase 294. See phase-249-spec.md for details.
+
+## Phase 294 — History & Configuration Truth Sync (Closed) — 2026-03-12
+
+**Category:** 📝 Documentation
+**Actions:**
+- Filled 22 gaps in phase-timeline.md (Phases 52-56, 70, 94, 132-137, 167-174, 249)
+- Filled 40 gaps in construction-log.md (Phases 1-12, 14-16, 70-76, 92-96, 115-119, 132+)
+- Synced 11 missing env vars from .env.production.example → current-snapshot.md
+- Updated test count to 6,216, phase reference to 294
+- `docs/archive/phases/phase-293-spec.md` — NEW
+- `docs/archive/phases/phase-294-spec.md` — NEW
+
+Tests: 6,216 passed. Exit 0.

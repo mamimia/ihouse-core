@@ -3743,3 +3743,291 @@ Full audit. All phase specs + ZIPs verified. Canonical docs updated. Handoff cre
 - `docs/archive/phases/phase-282-spec.md` — NEW
 
 Tests: ~6,250. Exit 0.
+
+
+## Phase 283 — Test Suite Isolation Fix + conftest.py (2026-03-12)
+
+Created `tests/conftest.py` for session-scoped env var management. Fixed 4 root causes of test failures: env var leakage, missing dev mode fixtures, auth enforcement tests not disabling dev mode, and rate limiter singleton accumulation. 16 files modified.
+
+- `tests/conftest.py` — NEW — global IHOUSE_DEV_MODE=true + IHOUSE_RATE_LIMIT_RPM=0
+- 7 test files — MODIFIED — added _dev_mode autouse fixtures
+- 8 test files — MODIFIED — disabled dev mode for auth enforcement tests
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 284 — Supabase Schema Truth Sync (2026-03-12)
+
+Applied 5 missing migrations to live Supabase. Re-exported schema.sql. Fixed portfolio sort bug.
+
+- 5 Supabase migrations applied: worker_availability, guest_messages_log, rate_cards, guest_feedback, task_templates
+- `artifacts/supabase/schema.sql` — MODIFIED — full re-export (34 objects)
+- `supabase/BOOTSTRAP.md` — MODIFIED — Phase 284 (33 tables, 29 migrations)
+- `tests/test_portfolio_dashboard.py` — MODIFIED — datetime.now mock fix
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 285 — Documentation Integrity Sync XIV (2026-03-12)
+
+Updated all canonical docs to Phase 285 state.
+
+- `roadmap.md` — MODIFIED (System Numbers, Active Direction)
+- `current-snapshot.md` — MODIFIED
+- `live-system.md` — MODIFIED
+- `phase-timeline.md` — MODIFIED (appended 283-285)
+- `construction-log.md` — MODIFIED (appended 283-285)
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 286 — Production Docker Hardening (2026-03-12)
+
+Pre-deploy checklist script + compose hardening.
+
+- `scripts/deploy_checklist.sh` — NEW — 7-step validation (env vars, Supabase ping, port, Docker, compose syntax)
+- `docker-compose.production.yml` — MODIFIED — version label phase286
+- Healthcheck + single-service structure confirmed correct from Phase 278
+- `docs/archive/phases/phase-286-spec.md` — NEW
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 287 — Frontend Foundation (2026-03-12)
+
+Audited and completed the Next.js frontend shell. 18 pages were already built (Phases 153-257). Fixed the root page boilerplate.
+
+- `ihouse-ui/app/page.tsx` — MODIFIED — redirect('/dashboard') replacing Next.js template
+- `ihouse-ui/.env.local.example` — NEW — NEXT_PUBLIC_API_URL reference
+- TypeScript: 0 errors
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 288 — Operations Dashboard UI (2026-03-12)
+
+Connected dashboard to /portfolio/dashboard + added 60s auto-refresh.
+
+- `ihouse-ui/lib/api.ts` — getPortfolioDashboard() + portfolio types
+- `ihouse-ui/app/dashboard/page.tsx` — portfolio grid, 60s auto-refresh, Phase 288 footer
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 289 — Booking Management UI (2026-03-12)
+
+Booking pages fully audited. Added 3 API methods + types to shared api.ts.
+
+- `ihouse-ui/lib/api.ts` — getBookingHistory, getBookingAmendments, getBookingFinancial + types
+- Booking pages already complete (2 pages, 4 filters, 5 tabs, guest link)
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 290 — Worker Task View UI (2026-03-12)
+
+Worker page audited. Already complete across Phases 178-193. Header bumped.
+
+- `ihouse-ui/app/worker/page.tsx` — MODIFIED — header Phase 290
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 291 — Financial Dashboard UI (2026-03-12)
+
+Added OTA mix donut + owner-statement link to financial page. Added cashflow API method.
+
+- `app/financial/page.tsx` — OTA mix SVG donut, owner-statement link, Phase 291 header
+- `lib/api.ts` — getCashflowProjection() + CashflowProjectionResponse
+
+Tests: 6,216. Exit 0.
+
+
+## Phase 292 — Platform Checkpoint XIV (2026-03-12)
+
+Full audit after Phases 286-291. All canonical docs synced to Phase 292.
+
+- roadmap.md → system numbers Phase 292
+- current-snapshot.md → Phase 293/292
+- live-system.md → Phase 292 header
+
+Tests: 6,216. Exit 0.
+
+--- BATCH END: Phases 283–292 complete ---
+
+
+## Phase 293 — Full Archive Integrity Repair (2026-03-12)
+
+59 missing phase specs reconstructed. 292 ZIPs generated. live-system.md extended. current-snapshot.md updated.
+
+Tests: 6,216. Exit 0.
+
+
+# Gap Fill — Reconstructed Entries (Phase 294)
+
+## Phase 1 — Project Initialization
+
+Reconstructed during Phase 294. See phase-1-spec.md.
+
+## Phase 2 — Core Data Model
+
+Reconstructed during Phase 294. See phase-2-spec.md.
+
+## Phase 3 — Event Schema Foundation
+
+Reconstructed during Phase 294. See phase-3-spec.md.
+
+## Phase 4 — Booking State Model
+
+Reconstructed during Phase 294. See phase-4-spec.md.
+
+## Phase 5 — Event Log Schema
+
+Reconstructed during Phase 294. See phase-5-spec.md.
+
+## Phase 6 — apply_envelope Core
+
+Reconstructed during Phase 294. See phase-6-spec.md.
+
+## Phase 7 — Inbound Pipeline v1
+
+Reconstructed during Phase 294. See phase-7-spec.md.
+
+## Phase 8 — Airbnb Adapter
+
+Reconstructed during Phase 294. See phase-8-spec.md.
+
+## Phase 9 — Booking.com Adapter
+
+Reconstructed during Phase 294. See phase-9-spec.md.
+
+## Phase 10 — Expedia Adapter
+
+Reconstructed during Phase 294. See phase-10-spec.md.
+
+## Phase 11 — Agoda Adapter
+
+Reconstructed during Phase 294. See phase-11-spec.md.
+
+## Phase 12 — Trip.com Adapter
+
+Reconstructed during Phase 294. See phase-12-spec.md.
+
+## Phase 14 — Webhook Signature Verification
+
+Reconstructed during Phase 294. See phase-14-spec.md.
+
+## Phase 15 — Payload Validation Layer
+
+Reconstructed during Phase 294. See phase-15-spec.md.
+
+## Phase 16 — Idempotency Guard
+
+Reconstructed during Phase 294. See phase-16-spec.md.
+
+## Phase 70 — Booking Query Enhancement
+
+Reconstructed during Phase 294. See phase-70-spec.md.
+
+## Phase 71 — Booking State Query API
+
+Reconstructed during Phase 294. See phase-71-spec.md.
+
+## Phase 72 — Tenant Summary Dashboard
+
+Reconstructed during Phase 294. See phase-72-spec.md.
+
+## Phase 73 — Ordering Buffer Auto-Route
+
+Reconstructed during Phase 294. See phase-73-spec.md.
+
+## Phase 74 — OTA Date Normalization
+
+Reconstructed during Phase 294. See phase-74-spec.md.
+
+## Phase 76 — occurred_at vs recorded_at Separation
+
+Reconstructed during Phase 294. See phase-76-spec.md.
+
+## Phase 92 — Roadmap + System Audit
+
+Reconstructed during Phase 294. See phase-92-spec.md.
+
+## Phase 94 — MakeMyTrip Adapter
+
+Reconstructed during Phase 294. See phase-94-spec.md.
+
+## Phase 95 — MakeMyTrip Replay Fixture
+
+Reconstructed during Phase 294. See phase-95-spec.md.
+
+## Phase 96 — Klook Adapter
+
+Reconstructed during Phase 294. See phase-96-spec.md.
+
+## Phase 115 — Task Writer
+
+Reconstructed during Phase 294. See phase-115-spec.md.
+
+## Phase 117 — SLA Escalation Engine
+
+Reconstructed during Phase 294. See phase-117-spec.md.
+
+## Phase 118 — Financial Dashboard API
+
+Reconstructed during Phase 294. See phase-118-spec.md.
+
+## Phase 119 — Reconciliation Inbox API
+
+Reconstructed during Phase 294. See phase-119-spec.md.
+
+## Phase 132 — Booking Audit Trail
+
+Reconstructed during Phase 294. See phase-132-spec.md.
+
+## Phase 133 — OTA Ordering Buffer Inspector
+
+Reconstructed during Phase 294. See phase-133-spec.md.
+
+## Phase 134 — Outbound Sync Foundation (Gap Phase)
+
+Reconstructed during Phase 294. See phase-134-spec.md.
+
+## Phase 135 — Property-Channel Map Foundation
+
+Reconstructed during Phase 294. See phase-135-spec.md.
+
+## Phase 136 — Provider Capability Registry
+
+Reconstructed during Phase 294. See phase-136-spec.md.
+
+## Phase 192 — Phase 192
+
+Reconstructed during Phase 294. See phase-192-spec.md.
+
+## Phase 193 — Phase 193
+
+Reconstructed during Phase 294. See phase-193-spec.md.
+
+## Phase 194 — Phase 194
+
+Reconstructed during Phase 294. See phase-194-spec.md.
+
+## Phase 195 — Phase 195
+
+Reconstructed during Phase 294. See phase-195-spec.md.
+
+## Phase 249 — Guest Communication Enhancement
+
+Reconstructed during Phase 294. See phase-249-spec.md.
+
+## Phase 260 — Phase 260
+
+Reconstructed during Phase 294. See phase-260-spec.md.
+
+
+## Phase 294 — History & Configuration Truth Sync (2026-03-12)
+
+22 timeline gaps + 40 construction-log gaps filled. 11 env vars synced. All docs aligned.
+
+Tests: 6,216. Exit 0.

@@ -518,7 +518,7 @@ def test_delete_tenant_id_in_response():
 # ===========================================================================
 
 def test_all_endpoints_403_no_jwt():
-    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret"}):
+    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "test-secret", "IHOUSE_DEV_MODE": "false"}):
         r1 = _client.post(f"/admin/properties/{_PROP}/channels", json={})
         r2 = _client.get(f"/admin/properties/{_PROP}/channels")
         r3 = _client.patch(f"/admin/properties/{_PROP}/channels/airbnb", json={})

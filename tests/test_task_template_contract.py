@@ -28,6 +28,12 @@ _BASE = "/admin/task-templates"
 _PATCH_DB = "api.task_template_router._get_supabase_client"
 
 
+@pytest.fixture(autouse=True)
+def _dev_mode(monkeypatch):
+    """Phase 283: set dev mode per-test so auth doesn't block."""
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
+
+
 # ---------------------------------------------------------------------------
 # Fake DB helpers
 # ---------------------------------------------------------------------------

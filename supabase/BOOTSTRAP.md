@@ -1,7 +1,9 @@
 # iHouse Core — Supabase Bootstrap Guide
 
 > This document explains how to reproduce a fresh Supabase database from scratch.
-> Last updated: Phase 274 (2026-03-11)
+> Last updated: Phase 284 (2026-03-12)
+>
+> **Live Supabase: 33 tables + 1 view (`ota_dlq_summary`), 29 migrations, all RLS enabled.**
 
 ## Complete Migration Sequence
 

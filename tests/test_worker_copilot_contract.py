@@ -50,6 +50,13 @@ from api.worker_copilot_router import (
 
 TENANT = "tenant-test"
 
+
+@pytest.fixture(autouse=True)
+def _dev_mode(monkeypatch):
+    """Phase 283: set dev mode per-test so auth doesn't block."""
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

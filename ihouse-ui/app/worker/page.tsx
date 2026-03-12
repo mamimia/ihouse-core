@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Phase 178 — Worker Mobile UI
+ * Phase 290 — Worker Mobile UI (Phase 178 + Phase 181 SSE + Phase 290 audit)
  * Route: /worker
  *
  * Dedicated mobile-first app for field workers.

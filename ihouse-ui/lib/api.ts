@@ -581,6 +581,34 @@ export const api = {
         apiFetch(`/admin/dlq/${encodeURIComponent(envelope_id)}/replay`, {
             method: 'POST',
         }),
+
+    // Phase 216 — Portfolio Dashboard (added Phase 288)
+    getPortfolioDashboard: (params?: {
+        as_of?: string;
+        month?: string;
+    }): Promise<PortfolioDashboardResponse> => {
+        const q = new URLSearchParams();
+        if (params?.as_of) q.set('as_of', params.as_of);
+        if (params?.month) q.set('month', params.month);
+        return apiFetch(`/portfolio/dashboard${q.size ? '?' + q : ''}`);
+    },
+
+    // Phase 289 — Booking detail helpers
+    getBookingHistory: (booking_id: string): Promise<{ booking_id: string; events: BookingHistoryEntry[]; count: number }> =>
+        apiFetch(`/booking-history/${encodeURIComponent(booking_id)}`),
+
+    getBookingAmendments: (booking_id: string): Promise<{ amendments: BookingAmendment[]; count: number }> =>
+        apiFetch(`/bookings/${encodeURIComponent(booking_id)}/amendments`),
+
+    getBookingFinancial: (booking_id: string): Promise<BookingFinancialDetail> =>
+        apiFetch(`/financial/${encodeURIComponent(booking_id)}`),
+
+    // Phase 291 — Cashflow Projection
+    getCashflowProjection: (period: string, baseCurrency?: string): Promise<CashflowProjectionResponse> => {
+        const q = new URLSearchParams({ period });
+        if (baseCurrency) q.set('base_currency', baseCurrency);
+        return apiFetch(`/cashflow/projection?${q}`);
+    },
 };
 
 // Phase 157 — Worker task types
@@ -670,4 +698,100 @@ export interface ReplayResult {
     replay_result: string | null;
     replay_trace_id: string | null;
     already_replayed: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 216 — Portfolio Dashboard types (added Phase 288)
+// ---------------------------------------------------------------------------
+
+export interface PortfolioProperty {
+    property_id: string;
+    occupancy: {
+        active_bookings: number;
+        arrivals_today: number;
+        departures_today: number;
+        cleanings_today: number;
+    };
+    revenue: {
+        gross_total: string | null;
+        net_total: string | null;
+        currency: string | null;
+        booking_count: number;
+        month: string;
+    };
+    tasks: {
+        pending_tasks: number;
+        escalated_tasks: number;
+    };
+    sync_health: {
+        last_sync_at: string | null;
+        last_sync_status: string | null;
+        stale: boolean | null;
+        provider_count: number;
+    };
+}
+
+export interface PortfolioDashboardResponse {
+    tenant_id: string;
+    as_of: string;
+    revenue_month: string;
+    generated_at: string;
+    property_count: number;
+    properties: PortfolioProperty[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 289 — Booking History / Amendment / Financial types
+// ---------------------------------------------------------------------------
+
+export interface BookingHistoryEntry {
+    event_id: string | null;
+    event_kind: string;
+    occurred_at: string | null;
+    payload: Record<string, unknown>;
+    version: number | null;
+}
+
+export interface BookingAmendment {
+    amendment_id?: string;
+    booking_id: string;
+    amendment_type: string;
+    old_value: string | null;
+    new_value: string | null;
+    changed_at: string | null;
+    changed_by: string | null;
+}
+
+export interface BookingFinancialDetail {
+    booking_id: string;
+    tenant_id?: string;
+    total_price: string | null;
+    net_to_property: string | null;
+    currency: string | null;
+    lifecycle_status: string | null;
+    event_kind: string | null;
+    recorded_at: string | null;
+    source_confidence: string | null;
+    epistemic_tier: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 291 — Financial Dashboard: Cashflow Projection
+// ---------------------------------------------------------------------------
+
+export interface CashflowWeek {
+    week: string;           // ISO week key "YYYY-Www"
+    week_start: string;     // ISO date
+    expected_gross: string;
+    expected_net: string;
+    booking_count: number;
+    currency: string;
+}
+
+export interface CashflowProjectionResponse {
+    tenant_id: string;
+    period: string;
+    base_currency: string | null;
+    weeks: CashflowWeek[];
+    total_weeks: number;
 }

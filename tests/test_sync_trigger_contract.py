@@ -477,7 +477,7 @@ def test_http_500_on_db_error():
 
 
 def test_http_403_no_jwt():
-    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "secret"}):
+    with patch.dict("os.environ", {"IHOUSE_JWT_SECRET": "secret", "IHOUSE_DEV_MODE": "false"}):
         r = _client.post("/internal/sync/trigger", json={"booking_id": _BOOKING})
     assert r.status_code == 403
 

@@ -32,6 +32,7 @@ from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("IHOUSE_ENV", "test")
 
+import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -42,6 +43,12 @@ http_client = TestClient(app, raise_server_exceptions=False)
 TENANT = "dev-tenant"
 TASK_ID = "task-001"
 BOOKING_ID = "bookingcom_bk001"
+
+
+@pytest.fixture(autouse=True)
+def _dev_mode(monkeypatch):
+    """Phase 283: set dev mode per-test so auth doesn't block."""
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
 
 
 # ---------------------------------------------------------------------------
