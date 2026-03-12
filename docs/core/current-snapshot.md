@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 298 — (next cycle: Guest Portal + Owner Portal Real Authentication)
+Phase 299 — (next cycle: Notification Layer — SMS/Email Dispatch for Guest Tokens)
 
 ## Last Closed Phase
-Phase 297 — Auth Session Management + Real Login Flow (closed) — user_sessions table + 5 session endpoints + 25 tests. JWT stored as hash only.
+Phase 298 — Guest Portal + Owner Portal Real Authentication (closed) — HMAC-SHA256 guest tokens, guest_tokens table, owner_portal_access table, 6 new endpoints, 35 tests.
 
 ## System Status
 

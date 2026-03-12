@@ -4045,3 +4045,7 @@ Tests: 6,216. Exit 0.
 ## Phase 297 — Auth Session Management + Real Login Flow (2026-03-12)
 
 user_sessions table + active_sessions view. session.py service (5 functions). session_router.py (5 endpoints: login-session, me, logout-session, sessions GET/DELETE). 25 tests (all pass). JWT stored as SHA-256 hash only.
+
+## Phase 298 — Guest Portal + Owner Portal Real Authentication (2026-03-12)
+
+HMAC-SHA256 signed guest tokens (guest_tokens table). Owner portal access grants (owner_portal_access table). guest_token.py service (9 functions). guest_token_router.py (2 endpoints). owner_portal_router.py (4 endpoints). 35 tests (all pass).

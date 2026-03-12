@@ -5451,3 +5451,18 @@ Tests: 37 new, all pass. Exit 0.
 - JWT stored as SHA-256 hash only. Best-effort session creation. /auth/token (Phase 179) unchanged.
 
 Tests: 25 new, all pass. Exit 0.
+
+## Phase 298 — Guest Portal + Owner Portal Real Authentication (Closed) — 2026-03-12
+
+**Category:** �� Authentication
+**Actions:**
+- Added Supabase migration: `guest_tokens` + `owner_portal_access` tables
+- Created `src/services/guest_token.py` — HMAC-SHA256 token issue/verify + owner access helpers
+- Created `src/api/guest_token_router.py` — 2 endpoints (issue token, verify token)
+- Created `src/api/owner_portal_router.py` — 4 endpoints (list properties, summary, grant/revoke access)
+- Created `tests/test_guest_owner_auth.py` — 35 contract tests (all pass)
+- Wired both routers into `src/main.py`
+- Token stored as SHA-256 hash only. HMAC is primary, DB revocation is best-effort.
+- Financial data scoped to 'owner' role only (not 'viewer').
+
+Tests: 35 new, all pass. Exit 0.

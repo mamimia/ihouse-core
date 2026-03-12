@@ -240,6 +240,12 @@ app.include_router(org_router)
 from api.session_router import router as session_router  # noqa: E402  # Phase 297
 app.include_router(session_router)
 
+from api.guest_token_router import router as guest_token_router  # noqa: E402  # Phase 298
+app.include_router(guest_token_router)
+
+from api.owner_portal_router import router as owner_portal_router  # noqa: E402  # Phase 298
+app.include_router(owner_portal_router)
+
 from api.cashflow_router import router as cashflow_router  # noqa: E402
 app.include_router(cashflow_router)
 
