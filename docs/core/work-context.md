@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 354 — (Next)
+Phase 355 — (Next)
 
 ## Last Closed Phase
 
-Phase 353 — Doc Auto-Generation from Code (closed).
+Phase 354 — Platform Checkpoint XVII (closed).
 
 ## Current Objective
 
-Phase 354 — Platform Checkpoint XVII: full test suite run, doc alignment, metric corrections, handoff.
+Fix 30 pre-existing test failures in test_sync_cancel_contract.py and test_sync_amend_contract.py, then plan next 10 phases.
 
 ## Key Invariants (Locked — Do Not Change)
 

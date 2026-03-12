@@ -4359,3 +4359,7 @@ CoreExecutor validation contract tests: unknown type, missing payload, missing o
 ## Phase 353 — Doc Auto-Generation from Code — 2026-03-12
 
 First automated metrics extraction tooling for iHouse Core. `scripts/extract_metrics.py` reads 6 live metrics (test_file_count, src_file_count, route_count, outbound_adapter_count, phase_spec_count, current_phase) from the real codebase and outputs JSON. Tests validate: ≥200 test files, ≥200 src files, ≥100 phase specs, phase≥350, route count≥100, ≤5 intentional route duplicates, OTA registry≥10 entries, outbound=7, all names lowercase, interface impl, snapshot doc freshness (Phase 350+, count≥5000), timeline docs Phase 352+, construction log≥50 lines, all phase specs .md, >100 bytes, phases 349-352 have Closed: dates. 22 tests, 5 groups, 0.90s. Total: 7,069 tests, 237 files.
+
+## Phase 354 — Platform Checkpoint XVII — 2026-03-12
+
+Full platform audit. Ran complete test suite: 7,069 collected (7,022 passed, 30 failed [pre-existing cancel/amend adapter tests], 17 skipped, 21.36s). Verified file counts: 235 test_*.py + 2 conftest.py = 237 test files, 256 src files, 353 phase specs. Corrected current-snapshot.md: appended phases 337-354 to system status line, fixed "All passing" claim to reflect actual 30 pre-existing failures. Updated work-context.md. Created handoff to next session. Total: 7,069 tests, 237 files, 354 closed phases.

@@ -6070,3 +6070,13 @@ Tests: 24 passed. 0 failed. 0.09s.
 - `docs/archive/phases/phase-353-spec.md` — NEW
 
 Tests: 22 passed. 0 failed. 0.90s.
+
+## Phase 354 — Platform Checkpoint XVII (Closed) — 2026-03-12
+
+**Category:** 🔍 Audit / Checkpoint
+**Actions:**
+- Full test suite: 7,069 collected (7,022 passed, 30 failed, 17 skipped) in 21.36s
+- 30 pre-existing failures: test_sync_cancel_contract (10) + test_sync_amend_contract (20)
+- current-snapshot.md — corrected: appended phases 337-354, fixed test count accuracy
+- work-context.md, phase-354-spec.md — updated
+- Handoff document created for next session
