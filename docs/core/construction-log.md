@@ -4271,3 +4271,7 @@ First-ever tests for anomaly_alert_broadcaster.py (Phase 226, 630 lines). 16 tes
 ## Phase 330 — Admin Reconciliation Integration Tests — 2026-03-12
 
 First-ever tests for admin_reconciliation_router.py (Phase 241, 208 lines). 13 tests: severity (5), aggregation (5), kind counting (3). All pass in 0.34s.
+
+## Phase 331 — Platform Checkpoint XIV — 2026-03-12
+
+Documentation checkpoint after Phases 315-330 (16 phases, ~225 new tests). Updated live-system.md and roadmap.md with accurate test counts (6,628+) and new state_transition_guard service.

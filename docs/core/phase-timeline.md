@@ -5832,3 +5832,13 @@ Tests: 16 passed. 0 failed. 0.44s.
 - `docs/archive/phases/phase-330-spec.md` — NEW
 
 Tests: 13 passed. 0 failed. 0.34s.
+
+## Phase 331 — Platform Checkpoint XIV (Closed) — 2026-03-12
+
+**Category:** 📋 Documentation / Checkpoint
+**Actions:**
+- `docs/core/live-system.md` — updated header to Phase 331
+- `docs/core/roadmap.md` — System Numbers: 6,628+ tests, 218 test files
+- `docs/archive/phases/phase-331-spec.md` — NEW
+
+Tests added: 0 (documentation phase).

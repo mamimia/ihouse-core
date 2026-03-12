@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 331 — (Next)
+Phase 332 — (Next)
 
 ## Last Closed Phase
 
-Phase 330 — Admin Reconciliation Integration Tests (closed) — 13 tests, all pass.
+Phase 331 — Platform Checkpoint XIV (closed) — Documentation sync.
 
 ## Current Objective
 

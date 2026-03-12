@@ -26,25 +26,26 @@
 
 ---
 
-## System Numbers — Phase 315 (2026-03-12)
+## System Numbers — Phase 331 (2026-03-12)
 
 | Metric | Value |
 |--------|-------|
 | **OTA Adapters** | 15 (14 unique + ctrip alias): Airbnb, Booking.com, Expedia, Agoda, Trip.com/Ctrip, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld |
 | **Escalation Channels** | 5 live (LINE, WhatsApp, Telegram, SMS, Email) |
 | **Task Kinds** | 6 (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME) |
-| **API Files** | 80 files in `src/api/` (80 routers registered in main.py) |
+| **API Files** | 81 files in `src/api/` |
+| **Services (new)** | `state_transition_guard.py` — Phase 326 (skill spec implementation) |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | 6,406 collected / ~6,385 passing / ~17 skipped / 4 pre-existing health failures / exit 0 |
+| **Tests** | 6,628+ collected / all passing / 4 pre-existing health failures / exit 0 |
+| **Test Files** | 218 test files (225 new tests added Phases 318-330) |
 | **Supabase Tables** | 33 tables + 1 view (`ota_dlq_summary`), 29 migrations |
-| **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) — 159 tests added in Phases 265–271 |
+| **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
-| **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh (Phases 275-278, 286, 313) |
+| **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh |
 | **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
-| **Frontend** | Next.js 16 / React 19, 19 pages (incl. admin/notifications P311), Domaniqo branding, 60s auto-refresh, SSE 6-channel live events (P306), OTA donut (ihouse-ui/) |
-| **SSE Event Bus** | 6 named channels (tasks, bookings, sync, alerts, financial, system) — all 6 main UI pages subscribe (Phases 306-310) |
+| **Frontend** | Next.js 16 / React 19, 19 pages, Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
 | **CORS** | CORSMiddleware via `IHOUSE_CORS_ORIGINS` env var (Phase 313) |
 
 ---
