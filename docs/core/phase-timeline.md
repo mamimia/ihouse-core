@@ -5649,3 +5649,15 @@ Build exit 0, 19 pages.
 - Documentation sync for Phases 305-314
 - Handoff prepared for next session
 - All 10 phases verified, pushed, and documented
+
+## Phase 315 — Layer C Documentation Sync XVII (Closed) — 2026-03-12
+
+**Category:** 📝 Documentation
+**Actions:**
+- `docs/core/current-snapshot.md` — MODIFIED — system status extended to Phase 315 (Phases 305-314 added), IHOUSE_CORS_ORIGINS env var added
+- `docs/core/work-context.md` — MODIFIED — phase pointers → 316, SSE + frontend key files section (Phases 306-314), CORS env var
+- `docs/core/live-system.md` — MODIFIED — header → Phase 315
+- `docs/core/roadmap.md` — MODIFIED — system numbers → Phase 315 (19 pages, SSE bus, CORS rows), active direction → 316-324, Where We're Headed updated
+- `docs/archive/phases/phase-315-spec.md` — NEW
+
+Tests: 0 new. Documentation-only phase.

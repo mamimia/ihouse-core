@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 315 — (Next session)
+Phase 316 — (Next)
 
 ## Last Closed Phase
 
-Phase 314 — Platform Checkpoint XVI (closed) — Documentation sync, Phases 305-314.
+Phase 315 — Layer C Documentation Sync XVII (closed) — Full Layer C doc sync for Phases 306-314.
 
 ## Current Objective
 
-Next session: propose Phases 315-324 based on system state.
+Execute Phases 316-324: test verification, security audit, E2E integration, portal polish, AI readiness, deployment dry run, final audit.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -133,6 +133,17 @@ Next session: propose Phases 315-324 based on system state.
 | `tests/test_guest_token_e2e.py` | Phase 302: 7 test suites, real HMAC crypto, live Supabase integration |
 | `src/scripts/seed_owner_portal.py` | Phase 303: deterministic booking seeder (20 bookings, 3 properties) |
 
+## Key Files — SSE Event Bus + Frontend Real Data (Phases 306-314)
+
+| File | Role |
+|------|------|
+| `src/channels/sse_broker.py` | Phase 306: 6 named channels (tasks, bookings, sync, alerts, financial, system), convenience publishers |
+| `src/api/sse_router.py` | Phase 306: GET /events/stream?channels= filtering |
+| `ihouse-ui/app/admin/notifications/page.tsx` | Phase 311: NEW — Admin notification delivery dashboard |
+| `ihouse-ui/app/manager/page.tsx` | Phase 312: Morning briefing widget, language selector, LLM/heuristic badge |
+| `src/main.py` | Phase 313: CORSMiddleware added (IHOUSE_CORS_ORIGINS) |
+| `docker-compose.production.yml` | Phase 313: Frontend Next.js service added |
+
 ## Key Files — Frontend (ihouse-ui/, Phases 287–291)
 
 | File | Role |
@@ -208,7 +219,8 @@ Next session: propose Phases 315-324 based on system state.
 | `IHOUSE_TWILIO_FROM` | unset | Sending phone number E.164 (Phase 299) |
 | `IHOUSE_SENDGRID_KEY` | unset | SendGrid API key (Phase 299) |
 | `IHOUSE_SENDGRID_FROM` | unset | Sending email address (Phase 299) |
+| `IHOUSE_CORS_ORIGINS` | unset | Comma-separated allowed CORS origins for frontend (Phase 313) |
 
 ## Tests
 
-**6,406 collected. ~6,385 passing (~17 skipped). 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 304)**
+**6,406 collected. ~6,385 passing (~17 skipped). 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 304 — no new backend tests in Phases 305-315)**

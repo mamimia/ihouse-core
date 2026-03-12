@@ -4202,3 +4202,12 @@ Phases 305-314 closed. Documentation synced.
 - Copilot morning briefing widget on manager page
 - CORS middleware + frontend in production compose
 - All builds exit 0
+
+## Phase 315 — Layer C Documentation Sync XVII — 2026-03-12
+
+Full audit of all Layer A/B/C/D documents. Identified and fixed drift in 4 Layer C documents from Phases 306-314:
+- current-snapshot.md: Phases 305-315 appended to system status, IHOUSE_CORS_ORIGINS env var added
+- work-context.md: phase pointers, SSE event bus key files, CORS env var
+- live-system.md: header updated
+- roadmap.md: system numbers, active direction, forward plan updated
+Created phase spec. Appended to phase-timeline + construction-log.

@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 305 (2026-03-12). [Antigravity]
+> Last updated: Phase 315 (2026-03-12). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,24 +26,26 @@
 
 ---
 
-## System Numbers — Phase 305 (2026-03-12)
+## System Numbers — Phase 315 (2026-03-12)
 
 | Metric | Value |
 |--------|-------|
 | **OTA Adapters** | 15 (14 unique + ctrip alias): Airbnb, Booking.com, Expedia, Agoda, Trip.com/Ctrip, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld |
 | **Escalation Channels** | 5 live (LINE, WhatsApp, Telegram, SMS, Email) |
 | **Task Kinds** | 6 (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME) |
-| **API Files** | 80 files in `src/api/` (78 routers registered in main.py) |
+| **API Files** | 80 files in `src/api/` (80 routers registered in main.py) |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
 | **Tests** | 6,406 collected / ~6,385 passing / ~17 skipped / 4 pre-existing health failures / exit 0 |
 | **Supabase Tables** | 33 tables + 1 view (`ota_dlq_summary`), 29 migrations |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) — 159 tests added in Phases 265–271 |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
-| **Production Infra** | Dockerfile, docker-compose.production.yml, .env.production.example, deploy_checklist.sh (Phases 275-278, 286) |
+| **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh (Phases 275-278, 286, 313) |
 | **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
-| **Frontend** | Next.js 16 / React 19, 18 pages, Domaniqo branding, 60s auto-refresh, SSE live worker, OTA donut (ihouse-ui/) |
+| **Frontend** | Next.js 16 / React 19, 19 pages (incl. admin/notifications P311), Domaniqo branding, 60s auto-refresh, SSE 6-channel live events (P306), OTA donut (ihouse-ui/) |
+| **SSE Event Bus** | 6 named channels (tasks, bookings, sync, alerts, financial, system) — all 6 main UI pages subscribe (Phases 306-310) |
+| **CORS** | CORSMiddleware via `IHOUSE_CORS_ORIGINS` env var (Phase 313) |
 
 ---
 
@@ -98,13 +100,13 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 305+
+## Active Direction — Phase 315+
 
-Phases 295–304 completed: Documentation Truth Sync XV (295), Multi-Tenant Organization Foundation (296), Auth Session Management + Real Login Flow (297), Guest Portal + Owner Portal Real Authentication (298), Notification Layer SMS/Email Dispatch via Twilio + SendGrid (299), Platform Checkpoint XIV (300), Owner Portal Rich Data Service with 6 enrichment functions (301), Guest Token Flow E2E Tests with real HMAC crypto (302), Booking State Seeder for Owner Portal (303), Platform Checkpoint XV full audit (304).
+Phases 305–314 completed: Documentation Truth Sync XVI (305), Real-Time Event Bus — SSE 6 named channels (306), Frontend Real Data — Dashboard + Bookings SSE (307), Frontend Real Data — Financial + Tasks SSE (308), Owner Portal Frontend SSE + Cashflow (309), Guest Portal Frontend SSE (310), Admin Notification Dashboard (311), Manager Copilot UI — Morning Briefing Widget (312), Production Readiness — CORS + Frontend Docker (313), Platform Checkpoint XVI (314), Layer C Documentation Sync XVII (315).
 
-The current wave (Phases 305–314) focuses on **documentation alignment**, **real-time event bus**, **frontend real data integration** (dashboard, bookings, financial, tasks, owner portal, guest portal), **notification management UI**, **AI copilot UI**, and **production readiness hardening**.
+The current wave (Phases 316–324) focuses on **vertical depth over horizontal expansion**: test suite verification, Supabase RLS audit, frontend E2E tests, real webhook integration, notification dispatch testing, portal polish, AI readiness validation, and a production deployment dry run. Phase 324 is a mandatory full audit + cleanup checkpoint.
 
-Full plan: see handoff document or planning artifact.
+Full plan: see `system_audit_and_phases_315_324.md` or planning artifact.
 
 ### Phase 283 — Test Suite Isolation Fix + conftest.py *(closed)*
 Created `tests/conftest.py` with session-scoped env var management. Fixed 4 root causes: IHOUSE_DEV_MODE leaking from module-level `os.environ.setdefault`, 7 test files missing dev mode fixtures, auth enforcement tests not disabling dev mode, InMemoryRateLimiter singleton (60 RPM) accumulating hits across full suite. 16 files modified. +0 tests, 0 failures.
@@ -249,6 +251,6 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 305–314):** Documentation sync, real-time SSE event bus, frontend real data integration (dashboard, bookings, financial, tasks), owner portal frontend, guest portal frontend (Domaniqo-branded), notification UI, AI copilot UI, production readiness hardening, platform checkpoint.
+**Short-term (Phases 316–324):** Full test suite verification, Supabase RLS audit on 7 new tables (296-299), frontend E2E smoke tests (Playwright), real webhook vertical integration, notification dispatch testing with Twilio/SendGrid sandboxes, owner+guest portal production polish, AI copilot readiness with real OpenAI key, staging deployment dry run, full audit checkpoint.
 
-**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from API surface expansion to real product surfaces and operational depth.
+**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from API surface expansion to **production readiness and operational depth**.
