@@ -4335,3 +4335,7 @@ E2E tests for guest and owner portals. Guest portal: booking view with check-in 
 ## Phase 347 — Notification Delivery E2E Verification — 2026-03-12
 
 HTTP endpoint E2E tests for the notification dispatch chain. Covers: SMS/email dry-run dispatch via Twilio/SendGrid stubs, guest-token-send compound flow (issue + dispatch), notification log querying, SLA breach → sla_dispatch_bridge → notification_dispatcher → channel adapter chain, and write_delivery_log persistence (one row per ChannelAttempt, never raises on DB error). 28 tests, 6 groups, all pass. Total: 6,869 tests, 231 files.
+
+## Phase 348 — Webhook Ingestion Regression Suite — 2026-03-12
+
+Regression tests for the full OTA webhook ingestion pipeline. Tests all 14 OTA adapters (bookingcom, expedia, airbnb, agoda, tripcom, vrbo, gvr, traveloka, makemytrip, klook, despegar, hotelbeds, rakuten, hostelworld) through normalize() and to_canonical_envelope() with provider-correct payloads. LINE webhook endpoint tested for all status transitions. Webhook event log service tested for CRUD and stats. Adapter registry edge cases. 70 tests, 5 groups. Total: 6,939 tests, 232 files.

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 348 — (Next)
+Phase 349 — (Next)
 
 ## Last Closed Phase
-Phase 347 — Notification Delivery E2E Verification (closed).
+Phase 348 — Webhook Ingestion Regression Suite (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,869 collected. All passing. (Phase 347 — 28 new notification delivery E2E tests)**
+**6,939 collected. All passing. (Phase 348 — 70 new webhook regression tests)**

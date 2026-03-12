@@ -6008,3 +6008,14 @@ Tests: 28 passed. 0 failed. 1.15s.
 - `docs/archive/phases/phase-347-spec.md` — NEW
 
 Tests: 28 passed. 0 failed. 1.19s.
+
+## Phase 348 — Webhook Ingestion Regression Suite (Closed) — 2026-03-12
+
+**Category:** 📡 Webhooks / Testing / Regression
+**Actions:**
+- `tests/test_webhook_regression_p348.py` — NEW — 70 tests
+- All 14 OTA adapters normalize() + to_canonical_envelope() (56 tests)
+- LINE webhook endpoint regression (5), event log (4), edge cases (5)
+- `docs/archive/phases/phase-348-spec.md` — NEW
+
+Tests: 70 passed. 0 failed. 1.09s.

@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 348 — (Next)
+Phase 349 — (Next)
 
 ## Last Closed Phase
 
-Phase 347 — Notification Delivery E2E Verification (closed).
+Phase 348 — Webhook Ingestion Regression Suite (closed).
 
 ## Current Objective
 
-Execute Phases 348–354 as proposed in the system audit. Next: Phase 348 — Webhook Ingestion Regression Suite.
+Execute Phases 349–354 as proposed in the system audit. Next: Phase 349 — Outbound Sync Coverage Expansion.
 
 ## Key Invariants (Locked — Do Not Change)
 
