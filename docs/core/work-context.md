@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 312 — Manager Copilot UI
+Phase 313 — Production Readiness Hardening
 
 ## Last Closed Phase
 
-Phase 311 — Notification Preferences & Delivery Dashboard (closed) — Admin delivery dashboard, 19 pages.
+Phase 312 — Manager Copilot UI (closed) — Morning briefing widget, action items, context signals.
 
 ## Current Objective
 
-Build the manager-facing AI copilot interface — morning briefing, anomaly alerts, task recommendations.
+Validate the full stack for production deployment readiness — Docker, CORS, env vars, health checks.
 
 ## Key Invariants (Locked — Do Not Change)
 

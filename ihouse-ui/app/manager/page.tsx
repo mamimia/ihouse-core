@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api, AuditEvent } from '@/lib/api';
+import { api, AuditEvent, MorningBriefingResponse, CopilotActionItem } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -299,6 +299,190 @@ function BookingAuditLookup() {
 }
 
 // ---------------------------------------------------------------------------
+// Morning Briefing widget (Phase 312)
+// ---------------------------------------------------------------------------
+
+function MorningBriefingWidget() {
+    const [data, setData] = useState<MorningBriefingResponse | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [language, setLanguage] = useState('en');
+
+    const doFetch = useCallback(async () => {
+        setLoading(true); setError(null);
+        try {
+            const res = await api.getMorningBriefing(language);
+            setData(res);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed to load briefing');
+        } finally {
+            setLoading(false);
+        }
+    }, [language]);
+
+    const ops = data?.context_signals?.operations;
+    const tasks = data?.context_signals?.tasks;
+
+    const priorityColor: Record<string, string> = {
+        CRITICAL: '#ef4444', HIGH: '#f97316', NORMAL: '#3b82f6',
+    };
+
+    return (
+        <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            marginBottom: 'var(--space-8)',
+            overflow: 'hidden',
+        }}>
+            <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: 'var(--space-4) var(--space-5)',
+                borderBottom: '1px solid var(--color-border)',
+                background: 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(168,85,247,0.04))',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>&#129504;</span>
+                    <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        Copilot &middot; Morning Briefing
+                    </h2>
+                    {data && (
+                        <span style={{
+                            fontSize: 10, fontWeight: 700,
+                            padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                            background: data.generated_by === 'llm' ? 'rgba(99,102,241,0.15)' : 'rgba(245,158,11,0.15)',
+                            color: data.generated_by === 'llm' ? '#818cf8' : '#f59e0b',
+                        }}>
+                            {data.generated_by.toUpperCase()}
+                        </span>
+                    )}
+                </div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <select
+                        value={language}
+                        onChange={e => setLanguage(e.target.value)}
+                        style={{
+                            background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-md)', color: 'var(--color-text)',
+                            fontSize: 'var(--text-xs)', padding: '4px 8px', cursor: 'pointer',
+                        }}
+                    >
+                        <option value="en">EN</option>
+                        <option value="th">TH</option>
+                        <option value="ja">JA</option>
+                    </select>
+                    <button
+                        id="generate-briefing"
+                        onClick={doFetch}
+                        disabled={loading}
+                        style={{
+                            background: loading ? 'var(--color-surface-3)' : 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                            color: '#fff', border: 'none', borderRadius: 'var(--radius-md)',
+                            padding: '6px 16px', fontSize: 'var(--text-xs)', fontWeight: 600,
+                            cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+                            boxShadow: '0 0 12px rgba(99,102,241,0.25)',
+                        }}
+                    >
+                        {loading ? 'Generating...' : data ? 'Refresh' : 'Generate Briefing'}
+                    </button>
+                </div>
+            </div>
+
+            <div style={{ padding: 'var(--space-5)' }}>
+                {error && (
+                    <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' }}>
+                        {error}
+                    </div>
+                )}
+
+                {!data && !loading && !error && (
+                    <div style={{ textAlign: 'center', padding: 'var(--space-8) 0', color: 'var(--color-text-dim)' }}>
+                        <div style={{ fontSize: '2rem', marginBottom: 8 }}>&#9728;</div>
+                        <div style={{ fontSize: 'var(--text-sm)' }}>Click Generate Briefing to get today&#39;s morning summary.</div>
+                    </div>
+                )}
+
+                {loading && !data && (
+                    <div style={{ padding: 'var(--space-4) 0' }}>
+                        {[1, 2, 3].map(i => (
+                            <div key={i} style={{
+                                height: 14, width: `${80 - i * 15}%`, background: 'var(--color-surface-3)',
+                                borderRadius: 4, marginBottom: 12, animation: 'pulse 1.5s infinite',
+                            }} />
+                        ))}
+                    </div>
+                )}
+
+                {data && (
+                    <>
+                        <div style={{
+                            fontSize: 'var(--text-sm)', color: 'var(--color-text)',
+                            lineHeight: 1.7, whiteSpace: 'pre-wrap',
+                            marginBottom: 'var(--space-5)',
+                        }}>
+                            {data.briefing_text}
+                        </div>
+
+                        {data.action_items && data.action_items.length > 0 && (
+                            <div style={{ marginBottom: 'var(--space-5)' }}>
+                                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>
+                                    Action Items
+                                </div>
+                                {data.action_items.map((item: CopilotActionItem, i: number) => (
+                                    <div key={i} style={{
+                                        display: 'flex', alignItems: 'center', gap: 10,
+                                        padding: 'var(--space-2) var(--space-3)',
+                                        borderLeft: `3px solid ${priorityColor[item.priority] || '#6b7280'}`,
+                                        background: 'var(--color-surface-2)',
+                                        borderRadius: '0 var(--radius-md) var(--radius-md) 0',
+                                        marginBottom: 6,
+                                        fontSize: 'var(--text-sm)',
+                                    }}>
+                                        <span style={{
+                                            fontSize: 10, fontWeight: 700,
+                                            padding: '1px 7px', borderRadius: 4,
+                                            background: (priorityColor[item.priority] || '#6b7280') + '20',
+                                            color: priorityColor[item.priority] || '#6b7280',
+                                        }}>{item.priority}</span>
+                                        <span style={{ color: 'var(--color-text)' }}>{item.description}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {ops && (
+                            <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                                {[
+                                    { label: 'Check-ins', value: ops.arrivals_count || 0, color: '#22c55e' },
+                                    { label: 'Check-outs', value: ops.departures_count || 0, color: '#3b82f6' },
+                                    { label: 'Cleanings', value: ops.cleanings_due || 0, color: '#f59e0b' },
+                                    { label: 'Open Tasks', value: tasks?.total_open || 0, color: '#8b5cf6' },
+                                ].map(s => (
+                                    <div key={s.label} style={{
+                                        background: 'var(--color-surface-2)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        padding: 'var(--space-3) var(--space-4)',
+                                        minWidth: 90,
+                                    }}>
+                                        <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: s.color }}>{s.value}</div>
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{s.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-4)', textAlign: 'right' }}>
+                            Generated {new Date(data.generated_at).toLocaleTimeString()} via {data.generated_by}
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -392,6 +576,9 @@ export default function ManagerPage() {
                 <MetricChip label="Task completed" value={completed} color="#34d399" />
                 <MetricChip label="Flags updated" value={flagged} color="#fbbf24" />
             </div>
+
+            {/* Copilot Briefing (Phase 312) */}
+            <MorningBriefingWidget />
 
             {/* Activity feed */}
             <div style={{
@@ -521,7 +708,7 @@ export default function ManagerPage() {
                 fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
                 display: 'flex', justifyContent: 'space-between',
             }}>
-                <span>iHouse Core — Manager Activity Feed · Phase 190</span>
+                <span>Domaniqo — Manager Copilot · Phase 312</span>
                 <span>Source: audit_events table · actor_id = JWT sub</span>
             </div>
         </div>

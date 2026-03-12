@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 312 — Manager Copilot UI
+Phase 313 — Production Readiness Hardening
 
 ## Last Closed Phase
-Phase 311 — Notification Preferences & Delivery Dashboard (closed) — Admin notification delivery page, 19 pages total.
+Phase 312 — Manager Copilot UI (closed) — Morning briefing widget with AI briefing, action items, context signals.
 
 ## System Status
 

@@ -4160,3 +4160,16 @@ Implemented:
 - Worker page already had full channel preferences + history (Phase 290)
 
 Build exit 0, 19 pages.
+
+## Phase 312 — Manager Copilot UI (Closed) — 2026-03-12
+
+Implemented:
+- `MorningBriefingWidget` component added to manager page (`app/manager/page.tsx`)
+  - Calls `POST /ai/copilot/morning-briefing` (Phase 223 backend)
+  - Displays: briefing text, action items with priority badges, context signal cards
+  - Language selector (EN/TH/JA), LLM vs heuristic source badge
+  - Loading skeletons, error states
+- API client: `getMorningBriefing()` method
+- Types: `MorningBriefingResponse`, `CopilotActionItem`
+
+Build exit 0, 19 pages.

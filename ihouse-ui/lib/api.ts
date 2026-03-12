@@ -620,6 +620,14 @@ export const api = {
         const qs = q.toString();
         return apiFetch(`/notifications/log${qs ? '?' + qs : ''}`);
     },
+
+    // Phase 312 — Manager Copilot
+    getMorningBriefing: (language = 'en'): Promise<MorningBriefingResponse> =>
+        apiFetch('/ai/copilot/morning-briefing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ language }),
+        }),
 };
 
 // Phase 157 — Worker task types
@@ -827,4 +835,46 @@ export interface NotificationLogResponse {
     entries: NotificationLogEntry[];
     count: number;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 312 — Manager Copilot (Morning Briefing)
+// ---------------------------------------------------------------------------
+
+export interface CopilotActionItem {
+    priority: string;
+    action: string;
+    description: string;
+}
+
+export interface MorningBriefingResponse {
+    briefing_text: string;
+    generated_by: 'llm' | 'heuristic';
+    language: string;
+    tenant_id: string;
+    generated_at: string;
+    action_items: CopilotActionItem[];
+    context_signals: {
+        operations?: {
+            date?: string;
+            arrivals_count?: number;
+            departures_count?: number;
+            cleanings_due?: number;
+            active_bookings?: number;
+        };
+        tasks?: {
+            total_open?: number;
+            by_priority?: Record<string, number>;
+            critical_past_ack_sla?: number;
+        };
+        dlq?: {
+            unprocessed_count?: number;
+            alert?: boolean;
+        };
+        outbound_sync?: {
+            failure_rate_24h?: number;
+        };
+        ai_hints?: Record<string, unknown>;
+    };
+}
+
 
