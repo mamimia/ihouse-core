@@ -4283,3 +4283,7 @@ Integration tests for services/bulk_operations.py (Phase 259). 17 tests: aggrega
 ## Phase 333 — Booking.com Content Adapter Integration Tests — 2026-03-12
 
 First-ever tests for bookingcom_content.py (Phase 250, 262 lines). 19 tests: field validation (6), payload shape (9), list_pushed_fields (2), PushResult (2). All pass in 0.08s.
+
+## Phase 334 — Booking Dates + iCal Push Adapter Integration Tests — 2026-03-12
+
+First-ever tests for booking_dates.py (Phase 140, 87 lines) and ical_push_adapter.py (Phase 150, 371 lines). 13 tests: injectable client (4), iCal UTC (4), VTIMEZONE (3), date format (2). All pass in 0.18s.

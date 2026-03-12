@@ -5862,3 +5862,13 @@ Tests: 17 passed. 0 failed. 0.07s.
 - `docs/archive/phases/phase-333-spec.md` — NEW
 
 Tests: 19 passed. 0 failed. 0.08s.
+
+## Phase 334 — Booking Dates + iCal Push Adapter Integration Tests (Closed) — 2026-03-12
+
+**Category:** ��️ Outbound / iCal / Testing
+**Actions:**
+- `tests/test_booking_dates_ical_integration.py` — NEW — 13 tests (FIRST-EVER for both modules)
+- fetch_booking_dates injectable client (4), iCal UTC template (4), timezone (3), date format (2)
+- `docs/archive/phases/phase-334-spec.md` — NEW
+
+Tests: 13 passed. 0 failed. 0.18s.

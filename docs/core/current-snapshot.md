@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 334 — (Next)
+Phase 335 — (Next)
 
 ## Last Closed Phase
-Phase 333 — Booking.com Content Adapter Integration Tests (closed) — 19 tests, all pass.
+Phase 334 — Booking Dates + iCal Push Adapter Integration Tests (closed) — 13 tests, all pass.
 
 ## System Status
 
