@@ -1,6 +1,6 @@
 # =============================================================================
 # iHouse Core — Production Docker Compose
-# Phase 278 — Production Environment Configuration
+# Phase 313 — Production Readiness Hardening
 # =============================================================================
 #
 # Production-hardened compose file.
@@ -13,6 +13,8 @@
 #   - structured JSON logging
 #   - explicit IHOUSE_ENV=production
 #   - IHOUSE_DEV_MODE not set (disabled)
+#   - CORS configured for production domain
+#   - Frontend Next.js service included
 #
 # Usage:
 #   docker compose -f docker-compose.production.yml up -d
@@ -40,6 +42,8 @@ services:
       - UVICORN_WORKERS=4
       # Explicitly disable dev mode in production
       - IHOUSE_DEV_MODE=false
+      # CORS for frontend — set in .env for your domain
+      - IHOUSE_CORS_ORIGINS=${IHOUSE_CORS_ORIGINS:-https://app.domaniqo.com}
 
     # Always restart on crash — production reliability
     restart: always
@@ -91,4 +95,37 @@ services:
     labels:
       - "com.ihouse.service=api"
       - "com.ihouse.env=production"
-      - "com.ihouse.version=phase286"
+      - "com.ihouse.version=phase313"
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Next.js (Phase 313)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./ihouse-ui
+      dockerfile: Dockerfile
+    image: ihouse-ui:production
+    container_name: ihouse-core-frontend-prod
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8000
+      - NODE_ENV=production
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    labels:
+      - "com.ihouse.service=frontend"
+      - "com.ihouse.env=production"
+      - "com.ihouse.version=phase313"

@@ -5631,3 +5631,13 @@ New page: 1 (total 19). Build exit 0.
 - Types: `MorningBriefingResponse`, `CopilotActionItem`
 
 Build exit 0, 19 pages.
+
+## Phase 313 — Production Readiness Hardening (Closed) — 2026-03-12
+
+**Category:** 🔧 DevOps / Infrastructure
+**Actions:**
+- CORS middleware added to `main.py` — `IHOUSE_CORS_ORIGINS` env var, exposes X-Request-ID/X-API-Version
+- Production compose: frontend Next.js service, CORS env, phase313 labels
+- Validated: `/health`, `/readiness`, Docker multi-stage, 4-worker, security hardening
+
+Build exit 0, 19 pages.

@@ -4173,3 +4173,23 @@ Implemented:
 - Types: `MorningBriefingResponse`, `CopilotActionItem`
 
 Build exit 0, 19 pages.
+
+## Phase 313 — Production Readiness Hardening (Closed) — 2026-03-12
+
+Implemented:
+- CORS middleware in `src/main.py`
+  - Configurable via `IHOUSE_CORS_ORIGINS` env var
+  - Defaults: `http://localhost:3000,http://localhost:8000`
+  - Exposes: X-Request-ID, X-API-Version headers
+- `docker-compose.production.yml` updated:
+  - Frontend Next.js service (depends_on api healthy)
+  - CORS env var forwarding
+  - Version labels bumped to phase313
+
+Validated (existing):
+- `/health` endpoint (liveness + DLQ check)
+- `/readiness` endpoint (Kubernetes probe)
+- Multi-stage Dockerfile (Python 3.14-slim, non-root user)
+- Production compose: 4 workers, read-only FS, no-new-privileges, JSON logging
+
+Build exit 0, 19 pages.
