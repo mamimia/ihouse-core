@@ -5986,3 +5986,14 @@ Tests added: 0 (audit checkpoint). Total system: 6,777 tests, 226 files.
 - `docs/archive/phases/phase-345-spec.md` — NEW
 
 Tests: 36 passed. 0 failed. 1.07s.
+
+## Phase 346 — Guest Portal + Owner Portal E2E Tests (Closed) — 2026-03-12
+
+**Category:** 🌐 Portal / Testing / E2E
+**Actions:**
+- `tests/test_portal_e2e.py` — NEW — 28 tests
+- Guest portal: booking view (4), sub-endpoints (4), auth guards (4)
+- Owner portal: list properties (3), summary (5), grant/revoke (5), access guards (3)
+- `docs/archive/phases/phase-346-spec.md` — NEW
+
+Tests: 28 passed. 0 failed. 1.15s.

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 346 — (Next)
+Phase 347 — (Next)
 
 ## Last Closed Phase
-Phase 345 — Multi-Tenant Flow E2E Integration Tests (closed).
+Phase 346 — Guest Portal + Owner Portal E2E Tests (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,813 collected. All passing. 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 345 — 36 new multi-tenant E2E tests)**
+**6,841 collected. All passing. (Phase 346 — 28 new portal E2E tests)**

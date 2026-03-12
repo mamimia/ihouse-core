@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 346 — (Next)
+Phase 347 — (Next)
 
 ## Last Closed Phase
 
-Phase 345 — Multi-Tenant Flow E2E Integration Tests (closed).
+Phase 346 — Guest Portal + Owner Portal E2E Tests (closed).
 
 ## Current Objective
 
-Execute Phases 346–354 as proposed in the system audit. Next: Phase 346 — Guest Portal + Owner Portal E2E Tests.
+Execute Phases 347–354 as proposed in the system audit. Next: Phase 347 — Notification Delivery E2E Verification.
 
 ## Key Invariants (Locked — Do Not Change)
 
