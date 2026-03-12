@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 350 — (Next)
+Phase 351 — (Next)
 
 ## Last Closed Phase
 
-Phase 349 — Outbound Sync Coverage Expansion (closed).
+Phase 350 — API Smoke Tests (closed).
 
 ## Current Objective
 
-Execute Phases 350–354 as proposed in the system audit. Next: Phase 350 — Frontend Smoke Tests (Browser).
+Execute Phases 351–354 as proposed in the system audit. Next: Phase 351 — Performance Baseline + Rate Limiting Validation.
 
 ## Key Invariants (Locked — Do Not Change)
 

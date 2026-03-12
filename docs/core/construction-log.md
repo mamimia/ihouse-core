@@ -4343,3 +4343,7 @@ Regression tests for the full OTA webhook ingestion pipeline. Tests all 14 OTA a
 ## Phase 349 — Outbound Sync Coverage Expansion — 2026-03-12
 
 First dedicated tests for `booking_dates.py` (iCal date lookup from booking_state) and `bookingcom_content.py` (Content API payload builder + push with dry-run and mock HTTP). Also covers outbound adapter registry (7 providers), iCal push adapter edge cases, and base-class helpers (idempotency key, throttle, retry). 31 tests, 5 groups. Total: 6,970 tests, 233 files.
+
+## Phase 350 — API Smoke Tests — 2026-03-12
+
+Comprehensive API smoke tests for all critical endpoint groups. Verifies route existence across 167+ registered routes, health/readiness checks, core API CRUD (bookings, tasks, financial, properties, conflicts, permissions), admin endpoints (DLQ, webhook-log, org), webhook+notification routes, auth/worker endpoints, and route discovery invariants (≥100 routes, ≥20 admin, ≥5 AI). 30 tests, 6 groups. Total: 7,000 tests, 234 files.

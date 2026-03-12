@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 350 — (Next)
+Phase 351 — (Next)
 
 ## Last Closed Phase
-Phase 349 — Outbound Sync Coverage Expansion (closed).
+Phase 350 — API Smoke Tests (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,970 collected. All passing. (Phase 349 — 31 new outbound sync tests)**
+**7,000 collected. All passing. (Phase 350 — 30 new API smoke tests) 🎯 7K milestone!**

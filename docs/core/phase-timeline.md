@@ -6029,3 +6029,13 @@ Tests: 70 passed. 0 failed. 1.09s.
 - `docs/archive/phases/phase-349-spec.md` — NEW
 
 Tests: 31 passed. 0 failed. 0.20s.
+
+## Phase 350 — API Smoke Tests (Closed) — 2026-03-12
+
+**Category:** 🔍 Testing / API Coverage
+**Actions:**
+- `tests/test_api_smoke_p350.py` — NEW — 30 tests
+- Health+readiness (5), core API (6), admin (6), webhook+notification (4), auth+worker (4), route discovery (5)
+- `docs/archive/phases/phase-350-spec.md` — NEW
+
+Tests: 30 passed. 0 failed. 1.74s.
