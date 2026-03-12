@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 302 — Guest Portal Token Flow E2E Integration Test
+Phase 303 — Booking State Seeder for Owner Portal
 
 ## Last Closed Phase
-Phase 301 — Owner Portal Rich Data Service (closed) — owner_portal_data.py (6 functions), occupancy/financial/booking breakdown, `/owner/portal/{id}/summary` enriched, 18 tests.
+Phase 302 — Guest Portal Token Flow E2E Integration Test (closed) — test_guest_token_e2e.py (7 suites, 24 in-process tests, 4 live integration), real HMAC crypto, full issue→dispatch→verify chain.
 
 ## System Status
 

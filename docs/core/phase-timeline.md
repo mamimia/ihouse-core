@@ -5509,3 +5509,18 @@ Tests: 6,329 passing. 4 pre-existing env-dependent failures (no change from prio
 - Financial data gated on role='owner'. Best-effort (DB errors return partial data).
 
 Tests: 18 new, all pass. Exit 0.
+
+## Phase 302 — Guest Portal Token Flow E2E Integration Test (Closed) — 2026-03-12
+
+**Category:** 🔐 Guest Auth
+**Actions:**
+- Created `tests/test_guest_token_e2e.py` — 7 test suites:
+  issue_guest_token (5), verify_guest_token (5), record_guest_token (3),
+  full service flow issue→dispatch→verify (4),
+  POST /guest/verify-token router E2E (4),
+  POST /notifications/guest-token-send router E2E (3),
+  live Supabase integration (4, @pytest.mark.integration, skipped unless IHOUSE_ENV=staging)
+- Real HMAC crypto used throughout (no mocked signing)
+- Live integration suite gated behind IHOUSE_ENV=staging
+
+Tests: 24 passed, 4 skipped, 0 failed. Exit 0.

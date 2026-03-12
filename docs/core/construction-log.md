@@ -4062,3 +4062,7 @@ Full suite: 6,329 pass, 13 skipped, 4 pre-existing env failures (Supabase health
 
 New owner_portal_data.py service (6 functions) reading from booking_state and booking_financial_facts.
 /owner/portal/{id}/summary now returns real occupancy %, booking breakdowns by status, upcoming bookings with nights calculation, and 90-day financial totals. Financial data visible only for role='owner'. 18 tests (all pass).
+
+## Phase 302 — Guest Portal Token Flow E2E Integration Test (2026-03-12)
+
+test_guest_token_e2e.py: 7 test suites exercising the complete guest token lifecycle with real HMAC cryptography, mocked Supabase. Live Supabase integration suite (4 tests) gated behind IHOUSE_ENV=staging. 24 in-process tests pass.
