@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 306 — Real-Time Event Bus (SSE/WebSocket Foundation)
+Phase 307 — Frontend Real Data Integration (Dashboard + Bookings)
 
 ## Last Closed Phase
-Phase 305 — Documentation Truth Sync XVI (closed) — Synced all Layer C docs to Phase 304 reality: test count, env vars, missing endpoints, API router count, forward direction.
+Phase 306 — Real-Time Event Bus (closed) — Extended SSE broker with 6 named channels, channel-based filtering, convenience publishers. 25 new tests.
 
 ## System Status
 

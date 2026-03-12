@@ -34,7 +34,7 @@ class TestGroupABroker:
             b = SseBroker()
             received = []
             async with b.subscribe("t1") as q:
-                b._dispatch("t1", {"type": "task_update", "task_id": "T-1"})
+                b._dispatch("t1", "system", {"type": "task_update", "task_id": "T-1"})
                 evt = await asyncio.wait_for(q.get(), timeout=1.0)
                 received.append(evt)
             assert len(received) == 1
@@ -46,7 +46,7 @@ class TestGroupABroker:
             b = SseBroker()
             received = []
             async with b.subscribe("t1") as q:
-                b._dispatch("t2", {"type": "task_update"})
+                b._dispatch("t2", "system", {"type": "task_update"})
                 try:
                     await asyncio.wait_for(q.get(), timeout=0.1)
                     received.append("got_event")
@@ -67,7 +67,7 @@ class TestGroupABroker:
 
             async def publisher():
                 await asyncio.sleep(0.05)
-                b._dispatch("t1", {"type": "ping"})
+                b._dispatch("t1", "system", {"type": "ping"})
 
             await asyncio.gather(subscriber("s1"), subscriber("s2"), publisher())
             assert len(results) == 2
@@ -78,7 +78,7 @@ class TestGroupABroker:
         async def run():
             b = SseBroker()
             async with b.subscribe("t1") as q:
-                b._dispatch("t1", {"type": "task_created", "task_id": "T-99"})
+                b._dispatch("t1", "system", {"type": "task_created", "task_id": "T-99"})
                 evt = await asyncio.wait_for(q.get(), timeout=1.0)
             assert isinstance(evt, dict)
             assert evt["task_id"] == "T-99"
@@ -138,7 +138,7 @@ class TestGroupCQueueFull:
             async with b.subscribe("t1") as q:
                 for _ in range(q.maxsize):
                     q.put_nowait({"type": "fill"})
-                b._dispatch("t1", {"type": "overflow"})
+                b._dispatch("t1", "system", {"type": "overflow"})
                 assert q.qsize() == q.maxsize
         asyncio.run(run())
 

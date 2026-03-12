@@ -71,11 +71,12 @@ def _resolve_tenant(token: str | None) -> str:
         return "unknown"
 
 
-async def _event_stream(tenant_id: str, request: Request) -> AsyncIterator[str]:
+async def _event_stream(tenant_id: str, request: Request, channels: set[str] | None = None) -> AsyncIterator[str]:
     """
     Async generator: yield SSE events for tenant_id until client disconnects.
+    Optionally filters by channels.
     """
-    async with broker.subscribe(tenant_id) as queue:
+    async with broker.subscribe(tenant_id, channels=channels) as queue:
         logger.info("sse: client connected tenant=%s", tenant_id)
         try:
             while True:
@@ -100,7 +101,7 @@ async def _event_stream(tenant_id: str, request: Request) -> AsyncIterator[str]:
 @router.get(
     "/events/stream",
     tags=["events"],
-    summary="Server-Sent Events live feed (Phase 181)",
+    summary="Server-Sent Events live feed (Phase 181 + 306)",
     responses={
         200: {"description": "Persistent SSE stream", "content": {"text/event-stream": {}}},
     },
@@ -108,23 +109,29 @@ async def _event_stream(tenant_id: str, request: Request) -> AsyncIterator[str]:
 async def events_stream(
     request: Request,
     token: str | None = Query(default=None, description="JWT Bearer token (query param for EventSource)"),
+    channels: str | None = Query(default=None, description="Comma-separated channel filter (tasks,bookings,sync,alerts,financial,system)"),
 ) -> StreamingResponse:
     """
     Real-time Server-Sent Events stream for the authenticated tenant.
 
     **Connect:**
     ```
-    GET /events/stream?token=<jwt>
+    GET /events/stream?token=<jwt>&channels=bookings,tasks
     ```
 
-    **Event types:**
-    - `task_update` — status change on an existing task
-    - `task_created` — new task assigned to this tenant
-    - `ping` — keep-alive (sent every 20s of silence)
+    **Channels:**
+    - `tasks` — task state changes
+    - `bookings` — booking lifecycle events
+    - `sync` — outbound sync results
+    - `alerts` — SLA breaches, anomaly alerts
+    - `financial` — financial data changes
+    - `system` — health and scheduler events
+
+    If no `channels` param is provided, all channels are streamed.
 
     **Event format:**
     ```
-    data: {"type": "task_update", "task_id": "T-001", "status": "acknowledged"}
+    data: {"type": "booking_created", "booking_id": "airbnb_123", "channel": "bookings"}
     ```
 
     Clients should reconnect on dropped connections (EventSource does this automatically).
@@ -138,10 +145,15 @@ async def events_stream(
 
     tenant_id = _resolve_tenant(token)
 
-    logger.info("sse: new stream tenant=%s", tenant_id)
+    # Parse channel filter
+    ch_filter: set[str] | None = None
+    if channels:
+        ch_filter = {c.strip().lower() for c in channels.split(",") if c.strip()}
+
+    logger.info("sse: new stream tenant=%s channels=%s", tenant_id, ch_filter)
 
     return StreamingResponse(
-        _event_stream(tenant_id, request),
+        _event_stream(tenant_id, request, channels=ch_filter),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

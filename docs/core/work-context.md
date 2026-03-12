@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 306 — Real-Time Event Bus (SSE/WebSocket Foundation)
+Phase 307 — Frontend Real Data Integration (Dashboard + Bookings)
 
 ## Last Closed Phase
 
-Phase 305 — Documentation Truth Sync XVI (closed) — Synced all Layer C docs to Phase 304 reality.
+Phase 306 — Real-Time Event Bus (closed) — Multi-channel SSE event bus with 6 channels, filtering, convenience publishers.
 
 ## Current Objective
 
-Build a general-purpose SSE event bus extending `src/channels/sse_broker.py` into a multi-channel event system for real-time dashboard updates, booking notifications, sync status, and SLA breach alerts.
+Connect the existing dashboard and bookings UI pages to real API endpoints. Replace mock/stub data with actual fetch calls, loading states, error handling, and auto-refresh.
 
 ## Key Invariants (Locked — Do Not Change)
 

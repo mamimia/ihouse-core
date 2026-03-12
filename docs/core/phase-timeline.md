@@ -5557,3 +5557,14 @@ Tests: ~6,385 passed, ~17 skipped, 4 pre-existing failures. Exit 0.
 - Updated `roadmap.md`: System Numbers corrected (API files 77→80, tests 6,216→6,406), added Phases 295-304 completion summary, updated forward direction to Phases 305-314
 
 Tests: 0 new. Documentation-only phase.
+
+## Phase 306 — Real-Time Event Bus (SSE/WebSocket Foundation) (Closed) — 2026-03-12
+
+**Category:** 🔧 Infrastructure
+**Actions:**
+- Extended `src/channels/sse_broker.py`: 6 named channels (tasks, bookings, sync, alerts, financial, system), channel-based subscriber filtering, convenience publisher methods (publish_booking_event, publish_task_event, publish_sync_event, publish_alert, publish_financial_event), subscriber_channels() diagnostic
+- Extended `src/api/sse_router.py`: `channels` query param for channel filtering (GET /events/stream?channels=bookings,tasks), updated docs
+- Updated `tests/test_sse_contract.py`: 4 _dispatch calls updated for new (tenant_id, channel, data) signature
+- Created `tests/test_sse_event_bus.py`: 25 contract tests (Groups F-L: channel filtering, convenience publishers, diagnostics, backward compat, SseEvent class, CHANNELS constant, query param parsing)
+
+Tests: 25 new (all pass). 45 total SSE tests pass. Exit 0.

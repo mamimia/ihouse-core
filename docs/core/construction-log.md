@@ -4085,3 +4085,20 @@ Implemented:
   - roadmap.md: System Numbers API count 77→80, tests 6,216→6,406, Phases 295-304 summary added
 
 No code changes. No new tests. No schema changes.
+
+## Phase 306 — Real-Time Event Bus (SSE/WebSocket Foundation) (Closed) — 2026-03-12
+
+Implemented:
+- Extended `src/channels/sse_broker.py`:
+  - 6 named channels: tasks, bookings, sync, alerts, financial, system
+  - Channel-based subscriber filtering (subscribe with channels={...})
+  - Convenience publishers: publish_booking_event, publish_task_event, publish_sync_event, publish_alert, publish_financial_event
+  - subscriber_channels() diagnostic
+- Extended `src/api/sse_router.py`:
+  - Added `channels` query param (comma-separated) for channel filtering
+  - Updated endpoint docs with all 6 channels
+- Updated 4 _dispatch calls in `tests/test_sse_contract.py` for new 3-arg signature
+- Created `tests/test_sse_event_bus.py` — 25 contract tests
+
+Backward compatible: subscribe() without channels param receives all events. publish() without channel defaults to "system".
+45 total SSE tests pass. No schema changes. No migrations.
