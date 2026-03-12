@@ -5601,3 +5601,12 @@ Tests: 0 new (frontend only). Build verified exit 0.
 - Fixed CashflowWeek type conflict, updated branding to Domaniqo
 
 Tests: 0 new (frontend only). Build exit 0.
+
+## Phase 310 — Guest Portal Frontend (Closed) — 2026-03-12
+
+**Category:** 🖥 Frontend
+**Actions:**
+- Guest list: SSE on `bookings` channel + 60s auto-refresh (guests created via booking sync)
+- All 6 main UI pages with SSE: dashboard, bookings, financial, tasks, owner, guests
+
+Tests: 0 new. Build exit 0.

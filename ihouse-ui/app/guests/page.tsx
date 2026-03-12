@@ -201,6 +201,28 @@ export default function GuestsPage() {
 
     useEffect(() => { load(debouncedSearch); }, [debouncedSearch, load]);
 
+    // 60s auto-refresh
+    useEffect(() => {
+        const timer = setInterval(() => load(debouncedSearch), 60_000);
+        return () => clearInterval(timer);
+    }, [debouncedSearch, load]);
+
+    // SSE for real-time guest events (Phase 310)
+    useEffect(() => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : '';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+        const es = new EventSource(`${baseUrl}/events/stream?channels=bookings&token=${token}`);
+        es.onmessage = (e) => {
+            try {
+                const evt = JSON.parse(e.data);
+                if (evt.channel === 'bookings') {
+                    setTimeout(() => load(debouncedSearch), 1000);
+                }
+            } catch { /* ignore */ }
+        };
+        return () => es.close();
+    }, [debouncedSearch, load]);
+
     const handleCreated = (g: Guest) => {
         setGuests(prev => [g, ...prev]);
         setCreating(false);

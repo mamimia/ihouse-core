@@ -4138,3 +4138,11 @@ Implemented:
 - Updated footer branding to Domaniqo Phase 309
 
 Build exit 0, 18 pages. No new backend tests.
+
+## Phase 310 — Guest Portal Frontend (Closed) — 2026-03-12
+
+Implemented:
+- Guest list (`app/guests/page.tsx`): SSE on `bookings` channel, 60s auto-refresh
+- All 6 main UI pages now have SSE real-time connectivity
+
+Build exit 0. No new backend tests.

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 310 — Guest Portal Frontend
+Phase 311 — Notification Preferences & Delivery Dashboard
 
 ## Last Closed Phase
-Phase 309 — Owner Portal Frontend (closed) — SSE, cashflow timeline widget, auto-refresh.
+Phase 310 — Guest Portal Frontend (closed) — SSE + auto-refresh. All 6 main pages have real-time connectivity.
 
 ## System Status
 

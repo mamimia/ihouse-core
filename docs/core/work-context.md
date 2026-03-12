@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 310 — Guest Portal Frontend
+Phase 311 — Notification Preferences & Delivery Dashboard
 
 ## Last Closed Phase
 
-Phase 309 — Owner Portal Frontend (closed) — SSE, cashflow timeline widget, auto-refresh.
+Phase 310 — Guest Portal Frontend (closed) — SSE + auto-refresh on all 6 main pages.
 
 ## Current Objective
 
-Build the guest-facing portal page with booking confirmation details, check-in instructions, and property information.
+Build notification preferences management and delivery dashboard for monitoring LINE, email, and SMS notification channels.
 
 ## Key Invariants (Locked — Do Not Change)
 
