@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 332 — (Next)
+Phase 333 — (Next)
 
 ## Last Closed Phase
 
-Phase 331 — Platform Checkpoint XIV (closed) — Documentation sync.
+Phase 332 — Bulk Operations Service Integration Tests (closed) — 17 tests, all pass.
 
 ## Current Objective
 

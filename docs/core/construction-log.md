@@ -4275,3 +4275,7 @@ First-ever tests for admin_reconciliation_router.py (Phase 241, 208 lines). 13 t
 ## Phase 331 — Platform Checkpoint XIV — 2026-03-12
 
 Documentation checkpoint after Phases 315-330 (16 phases, ~225 new tests). Updated live-system.md and roadmap.md with accurate test counts (6,628+) and new state_transition_guard service.
+
+## Phase 332 — Bulk Operations Service Integration Tests — 2026-03-12
+
+Integration tests for services/bulk_operations.py (Phase 259). 17 tests: aggregate status (4), bulk cancel (6), bulk assign (4), bulk trigger (3). All pass in 0.07s.

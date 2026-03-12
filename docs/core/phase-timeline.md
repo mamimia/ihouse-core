@@ -5842,3 +5842,13 @@ Tests: 13 passed. 0 failed. 0.34s.
 - `docs/archive/phases/phase-331-spec.md` — NEW
 
 Tests added: 0 (documentation phase).
+
+## Phase 332 — Bulk Operations Service Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🔧 Bulk Ops / Testing
+**Actions:**
+- `tests/test_bulk_operations_integration.py` — NEW — 17 tests
+- Aggregate status (4), bulk cancel (6), bulk assign (4), bulk trigger (3)
+- `docs/archive/phases/phase-332-spec.md` — NEW
+
+Tests: 17 passed. 0 failed. 0.07s.
