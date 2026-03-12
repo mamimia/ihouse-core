@@ -4053,3 +4053,7 @@ HMAC-SHA256 signed guest tokens (guest_tokens table). Owner portal access grants
 ## Phase 299 — Notification Dispatch Layer (2026-03-12)
 
 Outbound SMS (Twilio) + Email (SendGrid) dispatch layer. notification_log table. 5 service functions. 4 API endpoints including one-step guest-token-send. 20 tests (all pass). Dry-run mode when env vars absent.
+
+## Phase 300 — Platform Checkpoint XIV (2026-03-12)
+
+Full suite: 6,329 pass, 13 skipped, 4 pre-existing env failures (Supabase health probe — not regressions). Test count updated in current-snapshot. Phases 297–299 verified. All new env vars documented. Handoff prepared.

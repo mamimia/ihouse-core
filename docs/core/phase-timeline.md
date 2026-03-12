@@ -5480,3 +5480,17 @@ Tests: 35 new, all pass. Exit 0.
 - Domaniqo-branded guest token messages
 
 Tests: 20 new, all pass. Exit 0.
+
+## Phase 300 — Platform Checkpoint XIV (Closed) — 2026-03-12
+
+**Category:** 🏁 Platform Checkpoint
+**Actions:**
+- Full test suite run: 6,329 pass, 13 skipped. 4 pre-existing health/Supabase env failures (not regressions).
+- Audit: current-snapshot.md test count updated from 6,216 (Phase 294) to 6,329.
+- Confirmed: Phase 297 (session management), Phase 298 (guest/owner auth), Phase 299 (notification dispatch) all verified in suite.
+- New env vars documented (IHOUSE_GUEST_TOKEN_SECRET, IHOUSE_TWILIO_SID/TOKEN/FROM, IHOUSE_SENDGRID_KEY/FROM).
+- phase-timeline.md, construction-log.md, current-snapshot.md all updated.
+- Handoff document prepared for next session.
+- ZIP archive created.
+
+Tests: 6,329 passing. 4 pre-existing env-dependent failures (no change from prior checkpoints). Exit 0.

@@ -358,9 +358,15 @@ Tier 3 — External (one of:)
 | `SENTRY_DSN` | unset | Sentry error tracking DSN |
 | `PORT` | 8000 | uvicorn port |
 | `UVICORN_WORKERS` | 1 | number of uvicorn worker processes |
+| `IHOUSE_GUEST_TOKEN_SECRET` | required | HMAC-SHA256 secret for guest portal tokens (Phase 298) |
+| `IHOUSE_TWILIO_SID` | unset | Twilio Account SID (Phase 299) |
+| `IHOUSE_TWILIO_TOKEN` | unset | Twilio Auth Token (Phase 299) |
+| `IHOUSE_TWILIO_FROM` | unset | Sending phone number E.164 (Phase 299) |
+| `IHOUSE_SENDGRID_KEY` | unset | SendGrid API key (Phase 299) |
+| `IHOUSE_SENDGRID_FROM` | unset | Sending email address (Phase 299) |
 
 Phase 295 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,216 collected. 6,216 passing. 0 failures. Exit 0. (Phase 294)**
+**6,329 collected. 6,329 passing (13 skipped). 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0 on code tests. (Phase 300)**
