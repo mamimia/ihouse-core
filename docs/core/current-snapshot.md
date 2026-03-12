@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 300 — (next cycle: Platform Checkpoint XIV — Documentation and System Audit)
+Phase 302 — Guest Portal Token Flow E2E Integration Test
 
 ## Last Closed Phase
-Phase 299 — Notification Dispatch Layer (closed) — notification_log table, Twilio SMS + SendGrid email dispatch, guest-token-send one-step endpoint, 20 tests.
+Phase 301 — Owner Portal Rich Data Service (closed) — owner_portal_data.py (6 functions), occupancy/financial/booking breakdown, `/owner/portal/{id}/summary` enriched, 18 tests.
 
 ## System Status
 

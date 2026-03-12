@@ -5494,3 +5494,18 @@ Tests: 20 new, all pass. Exit 0.
 - ZIP archive created.
 
 Tests: 6,329 passing. 4 pre-existing env-dependent failures (no change from prior checkpoints). Exit 0.
+
+## Phase 301 — Owner Portal Rich Data Service (Closed) — 2026-03-12
+
+**Category:** 🏠 Owner Portal
+**Actions:**
+- Created `src/services/owner_portal_data.py` — 6 functions:
+  get_property_booking_counts, get_property_upcoming_bookings, get_property_recent_bookings,
+  _enrich_booking_row (nights calc), get_property_financial_summary (booking_financial_facts),
+  get_property_occupancy_rate, get_owner_property_rich_summary
+- Modified `src/api/owner_portal_router.py`:
+  GET /owner/portal/{property_id}/summary now returns rich data (occupancy, breakdown, financials)
+- Created `tests/test_owner_portal_data.py` — 18 tests (all pass)
+- Financial data gated on role='owner'. Best-effort (DB errors return partial data).
+
+Tests: 18 new, all pass. Exit 0.

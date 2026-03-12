@@ -4057,3 +4057,8 @@ Outbound SMS (Twilio) + Email (SendGrid) dispatch layer. notification_log table.
 ## Phase 300 — Platform Checkpoint XIV (2026-03-12)
 
 Full suite: 6,329 pass, 13 skipped, 4 pre-existing env failures (Supabase health probe — not regressions). Test count updated in current-snapshot. Phases 297–299 verified. All new env vars documented. Handoff prepared.
+
+## Phase 301 — Owner Portal Rich Data Service (2026-03-12)
+
+New owner_portal_data.py service (6 functions) reading from booking_state and booking_financial_facts.
+/owner/portal/{id}/summary now returns real occupancy %, booking breakdowns by status, upcoming bookings with nights calculation, and 90-day financial totals. Financial data visible only for role='owner'. 18 tests (all pass).

@@ -33,6 +33,7 @@ from services.guest_token import (
     grant_owner_access,
     has_owner_access,
 )
+from services.owner_portal_data import get_owner_property_rich_summary  # Phase 301
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ async def list_owner_properties(
 
 @router.get(
     "/owner/portal/{property_id}/summary",
-    summary="Get property summary for owner (Phase 298)",
+    summary="Get rich property summary for owner (Phase 301)",
     tags=["owner-portal"],
 )
 async def get_property_summary(
@@ -94,10 +95,17 @@ async def get_property_summary(
     """
     GET /owner/portal/{property_id}/summary
 
-    Returns a summary of a specific property the owner has access to.
-    Requires caller to have active owner_portal_access for this property_id.
+    Returns a rich property summary for an authenticated owner. Requires
+    active owner_portal_access for this property_id.
 
-    Note: Uses DB metadata query. Financial details shown only for 'owner' role.
+    Phase 301 enrichment (over Phase 298):
+        - booking_counts   — breakdown by status (confirmed/cancelled/etc.)
+        - upcoming_bookings — next 5 bookings with nights calculation
+        - occupancy         — 30-day occupancy % from booking_state
+        - financials        — 90-day totals from booking_financial_facts (owner role only)
+
+    Financial data (net_revenue, management_fee, ota_commission) is returned
+    only when the caller's role == 'owner'. Viewers see booking data only.
     """
     db = _get_db()
 
@@ -114,30 +122,13 @@ async def get_property_summary(
         "viewer",
     )
 
-    # Query the booking_state projection for summary data
-    try:
-        res = (
-            db.table("booking_state")
-            .select("booking_ref, check_in_date, check_out_date, status, gross_revenue")
-            .eq("property_id", property_id)
-            .order("check_in_date", desc=True)
-            .limit(10)
-            .execute()
-        )
-        bookings = res.data or []
-    except Exception:
-        bookings = []
-
-    summary: dict = {
-        "property_id": property_id,
-        "role": role,
-        "recent_bookings_count": len(bookings),
-    }
-
-    # Show financial summary only for 'owner' role
-    if role == "owner" and bookings:
-        revenues = [b.get("gross_revenue", 0) or 0 for b in bookings]
-        summary["total_recent_revenue"] = sum(revenues)
+    summary = get_owner_property_rich_summary(
+        db=db,
+        property_id=property_id,
+        role=role,
+        financial_period_days=90,
+        occupancy_period_days=30,
+    )
 
     return JSONResponse(status_code=200, content=summary)
 
