@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 353 — (Next)
+Phase 354 — (Next)
 
 ## Last Closed Phase
 
-Phase 352 — CI/CD Pipeline Hardening (closed).
+Phase 353 — Doc Auto-Generation from Code (closed).
 
 ## Current Objective
 
-Execute Phases 353–354 as proposed in the system audit. Next: Phase 353 — Doc Auto-Generation from Code.
+Phase 354 — Platform Checkpoint XVII: full test suite run, doc alignment, metric corrections, handoff.
 
 ## Key Invariants (Locked — Do Not Change)
 

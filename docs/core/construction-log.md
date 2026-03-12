@@ -4355,3 +4355,7 @@ First concurrency + performance baseline tests for InMemoryRateLimiter. Proves t
 ## Phase 352 — CI/CD Pipeline Hardening — 2026-03-12
 
 CoreExecutor validation contract tests: unknown type, missing payload, missing occurred_at, and missing type all correctly raise CoreExecutionError. InMemory testing infrastructure fully tested: EventLogPort (append, all_envelopes), EventLogApplier (APPLIED return, applied records, projection round-trip), StateStorePort (all_keys, commit_upserts with state_json, ensure_schema no-op). Idempotency: frozen ExecuteResult, same key → same envelope_id. CI guard: IHOUSE_ENV=test, SUPABASE_URL set, executor importable. 24 tests, 5 groups, 0.09s. Total: 7,047 tests, 236 files.
+
+## Phase 353 — Doc Auto-Generation from Code — 2026-03-12
+
+First automated metrics extraction tooling for iHouse Core. `scripts/extract_metrics.py` reads 6 live metrics (test_file_count, src_file_count, route_count, outbound_adapter_count, phase_spec_count, current_phase) from the real codebase and outputs JSON. Tests validate: ≥200 test files, ≥200 src files, ≥100 phase specs, phase≥350, route count≥100, ≤5 intentional route duplicates, OTA registry≥10 entries, outbound=7, all names lowercase, interface impl, snapshot doc freshness (Phase 350+, count≥5000), timeline docs Phase 352+, construction log≥50 lines, all phase specs .md, >100 bytes, phases 349-352 have Closed: dates. 22 tests, 5 groups, 0.90s. Total: 7,069 tests, 237 files.

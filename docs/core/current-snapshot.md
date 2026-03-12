@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 353 — (Next)
+Phase 354 — (Next)
 
 ## Last Closed Phase
-Phase 352 — CI/CD Pipeline Hardening (closed).
+Phase 353 — Doc Auto-Generation from Code (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**7,047 collected. All passing. (Phase 352 — 24 new CI/CD pipeline hardening tests)**
+**7,069 collected. All passing. (Phase 353 — 22 new doc auto-gen tests + extract_metrics.py script)**

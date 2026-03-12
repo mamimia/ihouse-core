@@ -6059,3 +6059,14 @@ Tests: 23 passed. 0 failed. 2.59s.
 - `docs/archive/phases/phase-352-spec.md` — NEW
 
 Tests: 24 passed. 0 failed. 0.09s.
+
+## Phase 353 — Doc Auto-Generation from Code (Closed) — 2026-03-12
+
+**Category:** 📄 Documentation / Tooling
+**Actions:**
+- `tests/test_doc_autogen_p353.py` — NEW — 22 tests
+- Metrics extractor (6), route inventory (4), adapter registry (4), doc↔code (4), phase specs (4)
+- `scripts/extract_metrics.py` — NEW — auto-extracts 6 live codebase metrics
+- `docs/archive/phases/phase-353-spec.md` — NEW
+
+Tests: 22 passed. 0 failed. 0.90s.
