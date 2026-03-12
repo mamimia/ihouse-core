@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 309 — Owner Portal Frontend
+Phase 310 — Guest Portal Frontend
 
 ## Last Closed Phase
-Phase 308 — Frontend Real Data Integration (closed) — Financial + Tasks wired to SSE. All 4 main UI pages now have real-time connectivity.
+Phase 309 — Owner Portal Frontend (closed) — SSE, cashflow timeline widget, auto-refresh.
 
 ## System Status
 

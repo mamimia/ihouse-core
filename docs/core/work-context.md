@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 309 — Owner Portal Frontend
+Phase 310 — Guest Portal Frontend
 
 ## Last Closed Phase
 
-Phase 308 — Frontend Real Data Integration (closed) — Financial + Tasks SSE. All 4 main pages have real-time connectivity.
+Phase 309 — Owner Portal Frontend (closed) — SSE, cashflow timeline widget, auto-refresh.
 
 ## Current Objective
 
-Build the owner-facing portal page with property performance summaries, owner statements, and booking revenue visibility.
+Build the guest-facing portal page with booking confirmation details, check-in instructions, and property information.
 
 ## Key Invariants (Locked — Do Not Change)
 

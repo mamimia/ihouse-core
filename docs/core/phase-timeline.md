@@ -5590,3 +5590,14 @@ Tests: 0 new (frontend only). Build verified.
 - All 4 main UI pages (dashboard, bookings, financial, tasks) now have SSE real-time connectivity
 
 Tests: 0 new (frontend only). Build verified exit 0.
+
+## Phase 309 — Owner Portal Frontend (Closed) — 2026-03-12
+
+**Category:** 🖥 Frontend
+**Actions:**
+- SSE real-time refresh on `financial` channel + 60s auto-refresh timer
+- Replaced cashflow placeholder with real interactive timeline widget (getCashflowProjection API)
+- Promise.allSettled for parallel fetch (property data + cashflow)
+- Fixed CashflowWeek type conflict, updated branding to Domaniqo
+
+Tests: 0 new (frontend only). Build exit 0.

@@ -4127,3 +4127,14 @@ Implemented:
 - All 4 main UI pages now have SSE real-time connectivity
 
 No new backend tests, no schema changes. Next.js build exit 0.
+
+## Phase 309 — Owner Portal Frontend (Closed) — 2026-03-12
+
+Implemented:
+- Owner Portal (`app/owner/page.tsx`): SSE on `financial` channel, 60s auto-refresh
+- Cashflow timeline: replaced placeholder with real bar-chart widget using `getCashflowProjection` API
+- Parallel fetch via `Promise.allSettled` (property + cashflow)
+- Fixed type conflict: removed local `CashflowWeek`, imported from api.ts as `ApiCashflowWeek`
+- Updated footer branding to Domaniqo Phase 309
+
+Build exit 0, 18 pages. No new backend tests.

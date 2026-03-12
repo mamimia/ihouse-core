@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { api, OwnerStatementResponse, FinancialByPropertyResponse } from '@/lib/api';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { api, OwnerStatementResponse, CashflowWeek as ApiCashflowWeek } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,11 +16,7 @@ interface PropertyCard {
     currency: string;
 }
 
-interface CashflowWeek {
-    week_start: string;
-    expected_inflow: string;
-    currency: string;
-}
+
 
 // ---------------------------------------------------------------------------
 // Reusable components
@@ -478,42 +474,81 @@ function currentMonth() {
 export default function OwnerPage() {
     const [month, setMonth] = useState(currentMonth());
     const [cards, setCards] = useState<PropertyCard[]>([]);
+    const [cashflow, setCashflow] = useState<ApiCashflowWeek[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await api.getFinancialByProperty(month);
-            // Flatten into PropertyCard[]
-            const byProp = res.properties || {};
-            const built: PropertyCard[] = Object.entries(byProp).map(([propId, currencies]) => {
-                // Pick first currency bucket (primary)
-                const firstCur = Object.keys(currencies)[0] || 'USD';
-                const bucket = (currencies as Record<string, {
-                    gross: string;
-                    commission: string;
-                    net: string;
-                    booking_count: number;
-                }>)[firstCur];
-                return {
-                    property_id: propId,
-                    currency: firstCur,
-                    gross_total: bucket?.gross ?? null,
-                    ota_commission_total: bucket?.commission ?? null,
-                    owner_net_total: bucket?.net ?? null,
-                    booking_count: bucket?.booking_count ?? 0,
-                };
-            });
-            setCards(built.sort((a, b) => a.property_id.localeCompare(b.property_id)));
+            const [propRes, cfRes] = await Promise.allSettled([
+                api.getFinancialByProperty(month),
+                api.getCashflowProjection(month),
+            ]);
+
+            // Properties
+            if (propRes.status === 'fulfilled') {
+                const byProp = propRes.value.properties || {};
+                const built: PropertyCard[] = Object.entries(byProp).map(([propId, currencies]) => {
+                    const firstCur = Object.keys(currencies)[0] || 'USD';
+                    const bucket = (currencies as Record<string, {
+                        gross: string;
+                        commission: string;
+                        net: string;
+                        booking_count: number;
+                    }>)[firstCur];
+                    return {
+                        property_id: propId,
+                        currency: firstCur,
+                        gross_total: bucket?.gross ?? null,
+                        ota_commission_total: bucket?.commission ?? null,
+                        owner_net_total: bucket?.net ?? null,
+                        booking_count: bucket?.booking_count ?? 0,
+                    };
+                });
+                setCards(built.sort((a, b) => a.property_id.localeCompare(b.property_id)));
+            } else {
+                setCards([]);
+            }
+
+            // Cashflow
+            if (cfRes.status === 'fulfilled') {
+                setCashflow(cfRes.value.weeks ?? []);
+            } else {
+                setCashflow([]);
+            }
         } catch {
             setCards([]);
+            setCashflow([]);
         } finally {
             setLoading(false);
         }
     }, [month]);
 
     useEffect(() => { load(); }, [load]);
+
+    // 60s auto-refresh
+    useEffect(() => {
+        timerRef.current = setInterval(load, 60_000);
+        return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }, [load]);
+
+    // SSE for real-time financial events (Phase 309)
+    useEffect(() => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : '';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+        const es = new EventSource(`${baseUrl}/events/stream?channels=financial&token=${token}`);
+        es.onmessage = (e) => {
+            try {
+                const evt = JSON.parse(e.data);
+                if (evt.channel === 'financial') {
+                    setTimeout(load, 1000);
+                }
+            } catch { /* ignore */ }
+        };
+        return () => es.close();
+    }, [load]);
 
     // Aggregate totals
     const totalGross = cards.reduce((s, c) => s + parseFloat(c.gross_total || '0'), 0);
@@ -653,7 +688,7 @@ export default function OwnerPage() {
                 </div>
             )}
 
-            {/* Payout timeline placeholder */}
+            {/* Cashflow timeline */}
             <div style={{
                 background: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
@@ -668,14 +703,67 @@ export default function OwnerPage() {
                     letterSpacing: '0.08em',
                     marginBottom: 'var(--space-4)',
                 }}>
-                    📅 Payout Timeline — upcoming expected inflows
+                    📅 Cashflow Timeline — expected weekly inflows
                 </div>
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
-                    Cashflow projection available via{' '}
-                    <a href="/financial" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
-                        Financial Dashboard →
-                    </a>
-                </p>
+                {cashflow.length === 0 ? (
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
+                        No cashflow data for {month}.{' '}
+                        <a href="/financial" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
+                            View Financial Dashboard →
+                        </a>
+                    </p>
+                ) : (() => {
+                    const maxNet = Math.max(...cashflow.map(w => parseFloat(w.expected_net) || 0)) || 1;
+                    return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                            {cashflow.map(w => {
+                                const net = parseFloat(w.expected_net) || 0;
+                                const pct = (net / maxNet) * 100;
+                                const weekLabel = w.week_start
+                                    ? new Date(w.week_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                    : w.week;
+                                return (
+                                    <div key={w.week} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                                        <span style={{
+                                            fontSize: 'var(--text-xs)',
+                                            color: 'var(--color-text-dim)',
+                                            fontFamily: 'var(--font-mono)',
+                                            minWidth: 65,
+                                            textAlign: 'right',
+                                        }}>{weekLabel}</span>
+                                        <div style={{ flex: 1, height: 16, background: 'var(--color-surface-3)', borderRadius: 4, overflow: 'hidden', position: 'relative' }}>
+                                            <div style={{
+                                                height: '100%',
+                                                width: `${pct}%`,
+                                                background: 'linear-gradient(90deg, var(--color-ok), #34d399)',
+                                                borderRadius: 4,
+                                                transition: 'width .5s ease',
+                                            }} />
+                                        </div>
+                                        <span style={{
+                                            fontSize: 'var(--text-xs)',
+                                            fontWeight: 600,
+                                            color: 'var(--color-ok)',
+                                            fontVariantNumeric: 'tabular-nums',
+                                            minWidth: 80,
+                                            textAlign: 'right',
+                                        }}>
+                                            {w.currency} {net.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </span>
+                                        <span style={{
+                                            fontSize: 'var(--text-xs)',
+                                            color: 'var(--color-text-faint)',
+                                            minWidth: 25,
+                                            textAlign: 'right',
+                                        }}>
+                                            {w.booking_count}b
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Footer */}
@@ -687,8 +775,8 @@ export default function OwnerPage() {
                 display: 'flex',
                 justifyContent: 'space-between',
             }}>
-                <span>iHouse Core — Owner Portal · Phase 170</span>
-                <span>Role-scoped via Phase 165–166 · Statement: Phase 121</span>
+                <span>Domaniqo — Owner Portal · Phase 309</span>
+                <span>Auto-refresh: 60s · SSE live</span>
             </div>
 
             {/* Statement drawer */}
