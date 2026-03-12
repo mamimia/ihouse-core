@@ -4259,3 +4259,7 @@ Implemented state_transition_guard.py (250 lines) from skill spec. 17 tests: all
 ## Phase 327 — Availability Broadcaster Integration Tests — 2026-03-12
 
 broadcast_availability() integration tests. 10 tests: PROPERTY_ONBOARDED (3), CHANNEL_ADDED (2), failure isolation (2), report shape (3). All pass in 0.22s.
+
+## Phase 328 — Guest Messaging Copilot Integration Tests — 2026-03-12
+
+First-ever tests for guest_messaging_copilot.py (Phase 227, 497 lines). 18 tests covering 6 intents, 4 languages, 3 tones, subject generation, and nights calculation. All pass in 0.42s.

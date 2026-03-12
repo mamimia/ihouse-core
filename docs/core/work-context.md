@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 328 — (Next)
+Phase 329 — (Next)
 
 ## Last Closed Phase
 
-Phase 327 — Availability Broadcaster Integration Tests (closed) — 10 tests, all pass.
+Phase 328 — Guest Messaging Copilot Integration Tests (closed) — 18 tests, all pass.
 
 ## Current Objective
 

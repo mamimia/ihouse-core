@@ -5802,3 +5802,13 @@ Tests: 17 passed. 0 failed. 0.09s.
 - `docs/archive/phases/phase-327-spec.md` — NEW
 
 Tests: 10 passed. 0 failed. 0.22s.
+
+## Phase 328 — Guest Messaging Copilot Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🤖 AI / Guest Messaging / Testing
+**Actions:**
+- `tests/test_guest_messaging_copilot_integration.py` — NEW — 18 tests (FIRST-EVER)
+- Draft content (6), language+salutation (4), tones (2), subjects (3), nights (3)
+- `docs/archive/phases/phase-328-spec.md` — NEW
+
+Tests: 18 passed. 0 failed. 0.42s.
