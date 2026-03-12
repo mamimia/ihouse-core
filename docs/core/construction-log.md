@@ -4251,3 +4251,7 @@ SLA engine integration tests. 16 tests: combined breaches, terminal guard, bound
 ## Phase 325 — Booking Conflict Resolver Integration Tests — 2026-03-12
 
 Conflict resolution integration tests. 18 tests: date overlap (5), missing fields (4), dup refs (3), report shape (3), auto-resolver chain (3). All pass in 0.10s.
+
+## Phase 326 — State Transition Guard Implementation + Tests — 2026-03-12
+
+Implemented state_transition_guard.py (250 lines) from skill spec. 17 tests: allowed (4), denied (3), invariants (3), input validation (3), audit shape (4). All pass in 0.09s.

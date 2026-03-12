@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 326 — (Next)
+Phase 327 — (Next)
 
 ## Last Closed Phase
 
-Phase 325 — Booking Conflict Resolver Integration Tests (closed) — 18 tests, all pass.
+Phase 326 — State Transition Guard Implementation + Tests (closed) — 17 tests, all pass.
 
 ## Current Objective
 

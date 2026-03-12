@@ -5781,3 +5781,14 @@ Tests: 16 passed. 0 failed. 0.09s.
 - `docs/archive/phases/phase-325-spec.md` — NEW
 
 Tests: 18 passed. 0 failed. 0.10s.
+
+## Phase 326 — State Transition Guard Implementation + Tests (Closed) — 2026-03-12
+
+**Category:** 🔄 State Machine / Testing
+**Actions:**
+- `src/services/state_transition_guard.py` — NEW — 250 lines (implements skill spec)
+- `tests/test_state_transition_integration.py` — NEW — 17 tests
+- Priority stack, invariants, full AuditEvent generation
+- `docs/archive/phases/phase-326-spec.md` — NEW
+
+Tests: 17 passed. 0 failed. 0.09s.
