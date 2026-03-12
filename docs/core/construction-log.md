@@ -4371,3 +4371,26 @@ Full platform audit. Ran complete test suite: 7,069 collected (7,022 passed, 30 
 **Phases 365–374:** Layer C Document Alignment (docs synced to Phase 364). Rate Limiter Hardening — strict tier at 20 RPM for sensitive endpoints + stats() monitoring method. Frontend Error Boundary & Offline State — ErrorBoundary class component + OfflineBanner + ClientProviders wrapper in root layout. Health Check Graceful Degradation — uptime tracking, response_time_ms, rate limiter probe. Outbound Sync Retry Dashboard — /admin/sync frontend page with per-provider health cards. API Response Envelope Standardization — make_success_response + 3 new error codes (CONFLICT, ALREADY_EXISTS, SERVICE_UNAVAILABLE). Booking Search Full-Text Enhancement — `q` param with ilike across booking_id/reservation_ref/guest_name. Admin Audit Log Frontend Page — /admin/audit with expandable payload. Deploy Checklist Automation — IHOUSE_GUEST_TOKEN_SECRET added to required vars + HMAC key length validation. Platform Checkpoint XIX.
 
 Test suite at closure: 7,043 passed, 9 failed (infra/Supabase), 17 skipped. Frontend TypeScript: 0 errors. 20 frontend pages. 374 phase specs in archive.
+
+## Phases 375–394 — Platform Surface Consolidation — 2026-03-13
+
+**Category:** 🎨 Frontend / Product Architecture
+
+20-phase frontend platform consolidation across 4 waves. Route group split ((public)/(app)), responsive adaptation (15+ pages), mobile role surfaces (4 new protected pages), access-link system (3 new public token pages — backend endpoints NOT implemented), shared component extraction (5 components, unused), role-based entry routing (JWT has no role claim — non-functional), design token migration (partial).
+
+Key files created:
+- `ihouse-ui/app/(app)/ops/page.tsx` — mobile ops command
+- `ihouse-ui/app/(app)/checkin/page.tsx` — check-in arrivals
+- `ihouse-ui/app/(app)/checkout/page.tsx` — check-out departures
+- `ihouse-ui/app/(app)/maintenance/page.tsx` — maintenance workflow
+- `ihouse-ui/app/(public)/guest/[token]/page.tsx` — guest QR portal
+- `ihouse-ui/app/(public)/invite/[token]/page.tsx` — staff invitation
+- `ihouse-ui/app/(public)/onboard/[token]/page.tsx` — owner onboarding
+- `ihouse-ui/lib/roleRoute.ts` — JWT role→route mapper
+- `ihouse-ui/components/StatusBadge.tsx` — status indicator
+- `ihouse-ui/components/DataCard.tsx` — stat card
+- `ihouse-ui/components/TouchCard.tsx` — touch-interactive card
+- `ihouse-ui/components/DetailSheet.tsx` — bottom sheet
+- `ihouse-ui/components/SlaCountdown.tsx` — SLA timer
+
+28 total pages after closure (22 protected + 6 public). 4 TypeScript checkpoints: all 0 errors. Backend test suite: pre-existing infra failures, no new regressions.

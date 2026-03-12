@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 374 — Platform Checkpoint XIX (closed — session handoff).
+Phase 394 — Platform Checkpoint XX (closed — session handoff).
 
 ## Last Closed Phase
 
-Phase 374 — Platform Checkpoint XIX (Full Audit) (closed).
+Phase 394 — Platform Checkpoint XX: Full Multi-Surface Audit (closed).
 
 ## Current Objective
 
-Session complete. All phases 355–374 closed. 7,043 tests passed, 9 infra-dependent failures, TypeScript 0 errors. 20 frontend pages. Next session starts at Phase 375.
+Session complete. All phases 375–394 closed (Platform Surface Consolidation). 28 frontend pages (22 protected + 6 public). Backend test suite: pre-existing infra failures only, no new regressions. TypeScript 0 errors across 4 checkpoints. Known gaps: 3 public token pages have no backend, role routing is non-functional (JWT has no role claim), checkin/checkout actions are client-only, 5 shared components are unused. Next session starts at Phase 395.
 
 ## Key Invariants (Locked — Do Not Change)
 

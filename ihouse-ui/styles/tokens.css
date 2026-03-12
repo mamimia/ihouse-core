@@ -1,13 +1,15 @@
-/* Phase 257 — Domaniqo Design System Tokens */
+/* Phase 377 — Domaniqo Design System Tokens */
 /* Brand: Domaniqo — quiet, precise, architectural, premium hospitality */
+/* Theme: dark-preferred, light-supported */
 
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
 :root {
   /* ---------- Domaniqo Colour Palette ---------- */
 
   /* Core Neutrals */
   --color-midnight:     #171A1F;   /* Midnight Graphite — primary dark */
+  --color-elevated:     #1E2127;   /* Elevated — dark-mode card surface */
   --color-stone:        #EAE5DE;   /* Stone Mist — soft premium light */
   --color-sand:         #D6C8B7;   /* Soft Sand — warm secondary neutral */
   --color-white:        #F8F6F2;   /* Cloud White — main background */
@@ -18,6 +20,8 @@
 
   /* Accent */
   --color-copper:       #B56E45;   /* Signal Copper — premium highlight only */
+  --color-glow:         #D4956A;   /* Copper Glow — animation/warm accent */
+  --color-sage:         #8FA39B;   /* Sage — calm operational */
   --color-sky:          #9FB7C9;   /* Muted Sky — secondary info, optional */
 
   /* ---------- Semantic Roles (light mode: warm minimal) ---------- */
@@ -37,6 +41,7 @@
   --color-ok:      #4A7C59;
   --color-warn:    #B56E45;
   --color-danger:  #9B3A3A;
+  --color-alert:   #C45B4A;
   --color-muted:   var(--color-olive);
   --color-info:    var(--color-sky);
 
@@ -47,6 +52,7 @@
   --color-text-inverse: var(--color-white);
 
   /* ---------- Typography ---------- */
+  --font-display: 'Instrument Serif', Georgia, serif;  /* hero, splash, brand */
   --font-brand: 'Manrope', system-ui, sans-serif;     /* headlines, brand UI */
   --font-sans:  'Inter', system-ui, -apple-system, sans-serif;  /* body, UI */
   --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
@@ -58,6 +64,7 @@
   --text-xl:   1.375rem;
   --text-2xl:  1.75rem;
   --text-3xl:  2.25rem;
+  --text-4xl:  3rem;
 
   /* ---------- Spacing ---------- */
   --space-1:  0.25rem;
@@ -94,4 +101,77 @@
   --sidebar-width: 220px;
   --header-height: 56px;
   --content-max: 1280px;
+
+  /* ---------- Breakpoints (reference values for JS) ---------- */
+  --bp-mobile:  768px;
+  --bp-tablet:  1024px;
+  --bp-desktop: 1280px;
+
+  /* ---------- Touch ---------- */
+  --touch-target-min: 44px;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE — PREFERRED
+   Activated via data-theme="dark" on <html> or via prefers-color-scheme.
+   Colors align with domaniqo-site brand palette (midnight, elevated, stone, copper).
+   ═══════════════════════════════════════════════════════════ */
+
+[data-theme="dark"],
+.theme-dark {
+  --color-bg:           var(--color-midnight);
+  --color-surface:      var(--color-elevated);
+  --color-surface-2:    #252830;
+  --color-surface-3:    #2C2F38;
+  --color-border:       rgba(234,229,222,0.08);
+  --color-border-light: rgba(234,229,222,0.05);
+
+  --color-primary:      var(--color-stone);
+  --color-primary-dim:  var(--color-sand);
+  --color-accent:       var(--color-copper);
+
+  --color-text:         var(--color-stone);
+  --color-text-dim:     #B5AFA6;
+  --color-text-faint:   rgba(234,229,222,0.4);
+  --color-text-inverse: var(--color-midnight);
+
+  --color-ok:      #4ADE80;
+  --color-warn:    var(--color-glow);
+  --color-danger:  #EF4444;
+  --color-alert:   var(--color-alert);
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.5);
+}
+
+/* Auto dark for users who prefer dark at OS level */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg:           var(--color-midnight);
+    --color-surface:      var(--color-elevated);
+    --color-surface-2:    #252830;
+    --color-surface-3:    #2C2F38;
+    --color-border:       rgba(234,229,222,0.08);
+    --color-border-light: rgba(234,229,222,0.05);
+
+    --color-primary:      var(--color-stone);
+    --color-primary-dim:  var(--color-sand);
+    --color-accent:       var(--color-copper);
+
+    --color-text:         var(--color-stone);
+    --color-text-dim:     #B5AFA6;
+    --color-text-faint:   rgba(234,229,222,0.4);
+    --color-text-inverse: var(--color-midnight);
+
+    --color-ok:      #4ADE80;
+    --color-warn:    var(--color-glow);
+    --color-danger:  #EF4444;
+
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md:  0 4px 16px rgba(0,0,0,0.4);
+    --shadow-lg:  0 8px 32px rgba(0,0,0,0.5);
+  }
+}
+

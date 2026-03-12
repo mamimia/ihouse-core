@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Domaniqo — See every stay.</title>
+  <meta name="description" content="The deep operations platform for modern hospitality. Calm command for modern stays.">
+  <meta name="keywords" content="hospitality operations, property management, villa management, booking operations, hospitality platform">
+  <meta name="author" content="Domaniqo">
+  <meta name="theme-color" content="#171A1F">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Domaniqo — See every stay.">
+  <meta property="og:description" content="The deep operations platform for modern hospitality. Calm command for modern stays.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://domaniqo.com">
+  <meta property="og:image" content="https://domaniqo.com/assets/images/og-image.svg">
+  <meta property="og:site_name" content="Domaniqo">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Domaniqo — See every stay.">
+  <meta name="twitter:description" content="The deep operations platform for modern hospitality.">
+  <meta name="twitter:image" content="https://domaniqo.com/assets/images/og-image.svg">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=Nunito+Sans:wght@600;700;800&family=Poppins:wght@600;700&family=Montserrat:wght@600;700;800&family=DM+Sans:wght@500;600;700&family=Raleway:wght@600;700;800&family=Quicksand:wght@600;700&family=Product+Sans:wght@400&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="splash-active">
+
+  <!-- ═══ SPLASH OVERLAY ═══ -->
+  <div id="splash">
+    <div class="gr"></div>
+    <div class="sg sg1"></div>
+    <div class="sg sg2"></div>
+    <div id="smono">
+      <div id="srot">
+        <svg width="190" height="190" viewBox="0 0 64 64" fill="none" style="overflow:visible">
+          <defs>
+            <filter id="wg" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="dg" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="fg" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <!-- Base D -->
+          <path id="bo" d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#B56E45" stroke-width="2.2" stroke-linejoin="round" fill="none" opacity=".3" style="transition:opacity .5s ease"/>
+          <line id="bv" x1="28" y1="6" x2="28" y2="58" stroke="#B56E45" stroke-width="1.2" opacity=".2" style="transition:opacity .5s ease"/>
+          <line id="bh" x1="16" y1="32" x2="52" y2="32" stroke="#B56E45" stroke-width="1.2" opacity=".2" style="transition:opacity .5s ease"/>
+          <path id="ba" d="M28 13C40 13 51 22 51 32C51 42 40 51 28 51" stroke="#B56E45" stroke-width="1.08" fill="none" opacity=".15" style="transition:opacity .5s ease"/>
+          <!-- Light traces -->
+          <path class="tr tr-o" d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#D4956A" stroke-width="2.4" stroke-linejoin="round" fill="none" filter="url(#wg)" stroke-dasharray="200"/>
+          <line class="tr tr-v" x1="28" y1="6" x2="28" y2="58" stroke="#D4956A" stroke-width="1.4" filter="url(#wg)" stroke-dasharray="52"/>
+          <line class="tr tr-h" x1="16" y1="32" x2="52" y2="32" stroke="#D4956A" stroke-width="1.4" filter="url(#wg)" stroke-dasharray="36"/>
+          <path class="tr tr-a" d="M28 13C40 13 51 22 51 32C51 42 40 51 28 51" stroke="#D4956A" stroke-width="1.3" fill="none" filter="url(#wg)" stroke-dasharray="80"/>
+          <!-- Traveling dots -->
+          <circle class="tr dt-o" r="1.8" fill="#DBA57A" filter="url(#dg)" style="offset-path:path('M16 6 L28 6 C46 6 58 18 58 32 C58 46 46 58 28 58 L16 58')"/>
+          <circle class="tr dt-a" r="1.5" fill="#DBA57A" filter="url(#dg)" style="offset-path:path('M28 13C40 13 51 22 51 32C51 42 40 51 28 51')"/>
+          <!-- Final glow -->
+          <path class="tr gl" d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#D4956A" stroke-width="3.5" stroke-linejoin="round" fill="none" filter="url(#fg)"/>
+          <!-- House windows -->
+          <line class="wl" x1="38" y1="18" x2="38" y2="46" stroke="#B56E45" stroke-width=".7"/>
+          <line class="wl wl2" x1="30" y1="32" x2="46" y2="32" stroke="#B56E45" stroke-width=".7"/>
+        </svg>
+      </div>
+    </div>
+    <div id="sbn"><span>Domaniqo</span></div>
+    <div id="sdv"></div>
+    <div id="stg"><span>See every stay.</span></div>
+    <div id="ssp">CALM COMMAND FOR MODERN HOSPITALITY</div>
+  </div>
+
+
+  <!-- ═══ NAVIGATION ═══ -->
+  <nav id="mn">
+    <a href="#" class="nl">
+      <svg viewBox="0 0 64 64" fill="none"><path d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#EAE5DE" stroke-width="2.2" stroke-linejoin="round"/><line x1="28" y1="6" x2="28" y2="58" stroke="#EAE5DE" stroke-width="1.2"/><line x1="16" y1="32" x2="52" y2="32" stroke="#EAE5DE" stroke-width="1.2"/><path d="M28 13C40 13 51 22 51 32C51 42 40 51 28 51" stroke="#EAE5DE" stroke-width="1.08" fill="none"/></svg>
+      <span>Domaniqo</span>
+    </a>
+    <div class="nr">
+      <a href="#origin">Story</a>
+      <a href="#what">Platform</a>
+      <a href="#caps">Capabilities</a>
+      <a href="#mods">Modules</a>
+      <a href="early-access.html" class="nc">Early access</a>
+    </div>
+  </nav>
+
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero" id="hero">
+    <div class="hm rv">
+      <svg width="52" height="52" viewBox="0 0 64 64" fill="none"><path d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#B56E45" stroke-width="2.2" stroke-linejoin="round"/><line x1="28" y1="6" x2="28" y2="58" stroke="#B56E45" stroke-width="1.2"/><line x1="16" y1="32" x2="52" y2="32" stroke="#B56E45" stroke-width="1.2"/><path d="M28 13C40 13 51 22 51 32C51 42 40 51 28 51" stroke="#B56E45" stroke-width="1.08" fill="none"/></svg>
+    </div>
+    <h1 class="rv">See every stay.</h1>
+    <p class="hs rv">The deep operations platform for modern hospitality.</p>
+    <div class="hc rv">
+      <a href="early-access.html" class="bp">Request early access</a>
+      <a href="#origin" class="bs">Our story</a>
+    </div>
+  </section>
+
+
+  <!-- ═══ ORIGIN STORY ═══ -->
+  <section class="origin" id="origin">
+    <div class="origin-inner">
+      <div class="rv">
+        <div class="sl">Why we exist</div>
+        <h2 class="sh">Hospitality operations were never given the system they deserved.</h2>
+        <p class="sb" style="text-align:center">
+          Booking tools exist. Channel managers exist. Cleaning apps exist.
+          But the layer underneath — the one that holds the truth about what is actually happening
+          across your properties, your teams, your finances, and your guests — that layer was always missing.
+        </p>
+        <p class="sb" style="text-align:center">
+          Operators filled the gap with spreadsheets, group chats, and hope.
+          The result: missed handoffs, conflicting data, financial fog, and the persistent feeling
+          that something, somewhere, is falling through the cracks.
+        </p>
+      </div>
+      <div class="origin-q rv" style="transition-delay:.15s">
+        "You cannot control what you cannot see.<br>
+        You cannot trust what you cannot trace."
+      </div>
+      <p class="sb rv" style="text-align:center;margin:32px auto 0;transition-delay:.25s">
+        Domaniqo was built to close that gap. Not another booking tool —
+        the operating layer beneath all of them. Where canonical truth is built,
+        anomalies surface early, and every number is honest about its own certainty.
+      </p>
+    </div>
+  </section>
+
+
+  <!-- ═══ TENSION ═══ -->
+  <section class="tension" id="tension">
+    <div class="si">
+      <div class="rv">
+        <div class="sl">The reality today</div>
+        <h2 class="sh">What hospitality operators live with every day.</h2>
+        <p class="sb">Most teams piece together operations from five to twelve disconnected tools. The cost isn't just inefficiency — it's uncertainty.</p>
+      </div>
+      <div class="tg rv" style="transition-delay:.15s">
+        <div class="ti"><h4>Conflicting booking data</h4><p>Channel A says confirmed. Channel B says modified. Your spreadsheet says something else. Which version is real?</p></div>
+        <div class="ti"><h4>Invisible sync failures</h4><p>Availability pushed outward two hours ago — but did it arrive? Most teams find out only when a double booking appears.</p></div>
+        <div class="ti"><h4>Financial fog</h4><p>Revenue numbers pulled from four sources, none of which agree. Confidence in your own P&amp;L: <span class="ti-a">partial, at best.</span></p></div>
+        <div class="ti"><h4>Missed SLA breaches</h4><p>The cleaning was due at 10:00. It's 11:45 and nobody noticed. The guest arrives at 14:00.</p></div>
+        <div class="ti"><h4>Communication chaos</h4><p>Operational instructions in WhatsApp, LINE, email, and a notebook. Who acknowledged? Who completed? Nobody knows with certainty.</p></div>
+        <div class="ti"><h4>Team blind spots</h4><p>The manager sees the dashboard. The worker sees their phone. The owner sees a monthly PDF. None of them are looking at the same truth.</p></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ WHAT ═══ -->
+  <section class="what" id="what">
+    <div class="si">
+      <div class="wg">
+        <div>
+          <div class="rv">
+            <div class="sl">The platform</div>
+            <h2 class="sh">One operating layer. One truth.</h2>
+            <p class="sb" style="max-width:100%">
+              Domaniqo doesn't replace your booking channels or your cleaning app.
+              It sits beneath all of them — the deep operational layer where data becomes truth,
+              exceptions become visible, and every team member works from the same reality.
+            </p>
+            <p class="sb" style="max-width:100%;margin-top:16px">
+              Not a dashboard that shows you what happened yesterday.
+              A command layer that shows you what needs attention right now —
+              and what your data is confident about versus what it's still estimating.
+            </p>
+          </div>
+        </div>
+        <div>
+          <div class="wc rv" style="transition-delay:.1s">
+            <div class="wc-i" style="background:var(--moss)"></div>
+            <h4>Canonical truth</h4>
+            <p>One source of operational reality across all channels, all properties, all teams. Booking conflicts detected. Change history traced. No conflicting versions.</p>
+          </div>
+          <div class="wc rv" style="transition-delay:.18s">
+            <div class="wc-i" style="background:var(--copper)"></div>
+            <h4>Early anomaly detection</h4>
+            <p>Rate discrepancies, sync gaps, SLA risks, and operational drift — visible the moment they appear, not after they become crises.</p>
+          </div>
+          <div class="wc rv" style="transition-delay:.26s">
+            <div class="wc-i" style="background:var(--sage)"></div>
+            <h4>Financial honesty</h4>
+            <p>Every number carries a confidence level: confirmed, calculated, or estimated. Revenue figures state what they know and what they're still guessing. No false precision.</p>
+          </div>
+          <div class="wc rv" style="transition-delay:.34s">
+            <div class="wc-i" style="background:var(--olive)"></div>
+            <h4>Transparent synchronization</h4>
+            <p>Every sync is auditable. Every channel push is tracked. Last successful sync visible. Failures surfaced immediately — not discovered through double bookings.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ MESSAGING STRIP ═══ -->
+  <div class="strip">
+    <div class="stk">
+      <span>Run every stay with clarity</span><span class="ac">&bull;</span>
+      <span>Nothing hidden</span><span class="ac">&bull;</span>
+      <span>Operations, resolved</span><span class="ac">&bull;</span>
+      <span>Know before it breaks</span><span class="ac">&bull;</span>
+      <span>No blind spots</span><span class="ac">&bull;</span>
+      <span>Deep ops. Clean surface.</span><span class="ac">&bull;</span>
+      <span>Run every stay with clarity</span><span class="ac">&bull;</span>
+      <span>Nothing hidden</span><span class="ac">&bull;</span>
+      <span>Operations, resolved</span><span class="ac">&bull;</span>
+      <span>Know before it breaks</span><span class="ac">&bull;</span>
+      <span>No blind spots</span><span class="ac">&bull;</span>
+      <span>Deep ops. Clean surface.</span><span class="ac">&bull;</span>
+    </div>
+  </div>
+
+
+  <!-- ═══ THREE WORLDS ═══ -->
+  <section class="worlds" id="worlds">
+    <div class="si">
+      <div class="rv">
+        <div class="sl">Three domains, one layer</div>
+        <h2 class="sh">Where hospitality meets operational precision.</h2>
+        <p class="sb" style="opacity:.35">Domaniqo sits at the intersection of three domains. Most tools serve one. The gap between them is where operations break.</p>
+      </div>
+      <div class="wog">
+        <div class="wo rv"><div class="wo-n">01</div><h3>Hospitality</h3><p>Guest experience, arrival readiness, service standards. The human side of operations — where preparation translates into exceptional stays.</p><div class="wo-k"><span>Service</span><span>Calm</span><span>Arrival</span><span>Standards</span><span>Experience</span></div></div>
+        <div class="wo rv" style="transition-delay:.1s"><div class="wo-n">02</div><h3>Operations</h3><p>Task execution, team coordination, timing, handoffs. Every action tracked, every deadline visible, every completion confirmed.</p><div class="wo-k"><span>Clarity</span><span>Task flow</span><span>Timing</span><span>Teams</span><span>Execution</span></div></div>
+        <div class="wo rv" style="transition-delay:.2s"><div class="wo-n">03</div><h3>Control</h3><p>Financial visibility, channel oversight, sync health, audit trails. Quiet command over every property, every channel, every number.</p><div class="wo-k"><span>Oversight</span><span>Command</span><span>Confidence</span><span>Structure</span></div></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ CAPABILITIES ═══ -->
+  <section class="caps" id="caps">
+    <div class="si">
+      <div class="rv">
+        <div class="sl">What the system does today</div>
+        <h2 class="sh">Built for real operations. Already running.</h2>
+        <p class="sb">Domaniqo is not a concept. The platform is in active development with deep operational capabilities across fourteen domains.</p>
+      </div>
+      <div class="cg">
+        <div class="cc rv"><div class="cc-d" style="background:var(--moss)"></div><h4>Booking control</h4><p>Unified booking records across properties. Search, filter, detail views with business context. Change history, audit trail, conflict detection.</p><div class="cc-t">Core</div></div>
+        <div class="cc rv" style="transition-delay:.06s"><div class="cc-d" style="background:var(--moss)"></div><h4>Availability accuracy</h4><p>Reservation integrity after cancellations and modifications. Conflict prevention. Clean availability state across all channels.</p><div class="cc-t">Core</div></div>
+        <div class="cc rv" style="transition-delay:.12s"><div class="cc-d" style="background:var(--moss)"></div><h4>Multi-channel sync</h4><p>Accept from OTAs. Push outward. Map properties to channels. Auditable sync history. Multiple sync strategies per channel.</p><div class="cc-t">Channels</div></div>
+        <div class="cc rv" style="transition-delay:.18s"><div class="cc-d" style="background:var(--sage)"></div><h4>Daily operations</h4><p>Property-level summaries, live dashboard, arrival/departure visibility, morning briefings with priorities and signals, bulk actions.</p><div class="cc-t">Operations</div></div>
+        <div class="cc rv" style="transition-delay:.24s"><div class="cc-d" style="background:var(--sage)"></div><h4>Worker execution</h4><p>Mobile-first task workspace. Live handling, acknowledgement, completion flow. Priority cues, templates, availability scheduling.</p><div class="cc-t">Teams</div></div>
+        <div class="cc rv" style="transition-delay:.3s"><div class="cc-d" style="background:var(--sage)"></div><h4>Guest operations</h4><p>Guest profiles linked to bookings. Secure guest pages with Wi-Fi, access codes, house rules. Feedback collection, NPS insight, pre-arrival workflows.</p><div class="cc-t">Guests</div></div>
+        <div class="cc rv" style="transition-delay:.36s"><div class="cc-d" style="background:var(--olive)"></div><h4>Owner visibility</h4><p>Portfolio, occupancy, revenue, cashflow visibility. Monthly statements. Exportable documents. Direct owner portal access.</p><div class="cc-t">Owners</div></div>
+        <div class="cc rv" style="transition-delay:.42s"><div class="cc-d" style="background:var(--olive)"></div><h4>Finance &amp; business</h4><p>Revenue, commission, net performance. Multi-currency. Reconciliation health. Channel revenue mix. Confidence-level indicators.</p><div class="cc-t">Finance</div></div>
+        <div class="cc rv" style="transition-delay:.48s"><div class="cc-d" style="background:var(--copper)"></div><h4>Notifications</h4><p>Multi-channel escalation: LINE, WhatsApp, Telegram, SMS, email. Delivery monitoring, message history, staff preferences.</p><div class="cc-t">Communication</div></div>
+        <div class="cc rv" style="transition-delay:.54s"><div class="cc-d" style="background:var(--copper)"></div><h4>Admin &amp; permissions</h4><p>Role-based access. Delegated permissions. Device and session control. Organization management. Integration monitoring.</p><div class="cc-t">Control</div></div>
+        <div class="cc rv" style="transition-delay:.6s"><div class="cc-d" style="background:var(--glow)"></div><h4>AI assistance</h4><p>Manager briefings, financial explanations, task prioritization, anomaly scanning, revenue forecasting, worker task assistance.</p><div class="cc-t">Intelligence</div></div>
+        <div class="cc rv" style="transition-delay:.66s"><div class="cc-d" style="background:var(--glow)"></div><h4>Localization</h4><p>English, Thai, Hebrew. Right-to-left layout support. Designed for international hospitality operations from day one.</p><div class="cc-t">Global</div></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ HOW IT WORKS ═══ -->
+  <section class="how" id="how">
+    <div class="si">
+      <div class="rv">
+        <div class="sl">How Domaniqo works</div>
+        <h2 class="sh">Four principles of operational control.</h2>
+        <p class="sb">Every feature, every screen, every data point follows the same logic.</p>
+      </div>
+      <div class="hog rv" style="transition-delay:.15s">
+        <div class="ho"><h4>One record of truth</h4><p>Bookings, availability, rates, guest data — one authoritative record that all channels feed into. Conflicts are detected, not hidden.</p></div>
+        <div class="ho"><h4>Traceable history</h4><p>Every change is recorded. Every sync logged. Every action attributed. When something changes, you can trace exactly what happened, when, and by whom.</p></div>
+        <div class="ho"><h4>Honest confidence</h4><p>Financial data carries confidence levels. Sync health is visible. The system tells you what it knows for certain versus what it's estimating. No false precision.</p></div>
+        <div class="ho"><h4>Early attention</h4><p>SLA risks, rate deviations, sync failures, booking conflicts — surfaced as signals before they become crises. Know before it breaks.</p></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ MODULES ═══ -->
+  <section class="mods" id="mods">
+    <div class="si">
+      <div class="rv">
+        <div class="sl">System architecture</div>
+        <h2 class="sh">Seven modules. One platform.</h2>
+        <p class="sb">Each module handles a distinct operational domain. Together, they form a complete hospitality operating system.</p>
+      </div>
+      <div class="mg rv" style="transition-delay:.15s">
+        <div class="mc"><div class="mc-n">Domaniqo <em>Core</em></div><div class="mc-d">The foundation. Property data, configuration, booking records, availability, and the canonical truth layer.</div></div>
+        <div class="mc"><div class="mc-n">Domaniqo <em>Stays</em></div><div class="mc-d">Reservation lifecycle. Booking sync, channel management, rate integrity, conflict detection, and guest-stay continuity.</div></div>
+        <div class="mc"><div class="mc-n">Domaniqo <em>Ops</em></div><div class="mc-d">Task orchestration. Cleaning, maintenance, prep — tracked with SLA enforcement, worker assignment, and completion verification.</div></div>
+        <div class="mc"><div class="mc-n">Domaniqo <em>Guests</em></div><div class="mc-d">Guest experience. Profiles, check-in flows, welcome sequences, feedback collection, service standards, pre-arrival workflows.</div></div>
+        <div class="mc"><div class="mc-n">Domaniqo <em>Inbox</em></div><div class="mc-d">Unified communications. Every message, every channel — LINE, WhatsApp, Telegram, SMS, email — one operational thread.</div></div>
+        <div class="mc"><div class="mc-n">Domaniqo <em>Teams</em></div><div class="mc-d">Team coordination. Roles, permissions, assignments, accountability, escalation paths, availability scheduling.</div></div>
+        <div class="mc"><div class="mc-n">Domaniqo <em>Pulse</em></div><div class="mc-d">Operational intelligence. Anomaly detection, health monitoring, financial dashboards, revenue forecasting, trend analysis.</div></div>
+        <div class="mc" style="border-style:dashed;background:transparent"><div class="mc-n" style="opacity:.25">Growing</div><div class="mc-d" style="opacity:.18">Pricing intelligence, content distribution, and advanced analytics — expanding layers, already in development.</div></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ PILLARS ═══ -->
+  <section class="pillars" id="pillars">
+    <div class="si">
+      <div class="rv" style="text-align:center"><div class="sl" style="color:var(--glow)">Built on</div><h2 class="sh" style="margin:0 auto">Six principles. Every decision.</h2></div>
+      <div class="pg rv" style="transition-delay:.15s">
+        <div class="pi"><h4>Calm</h4><p>Never frantic. Never noisy. Operational clarity, not chaos.</p></div>
+        <div class="pi"><h4>Precision</h4><p>Everything deliberate. Every element placed with intent.</p></div>
+        <div class="pi"><h4>Hospitality</h4><p>Warmth and human relevance. Not cold enterprise machinery.</p></div>
+        <div class="pi"><h4>Command</h4><p>An operating layer, not a helper app. Quiet authority.</p></div>
+        <div class="pi"><h4>Elegance</h4><p>Refined, controlled, timeless. No shortcuts in craft.</p></div>
+        <div class="pi"><h4>Honesty</h4><p>Data states what it knows — and what it doesn't. No false certainty.</p></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ TRUST ═══ -->
+  <section class="trust" id="trust">
+    <div class="si">
+      <div class="rv">
+        <div class="sl">Trust architecture</div>
+        <h2 class="sh">Six layers of operational trust.</h2>
+        <p class="sb">Trust in a hospitality platform is not a feature. It is the accumulation of consistent, traceable, honest behavior across every layer.</p>
+      </div>
+      <div class="trg rv" style="transition-delay:.15s">
+        <div class="tri"><h4>Booking consistency</h4><p>One true record. Conflicts caught. State reliable.</p></div>
+        <div class="tri"><h4>Operational history</h4><p>Every change traced. Every action attributed.</p></div>
+        <div class="tri"><h4>Channel integrity</h4><p>Sync auditable. Failures visible. No silent drift.</p></div>
+        <div class="tri"><h4>Financial honesty</h4><p>Confidence levels on every number. No false precision.</p></div>
+        <div class="tri"><h4>Live monitoring</h4><p>System health. Integration status. Real-time awareness.</p></div>
+        <div class="tri"><h4>Access control</h4><p>Role-based. Session-aware. Permission-scoped.</p></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ AUDIENCE ═══ -->
+  <section class="aud" id="aud">
+    <div class="si">
+      <div class="aug">
+        <div class="rv">
+          <div class="sl">Built for</div>
+          <h2 class="sh">Operators who demand clarity.</h2>
+          <p class="sb" style="max-width:100%">
+            Domaniqo is designed for villa management companies, boutique hospitality operators,
+            and high-end rental operations — teams managing properties, stays, check-ins, readiness,
+            and standards who need less chaos and more confidence.
+          </p>
+          <p class="sb" style="max-width:100%;margin-top:16px">
+            If you run five properties or fifty, the operational challenge is the same:
+            keep everything visible, keep everyone aligned, keep every guest experience consistent.
+            Domaniqo is the system that makes that possible.
+          </p>
+        </div>
+        <div class="au-n rv" style="transition-delay:.15s">
+          <div class="auc"><h4>More visibility</h4><p>See the full picture across every property, every stay, every team member</p></div>
+          <div class="auc"><h4>More confidence</h4><p>Trust the data. Know its certainty level. Make decisions, not guesses.</p></div>
+          <div class="auc"><h4>Less noise</h4><p>One system instead of twelve. Cut through the clutter and see what matters.</p></div>
+          <div class="auc"><h4>More control</h4><p>Standardize operations without losing the flexibility that good hospitality requires.</p></div>
+          <div class="auc"><h4>Better handoffs</h4><p>Manager to worker. Day shift to night. Channel to system. Every handoff clean and traceable.</p></div>
+          <div class="auc"><h4>Honest numbers</h4><p>Revenue, occupancy, performance — with confidence levels, not just totals.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══ CONNECTED CHANNELS ═══ -->
+  <section class="channels" id="channels">
+    <div class="channels-inner rv">
+      <div class="sl">Connected channels</div>
+      <p class="channels-sub">Domaniqo syncs with the booking platforms your operations depend on.</p>
+
+      <div class="channels-grid">
+        <!-- Each brand styled with its closest Google Font match -->
+        <!-- Airbnb: Cereal → closest: Nunito Sans Bold, rounded geometric sans -->
+        <div class="ch-item"><span style="font-family:'Nunito Sans',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.3px">airbnb</span></div>
+
+        <!-- Booking.com: Booking Sans → closest: Montserrat Bold, geometric with cut angles -->
+        <div class="ch-item"><span style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px">Booking.com</span></div>
+
+        <!-- Expedia: Gilroy Semi Bold → closest: DM Sans Bold, clean geometric -->
+        <div class="ch-item"><span style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.2px">Expedia</span></div>
+
+        <!-- VRBO: Custom geometric bold → closest: Raleway ExtraBold, wide geometric -->
+        <div class="ch-item"><span style="font-family:'Raleway',sans-serif;font-weight:800;font-size:16px;letter-spacing:2px">VRBO</span></div>
+
+        <!-- Agoda: Custom rounded sans → closest: Quicksand Bold, rounded friendly -->
+        <div class="ch-item"><span style="font-family:'Quicksand',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.3px">agoda</span></div>
+
+        <!-- Traveloka: Custom geometric → closest: Poppins SemiBold, geometric modern -->
+        <div class="ch-item"><span style="font-family:'Poppins',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.2px">traveloka</span></div>
+
+        <!-- Trip.com: Clean modern sans → closest: DM Sans, clean geometric -->
+        <div class="ch-item"><span style="font-family:'DM Sans',sans-serif;font-weight:600;font-size:14px;letter-spacing:0.2px">Trip.com</span></div>
+
+        <!-- Rakuten: Custom bold → closest: Outfit Bold, modern geometric -->
+        <div class="ch-item"><span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.3px">Rakuten</span></div>
+
+        <!-- Despegar: Modern geometric → closest: Montserrat SemiBold -->
+        <div class="ch-item"><span style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.3px">despegar</span></div>
+
+        <!-- Klook: Rounded bold → closest: Nunito Sans ExtraBold, rounded -->
+        <div class="ch-item"><span style="font-family:'Nunito Sans',sans-serif;font-weight:800;font-size:16px;letter-spacing:0.5px">Klook</span></div>
+
+        <!-- MakeMyTrip: Custom sans → closest: Poppins Bold -->
+        <div class="ch-item"><span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.2px">MakeMyTrip</span></div>
+
+        <!-- Google Vacation Rentals: Product Sans → closest: DM Sans (Google's open geometric) -->
+        <div class="ch-item"><span style="font-family:'DM Sans',sans-serif;font-weight:500;font-size:10px;letter-spacing:0.1px;line-height:1.3;text-align:center">Google<br>Vacation Rentals</span></div>
+
+        <!-- Hostelworld: Bold geometric → closest: Raleway Bold -->
+        <div class="ch-item"><span style="font-family:'Raleway',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px">Hostelworld</span></div>
+
+        <!-- HotelBeds: Clean corporate sans → closest: Montserrat SemiBold -->
+        <div class="ch-item"><span style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:12px;letter-spacing:0.3px">HotelBeds</span></div>
+      </div>
+
+      <p class="channels-note">Domaniqo operates as an independent platform that integrates with these booking channels. Channel names and trademarks belong to their respective owners.</p>
+    </div>
+  </section>
+
+
+  <!-- ═══ STATUS / CTA ═══ -->
+  <section class="status" id="status">
+    <div class="st-i rv">
+      <div class="sl">Current status</div>
+      <h2 class="sh">In active development.</h2>
+      <p class="st-b">
+        Domaniqo is being built. The platform architecture is defined,
+        the operational model is working, and core capabilities across bookings,
+        channels, operations, workers, guests, owners, finance, and administration
+        are already functional.
+      </p>
+      <p class="st-b" style="margin-top:16px">
+        We are building toward a first release for select hospitality operators.
+        If you manage premium hospitality operations and want early access
+        to a platform built for calm, precision, and command — we want to hear from you.
+      </p>
+      <div class="st-bg">
+        <div class="st-dt"></div>
+        <span>Development in progress</span>
+      </div>
+      <div><a href="early-access.html" class="bpd">Request early access</a></div>
+      <div class="contact-email"><a href="mailto:info@domaniqo.com">info@domaniqo.com</a></div>
+    </div>
+  </section>
+
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer>
+    <div class="fl">
+      <svg viewBox="0 0 64 64" fill="none"><path d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#EAE5DE" stroke-width="2.2" stroke-linejoin="round" opacity=".35"/><line x1="28" y1="6" x2="28" y2="58" stroke="#EAE5DE" stroke-width="1.2" opacity=".35"/><line x1="16" y1="32" x2="52" y2="32" stroke="#EAE5DE" stroke-width="1.2" opacity=".35"/><path d="M28 13C40 13 51 22 51 32C51 42 40 51 28 51" stroke="#EAE5DE" stroke-width="1.08" fill="none" opacity=".35"/></svg>
+      <span>Domaniqo</span>
+    </div>
+    <div class="ftg">Calm command for modern hospitality</div>
+    <div class="ft">&copy; 2026 Domaniqo</div>
+  </footer>
+
+
+  <!-- JavaScript -->
+  <script src="assets/js/main.js"></script>
+</body>
+</html>

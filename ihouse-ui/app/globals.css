@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Phase 377 — Global Styles */
 @import '../styles/tokens.css';
 
 *,
@@ -12,6 +12,8 @@
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -21,6 +23,7 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   min-height: 100vh;
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 a {
@@ -31,4 +34,74 @@ a {
 button {
   cursor: pointer;
   font-family: inherit;
+}
+
+/* --- Touch targets --- */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+  min-height: var(--touch-target-min, 44px);
+  min-width: var(--touch-target-min, 44px);
+}
+
+/* --- Selection --- */
+::selection {
+  background: var(--color-copper);
+  color: var(--color-midnight);
+}
+
+/* --- Responsive grid utility classes --- */
+.grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-6);
+}
+
+@media (max-width: 767px) {
+  .grid-responsive {
+    grid-template-columns: 1fr;
+  }
+  .hide-mobile { display: none !important; }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hide-tablet { display: none !important; }
+}
+
+@media (min-width: 1024px) {
+  .hide-desktop { display: none !important; }
+}
+
+/* --- Mobile bottom-nav spacing --- */
+.has-bottom-nav {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 8px));
+}
+
+/* --- Animations (shared) --- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* --- Grain overlay (brand texture) --- */
+.grain-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3Cf eTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.35;
 }

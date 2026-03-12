@@ -6284,3 +6284,40 @@ Tests: TypeScript 0 errors.
 - `docs/archive/phases/phase-374-spec.md` — NEW
 
 Session summary: Phases 365–374 fully closed.
+
+## Phases 375–394 — Platform Surface Consolidation (Closed) — 2026-03-13
+
+**Category:** 🎨 Frontend / Product Architecture
+**Wave 1 (375–380) — Structural Foundation:**
+- Route group split: `(public)/` + `(app)/`
+- AdaptiveShell, BottomNav, DMonogram, useMediaQuery
+- Extended tokens.css, ThemeProvider, globals.css
+- Login redesigned as branded threshold
+- Landing page (7 sections), PublicNav, PublicFooter
+- Early-access form, sitemap.ts, robots.ts
+- Checkpoint A: TypeScript 0 errors ✅
+
+**Wave 2 (381–385) — Responsive Adaptation:**
+- 15+ pages: grids → auto-fit, tables → scroll wrappers
+- Headers → flexWrap, filters → flex grow/shrink
+- Checkpoint B: TypeScript 0 errors ✅
+
+**Wave 3 (386–390) — Mobile Role Surfaces + Access-Link System:**
+- `/ops` — mobile ops command (real tasks/bookings data)
+- `/checkin` — arrivals (real read, client-only confirm)
+- `/checkout` — departures (real read, client-only confirm)
+- `/maintenance` — maintenance tasks (real acknowledge/complete API)
+- `/guest/[token]` — guest QR portal (backend endpoint MISSING)
+- `/invite/[token]` — staff invitation (backend endpoint MISSING)
+- `/onboard/[token]` — owner onboarding (backend endpoint MISSING)
+- 5 shared components: StatusBadge, DataCard, TouchCard, DetailSheet, SlaCountdown (created but unused)
+- Worker page: 4 colors migrated to design tokens
+- Checkpoint C: TypeScript 0 errors ✅
+
+**Wave 4 (391–394) — Onboarding + Unification:**
+- Phase 391: auto-closed (onboard built in 388)
+- Phase 392: lib/roleRoute.ts (JWT role→route mapping). Note: JWT has no role claim — always falls back to /dashboard
+- Phase 393: polish verification (IDs, fonts, emails)
+- Phase 394: Checkpoint XX — TypeScript 0 errors, 28 pages (22 protected + 6 public) ✅
+
+Backend test suite: pre-existing infra failures only, no new regressions (frontend-only phases). TypeScript 0 errors across all checkpoints.

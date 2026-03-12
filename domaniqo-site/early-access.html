@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Domaniqo — Request Early Access</title>
+  <meta name="description" content="Request early access to Domaniqo — the deep operations platform for modern hospitality.">
+  <meta name="author" content="Domaniqo">
+  <meta name="theme-color" content="#171A1F">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Domaniqo — Request Early Access">
+  <meta property="og:description" content="Request early access to the deep operations platform for modern hospitality.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://domaniqo.com/early-access">
+  <meta property="og:image" content="https://domaniqo.com/assets/images/og-image.svg">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --midnight: #171A1F;
+      --elevated: #1E2127;
+      --stone: #EAE5DE;
+      --sand: #D6C8B7;
+      --olive: #6B7258;
+      --moss: #334036;
+      --cloud: #F8F6F2;
+      --copper: #B56E45;
+      --sage: #8FA39B;
+      --glow: #D4956A;
+      --muted: #B5AFA6;
+      --alert: #C45B4A;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--stone);
+      background: var(--midnight);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grain */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: 0.35;
+    }
+
+    ::selection { background: var(--copper); color: var(--midnight); }
+
+    /* ── Layout ── */
+    .page {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Left panel — brand ── */
+    .brand-panel {
+      width: 420px;
+      flex-shrink: 0;
+      background: linear-gradient(175deg, #0C0E11 0%, var(--midnight) 50%, var(--elevated) 100%);
+      padding: 60px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brand-panel::before {
+      content: '';
+      position: absolute;
+      bottom: -20%;
+      right: -30%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(181,110,69,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Large background monogram */
+    .bg-mono {
+      position: absolute;
+      bottom: 80px;
+      right: -40px;
+      opacity: 0.025;
+    }
+
+    .brand-top {
+      position: relative;
+    }
+
+    .logo-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      margin-bottom: 80px;
+    }
+    .logo-link svg { width: 24px; height: 24px; }
+    .logo-link span {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 20px;
+      color: var(--stone);
+      letter-spacing: 0.5px;
+      opacity: 0.7;
+    }
+
+    .brand-headline {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 36px;
+      font-weight: 400;
+      color: var(--stone);
+      line-height: 1.2;
+      letter-spacing: -0.5px;
+      margin-bottom: 20px;
+    }
+
+    .brand-sub {
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+      color: var(--stone);
+      opacity: 0.4;
+      max-width: 320px;
+    }
+
+    .brand-bottom {
+      position: relative;
+    }
+
+    .brand-quote {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 16px;
+      font-style: italic;
+      color: var(--sand);
+      opacity: 0.4;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .brand-contact {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      color: var(--muted);
+      opacity: 0.35;
+    }
+    .brand-contact a {
+      color: var(--muted);
+      text-decoration: none;
+      transition: opacity 0.28s ease;
+    }
+    .brand-contact a:hover { opacity: 0.8; }
+
+    /* ── Right panel — form ── */
+    .form-panel {
+      flex: 1;
+      padding: 60px 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: var(--elevated);
+      position: relative;
+    }
+
+    .form-wrapper {
+      max-width: 520px;
+      width: 100%;
+    }
+
+    .form-label {
+      font-family: 'Manrope', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--copper);
+      margin-bottom: 12px;
+    }
+
+    .form-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--stone);
+      margin-bottom: 8px;
+    }
+
+    .form-desc {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--stone);
+      opacity: 0.35;
+      margin-bottom: 40px;
+    }
+
+    /* ── Form fields ── */
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field label {
+      display: block;
+      font-family: 'Manrope', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--stone);
+      opacity: 0.45;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 14px 16px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: var(--stone);
+      background: rgba(234,229,222,0.04);
+      border: 1px solid rgba(234,229,222,0.08);
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.28s ease, background 0.28s ease;
+      -webkit-appearance: none;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: rgba(181,110,69,0.3);
+      background: rgba(234,229,222,0.06);
+    }
+
+    .field input::placeholder,
+    .field textarea::placeholder {
+      color: var(--stone);
+      opacity: 0.2;
+    }
+
+    .field select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23B5AFA6' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 40px;
+    }
+
+    .field select option {
+      background: var(--midnight);
+      color: var(--stone);
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field-hint {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: var(--stone);
+      opacity: 0.2;
+      margin-top: 4px;
+    }
+
+    /* ── Submit ── */
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      font-family: 'Manrope', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      color: var(--midnight);
+      background: var(--stone);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.28s ease;
+      margin-top: 8px;
+    }
+
+    .submit-btn:hover {
+      background: var(--cloud);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(234,229,222,0.12);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .form-footer {
+      margin-top: 20px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: var(--stone);
+      opacity: 0.2;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    /* ── Success state ── */
+    .success-state {
+      display: none;
+      text-align: center;
+      padding: 60px 0;
+    }
+
+    .success-state.show {
+      display: block;
+    }
+
+    .success-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(143,163,155,0.1);
+      border: 1px solid rgba(143,163,155,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+
+    .success-icon svg { width: 20px; height: 20px; }
+
+    .success-title {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-size: 26px;
+      color: var(--stone);
+      margin-bottom: 12px;
+    }
+
+    .success-text {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--stone);
+      opacity: 0.4;
+      max-width: 380px;
+      margin: 0 auto 32px;
+    }
+
+    .back-link {
+      font-family: 'Manrope', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--copper);
+      text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.28s ease;
+    }
+    .back-link:hover { opacity: 1; }
+
+    /* ── Entrance animation ── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.6s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in:nth-child(2) { animation-delay: 0.1s; }
+    .fade-in:nth-child(3) { animation-delay: 0.2s; }
+    .fade-in:nth-child(4) { animation-delay: 0.3s; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .page { flex-direction: column; }
+      .brand-panel {
+        width: 100%;
+        padding: 40px 28px;
+        min-height: auto;
+      }
+      .brand-headline { font-size: 28px; }
+      .brand-bottom { display: none; }
+      .bg-mono { display: none; }
+      .form-panel { padding: 40px 28px; }
+      .field-row { grid-template-columns: 1fr; }
+      .logo-link { margin-bottom: 32px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+
+    <!-- ═══ LEFT PANEL — Brand ═══ -->
+    <div class="brand-panel">
+      <div class="brand-top fade-in">
+        <a href="index.html" class="logo-link">
+          <svg viewBox="0 0 64 64" fill="none">
+            <path d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#EAE5DE" stroke-width="2.2" stroke-linejoin="round"/>
+            <line x1="28" y1="6" x2="28" y2="58" stroke="#EAE5DE" stroke-width="1.2"/>
+            <line x1="16" y1="32" x2="52" y2="32" stroke="#EAE5DE" stroke-width="1.2"/>
+            <path d="M28 13C40 13 51 22 51 32C51 42 40 51 28 51" stroke="#EAE5DE" stroke-width="1.08" fill="none"/>
+          </svg>
+          <span>Domaniqo</span>
+        </a>
+
+        <h1 class="brand-headline">
+          Join us before<br>we go live.
+        </h1>
+        <p class="brand-sub">
+          Domaniqo is building the deep operations platform for modern hospitality.
+          We're looking for select operators to shape the product before general release.
+        </p>
+      </div>
+
+      <div class="brand-bottom fade-in" style="animation-delay:0.3s">
+        <p class="brand-quote">
+          "Calm command for modern hospitality."
+        </p>
+        <p class="brand-contact">
+          Or reach us directly at <a href="mailto:info@domaniqo.com">info@domaniqo.com</a>
+        </p>
+      </div>
+
+      <!-- Large background monogram -->
+      <div class="bg-mono">
+        <svg width="320" height="320" viewBox="0 0 64 64" fill="none">
+          <path d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#EAE5DE" stroke-width="2.2" stroke-linejoin="round"/>
+          <line x1="28" y1="6" x2="28" y2="58" stroke="#EAE5DE" stroke-width="1.2"/>
+          <line x1="16" y1="32" x2="52" y2="32" stroke="#EAE5DE" stroke-width="1.2"/>
+          <path d="M28 13C40 13 51 22 51 32C51 42 40 51 28 51" stroke="#EAE5DE" stroke-width="1.08" fill="none"/>
+        </svg>
+      </div>
+    </div>
+
+
+    <!-- ═══ RIGHT PANEL — Form ═══ -->
+    <div class="form-panel">
+      <div class="form-wrapper">
+
+        <!-- Form -->
+        <div id="form-container">
+          <div class="form-label fade-in">Early access</div>
+          <h2 class="form-title fade-in">Tell us about your operations.</h2>
+          <p class="form-desc fade-in">A few details help us understand how Domaniqo can serve you best. We'll follow up personally.</p>
+
+          <!--
+            ═══ FORM SUBMISSION ═══
+            This form uses Formspree for submission on static sites.
+
+            SETUP INSTRUCTIONS:
+            1. Go to https://formspree.io and create a free account
+            2. Create a new form and set the email to: info@domaniqo.com
+            3. Copy the form endpoint URL (looks like: https://formspree.io/f/xxxxxxxx)
+            4. Replace the action URL below with your Formspree endpoint
+
+            Alternative: You can also use Netlify Forms by adding netlify to the form tag:
+            <form name="early-access" method="POST" data-netlify="true">
+          -->
+          <form id="ea-form" action="https://formspree.io/f/mwvrbkbb" method="POST">
+
+            <!-- Hidden field for form name -->
+            <input type="hidden" name="_subject" value="Domaniqo — New Early Access Request">
+            <input type="hidden" name="_template" value="table">
+
+            <div class="field-row fade-in">
+              <div class="field">
+                <label for="name">Full name</label>
+                <input type="text" id="name" name="name" placeholder="Your name" required>
+              </div>
+              <div class="field">
+                <label for="email">Email address</label>
+                <input type="email" id="email" name="email" placeholder="you@company.com" required>
+              </div>
+            </div>
+
+            <div class="field-row fade-in">
+              <div class="field">
+                <label for="company">Company or brand</label>
+                <input type="text" id="company" name="company" placeholder="Your company name">
+              </div>
+              <div class="field">
+                <label for="website">Website or social</label>
+                <input type="url" id="website" name="website" placeholder="https://...">
+              </div>
+            </div>
+
+            <div class="field-row fade-in">
+              <div class="field">
+                <label for="properties">Number of properties</label>
+                <select id="properties" name="properties">
+                  <option value="" disabled selected>Select range</option>
+                  <option value="1-5">1 – 5 properties</option>
+                  <option value="6-15">6 – 15 properties</option>
+                  <option value="16-50">16 – 50 properties</option>
+                  <option value="50+">50+ properties</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="looking-for">What are you looking for?</label>
+                <select id="looking-for" name="looking_for">
+                  <option value="" disabled selected>Select one</option>
+                  <option value="operations">Operational control</option>
+                  <option value="channels">Channel management</option>
+                  <option value="finance">Financial visibility</option>
+                  <option value="teams">Team coordination</option>
+                  <option value="guests">Guest experience</option>
+                  <option value="everything">Full platform</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field fade-in">
+              <label for="note">Anything else you'd like us to know? <span style="opacity:0.5">(optional)</span></label>
+              <textarea id="note" name="note" placeholder="Tell us about your current setup, challenges, or what caught your attention about Domaniqo…"></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn fade-in">Submit request</button>
+
+            <p class="form-footer fade-in">
+              We respect your privacy. Your information is used only to assess fit and will not be shared.
+            </p>
+          </form>
+        </div>
+
+        <!-- Success state -->
+        <div id="success" class="success-state">
+          <div class="success-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#8FA39B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <h3 class="success-title">Request received.</h3>
+          <p class="success-text">
+            Thank you for your interest in Domaniqo. We review every request personally
+            and will follow up with next steps shortly.
+          </p>
+          <a href="index.html" class="back-link">← Back to domaniqo.com</a>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+
+  <script>
+    // ── Form submission handling ──
+    var form = document.getElementById('ea-form');
+    var formContainer = document.getElementById('form-container');
+    var success = document.getElementById('success');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      var data = new FormData(form);
+
+      fetch(form.action, {
+        method: 'POST',
+        body: data,
+        headers: { 'Accept': 'application/json' }
+      }).then(function(response) {
+        if (response.ok) {
+          formContainer.style.display = 'none';
+          success.classList.add('show');
+        } else {
+          alert('Something went wrong. Please try again or email us at info@domaniqo.com');
+        }
+      }).catch(function() {
+        alert('Something went wrong. Please try again or email us at info@domaniqo.com');
+      });
+    });
+  </script>
+</body>
+</html>

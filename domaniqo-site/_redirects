@@ -1,0 +1,3 @@
+# Netlify redirects
+# SPA fallback — not needed for static single page, but good practice
+/*    /index.html   200
