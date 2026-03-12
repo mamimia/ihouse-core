@@ -4235,3 +4235,7 @@ Full dispatch chain integration tests. 17 tests: message construction, dispatche
 ## Phase 321 — Owner + Guest Portal Production Polish — 2026-03-12
 
 Portal integration tests. 20 tests: guest token service (7), guest portal HTTP (4), owner access service (5), owner portal HTTP (4). All pass in 1.15s.
+
+## Phase 322 — Manager Copilot + AI Layer Operational Readiness — 2026-03-12
+
+AI copilot integration tests. 14 tests: manager morning briefing heuristic (5), worker assist heuristic (5), HTTP endpoint validation (4). All pass in 1.56s.

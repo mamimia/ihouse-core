@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 322 — (Next)
+Phase 323 — (Next)
 
 ## Last Closed Phase
 
-Phase 321 — Owner + Guest Portal Production Polish (closed) — 20 tests, all pass.
+Phase 322 — Manager Copilot + AI Layer Operational Readiness (closed) — 14 tests, all pass.
 
 ## Current Objective
 

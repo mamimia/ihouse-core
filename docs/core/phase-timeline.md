@@ -5735,3 +5735,15 @@ Tests: 17 passed. 0 failed. 0.13s.
 - `docs/archive/phases/phase-321-spec.md` — NEW
 
 Tests: 20 passed. 0 failed. 1.15s.
+
+## Phase 322 — Manager Copilot + AI Layer Operational Readiness (Closed) — 2026-03-12
+
+**Category:** 🤖 AI / Testing
+**Actions:**
+- `tests/test_copilot_integration.py` — NEW — 14 tests
+- Manager briefing heuristic (5): SLA, DLQ, high-arrival, combined alerts
+- Worker assist heuristic (5): CHECKIN_PREP, CLEANING, priority justification
+- HTTP endpoints (4): morning-briefing, worker-assist, 400, 404
+- `docs/archive/phases/phase-322-spec.md` — NEW
+
+Tests: 14 passed. 0 failed. 1.56s.
