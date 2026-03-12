@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 318 — (Next)
+Phase 319 — (Next)
 
 ## Last Closed Phase
 
-Phase 317 — Supabase RLS Audit II (closed) — 7 tables created, 40 total, 0 security lints.
+Phase 318 — Frontend E2E Smoke Tests (closed) — Playwright + 17 smoke tests, all pass.
 
 ## Current Objective
 

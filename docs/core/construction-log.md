@@ -4219,3 +4219,7 @@ Full pytest suite run. 14 failures in test_seed_owner_portal.py (missing __init_
 ## Phase 317 — Supabase RLS Audit II — 2026-03-12
 
 RLS audit. 33 existing tables all had RLS. 7 tables from Phases 296-299 missing from live DB — created with RLS enabled + 14 policies. Fixed 4 security advisor findings (SECURITY DEFINER view, 3 mutable search_paths). Final: 40 tables, 0 security lints.
+
+## Phase 318 — Frontend E2E Smoke Tests — 2026-03-12
+
+Added Playwright with Chromium for frontend E2E tests. Created smoke test suite: 17 tests covering all 14+ pages, login UI, sidebar nav. All pass in 7.3s.

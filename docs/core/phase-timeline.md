@@ -5687,3 +5687,15 @@ Tests: 6,406 collected. 4 pre-existing env failures. Exit 0.
 - `docs/archive/phases/phase-317-spec.md` — NEW
 
 Tables: 40 total (was 33). 0 security lints.
+
+## Phase 318 — Frontend E2E Smoke Tests (Closed) — 2026-03-12
+
+**Category:** 🧪 Testing
+**Actions:**
+- `ihouse-ui/package.json` — MODIFIED — `@playwright/test` added, `test:e2e` script
+- `ihouse-ui/playwright.config.ts` — NEW — Chromium, auto dev server, CI support
+- `ihouse-ui/e2e/smoke.spec.ts` — NEW — 17 tests (14 page loads, 2 login UI, 1 sidebar nav)
+- Chromium browser installed for Playwright
+- `docs/archive/phases/phase-318-spec.md` — NEW
+
+Tests: 17 Playwright tests. 17 passed. 0 failed. 7.3s.

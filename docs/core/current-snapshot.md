@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 318 — (Next)
+Phase 319 — (Next)
 
 ## Last Closed Phase
-Phase 317 — Supabase RLS Audit II (closed) — Created 7 missing tables with RLS. 40 tables total. 0 security lints.
+Phase 318 — Frontend E2E Smoke Tests (closed) — Playwright + 17 smoke tests, all pass.
 
 ## System Status
 
