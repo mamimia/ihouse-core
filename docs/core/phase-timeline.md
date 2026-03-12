@@ -6039,3 +6039,13 @@ Tests: 31 passed. 0 failed. 0.20s.
 - `docs/archive/phases/phase-350-spec.md` — NEW
 
 Tests: 30 passed. 0 failed. 1.74s.
+
+## Phase 351 — Performance Baseline + Rate Limiting Validation (Closed) — 2026-03-12
+
+**Category:** ⚡ Performance / Testing
+**Actions:**
+- `tests/test_performance_baseline_p351.py` — NEW — 23 tests
+- Concurrent rate limiting (6), edge cases (5), health timing (4), outbound probes (4), throttle/retry (4)
+- `docs/archive/phases/phase-351-spec.md` — NEW
+
+Tests: 23 passed. 0 failed. 2.59s.

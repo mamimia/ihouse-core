@@ -4347,3 +4347,7 @@ First dedicated tests for `booking_dates.py` (iCal date lookup from booking_stat
 ## Phase 350 — API Smoke Tests — 2026-03-12
 
 Comprehensive API smoke tests for all critical endpoint groups. Verifies route existence across 167+ registered routes, health/readiness checks, core API CRUD (bookings, tasks, financial, properties, conflicts, permissions), admin endpoints (DLQ, webhook-log, org), webhook+notification routes, auth/worker endpoints, and route discovery invariants (≥100 routes, ≥20 admin, ≥5 AI). 30 tests, 6 groups. Total: 7,000 tests, 234 files.
+
+## Phase 351 — Performance Baseline + Rate Limiting Validation — 2026-03-12
+
+First concurrency + performance baseline tests for InMemoryRateLimiter. Proves thread-safety: 10 concurrent threads → exactly 5 pass with limit=5; multi-tenant isolation under 15 simultaneous requests across 5 tenants. Window-expiry timing verified (1s window). Health check completes <1s without DB. Outbound probe status derivation: idle/ok/degraded/error. Throttle + retry disabled fast-paths benchmarked (<0.1s, 1000-req under 1s). 23 tests, 5 groups. Total: 7,023 tests, 235 files.

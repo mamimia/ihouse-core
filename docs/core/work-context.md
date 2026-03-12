@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 351 — (Next)
+Phase 352 — (Next)
 
 ## Last Closed Phase
 
-Phase 350 — API Smoke Tests (closed).
+Phase 351 — Performance Baseline + Rate Limiting Validation (closed).
 
 ## Current Objective
 
-Execute Phases 351–354 as proposed in the system audit. Next: Phase 351 — Performance Baseline + Rate Limiting Validation.
+Execute Phases 352–354 as proposed in the system audit. Next: Phase 352 — CI/CD Pipeline Hardening.
 
 ## Key Invariants (Locked — Do Not Change)
 

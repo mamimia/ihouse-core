@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 351 — (Next)
+Phase 352 — (Next)
 
 ## Last Closed Phase
-Phase 350 — API Smoke Tests (closed).
+Phase 351 — Performance Baseline + Rate Limiting Validation (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**7,000 collected. All passing. (Phase 350 — 30 new API smoke tests) 🎯 7K milestone!**
+**7,023 collected. All passing. (Phase 351 — 23 new performance baseline tests)**
