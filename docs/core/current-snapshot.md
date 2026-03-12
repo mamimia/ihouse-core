@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 345 — (Next)
+Phase 346 — (Next)
 
 ## Last Closed Phase
-Phase 344 — Full System Audit + Document Alignment (closed).
+Phase 345 — Multi-Tenant Flow E2E Integration Tests (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,777 collected. All passing. 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 344 — Phases 335-344 added 89 new tests)**
+**6,813 collected. All passing. 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 345 — 36 new multi-tenant E2E tests)**

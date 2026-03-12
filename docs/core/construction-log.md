@@ -4323,3 +4323,7 @@ Audit-only. Verified via MCP live query: ALL 40 Supabase tables have rls_enabled
 
 ## Phase 344 — Full System Audit + Document Alignment — 2026-03-12
 Mandatory closing phase. Full test collection: 6,777 tests, 226 files. 89 new tests added in Phases 335-344 (38 outbound adapter + 22 notification chain + 17 outbound sync chain + 12 AI robustness). All Layer C docs aligned. All audits pass.
+
+## Phase 345 — Multi-Tenant Flow E2E Integration Tests — 2026-03-12
+
+First-ever E2E integration tests for multi-tenant flows. 36 tests across 7 groups: org lifecycle (create/list/get), membership CRUD (add/remove/last-admin guard), tenant data isolation (bookings/tasks/financials scoped to JWT sub), cross-tenant access guards (403 for non-members/non-admins), auth boundary (JWT verification with real tokens), organization service invariants, and full lifecycle flows. All pass in 1.07s. Total: 6,813 tests, 229 files.

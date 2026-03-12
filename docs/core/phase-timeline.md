@@ -5976,3 +5976,13 @@ Tests added: 0 (audit-only phase).
 - `docs/archive/phases/phase-344-spec.md` — NEW
 
 Tests added: 0 (audit checkpoint). Total system: 6,777 tests, 226 files.
+
+## Phase 345 — Multi-Tenant Flow E2E Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🔐 Multi-Tenant / Testing / E2E
+**Actions:**
+- `tests/test_multi_tenant_e2e.py` — NEW — 36 tests
+- Org lifecycle (8), membership CRUD (5), tenant data isolation (5), cross-tenant guards (4), auth boundary (6), service invariants (5), lifecycle flow (3)
+- `docs/archive/phases/phase-345-spec.md` — NEW
+
+Tests: 36 passed. 0 failed. 1.07s.
