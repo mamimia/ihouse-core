@@ -5770,3 +5770,14 @@ Tests: 16 passed. 0 failed. 1.09s.
 - `docs/archive/phases/phase-324-spec.md` — NEW
 
 Tests: 16 passed. 0 failed. 0.09s.
+
+## Phase 325 — Booking Conflict Resolver Integration Tests (Closed) — 2026-03-12
+
+**Category:** 📅 Conflict Resolution / Testing
+**Actions:**
+- `tests/test_conflict_resolution_integration.py` — NEW — 18 tests
+- Date overlap detection (5), missing fields (4), duplicate refs (3)
+- Report shape (3), auto-resolver chain (3)
+- `docs/archive/phases/phase-325-spec.md` — NEW
+
+Tests: 18 passed. 0 failed. 0.10s.

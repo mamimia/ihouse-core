@@ -4247,3 +4247,7 @@ Deployment readiness tests. 16 tests: health checks (2), outbound sync probes (4
 ## Phase 324 — SLA Engine + Task State Integration Tests — 2026-03-12
 
 SLA engine integration tests. 16 tests: combined breaches, terminal guard, boundary conditions, audit shape, full chain. All pass in 0.09s.
+
+## Phase 325 — Booking Conflict Resolver Integration Tests — 2026-03-12
+
+Conflict resolution integration tests. 18 tests: date overlap (5), missing fields (4), dup refs (3), report shape (3), auto-resolver chain (3). All pass in 0.10s.

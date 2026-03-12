@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 325 — (Next)
+Phase 326 — (Next)
 
 ## Last Closed Phase
-Phase 324 — SLA Engine + Task State Integration Tests (closed) — 16 tests, all pass.
+Phase 325 — Booking Conflict Resolver Integration Tests (closed) — 18 tests, all pass.
 
 ## System Status
 
