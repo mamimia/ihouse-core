@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 314 — Platform Checkpoint XVI
+Phase 315 — (Next session)
 
 ## Last Closed Phase
 
-Phase 313 — Production Readiness Hardening (closed) — CORS, frontend compose.
+Phase 314 — Platform Checkpoint XVI (closed) — Documentation sync, Phases 305-314.
 
 ## Current Objective
 
-Platform checkpoint: sync documentation, run full test suite, prepare handoff for next session.
+Next session: propose Phases 315-324 based on system state.
 
 ## Key Invariants (Locked — Do Not Change)
 

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 314 — Platform Checkpoint XVI
+Phase 315 — (Next session)
 
 ## Last Closed Phase
-Phase 313 — Production Readiness Hardening (closed) — CORS middleware, frontend in production compose.
+Phase 314 — Platform Checkpoint XVI (closed) — Documentation sync for Phases 305-314.
 
 ## System Status
 
