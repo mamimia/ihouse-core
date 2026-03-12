@@ -6049,3 +6049,13 @@ Tests: 30 passed. 0 failed. 1.74s.
 - `docs/archive/phases/phase-351-spec.md` — NEW
 
 Tests: 23 passed. 0 failed. 2.59s.
+
+## Phase 352 — CI/CD Pipeline Hardening (Closed) — 2026-03-12
+
+**Category:** 🏗️ CI/CD / Core Infrastructure
+**Actions:**
+- `tests/test_pipeline_hardening_p352.py` — NEW — 24 tests
+- CoreExecutor (6), InMemory ports (6), state store (4), idempotency (4), CI guard (4)
+- `docs/archive/phases/phase-352-spec.md` — NEW
+
+Tests: 24 passed. 0 failed. 0.09s.

@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 352 — (Next)
+Phase 353 — (Next)
 
 ## Last Closed Phase
 
-Phase 351 — Performance Baseline + Rate Limiting Validation (closed).
+Phase 352 — CI/CD Pipeline Hardening (closed).
 
 ## Current Objective
 
-Execute Phases 352–354 as proposed in the system audit. Next: Phase 352 — CI/CD Pipeline Hardening.
+Execute Phases 353–354 as proposed in the system audit. Next: Phase 353 — Doc Auto-Generation from Code.
 
 ## Key Invariants (Locked — Do Not Change)
 

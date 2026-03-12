@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 352 — (Next)
+Phase 353 — (Next)
 
 ## Last Closed Phase
-Phase 351 — Performance Baseline + Rate Limiting Validation (closed).
+Phase 352 — CI/CD Pipeline Hardening (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**7,023 collected. All passing. (Phase 351 — 23 new performance baseline tests)**
+**7,047 collected. All passing. (Phase 352 — 24 new CI/CD pipeline hardening tests)**

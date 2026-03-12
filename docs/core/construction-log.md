@@ -4351,3 +4351,7 @@ Comprehensive API smoke tests for all critical endpoint groups. Verifies route e
 ## Phase 351 — Performance Baseline + Rate Limiting Validation — 2026-03-12
 
 First concurrency + performance baseline tests for InMemoryRateLimiter. Proves thread-safety: 10 concurrent threads → exactly 5 pass with limit=5; multi-tenant isolation under 15 simultaneous requests across 5 tenants. Window-expiry timing verified (1s window). Health check completes <1s without DB. Outbound probe status derivation: idle/ok/degraded/error. Throttle + retry disabled fast-paths benchmarked (<0.1s, 1000-req under 1s). 23 tests, 5 groups. Total: 7,023 tests, 235 files.
+
+## Phase 352 — CI/CD Pipeline Hardening — 2026-03-12
+
+CoreExecutor validation contract tests: unknown type, missing payload, missing occurred_at, and missing type all correctly raise CoreExecutionError. InMemory testing infrastructure fully tested: EventLogPort (append, all_envelopes), EventLogApplier (APPLIED return, applied records, projection round-trip), StateStorePort (all_keys, commit_upserts with state_json, ensure_schema no-op). Idempotency: frozen ExecuteResult, same key → same envelope_id. CI guard: IHOUSE_ENV=test, SUPABASE_URL set, executor importable. 24 tests, 5 groups, 0.09s. Total: 7,047 tests, 236 files.
