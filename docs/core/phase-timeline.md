@@ -5466,3 +5466,17 @@ Tests: 25 new, all pass. Exit 0.
 - Financial data scoped to 'owner' role only (not 'viewer').
 
 Tests: 35 new, all pass. Exit 0.
+
+## Phase 299 — Notification Dispatch Layer (Closed) — 2026-03-12
+
+**Category:** 📨 Notifications
+**Actions:**
+- Added Supabase migration: `notification_log` table (channel, recipient, status, provider_id, reference_id)
+- Created `src/services/notification_dispatcher.py` — dispatch_sms (Twilio), dispatch_email (SendGrid), dispatch_guest_token_notification, list_notification_log + helper logging functions
+- Created `src/api/notification_router.py` — 4 endpoints (send-sms, send-email, guest-token-send, log)
+- Created `tests/test_notification_dispatch.py` — 20 contract tests (all pass)
+- Wired notification_router into `src/main.py`
+- Dry-run mode when Twilio/SendGrid env vars absent (status='dry_run', no crash)
+- Domaniqo-branded guest token messages
+
+Tests: 20 new, all pass. Exit 0.

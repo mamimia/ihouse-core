@@ -4049,3 +4049,7 @@ user_sessions table + active_sessions view. session.py service (5 functions). se
 ## Phase 298 — Guest Portal + Owner Portal Real Authentication (2026-03-12)
 
 HMAC-SHA256 signed guest tokens (guest_tokens table). Owner portal access grants (owner_portal_access table). guest_token.py service (9 functions). guest_token_router.py (2 endpoints). owner_portal_router.py (4 endpoints). 35 tests (all pass).
+
+## Phase 299 — Notification Dispatch Layer (2026-03-12)
+
+Outbound SMS (Twilio) + Email (SendGrid) dispatch layer. notification_log table. 5 service functions. 4 API endpoints including one-step guest-token-send. 20 tests (all pass). Dry-run mode when env vars absent.

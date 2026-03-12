@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 299 — (next cycle: Notification Layer — SMS/Email Dispatch for Guest Tokens)
+Phase 300 — (next cycle: Platform Checkpoint XIV — Documentation and System Audit)
 
 ## Last Closed Phase
-Phase 298 — Guest Portal + Owner Portal Real Authentication (closed) — HMAC-SHA256 guest tokens, guest_tokens table, owner_portal_access table, 6 new endpoints, 35 tests.
+Phase 299 — Notification Dispatch Layer (closed) — notification_log table, Twilio SMS + SendGrid email dispatch, guest-token-send one-step endpoint, 20 tests.
 
 ## System Status
 

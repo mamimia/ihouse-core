@@ -246,6 +246,9 @@ app.include_router(guest_token_router)
 from api.owner_portal_router import router as owner_portal_router  # noqa: E402  # Phase 298
 app.include_router(owner_portal_router)
 
+from api.notification_router import router as notification_router  # noqa: E402  # Phase 299
+app.include_router(notification_router)
+
 from api.cashflow_router import router as cashflow_router  # noqa: E402
 app.include_router(cashflow_router)
 
