@@ -5438,3 +5438,16 @@ Tests: 6,216 passed. Exit 0.
 - Invariant: `tenant_id` (JWT sub) unchanged throughout — org layer is purely additive
 
 Tests: 37 new, all pass. Exit 0.
+
+## Phase 297 — Auth Session Management + Real Login Flow (Closed) — 2026-03-12
+
+**Category:** 🔐 Authentication
+**Actions:**
+- Added Supabase migration: `user_sessions` table + `active_sessions` view
+- Created `src/services/session.py` — 5 functions (create_session, validate_session, revoke_session, revoke_all_sessions, list_active_sessions)
+- Created `src/api/session_router.py` — 5 endpoints (login-session, me, logout-session, sessions GET/DELETE)
+- Created `tests/test_session_contract.py` — 25 contract tests (all pass)
+- Wired `session_router` into `src/main.py`
+- JWT stored as SHA-256 hash only. Best-effort session creation. /auth/token (Phase 179) unchanged.
+
+Tests: 25 new, all pass. Exit 0.

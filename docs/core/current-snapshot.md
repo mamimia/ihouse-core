@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 297 — (next cycle: Auth Session Management + Real Login Flow)
+Phase 298 — (next cycle: Guest Portal + Owner Portal Real Authentication)
 
 ## Last Closed Phase
-Phase 296 — Multi-Tenant Organization Foundation (closed) — organizations + org_members + tenant_org_map + 6 API endpoints + 37 tests. tenant_id invariant preserved.
+Phase 297 — Auth Session Management + Real Login Flow (closed) — user_sessions table + 5 session endpoints + 25 tests. JWT stored as hash only.
 
 ## System Status
 
