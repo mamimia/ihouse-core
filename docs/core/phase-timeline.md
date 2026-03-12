@@ -5872,3 +5872,13 @@ Tests: 19 passed. 0 failed. 0.08s.
 - `docs/archive/phases/phase-334-spec.md` — NEW
 
 Tests: 13 passed. 0 failed. 0.18s.
+
+## Phase 335 — Outbound OTA Adapter Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🔌 Outbound / Adapters / Testing
+**Actions:**
+- `tests/test_outbound_ota_adapter_integration.py` — NEW — 38 tests (FIRST-EVER for airbnb, bookingcom, expedia/vrbo outbound adapters)
+- AirbnbAdapter dry-run + shape (10), BookingComAdapter (9), ExpediaVrboAdapter dual-provider (10), Idempotency Key (5), Shared Infra (4)
+- `docs/archive/phases/phase-335-spec.md` — NEW
+
+Tests: 38 passed. 0 failed. 0.25s.

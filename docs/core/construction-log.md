@@ -4287,3 +4287,7 @@ First-ever tests for bookingcom_content.py (Phase 250, 262 lines). 19 tests: fie
 ## Phase 334 — Booking Dates + iCal Push Adapter Integration Tests — 2026-03-12
 
 First-ever tests for booking_dates.py (Phase 140, 87 lines) and ical_push_adapter.py (Phase 150, 371 lines). 13 tests: injectable client (4), iCal UTC (4), VTIMEZONE (3), date format (2). All pass in 0.18s.
+
+## Phase 335 — Outbound OTA Adapter Integration Tests — 2026-03-12
+
+First-ever tests for adapters/outbound/airbnb_adapter.py (Phase 139, 318 lines), bookingcom_adapter.py (Phase 139, 283 lines), and expedia_vrbo_adapter.py (Phase 139, 273 lines). 38 tests: dry-run mode (17), AdapterResult shape (12), idempotency key (5), shared infra (4). All pass in 0.25s.
