@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 308 — Frontend Real Data Integration (Financial + Tasks)
+Phase 309 — Owner Portal Frontend
 
 ## Last Closed Phase
-Phase 307 — Frontend Real Data Integration (closed) — Dashboard + Bookings wired to real API + SSE. Build exit 0.
+Phase 308 — Frontend Real Data Integration (closed) — Financial + Tasks wired to SSE. All 4 main UI pages now have real-time connectivity.
 
 ## System Status
 

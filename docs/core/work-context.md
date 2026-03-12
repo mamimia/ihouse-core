@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 308 — Frontend Real Data Integration (Financial + Tasks)
+Phase 309 — Owner Portal Frontend
 
 ## Last Closed Phase
 
-Phase 307 — Frontend Real Data Integration (closed) — Dashboard + Bookings wired to real API with SSE, auto-refresh.
+Phase 308 — Frontend Real Data Integration (closed) — Financial + Tasks SSE. All 4 main pages have real-time connectivity.
 
 ## Current Objective
 
-Continue frontend integration for the financial dashboard and worker task views. Connect to real financial and task API endpoints, add SSE for live task updates.
+Build the owner-facing portal page with property performance summaries, owner statements, and booking revenue visibility.
 
 ## Key Invariants (Locked — Do Not Change)
 

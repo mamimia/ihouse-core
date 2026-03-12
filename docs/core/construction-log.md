@@ -4118,3 +4118,12 @@ Implemented:
 
 Next.js build exit 0, 18 pages compile.
 No new backend tests, no schema changes.
+
+## Phase 308 — Frontend Real Data Integration (Financial + Tasks) (Closed) — 2026-03-12
+
+Implemented:
+- Financial Dashboard (`app/financial/page.tsx`): SSE subscription to `financial` channel, auto-refresh on events
+- Tasks Page (`app/tasks/page.tsx`): SSE subscription to `tasks` + `alerts` channels, 500ms auto-refresh on events (alongside existing 30s poll)
+- All 4 main UI pages now have SSE real-time connectivity
+
+No new backend tests, no schema changes. Next.js build exit 0.

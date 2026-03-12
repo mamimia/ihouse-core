@@ -322,12 +322,28 @@ export default function TasksPage() {
         }
     }, [filter]);
 
-    // Poll every 30s for live updates
+    // Poll every 30s as fallback
     useEffect(() => {
         setLoading(true);
         loadTasks();
         const interval = setInterval(loadTasks, 30_000);
         return () => clearInterval(interval);
+    }, [loadTasks]);
+
+    // SSE for real-time task events (Phase 308)
+    useEffect(() => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : '';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+        const es = new EventSource(`${baseUrl}/events/stream?channels=tasks,alerts&token=${token}`);
+        es.onmessage = (e) => {
+            try {
+                const evt = JSON.parse(e.data);
+                if (evt.channel === 'tasks' || evt.channel === 'alerts') {
+                    setTimeout(loadTasks, 500);
+                }
+            } catch { /* ignore */ }
+        };
+        return () => es.close();
     }, [loadTasks]);
 
     const handleAcknowledge = async (id: string) => {

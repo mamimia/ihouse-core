@@ -506,6 +506,22 @@ export default function FinancialDashboardPage() {
 
     useEffect(() => { load(period, currency); }, [period, currency, load]);
 
+    // SSE for real-time financial events (Phase 308)
+    useEffect(() => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : '';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+        const es = new EventSource(`${baseUrl}/events/stream?channels=financial&token=${token}`);
+        es.onmessage = (e) => {
+            try {
+                const evt = JSON.parse(e.data);
+                if (evt.channel === 'financial') {
+                    setTimeout(() => load(period, currency), 1000);
+                }
+            } catch { /* ignore */ }
+        };
+        return () => es.close();
+    }, [load, period, currency]);
+
     // Derive summary values (use first key in currencies — should be base_currency)
     const sumBucket: CurrencyBucket | null = summary
         ? Object.values(summary.currencies ?? {})[0] ?? null
