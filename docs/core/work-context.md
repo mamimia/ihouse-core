@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 347 — (Next)
+Phase 348 — (Next)
 
 ## Last Closed Phase
 
-Phase 346 — Guest Portal + Owner Portal E2E Tests (closed).
+Phase 347 — Notification Delivery E2E Verification (closed).
 
 ## Current Objective
 
-Execute Phases 347–354 as proposed in the system audit. Next: Phase 347 — Notification Delivery E2E Verification.
+Execute Phases 348–354 as proposed in the system audit. Next: Phase 348 — Webhook Ingestion Regression Suite.
 
 ## Key Invariants (Locked — Do Not Change)
 

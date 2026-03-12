@@ -5997,3 +5997,14 @@ Tests: 36 passed. 0 failed. 1.07s.
 - `docs/archive/phases/phase-346-spec.md` — NEW
 
 Tests: 28 passed. 0 failed. 1.15s.
+
+## Phase 347 — Notification Delivery E2E Verification (Closed) — 2026-03-12
+
+**Category:** 📨 Notifications / Testing / E2E
+**Actions:**
+- `tests/test_notification_delivery_e2e.py` — NEW — 28 tests
+- SMS dry-run (5), email dry-run (5), guest-token-send (5), notification log (4)
+- SLA chain dispatch (5), delivery writer persistence (4)
+- `docs/archive/phases/phase-347-spec.md` — NEW
+
+Tests: 28 passed. 0 failed. 1.19s.

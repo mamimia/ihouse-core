@@ -4331,3 +4331,7 @@ First-ever E2E integration tests for multi-tenant flows. 36 tests across 7 group
 ## Phase 346 — Guest Portal + Owner Portal E2E Tests — 2026-03-12
 
 E2E tests for guest and owner portals. Guest portal: booking view with check-in details, WiFi, house rules via stub lookup + X-Guest-Token gating. Owner portal: JWT-protected property listing, rich summary with financial visibility by role (owner vs viewer), admin grant/revoke access. 28 tests, 7 groups, all pass. Total: 6,841 tests, 230 files.
+
+## Phase 347 — Notification Delivery E2E Verification — 2026-03-12
+
+HTTP endpoint E2E tests for the notification dispatch chain. Covers: SMS/email dry-run dispatch via Twilio/SendGrid stubs, guest-token-send compound flow (issue + dispatch), notification log querying, SLA breach → sla_dispatch_bridge → notification_dispatcher → channel adapter chain, and write_delivery_log persistence (one row per ChannelAttempt, never raises on DB error). 28 tests, 6 groups, all pass. Total: 6,869 tests, 231 files.

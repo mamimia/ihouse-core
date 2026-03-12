@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 347 — (Next)
+Phase 348 — (Next)
 
 ## Last Closed Phase
-Phase 346 — Guest Portal + Owner Portal E2E Tests (closed).
+Phase 347 — Notification Delivery E2E Verification (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,841 collected. All passing. (Phase 346 — 28 new portal E2E tests)**
+**6,869 collected. All passing. (Phase 347 — 28 new notification delivery E2E tests)**
