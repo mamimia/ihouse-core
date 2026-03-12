@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 320 — (Next)
+Phase 321 — (Next)
 
 ## Last Closed Phase
-Phase 319 — Real Webhook E2E Validation (closed) — 33 vertical tests, no mocks, all pass.
+Phase 320 — Notification Dispatch Integration (closed) — 17 integration tests, all pass.
 
 ## System Status
 

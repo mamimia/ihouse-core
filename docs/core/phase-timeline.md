@@ -5711,3 +5711,14 @@ Tests: 17 Playwright tests. 17 passed. 0 failed. 7.3s.
 - `docs/archive/phases/phase-319-spec.md` — NEW
 
 Tests: 33 passed. 0 failed. 0.83s.
+
+## Phase 320 — Notification Dispatch Integration (Closed) — 2026-03-12
+
+**Category:** 📨 Notifications / Testing
+**Actions:**
+- `tests/test_notification_dispatch_integration.py` — NEW — 17 tests
+- Groups: message construction (4), dispatcher routing (3), SLA bridge (3), channel reg (4), failure isolation (3)
+- Full vertical: sla_engine → dispatch_bridge → dispatcher → channel adapter → delivery_log
+- `docs/archive/phases/phase-320-spec.md` — NEW
+
+Tests: 17 passed. 0 failed. 0.13s.

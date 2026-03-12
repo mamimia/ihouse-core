@@ -4227,3 +4227,7 @@ Added Playwright with Chromium for frontend E2E tests. Created smoke test suite:
 ## Phase 319 — Real Webhook E2E Validation — 2026-03-12
 
 Vertical integration tests with NO service-layer mocking. 33 tests across 3 providers (airbnb, bookingcom, agoda): 21 direct pipeline + 12 HTTP stack. All pass in 0.83s.
+
+## Phase 320 — Notification Dispatch Integration — 2026-03-12
+
+Full dispatch chain integration tests. 17 tests: message construction, dispatcher routing, SLA bridge, channel registration, failure isolation. All pass in 0.13s.
