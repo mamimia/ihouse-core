@@ -5412,3 +5412,16 @@ Reconstructed during Phase 294. See phase-249-spec.md for details.
 - `docs/archive/phases/phase-294-spec.md` — NEW
 
 Tests: 6,216 passed. Exit 0.
+
+## Phase 295 — Documentation Truth Sync XV + Branding Update (Closed) — 2026-03-12
+
+**Category:** 📝 Documentation
+**Actions:**
+- Replaced `docs/core/brand-handoff.md` with v3 (946→1,280 lines, 11 new sections: splash animation, loading animation, app flow, landing page spec, brand architecture, strategic rules, available assets)
+- Fully rewrote `docs/core/work-context.md` (Phase 282→295, added frontend key files section, added 11 missing env vars)
+- Fixed `docs/core/roadmap.md` header (Phase 273→294→295)
+- Fixed `docs/core/live-system.md` header (Phase 292→295)
+- Created next-10-phases plan (295-304)
+- No internal file/code renames — branding boundary enforced
+
+Tests: 6,216 passed. Exit 0.

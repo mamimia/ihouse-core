@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 273 (2026-03-11). [Antigravity]
+> Last updated: Phase 294 (2026-03-12). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 292 (2026-03-12)
+## System Numbers — Phase 295 (2026-03-12)
 
 | Metric | Value |
 |--------|-------|

@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 283 — (next cycle, to be planned)
+Phase 295 — Documentation Truth Sync XV + Branding Update
 
 ## Last Closed Phase
 
-Phase 282 — Platform Checkpoint XIII (closed)
+Phase 294 — History & Configuration Truth Sync (closed) — all docs aligned, all gaps filled. 6,216 tests passing.
 
 ## Current Objective
 
-Phase 282 closed. Blocks 273–282 (operational maturity: docs sync, Supabase migrations, deployment audit, JWT auth, schema alignment, production config, CI hardening, webhook validation, live OTA staging, audit checkpoint) complete. Next cycle (283–292) to be planned based on full system read.
+Phase 295: Fix all documentation discrepancies identified during full system review. Brand-handoff.md replaced with v3 (1,280 lines). Remaining: fix work-context.md (this file), roadmap.md header, live-system.md header. Standard phase closure.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -99,7 +99,7 @@ Phase 282 closed. Blocks 273–282 (operational maturity: docs sync, Supabase mi
 | `docker-compose.staging.yml` | Phase 237: Staging environment |
 | `src/adapters/ota/tripcom.py` | Phase 238: Ctrip/Trip.com enhanced adapter |
 
-## Key Files — Recent Additions (Phases 246–264)
+## Key Files — Recent Additions (Phases 246–294)
 
 | File | Role |
 |------|------|
@@ -122,6 +122,30 @@ Phase 282 closed. Blocks 273–282 (operational maturity: docs sync, Supabase mi
 | `src/api/monitoring_router.py` | Phase 263: GET /admin/monitor, /health, /latency |
 | `src/services/analytics.py` | Phase 264: top_properties(), ota_mix(), revenue_summary() |
 | `src/api/analytics_router.py` | Phase 264: GET /admin/analytics/top-properties, /ota-mix, /revenue-summary |
+| `tests/conftest.py` | Phase 283: Session-scoped env var management, rate limiter reset |
+| `deploy_checklist.sh` | Phase 286: Production Docker hardening validation script |
+
+## Key Files — Frontend (ihouse-ui/, Phases 287–291)
+
+| File | Role |
+|------|------|
+| `ihouse-ui/app/layout.tsx` | Root layout — Domaniqo branding, sidebar |
+| `ihouse-ui/app/dashboard/page.tsx` | Operations dashboard — portfolio grid, 60s auto-refresh |
+| `ihouse-ui/app/bookings/page.tsx` | Booking management — list, filters |
+| `ihouse-ui/app/bookings/[id]/page.tsx` | Booking detail view |
+| `ihouse-ui/app/tasks/page.tsx` | Worker task list |
+| `ihouse-ui/app/tasks/[id]/page.tsx` | Task detail view |
+| `ihouse-ui/app/financial/page.tsx` | Financial dashboard — OTA donut, cashflow |
+| `ihouse-ui/app/financial/statements/page.tsx` | Owner statements |
+| `ihouse-ui/app/calendar/page.tsx` | Booking calendar |
+| `ihouse-ui/app/guests/page.tsx` | Guest profiles |
+| `ihouse-ui/app/guests/[id]/page.tsx` | Guest detail |
+| `ihouse-ui/app/worker/page.tsx` | Worker mobile view |
+| `ihouse-ui/app/owner/page.tsx` | Owner portal |
+| `ihouse-ui/app/manager/page.tsx` | Manager activity feed |
+| `ihouse-ui/app/admin/page.tsx` | Admin settings |
+| `ihouse-ui/app/admin/dlq/page.tsx` | DLQ replay UI |
+| `ihouse-ui/app/login/page.tsx` | Login page |
 
 ## Key Files — HTTP API Layer (Phases 58–64)
 
@@ -141,25 +165,36 @@ Phase 282 closed. Blocks 273–282 (operational maturity: docs sync, Supabase mi
 |-----|---------|--------|
 | `IHOUSE_WEBHOOK_SECRET_{PROVIDER}` | unset | sig verification skipped when unset |
 | `IHOUSE_JWT_SECRET` | unset | 503 if unset and IHOUSE_DEV_MODE≠true |
+| `IHOUSE_API_KEY` | unset | API key for external integrations |
 | `IHOUSE_DEV_MODE` | unset | "true" = skip JWT auth, return dev-tenant. MUST be false in production (Phase 276) |
 | `IHOUSE_RATE_LIMIT_RPM` | 60 | req/min per tenant, 0 = disabled |
 | `IHOUSE_ENV` | "development" | health response label |
-| `SUPABASE_URL` | required | Supabase URL |
+| `IHOUSE_TENANT_ID` | unset | production tenant UUID |
+| `SUPABASE_URL` | required | Supabase project URL |
 | `SUPABASE_KEY` | required | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | required | Used by all financial/admin routers (Phases 116+) |
-| `IHOUSE_LINE_SECRET` | unset | dev-mode LINE sig skip |
+| `IHOUSE_LINE_SECRET` | unset | LINE channel secret (sig verify) |
+| `IHOUSE_LINE_CHANNEL_TOKEN` | unset | LINE channel access token |
 | `IHOUSE_WHATSAPP_TOKEN` | unset | production WhatsApp dispatch |
 | `IHOUSE_WHATSAPP_PHONE_NUMBER_ID` | unset | Meta Cloud API phone ID |
 | `IHOUSE_WHATSAPP_APP_SECRET` | unset | HMAC sig verification |
 | `IHOUSE_WHATSAPP_VERIFY_TOKEN` | unset | Meta webhook challenge token |
 | `IHOUSE_TELEGRAM_BOT_TOKEN` | unset | Telegram bot API token |
+| `IHOUSE_SMS_TOKEN` | unset | SMS provider API token (Phase 212) |
+| `IHOUSE_EMAIL_TOKEN` | unset | Email provider API token (Phase 213) |
 | `IHOUSE_DRY_RUN` | unset | skip real outbound API calls |
 | `IHOUSE_THROTTLE_DISABLED` | unset | skip rate limiting in outbound |
 | `IHOUSE_RETRY_DISABLED` | unset | skip exponential backoff |
 | `IHOUSE_SYNC_LOG_DISABLED` | unset | skip persistence of sync results |
 | `IHOUSE_SYNC_CALLBACK_URL` | unset | webhook URL for sync.ok events |
+| `IHOUSE_SCHEDULER_ENABLED` | unset | enable APScheduler jobs (Phase 221) |
+| `IHOUSE_SLA_SWEEP_INTERVAL` | 120 | SLA sweep interval in seconds |
+| `IHOUSE_DLQ_ALERT_INTERVAL` | 600 | DLQ alert check interval in seconds |
+| `OPENAI_API_KEY` | unset | OpenAI API key for AI copilot endpoints |
+| `SENTRY_DSN` | unset | Sentry error tracking DSN |
 | `PORT` | 8000 | uvicorn port |
+| `UVICORN_WORKERS` | 1 | number of uvicorn worker processes |
 
 ## Tests
 
-**~6,250 collected. ~6,250 passing. 0 failures (10 pre-existing worker_copilot + 5 ordering-dependent, all pass in isolation). Exit 0.**
+**6,216 collected. 6,216 passing. 0 failures. Exit 0. (Phase 294)**

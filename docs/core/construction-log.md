@@ -4031,3 +4031,9 @@ Reconstructed during Phase 294. See phase-260-spec.md.
 22 timeline gaps + 40 construction-log gaps filled. 11 env vars synced. All docs aligned.
 
 Tests: 6,216. Exit 0.
+
+## Phase 295 — Documentation Truth Sync XV + Branding Update (2026-03-12)
+
+Brand-handoff.md replaced with v3 (1,280 lines, +400/-66). Work-context.md fully rewritten. Roadmap + live-system headers fixed. Next-10-phases plan (295-304) created and approved.
+
+Tests: 6,216. Exit 0.

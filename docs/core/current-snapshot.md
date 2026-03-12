@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 295 — (next cycle, to be planned)
+Phase 296 — (next cycle: Multi-Tenant Organization Foundation)
 
 ## Last Closed Phase
-Phase 294 — History & Configuration Truth Sync (closed) — all docs aligned, all gaps filled. 6,216 tests passing.
+Phase 295 — Documentation Truth Sync XV + Branding Update (closed) — brand-handoff v3 integrated, work-context/roadmap/live-system synced. 6,216 tests passing.
 
 ## System Status
 
@@ -359,7 +359,7 @@ Tier 3 — External (one of:)
 | `PORT` | 8000 | uvicorn port |
 | `UVICORN_WORKERS` | 1 | number of uvicorn worker processes |
 
-Phase 294 — see `docs/core/planning/` for next cycle.
+Phase 295 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
