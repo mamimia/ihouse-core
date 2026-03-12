@@ -4066,3 +4066,7 @@ New owner_portal_data.py service (6 functions) reading from booking_state and bo
 ## Phase 302 — Guest Portal Token Flow E2E Integration Test (2026-03-12)
 
 test_guest_token_e2e.py: 7 test suites exercising the complete guest token lifecycle with real HMAC cryptography, mocked Supabase. Live Supabase integration suite (4 tests) gated behind IHOUSE_ENV=staging. 24 in-process tests pass.
+
+## Phase 303 — Booking State Seeder for Owner Portal (2026-03-12)
+
+seed_owner_portal.py: deterministic seeder creating 20 bookings across 3 properties and 2 owners, with financial facts and owner_portal_access. CLI supports --dry-run. 14 tests pass.

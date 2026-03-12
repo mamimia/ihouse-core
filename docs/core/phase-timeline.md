@@ -5524,3 +5524,14 @@ Tests: 18 new, all pass. Exit 0.
 - Live integration suite gated behind IHOUSE_ENV=staging
 
 Tests: 24 passed, 4 skipped, 0 failed. Exit 0.
+
+## Phase 303 — Booking State Seeder for Owner Portal (Closed) — 2026-03-12
+
+**Category:** 🛠 Dev Tooling
+**Actions:**
+- Created `src/scripts/seed_owner_portal.py` — deterministic seeder
+  20 bookings, 3 properties, 2 owners, financial facts, owner access
+  Supports --dry-run and live Supabase upsert
+- Created `tests/test_seed_owner_portal.py` — 14 contract tests
+
+Tests: 14 passed, 0 failed. Exit 0.
