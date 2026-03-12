@@ -6019,3 +6019,13 @@ Tests: 28 passed. 0 failed. 1.19s.
 - `docs/archive/phases/phase-348-spec.md` — NEW
 
 Tests: 70 passed. 0 failed. 1.09s.
+
+## Phase 349 — Outbound Sync Coverage Expansion (Closed) — 2026-03-12
+
+**Category:** 📤 Outbound Sync / Testing
+**Actions:**
+- `tests/test_outbound_coverage_p349.py` — NEW — 31 tests
+- Booking dates (6), content payload (8), content push (6), registry+iCal (6), helpers (5)
+- `docs/archive/phases/phase-349-spec.md` — NEW
+
+Tests: 31 passed. 0 failed. 0.20s.

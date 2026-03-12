@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 349 — (Next)
+Phase 350 — (Next)
 
 ## Last Closed Phase
 
-Phase 348 — Webhook Ingestion Regression Suite (closed).
+Phase 349 — Outbound Sync Coverage Expansion (closed).
 
 ## Current Objective
 
-Execute Phases 349–354 as proposed in the system audit. Next: Phase 349 — Outbound Sync Coverage Expansion.
+Execute Phases 350–354 as proposed in the system audit. Next: Phase 350 — Frontend Smoke Tests (Browser).
 
 ## Key Invariants (Locked — Do Not Change)
 

@@ -4339,3 +4339,7 @@ HTTP endpoint E2E tests for the notification dispatch chain. Covers: SMS/email d
 ## Phase 348 — Webhook Ingestion Regression Suite — 2026-03-12
 
 Regression tests for the full OTA webhook ingestion pipeline. Tests all 14 OTA adapters (bookingcom, expedia, airbnb, agoda, tripcom, vrbo, gvr, traveloka, makemytrip, klook, despegar, hotelbeds, rakuten, hostelworld) through normalize() and to_canonical_envelope() with provider-correct payloads. LINE webhook endpoint tested for all status transitions. Webhook event log service tested for CRUD and stats. Adapter registry edge cases. 70 tests, 5 groups. Total: 6,939 tests, 232 files.
+
+## Phase 349 — Outbound Sync Coverage Expansion — 2026-03-12
+
+First dedicated tests for `booking_dates.py` (iCal date lookup from booking_state) and `bookingcom_content.py` (Content API payload builder + push with dry-run and mock HTTP). Also covers outbound adapter registry (7 providers), iCal push adapter edge cases, and base-class helpers (idempotency key, throttle, retry). 31 tests, 5 groups. Total: 6,970 tests, 233 files.

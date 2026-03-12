@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 349 — (Next)
+Phase 350 — (Next)
 
 ## Last Closed Phase
-Phase 348 — Webhook Ingestion Regression Suite (closed).
+Phase 349 — Outbound Sync Coverage Expansion (closed).
 
 ## System Status
 
@@ -370,4 +370,4 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,939 collected. All passing. (Phase 348 — 70 new webhook regression tests)**
+**6,970 collected. All passing. (Phase 349 — 31 new outbound sync tests)**
