@@ -5882,3 +5882,15 @@ Tests: 13 passed. 0 failed. 0.18s.
 - `docs/archive/phases/phase-335-spec.md` — NEW
 
 Tests: 38 passed. 0 failed. 0.25s.
+
+## Phase 336 — Layer C Documentation Sync XVIII (Closed) — 2026-03-12
+
+**Category:** 📋 Documentation / Sync
+**Actions:**
+- `docs/core/current-snapshot.md` — updated phase pointers (336/337), test count (6,726), phase list through 336
+- `docs/core/work-context.md` — updated objective (337-344), test count (6,726)
+- `docs/core/live-system.md` — updated SSE section (Phase 306), header to Phase 336
+- `docs/core/roadmap.md` — updated system numbers (6,726 tests, 223 files, 17 pages), Active Direction (337+)
+- `docs/archive/phases/phase-336-spec.md` — NEW
+
+Tests added: 0 (documentation phase). 11 discrepancies resolved.

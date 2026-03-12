@@ -4291,3 +4291,7 @@ First-ever tests for booking_dates.py (Phase 140, 87 lines) and ical_push_adapte
 ## Phase 335 — Outbound OTA Adapter Integration Tests — 2026-03-12
 
 First-ever tests for adapters/outbound/airbnb_adapter.py (Phase 139, 318 lines), bookingcom_adapter.py (Phase 139, 283 lines), and expedia_vrbo_adapter.py (Phase 139, 273 lines). 38 tests: dry-run mode (17), AdapterResult shape (12), idempotency key (5), shared infra (4). All pass in 0.25s.
+
+## Phase 336 — Layer C Documentation Sync XVIII — 2026-03-12
+
+Fixed all 11 Layer C documentation discrepancies: test counts (6,406 → 6,726), phase pointers (304/315 → 336/337), SSE endpoint (Phase 181 → Phase 306), frontend pages (19 → 17), Active Direction (315+ → 337+). Verified all metrics against actual codebase: 223 test files, 81 API files, 17 frontend pages, 15 OTA adapters.

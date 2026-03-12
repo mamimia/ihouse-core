@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 335 — (Next)
+Phase 337 — (Next)
 
 ## Last Closed Phase
 
-Phase 334 — Booking Dates + iCal Push Adapter Integration Tests (closed) — 13 tests, all pass.
+Phase 336 — Layer C Documentation Sync XVIII (closed).
 
 ## Current Objective
 
-Execute Phases 316-324: test verification, security audit, E2E integration, portal polish, AI readiness, deployment dry run, final audit.
+Execute Phases 337-344: Supabase artifacts refresh, frontend page audit, notification integration tests, outbound sync chain tests, AI robustness tests, production hardening, RLS audit, full system audit.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -223,4 +223,4 @@ Execute Phases 316-324: test verification, security audit, E2E integration, port
 
 ## Tests
 
-**6,406 collected. ~6,385 passing (~17 skipped). 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 304 — no new backend tests in Phases 305-315)**
+**6,726 collected. All passing. 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 336 — Phases 315-335 added 312+ new integration tests)**

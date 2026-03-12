@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 331 — Platform Checkpoint XIV (2026-03-12)**
+**Last updated: Phase 336 — Layer C Documentation Sync XVIII (2026-03-12)**
 
 ## Core Architecture
 
@@ -420,11 +420,11 @@ All **14 providers** implemented at full parity:
 |----------|-------------|-------|
 | `GET /cashflow/projection` | ISO week cashflow buckets (30/60/90d) | 120 |
 
-### SSE (Phase 181)
+### SSE Event Bus (Phase 306)
 
 | Endpoint | Description | Phase |
 |----------|-------------|-------|
-| `GET /sse/tasks` | Server-Sent Events for real-time worker task updates | 181 |
+| `GET /events/stream` | Server-Sent Events — 6 named channels (tasks, bookings, sync, alerts, financial, system), query param filtering | 306 |
 
 ### Auth & Session (Phases 296–298)
 

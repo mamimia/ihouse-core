@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 315 (2026-03-12). [Antigravity]
+> Last updated: Phase 336 (2026-03-12). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 331 (2026-03-12)
+## System Numbers — Phase 336 (2026-03-12)
 
 | Metric | Value |
 |--------|-------|
@@ -37,15 +37,15 @@
 | **Services (new)** | `state_transition_guard.py` — Phase 326 (skill spec implementation) |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | 6,628+ collected / all passing / 4 pre-existing health failures / exit 0 |
-| **Test Files** | 218 test files (225 new tests added Phases 318-330) |
+| **Tests** | 6,726 collected / all passing / 4 pre-existing health failures / exit 0 |
+| **Test Files** | 223 test files |
 | **Supabase Tables** | 33 tables + 1 view (`ota_dlq_summary`), 29 migrations |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
 | **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh |
 | **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
-| **Frontend** | Next.js 16 / React 19, 19 pages, Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
+| **Frontend** | Next.js 16 / React 19, 17 pages, Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
 | **CORS** | CORSMiddleware via `IHOUSE_CORS_ORIGINS` env var (Phase 313) |
 
 ---
@@ -101,13 +101,13 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 315+
+## Active Direction — Phase 337+
 
-Phases 305–314 completed: Documentation Truth Sync XVI (305), Real-Time Event Bus — SSE 6 named channels (306), Frontend Real Data — Dashboard + Bookings SSE (307), Frontend Real Data — Financial + Tasks SSE (308), Owner Portal Frontend SSE + Cashflow (309), Guest Portal Frontend SSE (310), Admin Notification Dashboard (311), Manager Copilot UI — Morning Briefing Widget (312), Production Readiness — CORS + Frontend Docker (313), Platform Checkpoint XVI (314), Layer C Documentation Sync XVII (315).
+Phases 305–336 completed: Documentation Truth Sync XVI (305), Real-Time Event Bus — SSE 6 named channels (306), Frontend Real Data — Dashboard + Bookings SSE (307), Frontend Real Data — Financial + Tasks SSE (308), Owner Portal Frontend SSE + Cashflow (309), Guest Portal Frontend SSE (310), Admin Notification Dashboard (311), Manager Copilot UI — Morning Briefing Widget (312), Production Readiness — CORS + Frontend Docker (313), Platform Checkpoint XVI (314), Layer C Documentation Sync XVII (315). Full Test Suite Verification + Fix (316). Supabase RLS Audit II (317). Integration Tests Sprint (318–334). Outbound OTA Adapter Integration Tests (335). Layer C Documentation Sync XVIII (336).
 
-The current wave (Phases 316–324) focuses on **vertical depth over horizontal expansion**: test suite verification, Supabase RLS audit, frontend E2E tests, real webhook integration, notification dispatch testing, portal polish, AI readiness validation, and a production deployment dry run. Phase 324 is a mandatory full audit + cleanup checkpoint.
+The current wave (Phases 337–344) focuses on **system verification and production readiness**: Supabase artifacts refresh, frontend page audit, notification dispatch integration, outbound sync chain integration, AI copilot robustness, production hardening, RLS + auth audit, and a mandatory full system audit.
 
-Full plan: see `system_audit_and_phases_315_324.md` or planning artifact.
+Full plan: see `system_analysis_and_next_phases.md` planning artifact.
 
 ### Phase 283 — Test Suite Isolation Fix + conftest.py *(closed)*
 Created `tests/conftest.py` with session-scoped env var management. Fixed 4 root causes: IHOUSE_DEV_MODE leaking from module-level `os.environ.setdefault`, 7 test files missing dev mode fixtures, auth enforcement tests not disabling dev mode, InMemoryRateLimiter singleton (60 RPM) accumulating hits across full suite. 16 files modified. +0 tests, 0 failures.
@@ -252,6 +252,6 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 316–324):** Full test suite verification, Supabase RLS audit on 7 new tables (296-299), frontend E2E smoke tests (Playwright), real webhook vertical integration, notification dispatch testing with Twilio/SendGrid sandboxes, owner+guest portal production polish, AI copilot readiness with real OpenAI key, staging deployment dry run, full audit checkpoint.
+**Short-term (Phases 337–344):** Supabase artifacts refresh + schema audit, frontend page audit (17 vs 19 discrepancy), notification dispatch integration tests, outbound sync full chain integration, AI copilot robustness tests, production readiness hardening, Supabase RLS Audit III + auth flow verification, and a mandatory full system audit with document alignment.
 
 **Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from API surface expansion to **production readiness and operational depth**.
