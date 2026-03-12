@@ -5747,3 +5747,15 @@ Tests: 20 passed. 0 failed. 1.15s.
 - `docs/archive/phases/phase-322-spec.md` — NEW
 
 Tests: 14 passed. 0 failed. 1.56s.
+
+## Phase 323 — Production Deployment Dry Run (Closed) — 2026-03-12
+
+**Category:** 🚀 Deployment / Testing
+**Actions:**
+- `tests/test_deployment_readiness.py` — NEW — 16 tests
+- Health check logic (2), outbound sync probes (4), enriched health (1)
+- Deployment config (7): Dockerfile, requirements.txt, compose files
+- Health HTTP endpoints (2): /health, /readiness
+- `docs/archive/phases/phase-323-spec.md` — NEW
+
+Tests: 16 passed. 0 failed. 1.09s.

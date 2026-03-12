@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 323 — (Next)
+Phase 324 — (Next)
 
 ## Last Closed Phase
 
-Phase 322 — Manager Copilot + AI Layer Operational Readiness (closed) — 14 tests, all pass.
+Phase 323 — Production Deployment Dry Run (closed) — 16 tests, all pass.
 
 ## Current Objective
 

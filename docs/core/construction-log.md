@@ -4239,3 +4239,7 @@ Portal integration tests. 20 tests: guest token service (7), guest portal HTTP (
 ## Phase 322 — Manager Copilot + AI Layer Operational Readiness — 2026-03-12
 
 AI copilot integration tests. 14 tests: manager morning briefing heuristic (5), worker assist heuristic (5), HTTP endpoint validation (4). All pass in 1.56s.
+
+## Phase 323 — Production Deployment Dry Run — 2026-03-12
+
+Deployment readiness tests. 16 tests: health checks (2), outbound sync probes (4), enriched health (1), Dockerfile/compose config (7), health HTTP (2). All pass in 1.09s.
