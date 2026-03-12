@@ -5722,3 +5722,16 @@ Tests: 33 passed. 0 failed. 0.83s.
 - `docs/archive/phases/phase-320-spec.md` — NEW
 
 Tests: 17 passed. 0 failed. 0.13s.
+
+## Phase 321 — Owner + Guest Portal Production Polish (Closed) — 2026-03-12
+
+**Category:** 🏠 Product / Testing
+**Actions:**
+- `tests/test_portal_integration.py` — NEW — 20 tests
+- Group A: Guest Token Service (7) — issue/verify/expired/hash
+- Group B: Guest Portal HTTP (4) — booking/wifi/rules/missing-token
+- Group C: Owner Access Service (5) — grant/has/get/invalid-role
+- Group D: Owner Portal HTTP (4) — list/grant/revoke/revoke-missing
+- `docs/archive/phases/phase-321-spec.md` — NEW
+
+Tests: 20 passed. 0 failed. 1.15s.

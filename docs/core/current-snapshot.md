@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 321 — (Next)
+Phase 322 — (Next)
 
 ## Last Closed Phase
-Phase 320 — Notification Dispatch Integration (closed) — 17 integration tests, all pass.
+Phase 321 — Owner + Guest Portal Production Polish (closed) — 20 tests, all pass.
 
 ## System Status
 
