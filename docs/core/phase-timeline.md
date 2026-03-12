@@ -5926,3 +5926,53 @@ Tests added: 0 (documentation/audit phase). No missing pages.
 - `docs/archive/phases/phase-339-spec.md` — NEW
 
 Tests: 22 passed. 0 failed. 0.10s.
+
+## Phase 340 — Outbound Sync Full-Chain Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🔌 Outbound / Sync / Testing
+**Actions:**
+- `tests/test_outbound_sync_fullchain_integration.py` — NEW — 17 tests
+- Executor chain (5), ExecutionResult shape (4), sync persistence (4), replay (4)
+- `docs/archive/phases/phase-340-spec.md` — NEW
+
+Tests: 17 passed. 0 failed. 0.21s.
+
+## Phase 341 — AI Copilot Robustness Tests (Closed) — 2026-03-12
+
+**Category:** 🤖 AI / Testing
+**Actions:**
+- `tests/test_ai_copilot_robustness_integration.py` — NEW — 12 tests
+- AI audit log writer (6), graceful degradation (6)
+- `docs/archive/phases/phase-341-spec.md` — NEW
+
+Tests: 12 passed. 0 failed. 0.76s.
+
+## Phase 342 — Production Readiness Hardening (Closed) — 2026-03-12
+
+**Category:** 🚀 Production / Audit
+**Actions:**
+- Verified: Dockerfile, docker-compose.production.yml, CORSMiddleware, /health endpoint, deploy_checklist.sh, .env.production.example
+- `docs/archive/phases/phase-342-spec.md` — NEW
+
+Tests added: 0 (audit-only phase).
+
+## Phase 343 — Supabase RLS Audit III (Closed) — 2026-03-12
+
+**Category:** 🔒 Security / Audit
+**Actions:**
+- Verified: ALL 40 Supabase tables have rls_enabled=true (via MCP live query)
+- 0 security findings
+- `docs/archive/phases/phase-343-spec.md` — NEW
+
+Tests added: 0 (audit-only phase).
+
+## Phase 344 — Full System Audit + Document Alignment (Closed) — 2026-03-12
+
+**Category:** ✅ Audit / Mandatory Closing
+**Actions:**
+- Full test collection: 6,777 tests, 226 files
+- 89 new tests added in Phases 335-344
+- All Layer C documentation aligned with actual system state
+- `docs/archive/phases/phase-344-spec.md` — NEW
+
+Tests added: 0 (audit checkpoint). Total system: 6,777 tests, 226 files.

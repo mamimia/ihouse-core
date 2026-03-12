@@ -4307,3 +4307,19 @@ Audited all frontend page.tsx files. Found 18 pages (root page.tsx was missed in
 ## Phase 339 — Notification Dispatch Full-Chain Integration Tests — 2026-03-12
 
 Full-chain integration tests for the notification dispatch pipeline. 22 tests: SLA→bridge dispatch (5), channel routing shapes (5), delivery writer integration (4), dispatcher fallback behavior (4), message construction (4). All pass in 0.10s. Injectable mock DB and channel adapters — CI-safe.
+
+## Phase 340 — Outbound Sync Full-Chain Integration Tests — 2026-03-12
+
+17 tests for the outbound sync pipeline: execute_single_provider → adapter routing (api_first / ical_fallback) → sync_log_writer.write_sync_result → outbound_sync_log. 4 groups: executor chain (5), result shape (4), persistence (4), replay (4). All pass in 0.21s.
+
+## Phase 341 — AI Copilot Robustness Tests — 2026-03-12
+12 tests for AI copilot infrastructure: log_ai_interaction audit writer (6), graceful degradation patterns (6). All pass in 0.76s.
+
+## Phase 342 — Production Readiness Hardening — 2026-03-12
+Audit-only. Verified: Dockerfile, docker-compose.production.yml (frontend included Phase 313), CORSMiddleware, /health endpoint, deploy_checklist.sh, .env.production.example. All present and correctly configured.
+
+## Phase 343 — Supabase RLS Audit III — 2026-03-12
+Audit-only. Verified via MCP live query: ALL 40 Supabase tables have rls_enabled=true. 0 security findings. Auth flow: JWT + server-side sessions (297), guest tokens SHA-256 hashed (298), owner portal property-scoped (298).
+
+## Phase 344 — Full System Audit + Document Alignment — 2026-03-12
+Mandatory closing phase. Full test collection: 6,777 tests, 226 files. 89 new tests added in Phases 335-344 (38 outbound adapter + 22 notification chain + 17 outbound sync chain + 12 AI robustness). All Layer C docs aligned. All audits pass.

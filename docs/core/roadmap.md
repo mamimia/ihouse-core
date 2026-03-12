@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 336 (2026-03-12). [Antigravity]
+> Last updated: Phase 344 (2026-03-12). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 336 (2026-03-12)
+## System Numbers — Phase 344 (2026-03-12)
 
 | Metric | Value |
 |--------|-------|
@@ -37,8 +37,8 @@
 | **Services (new)** | `state_transition_guard.py` — Phase 326 (skill spec implementation) |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | 6,726 collected / all passing / 4 pre-existing health failures / exit 0 |
-| **Test Files** | 223 test files |
+| **Tests** | 6,777 collected / all passing / 4 pre-existing health failures / exit 0 |
+| **Test Files** | 226 test files |
 | **Supabase Tables** | 40 tables + 2 views (`ota_dlq_summary`, `active_sessions`), 29 migrations |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |

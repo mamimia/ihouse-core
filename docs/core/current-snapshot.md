@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 337 — (Next)
+Phase 345 — (Next)
 
 ## Last Closed Phase
-Phase 336 — Layer C Documentation Sync XVIII (closed).
+Phase 344 — Full System Audit + Document Alignment (closed).
 
 ## System Status
 
@@ -366,8 +366,8 @@ Tier 3 — External (one of:)
 | `IHOUSE_SENDGRID_FROM` | unset | Sending email address (Phase 299) |
 | `IHOUSE_CORS_ORIGINS` | unset | Comma-separated allowed CORS origins for frontend (Phase 313) |
 
-Phase 337 — see `docs/core/planning/` for next cycle.
+Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**6,726 collected. All passing. 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 336 — Phases 315-335 added 312+ new integration tests)**
+**6,777 collected. All passing. 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 344 — Phases 335-344 added 89 new tests)**
