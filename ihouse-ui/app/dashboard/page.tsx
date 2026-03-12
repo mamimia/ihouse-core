@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { api, OperationsToday, Task, OutboundHealthProvider, DlqEntry, PortfolioProperty } from '@/lib/api';
+import { api, OperationsToday, Task, OutboundHealthProvider, DlqSummaryEntry, PortfolioProperty } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -11,7 +11,7 @@ interface DashboardData {
     today: OperationsToday | null;
     criticalTasks: Task[];
     syncProviders: OutboundHealthProvider[];
-    dlqPending: DlqEntry[];
+    dlqPending: DlqSummaryEntry[];
     portfolio: PortfolioProperty[];
 }
 

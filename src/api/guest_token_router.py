@@ -171,6 +171,11 @@ async def verify_token(body: VerifyGuestTokenRequest) -> JSONResponse:
         )
 
     if not claims:
+        # Phase 363: audit log failed verification attempts
+        logger.warning(
+            "guest-token: VERIFY_FAILED booking_ref=%s",
+            body.booking_ref,
+        )
         return JSONResponse(
             status_code=401,
             content={"valid": False, "error": "TOKEN_INVALID_OR_EXPIRED",
@@ -181,6 +186,10 @@ async def verify_token(body: VerifyGuestTokenRequest) -> JSONResponse:
     try:
         db = _get_db()
         if is_guest_token_revoked(db, body.token):
+            logger.warning(
+                "guest-token: VERIFY_REVOKED booking_ref=%s",
+                body.booking_ref,
+            )
             return JSONResponse(
                 status_code=401,
                 content={"valid": False, "error": "TOKEN_REVOKED",
@@ -189,6 +198,11 @@ async def verify_token(body: VerifyGuestTokenRequest) -> JSONResponse:
     except Exception:
         pass  # If DB check fails, fall through — HMAC is the primary source of truth
 
+    # Phase 363: audit log successful verification
+    logger.info(
+        "guest-token: VERIFY_OK booking_ref=%s email=%s",
+        claims["booking_ref"], claims.get("guest_email", ""),
+    )
     return JSONResponse(
         status_code=200,
         content={

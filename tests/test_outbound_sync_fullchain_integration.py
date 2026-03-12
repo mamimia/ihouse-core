@@ -21,7 +21,6 @@ from unittest.mock import MagicMock
 
 os.environ.setdefault("IHOUSE_DEV_MODE", "true")
 os.environ.setdefault("IHOUSE_ENV", "test")
-os.environ.setdefault("IHOUSE_DRY_RUN", "true")
 os.environ.setdefault("IHOUSE_THROTTLE_DISABLED", "true")
 os.environ.setdefault("IHOUSE_RETRY_DISABLED", "true")
 

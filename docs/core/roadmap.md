@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 344 (2026-03-12). [Antigravity]
+> Last updated: Phase 364 (2026-03-12). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 344 (2026-03-12)
+## System Numbers — Phase 364 (2026-03-12)
 
 | Metric | Value |
 |--------|-------|
@@ -37,8 +37,8 @@
 | **Services (new)** | `state_transition_guard.py` — Phase 326 (skill spec implementation) |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | 6,777 collected / all passing / 4 pre-existing health failures / exit 0 |
-| **Test Files** | 226 test files |
+| **Tests** | 7,043 passed / 9 failed (infrastructure/Supabase) / 17 skipped |
+| **Test Files** | 237 test files |
 | **Supabase Tables** | 40 tables + 2 views (`ota_dlq_summary`, `active_sessions`), 29 migrations |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) |
 | **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
@@ -101,13 +101,19 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 337+
+## Active Direction — Phase 355+
 
-Phases 305–336 completed: Documentation Truth Sync XVI (305), Real-Time Event Bus — SSE 6 named channels (306), Frontend Real Data — Dashboard + Bookings SSE (307), Frontend Real Data — Financial + Tasks SSE (308), Owner Portal Frontend SSE + Cashflow (309), Guest Portal Frontend SSE (310), Admin Notification Dashboard (311), Manager Copilot UI — Morning Briefing Widget (312), Production Readiness — CORS + Frontend Docker (313), Platform Checkpoint XVI (314), Layer C Documentation Sync XVII (315). Full Test Suite Verification + Fix (316). Supabase RLS Audit II (317). Integration Tests Sprint (318–334). Outbound OTA Adapter Integration Tests (335). Layer C Documentation Sync XVIII (336).
+Phases 305–354 completed: Documentation Truth Sync XVI (305), Real-Time Event Bus — SSE 6 named channels (306), Frontend Real Data — Dashboard + Bookings SSE (307–308), Owner/Guest Portal SSE (309–310), Admin Notification Dashboard (311), Manager Copilot UI (312), Production Readiness — CORS + Frontend Docker (313), Platform Checkpoint XVI (314), Layer C Documentation Sync XVII (315), Full Test Suite Verification + Fix (316), Supabase RLS Audit II (317), Integration Tests Sprint (318–335), Layer C Documentation Sync XVIII (336), Service Layer Coverage Expansion (337), Booking Query Edge-Case Tests (338), Supabase Event Log Integration (339), Documentation Sync XIX (340), Conflict Resolver + Financial Coverage (341), Task + SLA Engine Coverage (342), Notification Multi-Channel Coverage (343), Platform Checkpoint XVI (344), Multi-Tenant Flow E2E (345), Guest + Owner Portal E2E (346), Notification Delivery E2E (347), Webhook Ingestion Regression (348), Outbound Sync Coverage (349), API Smoke Tests (350), Performance Baseline + Rate Limiting (351), CI/CD Pipeline Hardening (352), Doc Auto-Generation from Code (353), Platform Checkpoint XVII (354).
 
-The current wave (Phases 337–344) focuses on **system verification and production readiness**: Supabase artifacts refresh, frontend page audit, notification dispatch integration, outbound sync chain integration, AI copilot robustness, production hardening, RLS + auth audit, and a mandatory full system audit.
+**Phase 355 — Cancel/Amend Adapter Test Repair:** Fixed 30 pre-existing failures caused by `IHOUSE_DRY_RUN=true` env var leaking from `test_outbound_sync_fullchain_integration.py` module-level `os.environ.setdefault`. Expanded `conftest.py` cleanup scope to include `IHOUSE_DRY_RUN` + adapter API keys. Suite: 7,043 passed / 9 failed / 17 skipped.
 
-Full plan: see `system_analysis_and_next_phases.md` planning artifact.
+The current wave (Phases 355–364) focused on **documentation alignment, test suite health, production hardening, frontend data integrity, DLQ dashboard enhancement, and guest token security**.
+
+**Phases 355–364 completed:** Cancel/Amend Adapter Test Repair (355), Layer C Document Alignment (356), Supabase Schema Truth Sync II (357), Outbound Sync Interface Hardening (358), Production Readiness Hardening — dynamic BUILD_VERSION + startup env validation (359), Frontend Data Integrity Audit — DlqEntry type conflict fix (360), Test Suite Health & Coverage Gaps — 7,043 passing confirmed (361), Webhook Retry & DLQ Dashboard Enhancement — batch replay + payload preview (362), Guest Token Flow Hardening — HMAC min key length + audit logging (363), Platform Checkpoint XVIII (364).
+
+### Next Direction — Phase 365+
+
+Focus areas: documentation sync, remaining monitoring gaps, rate-limiting improvements, API versioning planning, and deeper integration testing.
 
 ### Phase 283 — Test Suite Isolation Fix + conftest.py *(closed)*
 Created `tests/conftest.py` with session-scoped env var management. Fixed 4 root causes: IHOUSE_DEV_MODE leaking from module-level `os.environ.setdefault`, 7 test files missing dev mode fixtures, auth enforcement tests not disabling dev mode, InMemoryRateLimiter singleton (60 RPM) accumulating hits across full suite. 16 files modified. +0 tests, 0 failures.
@@ -252,6 +258,6 @@ Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — 
 
 ## Where We're Headed
 
-**Short-term (Phases 337–344):** Supabase artifacts refresh + schema audit, frontend page audit (17 vs 19 discrepancy), notification dispatch integration tests, outbound sync full chain integration, AI copilot robustness tests, production readiness hardening, Supabase RLS Audit III + auth flow verification, and a mandatory full system audit with document alignment.
+**Short-term (Phases 365–374):** Documentation sync for Phases 355–364, frontend SSR/hydration audit, rate-limiting improvements, API health monitoring depth, and expanded integration test coverage.
 
-**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus shifts from API surface expansion to **production readiness and operational depth**.
+**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus continues on **production readiness, operational depth, and security hardening**.

@@ -1,8 +1,8 @@
 -- ============================================================
 -- iHouse Core — Supabase Schema Export
--- Exported: Phase 284 (2026-03-12)
--- Tables: 34
--- Source: live Supabase DB (information_schema.columns)
+-- Exported: Phase 284 → Updated Phase 357 (2026-03-12)
+-- Tables: 44 (+4 added by Phase 357 audit)
+-- Source: live Supabase DB + source code audit
 -- ============================================================
 
 -- ENUM
@@ -555,4 +555,63 @@ CREATE TABLE IF NOT EXISTS public.notification_log (
     error_message   TEXT,
     sent_at         TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =====================================================================
+-- Phase 357 — Schema Truth Sync II (missing tables identified by audit)
+-- =====================================================================
+
+-- admin_audit_log (Phase 171 — Admin Audit Log, append-only)
+CREATE TABLE IF NOT EXISTS public.admin_audit_log (
+    id                  BIGSERIAL PRIMARY KEY,
+    tenant_id           TEXT        NOT NULL,
+    actor_user_id       TEXT        NOT NULL,
+    action              TEXT        NOT NULL,
+    target_type         TEXT        NOT NULL,
+    target_id           TEXT        NOT NULL,
+    before_state        JSONB,
+    after_state         JSONB,
+    metadata            JSONB,
+    occurred_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- booking_guest_link (Phase 194 — Booking→Guest Link)
+CREATE TABLE IF NOT EXISTS public.booking_guest_link (
+    id                  BIGSERIAL PRIMARY KEY,
+    booking_id          TEXT        NOT NULL,
+    guest_id            TEXT        NOT NULL,
+    tenant_id           TEXT        NOT NULL,
+    linked_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (booking_id, guest_id)
+);
+
+-- conflict_resolution_queue (Phase 207 — Conflict Auto-Resolution Engine)
+CREATE TABLE IF NOT EXISTS public.conflict_resolution_queue (
+    conflict_id             TEXT        NOT NULL,
+    tenant_id               TEXT        NOT NULL,
+    artifact_type           TEXT        NOT NULL,
+    type_id                 TEXT,
+    status                  TEXT        NOT NULL DEFAULT 'Open',
+    priority                TEXT,
+    property_id             TEXT        NOT NULL DEFAULT '',
+    booking_id              TEXT        NOT NULL DEFAULT '',
+    conflicts_found         JSONB       NOT NULL DEFAULT '[]'::jsonb,
+    request_id              TEXT        DEFAULT '',
+    required_approver_role  TEXT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (booking_id, request_id, artifact_type)
+);
+
+-- properties (Phase 165 — Properties Metadata API)
+CREATE TABLE IF NOT EXISTS public.properties (
+    id                  BIGSERIAL PRIMARY KEY,
+    tenant_id           TEXT        NOT NULL,
+    property_id         TEXT        NOT NULL,
+    display_name        TEXT,
+    timezone            TEXT        NOT NULL DEFAULT 'UTC',
+    base_currency       TEXT        NOT NULL DEFAULT 'THB',
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (tenant_id, property_id)
 );

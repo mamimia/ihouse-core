@@ -4363,3 +4363,11 @@ First automated metrics extraction tooling for iHouse Core. `scripts/extract_met
 ## Phase 354 — Platform Checkpoint XVII — 2026-03-12
 
 Full platform audit. Ran complete test suite: 7,069 collected (7,022 passed, 30 failed [pre-existing cancel/amend adapter tests], 17 skipped, 21.36s). Verified file counts: 235 test_*.py + 2 conftest.py = 237 test files, 256 src files, 353 phase specs. Corrected current-snapshot.md: appended phases 337-354 to system status line, fixed "All passing" claim to reflect actual 30 pre-existing failures. Updated work-context.md. Created handoff to next session. Total: 7,069 tests, 237 files, 354 closed phases.
+
+## Phases 355–374 — Session Closure — 2026-03-12
+
+**Phases 355–364:** Cancel/Amend adapter test repair. Layer C Document Alignment. Supabase Schema Truth Sync II. Outbound Sync Interface Hardening. Production Readiness Hardening. Frontend Data Integrity Audit. Test Suite Health & Coverage Gaps. Webhook Retry & DLQ Dashboard Enhancement. Guest Token Flow Hardening (startup validation + minimum key length + audit logging on verify endpoint). Platform Checkpoint XVIII (full audit — all 9 phase specs + timeline entries + doc alignment).
+
+**Phases 365–374:** Layer C Document Alignment (docs synced to Phase 364). Rate Limiter Hardening — strict tier at 20 RPM for sensitive endpoints + stats() monitoring method. Frontend Error Boundary & Offline State — ErrorBoundary class component + OfflineBanner + ClientProviders wrapper in root layout. Health Check Graceful Degradation — uptime tracking, response_time_ms, rate limiter probe. Outbound Sync Retry Dashboard — /admin/sync frontend page with per-provider health cards. API Response Envelope Standardization — make_success_response + 3 new error codes (CONFLICT, ALREADY_EXISTS, SERVICE_UNAVAILABLE). Booking Search Full-Text Enhancement — `q` param with ilike across booking_id/reservation_ref/guest_name. Admin Audit Log Frontend Page — /admin/audit with expandable payload. Deploy Checklist Automation — IHOUSE_GUEST_TOKEN_SECRET added to required vars + HMAC key length validation. Platform Checkpoint XIX.
+
+Test suite at closure: 7,043 passed, 9 failed (infra/Supabase), 17 skipped. Frontend TypeScript: 0 errors. 20 frontend pages. 374 phase specs in archive.

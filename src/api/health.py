@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_TIMEOUT = 3.0
 _DLQ_TABLE = "ota_dead_letter"
+_BOOT_TIME = time.monotonic()
 
 
 @dataclass
@@ -68,6 +69,7 @@ def run_health_checks(version: str, env: str) -> HealthResult:
     Runs all health checks and returns a HealthResult.
     Non-raising — all errors are caught and surfaced as check failures.
     """
+    t_start = time.monotonic()
     checks: Dict[str, Any] = {}
     overall = "ok"
     http_status = 200
@@ -140,6 +142,24 @@ def run_health_checks(version: str, env: str) -> HealthResult:
             checks["dlq"] = {"status": "error", "error": str(exc)[:120]}
             if overall == "ok":
                 overall = "degraded"
+
+    # ------------------------------------------------------------------ #
+    # Phase 368: Rate limiter stats + uptime                              #
+    # ------------------------------------------------------------------ #
+    try:
+        from api.rate_limiter import _limiter  # noqa: PLC0415
+        stats = _limiter.stats()
+        checks["rate_limiter"] = {
+            "status": "ok",
+            "limit_rpm": stats["limit_rpm"],
+            "active_tenants": stats["active_tenants"],
+        }
+    except Exception:
+        checks["rate_limiter"] = {"status": "skipped", "reason": "not available"}
+
+    uptime_seconds = int(time.monotonic() - _BOOT_TIME)
+    checks["uptime_seconds"] = uptime_seconds
+    checks["response_time_ms"] = int((time.monotonic() - t_start) * 1000)
 
     return HealthResult(
         status=overall,

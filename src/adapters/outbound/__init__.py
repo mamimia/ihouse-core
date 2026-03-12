@@ -170,7 +170,14 @@ class AdapterResult:
 class OutboundAdapter:
     """
     Abstract base for outbound OTA adapters.
-    Subclasses implement send() for api_first or push() for ical_fallback.
+
+    Tier A (api_first) adapters implement: send(), cancel(), amend()
+    Tier B/C (ical_fallback) adapters implement: push(), cancel()
+
+    Contract (all methods):
+      - MUST NOT raise — catch internally and return status='failed'.
+      - MUST return an AdapterResult.
+      - MUST honour dry-run when IHOUSE_DRY_RUN=true or credentials absent.
     """
     provider: str = "unknown"
 
@@ -182,10 +189,10 @@ class OutboundAdapter:
         dry_run: bool = False,
     ) -> AdapterResult:
         """
-        Send an availability lock to the OTA's write API.
+        Send an availability lock to the OTA's write API (BOOKING_CREATED).
         Override in api_first (Tier A) adapters.
         """
-        raise NotImplementedError(f"{self.__class__.__name__} does not support api_first.")
+        raise NotImplementedError(f"{self.__class__.__name__} does not support send().")
 
     def push(
         self,
@@ -193,9 +200,55 @@ class OutboundAdapter:
         booking_id: str,
         rate_limit: int,
         dry_run: bool = False,
+        check_in: Optional[str] = None,
+        check_out: Optional[str] = None,
     ) -> AdapterResult:
         """
-        Push an iCal feed update to the OTA.
+        Push an iCal feed update to the OTA (BOOKING_CREATED / BOOKING_AMENDED).
         Override in ical_fallback (Tier B/C) adapters.
         """
-        raise NotImplementedError(f"{self.__class__.__name__} does not support ical_fallback.")
+        raise NotImplementedError(f"{self.__class__.__name__} does not support push().")
+
+    def cancel(
+        self,
+        external_id: str,
+        booking_id: str,
+        rate_limit: int = 60,
+    ) -> AdapterResult:
+        """
+        Push a cancellation to the OTA (BOOKING_CANCELED).
+        Phase 154: Override in Tier A adapters (API cancel).
+        Phase 151: Override in Tier B adapters (iCal cancel).
+        Default: return dry_run (unsupported by this adapter).
+        """
+        return AdapterResult(
+            provider=self.provider,
+            external_id=external_id,
+            strategy="api_first",
+            status="dry_run",
+            http_status=None,
+            message=f"{self.__class__.__name__} does not support cancel() — dry_run.",
+        )
+
+    def amend(
+        self,
+        external_id: str,
+        booking_id: str,
+        check_in: Optional[str] = None,
+        check_out: Optional[str] = None,
+        rate_limit: int = 60,
+    ) -> AdapterResult:
+        """
+        Push a booking amendment to the OTA (BOOKING_AMENDED).
+        Phase 155: Override in Tier A adapters (API amend).
+        Default: return dry_run (unsupported by this adapter).
+        """
+        return AdapterResult(
+            provider=self.provider,
+            external_id=external_id,
+            strategy="api_first",
+            status="dry_run",
+            http_status=None,
+            message=f"{self.__class__.__name__} does not support amend() — dry_run.",
+        )
+

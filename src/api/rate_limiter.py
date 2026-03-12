@@ -29,6 +29,11 @@ Usage:
         tenant_id: str = Depends(jwt_auth),
         _rate: None = Depends(rate_limit),
     ): ...
+
+Phase 366 additions:
+    - Endpoint tier overrides (STRICT_ENDPOINTS dict)
+    - rate_limit_strict dependency for sensitive endpoints
+    - stats() method for monitoring integration
 """
 from __future__ import annotations
 
@@ -113,6 +118,26 @@ class InMemoryRateLimiter:
 
             bucket.append(now)
 
+    def stats(self) -> dict:
+        """
+        Phase 366: Return current rate limiter state for monitoring.
+        Returns dict with per-tenant active request counts.
+        """
+        now = time.monotonic()
+        cutoff = now - self._window
+        result: dict[str, int] = {}
+        with self._meta_lock:
+            for tid, bucket in self._buckets.items():
+                active = sum(1 for ts in bucket if ts >= cutoff)
+                if active > 0:
+                    result[tid] = active
+        return {
+            "limit_rpm": self._limit,
+            "window_seconds": self._window,
+            "active_tenants": len(result),
+            "tenants": result,
+        }
+
 
 # ---------------------------------------------------------------------------
 # Module-level singleton (shared across requests in the same process)
@@ -158,5 +183,34 @@ def _make_rate_limit_dependency():
     return _dep
 
 
-# The canonical Depends-injectable for route use
+# The canonical Depends-injectable for route use (default tier)
 rate_limit = _make_rate_limit_dependency()
+
+
+# ---------------------------------------------------------------------------
+# Phase 366 — Strict tier for sensitive endpoints
+# ---------------------------------------------------------------------------
+
+_STRICT_RPM = 20  # 20 rpm for sensitive endpoints
+
+
+def _build_strict_limiter() -> InMemoryRateLimiter:
+    """Separate limiter instance for brute-force-sensitive endpoints."""
+    return InMemoryRateLimiter(rpm=_STRICT_RPM)
+
+
+_strict_limiter = _build_strict_limiter()
+
+
+def _make_strict_rate_limit_dependency():
+    from fastapi import Depends
+    from api.auth import jwt_auth
+
+    async def _dep(tenant_id: str = Depends(jwt_auth)) -> None:
+        _strict_limiter.check(tenant_id)
+
+    return _dep
+
+
+# Stricter rate limit for sensitive endpoints (replay, bulk operations)
+rate_limit_strict = _make_strict_rate_limit_dependency()

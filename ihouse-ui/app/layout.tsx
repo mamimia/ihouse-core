@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { LanguageProvider } from '../lib/LanguageContext';
 import Sidebar from '../components/Sidebar';
+import ClientProviders from '../components/ClientProviders';
 
 export const metadata: Metadata = {
   title: 'Domaniqo — Operations',
@@ -33,7 +34,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               padding: 'var(--space-8)',
               maxWidth: 'var(--content-max)',
             }}>
-              {children}
+              <ClientProviders>
+                {children}
+              </ClientProviders>
             </main>
           </div>
         </LanguageProvider>

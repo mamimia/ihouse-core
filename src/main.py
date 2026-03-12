@@ -46,6 +46,26 @@ logging.basicConfig(
 logger = logging.getLogger("ihouse-core")
 
 # ---------------------------------------------------------------------------
+# Phase 359 — Startup env validation (best-effort: warn, never crash)
+# ---------------------------------------------------------------------------
+
+_BUILD_VERSION = os.getenv("BUILD_VERSION", "0.1.0")
+
+_REQUIRED_IN_PRODUCTION = {
+    "SUPABASE_URL":  "Health checks and all DB operations will fail",
+    "SUPABASE_KEY":  "Health checks and all DB operations will fail",
+    "IHOUSE_JWT_SECRET": "Auth bypass is active — NOT safe for production",
+    "IHOUSE_GUEST_TOKEN_SECRET": "Guest token issuance and verification will return 503",
+}
+
+for _var, _impact in _REQUIRED_IN_PRODUCTION.items():
+    if not os.getenv(_var):
+        logger.warning(
+            "STARTUP WARNING: %s is not set. Impact: %s",
+            _var, _impact,
+        )
+
+# ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
 # ---------------------------------------------------------------------------
 
@@ -135,7 +155,7 @@ _TAGS = [
 
 app = FastAPI(
     title="iHouse Core",
-    version="0.1.0",
+    version=_BUILD_VERSION,
     description=_DESCRIPTION,
     contact={
         "name": "iHouse Engineering",

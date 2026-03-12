@@ -188,34 +188,49 @@ class TestGroupCBackwardCompat:
             )
         adapter.send.assert_called_once()
 
-    def test_c2_adapter_without_cancel_falls_back_to_send(self):
-        """If adapter lacks .cancel(), hasattr check is False → falls back to .send()."""
-        adapter = MagicMock(spec=["send"])   # no cancel attr
-        adapter.send.return_value = _adapter_result("send")
+    def test_c2_cancel_always_calls_cancel_method(self):
+        """Phase 358: cancel() is now on the base class. Always calls .cancel(), never .send().
+        Adapters that don't override cancel() return dry_run — they do NOT fall back to send()."""
+        from adapters.outbound import OutboundAdapter, AdapterResult
+        class NoOpAdapter(OutboundAdapter):
+            provider = "airbnb"
+            def send(self, external_id, booking_id, rate_limit, dry_run=False) -> AdapterResult:
+                raise AssertionError("send() must NOT be called for BOOKING_CANCELED")
+
+        adapter = NoOpAdapter()
         registry = {"airbnb": adapter}
         with patch("services.outbound_executor._build_registry", return_value=registry), \
              patch("services.outbound_executor._ADAPTER_REGISTRY_AVAILABLE", True):
-            execute_sync_plan(
+            report = execute_sync_plan(
                 booking_id="airbnb_ABC",
                 property_id="prop-1",
                 tenant_id="t-1",
                 actions=[_action("api_first")],
                 event_type="BOOKING_CANCELED",
             )
-        adapter.send.assert_called_once()
+        # Base-class cancel() returns dry_run (not ok/failed/send)
+        assert report.results[0].status == "dry_run"
 
-    def test_c3_adapter_without_amend_falls_back_to_send(self):
-        """If adapter lacks .amend(), hasattr check is False → falls back to .send()."""
-        adapter = MagicMock(spec=["send"])   # no amend attr
-        adapter.send.return_value = _adapter_result("send")
+    def test_c3_amend_always_calls_amend_method(self):
+        """Phase 358: amend() is now on the base class. Always calls .amend(), never .send().
+        Adapters that don't override amend() return dry_run — they do NOT fall back to send()."""
+        from adapters.outbound import OutboundAdapter, AdapterResult
+        class NoOpAdapter(OutboundAdapter):
+            provider = "airbnb"
+            def send(self, external_id, booking_id, rate_limit, dry_run=False) -> AdapterResult:
+                raise AssertionError("send() must NOT be called for BOOKING_AMENDED")
+
+        adapter = NoOpAdapter()
         registry = {"airbnb": adapter}
         with patch("services.outbound_executor._build_registry", return_value=registry), \
              patch("services.outbound_executor._ADAPTER_REGISTRY_AVAILABLE", True):
-            execute_sync_plan(
+            report = execute_sync_plan(
                 booking_id="airbnb_ABC",
                 property_id="prop-1",
                 tenant_id="t-1",
                 actions=[_action("api_first")],
                 event_type="BOOKING_AMENDED",
             )
-        adapter.send.assert_called_once()
+        # Base-class amend() returns dry_run (not ok/failed/send)
+        assert report.results[0].status == "dry_run"
+

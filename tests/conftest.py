@@ -27,12 +27,18 @@ import pytest
 # router modules (which read env at import time via FastAPI dependency injection).
 os.environ.setdefault("IHOUSE_DEV_MODE", "true")
 os.environ.setdefault("IHOUSE_RATE_LIMIT_RPM", "0")  # disable rate limiter in tests
+os.environ["IHOUSE_DRY_RUN"] = "false"  # force false — tests using dry-run must opt in via monkeypatch
 
 # Env vars that MUST be cleaned between every test function.
 _SENSITIVE_VARS = [
     "IHOUSE_DEV_MODE",
+    "IHOUSE_DRY_RUN",
     "IHOUSE_LINE_SECRET",
     "OPENAI_API_KEY",
+    "AIRBNB_API_KEY",
+    "BOOKINGCOM_API_KEY",
+    "EXPEDIA_API_KEY",
+    "VRBO_API_KEY",
 ]
 
 # Pattern prefix for webhook secrets (IHOUSE_WEBHOOK_SECRET_*)

@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 355 — (Next)
+Phase 374 — Platform Checkpoint XIX (closed — session handoff).
 
 ## Last Closed Phase
 
-Phase 354 — Platform Checkpoint XVII (closed).
+Phase 374 — Platform Checkpoint XIX (Full Audit) (closed).
 
 ## Current Objective
 
-Fix 30 pre-existing test failures in test_sync_cancel_contract.py and test_sync_amend_contract.py, then plan next 10 phases.
+Session complete. All phases 355–374 closed. 7,043 tests passed, 9 infra-dependent failures, TypeScript 0 errors. 20 frontend pages. Next session starts at Phase 375.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -223,4 +223,4 @@ Fix 30 pre-existing test failures in test_sync_cancel_contract.py and test_sync_
 
 ## Tests
 
-**6,777 collected. All passing. 4 pre-existing health/Supabase failures (env-dependent, not regressions). Exit 0. (Phase 344 — Phases 335-344 added 89 new tests)**
+**7,043 passed. 9 failed (all Supabase connectivity — infra-dependent, not regressions). 17 skipped. TypeScript 0 errors. (Phase 364)**

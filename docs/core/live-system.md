@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 336 — Layer C Documentation Sync XVIII (2026-03-12)**
+**Last updated: Phase 355 — Cancel/Amend Adapter Test Repair (2026-03-12)**
 
 ## Core Architecture
 

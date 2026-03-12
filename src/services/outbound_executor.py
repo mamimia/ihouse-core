@@ -320,14 +320,15 @@ def execute_sync_plan(
                 if use_registry:
                     adapter = _build_registry().get(action.provider)
                     if adapter is not None:
-                        # Phase 185: route to the correct method based on event_type
-                        if event_type == "BOOKING_CANCELED" and hasattr(adapter, "cancel"):
+                        # Phase 185/358: route to the correct method based on event_type
+                        # cancel() and amend() are now defined on OutboundAdapter base (Phase 358).
+                        if event_type == "BOOKING_CANCELED":
                             ar = adapter.cancel(
                                 external_id=action.external_id,
                                 booking_id=booking_id,
                                 rate_limit=action.rate_limit,
                             )
-                        elif event_type == "BOOKING_AMENDED" and hasattr(adapter, "amend"):
+                        elif event_type == "BOOKING_AMENDED":
                             # Normalise check_in/check_out to ISO for API adapters
                             def _to_iso(d: Optional[str]) -> Optional[str]:
                                 if not d:
@@ -374,8 +375,9 @@ def execute_sync_plan(
                 if use_registry:
                     adapter = _build_registry().get(action.provider)
                     if adapter is not None:
-                        # Phase 185: route to cancel() for BOOKING_CANCELED
-                        if event_type == "BOOKING_CANCELED" and hasattr(adapter, "cancel"):
+                        # Phase 185/358: route to cancel() for BOOKING_CANCELED
+                        # amend via iCal uses push() with updated dates.
+                        if event_type == "BOOKING_CANCELED":
                             ar = adapter.cancel(
                                 external_id=action.external_id,
                                 booking_id=booking_id,

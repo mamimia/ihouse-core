@@ -53,6 +53,12 @@ def _get_secret() -> str:
             f"IHOUSE_GUEST_TOKEN_SECRET is not set. "
             "Cannot issue or verify guest tokens."
         )
+    # Phase 363: warn if secret is too short for HMAC-SHA256 (RFC 7518 §3.2)
+    if len(secret) < 32:
+        logger.warning(
+            "IHOUSE_GUEST_TOKEN_SECRET is %d bytes, recommended minimum is 32 bytes",
+            len(secret),
+        )
     return secret
 
 

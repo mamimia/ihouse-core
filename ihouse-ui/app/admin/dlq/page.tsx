@@ -51,6 +51,9 @@ export default function DlqAdminPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<StatusFilter>('all');
     const [replaying, setReplaying] = useState<string | null>(null);
+    const [batchReplaying, setBatchReplaying] = useState(false);
+    const [batchProgress, setBatchProgress] = useState('');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
     const { msg: toast, show: showToast } = useToast();
 
     const load = useCallback(async () => {
@@ -82,6 +85,31 @@ export default function DlqAdminPage() {
         } finally {
             setReplaying(null);
         }
+    };
+
+    // Phase 362 — Batch replay all pending entries
+    const handleBatchReplay = async () => {
+        const pending = entries.filter(e => e.status === 'pending' || e.status === 'error');
+        if (pending.length === 0) {
+            showToast('ℹ No pending/error entries to replay');
+            return;
+        }
+        setBatchReplaying(true);
+        let ok = 0, fail = 0;
+        for (let i = 0; i < pending.length; i++) {
+            const envId = pending[i].envelope_id ?? '';
+            setBatchProgress(`Replaying ${i + 1}/${pending.length}…`);
+            try {
+                const result = await api.replayDlqEntry(envId);
+                if (!result.already_replayed) ok++;
+            } catch {
+                fail++;
+            }
+        }
+        setBatchProgress('');
+        setBatchReplaying(false);
+        showToast(`✓ Batch replay: ${ok} replayed, ${fail} failed`);
+        await load();
     };
 
     const FILTERS: { key: StatusFilter; label: string }[] = [
@@ -168,6 +196,23 @@ export default function DlqAdminPage() {
                             cursor: 'pointer',
                         }}
                     >↻ Refresh</button>
+                    {/* Phase 362 — Batch replay button */}
+                    <button
+                        id="dlq-batch-replay"
+                        onClick={handleBatchReplay}
+                        disabled={batchReplaying || entries.filter(e => e.status === 'pending' || e.status === 'error').length === 0}
+                        style={{
+                            padding: '6px 14px',
+                            borderRadius: 99,
+                            border: 'none',
+                            background: batchReplaying ? '#334155' : '#6366f1',
+                            color: '#fff',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: batchReplaying ? 'not-allowed' : 'pointer',
+                            opacity: batchReplaying ? 0.7 : 1,
+                        }}
+                    >{batchReplaying ? batchProgress || 'Replaying…' : '▶▶ Replay All'}</button>
                 </div>
 
                 {/* Loading skeleton */}
@@ -258,6 +303,23 @@ export default function DlqAdminPage() {
                                 {entry.status === 'applied' && entry.replay_result && (
                                     <div style={{ marginTop: 4, fontSize: 11, color: '#10b981', fontFamily: 'monospace' }}>
                                         ✓ {entry.replay_result}
+                                    </div>
+                                )}
+                                {/* Phase 362 — Payload preview (expandable) */}
+                                {entry.payload_preview && (
+                                    <div
+                                        onClick={() => setExpandedId(expandedId === envId ? null : envId)}
+                                        style={{
+                                            marginTop: 4, fontSize: 11, color: '#475569',
+                                            fontFamily: 'monospace', cursor: 'pointer',
+                                            overflow: 'hidden',
+                                            maxHeight: expandedId === envId ? 'none' : '18px',
+                                            whiteSpace: expandedId === envId ? 'pre-wrap' : 'nowrap',
+                                            textOverflow: expandedId === envId ? 'unset' : 'ellipsis',
+                                            wordBreak: 'break-all',
+                                        }}
+                                    >
+                                        📋 {entry.payload_preview}
                                     </div>
                                 )}
                             </div>

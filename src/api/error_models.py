@@ -44,6 +44,9 @@ class ErrorCode:
     INVALID_PERIOD     = "INVALID_PERIOD"
     PERMISSION_NOT_FOUND = "PERMISSION_NOT_FOUND"  # Phase 165
     FORBIDDEN            = "FORBIDDEN"              # Phase 165
+    CONFLICT             = "CONFLICT"               # Phase 370
+    ALREADY_EXISTS       = "ALREADY_EXISTS"          # Phase 370
+    SERVICE_UNAVAILABLE  = "SERVICE_UNAVAILABLE"     # Phase 370
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +66,9 @@ _DEFAULT_MESSAGES: Dict[str, str] = {
     ErrorCode.INVALID_PERIOD:     "The 'period' query parameter is required and must be in YYYY-MM format",
     ErrorCode.PERMISSION_NOT_FOUND: "Permission record not found for this user",
     ErrorCode.FORBIDDEN:            "You do not have permission to perform this action",
+    ErrorCode.CONFLICT:             "A conflicting resource already exists",
+    ErrorCode.ALREADY_EXISTS:       "The resource already exists",
+    ErrorCode.SERVICE_UNAVAILABLE:  "Required service is currently unavailable",
 }
 
 
@@ -98,4 +104,30 @@ def make_error_response(
         body["trace_id"] = trace_id
     if extra:
         body.update(extra)
+    return JSONResponse(status_code=status_code, content=body)
+
+
+# ---------------------------------------------------------------------------
+# Phase 370 — Success envelope helper
+# ---------------------------------------------------------------------------
+
+def make_success_response(
+    data: Any,
+    status_code: int = 200,
+    meta: Optional[Dict[str, Any]] = None,
+) -> JSONResponse:
+    """
+    Create a standardized JSON success response.
+
+    Args:
+        data:        The response payload (will be placed under "data" key)
+        status_code: HTTP status code (default 200)
+        meta:        Optional metadata dict (pagination, counts, etc.)
+
+    Returns:
+        JSONResponse with standard success body: {"data": ..., "meta": ...}
+    """
+    body: Dict[str, Any] = {"data": data}
+    if meta:
+        body["meta"] = meta
     return JSONResponse(status_code=status_code, content=body)

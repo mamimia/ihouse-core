@@ -192,6 +192,7 @@ async def list_bookings(
     property_id: Optional[str] = None,
     status: Optional[str] = None,
     source: Optional[str] = None,
+    q: Optional[str] = None,  # Phase 371: free-text search
     check_in_from: Optional[str] = None,
     check_in_to: Optional[str] = None,
     check_out_from: Optional[str] = None,
@@ -286,6 +287,15 @@ async def list_bookings(
 
         if source is not None:
             query = query.eq("source", source)
+
+        # Phase 371: Free-text search across booking_id, reservation_ref, guest_name
+        if q is not None and q.strip():
+            search_term = q.strip()
+            query = query.or_(
+                f"booking_id.ilike.%{search_term}%,"
+                f"reservation_ref.ilike.%{search_term}%,"
+                f"guest_name.ilike.%{search_term}%"
+            )
 
         if check_in_from is not None:
             query = query.gte("check_in", check_in_from)

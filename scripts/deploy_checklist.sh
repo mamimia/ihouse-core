@@ -67,6 +67,7 @@ REQUIRED_VARS=(
   SUPABASE_SERVICE_ROLE_KEY
   IHOUSE_JWT_SECRET
   IHOUSE_API_KEY
+  IHOUSE_GUEST_TOKEN_SECRET  # Phase 373: required for guest tokens
 )
 
 for var in "${REQUIRED_VARS[@]}"; do
@@ -76,6 +77,17 @@ for var in "${REQUIRED_VARS[@]}"; do
   # Mask value for log output
   masked="${!var:0:6}****"
   pass "$var = $masked"
+done
+
+# Phase 373: Validate HMAC key minimum lengths (32 chars per RFC 7518 §3.2)
+SECRET_VARS=(IHOUSE_JWT_SECRET IHOUSE_GUEST_TOKEN_SECRET)
+for var in "${SECRET_VARS[@]}"; do
+  val="${!var:-}"
+  if [[ ${#val} -lt 32 ]]; then
+    warn "$var is shorter than 32 characters — HMAC security weak"
+  else
+    pass "$var length OK (${#val} chars)"
+  fi
 done
 
 # ---------------------------------------------------------------------------

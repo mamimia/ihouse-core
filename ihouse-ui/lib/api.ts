@@ -138,7 +138,8 @@ export interface OutboundHealthResponse {
     providers: OutboundHealthProvider[];
 }
 
-export interface DlqEntry {
+// Phase 157 — DLQ summary (used by admin and dashboard pages via /admin/dlq)
+export interface DlqSummaryEntry {
     id: number;
     provider: string;
     event_type: string;
@@ -147,10 +148,10 @@ export interface DlqEntry {
     status: string;
 }
 
-export interface DlqListResponse {
+export interface DlqSummaryResponse {
     tenant_id: string;
     count: number;
-    entries: DlqEntry[];
+    entries: DlqSummaryEntry[];
 }
 
 // ---------------------------------------------------------------------------
@@ -397,10 +398,14 @@ export const api = {
     getOutboundHealth: (): Promise<OutboundHealthResponse> =>
         apiFetch("/admin/outbound-health"),
 
+    // Phase 372: Audit log
+    getAuditLog: (limit?: number): Promise<{ entries: unknown[] }> =>
+        apiFetch(`/admin/audit-log${limit ? `?limit=${limit}` : ""}`),
+
     getDlq: (params?: {
         status?: string;
         limit?: number;
-    }): Promise<DlqListResponse> => {
+    }): Promise<DlqSummaryResponse> => {
         const q = new URLSearchParams();
         if (params?.status) q.set("status", params.status);
         if (params?.limit) q.set("limit", String(params.limit));
