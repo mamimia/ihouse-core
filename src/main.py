@@ -234,6 +234,9 @@ app.include_router(monitoring_router)
 from api.analytics_router import router as analytics_router  # noqa: E402  # Phase 264
 app.include_router(analytics_router)
 
+from api.org_router import router as org_router  # noqa: E402  # Phase 296
+app.include_router(org_router)
+
 from api.cashflow_router import router as cashflow_router  # noqa: E402
 app.include_router(cashflow_router)
 

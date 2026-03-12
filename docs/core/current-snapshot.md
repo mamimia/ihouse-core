@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 296 — (next cycle: Multi-Tenant Organization Foundation)
+Phase 297 — (next cycle: Auth Session Management + Real Login Flow)
 
 ## Last Closed Phase
-Phase 295 — Documentation Truth Sync XV + Branding Update (closed) — brand-handoff v3 integrated, work-context/roadmap/live-system synced. 6,216 tests passing.
+Phase 296 — Multi-Tenant Organization Foundation (closed) — organizations + org_members + tenant_org_map + 6 API endpoints + 37 tests. tenant_id invariant preserved.
 
 ## System Status
 

@@ -4037,3 +4037,7 @@ Tests: 6,216. Exit 0.
 Brand-handoff.md replaced with v3 (1,280 lines, +400/-66). Work-context.md fully rewritten. Roadmap + live-system headers fixed. Next-10-phases plan (295-304) created and approved.
 
 Tests: 6,216. Exit 0.
+
+## Phase 296 — Multi-Tenant Organization Foundation (2026-03-12)
+
+3 new Supabase tables (organizations, org_members, tenant_org_map) + trigger. Pure service module (7 functions). 6-endpoint org admin router. 37 contract tests (all pass). tenant_id invariant preserved throughout.

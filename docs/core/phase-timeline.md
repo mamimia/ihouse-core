@@ -5425,3 +5425,16 @@ Tests: 6,216 passed. Exit 0.
 - No internal file/code renames — branding boundary enforced
 
 Tests: 6,216 passed. Exit 0.
+
+## Phase 296 — Multi-Tenant Organization Foundation (Closed) — 2026-03-12
+
+**Category:** 🏗️ Architecture
+**Actions:**
+- Added Supabase migration: `organizations` + `org_members` + `tenant_org_map` tables + `sync_tenant_org_map` trigger
+- Created `src/services/organization.py` — 7 pure service functions (create_org, get_org, list, add/remove/list members, is_org_admin)
+- Created `src/api/org_router.py` — 6 endpoints (POST/GET /admin/org, GET /admin/org/{id}, GET/POST/DELETE /admin/org/{id}/members)
+- Created `tests/test_org_contract.py` — 37 contract tests (all pass)
+- Wired `org_router` into `src/main.py`
+- Invariant: `tenant_id` (JWT sub) unchanged throughout — org layer is purely additive
+
+Tests: 37 new, all pass. Exit 0.
