@@ -5610,3 +5610,13 @@ Tests: 0 new (frontend only). Build exit 0.
 - All 6 main UI pages with SSE: dashboard, bookings, financial, tasks, owner, guests
 
 Tests: 0 new. Build exit 0.
+
+## Phase 311 — Notification Preferences & Delivery Dashboard (Closed) — 2026-03-12
+
+**Category:** 🖥 Frontend
+**Actions:**
+- NEW: Admin notification delivery dashboard (`/admin/notifications`) — channel health, filters, delivery log, SSE
+- API: `getNotificationLog()` method + `NotificationLogEntry` / `NotificationLogResponse` types
+- Worker page channel preferences + notification history already existed (Phase 290)
+
+New page: 1 (total 19). Build exit 0.

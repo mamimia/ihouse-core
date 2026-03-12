@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 311 — Notification Preferences & Delivery Dashboard
+Phase 312 — Manager Copilot UI
 
 ## Last Closed Phase
 
-Phase 310 — Guest Portal Frontend (closed) — SSE + auto-refresh on all 6 main pages.
+Phase 311 — Notification Preferences & Delivery Dashboard (closed) — Admin delivery dashboard, 19 pages.
 
 ## Current Objective
 
-Build notification preferences management and delivery dashboard for monitoring LINE, email, and SMS notification channels.
+Build the manager-facing AI copilot interface — morning briefing, anomaly alerts, task recommendations.
 
 ## Key Invariants (Locked — Do Not Change)
 

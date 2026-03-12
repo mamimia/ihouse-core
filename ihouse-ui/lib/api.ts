@@ -611,6 +611,15 @@ export const api = {
         if (baseCurrency) q.set('base_currency', baseCurrency);
         return apiFetch(`/cashflow/projection?${q}`);
     },
+
+    // Phase 311 — Admin notification log
+    getNotificationLog: (opts?: { limit?: number; reference_id?: string }): Promise<NotificationLogResponse> => {
+        const q = new URLSearchParams();
+        if (opts?.limit) q.set('limit', String(opts.limit));
+        if (opts?.reference_id) q.set('reference_id', opts.reference_id);
+        const qs = q.toString();
+        return apiFetch(`/notifications/log${qs ? '?' + qs : ''}`);
+    },
 };
 
 // Phase 157 — Worker task types
@@ -797,3 +806,25 @@ export interface CashflowProjectionResponse {
     weeks: CashflowWeek[];
     total_weeks: number;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 311 — Notification Log (Admin)
+// ---------------------------------------------------------------------------
+
+export interface NotificationLogEntry {
+    notification_id?: string;
+    notification_delivery_id?: string;
+    channel: string;
+    recipient: string;
+    notification_type: string;
+    status: string;
+    error_message: string | null;
+    reference_id: string | null;
+    dispatched_at: string;
+}
+
+export interface NotificationLogResponse {
+    entries: NotificationLogEntry[];
+    count: number;
+}
+

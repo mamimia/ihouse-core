@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 311 — Notification Preferences & Delivery Dashboard
+Phase 312 — Manager Copilot UI
 
 ## Last Closed Phase
-Phase 310 — Guest Portal Frontend (closed) — SSE + auto-refresh. All 6 main pages have real-time connectivity.
+Phase 311 — Notification Preferences & Delivery Dashboard (closed) — Admin notification delivery page, 19 pages total.
 
 ## System Status
 

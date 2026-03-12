@@ -4146,3 +4146,17 @@ Implemented:
 - All 6 main UI pages now have SSE real-time connectivity
 
 Build exit 0. No new backend tests.
+
+## Phase 311 — Notification Preferences & Delivery Dashboard (Closed) — 2026-03-12
+
+Implemented:
+- Admin notification delivery dashboard (`app/admin/notifications/page.tsx`)
+  - Channel health indicators (per-channel success rate bars)
+  - Filters: channel (SMS/email/LINE/WhatsApp/Telegram), status (sent/failed), reference ID
+  - Delivery log table with expandable error details
+  - SSE on alerts channel, 30s auto-refresh
+- API client: `getNotificationLog()` with limit + reference_id params
+- Types: `NotificationLogEntry`, `NotificationLogResponse`
+- Worker page already had full channel preferences + history (Phase 290)
+
+Build exit 0, 19 pages.
