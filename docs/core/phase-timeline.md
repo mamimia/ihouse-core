@@ -5905,3 +5905,14 @@ Tests added: 0 (documentation phase). 11 discrepancies resolved.
 - `docs/archive/phases/phase-337-spec.md` — NEW
 
 Tests added: 0 (schema audit). Live Supabase: 40 tables, all RLS enabled.
+
+## Phase 338 — Frontend Page Audit + Missing Page Resolution (Closed) — 2026-03-12
+
+**Category:** 🎨 Frontend / Audit
+**Actions:**
+- Frontend page count audit: found 18 pages (not 17 or 19)
+- Root `page.tsx` was missed in Phase 336 count; roadmap over-counted by 1
+- `docs/core/roadmap.md` — MODIFIED — Frontend: 17 → 18 pages
+- `docs/archive/phases/phase-338-spec.md` — NEW
+
+Tests added: 0 (documentation/audit phase). No missing pages.

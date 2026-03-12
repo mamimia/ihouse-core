@@ -45,7 +45,7 @@
 | **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh |
 | **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
-| **Frontend** | Next.js 16 / React 19, 17 pages, Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
+| **Frontend** | Next.js 16 / React 19, 18 pages, Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
 | **CORS** | CORSMiddleware via `IHOUSE_CORS_ORIGINS` env var (Phase 313) |
 
 ---
