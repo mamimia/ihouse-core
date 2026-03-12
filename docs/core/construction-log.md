@@ -4263,3 +4263,7 @@ broadcast_availability() integration tests. 10 tests: PROPERTY_ONBOARDED (3), CH
 ## Phase 328 — Guest Messaging Copilot Integration Tests — 2026-03-12
 
 First-ever tests for guest_messaging_copilot.py (Phase 227, 497 lines). 18 tests covering 6 intents, 4 languages, 3 tones, subject generation, and nights calculation. All pass in 0.42s.
+
+## Phase 329 — Anomaly Alert Broadcaster Integration Tests — 2026-03-12
+
+First-ever tests for anomaly_alert_broadcaster.py (Phase 226, 630 lines). 16 tests: SLA scanner (4), financial flags (6), alert helpers (6). All pass in 0.44s.

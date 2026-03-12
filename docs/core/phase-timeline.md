@@ -5812,3 +5812,13 @@ Tests: 10 passed. 0 failed. 0.22s.
 - `docs/archive/phases/phase-328-spec.md` — NEW
 
 Tests: 18 passed. 0 failed. 0.42s.
+
+## Phase 329 — Anomaly Alert Broadcaster Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🚨 Anomaly Detection / Testing
+**Actions:**
+- `tests/test_anomaly_alert_broadcaster_integration.py` — NEW — 16 tests (FIRST-EVER)
+- Task SLA scanner (4), financial flag detection (6), alert helpers (6)
+- `docs/archive/phases/phase-329-spec.md` — NEW
+
+Tests: 16 passed. 0 failed. 0.44s.

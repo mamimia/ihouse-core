@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 329 — (Next)
+Phase 330 — (Next)
 
 ## Last Closed Phase
 
-Phase 328 — Guest Messaging Copilot Integration Tests (closed) — 18 tests, all pass.
+Phase 329 — Anomaly Alert Broadcaster Integration Tests (closed) — 16 tests, all pass.
 
 ## Current Objective
 
