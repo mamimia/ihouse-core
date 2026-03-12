@@ -5822,3 +5822,13 @@ Tests: 18 passed. 0 failed. 0.42s.
 - `docs/archive/phases/phase-329-spec.md` — NEW
 
 Tests: 16 passed. 0 failed. 0.44s.
+
+## Phase 330 — Admin Reconciliation Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🧹 Reconciliation / Testing
+**Actions:**
+- `tests/test_admin_reconciliation_integration.py` — NEW — 13 tests (FIRST-EVER)
+- Severity (5), property aggregation (5), kind counting (3)
+- `docs/archive/phases/phase-330-spec.md` — NEW
+
+Tests: 13 passed. 0 failed. 0.34s.

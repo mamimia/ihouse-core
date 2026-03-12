@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 330 — (Next)
+Phase 331 — (Next)
 
 ## Last Closed Phase
-Phase 329 — Anomaly Alert Broadcaster Integration Tests (closed) — 16 tests, all pass.
+Phase 330 — Admin Reconciliation Integration Tests (closed) — 13 tests, all pass.
 
 ## System Status
 
