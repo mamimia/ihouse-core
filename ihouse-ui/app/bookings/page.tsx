@@ -8,8 +8,8 @@
  * Filters: property, status, check-in range, OTA / source provider.
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { api } from '../../lib/api';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { api, ApiError } from '../../lib/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -163,6 +163,9 @@ export default function BookingsPage() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+    const [liveEvent, setLiveEvent] = useState<string | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [filters, setFilters] = useState<Filters>({
         property_id: '', status: '', source: '', check_in_from: '', check_in_to: '',
     });
@@ -170,25 +173,53 @@ export default function BookingsPage() {
     const loadBookings = useCallback(async () => {
         setLoading(true); setError(null);
         try {
-            const params: Record<string, string> = {};
-            if (filters.property_id) params['property_id'] = filters.property_id;
-            if (filters.status) params['status'] = filters.status;
-            if (filters.source) params['source'] = filters.source;
-            if (filters.check_in_from) params['check_in_from'] = filters.check_in_from;
-            if (filters.check_in_to) params['check_in_to'] = filters.check_in_to;
-
-            const q = new URLSearchParams(params).toString();
-            const resp = await fetch(`/api/bookings${q ? '?' + q : ''}`, { headers: { Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : ''}` } });
-            const data = await resp.json();
-            setBookings(data.bookings ?? []);
+            const res = await api.getBookings({
+                property_id: filters.property_id || undefined,
+                status: filters.status || undefined,
+                source: filters.source || undefined,
+                check_in_from: filters.check_in_from || undefined,
+                check_in_to: filters.check_in_to || undefined,
+            });
+            setBookings(res.bookings ?? []);
+            setLastRefresh(new Date());
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to load bookings');
+            if (err instanceof ApiError) {
+                setError(`API ${err.status}: ${err.code}`);
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to load bookings');
+            }
         } finally {
             setLoading(false);
         }
     }, [filters]);
 
     useEffect(() => { loadBookings(); }, [loadBookings]);
+
+    // 60s auto-refresh
+    useEffect(() => {
+        timerRef.current = setInterval(loadBookings, 60_000);
+        return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }, [loadBookings]);
+
+    // SSE for real-time booking events (Phase 306)
+    useEffect(() => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : '';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+        const es = new EventSource(`${baseUrl}/events/stream?channels=bookings&token=${token}`);
+        es.onmessage = (e) => {
+            try {
+                const evt = JSON.parse(e.data);
+                if (evt.channel === 'bookings') {
+                    setLiveEvent(`${evt.type}: ${evt.booking_id ?? 'unknown'}`);
+                    // Auto-refresh after 1s delay to let DB settle
+                    setTimeout(loadBookings, 1000);
+                    // Clear notice after 5s
+                    setTimeout(() => setLiveEvent(null), 5000);
+                }
+            } catch { /* ignore parse errors */ }
+        };
+        return () => es.close();
+    }, [loadBookings]);
 
     const inputStyle: React.CSSProperties = {
         background: 'var(--color-bg)',
@@ -214,9 +245,47 @@ export default function BookingsPage() {
                     <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, letterSpacing: '-0.02em' }}>Bookings</h1>
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-1)' }}>
                         {loading ? 'Loading…' : `${bookings.length} result${bookings.length !== 1 ? 's' : ''}`}
+                        {lastRefresh && <span style={{ marginLeft: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>· Updated {lastRefresh.toLocaleTimeString()}</span>}
                     </p>
                 </div>
+                <button
+                    onClick={loadBookings}
+                    disabled={loading}
+                    style={{
+                        background: loading ? 'var(--color-surface-3)' : 'var(--color-primary)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 'var(--space-2) var(--space-5)',
+                        fontSize: 'var(--text-sm)',
+                        fontWeight: 600,
+                        opacity: loading ? 0.7 : 1,
+                        cursor: loading ? 'default' : 'pointer',
+                        transition: 'all var(--transition-fast)',
+                    }}
+                >
+                    {loading ? '⟳  Refreshing…' : '↺  Refresh'}
+                </button>
             </div>
+
+            {/* Live event banner */}
+            {liveEvent && (
+                <div style={{
+                    background: 'rgba(99, 102, 241, 0.1)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: 'var(--space-2) var(--space-4)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--color-primary)',
+                    marginBottom: 'var(--space-4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-2)',
+                }}>
+                    <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)', animation: 'pulse 1.5s infinite' }} />
+                    Live: {liveEvent}
+                </div>
+            )}
 
             {/* Filter bar */}
             <div style={{

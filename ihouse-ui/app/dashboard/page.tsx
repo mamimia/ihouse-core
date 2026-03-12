@@ -179,6 +179,23 @@ export default function DashboardPage() {
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
     }, [load]);
 
+    // SSE for real-time events (Phase 306/307)
+    useEffect(() => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : '';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+        const es = new EventSource(`${baseUrl}/events/stream?channels=bookings,tasks,alerts&token=${token}`);
+        es.onmessage = (e) => {
+            try {
+                const evt = JSON.parse(e.data);
+                // Auto-refresh dashboard on any real event
+                if (evt.channel && evt.channel !== 'system') {
+                    setTimeout(load, 1000);
+                }
+            } catch { /* ignore */ }
+        };
+        return () => es.close();
+    }, [load]);
+
     const now = new Date();
     const hour = now.getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';

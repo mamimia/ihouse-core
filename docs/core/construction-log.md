@@ -4102,3 +4102,19 @@ Implemented:
 
 Backward compatible: subscribe() without channels param receives all events. publish() without channel defaults to "system".
 45 total SSE tests pass. No schema changes. No migrations.
+
+## Phase 307 — Frontend Real Data Integration (Dashboard + Bookings) (Closed) — 2026-03-12
+
+Implemented:
+- Dashboard (`app/dashboard/page.tsx`): SSE real-time event integration — subscribes to bookings, tasks, alerts channels, auto-refreshes on events
+- Bookings (`app/bookings/page.tsx`): rewrote data fetching from raw `fetch()` to typed `api.getBookings()`:
+  - Type-safe API calls with auto auth header injection
+  - Auto-logout on 401/403 via ApiError
+  - Added source/OTA filter param
+  - 60s auto-refresh timer
+  - SSE real-time booking event subscription (auto-refresh + live event banner)
+  - Refresh button + last-refresh timestamp
+- `lib/api.ts`: added `source` param to `getBookings()` method
+
+Next.js build exit 0, 18 pages compile.
+No new backend tests, no schema changes.

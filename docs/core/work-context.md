@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 307 — Frontend Real Data Integration (Dashboard + Bookings)
+Phase 308 — Frontend Real Data Integration (Financial + Tasks)
 
 ## Last Closed Phase
 
-Phase 306 — Real-Time Event Bus (closed) — Multi-channel SSE event bus with 6 channels, filtering, convenience publishers.
+Phase 307 — Frontend Real Data Integration (closed) — Dashboard + Bookings wired to real API with SSE, auto-refresh.
 
 ## Current Objective
 
-Connect the existing dashboard and bookings UI pages to real API endpoints. Replace mock/stub data with actual fetch calls, loading states, error handling, and auto-refresh.
+Continue frontend integration for the financial dashboard and worker task views. Connect to real financial and task API endpoints, add SSE for live task updates.
 
 ## Key Invariants (Locked — Do Not Change)
 

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 307 — Frontend Real Data Integration (Dashboard + Bookings)
+Phase 308 — Frontend Real Data Integration (Financial + Tasks)
 
 ## Last Closed Phase
-Phase 306 — Real-Time Event Bus (closed) — Extended SSE broker with 6 named channels, channel-based filtering, convenience publishers. 25 new tests.
+Phase 307 — Frontend Real Data Integration (closed) — Dashboard + Bookings wired to real API + SSE. Build exit 0.
 
 ## System Status
 

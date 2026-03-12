@@ -5568,3 +5568,15 @@ Tests: 0 new. Documentation-only phase.
 - Created `tests/test_sse_event_bus.py`: 25 contract tests (Groups F-L: channel filtering, convenience publishers, diagnostics, backward compat, SseEvent class, CHANNELS constant, query param parsing)
 
 Tests: 25 new (all pass). 45 total SSE tests pass. Exit 0.
+
+## Phase 307 — Frontend Real Data Integration (Dashboard + Bookings) (Closed) — 2026-03-12
+
+**Category:** 🖥 Frontend
+**Actions:**
+- Dashboard: added SSE real-time refresh on bookings/tasks/alerts channels (auto-refresh on incoming events)
+- Bookings page: replaced raw `fetch('/api/bookings')` with typed `api.getBookings()` — gains type safety, auto auth headers, auto-logout on 401/403
+- Bookings page: added `source` OTA filter param, 60s auto-refresh timer, SSE real-time booking events, live event banner, refresh button, last-refresh timestamp, `ApiError` handling
+- `lib/api.ts`: added `source` param to `getBookings()`
+- Next.js build: exit 0, 18 pages compile
+
+Tests: 0 new (frontend only). Build verified.

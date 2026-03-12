@@ -527,6 +527,7 @@ export const api = {
     getBookings: (params?: {
         property_id?: string;
         status?: string;
+        source?: string;
         check_in_from?: string;
         check_in_to?: string;
         limit?: number;
@@ -534,6 +535,7 @@ export const api = {
         const q = new URLSearchParams();
         if (params?.property_id) q.set('property_id', params.property_id);
         if (params?.status) q.set('status', params.status);
+        if (params?.source) q.set('source', params.source);
         if (params?.check_in_from) q.set('check_in_from', params.check_in_from);
         if (params?.check_in_to) q.set('check_in_to', params.check_in_to);
         if (params?.limit) q.set('limit', String(params.limit));
