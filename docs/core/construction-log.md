@@ -4223,3 +4223,7 @@ RLS audit. 33 existing tables all had RLS. 7 tables from Phases 296-299 missing 
 ## Phase 318 — Frontend E2E Smoke Tests — 2026-03-12
 
 Added Playwright with Chromium for frontend E2E tests. Created smoke test suite: 17 tests covering all 14+ pages, login UI, sidebar nav. All pass in 7.3s.
+
+## Phase 319 — Real Webhook E2E Validation — 2026-03-12
+
+Vertical integration tests with NO service-layer mocking. 33 tests across 3 providers (airbnb, bookingcom, agoda): 21 direct pipeline + 12 HTTP stack. All pass in 0.83s.

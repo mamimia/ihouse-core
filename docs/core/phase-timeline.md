@@ -5699,3 +5699,15 @@ Tables: 40 total (was 33). 0 security lints.
 - `docs/archive/phases/phase-318-spec.md` — NEW
 
 Tests: 17 Playwright tests. 17 passed. 0 failed. 7.3s.
+
+## Phase 319 — Real Webhook E2E Validation (Closed) — 2026-03-12
+
+**Category:** 🧪 Testing
+**Actions:**
+- `tests/test_webhook_vertical_e2e.py` — NEW — 33 parameterized tests
+- Group A: 21 direct pipeline tests (ingest_provider_event, real normalize/classify/envelope)
+- Group B: 12 HTTP vertical tests (POST /webhooks/{provider}, real pipeline, no mocks)
+- Providers: airbnb, bookingcom, agoda
+- `docs/archive/phases/phase-319-spec.md` — NEW
+
+Tests: 33 passed. 0 failed. 0.83s.

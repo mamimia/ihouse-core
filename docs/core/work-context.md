@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 319 — (Next)
+Phase 320 — (Next)
 
 ## Last Closed Phase
 
-Phase 318 — Frontend E2E Smoke Tests (closed) — Playwright + 17 smoke tests, all pass.
+Phase 319 — Real Webhook E2E Validation (closed) — 33 vertical tests, no mocks, all pass.
 
 ## Current Objective
 
