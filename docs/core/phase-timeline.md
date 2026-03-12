@@ -5916,3 +5916,13 @@ Tests added: 0 (schema audit). Live Supabase: 40 tables, all RLS enabled.
 - `docs/archive/phases/phase-338-spec.md` — NEW
 
 Tests added: 0 (documentation/audit phase). No missing pages.
+
+## Phase 339 — Notification Dispatch Full-Chain Integration Tests (Closed) — 2026-03-12
+
+**Category:** 🔔 Notifications / Testing
+**Actions:**
+- `tests/test_notification_fullchain_integration.py` — NEW — 22 tests
+- Full chain: SLA→bridge (5), channel routing (5), delivery writer (4), dispatcher fallback (4), message construction (4)
+- `docs/archive/phases/phase-339-spec.md` — NEW
+
+Tests: 22 passed. 0 failed. 0.10s.

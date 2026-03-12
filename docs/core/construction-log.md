@@ -4303,3 +4303,7 @@ Verified live Supabase: 40 tables, all rls_enabled=true. Local schema.sql had on
 ## Phase 338 — Frontend Page Audit + Missing Page Resolution — 2026-03-12
 
 Audited all frontend page.tsx files. Found 18 pages (root page.tsx was missed in prior count; roadmap had over-counted to 19). All 18 pages verified present and functional. Updated roadmap.md page count. No missing pages.
+
+## Phase 339 — Notification Dispatch Full-Chain Integration Tests — 2026-03-12
+
+Full-chain integration tests for the notification dispatch pipeline. 22 tests: SLA→bridge dispatch (5), channel routing shapes (5), delivery writer integration (4), dispatcher fallback behavior (4), message construction (4). All pass in 0.10s. Injectable mock DB and channel adapters — CI-safe.
