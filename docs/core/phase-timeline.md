@@ -5759,3 +5759,14 @@ Tests: 14 passed. 0 failed. 1.56s.
 - `docs/archive/phases/phase-323-spec.md` — NEW
 
 Tests: 16 passed. 0 failed. 1.09s.
+
+## Phase 324 — SLA Engine + Task State Integration Tests (Closed) — 2026-03-12
+
+**Category:** 📋 Tasks / SLA / Testing
+**Actions:**
+- `tests/test_sla_task_integration.py` — NEW — 16 tests
+- Combined SLA breaches (3), terminal state guard (3), boundary conditions (4)
+- Audit event shape (4), full evaluate→dispatch chain (2)
+- `docs/archive/phases/phase-324-spec.md` — NEW
+
+Tests: 16 passed. 0 failed. 0.09s.

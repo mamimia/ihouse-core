@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 324 — (Next)
+Phase 325 — (Next)
 
 ## Last Closed Phase
 
-Phase 323 — Production Deployment Dry Run (closed) — 16 tests, all pass.
+Phase 324 — SLA Engine + Task State Integration Tests (closed) — 16 tests, all pass.
 
 ## Current Objective
 

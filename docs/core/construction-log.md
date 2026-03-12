@@ -4243,3 +4243,7 @@ AI copilot integration tests. 14 tests: manager morning briefing heuristic (5), 
 ## Phase 323 — Production Deployment Dry Run — 2026-03-12
 
 Deployment readiness tests. 16 tests: health checks (2), outbound sync probes (4), enriched health (1), Dockerfile/compose config (7), health HTTP (2). All pass in 1.09s.
+
+## Phase 324 — SLA Engine + Task State Integration Tests — 2026-03-12
+
+SLA engine integration tests. 16 tests: combined breaches, terminal guard, boundary conditions, audit shape, full chain. All pass in 0.09s.
