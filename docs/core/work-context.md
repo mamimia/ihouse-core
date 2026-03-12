@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 327 — (Next)
+Phase 328 — (Next)
 
 ## Last Closed Phase
 
-Phase 326 — State Transition Guard Implementation + Tests (closed) — 17 tests, all pass.
+Phase 327 — Availability Broadcaster Integration Tests (closed) — 10 tests, all pass.
 
 ## Current Objective
 

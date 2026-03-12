@@ -5792,3 +5792,13 @@ Tests: 18 passed. 0 failed. 0.10s.
 - `docs/archive/phases/phase-326-spec.md` — NEW
 
 Tests: 17 passed. 0 failed. 0.09s.
+
+## Phase 327 — Availability Broadcaster Integration Tests (Closed) — 2026-03-12
+
+**Category:** 📡 IPI / Broadcasting / Testing
+**Actions:**
+- `tests/test_availability_broadcast_integration.py` — NEW — 10 tests
+- PROPERTY_ONBOARDED (3), CHANNEL_ADDED (2), failure isolation (2), report shape (3)
+- `docs/archive/phases/phase-327-spec.md` — NEW
+
+Tests: 10 passed. 0 failed. 0.22s.
