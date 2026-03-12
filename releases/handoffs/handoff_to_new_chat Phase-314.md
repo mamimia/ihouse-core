@@ -1,3 +1,5 @@
+> ⚠️ FIRST: Read `docs/core/BOOT.md` before doing anything else.
+
 # Handoff — Phases 305-314
 
 **Session:** 2026-03-12
