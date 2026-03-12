@@ -4215,3 +4215,7 @@ Created phase spec. Appended to phase-timeline + construction-log.
 ## Phase 316 — Full Test Suite Verification + Fix — 2026-03-12
 
 Full pytest suite run. 14 failures in test_seed_owner_portal.py (missing __init__.py). Fixed by creating src/scripts/__init__.py. 4 pre-existing health env failures unchanged.
+
+## Phase 317 — Supabase RLS Audit II — 2026-03-12
+
+RLS audit. 33 existing tables all had RLS. 7 tables from Phases 296-299 missing from live DB — created with RLS enabled + 14 policies. Fixed 4 security advisor findings (SECURITY DEFINER view, 3 mutable search_paths). Final: 40 tables, 0 security lints.

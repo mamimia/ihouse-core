@@ -5675,3 +5675,15 @@ Tests: 0 new. Documentation-only phase.
 - `docs/archive/phases/phase-316-spec.md` — NEW
 
 Tests: 6,406 collected. 4 pre-existing env failures. Exit 0.
+
+## Phase 317 — Supabase RLS Audit II (Closed) — 2026-03-12
+
+**Category:** 🔒 Security
+**Actions:**
+- Verified all 33 existing tables have RLS enabled with proper policies
+- Created 7 missing tables from Phases 296-299: organizations, org_members, tenant_org_map, user_sessions, guest_tokens, owner_portal_access, notification_log
+- RLS enabled on all 7 new tables with 14 policies (service_role ALL + tenant-scoped authenticated reads)
+- Fixed 4 security advisor findings: SECURITY DEFINER view → INVOKER, 3 function search_path locks
+- `docs/archive/phases/phase-317-spec.md` — NEW
+
+Tables: 40 total (was 33). 0 security lints.

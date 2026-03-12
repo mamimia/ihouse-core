@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 317 — (Next)
+Phase 318 — (Next)
 
 ## Last Closed Phase
-Phase 316 — Full Test Suite Verification + Fix (closed) — Fixed `test_seed_owner_portal.py` (14 tests, missing `__init__.py`). 6,406 tests, exit 0.
+Phase 317 — Supabase RLS Audit II (closed) — Created 7 missing tables with RLS. 40 tables total. 0 security lints.
 
 ## System Status
 

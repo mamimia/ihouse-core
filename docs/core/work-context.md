@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 317 — (Next)
+Phase 318 — (Next)
 
 ## Last Closed Phase
 
-Phase 316 — Full Test Suite Verification + Fix (closed) — Fixed test_seed_owner_portal.py (14 tests), 6,406 tests exit 0.
+Phase 317 — Supabase RLS Audit II (closed) — 7 tables created, 40 total, 0 security lints.
 
 ## Current Objective
 
