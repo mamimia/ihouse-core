@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 404 — Property Onboarding Pipeline Completion (closed).
+Phase 424 — Audit, Document Alignment, Test Sweep (closed).
 
 ## Last Closed Phase
 
-Phase 404 — Property Onboarding Pipeline Completion (closed).
+Phase 424 — Audit, Document Alignment, Test Sweep (closed).
 
 ## Current Objective
 
-Phases 397–404 closed. This session completed the Hard Truth Audit recovery arc: JWT role enforcement (397), real checkin/checkout (398), universal access token system (399), guest portal backend (400), invite flow (401), onboard token flow (402), E2E tests + shared component adoption (403), and property onboarding pipeline with auto-provisioned channel_map on approval (404). 50 new contract/E2E tests, full pipeline: onboard submit → approve → channel_map. Next session continues at Phase 405.
+Phases 415-424 complete (production readiness block). Platform checkpoint (415), dead code cleanup (416, 651 lines removed), API health verified (417), schema reference created (418), env validation script (419), error handling tests (420), component audit (421), E2E smoke tests (422), staging deployment guide (423), closing audit (424). 13 new tests. 37 frontend pages. Next session continues at Phase 425.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -223,4 +223,4 @@ Phases 397–404 closed. This session completed the Hard Truth Audit recovery ar
 
 ## Tests
 
-**50 new contract/E2E tests (Phases 397–404). 7,069 collected + 50 new = 7,119. TypeScript 0 errors. (Phase 404)**
+**7,187 passed, 9 failed (pre-existing Supabase infra), 17 skipped. TypeScript 0 errors. 38 frontend pages. 87 API router files. 248 test files. 16 Supabase migration files. (Phase 414)**

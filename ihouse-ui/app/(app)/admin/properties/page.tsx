@@ -174,14 +174,19 @@ function PropertyRow({ p, onAction }: {
         }}>
             {/* Name + meta */}
             <div>
-                <div style={{
-                    fontWeight: 600,
-                    fontSize: 'var(--text-sm)',
-                    color: 'var(--color-text)',
-                    marginBottom: 2,
-                }}>
+                <a
+                    href={`/admin/properties/${p.property_id}`}
+                    style={{
+                        fontWeight: 600,
+                        fontSize: 'var(--text-sm)',
+                        color: 'var(--color-primary)',
+                        marginBottom: 2,
+                        textDecoration: 'none',
+                        display: 'block',
+                    }}
+                >
                     {p.display_name || p.property_id}
-                </div>
+                </a>
                 <div style={{
                     fontSize: 'var(--text-xs)',
                     color: 'var(--color-text-dim)',

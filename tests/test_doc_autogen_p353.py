@@ -195,11 +195,11 @@ class TestGroupDDocValidation:
     def test_d2_snapshot_test_count_is_plausible(self):
         """current-snapshot.md mentions a test count ≥ 5000."""
         text = _snapshot_text()
-        # Match "7,047" or "7047" or "≥5000" formats
-        counts = re.findall(r"(\d+)[,.]?(\d{3})\s+collected", text)
+        # Match "7,135 passed" or "7,047 collected" or similar formats
+        counts = re.findall(r"(\d+)[,.]?(\d{3})\s+(?:collected|passed)", text)
         if not counts:
-            # Fallback: look for plain 4+ digit number near 'collected' or 'passing'
-            counts2 = re.findall(r"(\d{4,6})\s+collected|collected.*?(\d{4,6})", text)
+            # Fallback: look for plain 4+ digit number near 'collected' or 'passing' or 'passed'
+            counts2 = re.findall(r"(\d{4,6})\s+(?:collected|passed|passing)|(?:collected|passed|passing).*?(\d{4,6})", text)
             nums = [int(m[0] or m[1]) for m in counts2 if m[0] or m[1]]
         else:
             nums = [int(a + b) for a, b in counts]

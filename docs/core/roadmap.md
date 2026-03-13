@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 364 (2026-03-12). [Antigravity]
+> Last updated: Phase 415 (2026-03-13). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,27 +26,27 @@
 
 ---
 
-## System Numbers — Phase 364 (2026-03-12)
+## System Numbers — Phase 415 (2026-03-13)
 
 | Metric | Value |
 |--------|-------|
 | **OTA Adapters** | 15 (14 unique + ctrip alias): Airbnb, Booking.com, Expedia, Agoda, Trip.com/Ctrip, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld |
 | **Escalation Channels** | 5 live (LINE, WhatsApp, Telegram, SMS, Email) |
 | **Task Kinds** | 6 (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME) |
-| **API Files** | 81 files in `src/api/` |
-| **Services (new)** | `state_transition_guard.py` — Phase 326 (skill spec implementation) |
+| **API Router Files** | 87 files in `src/api/` |
+| **Service Files** | 29 files in `src/services/` |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | 7,043 passed / 9 failed (infrastructure/Supabase) / 17 skipped |
-| **Test Files** | 237 test files |
-| **Supabase Tables** | 40 tables + 2 views (`ota_dlq_summary`, `active_sessions`), 29 migrations |
+| **Tests** | 7,187 passed / 9 failed (pre-existing Supabase infra) / 17 skipped |
+| **Test Files** | 249 test files |
+| **Supabase Migrations** | 16 migration files (includes 1 baseline that consolidated early schemas) |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) |
-| **Staging Infra** | docker-compose.staging.yml + 10 integration smoke tests |
 | **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh |
 | **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
-| **Frontend** | Next.js 16 / React 19, 18 pages, Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
+| **Frontend** | Next.js 16 / React 19, 38 pages (24 protected + 14 public), Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
 | **CORS** | CORSMiddleware via `IHOUSE_CORS_ORIGINS` env var (Phase 313) |
+| **Auth** | JWT with role claim (admin/manager/worker/owner), HMAC-SHA256 access tokens, real login/session endpoints |
 
 ---
 
@@ -101,163 +101,25 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 355+
+## Active Direction — Phase 415+
 
-Phases 305–354 completed: Documentation Truth Sync XVI (305), Real-Time Event Bus — SSE 6 named channels (306), Frontend Real Data — Dashboard + Bookings SSE (307–308), Owner/Guest Portal SSE (309–310), Admin Notification Dashboard (311), Manager Copilot UI (312), Production Readiness — CORS + Frontend Docker (313), Platform Checkpoint XVI (314), Layer C Documentation Sync XVII (315), Full Test Suite Verification + Fix (316), Supabase RLS Audit II (317), Integration Tests Sprint (318–335), Layer C Documentation Sync XVIII (336), Service Layer Coverage Expansion (337), Booking Query Edge-Case Tests (338), Supabase Event Log Integration (339), Documentation Sync XIX (340), Conflict Resolver + Financial Coverage (341), Task + SLA Engine Coverage (342), Notification Multi-Channel Coverage (343), Platform Checkpoint XVI (344), Multi-Tenant Flow E2E (345), Guest + Owner Portal E2E (346), Notification Delivery E2E (347), Webhook Ingestion Regression (348), Outbound Sync Coverage (349), API Smoke Tests (350), Performance Baseline + Rate Limiting (351), CI/CD Pipeline Hardening (352), Doc Auto-Generation from Code (353), Platform Checkpoint XVII (354).
+Phases 355–374 completed: Cancel/Amend Adapter Test Repair (355), Layer C Document Alignment (356), Supabase Schema Truth Sync II (357), Outbound Sync Interface Hardening (358), Production Readiness Hardening (359), Frontend Data Integrity Audit (360), Test Suite Health & Coverage Gaps (361), Webhook Retry & DLQ Dashboard Enhancement (362), Guest Token Flow Hardening (363), Platform Checkpoint XVIII (364). Layer C Document Alignment (365). Rate Limiter Hardening (366). Frontend Error Boundary & Offline State (367). Health Check Graceful Degradation (368). Outbound Sync Retry Dashboard (369). API Response Envelope Standardization (370). Booking Search Full-Text Enhancement (371). Admin Audit Log Frontend Page (372). Deploy Checklist Automation (373). Platform Checkpoint XIX (374).
 
-**Phase 355 — Cancel/Amend Adapter Test Repair:** Fixed 30 pre-existing failures caused by `IHOUSE_DRY_RUN=true` env var leaking from `test_outbound_sync_fullchain_integration.py` module-level `os.environ.setdefault`. Expanded `conftest.py` cleanup scope to include `IHOUSE_DRY_RUN` + adapter API keys. Suite: 7,043 passed / 9 failed / 17 skipped.
+Phases 375–394: 20-phase frontend platform consolidation — route group split, responsive adaptation, mobile role surfaces, access-link system, shared component extraction.
 
-The current wave (Phases 355–364) focused on **documentation alignment, test suite health, production hardening, frontend data integrity, DLQ dashboard enhancement, and guest token security**.
+Phases 395–404: Hard Truth Audit recovery — Property Onboarding, Admin Dashboard, JWT enforcement, Checkin/Checkout backend, Access Token System, Guest/Invite/Onboard flows, E2E tests.
 
-**Phases 355–364 completed:** Cancel/Amend Adapter Test Repair (355), Layer C Document Alignment (356), Supabase Schema Truth Sync II (357), Outbound Sync Interface Hardening (358), Production Readiness Hardening — dynamic BUILD_VERSION + startup env validation (359), Frontend Data Integrity Audit — DlqEntry type conflict fix (360), Test Suite Health & Coverage Gaps — 7,043 passing confirmed (361), Webhook Retry & DLQ Dashboard Enhancement — batch replay + payload preview (362), Guest Token Flow Hardening — HMAC min key length + audit logging (363), Platform Checkpoint XVIII (364).
+Phases 405–414: Foundation Checkpoint (405–408): platform verification, documentation truth sync, migration reproducibility, test suite health. Product Connection (409–413): property detail page, booking→property pipeline, worker task PATCH, owner financial data, auth integration all verified. Closing Audit (414): 52 new contract tests, 1 new frontend page, all docs synchronized.
 
-### Next Direction — Phase 365+
+### Next Direction — Phases 415–424
 
-Focus areas: documentation sync, remaining monitoring gaps, rate-limiting improvements, API versioning planning, and deeper integration testing.
-
-### Phase 283 — Test Suite Isolation Fix + conftest.py *(closed)*
-Created `tests/conftest.py` with session-scoped env var management. Fixed 4 root causes: IHOUSE_DEV_MODE leaking from module-level `os.environ.setdefault`, 7 test files missing dev mode fixtures, auth enforcement tests not disabling dev mode, InMemoryRateLimiter singleton (60 RPM) accumulating hits across full suite. 16 files modified. +0 tests, 0 failures.
-
-### Phase 284 — Supabase Schema Truth Sync *(closed)*
-Applied 5 missing migrations to live Supabase: `worker_availability` (Phase 234), `guest_messages_log` (Phase 236), `rate_cards` (Phase 246), `guest_feedback` (Phase 247), `task_templates` (Phase 248). Re-exported `artifacts/supabase/schema.sql` (34 objects). Updated `BOOTSTRAP.md`. Fixed `test_stale_property_sorted_first` datetime bug. 33 tables + 1 view, 29 migrations. 6,216 tests, 0 failures.
-
-### Phase 210 — Roadmap & Documentation Cleanup *(closed)*
-Full audit of 20 canonical documents. Archived 10 stale files. Fixed Layer A claims (BOOKING_AMENDED, MODIFY semantics). Created AI strategy canonical document (`docs/core/planning/ai-strategy.md`).
-
-### Phase 211 — Production Deployment Foundation *(closed)*
-Dockerfile (multi-stage), docker-compose.yml, .dockerignore, requirements.txt. Added `GET /readiness` Kubernetes-style probe. +6 tests → 5,033.
-
-
-### Phase 212 — SMS Escalation Channel *(closed)*
-`sms_escalation.py` pure module (mirrors WhatsApp/Telegram pattern), `sms_router.py` (GET challenge + POST inbound ACK via Twilio form fields), registered in `main.py`. `python-multipart` added to `requirements.txt`. +31 tests → 5,064.
-
-### Phase 213 — Email Notification Channel *(closed)*
-`email_escalation.py` pure module (mirrors SMS/WhatsApp/Telegram pattern), `email_router.py` (GET /email/webhook health + GET /email/ack one-click token ACK), registered in `main.py`. +35 tests → 5,099.
-
-### Phase 214 — Property Onboarding Wizard API *(closed)*
-`onboarding_router.py` — 4-endpoint stateless wizard: `POST /onboarding/start` (Step 1: property + active-bookings safety gate), `POST /{id}/channels` (Step 2: OTA channel mappings, upsert), `POST /{id}/workers` (Step 3: notification channels, upsert), `GET /{id}/status` (derived completion state). +20 tests → 5,119.
-
-### Phase 215 — Automated Revenue Reports *(closed)*
-`revenue_report_router.py` — `GET /revenue-report/portfolio` (cross-property, sorted by gross DESC) + `GET /revenue-report/{property_id}` (single-property monthly breakdown). `from_month`/`to_month` range, max 24 months, optional `management_fee_pct`. Reuses owner-statement dedup + tier + OTA_COLLECTING exclusion logic. +24 tests → 5,143.
-
-### Phase 216 — Portfolio Dashboard UI *(closed)*
-`portfolio_dashboard_router.py` — `GET /portfolio/dashboard`. Single endpoint aggregating occupancy (booking_state), revenue (booking_financial_facts, current month), pending tasks (tasks), and sync health (outbound_sync_log) per property. Property list derived from union of all four sources. Sorted by urgency: stale sync → pending tasks → active bookings. +21 tests → 5,164.
-
-### Phase 217 — Integration Management UI *(closed)*
-`integration_management_router.py` — `GET /admin/integrations` (cross-property OTA connection view, grouped by property, enriched with last sync status/stale flag, filtered by provider/enabled) + `GET /admin/integrations/summary` (tenant totals: enabled, disabled, stale, failed, provider distribution). In-memory join of `property_channel_map` + `outbound_sync_log`. +15 tests → 5,179.
-
-### Phase 218 — Platform Checkpoint IV *(closed)*
-Full system audit (Phases 210–217), documentation sync across all canonical docs (`current-snapshot.md`, `work-context.md`, `roadmap.md`), handoff to next AI session. 0 new code files.
-
-### Phase 219 — Documentation Integrity Repair *(closed)*
-Repaired missing phase-timeline + construction-log entries for Phases 211–218. Updated live-system.md with 11 missing endpoints. All canonical docs synced. 0 new code files.
-
-### Phase 220 — CI/CD Pipeline Foundation *(closed)*
-`.github/workflows/ci.yml` upgraded to 3-job pipeline: `test` (pip cache, e2e ignores), `lint` (ruff, non-blocking), `smoke` (secrets-guarded HTTP). 0 new source files.
-
-### Phase 221 — Scheduled Job Runner *(closed)*
-`AsyncIOScheduler` (APScheduler 3.x) wired into FastAPI lifespan. 3 jobs: SLA sweep (2min), DLQ threshold alert (10min), health log (15min). `GET /admin/scheduler-status` added. 32 contract tests.
-
-### Phase 222 — AI Context Aggregation Endpoints *(closed)*
-`GET /ai/context/property/{property_id}` + `GET /ai/context/operations-day`. Read-only composition layer, no new tables. 9 best-effort sub-query helpers. `ai_hints` flags for LLM conditional logic. PII-free. 32 contract tests.
-
-### Phase 223 — Manager Copilot v1: Morning Briefing *(closed)*
-`POST /ai/copilot/morning-briefing`. First LLM integration. OpenAI via `services.llm_client` (provider-agnostic). Heuristic static briefing fallback when unconfigured. 5-language support (en/th/ja/es/ko). `action_items` always deterministic. 21 contract tests.
-
-### Phase 224 — Financial Explainer *(closed)*
-`GET /ai/copilot/financial/explain/{booking_id}` + `GET /ai/copilot/financial/reconciliation-summary`. 7 deterministic anomaly flags. Confidence tier (A/B/C) explanation. LLM overlay + heuristic fallback. Source: `booking_financial_facts` only. 37 contract tests.
-
-### Phase 225 — Task Recommendation Engine *(closed)*
-`POST /ai/copilot/task-recommendations`. Deterministic scoring: CRITICAL=1000, HIGH=500, MEDIUM=200, LOW=50 + SLA breach +800 + recency +50. LLM JSON-array rationale overlay (5 tasks, per-task). 26 contract tests.
-
-### Phase 226 — Anomaly Alert Broadcaster *(closed)*
-`POST /ai/copilot/anomaly-alerts`. 3-domain scanner (tasks SLA breach + financial 7 flags + booking confidence). Severity: CRITICAL→HIGH→MEDIUM→LOW. Health score 0–100. LLM summary overlay. 26 contract tests.
-
-### Phase 227 — Guest Messaging Copilot v1 *(closed)*
-`POST /ai/copilot/guest-message-draft`. 6 intents. Context: booking_state + properties (access code, Wi-Fi, check-in/out times). 5-language salutation/closing. 3 tones. Email subject line. LLM prose overlay + template fallback. 26 contract tests.
-
-### Phase 228 — Platform Checkpoint V *(closed)*
-Full audit + doc sync. 8 discrepancies fixed across all canonical docs. Test count corrected 5,179→5,382. AI table realigned. Next 10 phases plan written. 0 new code files.
-
-### Phase 229 — Platform Checkpoint VI *(closed)*
-Verification audit. All docs confirmed. Phase plan shifted (229→checkpoint, old 229–238→230–239). Handoff written. 0 new code files.
-
-### Phase 230 — AI Audit Trail *(closed)*
-`ai_audit_log` Supabase table + `GET /ai/audit-log` endpoint. Records AI decisions: request context, suggestion, confidence, approval status. Append-only. 26 contract tests.
-
-### Phase 231 — Worker Task Copilot *(closed)*
-`POST /ai/copilot/worker-assist` — mobile contextual assists for field workers. Task-aware suggestions based on current assignment, property context, and historical patterns. LLM + heuristic fallback. 23 contract tests.
-
-### Phase 232 — Guest Pre-Arrival Automation Chain *(closed)*
-`pre_arrival_scanner.py` — chains pre-arrival task generation (Phase 206) with guest message drafting (Phase 227). Scheduled via job runner. `pre_arrival_queue` Supabase table. 28 contract tests.
-
-### Phase 233 — Revenue Forecast Engine *(closed)*
-`GET /revenue/forecast/{property_id}` — 30/60/90-day forward projection from booking pipeline + historical patterns. Heuristic confidence scoring. 22 contract tests.
-
-### Phase 234 — Shift & Availability Scheduler *(closed)*
-`worker_shifts` Supabase table + 3 endpoints (GET/POST/DELETE /worker/availability). Worker availability windows for task assignment optimization. 30 contract tests.
-
-### Phase 235 — Multi-Property Conflict Dashboard *(closed)*
-`GET /admin/conflicts/dashboard` — cross-property conflict aggregation with grouping, severity, age, and 30-day timeline. 20 contract tests.
-
-### Phase 236 — Guest Communication History *(closed)*
-`guest_messages_log` Supabase table + `POST/GET /guest-messages/{booking_id}`. Persistence layer for guest messaging timeline. 19 contract tests.
-
-### Phase 237 — Staging Environment & Integration Tests *(closed)*
-`docker-compose.staging.yml` + `.env.staging.example` + 10 integration smoke tests (auto-skipped unless `IHOUSE_ENV=staging`). First staging layer.
-
-### Phase 238 — Ctrip / Trip.com Enhanced Adapter *(closed)*
-Upgraded `tripcom.py` for Chinese market: CTRIP- prefix stripping, CNY currency default, Chinese name romanization fallback, Ctrip cancellation codes (NC/FC/PC). Added "ctrip" alias to registry. 16 tests.
-
-### Phase 239 — Platform Checkpoint VII *(closed)*
-Full system audit. 5 snapshot fixes. Wrote `next-15-phases-240-254.md` and handoff document. ~5,559 tests, 0 failures.
-
-
----
-
-## AI Assistive Layer (Phases 220–227) — Complete ✅
-
-> [!IMPORTANT]
-> Full detail: `docs/core/planning/ai-strategy.md`
->
-> Core principle: **Deterministic core = truth. AI = explanation, prioritization, recommendation, drafting.**
-
-| Phase | Title | Status |
-|-------|-------|--------|
-| 221 | Scheduled Job Runner (SLA sweep, DLQ alerts, health log) | ✅ Closed |
-| 222 | AI Context Aggregation — `/ai/context/property` + `/ai/context/operations-day` | ✅ Closed |
-| 223 | Manager Copilot v1 — Morning Briefing (`POST /ai/copilot/morning-briefing`) | ✅ Closed |
-| 224 | Financial Explainer — 7 anomaly flags, A/B/C tiers | ✅ Closed |
-| 225 | Task Recommendation Engine — deterministic scoring | ✅ Closed |
-| 226 | Anomaly Alert Broadcaster — 3-domain health scanner | ✅ Closed |
-| 227 | Guest Messaging Copilot v1 — 6 intents, 5 languages, 3 tones | ✅ Closed |
-
-
----
-
-## Forward Planning — Worker Communication & Escalation Layer
-
-> [!IMPORTANT]
-> Full detail: `docs/core/planning/worker-communication-layer.md`
->
-> **Status (Phase 229):** This plan has been largely realized. All 5 escalation channels are live (LINE Phase 124, WhatsApp Phase 196, Telegram Phase 203, SMS Phase 212, Email Phase 213). The graded urgency pattern below describes the target model; the current system routes by worker `channel_type` preference.
-
-The escalation model follows a **graded urgency pattern**:
-
-| Urgency | Behavior |
-|---------|----------|
-| Low | In-app only, long SLA window |
-| Medium | In-app first, external after delay if unacknowledged |
-| High | In-app + fast external fallback |
-| Critical | Manager escalation + SMS final fallback |
-
-Schema fields already in place: `urgency`, `worker_role`, `ack_sla_minutes` — designed for per-task SLA, not global fixed timers.
-
+Focus: production readiness hardening, dead code cleanup, API health monitoring, Supabase schema documentation, environment config validation, error handling standardization, frontend component audit, E2E smoke tests, staging deployment guide. Closing audit at Phase 424.
 
 ---
 
 ## Where We're Headed
 
-**Short-term (Phases 365–374):** Documentation sync for Phases 355–364, frontend SSR/hydration audit, rate-limiting improvements, API health monitoring depth, and expanded integration test coverage.
+**Short-term (Phases 415–424):** Platform Checkpoint XXII, dead code + duplicate cleanup, API health monitoring, Supabase schema documentation, environment config validation, error response standardization, frontend component audit, E2E smoke tests, staging deployment guide, closing audit.
 
-**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All product layers (including AI) read from or wrap the canonical spine without mutating it. The focus continues on **production readiness, operational depth, and security hardening**.
+**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. The focus shifts to **hardening, cleanup, documentation, and preparing for the first production deployment**.
+
