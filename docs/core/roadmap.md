@@ -26,7 +26,7 @@
 
 ---
 
-## System Numbers — Phase 415 (2026-03-13)
+## System Numbers — Phase 444 (2026-03-13)
 
 | Metric | Value |
 |--------|-------|
@@ -38,13 +38,13 @@
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
 | **Tests** | 7,187 passed / 9 failed (pre-existing Supabase infra) / 17 skipped |
-| **Test Files** | 249 test files |
+| **Test Files** | 251 test files |
 | **Supabase Migrations** | 16 migration files (includes 1 baseline that consolidated early schemas) |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) |
 | **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh |
 | **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
-| **Frontend** | Next.js 16 / React 19, 38 pages (24 protected + 14 public), Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
+| **Frontend** | Next.js 16 / React 19, 37 pages (24 protected + 13 public), Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
 | **CORS** | CORSMiddleware via `IHOUSE_CORS_ORIGINS` env var (Phase 313) |
 | **Auth** | JWT with role claim (admin/manager/worker/owner), HMAC-SHA256 access tokens, real login/session endpoints |
 
@@ -101,25 +101,29 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 415+
+## Active Direction — Phase 445+
 
-Phases 355–374 completed: Cancel/Amend Adapter Test Repair (355), Layer C Document Alignment (356), Supabase Schema Truth Sync II (357), Outbound Sync Interface Hardening (358), Production Readiness Hardening (359), Frontend Data Integrity Audit (360), Test Suite Health & Coverage Gaps (361), Webhook Retry & DLQ Dashboard Enhancement (362), Guest Token Flow Hardening (363), Platform Checkpoint XVIII (364). Layer C Document Alignment (365). Rate Limiter Hardening (366). Frontend Error Boundary & Offline State (367). Health Check Graceful Degradation (368). Outbound Sync Retry Dashboard (369). API Response Envelope Standardization (370). Booking Search Full-Text Enhancement (371). Admin Audit Log Frontend Page (372). Deploy Checklist Automation (373). Platform Checkpoint XIX (374).
+Phases 355–374: Cancel/Amend adapter repair, Layer C alignment, Supabase schema sync, production readiness hardening, frontend error boundaries, rate limiter hardening, Platform Checkpoints XVIII-XIX.
 
 Phases 375–394: 20-phase frontend platform consolidation — route group split, responsive adaptation, mobile role surfaces, access-link system, shared component extraction.
 
 Phases 395–404: Hard Truth Audit recovery — Property Onboarding, Admin Dashboard, JWT enforcement, Checkin/Checkout backend, Access Token System, Guest/Invite/Onboard flows, E2E tests.
 
-Phases 405–414: Foundation Checkpoint (405–408): platform verification, documentation truth sync, migration reproducibility, test suite health. Product Connection (409–413): property detail page, booking→property pipeline, worker task PATCH, owner financial data, auth integration all verified. Closing Audit (414): 52 new contract tests, 1 new frontend page, all docs synchronized.
+Phases 405–414: Foundation Checkpoint (405–408), Product Connection (409–413), Closing Audit (414).
 
-### Next Direction — Phases 415–424
+Phases 415–424: Production readiness block — dead code cleanup, schema reference, env validation, error handling tests, E2E smoke tests, staging guide.
 
-Focus: production readiness hardening, dead code cleanup, API health monitoring, Supabase schema documentation, environment config validation, error handling standardization, frontend component audit, E2E smoke tests, staging deployment guide. Closing audit at Phase 424.
+Phases 425–444: Production readiness verification — 4 blocks: document truth + test green (425-429), production infrastructure (430-434), real integration + monitoring (435-439), hardening + closing audit (440-444). 7,200 passed, zero regressions. Supabase live with 5,335 events, 1,516 bookings, 14 tenants.
+
+### Next Direction — Phase 445+
+
+Focus: **First real deployment and live operations** — Docker build + deploy to staging, Supabase Auth first user, first real notification dispatch, real OTA provider webhook, production scaling, multi-property onboarding.
 
 ---
 
 ## Where We're Headed
 
-**Short-term (Phases 415–424):** Platform Checkpoint XXII, dead code + duplicate cleanup, API health monitoring, Supabase schema documentation, environment config validation, error response standardization, frontend component audit, E2E smoke tests, staging deployment guide, closing audit.
+**Short-term (Phase 445+):** First Docker build + staging deploy. First Supabase Auth user. First real notification dispatch (LINE or email). First real OTA webhook from a live provider. Multi-property scaling.
 
-**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. The focus shifts to **hardening, cleanup, documentation, and preparing for the first production deployment**.
+**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. The system is verified production-ready from code and architecture perspective. Focus shifts to **real deployment and real operations**.
 

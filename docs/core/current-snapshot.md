@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 424 — Audit, Document Alignment, Test Sweep (closed).
+Phase 464 — Full Closing Audit (closed).
 
 ## Last Closed Phase
-Phase 424 — Audit, Document Alignment, Test Sweep (closed).
+Phase 464 — Full Closing Audit (closed).
 
 ## System Status
 
@@ -391,7 +391,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,187 passed, 9 failed (pre-existing Supabase infra), 17 skipped. Frontend TypeScript: 0 errors. 38 frontend pages. 87 API router files. 248 test files. 16 Supabase migration files. Phase 414 — Audit, Document Alignment, Test Sweep.**
+**Backend: 7,200 passed, 9 failed (pre-existing Supabase infra), 17 skipped. Frontend TypeScript: 0 errors. 37 frontend pages. 87 API router files. 251 test files. 16 Supabase migration files. Phase 464 — Full Closing Audit.**
 
 ## Environment Variables (continued)
 

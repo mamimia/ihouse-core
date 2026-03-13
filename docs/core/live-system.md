@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 415 — Platform Checkpoint XXII (2026-03-13)**
+**Last updated: Phase 464 — Full Closing Audit (2026-03-13)**
 
 ## Core Architecture
 
