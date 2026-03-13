@@ -4394,3 +4394,23 @@ Key files created:
 - `ihouse-ui/components/SlaCountdown.tsx` — SLA timer
 
 28 total pages after closure (22 protected + 6 public). 4 TypeScript checkpoints: all 0 errors. Backend test suite: pre-existing infra failures, no new regressions.
+
+## Phase 395 — Property Onboarding QuickStart + Marketing Pages — 2026-03-13
+
+**Category:** 🏗️ Product Feature / Public Surface
+
+Property onboarding and marketing pages introduced by external agent session, normalized via security repair. 4 DB migrations applied to Supabase (properties, channel_map, tenant_property_config tables; lifecycle columns; RLS policies; deduplication indexes). 7 new public pages (about, channels, inbox, platform, pricing, reviews, onboard/connect wizard). 2 new Next.js API routes (onboard, listing/extract). Backend onboarding_router.py extended with 11 optional QuickStart fields.
+
+Key files created:
+- `ihouse-ui/app/(public)/onboard/connect/page.tsx` — Listing QuickStart wizard
+- `ihouse-ui/app/api/onboard/route.ts` — property creation endpoint
+- `ihouse-ui/app/api/listing/extract/route.ts` — Playwright URL scraper
+- `ihouse-ui/app/(public)/about/page.tsx` — About page
+- `ihouse-ui/app/(public)/channels/page.tsx` — Channels page
+- `ihouse-ui/app/(public)/inbox/page.tsx` — Inbox page
+- `ihouse-ui/app/(public)/platform/page.tsx` — Platform page
+- `ihouse-ui/app/(public)/pricing/page.tsx` — Pricing page
+- `ihouse-ui/app/(public)/reviews/page.tsx` — Reviews page
+
+Repairs: hardcoded Supabase credentials → env vars, TypeScript conflictProperty type fix. 35 total pages after closure (22 protected + 13 public). 40 DB tables. TypeScript 0 errors. Backend test suite: pre-existing infra failures, no new regressions.
+

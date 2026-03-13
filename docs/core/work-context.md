@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 394 — Platform Checkpoint XX (closed — session handoff).
+Phase 395 — Property Onboarding QuickStart + Marketing Pages (closed).
 
 ## Last Closed Phase
 
-Phase 394 — Platform Checkpoint XX: Full Multi-Surface Audit (closed).
+Phase 395 — Property Onboarding QuickStart + Marketing Pages (closed).
 
 ## Current Objective
 
-Session complete. All phases 375–394 closed (Platform Surface Consolidation). 28 frontend pages (22 protected + 6 public). Backend test suite: pre-existing infra failures only, no new regressions. TypeScript 0 errors across 4 checkpoints. Known gaps: 3 public token pages have no backend, role routing is non-functional (JWT has no role claim), checkin/checkout actions are client-only, 5 shared components are unused. Next session starts at Phase 395.
+Phase 395 closed. Property onboarding feature + 7 marketing pages integrated from external agent session. Security repairs applied (hardcoded credentials → env vars, TypeScript type fix). 35 frontend pages (22 protected + 13 public). 40 DB tables. Backend test suite: pre-existing infra failures, no new regressions. TypeScript 0 errors. Known gaps: 3 public token pages have no backend, role routing is non-functional (JWT has no role claim), checkin/checkout actions are client-only, 5 shared components are unused, admin property approval endpoints not yet built. Next session starts at Phase 396.
 
 ## Key Invariants (Locked — Do Not Change)
 

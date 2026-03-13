@@ -142,6 +142,19 @@ async def onboarding_start(
     timezone      = str(body.get("timezone") or "UTC")
     base_currency = str(body.get("base_currency") or "USD").upper()
 
+    # QuickStart extended fields (all optional)
+    property_type   = body.get("property_type")
+    city            = body.get("city")
+    country         = body.get("country")
+    max_guests      = body.get("max_guests")
+    bedrooms        = body.get("bedrooms")
+    beds            = body.get("beds")
+    bathrooms       = body.get("bathrooms")
+    address         = body.get("address")
+    description     = body.get("description")
+    source_url      = body.get("source_url")
+    source_platform = body.get("source_platform")
+
     if base_currency not in _VALID_CURRENCIES:
         return make_error_response(
             status_code=400,
@@ -202,7 +215,7 @@ async def onboarding_start(
                 },
             )
 
-        # Create fresh property
+        # Create fresh property with all QuickStart fields
         insert_data: Dict[str, Any] = {
             "tenant_id":     tenant_id,
             "property_id":   property_id,
@@ -211,6 +224,40 @@ async def onboarding_start(
         }
         if display_name is not None:
             insert_data["display_name"] = str(display_name).strip() or None
+        if property_type:
+            insert_data["property_type"] = str(property_type).strip()
+        if city:
+            insert_data["city"] = str(city).strip()
+        if country:
+            insert_data["country"] = str(country).strip()
+        if max_guests is not None:
+            try:
+                insert_data["max_guests"] = int(max_guests)
+            except (ValueError, TypeError):
+                pass
+        if bedrooms is not None:
+            try:
+                insert_data["bedrooms"] = int(bedrooms)
+            except (ValueError, TypeError):
+                pass
+        if beds is not None:
+            try:
+                insert_data["beds"] = int(beds)
+            except (ValueError, TypeError):
+                pass
+        if bathrooms is not None:
+            try:
+                insert_data["bathrooms"] = float(bathrooms)
+            except (ValueError, TypeError):
+                pass
+        if address:
+            insert_data["address"] = str(address).strip()
+        if description:
+            insert_data["description"] = str(description).strip()
+        if source_url:
+            insert_data["source_url"] = str(source_url).strip()
+        if source_platform:
+            insert_data["source_platform"] = str(source_platform).strip()
 
         result = db.table("properties").insert(insert_data).execute()
         rows = result.data or []
@@ -225,6 +272,16 @@ async def onboarding_start(
                 "display_name":   row.get("display_name"),
                 "timezone":       row.get("timezone", "UTC"),
                 "base_currency":  row.get("base_currency", "USD"),
+                "property_type":  row.get("property_type"),
+                "city":           row.get("city"),
+                "country":        row.get("country"),
+                "max_guests":     row.get("max_guests"),
+                "bedrooms":       row.get("bedrooms"),
+                "beds":           row.get("beds"),
+                "bathrooms":      row.get("bathrooms"),
+                "address":        row.get("address"),
+                "source_url":     row.get("source_url"),
+                "source_platform": row.get("source_platform"),
                 "created_at":     row.get("created_at"),
                 "already_exists": False,
                 "next_step":      f"POST /onboarding/{property_id}/channels",

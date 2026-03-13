@@ -1,0 +1,232 @@
+# 🚨 EMERGENCY HANDOFF — External Agent Session
+
+**Date:** 2026-03-13T18:05 ICT  
+**Session ID:** `09a5c8f3-abdf-4a35-afb9-220cdd3a9846`  
+**Issue:** The user accidentally opened and worked on ihouse-core files from a **different agent workspace** (Antigravity) instead of the ihouse-core agent. All changes described below were made externally and need full review.
+
+> [!CAUTION]
+> These changes were NOT made through the normal ihouse-core phase system. There are no phase specs, no BOOT.md compliance, no git commits. The main agent must audit everything below, verify nothing is broken, and decide how to integrate or revert.
+
+---
+
+## What Was Done
+
+### Goal
+Connect the "Listing QuickStart" wizard (publicly accessible at `/onboard/connect`) to real backend property creation in Supabase, then add deduplication, approval flow, clean property IDs, and archive policy.
+
+### Summary of All Changes
+
+| Area | Change | Status |
+|------|--------|--------|
+| **Airbnb URL Parser** | New API route that uses Playwright to extract listing data | Deployed, tested |
+| **Property Onboarding API** | New API route that creates properties in Supabase | Rewritten twice |
+| **Wizard UI** | Wired to real backend instead of Formspree-only | Modified |
+| **Deduplication** | DB constraints + API check + conflict UI | Active |
+| **Clean Property IDs** | Prefix-based (DOM-001) with sequence table | Active |
+| **Approval Flow** | Status column (pending/approved/archived/rejected) | DB done, UI partial |
+| **Archive Policy** | Designed but not fully implemented yet | DB columns exist |
+
+---
+
+## Files Modified or Created
+
+### 1. [NEW] [/app/api/listing/extract/route.ts](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/app/api/listing/extract/route.ts)
+- **Purpose:** Server-side Airbnb URL parser using Playwright
+- **What it does:** Takes a URL, launches headless Chromium, extracts 10 fields with confidence levels
+- **Risk:** Playwright dependency was added to [package.json](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/package.json)
+- **Size:** ~235 lines
+
+### 2. [REWRITTEN] [/app/api/onboard/route.ts](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/app/api/onboard/route.ts)
+- **Purpose:** Property onboarding endpoint — creates properties + channel_map in Supabase
+- **Original state:** Non-existent before this session (was Formspree-only)
+- **Current state:** Fully rewritten with:
+  - Clean ID generation from `tenant_property_config` table
+  - `status = 'pending'` on all new properties
+  - Dedup check: returns 409 if `source_url` already exists for tenant
+  - Status-aware conflict messages (pending/archived/rejected/approved)
+  - Formspree notification as backup
+  - No `force` override — duplicates are hard-blocked
+- **Hardcoded values:** Contains `SUPABASE_URL` and `SUPABASE_ANON_KEY` inline
+- **Size:** ~170 lines
+
+### 3. [MODIFIED] `/app/(public)/onboard/connect/page.tsx`
+- **Purpose:** The Listing QuickStart wizard UI
+- **Changes made:**
+  - Replaced `simulateImport` with `runImport` calling `/api/listing/extract`
+  - Added `extracting`, `extractError`, `conflictProperty` state variables
+  - Updated [handleSubmit](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/app/%28public%29/onboard/%5Btoken%5D/page.tsx#50-66) to call `/api/onboard` and handle 409 responses
+  - Added conflict banner UI with status-aware messages
+  - Changed "Create New Anyway" → "Contact Us" (mailto link)
+  - Updated review screen with dynamic extraction banner
+- **⚠️ Known issue:** TypeScript type for `conflictProperty` is missing [status](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/src/api/onboarding_router.py#551-647) field — there's a TS error that was not yet fixed when the session was interrupted
+- **Size:** ~1097 lines total
+
+### 4. [NOT MODIFIED] [package.json](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/package.json)
+- Playwright (`@playwright/test ^1.58.2`) was added as a dependency in a prior session
+- Playwright browsers (Chromium) are installed locally
+
+---
+
+## Database Migrations Applied
+
+Four migrations were applied to `reykggmlcehswrxjviup` (Supabase project):
+
+### Migration 1: `create_properties_and_channel_map` (20260313084640)
+```sql
+-- Created properties table + channel_map table
+-- These may have existed before in some form — verify
+```
+
+### Migration 2: `allow_public_onboarding_inserts` (20260313093737)
+```sql
+-- RLS policies enabling anonymous inserts for public-onboard tenant
+```
+
+### Migration 3: `add_property_deduplication_constraints` (20260313103720)
+```sql
+CREATE UNIQUE INDEX idx_properties_tenant_source_url
+ON properties (tenant_id, source_url)
+WHERE source_url IS NOT NULL;
+
+CREATE UNIQUE INDEX idx_channel_map_unique_mapping
+ON channel_map (tenant_id, property_id, provider);
+```
+
+### Migration 4: `property_lifecycle_redesign` (20260313105847)
+```sql
+ALTER TABLE properties
+  ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'approved', 'archived', 'rejected')),
+  ADD COLUMN approved_at TIMESTAMPTZ,
+  ADD COLUMN approved_by TEXT,
+  ADD COLUMN archived_at TIMESTAMPTZ,
+  ADD COLUMN archived_by TEXT;
+
+CREATE TABLE tenant_property_config (
+  tenant_id TEXT PRIMARY KEY,
+  id_prefix TEXT NOT NULL DEFAULT 'DOM'
+    CHECK (id_prefix ~ '^[A-Z]{2,5}$'),
+  next_seq INTEGER NOT NULL DEFAULT 1
+);
+
+INSERT INTO tenant_property_config (tenant_id, id_prefix)
+VALUES ('public-onboard', 'DOM');
+
+-- RLS + index also added
+```
+
+---
+
+## Current DB State
+
+### [properties](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/src/api/properties_router.py#76-118) table (1 row)
+| property_id | display_name | status | source_url |
+|-------------|-------------|--------|-----------|
+| `DOM-001` | Home in Ko Pha-Ngan · ★New · 2 bedrooms · 2 beds · 2.5 baths | pending | `https://www.airbnb.com.au/rooms/1577443986609069112` |
+
+### [channel_map](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/src/api/channel_map_router.py#231-289) table (1 row)
+| property_id | provider | external_channel_id |
+|------------|----------|-------------------|
+| `DOM-001` | airbnb | (the Airbnb URL) |
+
+### `tenant_property_config` table (1 row)
+| tenant_id | id_prefix | next_seq |
+|-----------|-----------|----------|
+| public-onboard | DOM | 2 |
+
+### Test data history
+- Earlier test records with slug-based IDs (`emuna-villa-koh-phangan-li21`, `home-in-ko-pha-ngan-new-2-bedrooms-2-bed-tqe3`) were **deleted** during cleanup
+- A third test record was **updated** from slug-based ID to `DOM-001`
+
+---
+
+## What Was NOT Completed
+
+1. **TypeScript type fix** — `conflictProperty` state is typed as `{ property_id: string; display_name: string; created_at: string }` but the API also returns [status](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/src/api/onboarding_router.py#551-647). The type needs [status](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/src/api/onboarding_router.py#551-647) added. There are 6 TS errors on this.
+
+2. **Success screen update** — The success screen still says "has been created in our system" instead of "submitted for review". This was in progress when the session was stopped.
+
+3. **Admin approval endpoints** — `POST /api/admin/properties/:id/approve` and `/reject` were designed but not created.
+
+4. **Archive/unarchive endpoints** — Designed but not created.
+
+5. **Hard delete test endpoint** — Designed but not created.
+
+---
+
+## Verification Checklist for Main Agent
+
+> [!IMPORTANT]
+> The main agent should verify ALL of the following:
+
+### System Integrity
+- [ ] Run the full ihouse-core test suite — ensure no existing tests are broken
+- [ ] Verify `npm run dev` works without errors
+- [ ] Check that all existing API routes still function
+- [ ] Verify the ihouse-ui build succeeds (`npm run build`)
+
+### Database
+- [ ] Review all 4 new migrations — verify they don't conflict with existing schema
+- [ ] Check that [properties](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/src/api/properties_router.py#76-118) table has correct columns and constraints
+- [ ] Check that `tenant_property_config` is correctly set up
+- [ ] Verify RLS policies are correct and don't open security holes
+- [ ] Verify the partial unique index on `source_url` works as intended
+- [ ] Confirm no existing tables were altered or dropped
+
+### Files
+- [ ] Review [/app/api/listing/extract/route.ts](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/app/api/listing/extract/route.ts) — new file, check for issues
+- [ ] Review [/app/api/onboard/route.ts](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/app/api/onboard/route.ts) — rewritten, check for hardcoded secrets
+- [ ] Review `/app/(public)/onboard/connect/page.tsx` — heavily modified, fix TS errors
+- [ ] Check [package.json](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/package.json) for unwanted dependency changes (Playwright)
+
+### Functional
+- [ ] Test the wizard end-to-end via browser at `/onboard/connect`
+- [ ] Confirm property creation works with clean IDs (DOM-002, DOM-003)
+- [ ] Confirm duplicate URL detection works (409 response)
+- [ ] Confirm conflict banner shows "Contact Us" not "Create New Anyway"
+
+### Phase System
+- [ ] These changes have NO phase specs — decide which phase(s) to assign
+- [ ] No git commits were made — commit all changes properly
+- [ ] Update construction-log, phase-timeline, current-snapshot as needed
+- [ ] Create proper phase specs if needed
+
+---
+
+## Risk Assessment
+
+| Risk | Level | Detail |
+|------|-------|--------|
+| **Schema conflict** | 🟡 Medium | 4 new migrations may overlap with planned phases |
+| **TS compile errors** | 🔴 High | 6 TypeScript errors exist in [page.tsx](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/app/%28public%29/page.tsx) right now |
+| **Hardcoded keys** | 🟡 Medium | Supabase anon key is hardcoded in [route.ts](file:///Users/clawadmin/Antigravity%20Proj/ihouse-core/ihouse-ui/app/api/onboard/route.ts) |
+| **Playwright dep** | 🟡 Medium | New heavy dependency for URL parsing |
+| **RLS policies** | 🟡 Medium | New policies for public-onboard tenant need security review |
+| **Test data** | 🟢 Low | Only 1 test record exists, easy to clean |
+| **Existing functionality** | 🟢 Low | Changes are in new files/routes, didn't modify existing core |
+
+---
+
+## Quick Revert Instructions (if needed)
+
+If the main agent decides to revert everything:
+
+```sql
+-- Revert migration 4
+ALTER TABLE properties DROP COLUMN IF EXISTS status;
+ALTER TABLE properties DROP COLUMN IF EXISTS approved_at;
+ALTER TABLE properties DROP COLUMN IF EXISTS approved_by;
+ALTER TABLE properties DROP COLUMN IF EXISTS archived_at;
+ALTER TABLE properties DROP COLUMN IF EXISTS archived_by;
+DROP TABLE IF EXISTS tenant_property_config;
+
+-- Revert migration 3
+DROP INDEX IF EXISTS idx_properties_tenant_source_url;
+DROP INDEX IF EXISTS idx_channel_map_unique_mapping;
+
+-- Clean test data
+DELETE FROM channel_map WHERE tenant_id = 'public-onboard';
+DELETE FROM properties WHERE tenant_id = 'public-onboard';
+```
+
+File reverts would need git — check `git status` and `git diff` in the ihouse-ui directory.

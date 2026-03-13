@@ -6321,3 +6321,32 @@ Session summary: Phases 365–374 fully closed.
 - Phase 394: Checkpoint XX — TypeScript 0 errors, 28 pages (22 protected + 6 public) ✅
 
 Backend test suite: pre-existing infra failures only, no new regressions (frontend-only phases). TypeScript 0 errors across all checkpoints.
+
+## Phase 395 — Property Onboarding QuickStart + Marketing Pages (Closed) — 2026-03-13
+
+**Category:** 🏗️ Product Feature / Public Surface
+
+Property onboarding functionality and marketing pages. External agent session normalized via security repair.
+
+**Database (4 migrations):**
+- `properties` table: property registry with QuickStart fields (type, location, capacity, source)
+- `channel_map` table: onboarding channel URL mappings
+- `tenant_property_config` table: clean ID generation (DOM-001 pattern)
+- Lifecycle columns: status (pending/approved/archived/rejected), approved_at/by, archived_at/by
+- RLS: all tables enabled, anon INSERT enforced to `tenant_id = 'public-onboard'`
+- Deduplication: partial unique index on source_url, unique index on channel+property+provider
+
+**Frontend (7 new public pages + 2 API routes):**
+- Marketing: about, channels, inbox, platform, pricing, reviews
+- Listing QuickStart wizard: multi-step onboarding flow with URL extraction
+- `/api/onboard` — property creation endpoint
+- `/api/listing/extract` — Playwright-based Airbnb URL scraper
+- Modified: middleware.ts, sitemap.ts, PublicNav, PublicFooter
+
+**Backend:**
+- `onboarding_router.py` — added 11 optional QuickStart fields
+
+**Repairs applied:** Hardcoded Supabase credentials → env vars. TypeScript type fix (conflictProperty.status).
+
+TypeScript: 0 errors ✅. Backend: pre-existing infra failures, no new regressions. 35 pages (22 protected + 13 public). 40 DB tables. 35 migrations.
+

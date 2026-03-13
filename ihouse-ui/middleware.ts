@@ -18,15 +18,35 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-// Routes that do NOT require auth
-const PUBLIC_PATHS = ['/login', '/favicon.ico'];
+// Routes that do NOT require auth — prefix-matched
+const PUBLIC_PREFIXES = [
+    '/login',
+    '/favicon.ico',
+    '/about',
+    '/channels',
+    '/early-access',
+    '/inbox',
+    '/platform',
+    '/pricing',
+    '/reviews',
+    '/onboard',
+    '/guest',
+    '/invite',
+];
+
+function isPublicRoute(pathname: string): boolean {
+    // Exact match for root
+    if (pathname === '/') return true;
+    // Prefix match for all others
+    return PUBLIC_PREFIXES.some(p => pathname.startsWith(p));
+}
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Always allow public paths and Next.js internals
     if (
-        PUBLIC_PATHS.some(p => pathname.startsWith(p)) ||
+        isPublicRoute(pathname) ||
         pathname.startsWith('/_next/') ||
         pathname.startsWith('/api/')
     ) {

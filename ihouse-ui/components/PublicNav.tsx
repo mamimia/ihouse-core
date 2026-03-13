@@ -13,9 +13,10 @@ import Link from 'next/link';
 import DMonogram from './DMonogram';
 
 const NAV_LINKS = [
-    { label: 'Platform', href: '#platform' },
-    { label: 'Capabilities', href: '#capabilities' },
-    { label: 'Trust', href: '#trust' },
+    { label: 'Platform', href: '/platform' },
+    { label: 'Channels', href: '/channels' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'About', href: '/about' },
 ];
 
 export default function PublicNav() {
@@ -76,7 +77,7 @@ export default function PublicNav() {
                 gap: 'var(--space-8)',
             }}>
                 {NAV_LINKS.map(link => (
-                    <a
+                    <Link
                         key={link.href}
                         href={link.href}
                         style={{
@@ -87,18 +88,16 @@ export default function PublicNav() {
                             fontWeight: 500,
                             transition: 'color var(--transition-fast)',
                         }}
-                        onMouseOver={e => (e.currentTarget.style.color = 'var(--color-stone)')}
-                        onMouseOut={e => (e.currentTarget.style.color = 'rgba(234,229,222,0.55)')}
                     >
                         {link.label}
-                    </a>
+                    </Link>
                 ))}
             </div>
 
             {/* CTA */}
             <Link
-                href="/early-access"
-                id="nav-cta-early-access"
+                href="/onboard/connect"
+                id="nav-cta-get-started"
                 style={{
                     background: 'var(--color-moss)',
                     color: 'var(--color-white)',
@@ -115,7 +114,7 @@ export default function PublicNav() {
                     alignItems: 'center',
                 }}
             >
-                Early Access
+                Get Started
             </Link>
         </nav>
     );
