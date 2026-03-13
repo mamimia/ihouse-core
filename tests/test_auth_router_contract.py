@@ -43,25 +43,25 @@ class TestGroupAHappyPath:
 
     def test_a2_response_has_token_field(self):
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": _PASSWORD})
-        assert "token" in resp.json()
+        assert "token" in resp.json()["data"]
 
     def test_a3_response_has_tenant_id(self):
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": _PASSWORD})
-        assert resp.json()["tenant_id"] == _TENANT
+        assert resp.json()["data"]["tenant_id"] == _TENANT
 
     def test_a4_response_has_expires_in(self):
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": _PASSWORD})
-        assert resp.json()["expires_in"] == 86_400
+        assert resp.json()["data"]["expires_in"] == 86_400
 
     def test_a5_token_is_string(self):
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": _PASSWORD})
-        assert isinstance(resp.json()["token"], str)
-        assert len(resp.json()["token"]) > 20
+        assert isinstance(resp.json()["data"]["token"], str)
+        assert len(resp.json()["data"]["token"]) > 20
 
     def test_a6_strips_tenant_whitespace(self):
         resp = client.post("/auth/token", json={"tenant_id": f"  {_TENANT}  ", "secret": _PASSWORD})
         assert resp.status_code == 200
-        assert resp.json()["tenant_id"] == _TENANT
+        assert resp.json()["data"]["tenant_id"] == _TENANT
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ class TestGroupBWrongSecret:
 
     def test_b2_wrong_secret_returns_unauthorized_code(self):
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": "bad"})
-        assert resp.json()["error"] == "UNAUTHORIZED"
+        assert resp.json()["error"]["code"] == "UNAUTHORIZED"
 
     def test_b3_empty_secret_rejected(self):
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": ""})
@@ -84,7 +84,7 @@ class TestGroupBWrongSecret:
 
     def test_b4_no_token_issued_on_wrong_secret(self):
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": "nope"})
-        assert "token" not in resp.json()
+        assert "token" not in resp.json().get("data", {})
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ class TestGroupCMissingJwtSecret:
     def test_c2_no_jwt_secret_auth_not_configured_code(self, monkeypatch):
         monkeypatch.setenv("IHOUSE_JWT_SECRET", "")
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": _PASSWORD})
-        assert resp.json()["error"] == "AUTH_NOT_CONFIGURED"
+        assert resp.json()["error"]["code"] == "AUTH_NOT_CONFIGURED"
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ class TestGroupETokenIntegrity:
     def _get_token(self) -> str:
         resp = client.post("/auth/token", json={"tenant_id": _TENANT, "secret": _PASSWORD})
         assert resp.status_code == 200
-        return resp.json()["token"]
+        return resp.json()["data"]["token"]
 
     def test_e1_token_decodes_with_correct_secret(self):
         token = self._get_token()

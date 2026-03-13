@@ -35,7 +35,7 @@ def client():
 @pytest.fixture()
 def auth_header(client):
     resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-    return {"Authorization": f"Bearer {resp.json()['token']}"}
+    return {"Authorization": f"Bearer {resp.json()['data']['token']}"}
 
 
 class TestInviteFlow:

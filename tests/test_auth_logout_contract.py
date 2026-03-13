@@ -63,7 +63,7 @@ class TestGroupALogoutHappyPath:
 
     def test_a2_body_contains_message(self, client):
         resp = client.post("/auth/logout")
-        body = resp.json()
+        body = resp.json()["data"]
         assert "message" in body
         assert "logged out" in body["message"].lower()
 
@@ -129,7 +129,7 @@ class TestGroupCTokenNoRegression:
     def test_c1_token_endpoint_still_200(self, client):
         resp = client.post("/auth/token", json={"tenant_id": "t-1", "secret": "dev"})
         assert resp.status_code == 200
-        assert "token" in resp.json()
+        assert "token" in resp.json()["data"]
 
     def test_c2_token_endpoint_401_on_wrong_secret(self, client):
         resp = client.post("/auth/token", json={"tenant_id": "t-1", "secret": "wrong"})
@@ -140,7 +140,7 @@ class TestGroupCTokenNoRegression:
         # Can still get a new token immediately after
         resp = client.post("/auth/token", json={"tenant_id": "t-1", "secret": "dev"})
         assert resp.status_code == 200
-        assert "token" in resp.json()
+        assert "token" in resp.json()["data"]
 
 
 # ---------------------------------------------------------------------------

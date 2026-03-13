@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 584 — Platform Checkpoint XXVII (ALL 20 BUILD PHASES COMPLETE).
+Phase 585 — Booking Test Suite Repair (closed).
 
 ## Last Closed Phase
 
-Phase 584 — Platform Checkpoint XXVII (closed). ALL 4 BLOCKS COMPLETE (565-584).
+Phase 585 — Booking Test Suite Repair (closed).
 
 ## Current Objective
 
-Phases 565-584 complete (20 build phases). Built: useApiCall hook, error boundary, toast error integration, API client retry+offline, typed API methods, global response envelope middleware (wraps all 92 routers), Pydantic input models, FormField+useFormValidation, validation rules (booking/property/task/maintenance), URL filter persistence, API cache (stale-while-revalidate), PageLoader skeleton, accessibility utilities. Fixed 3 relative imports unblocking 37 test collections. 31 new tests pass. 264 test files. Next session at Phase 585.
+Phase 585 closed. Fixed all 143 test failures from the Phase 570 response envelope migration — 17 test files, ~170 assertion changes. Test suite: 7,380 passed, 0 failed, 22 skipped. Next session at Phase 586.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -223,4 +223,4 @@ Phases 565-584 complete (20 build phases). Built: useApiCall hook, error boundar
 
 ## Tests
 
-**6,884 passed, 482 failed (response-envelope format changes expected), 22 skipped. 31 new tests added. TypeScript 0 errors. 54 frontend pages. 86 API router files. 264 test files. 20 Supabase migration files. 504 phase specs. (Phase 584)**
+**7,380 passed, 0 failed, 22 skipped. TypeScript 0 errors. 54 frontend pages. 86 API router files. 264 test files. 20 Supabase migration files. 505 phase specs. (Phase 585)**

@@ -40,6 +40,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from api.envelope import ok, err
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -91,36 +93,21 @@ async def issue_token(body: TokenRequest) -> JSONResponse:
     """
     jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
     if not jwt_secret:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error": "AUTH_NOT_CONFIGURED",
-                "message": "IHOUSE_JWT_SECRET is not set. Auth endpoint unavailable.",
-            },
-        )
+        return err("AUTH_NOT_CONFIGURED", "IHOUSE_JWT_SECRET is not set. Auth endpoint unavailable.", status=503)
 
     dev_password = os.environ.get("IHOUSE_DEV_PASSWORD", "dev")
 
     if not body.tenant_id or not body.tenant_id.strip():
-        return JSONResponse(
-            status_code=422,
-            content={"error": "VALIDATION_ERROR", "message": "tenant_id is required"},
-        )
+        return err("VALIDATION_ERROR", "tenant_id is required", status=422)
 
     if body.secret != dev_password:
         logger.warning("auth/token: wrong secret for tenant_id=%s", body.tenant_id)
-        return JSONResponse(
-            status_code=401,
-            content={"error": "UNAUTHORIZED", "message": "Invalid secret"},
-        )
+        return err("UNAUTHORIZED", "Invalid secret", status=401)
 
     # Phase 397: validate and normalize role
     role = body.role.strip().lower() if body.role else "manager"
     if role not in VALID_ROLES:
-        return JSONResponse(
-            status_code=422,
-            content={"error": "INVALID_ROLE", "message": f"Invalid role '{role}'. Must be one of: {', '.join(sorted(VALID_ROLES))}"},
-        )
+        return err("INVALID_ROLE", f"Invalid role '{role}'. Must be one of: {', '.join(sorted(VALID_ROLES))}", status=422)
 
     now = int(time.time())
     payload = {
@@ -133,15 +120,12 @@ async def issue_token(body: TokenRequest) -> JSONResponse:
     token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
 
     logger.info("auth/token: issued token for tenant_id=%s", body.tenant_id)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "token": token,
-            "tenant_id": body.tenant_id.strip(),
-            "role": role,
-            "expires_in": _TOKEN_TTL_SECONDS,
-        },
-    )
+    return ok({
+        "token": token,
+        "tenant_id": body.tenant_id.strip(),
+        "role": role,
+        "expires_in": _TOKEN_TTL_SECONDS,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -170,10 +154,7 @@ async def logout() -> JSONResponse:
     This endpoint is intentionally NOT protected by jwt_auth so that it can
     be called even when the token is expired or missing.
     """
-    response = JSONResponse(
-        status_code=200,
-        content={"message": "Logged out"},
-    )
+    response = ok({"message": "Logged out"})
     # Tell the browser to delete the cookie (Max-Age=0 = expire immediately)
     response.set_cookie(
         key="ihouse_token",
@@ -238,26 +219,14 @@ async def supabase_verify(body: SupabaseVerifyRequest) -> JSONResponse:
 
     jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
     if not jwt_secret:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error": "AUTH_NOT_CONFIGURED",
-                "message": "IHOUSE_JWT_SECRET is not set.",
-            },
-        )
+        return err("AUTH_NOT_CONFIGURED", "IHOUSE_JWT_SECRET is not set.", status=503)
 
     if not body.token or not body.token.strip():
-        return JSONResponse(
-            status_code=403,
-            content={"error": "TOKEN_REQUIRED", "message": "token field is required"},
-        )
+        return err("TOKEN_REQUIRED", "token field is required", status=403)
 
     claims = decode_jwt_claims(body.token.strip(), jwt_secret)
     if not claims:
-        return JSONResponse(
-            status_code=403,
-            content={"error": "INVALID_TOKEN", "message": "Token is invalid or expired"},
-        )
+        return err("INVALID_TOKEN", "Token is invalid or expired", status=403)
 
     sub = claims.get("sub", "")
     aud = claims.get("aud", "")
@@ -268,18 +237,15 @@ async def supabase_verify(body: SupabaseVerifyRequest) -> JSONResponse:
         "auth/supabase-verify: validated token sub=%s type=%s",
         sub, token_type,
     )
-    return JSONResponse(
-        status_code=200,
-        content={
-            "valid": True,
-            "sub": sub,
-            "aud": aud,
-            "role": role,
-            "email": claims.get("email", ""),
-            "exp": claims.get("exp"),
-            "token_type": token_type,
-        },
-    )
+    return ok({
+        "valid": True,
+        "sub": sub,
+        "aud": aud,
+        "role": role,
+        "email": claims.get("email", ""),
+        "exp": claims.get("exp"),
+        "token_type": token_type,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -344,10 +310,7 @@ async def supabase_signup(body: SignUpRequest) -> JSONResponse:
     """
     db = _get_supabase_admin()
     if not db:
-        return JSONResponse(
-            status_code=503,
-            content={"error": "SUPABASE_NOT_CONFIGURED", "message": "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set."},
-        )
+        return err("SUPABASE_NOT_CONFIGURED", "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set.", status=503)
 
     try:
         result = db.auth.admin.create_user({
@@ -359,10 +322,7 @@ async def supabase_signup(body: SignUpRequest) -> JSONResponse:
 
         user = result.user
         if not user:
-            return JSONResponse(
-                status_code=400,
-                content={"error": "SIGNUP_FAILED", "message": "User creation returned no user object."},
-            )
+            return err("SIGNUP_FAILED", "User creation returned no user object.", status=400)
 
         # Sign in immediately to get tokens
         signin_result = db.auth.sign_in_with_password({
@@ -372,23 +332,17 @@ async def supabase_signup(body: SignUpRequest) -> JSONResponse:
 
         session = signin_result.session
         logger.info("auth/signup: created user %s (%s)", user.id, body.email)
-        return JSONResponse(
-            status_code=200,
-            content={
-                "user_id": str(user.id),
-                "email": body.email.strip(),
-                "access_token": session.access_token if session else "",
-                "refresh_token": session.refresh_token if session else "",
-                "expires_in": session.expires_in if session else 0,
-            },
-        )
+        return ok({
+            "user_id": str(user.id),
+            "email": body.email.strip(),
+            "access_token": session.access_token if session else "",
+            "refresh_token": session.refresh_token if session else "",
+            "expires_in": session.expires_in if session else 0,
+        })
     except Exception as exc:
         error_msg = str(exc)
         logger.warning("auth/signup: failed for %s — %s", body.email, error_msg)
-        return JSONResponse(
-            status_code=400,
-            content={"error": "SIGNUP_FAILED", "message": error_msg},
-        )
+        return err("SIGNUP_FAILED", error_msg, status=400)
 
 
 @router.post(
@@ -423,10 +377,7 @@ async def supabase_signin(body: SignInRequest) -> JSONResponse:
     """
     db = _get_supabase_admin()
     if not db:
-        return JSONResponse(
-            status_code=503,
-            content={"error": "SUPABASE_NOT_CONFIGURED", "message": "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set."},
-        )
+        return err("SUPABASE_NOT_CONFIGURED", "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set.", status=503)
 
     try:
         result = db.auth.sign_in_with_password({
@@ -437,27 +388,18 @@ async def supabase_signin(body: SignInRequest) -> JSONResponse:
         session = result.session
         user = result.user
         if not session or not user:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "AUTH_FAILED", "message": "Invalid credentials."},
-            )
+            return err("AUTH_FAILED", "Invalid credentials.", status=401)
 
         logger.info("auth/signin: authenticated %s (%s)", user.id, body.email)
-        return JSONResponse(
-            status_code=200,
-            content={
-                "user_id": str(user.id),
-                "email": body.email.strip(),
-                "access_token": session.access_token,
-                "refresh_token": session.refresh_token,
-                "expires_in": session.expires_in,
-            },
-        )
+        return ok({
+            "user_id": str(user.id),
+            "email": body.email.strip(),
+            "access_token": session.access_token,
+            "refresh_token": session.refresh_token,
+            "expires_in": session.expires_in,
+        })
     except Exception as exc:
         error_msg = str(exc)
         logger.warning("auth/signin: failed for %s — %s", body.email, error_msg)
-        return JSONResponse(
-            status_code=401,
-            content={"error": "AUTH_FAILED", "message": error_msg},
-        )
+        return err("AUTH_FAILED", error_msg, status=401)
 

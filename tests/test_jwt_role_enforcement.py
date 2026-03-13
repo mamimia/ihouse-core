@@ -44,7 +44,7 @@ class TestAuthTokenRole:
         """When no role specified, JWT should contain role='manager'."""
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
         assert resp.status_code == 200
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["role"] == "manager"
         # Decode JWT and verify role claim
         decoded = jwt.decode(body["token"], "test-secret-for-role-tests", algorithms=["HS256"])
@@ -54,7 +54,7 @@ class TestAuthTokenRole:
         """Explicit role is included in JWT payload and response."""
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "worker"})
         assert resp.status_code == 200
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["role"] == "worker"
         decoded = jwt.decode(body["token"], "test-secret-for-role-tests", algorithms=["HS256"])
         assert decoded["role"] == "worker"
@@ -62,36 +62,36 @@ class TestAuthTokenRole:
     def test_owner_role(self, client):
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "owner"})
         assert resp.status_code == 200
-        assert resp.json()["role"] == "owner"
+        assert resp.json()["data"]["role"] == "owner"
 
     def test_admin_role(self, client):
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "admin"})
         assert resp.status_code == 200
-        assert resp.json()["role"] == "admin"
+        assert resp.json()["data"]["role"] == "admin"
 
     def test_ops_role(self, client):
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "ops"})
         assert resp.status_code == 200
-        assert resp.json()["role"] == "ops"
+        assert resp.json()["data"]["role"] == "ops"
 
     def test_invalid_role_returns_422(self, client):
         """Invalid role should return 422 with INVALID_ROLE error."""
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "superadmin"})
         assert resp.status_code == 422
         body = resp.json()
-        assert body["error"] == "INVALID_ROLE"
+        assert body["error"]["code"] == "INVALID_ROLE"
 
     def test_empty_role_defaults_to_manager(self, client):
         """Empty string role normalizes to default manager."""
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": ""})
         assert resp.status_code == 200
-        assert resp.json()["role"] == "manager"
+        assert resp.json()["data"]["role"] == "manager"
 
     def test_role_case_insensitive(self, client):
         """Role should be normalized to lowercase."""
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "Worker"})
         assert resp.status_code == 200
-        assert resp.json()["role"] == "worker"
+        assert resp.json()["data"]["role"] == "worker"
 
     def test_all_valid_roles_accepted(self, client):
         """All 8 valid roles should be accepted."""
@@ -99,7 +99,7 @@ class TestAuthTokenRole:
         for role in valid_roles:
             resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": role})
             assert resp.status_code == 200, f"Role '{role}' should be accepted"
-            assert resp.json()["role"] == role
+            assert resp.json()["data"]["role"] == role
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +114,7 @@ class TestLoginSessionRole:
         with patch("api.session_router.create_session", return_value={"session_id": "s1"}):
             resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev"})
         assert resp.status_code == 201
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["role"] == "manager"
         decoded = jwt.decode(body["token"], "test-secret-for-role-tests", algorithms=["HS256"])
         assert decoded["role"] == "manager"
@@ -124,7 +124,7 @@ class TestLoginSessionRole:
         with patch("api.session_router.create_session", return_value={"session_id": "s1"}):
             resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev", "role": "owner"})
         assert resp.status_code == 201
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["role"] == "owner"
         decoded = jwt.decode(body["token"], "test-secret-for-role-tests", algorithms=["HS256"])
         assert decoded["role"] == "owner"
@@ -133,7 +133,7 @@ class TestLoginSessionRole:
         """Session login with invalid role should return 422."""
         resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev", "role": "hacker"})
         assert resp.status_code == 422
-        assert resp.json()["error"] == "INVALID_ROLE"
+        assert resp.json()["error"]["code"] == "INVALID_ROLE"
 
 
 # ---------------------------------------------------------------------------
@@ -147,13 +147,13 @@ class TestAuthMeRole:
         """GET /auth/me should return the role from the JWT."""
         # First get a token with explicit role
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "worker"})
-        token = resp.json()["token"]
+        token = resp.json()["data"]["token"]
 
         # Use token to call /auth/me
         with patch("api.session_router.validate_session", return_value=None):
             me_resp = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert me_resp.status_code == 200
-        body = me_resp.json()
+        body = me_resp.json()["data"]
         assert body["role"] == "worker"
         # In dev mode, jwt_auth returns 'dev-tenant' rather than real JWT sub
         assert body["tenant_id"] == "dev-tenant"
@@ -161,9 +161,9 @@ class TestAuthMeRole:
     def test_me_returns_manager_default(self, client):
         """GET /auth/me with default role returns 'manager'."""
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-        token = resp.json()["token"]
+        token = resp.json()["data"]["token"]
 
         with patch("api.session_router.validate_session", return_value=None):
             me_resp = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert me_resp.status_code == 200
-        assert me_resp.json()["role"] == "manager"
+        assert me_resp.json()["data"]["role"] == "manager"

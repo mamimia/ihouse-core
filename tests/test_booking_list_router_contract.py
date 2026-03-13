@@ -116,7 +116,7 @@ class TestGroupAHappyPath:
         mock_db = _mock_db(rows)
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert "bookings" in body
 
     def test_a3_response_has_count(self) -> None:
@@ -124,49 +124,49 @@ class TestGroupAHappyPath:
         mock_db = _mock_db(rows)
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert body["count"] == 2
 
     def test_a4_response_has_tenant_id(self) -> None:
         mock_db = _mock_db([_booking_row()])
         client = _make_app(tenant="tenant_xyz")
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert body["tenant_id"] == "tenant_xyz"
 
     def test_a5_response_has_limit(self) -> None:
         mock_db = _mock_db([_booking_row()])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert "limit" in body
 
     def test_a6_booking_entry_has_booking_id(self) -> None:
         mock_db = _mock_db([_booking_row(booking_id="bookingcom_BK-001")])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert body["bookings"][0]["booking_id"] == "bookingcom_BK-001"
 
     def test_a7_booking_entry_has_status(self) -> None:
         mock_db = _mock_db([_booking_row(status="active")])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert body["bookings"][0]["status"] == "active"
 
     def test_a8_booking_entry_has_property_id(self) -> None:
         mock_db = _mock_db([_booking_row(property_id="prop-99")])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert body["bookings"][0]["property_id"] == "prop-99"
 
     def test_a9_booking_entry_has_check_in_check_out(self) -> None:
         mock_db = _mock_db([_booking_row(check_in="2026-08-01", check_out="2026-08-07")])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         entry = body["bookings"][0]
         assert entry["check_in"] == "2026-08-01"
         assert entry["check_out"] == "2026-08-07"
@@ -175,7 +175,7 @@ class TestGroupAHappyPath:
         mock_db = _mock_db([_booking_row()])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         required = {"booking_id", "tenant_id", "source", "reservation_ref",
                     "property_id", "status", "check_in", "check_out",
                     "version", "created_at", "updated_at"}
@@ -214,7 +214,7 @@ class TestGroupBStatusFilter:
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
             body = client.get("/bookings?status=pending").json()
-        assert body["code"] == "VALIDATION_ERROR"
+        assert body["error"]["code"] == "VALIDATION_ERROR"
 
     def test_b5_invalid_status_does_not_hit_db(self) -> None:
         """Validation happens before DB call — client should not be invoked."""
@@ -242,7 +242,7 @@ class TestGroupCPropertyFilter:
         mock_db = _mock_db([_booking_row(property_id="prop-42")])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings?property_id=prop-42").json()
+            body = client.get("/bookings?property_id=prop-42").json()["data"]
         assert body["bookings"][0]["property_id"] == "prop-42"
 
     def test_c3_combined_property_and_status_filter(self) -> None:
@@ -263,28 +263,28 @@ class TestGroupDLimit:
         mock_db = _mock_db([])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert body["limit"] == 50
 
     def test_d2_custom_limit_reflected_in_response(self) -> None:
         mock_db = _mock_db([_booking_row()])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings?limit=10").json()
+            body = client.get("/bookings?limit=10").json()["data"]
         assert body["limit"] == 10
 
     def test_d3_limit_clamped_to_100(self) -> None:
         mock_db = _mock_db([])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings?limit=999").json()
+            body = client.get("/bookings?limit=999").json()["data"]
         assert body["limit"] == 100
 
     def test_d4_limit_clamped_to_minimum_1(self) -> None:
         mock_db = _mock_db([])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings?limit=0").json()
+            body = client.get("/bookings?limit=0").json()["data"]
         assert body["limit"] == 1
 
 
@@ -323,7 +323,7 @@ class TestGroupFEmpty:
         mock_db = _mock_db([])
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
-            body = client.get("/bookings").json()
+            body = client.get("/bookings").json()["data"]
         assert body["count"] == 0
         assert body["bookings"] == []
 
@@ -362,4 +362,4 @@ class TestGroupG500:
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
             body = client.get("/bookings").json()
-        assert body["code"] == "INTERNAL_ERROR"
+        assert body["error"]["code"] == "INTERNAL_ERROR"

@@ -173,11 +173,12 @@ class TestBookingsRouterErrorFormat:
         with patch("api.bookings_router._get_supabase_client") as mock_db:
             mock_result = MagicMock()
             mock_result.data = []
-            mock_db.return_value.table.return_value.select.return_value.eq.return_value.eq.return_value.single.return_value.execute.return_value = mock_result
-            mock_db.return_value.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = mock_result
+            chain = mock_db.return_value.table.return_value.select.return_value.eq.return_value.eq.return_value
+            chain.limit.return_value.execute.return_value = mock_result
+            chain.execute.return_value = mock_result
             resp = _bookings_app().get("/bookings/nonexistent")
-        assert "code" in resp.json()
-        assert "error" not in resp.json()
+        assert "code" in resp.json().get("error", {})
+        assert resp.json()["error"]["code"] == "BOOKING_NOT_FOUND"
 
     def test_404_body_has_message_field(self) -> None:
         with patch("api.bookings_router._get_supabase_client") as mock_db:
@@ -185,7 +186,7 @@ class TestBookingsRouterErrorFormat:
             mock_result.data = []
             mock_db.return_value.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = mock_result
             resp = _bookings_app().get("/bookings/nonexistent")
-        assert "message" in resp.json()
+        assert "message" in resp.json().get("error", {})
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +212,7 @@ class TestAdminRouterErrorFormat:
             resp = _admin_app().get("/admin/summary")
         assert resp.status_code == 500
         assert "code" in resp.json()
-        assert "error" not in resp.json()
+        assert resp.json()["code"] == "INTERNAL_ERROR"
 
     def test_500_code_value_is_internal_error(self) -> None:
         with patch("api.admin_router._get_supabase_client") as mock_db:

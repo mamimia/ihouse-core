@@ -221,7 +221,7 @@ class TestLoginSession:
                 json={"tenant_id": "dev-tenant", "secret": "dev"},
             )
         assert resp.status_code == 201
-        body = resp.json()
+        body = resp.json()["data"]
         assert "token" in body
         assert body["session"]["session_id"] == "sid-1"
 
@@ -254,7 +254,7 @@ class TestGetMe:
                 headers={"Authorization": "Bearer dummy-token"},
             )
         assert resp.status_code == 200
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["tenant_id"] == "dev-tenant"
 
     def test_me_no_session_returns_info_without_session(self, client):
@@ -266,7 +266,7 @@ class TestGetMe:
                 headers={"Authorization": "Bearer dummy-token"},
             )
         assert resp.status_code == 200
-        assert resp.json()["has_session"] is False
+        assert resp.json()["data"]["has_session"] is False
 
 
 class TestLogoutSession:
@@ -278,7 +278,7 @@ class TestLogoutSession:
                 headers={"Authorization": "Bearer dummy-token"},
             )
         assert resp.status_code == 200
-        assert resp.json()["revoked"] is True
+        assert resp.json()["data"]["revoked"] is True
 
 
 class TestListSessions:
@@ -293,7 +293,7 @@ class TestListSessions:
                 headers={"Authorization": "Bearer dummy-token"},
             )
         assert resp.status_code == 200
-        assert resp.json()["count"] == 1
+        assert resp.json()["data"]["count"] == 1
 
 
 class TestRevokeAllSessions:
@@ -305,4 +305,4 @@ class TestRevokeAllSessions:
                 headers={"Authorization": "Bearer dummy-token"},
             )
         assert resp.status_code == 200
-        assert resp.json()["revoked_count"] == 3
+        assert resp.json()["data"]["revoked_count"] == 3

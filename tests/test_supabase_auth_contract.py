@@ -221,20 +221,20 @@ class TestGroupESupabaseVerifyEndpoint:
         monkeypatch.setenv("IHOUSE_JWT_SECRET", _SECRET)
         token = _supabase_token(sub="e2-user")
         resp = client.post("/auth/supabase-verify", json={"token": token})
-        assert resp.json()["valid"] is True
+        assert resp.json()["data"]["valid"] is True
 
     def test_e3_response_token_type_supabase(self, client, monkeypatch):
         monkeypatch.setenv("IHOUSE_JWT_SECRET", _SECRET)
         token = _supabase_token(sub="e3-user")
         resp = client.post("/auth/supabase-verify", json={"token": token})
-        assert resp.json()["token_type"] == "supabase"
+        assert resp.json()["data"]["token_type"] == "supabase"
 
     def test_e4_internal_token_type_internal(self, client, monkeypatch):
         monkeypatch.setenv("IHOUSE_JWT_SECRET", _SECRET)
         token = _internal_token("e4-tenant")
         resp = client.post("/auth/supabase-verify", json={"token": token})
         assert resp.status_code == 200
-        assert resp.json()["token_type"] == "internal"
+        assert resp.json()["data"]["token_type"] == "internal"
 
     def test_e5_invalid_token_returns_403(self, client, monkeypatch):
         monkeypatch.setenv("IHOUSE_JWT_SECRET", _SECRET)
@@ -250,7 +250,7 @@ class TestGroupESupabaseVerifyEndpoint:
         monkeypatch.setenv("IHOUSE_JWT_SECRET", _SECRET)
         token = _supabase_token(sub="e7-uuid", email="e7@test.com")
         resp = client.post("/auth/supabase-verify", json={"token": token})
-        data = resp.json()
+        data = resp.json()["data"]
         assert data["sub"] == "e7-uuid"
 
 

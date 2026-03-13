@@ -7267,3 +7267,9 @@ Block 3 (575-579): Data Validation & Input Guards — FormField component, valid
 Block 4 (580-584): Performance & Production Readiness — API cache, skeleton loading, accessibility, import fixes, checkpoint.
 
 ---
+
+### Phase 585 — Booking Test Suite Repair — 2026-03-14
+
+Fixed all 143 test failures from the Phase 570 response envelope migration. Updated 17 test files with ~170 assertion changes: success data under `["data"]`, error fields under `["error"]`, and reverted incorrect wrapping on non-migrated routers. Full suite: 7,380 passed, 0 failed, 22 skipped.
+
+---

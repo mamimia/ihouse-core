@@ -35,7 +35,7 @@ def client():
 def auth_header(client):
     """Get a valid auth token header."""
     resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-    return {"Authorization": f"Bearer {resp.json()['token']}"}
+    return {"Authorization": f"Bearer {resp.json()['data']['token']}"}
 
 
 def _mock_booking(status="active"):
@@ -64,7 +64,7 @@ class TestCheckinEndpoint:
         with patch("api.booking_checkin_router._get_supabase_client", return_value=mock_db):
             resp = client.post("/bookings/bk-999/checkin", headers=auth_header)
         assert resp.status_code == 404
-        assert resp.json()["error"] == "BOOKING_NOT_FOUND"
+        assert resp.json()["error"]["code"] == "BOOKING_NOT_FOUND"
 
     def test_checkin_active_booking_succeeds(self, client, auth_header):
         """Active booking should transition to checked_in."""
@@ -81,7 +81,7 @@ class TestCheckinEndpoint:
         with patch("api.booking_checkin_router._get_supabase_client", return_value=mock_db):
             resp = client.post("/bookings/bk-001/checkin", headers=auth_header)
         assert resp.status_code == 200
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["status"] == "checked_in"
         assert body["noop"] is False
 
@@ -95,7 +95,7 @@ class TestCheckinEndpoint:
         with patch("api.booking_checkin_router._get_supabase_client", return_value=mock_db):
             resp = client.post("/bookings/bk-001/checkin", headers=auth_header)
         assert resp.status_code == 200
-        assert resp.json()["noop"] is True
+        assert resp.json()["data"]["noop"] is True
 
     def test_checkin_canceled_booking_returns_409(self, client, auth_header):
         """Canceled booking should not be checkable-in."""
@@ -107,7 +107,7 @@ class TestCheckinEndpoint:
         with patch("api.booking_checkin_router._get_supabase_client", return_value=mock_db):
             resp = client.post("/bookings/bk-001/checkin", headers=auth_header)
         assert resp.status_code == 409
-        assert resp.json()["error"] == "INVALID_STATE"
+        assert resp.json()["error"]["code"] == "INVALID_STATE"
 
 
 class TestCheckoutEndpoint:
@@ -137,7 +137,7 @@ class TestCheckoutEndpoint:
             with patch("tasks.task_writer.write_tasks_for_booking_created", return_value=1):
                 resp = client.post("/bookings/bk-001/checkout", headers=auth_header)
         assert resp.status_code == 200
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["status"] == "checked_out"
         assert body["noop"] is False
 
@@ -151,7 +151,7 @@ class TestCheckoutEndpoint:
         with patch("api.booking_checkin_router._get_supabase_client", return_value=mock_db):
             resp = client.post("/bookings/bk-001/checkout", headers=auth_header)
         assert resp.status_code == 200
-        assert resp.json()["noop"] is True
+        assert resp.json()["data"]["noop"] is True
 
     def test_checkout_canceled_booking_returns_409(self, client, auth_header):
         """Canceled booking cannot be checked out."""
@@ -163,7 +163,7 @@ class TestCheckoutEndpoint:
         with patch("api.booking_checkin_router._get_supabase_client", return_value=mock_db):
             resp = client.post("/bookings/bk-001/checkout", headers=auth_header)
         assert resp.status_code == 409
-        assert resp.json()["error"] == "INVALID_STATE"
+        assert resp.json()["error"]["code"] == "INVALID_STATE"
 
     def test_checkin_endpoint_exists(self, client, auth_header):
         """Check-in endpoint exists and is reachable with auth."""

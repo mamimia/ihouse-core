@@ -74,7 +74,7 @@ class TestPropertyOnboardingPipeline:
     def test_approve_provisions_channel_map(self, client):
         """Approving a pending property auto-creates a channel_map entry."""
         login_resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-        auth = {"Authorization": f"Bearer {login_resp.json()['token']}"}
+        auth = {"Authorization": f"Bearer {login_resp.json()['data']['token']}"}
 
         mock_db = _make_property_db({
             "property_id": "p-404",
@@ -95,7 +95,7 @@ class TestPropertyOnboardingPipeline:
     def test_approve_skips_duplicate_channel_map(self, client):
         """Re-approving doesn't duplicate channel_map (already exists)."""
         login_resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-        auth = {"Authorization": f"Bearer {login_resp.json()['token']}"}
+        auth = {"Authorization": f"Bearer {login_resp.json()['data']['token']}"}
 
         mock_db = _make_property_db({
             "property_id": "p-existing",
@@ -116,7 +116,7 @@ class TestPropertyOnboardingPipeline:
     def test_approve_rejects_non_pending(self, client):
         """Approving an already-approved property returns 409."""
         login_resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-        auth = {"Authorization": f"Bearer {login_resp.json()['token']}"}
+        auth = {"Authorization": f"Bearer {login_resp.json()['data']['token']}"}
 
         mock_db = _make_property_db({
             "property_id": "p-already",
@@ -165,7 +165,7 @@ class TestPropertyOnboardingPipeline:
 
         # Step 2: Admin approves the submitted property
         login_resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-        auth = {"Authorization": f"Bearer {login_resp.json()['token']}"}
+        auth = {"Authorization": f"Bearer {login_resp.json()['data']['token']}"}
 
         mock_db_approve = _make_property_db({
             "property_id": "p-pipeline",

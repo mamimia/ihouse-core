@@ -122,14 +122,14 @@ class TestGroupB_NoAmendments:
     def test_b2_empty_amendments_count_zero(self, monkeypatch):
         db = _mock_db(booking_rows=[_booking_row()], event_rows=[])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-158/amendments").json()
+        data = _client.get("/bookings/bk-158/amendments").json()["data"]
         assert data["count"] == 0
         assert data["amendments"] == []
 
     def test_b3_booking_id_in_response(self, monkeypatch):
         db = _mock_db(booking_rows=[_booking_row()], event_rows=[])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-158/amendments").json()
+        data = _client.get("/bookings/bk-158/amendments").json()["data"]
         assert data["booking_id"] == "bk-158"
 
 
@@ -146,14 +146,14 @@ class TestGroupC_WithAmendments:
         ]
         db = _mock_db(booking_rows=[_booking_row()], event_rows=rows)
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-158/amendments").json()
+        data = _client.get("/bookings/bk-158/amendments").json()["data"]
         assert data["count"] == 2
         assert len(data["amendments"]) == 2
 
     def test_c2_amendment_has_envelope_id(self, monkeypatch):
         db = _mock_db(booking_rows=[_booking_row()], event_rows=[_amendment_row("env-xyz")])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-158/amendments").json()
+        data = _client.get("/bookings/bk-158/amendments").json()["data"]
         assert data["amendments"][0]["envelope_id"] == "env-xyz"
 
 
@@ -166,14 +166,14 @@ class TestGroupD_ResponseShape:
     def test_d1_top_level_fields(self, monkeypatch):
         db = _mock_db(booking_rows=[_booking_row()], event_rows=[_amendment_row()])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-158/amendments").json()
+        data = _client.get("/bookings/bk-158/amendments").json()["data"]
         for field in ("booking_id", "tenant_id", "count", "amendments"):
             assert field in data
 
     def test_d2_amendment_fields(self, monkeypatch):
         db = _mock_db(booking_rows=[_booking_row()], event_rows=[_amendment_row()])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-158/amendments").json()
+        data = _client.get("/bookings/bk-158/amendments").json()["data"]
         a = data["amendments"][0]
         for field in ("envelope_id", "booking_id", "tenant_id", "event_type", "received_at"):
             assert field in a
@@ -181,7 +181,7 @@ class TestGroupD_ResponseShape:
     def test_d3_event_type_is_booking_amended(self, monkeypatch):
         db = _mock_db(booking_rows=[_booking_row()], event_rows=[_amendment_row()])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-158/amendments").json()
+        data = _client.get("/bookings/bk-158/amendments").json()["data"]
         assert data["amendments"][0]["event_type"] == "BOOKING_AMENDED"
 
 
@@ -231,7 +231,7 @@ class TestGroupG_SortOrder:
         ]
         db = _mock_db(booking_rows=[_booking_row()], event_rows=rows)
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-158/amendments").json()
+        data = _client.get("/bookings/bk-158/amendments").json()["data"]
         assert data["amendments"][0]["envelope_id"] == "env-001"
         assert data["amendments"][1]["envelope_id"] == "env-002"
 

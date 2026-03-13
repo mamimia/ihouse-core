@@ -278,14 +278,14 @@ class TestGroupG_ResponseShape:
     def test_g1_top_level_fields(self, monkeypatch):
         db = _mock_db_patch()
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.patch("/bookings/bk-160/flags", json={"is_vip": True}).json()
+        data = _client.patch("/bookings/bk-160/flags", json={"is_vip": True}).json()["data"]
         for field in ("booking_id", "tenant_id", "flags"):
             assert field in data
 
     def test_g2_flags_object_fields(self, monkeypatch):
         db = _mock_db_patch()
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.patch("/bookings/bk-160/flags", json={"is_vip": True}).json()
+        data = _client.patch("/bookings/bk-160/flags", json={"is_vip": True}).json()["data"]
         flags = data["flags"]
         for field in ("is_vip", "is_disputed", "needs_review", "operator_note", "flagged_by"):
             assert field in flags
@@ -293,7 +293,7 @@ class TestGroupG_ResponseShape:
     def test_g3_booking_id_matches(self, monkeypatch):
         db = _mock_db_patch()
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.patch("/bookings/bk-160/flags", json={"is_vip": True}).json()
+        data = _client.patch("/bookings/bk-160/flags", json={"is_vip": True}).json()["data"]
         assert data["booking_id"] == "bk-160"
 
 
@@ -370,13 +370,13 @@ class TestGroupK_GetNoFlags:
     def test_k1_flags_field_present_when_no_flags(self, monkeypatch):
         db = _mock_db_get(booking_rows=[_booking_row()], flags_rows=[])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-160").json()
+        data = _client.get("/bookings/bk-160").json()["data"]
         assert "flags" in data
 
     def test_k2_flags_is_none_when_no_flags_row(self, monkeypatch):
         db = _mock_db_get(booking_rows=[_booking_row()], flags_rows=[])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-160").json()
+        data = _client.get("/bookings/bk-160").json()["data"]
         assert data["flags"] is None
 
 
@@ -389,25 +389,25 @@ class TestGroupL_GetWithFlags:
     def test_l1_flags_populated_when_row_exists(self, monkeypatch):
         db = _mock_db_get(booking_rows=[_booking_row()], flags_rows=[_flags_row()])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-160").json()
+        data = _client.get("/bookings/bk-160").json()["data"]
         assert data["flags"] is not None
 
     def test_l2_is_vip_true_in_flags(self, monkeypatch):
         db = _mock_db_get(booking_rows=[_booking_row()], flags_rows=[_flags_row()])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-160").json()
+        data = _client.get("/bookings/bk-160").json()["data"]
         assert data["flags"]["is_vip"] is True
 
     def test_l3_operator_note_in_flags(self, monkeypatch):
         db = _mock_db_get(booking_rows=[_booking_row()], flags_rows=[_flags_row()])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-160").json()
+        data = _client.get("/bookings/bk-160").json()["data"]
         assert data["flags"]["operator_note"] == "Check deposit"
 
     def test_l4_all_flag_fields_present(self, monkeypatch):
         db = _mock_db_get(booking_rows=[_booking_row()], flags_rows=[_flags_row()])
         monkeypatch.setattr("api.bookings_router._get_supabase_client", lambda: db)
-        data = _client.get("/bookings/bk-160").json()
+        data = _client.get("/bookings/bk-160").json()["data"]
         for field in ("is_vip", "is_disputed", "needs_review", "operator_note", "flagged_by"):
             assert field in data["flags"]
 

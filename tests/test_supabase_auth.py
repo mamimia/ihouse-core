@@ -67,7 +67,7 @@ def test_signup_success_returns_user_and_token(client):
         })
 
     assert resp.status_code == 200
-    data = resp.json()
+    data = resp.json()["data"]
     assert data["user_id"] == "user-uuid-123"
     assert data["email"] == "admin@domaniqo.com"
     assert data["access_token"] == "eyJ_access_token"
@@ -113,7 +113,7 @@ def test_signin_success_returns_token(client):
         })
 
     assert resp.status_code == 200
-    data = resp.json()
+    data = resp.json()["data"]
     assert data["access_token"] == "eyJ_access"
     assert data["user_id"] == "user-uuid-123"
 
@@ -130,7 +130,7 @@ def test_signin_failure_returns_401(client):
         })
 
     assert resp.status_code == 401
-    assert resp.json()["error"] == "AUTH_FAILED"
+    assert resp.json()["error"]["code"] == "AUTH_FAILED"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -142,5 +142,5 @@ def test_auth_me_returns_identity_in_dev_mode(client):
     with patch.dict("os.environ", {"IHOUSE_DEV_MODE": "true"}):
         resp = client.get("/auth/me")
     assert resp.status_code == 200
-    data = resp.json()
+    data = resp.json()["data"]
     assert data["tenant_id"] == "dev-tenant"

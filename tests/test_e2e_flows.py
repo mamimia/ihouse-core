@@ -53,7 +53,7 @@ class TestE2EOperationalFlow:
         """POST /auth/token returns a valid JWT."""
         resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
         assert resp.status_code == 200
-        body = resp.json()
+        body = resp.json()["data"]
         assert "token" in body
         assert body["tenant_id"] == "t1"
 
@@ -62,7 +62,7 @@ class TestE2EOperationalFlow:
         # Step 1: Login
         login_resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
         assert login_resp.status_code == 200
-        auth = {"Authorization": f"Bearer {login_resp.json()['token']}"}
+        auth = {"Authorization": f"Bearer {login_resp.json()['data']['token']}"}
 
         # Step 2: Checkin
         mock_db = _make_booking_mock({
@@ -74,7 +74,7 @@ class TestE2EOperationalFlow:
         with patch("api.booking_checkin_router._get_supabase_client", return_value=mock_db):
             checkin_resp = client.post("/bookings/BK-E2E/checkin", headers=auth)
         assert checkin_resp.status_code == 200
-        assert checkin_resp.json()["status"] == "checked_in"
+        assert checkin_resp.json()["data"]["status"] == "checked_in"
 
         # Step 3: Checkout
         mock_db2 = _make_booking_mock({
@@ -86,13 +86,13 @@ class TestE2EOperationalFlow:
         with patch("api.booking_checkin_router._get_supabase_client", return_value=mock_db2):
             checkout_resp = client.post("/bookings/BK-E2E/checkout", headers=auth)
         assert checkout_resp.status_code == 200
-        body = checkout_resp.json()
+        body = checkout_resp.json()["data"]
         assert body["status"] == "checked_out"
 
     def test_checkin_rejects_non_active_booking(self, client):
         """Checkin on a checked_out booking returns 409."""
         login_resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-        auth = {"Authorization": f"Bearer {login_resp.json()['token']}"}
+        auth = {"Authorization": f"Bearer {login_resp.json()['data']['token']}"}
 
         mock_db = _make_booking_mock({
             "booking_id": "BK-DONE", "status": "checked_out",
@@ -106,7 +106,7 @@ class TestE2EOperationalFlow:
     def test_checkout_idempotent_already_checked_out(self, client):
         """Checkout on already checked_out booking returns 200 (idempotent)."""
         login_resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
-        auth = {"Authorization": f"Bearer {login_resp.json()['token']}"}
+        auth = {"Authorization": f"Bearer {login_resp.json()['data']['token']}"}
 
         mock_db = _make_booking_mock({
             "booking_id": "BK-DONE", "status": "checked_out",
@@ -117,7 +117,7 @@ class TestE2EOperationalFlow:
             resp = client.post("/bookings/BK-DONE/checkout", headers=auth)
         assert resp.status_code == 200
         # Idempotent: returns already_checked_out
-        assert "checked_out" in resp.json()["status"]
+        assert "checked_out" in resp.json()["data"]["status"]
 
 
 class TestE2EInviteFlow:

@@ -39,7 +39,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
-from api.error_models import ErrorCode, make_error_response
+from api.envelope import ok, err
 from services.audit_writer import write_audit_event
 
 logger = logging.getLogger(__name__)
@@ -109,10 +109,11 @@ async def get_booking(
         )
 
         if not result.data:
-            return make_error_response(
-                status_code=404,
-                code=ErrorCode.BOOKING_NOT_FOUND,
-                extra={"booking_id": booking_id},
+            return err(
+                "BOOKING_NOT_FOUND",
+                "Booking not found for this tenant",
+                status=404,
+                booking_id=booking_id,
             )
 
         row = result.data[0]
@@ -141,27 +142,24 @@ async def get_booking(
         except Exception:
             pass  # best-effort — never block the booking response
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "booking_id": row["booking_id"],
-                "tenant_id": row["tenant_id"],
-                "source": row.get("source"),
-                "reservation_ref": row.get("reservation_ref"),
-                "property_id": row.get("property_id"),
-                "status": row.get("status"),
-                "check_in": row.get("check_in"),
-                "check_out": row.get("check_out"),
-                "version": row.get("version"),
-                "created_at": row.get("created_at"),
-                "updated_at": row.get("updated_at"),
-                "flags": flags,
-            },
-        )
+        return ok({
+            "booking_id": row["booking_id"],
+            "tenant_id": row["tenant_id"],
+            "source": row.get("source"),
+            "reservation_ref": row.get("reservation_ref"),
+            "property_id": row.get("property_id"),
+            "status": row.get("status"),
+            "check_in": row.get("check_in"),
+            "check_out": row.get("check_out"),
+            "version": row.get("version"),
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+            "flags": flags,
+        })
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /bookings/%s error: %s", booking_id, exc)
-        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+        return err("INTERNAL_ERROR", "An unexpected internal error occurred", status=500)
 
 
 # ---------------------------------------------------------------------------
@@ -229,26 +227,26 @@ async def list_bookings(
     """
     # Validate status
     if status is not None and status not in _VALID_STATUSES:
-        return make_error_response(
-            status_code=400,
-            code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": f"status must be one of: {sorted(_VALID_STATUSES)}"},
+        return err(
+            "VALIDATION_ERROR",
+            f"status must be one of: {sorted(_VALID_STATUSES)}",
+            status=400,
         )
 
     # Validate sort_by
     if sort_by is not None and sort_by not in _VALID_SORT_BY:
-        return make_error_response(
-            status_code=400,
-            code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": f"sort_by must be one of: {sorted(_VALID_SORT_BY)}"},
+        return err(
+            "VALIDATION_ERROR",
+            f"sort_by must be one of: {sorted(_VALID_SORT_BY)}",
+            status=400,
         )
 
     # Validate sort_dir
     if sort_dir not in _VALID_SORT_DIR:
-        return make_error_response(
-            status_code=400,
-            code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": f"sort_dir must be one of: {sorted(_VALID_SORT_DIR)}"},
+        return err(
+            "VALIDATION_ERROR",
+            f"sort_dir must be one of: {sorted(_VALID_SORT_DIR)}",
+            status=400,
         )
 
     # Validate date range params
@@ -259,10 +257,10 @@ async def list_bookings(
         ("check_out_to", check_out_to),
     ]:
         if field_val is not None and not _DATE_RE.match(field_val):
-            return make_error_response(
-                status_code=400,
-                code=ErrorCode.VALIDATION_ERROR,
-                extra={"detail": f"{field_name} must be a valid date in YYYY-MM-DD format"},
+            return err(
+                "VALIDATION_ERROR",
+                f"{field_name} must be a valid date in YYYY-MM-DD format",
+                status=400,
             )
 
     # Clamp limit
@@ -329,21 +327,18 @@ async def list_bookings(
             for r in rows
         ]
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "tenant_id": tenant_id,
-                "count":     len(bookings),
-                "limit":     limit,
-                "sort_by":   _sort_field,
-                "sort_dir":  sort_dir,
-                "bookings":  bookings,
-            },
-        )
+        return ok({
+            "tenant_id": tenant_id,
+            "count":     len(bookings),
+            "limit":     limit,
+            "sort_by":   _sort_field,
+            "sort_dir":  sort_dir,
+            "bookings":  bookings,
+        })
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("GET /bookings error for tenant=%s: %s", tenant_id, exc)
-        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+        return err("INTERNAL_ERROR", "An unexpected internal error occurred", status=500)
 
 
 # ---------------------------------------------------------------------------
@@ -390,10 +385,11 @@ async def list_booking_amendments(
             .execute()
         )
         if not (bk.data or []):
-            return make_error_response(
-                status_code=404,
-                code=ErrorCode.BOOKING_NOT_FOUND,
-                extra={"booking_id": booking_id},
+            return err(
+                "BOOKING_NOT_FOUND",
+                "Booking not found for this tenant",
+                status=404,
+                booking_id=booking_id,
             )
 
         # Fetch BOOKING_AMENDED events from event_log
@@ -422,22 +418,19 @@ async def list_booking_amendments(
             for r in rows
         ]
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "booking_id": booking_id,
-                "tenant_id":  tenant_id,
-                "count":      len(amendments),
-                "amendments": amendments,
-            },
-        )
+        return ok({
+            "booking_id": booking_id,
+            "tenant_id":  tenant_id,
+            "count":      len(amendments),
+            "amendments": amendments,
+        })
 
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "GET /bookings/%s/amendments error for tenant=%s: %s",
             booking_id, tenant_id, exc,
         )
-        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+        return err("INTERNAL_ERROR", "An unexpected internal error occurred", status=500)
 
 
 # ---------------------------------------------------------------------------
@@ -490,27 +483,27 @@ async def patch_booking_flags(
 
     # --- validate body has at least one recognised key ---
     if not isinstance(body, dict):
-        return make_error_response(
-            status_code=400,
-            code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": "Request body must be a JSON object."},
+        return err(
+            "VALIDATION_ERROR",
+            "Request body must be a JSON object.",
+            status=400,
         )
 
     recognised = {k: v for k, v in body.items() if k in _ALL_FLAG_KEYS}
     if not recognised:
-        return make_error_response(
-            status_code=400,
-            code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": f"Body must contain at least one of: {sorted(_ALL_FLAG_KEYS)}"},
+        return err(
+            "VALIDATION_ERROR",
+            f"Body must contain at least one of: {sorted(_ALL_FLAG_KEYS)}",
+            status=400,
         )
 
     # --- type checks for boolean flags ---
     for key in _FLAG_BOOLEANS:
         if key in body and not isinstance(body[key], bool):
-            return make_error_response(
-                status_code=400,
-                code=ErrorCode.VALIDATION_ERROR,
-                extra={"detail": f"'{key}' must be a boolean."},
+            return err(
+                "VALIDATION_ERROR",
+                f"'{key}' must be a boolean.",
+                status=400,
             )
 
     try:
@@ -526,10 +519,11 @@ async def patch_booking_flags(
             .execute()
         )
         if not (bk.data or []):
-            return make_error_response(
-                status_code=404,
-                code=ErrorCode.BOOKING_NOT_FOUND,
-                extra={"booking_id": booking_id},
+            return err(
+                "BOOKING_NOT_FOUND",
+                "Booking not found for this tenant",
+                status=404,
+                booking_id=booking_id,
             )
 
         # Build upsert payload
@@ -562,26 +556,23 @@ async def patch_booking_flags(
             client=db,
         )
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "booking_id":   booking_id,
-                "tenant_id":    tenant_id,
-                "flags": {
-                    "is_vip":       saved.get("is_vip"),
-                    "is_disputed":  saved.get("is_disputed"),
-                    "needs_review": saved.get("needs_review"),
-                    "operator_note": saved.get("operator_note"),
-                    "flagged_by":   saved.get("flagged_by"),
-                    "updated_at":   saved.get("updated_at", now),
-                },
+        return ok({
+            "booking_id":   booking_id,
+            "tenant_id":    tenant_id,
+            "flags": {
+                "is_vip":       saved.get("is_vip"),
+                "is_disputed":  saved.get("is_disputed"),
+                "needs_review": saved.get("needs_review"),
+                "operator_note": saved.get("operator_note"),
+                "flagged_by":   saved.get("flagged_by"),
+                "updated_at":   saved.get("updated_at", now),
             },
-        )
+        })
 
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "PATCH /bookings/%s/flags error for tenant=%s: %s",
             booking_id, tenant_id, exc,
         )
-        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+        return err("INTERNAL_ERROR", "An unexpected internal error occurred", status=500)
 

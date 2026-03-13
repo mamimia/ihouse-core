@@ -32,6 +32,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from api.auth import jwt_auth
+from api.envelope import ok, err
 from services.session import (
     create_session,
     validate_session,
@@ -115,10 +116,7 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
     """
     jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
     if not jwt_secret:
-        return JSONResponse(
-            status_code=503,
-            content={"error": "AUTH_NOT_CONFIGURED", "message": "IHOUSE_JWT_SECRET not set"},
-        )
+        return err("AUTH_NOT_CONFIGURED", "IHOUSE_JWT_SECRET not set", status=503)
 
     if not body.tenant_id.strip():
         raise HTTPException(status_code=422, detail="tenant_id is required")
@@ -126,18 +124,12 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
     dev_password = os.environ.get(_DEV_PASSWORD_ENV, "dev")
     if body.secret != dev_password:
         logger.warning("login-session: wrong secret for tenant_id=%s", body.tenant_id)
-        return JSONResponse(
-            status_code=401,
-            content={"error": "UNAUTHORIZED", "message": "Invalid secret"},
-        )
+        return err("UNAUTHORIZED", "Invalid secret", status=401)
 
     # Phase 397: validate and normalize role
     role = body.role.strip().lower() if body.role else "manager"
     if role not in _VALID_ROLES:
-        return JSONResponse(
-            status_code=422,
-            content={"error": "INVALID_ROLE", "message": f"Invalid role '{role}'. Must be one of: {', '.join(sorted(_VALID_ROLES))}"},
-        )
+        return err("INVALID_ROLE", f"Invalid role '{role}'. Must be one of: {', '.join(sorted(_VALID_ROLES))}", status=422)
 
     # Issue JWT
     now = int(time.time())
@@ -170,17 +162,14 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
         session = {}
 
     logger.info("login-session: issued token for tenant_id=%s", body.tenant_id)
-    return JSONResponse(
-        status_code=201,
-        content={
-            "token": token,
-            "token_type": "session",
-            "tenant_id": body.tenant_id.strip(),
-            "role": role,
-            "expires_in": _TOKEN_TTL_SECONDS,
-            "session": session,
-        },
-    )
+    return ok({
+        "token": token,
+        "token_type": "session",
+        "tenant_id": body.tenant_id.strip(),
+        "role": role,
+        "expires_in": _TOKEN_TTL_SECONDS,
+        "session": session,
+    }, status=201)
 
 
 @router.get(
@@ -228,15 +217,12 @@ async def get_me(
         except Exception:
             pass
 
-    return JSONResponse(
-        status_code=200,
-        content={
-            "tenant_id": caller_id,
-            "role": role,
-            "has_session": session is not None,
-            "session": session,
-        },
-    )
+    return ok({
+        "tenant_id": caller_id,
+        "role": role,
+        "has_session": session is not None,
+        "session": session,
+    })
 
 
 @router.post(
@@ -271,14 +257,11 @@ async def logout_session(
             revoked = False
 
     logger.info("logout-session: tenant=%s revoked=%s", caller_id, revoked)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "message": "Logged out",
-            "revoked": revoked,
-            "tenant_id": caller_id,
-        },
-    )
+    return ok({
+        "message": "Logged out",
+        "revoked": revoked,
+        "tenant_id": caller_id,
+    })
 
 
 @router.get(
@@ -301,10 +284,7 @@ async def get_sessions(
     except Exception:
         sessions = []
 
-    return JSONResponse(
-        status_code=200,
-        content={"sessions": sessions, "count": len(sessions)},
-    )
+    return ok({"sessions": sessions, "count": len(sessions)})
 
 
 @router.delete(
@@ -329,11 +309,8 @@ async def revoke_my_sessions(
         count = 0
 
     logger.info("revoke-all-sessions: tenant=%s count=%d", caller_id, count)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "message": "All sessions revoked",
-            "revoked_count": count,
-            "tenant_id": caller_id,
-        },
-    )
+    return ok({
+        "message": "All sessions revoked",
+        "revoked_count": count,
+        "tenant_id": caller_id,
+    })

@@ -4763,3 +4763,14 @@ Baseline metrics via health endpoint and alerting thresholds. No code changes.
 - `src/api/monitoring_middleware.py` — FIXED — relative import
 
 ### Tests: 31 new tests (test_phases_570_574.py). 264 total test files. Full suite: 6,884 passed, 482 failed (response-envelope format changes), 22 skipped.
+
+### Phase 585 — Booking Test Suite Repair — 2026-03-14
+
+17 test files updated with ~170 assertion changes:
+- `test_auth_router_contract.py`, `test_auth_logout_contract.py`, `test_session_contract.py` — token/session data under `["data"]`
+- `test_booking_date_range_contract.py`, `test_booking_list_router_contract.py`, `test_booking_flags_contract.py`, `test_booking_amendment_history_contract.py`, `test_booking_search_contract.py` — booking fields under `["data"]`
+- `test_booking_flow_e2e.py`, `test_booking_checkin_checkout.py`, `test_multi_tenant_e2e.py` — E2E patterns fixed
+- `test_api_error_standards_contract.py` — error format + mock chain corrected
+- `test_invite_flow.py`, `test_access_token_system.py` — reverted incorrect `["data"]` wrapping (non-migrated routers)
+
+### Tests: 7,380 passed, 0 failed, 22 skipped. 264 test files. 505 phase specs.

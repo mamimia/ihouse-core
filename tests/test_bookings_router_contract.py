@@ -84,13 +84,13 @@ class TestGetBooking200:
         db = _mock_db([_row()])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        assert resp.json()["booking_id"] == "bookingcom_res1"
+        assert resp.json()["data"]["booking_id"] == "bookingcom_res1"
 
     def test_200_all_fields_present(self) -> None:
         db = _mock_db([_row()])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        body = resp.json()
+        body = resp.json()["data"]
         for field in ("booking_id", "tenant_id", "source", "reservation_ref",
                       "property_id", "status", "check_in", "check_out",
                       "version", "created_at", "updated_at"):
@@ -100,19 +100,19 @@ class TestGetBooking200:
         db = _mock_db([_row(status="active")])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        assert resp.json()["status"] == "active"
+        assert resp.json()["data"]["status"] == "active"
 
     def test_200_status_canceled(self) -> None:
         db = _mock_db([_row(status="canceled")])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        assert resp.json()["status"] == "canceled"
+        assert resp.json()["data"]["status"] == "canceled"
 
     def test_200_check_in_check_out_present(self) -> None:
         db = _mock_db([_row(check_in="2026-11-01", check_out="2026-11-05")])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["check_in"] == "2026-11-01"
         assert body["check_out"] == "2026-11-05"
 
@@ -120,7 +120,7 @@ class TestGetBooking200:
         db = _mock_db([_row(check_in=None, check_out=None)])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        body = resp.json()
+        body = resp.json()["data"]
         assert body["check_in"] is None
         assert body["check_out"] is None
 
@@ -128,7 +128,7 @@ class TestGetBooking200:
         db = _mock_db([_row(version=3)])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        assert resp.json()["version"] == 3
+        assert resp.json()["data"]["version"] == 3
 
     def test_200_reads_booking_state_table(self) -> None:
         """Verifies the endpoint queries booking_state (Phase 160: also queries booking_flags)."""
@@ -154,13 +154,13 @@ class TestGetBooking404:
         db = _mock_db([])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/nonexistent")
-        assert resp.json()["code"] == "BOOKING_NOT_FOUND"
+        assert resp.json()["error"]["code"] == "BOOKING_NOT_FOUND"
 
     def test_404_body_includes_booking_id(self) -> None:
         db = _mock_db([])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res999")
-        assert resp.json()["booking_id"] == "bookingcom_res999"
+        assert resp.json()["error"]["booking_id"] == "bookingcom_res999"
 
     def test_404_cross_tenant_returns_404_not_403(self) -> None:
         """Tenant isolation: cross-tenant reads return 404, not 403."""
@@ -214,4 +214,4 @@ class TestGetBooking500:
         db.table.side_effect = RuntimeError("connection lost")
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/bookings/bookingcom_res1")
-        assert resp.json()["code"] == "INTERNAL_ERROR"
+        assert resp.json()["error"]["code"] == "INTERNAL_ERROR"

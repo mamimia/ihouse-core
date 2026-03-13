@@ -123,7 +123,7 @@ class TestGroupAGetBooking:
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get(f"/bookings/{BOOKING_ID}")
         assert r.status_code == 200
-        body = r.json()
+        body = r.json()["data"]
         assert body["booking_id"] == BOOKING_ID
         assert body["tenant_id"] == TENANT
 
@@ -131,7 +131,7 @@ class TestGroupAGetBooking:
         db = _make_db()
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get(f"/bookings/{BOOKING_ID}")
-        body = r.json()
+        body = r.json()["data"]
         for key in ("booking_id", "tenant_id", "source", "reservation_ref",
                     "property_id", "status", "check_in", "check_out", "version",
                     "created_at", "updated_at", "flags"):
@@ -141,7 +141,7 @@ class TestGroupAGetBooking:
         db = _make_db(flags_rows=[])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get(f"/bookings/{BOOKING_ID}")
-        assert r.json()["flags"] is None
+        assert r.json()["data"]["flags"] is None
 
     def test_a4_returns_404_for_unknown_booking(self):
         db = _make_db(booking_rows=[])
@@ -154,13 +154,13 @@ class TestGroupAGetBooking:
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get("/bookings/unknown_booking_xyz")
         body = r.json()
-        assert "code" in body or "error" in body or "detail" in body
+        assert "code" in body.get("error", {}) or "error" in body or "message" in body.get("error", {})
 
     def test_a6_returns_correct_status_field(self):
         db = _make_db(booking_rows=[_booking_row(status="canceled")])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get(f"/bookings/{BOOKING_ID}")
-        assert r.json()["status"] == "canceled"
+        assert r.json()["data"]["status"] == "canceled"
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +174,7 @@ class TestGroupBListBookings:
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get("/bookings")
         assert r.status_code == 200
-        body = r.json()
+        body = r.json()["data"]
         assert "bookings" in body
         assert "count" in body
 
@@ -182,7 +182,7 @@ class TestGroupBListBookings:
         db = _make_db()
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get("/bookings")
-        assert r.json()["limit"] == 50
+        assert r.json()["data"]["limit"] == 50
 
     def test_b3_custom_limit_respected(self):
         db = _make_db(booking_rows=[_booking_row()] * 5)
@@ -218,7 +218,7 @@ class TestGroupBListBookings:
         db = _make_db()
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get("/bookings?sort_by=check_in&sort_dir=asc")
-        body = r.json()
+        body = r.json()["data"]
         assert body["sort_by"] == "check_in"
         assert body["sort_dir"] == "asc"
 
@@ -226,7 +226,7 @@ class TestGroupBListBookings:
         db = _make_db(booking_rows=[])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get("/bookings")
-        body = r.json()
+        body = r.json()["data"]
         assert body["bookings"] == []
         assert body["count"] == 0
 
@@ -242,13 +242,13 @@ class TestGroupCAmendmentHistory:
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get(f"/bookings/{BOOKING_ID}/amendments")
         assert r.status_code == 200
-        assert "amendments" in r.json()
+        assert "amendments" in r.json()["data"]
 
     def test_c2_amendment_row_has_required_shape(self):
         db = _make_db(amendment_rows=[_amendment_row()])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get(f"/bookings/{BOOKING_ID}/amendments")
-        amend = r.json()["amendments"][0]
+        amend = r.json()["data"]["amendments"][0]
         for key in ("envelope_id", "booking_id", "event_type", "received_at"):
             assert key in amend, f"Missing key in amendment: {key}"
 
@@ -256,7 +256,7 @@ class TestGroupCAmendmentHistory:
         db = _make_db(amendment_rows=[])
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get(f"/bookings/{BOOKING_ID}/amendments")
-        body = r.json()
+        body = r.json()["data"]
         assert body["amendments"] == []
         assert body["count"] == 0
 
@@ -289,7 +289,7 @@ class TestGroupDPatchFlags:
                 f"/bookings/{BOOKING_ID}/flags",
                 json={"is_vip": False},
             )
-        assert "flags" in r.json()
+        assert "flags" in r.json()["data"]
 
     def test_d3_empty_body_returns_400(self):
         r = client.patch(f"/bookings/{BOOKING_ID}/flags", json={})

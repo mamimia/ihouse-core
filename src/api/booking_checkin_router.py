@@ -28,6 +28,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.envelope import ok, err
 
 logger = logging.getLogger(__name__)
 
@@ -144,35 +145,27 @@ async def checkin_booking(
 
         booking = _get_booking(db, booking_id, tenant_id)
         if not booking:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "BOOKING_NOT_FOUND", "booking_id": booking_id},
-            )
+            return err("BOOKING_NOT_FOUND", "Booking not found", status=404, booking_id=booking_id)
 
         current_status = (booking.get("status") or "").lower()
 
         # Already checked in — idempotent success
         if current_status == "checked_in":
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "already_checked_in",
-                    "booking_id": booking_id,
-                    "checked_in_at": now,
-                    "noop": True,
-                },
-            )
+            return ok({
+                "status": "already_checked_in",
+                "booking_id": booking_id,
+                "checked_in_at": now,
+                "noop": True,
+            })
 
         # Only 'active' bookings can be checked in
         if current_status != "active":
-            return JSONResponse(
-                status_code=409,
-                content={
-                    "error": "INVALID_STATE",
-                    "message": f"Cannot check in booking with status '{current_status}'. Must be 'active'.",
-                    "booking_id": booking_id,
-                    "current_status": current_status,
-                },
+            return err(
+                "INVALID_STATE",
+                f"Cannot check in booking with status '{current_status}'. Must be 'active'.",
+                status=409,
+                booking_id=booking_id,
+                current_status=current_status,
             )
 
         # Update booking_state
@@ -195,23 +188,17 @@ async def checkin_booking(
 
         logger.info("checkin: booking_id=%s tenant=%s → checked_in", booking_id, tenant_id)
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "checked_in",
-                "booking_id": booking_id,
-                "property_id": booking.get("property_id"),
-                "checked_in_at": now,
-                "noop": False,
-            },
-        )
+        return ok({
+            "status": "checked_in",
+            "booking_id": booking_id,
+            "property_id": booking.get("property_id"),
+            "checked_in_at": now,
+            "noop": False,
+        })
 
     except Exception as exc:
         logger.exception("POST /bookings/%s/checkin error: %s", booking_id, exc)
-        return JSONResponse(
-            status_code=500,
-            content={"error": "INTERNAL_ERROR", "message": "Check-in failed"},
-        )
+        return err("INTERNAL_ERROR", "Check-in failed", status=500)
 
 
 # ---------------------------------------------------------------------------
@@ -249,35 +236,27 @@ async def checkout_booking(
 
         booking = _get_booking(db, booking_id, tenant_id)
         if not booking:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "BOOKING_NOT_FOUND", "booking_id": booking_id},
-            )
+            return err("BOOKING_NOT_FOUND", "Booking not found", status=404, booking_id=booking_id)
 
         current_status = (booking.get("status") or "").lower()
 
         # Already checked out — idempotent success
         if current_status == "checked_out":
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "already_checked_out",
-                    "booking_id": booking_id,
-                    "checked_out_at": now,
-                    "noop": True,
-                },
-            )
+            return ok({
+                "status": "already_checked_out",
+                "booking_id": booking_id,
+                "checked_out_at": now,
+                "noop": True,
+            })
 
         # Only 'checked_in' or 'active' bookings can be checked out
         if current_status not in ("checked_in", "active"):
-            return JSONResponse(
-                status_code=409,
-                content={
-                    "error": "INVALID_STATE",
-                    "message": f"Cannot check out booking with status '{current_status}'. Must be 'checked_in' or 'active'.",
-                    "booking_id": booking_id,
-                    "current_status": current_status,
-                },
+            return err(
+                "INVALID_STATE",
+                f"Cannot check out booking with status '{current_status}'. Must be 'checked_in' or 'active'.",
+                status=409,
+                booking_id=booking_id,
+                current_status=current_status,
             )
 
         # Update booking_state
@@ -320,21 +299,15 @@ async def checkout_booking(
             booking_id, tenant_id, cleaning_task_count,
         )
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "checked_out",
-                "booking_id": booking_id,
-                "property_id": booking.get("property_id"),
-                "checked_out_at": now,
-                "cleaning_tasks_created": cleaning_task_count,
-                "noop": False,
-            },
-        )
+        return ok({
+            "status": "checked_out",
+            "booking_id": booking_id,
+            "property_id": booking.get("property_id"),
+            "checked_out_at": now,
+            "cleaning_tasks_created": cleaning_task_count,
+            "noop": False,
+        })
 
     except Exception as exc:
         logger.exception("POST /bookings/%s/checkout error: %s", booking_id, exc)
-        return JSONResponse(
-            status_code=500,
-            content={"error": "INTERNAL_ERROR", "message": "Check-out failed"},
-        )
+        return err("INTERNAL_ERROR", "Check-out failed", status=500)

@@ -354,7 +354,7 @@ class TestGroupCTenantIsolation:
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get("/bookings")
         assert r.status_code == 200
-        bookings = r.json()["bookings"]
+        bookings = r.json()["data"]["bookings"]
         # All returned bookings must belong to TENANT_A
         for b in bookings:
             assert b["tenant_id"] == TENANT_A
@@ -366,7 +366,7 @@ class TestGroupCTenantIsolation:
         with patch("api.bookings_router._get_supabase_client", return_value=db):
             r = client.get("/bookings/bk_a1")
         assert r.status_code == 200
-        assert r.json()["tenant_id"] == TENANT_A
+        assert r.json()["data"]["tenant_id"] == TENANT_A
 
     def test_c3_task_list_scoped_to_tenant(self):
         """GET /tasks returns tasks only for the caller's tenant."""

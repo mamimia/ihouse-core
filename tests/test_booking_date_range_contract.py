@@ -106,7 +106,7 @@ class TestDateRangeSuccess:
             resp = client.get("/bookings?check_in_from=2026-04-01")
 
         assert resp.status_code == 200
-        body = resp.json()
+        body = resp.json()["data"]
         assert "bookings" in body
         assert body["count"] == 2
 
@@ -119,7 +119,7 @@ class TestDateRangeSuccess:
             resp = client.get("/bookings?check_in_to=2026-04-30")
 
         assert resp.status_code == 200
-        assert resp.json()["count"] == 1
+        assert resp.json()["data"]["count"] == 1
 
     def test_check_in_from_and_to_both_returns_200(self):
         rows = [_booking(check_in="2026-04-05")]
@@ -130,7 +130,7 @@ class TestDateRangeSuccess:
             resp = client.get("/bookings?check_in_from=2026-04-01&check_in_to=2026-04-30")
 
         assert resp.status_code == 200
-        assert resp.json()["count"] == 1
+        assert resp.json()["data"]["count"] == 1
 
     def test_date_range_combined_with_status_returns_200(self):
         rows = [_booking(check_in="2026-04-05", status="active")]
@@ -141,7 +141,7 @@ class TestDateRangeSuccess:
             resp = client.get("/bookings?check_in_from=2026-04-01&status=active")
 
         assert resp.status_code == 200
-        assert resp.json()["bookings"][0]["status"] == "active"
+        assert resp.json()["data"]["bookings"][0]["status"] == "active"
 
     def test_empty_range_result_returns_200_not_404(self):
         mock_db, _ = _mock_db_list([])
@@ -151,8 +151,8 @@ class TestDateRangeSuccess:
             resp = client.get("/bookings?check_in_from=2030-01-01")
 
         assert resp.status_code == 200
-        assert resp.json()["count"] == 0
-        assert resp.json()["bookings"] == []
+        assert resp.json()["data"]["count"] == 0
+        assert resp.json()["data"]["bookings"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -181,8 +181,8 @@ class TestDateRangeValidation:
 
         assert resp.status_code == 400
         body = resp.json()
-        assert body["code"] == "VALIDATION_ERROR"
-        assert "check_in_from" in body.get("detail", "")
+        assert body["error"]["code"] == "VALIDATION_ERROR"
+        assert "check_in_from" in body.get("error", {}).get("message", "")
 
     @pytest.mark.parametrize("bad_date", [
         "2026-13-01",
@@ -200,8 +200,8 @@ class TestDateRangeValidation:
 
         assert resp.status_code == 400
         body = resp.json()
-        assert body["code"] == "VALIDATION_ERROR"
-        assert "check_in_to" in body.get("detail", "")
+        assert body["error"]["code"] == "VALIDATION_ERROR"
+        assert "check_in_to" in body.get("error", {}).get("message", "")
 
     @pytest.mark.parametrize("good_date", [
         "2026-01-01", "2026-12-31", "2026-04-30", "2025-02-28",
@@ -231,7 +231,7 @@ class TestCompoundFilters:
             resp = client.get("/bookings?property_id=prop_A&check_in_from=2026-04-01")
 
         assert resp.status_code == 200
-        assert resp.json()["bookings"][0]["property_id"] == "prop_A"
+        assert resp.json()["data"]["bookings"][0]["property_id"] == "prop_A"
 
     def test_all_four_filters_combined(self):
         rows = [_booking(property_id="prop_X", status="active", check_in="2026-04-15")]
@@ -245,7 +245,7 @@ class TestCompoundFilters:
             )
 
         assert resp.status_code == 200
-        bk = resp.json()["bookings"][0]
+        bk = resp.json()["data"]["bookings"][0]
         assert bk["property_id"] == "prop_X"
         assert bk["status"] == "active"
         assert bk["check_in"] == "2026-04-15"
@@ -259,7 +259,7 @@ class TestCompoundFilters:
             resp = client.get("/bookings?check_in_from=2026-04-01&limit=10")
 
         assert resp.status_code == 200
-        assert resp.json()["limit"] == 10
+        assert resp.json()["data"]["limit"] == 10
 
 
 # ---------------------------------------------------------------------------
@@ -324,9 +324,9 @@ class TestDateRange400Contract:
 
         body = resp.json()
         assert resp.status_code == 400
-        assert "code" in body
-        assert "detail" in body
-        assert body["code"] == "VALIDATION_ERROR"
+        assert "code" in body.get("error", {})
+        assert "message" in body.get("error", {})
+        assert body["error"]["code"] == "VALIDATION_ERROR"
 
     def test_to_error_body_has_code_and_detail(self):
         mock_db, _ = _mock_db_list([])
@@ -337,8 +337,8 @@ class TestDateRange400Contract:
 
         body = resp.json()
         assert resp.status_code == 400
-        assert body["code"] == "VALIDATION_ERROR"
-        assert "check_in_to" in body.get("detail", "")
+        assert body["error"]["code"] == "VALIDATION_ERROR"
+        assert "check_in_to" in body.get("error", {}).get("message", "")
 
 
 # ---------------------------------------------------------------------------
@@ -366,7 +366,7 @@ class TestPhase106Regression:
             resp = client.get("/bookings?status=canceled")
 
         assert resp.status_code == 200
-        assert resp.json()["bookings"][0]["status"] == "canceled"
+        assert resp.json()["data"]["bookings"][0]["status"] == "canceled"
 
     def test_invalid_status_still_returns_400(self):
         mock_db, _ = _mock_db_list([])
@@ -376,7 +376,7 @@ class TestPhase106Regression:
             resp = client.get("/bookings?status=unknown_status")
 
         assert resp.status_code == 400
-        assert resp.json()["code"] == "VALIDATION_ERROR"
+        assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
 
     def test_limit_clamping_still_works(self):
         mock_db, _ = _mock_db_list([])
@@ -385,4 +385,4 @@ class TestPhase106Regression:
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
             resp = client.get("/bookings?limit=999")
 
-        assert resp.json()["limit"] == 100
+        assert resp.json()["data"]["limit"] == 100

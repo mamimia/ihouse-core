@@ -316,7 +316,7 @@ class TestGroupF_ResponseShape:
         """F1: Response body includes sort_by field."""
         db = _mock_db([])
         c = _make_app()
-        body = _get(c, db, "/bookings?sort_by=check_in").json()
+        body = _get(c, db, "/bookings?sort_by=check_in").json()["data"]
         assert "sort_by" in body
         assert body["sort_by"] == "check_in"
 
@@ -324,7 +324,7 @@ class TestGroupF_ResponseShape:
         """F2: Response body includes sort_dir field."""
         db = _mock_db([])
         c = _make_app()
-        body = _get(c, db, "/bookings?sort_dir=asc").json()
+        body = _get(c, db, "/bookings?sort_dir=asc").json()["data"]
         assert "sort_dir" in body
         assert body["sort_dir"] == "asc"
 
@@ -332,21 +332,21 @@ class TestGroupF_ResponseShape:
         """F3: No sort_by → response.sort_by = 'updated_at'."""
         db = _mock_db([])
         c = _make_app()
-        body = _get(c, db, "/bookings").json()
+        body = _get(c, db, "/bookings").json()["data"]
         assert body["sort_by"] == "updated_at"
 
     def test_f4_default_sort_dir_in_response(self) -> None:
         """F4: No sort_dir → response.sort_dir = 'desc'."""
         db = _mock_db([])
         c = _make_app()
-        body = _get(c, db, "/bookings").json()
+        body = _get(c, db, "/bookings").json()["data"]
         assert body["sort_dir"] == "desc"
 
     def test_f5_existing_fields_still_present(self) -> None:
         """F5: Existing response fields (tenant_id, count, limit, bookings) still present."""
         db = _mock_db([])
         c = _make_app()
-        body = _get(c, db, "/bookings").json()
+        body = _get(c, db, "/bookings").json()["data"]
         assert {"tenant_id", "count", "limit", "bookings"}.issubset(body.keys())
 
 
