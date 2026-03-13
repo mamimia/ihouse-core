@@ -27,14 +27,15 @@ def client():
 
 def test_signup_returns_503_when_supabase_not_configured(client):
     """Signup returns 503 when SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing."""
-    with patch.dict("os.environ", {}, clear=True):
+    with patch.dict("os.environ", {"IHOUSE_ENVELOPE_DISABLED": "true"}, clear=True):
         resp = client.post("/auth/signup", json={
             "email": "test@example.com",
             "password": "Test1234!",
             "full_name": "Test User",
         })
     assert resp.status_code == 503
-    assert resp.json()["error"] == "SUPABASE_NOT_CONFIGURED"
+    body = resp.json()
+    assert body.get("error") == "SUPABASE_NOT_CONFIGURED" or body.get("error", {}).get("code") == "SUPABASE_NOT_CONFIGURED"
 
 
 def test_signup_success_returns_user_and_token(client):

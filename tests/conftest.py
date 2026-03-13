@@ -28,11 +28,13 @@ import pytest
 os.environ.setdefault("IHOUSE_DEV_MODE", "true")
 os.environ.setdefault("IHOUSE_RATE_LIMIT_RPM", "0")  # disable rate limiter in tests
 os.environ["IHOUSE_DRY_RUN"] = "false"  # force false — tests using dry-run must opt in via monkeypatch
+os.environ["IHOUSE_ENVELOPE_DISABLED"] = "true"  # Phase 570 — envelope middleware tested independently in test_phases_570_574
 
 # Env vars that MUST be cleaned between every test function.
 _SENSITIVE_VARS = [
     "IHOUSE_DEV_MODE",
     "IHOUSE_DRY_RUN",
+    "IHOUSE_ENVELOPE_DISABLED",
     "IHOUSE_LINE_SECRET",
     "OPENAI_API_KEY",
     "AIRBNB_API_KEY",

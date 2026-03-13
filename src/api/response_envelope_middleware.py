@@ -35,11 +35,17 @@ class ResponseEnvelopeMiddleware(BaseHTTPMiddleware):
       - Responses already containing { "ok": true/false }
       - Health check endpoint (/health)
       - OpenAPI/docs endpoints
+      - When IHOUSE_ENVELOPE_DISABLED=true (test environment)
     """
 
     SKIP_PATHS = frozenset({"/health", "/docs", "/openapi.json", "/redoc"})
 
     async def dispatch(self, request: Request, call_next):
+        # Allow tests to run against raw JSON — middleware is tested independently
+        import os
+        if os.getenv("IHOUSE_ENVELOPE_DISABLED", "").lower() in ("true", "1", "yes"):
+            return await call_next(request)
+
         start = time.monotonic()
         response = await call_next(request)
 
