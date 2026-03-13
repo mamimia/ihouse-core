@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 395 — Property Onboarding QuickStart + Marketing Pages (closed).
+Phase 396 — Property Admin Approval Dashboard (closed).
 
 ## Last Closed Phase
 
-Phase 395 — Property Onboarding QuickStart + Marketing Pages (closed).
+Phase 396 — Property Admin Approval Dashboard (closed).
 
 ## Current Objective
 
-Phase 395 closed. Property onboarding feature + 7 marketing pages integrated from external agent session. Security repairs applied (hardcoded credentials → env vars, TypeScript type fix). 35 frontend pages (22 protected + 13 public). 40 DB tables. Backend test suite: pre-existing infra failures, no new regressions. TypeScript 0 errors. Known gaps: 3 public token pages have no backend, role routing is non-functional (JWT has no role claim), checkin/checkout actions are client-only, 5 shared components are unused, admin property approval endpoints not yet built. Next session starts at Phase 396.
+Phase 396 closed. Property admin approval dashboard: 5 backend endpoints (list/detail/approve/reject/archive), admin frontend page with status filters and inline actions, 21 contract tests. State machine: pending → approved/rejected, approved → archived. All transitions audit-logged. Known gaps: property detail/edit page (Phase 397), property-to-booking-pipeline bridge (Phase 398). Next session continues at Phase 397.
 
 ## Key Invariants (Locked — Do Not Change)
 

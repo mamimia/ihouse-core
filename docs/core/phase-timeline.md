@@ -6350,3 +6350,26 @@ Property onboarding functionality and marketing pages. External agent session no
 
 TypeScript: 0 errors ✅. Backend: pre-existing infra failures, no new regressions. 35 pages (22 protected + 13 public). 40 DB tables. 35 migrations.
 
+---
+
+### Phase 396 — Property Admin Approval Dashboard
+
+Category: Admin / Property Management
+Depends on: Phase 395
+
+**Backend (property_admin_router.py):**
+- `GET /admin/properties` — list with status filters, search, pagination, status_summary
+- `GET /admin/properties/{id}` — detail with channel_map entries
+- `POST /admin/properties/{id}/approve` — pending → approved
+- `POST /admin/properties/{id}/reject` — pending → rejected
+- `POST /admin/properties/{id}/archive` — approved → archived
+- All mutations audit-logged to `admin_audit_log`
+
+**Frontend:**
+- `app/(app)/admin/properties/page.tsx` — status filter cards, property table, inline actions, toast
+
+**Tests:**
+- `test_property_admin.py`: 21/21 passed
+
+TypeScript: 0 errors ✅. Backend: 21/21 new tests passed. 36 pages. 82 API files.
+

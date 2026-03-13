@@ -4414,3 +4414,19 @@ Key files created:
 
 Repairs: hardcoded Supabase credentials → env vars, TypeScript conflictProperty type fix. 35 total pages after closure (22 protected + 13 public). 40 DB tables. TypeScript 0 errors. Backend test suite: pre-existing infra failures, no new regressions.
 
+---
+
+### Phase 396 — Property Admin Approval Dashboard
+
+Category: Admin / Property Management
+
+**New files:**
+- `src/api/property_admin_router.py` — 5 admin endpoints (list/detail/approve/reject/archive)
+- `tests/test_property_admin.py` — 21 contract tests
+- `ihouse-ui/app/(app)/admin/properties/page.tsx` — admin properties page
+
+**Modified:**
+- `src/main.py` — router registration
+
+Metrics: 21/21 tests passed. TypeScript 0 errors. 36 pages. 82 API files.
+

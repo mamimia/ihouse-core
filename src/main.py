@@ -380,6 +380,9 @@ app.include_router(email_router)
 from api.onboarding_router import router as onboarding_router  # noqa: E402  # Phase 214
 app.include_router(onboarding_router)
 
+from api.property_admin_router import router as property_admin_router  # noqa: E402  # Phase 396
+app.include_router(property_admin_router)
+
 from api.revenue_report_router import router as revenue_report_router  # noqa: E402  # Phase 215
 app.include_router(revenue_report_router)
 
