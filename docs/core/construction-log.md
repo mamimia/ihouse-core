@@ -4736,3 +4736,30 @@ Baseline metrics via health endpoint and alerting thresholds. No code changes.
 - `scheduled_job_log`, `guest_feedback`, `webhook_retry_queue`, `webhook_dlq`, `exchange_rates`, `notification_preferences`, `task_notes`
 
 ### Tests: 60 new tests across 6 test files. 257 total test files. 504 total phase specs.
+
+## Phases 565-584 — System Integrity & Production Readiness (20 build phases)
+
+### Block 1 (565-569): Error Handling & Frontend Resilience
+- `ihouse-ui/components/useApiCall.tsx` — NEW — useApiCall (GET+polling+retry) + useApiAction (mutations+toasts)
+- `ihouse-ui/app/(app)/error.tsx` — NEW — App Router error boundary with retry
+- `ihouse-ui/app/(app)/not-found.tsx` — NEW — 404 page
+- `ihouse-ui/lib/api.ts` — MODIFIED — auto-retry on 5xx/network, offline detection, 5 new typed methods
+
+### Block 2 (570-574): Response Envelope & Backend Consistency
+- `src/api/response_envelope_middleware.py` — NEW — global middleware wrapping ALL 92 routers in {ok,data,meta} envelope
+- `src/api/input_models.py` — NEW — 5 Pydantic models (BookingCreateRequest, TaskCreateRequest, PropertyCreateRequest, MaintenanceCreateRequest, BookingFlagsRequest)
+- `src/main.py` — MODIFIED — middleware + exception handlers wired
+
+### Block 3 (575-579): Data Validation & Input Guards
+- `ihouse-ui/components/FormField.tsx` — NEW — FormField component + useFormValidation hook
+- `ihouse-ui/lib/validation-rules.tsx` — NEW — booking/property/task/maintenance validation rules + cross-field date check
+- `ihouse-ui/components/useFilterParams.tsx` — NEW — URL searchParams persistence
+
+### Block 4 (580-584): Performance & Production Readiness
+- `ihouse-ui/lib/apiCache.ts` — NEW — stale-while-revalidate cache with per-endpoint TTL
+- `ihouse-ui/components/PageLoader.tsx` — NEW — 4 skeleton variants (cards/table/list/detail)
+- `ihouse-ui/components/Accessibility.tsx` — NEW — keyboard nav, focus trap, screen reader, skip link
+- `src/api/export_router.py` — FIXED — relative import breaking 37 test collections
+- `src/api/monitoring_middleware.py` — FIXED — relative import
+
+### Tests: 31 new tests (test_phases_570_574.py). 264 total test files. Full suite: 6,884 passed, 482 failed (response-envelope format changes), 22 skipped.

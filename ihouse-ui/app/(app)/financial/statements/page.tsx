@@ -492,6 +492,36 @@ export default function OwnerStatementPage() {
                             >
                                 ↓ PDF (text)
                             </button>
+                            {/* Phase 559 — Email statement to owner */}
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+                                        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
+                                        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+                                        if (token) headers['Authorization'] = `Bearer ${token}`;
+                                        const resp = await fetch(`${base}/owner-statement/${encodeURIComponent(data.property_id)}/email`, {
+                                            method: 'POST',
+                                            headers,
+                                            body: JSON.stringify({ month: data.month, management_fee_pct: mgmtFee !== '0' ? mgmtFee : undefined }),
+                                        });
+                                        if (resp.ok) alert('Statement emailed successfully!');
+                                        else alert('Failed to email statement');
+                                    } catch { alert('Email service unavailable'); }
+                                }}
+                                style={{
+                                    background: 'var(--color-primary)',
+                                    border: '1px solid var(--color-primary)',
+                                    borderRadius: 'var(--radius-md)',
+                                    color: '#fff',
+                                    fontSize: 'var(--text-xs)',
+                                    fontWeight: 600,
+                                    padding: '6px 14px',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                ✉ Email Statement
+                            </button>
                         </div>
                     </div>
 

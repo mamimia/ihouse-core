@@ -53,14 +53,35 @@ export function performClientLogout(redirectPath = '/login'): void {
 // Core fetch helper
 // ---------------------------------------------------------------------------
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function apiFetch<T>(path: string, init?: RequestInit, _retryCount = 0): Promise<T> {
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
         ...(init?.headers as Record<string, string>),
     };
     if (_token) headers["Authorization"] = `Bearer ${_token}`;
 
-    const resp = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+    let resp: Response;
+    try {
+        resp = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+    } catch (networkErr) {
+        // Phase 568: offline / network failure
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ihouse:offline'));
+        }
+        // Retry once on network error for GET requests
+        if (_retryCount === 0 && (!init?.method || init.method === 'GET')) {
+            await new Promise(r => setTimeout(r, 500));
+            return apiFetch<T>(path, init, 1);
+        }
+        throw new ApiError(0, "NETWORK_ERROR", { message: "Network unavailable" });
+    }
+
+    // Phase 568: retry once on 5xx for GET requests
+    if (resp.status >= 500 && _retryCount === 0 && (!init?.method || init.method === 'GET')) {
+        await new Promise(r => setTimeout(r, 500));
+        return apiFetch<T>(path, init, 1);
+    }
+
     if (!resp.ok) {
         const body = await resp.json().catch(() => ({}));
         // Phase 186: auto-logout on 401/403 (expired or invalid token)
@@ -641,6 +662,110 @@ export const api = {
 
     checkoutBooking: (bookingId: string): Promise<{ status: string; booking_id: string; checked_out_at: string; cleaning_tasks_created: number; noop: boolean }> =>
         apiFetch(`/bookings/${bookingId}/checkout`, { method: 'POST' }),
+
+    // Phase 510 — Guest Feedback
+    getGuestFeedback: (params?: { property_id?: string; limit?: number }): Promise<{ total: number; entries: unknown[] }> => {
+        const q = new URLSearchParams();
+        if (params?.property_id) q.set('property_id', params.property_id);
+        if (params?.limit) q.set('limit', String(params.limit));
+        return apiFetch(`/admin/guest-feedback${q.size ? '?' + q : ''}`);
+    },
+
+    // Phase 511 — Staff Performance
+    getStaffPerformance: (): Promise<{ workers: unknown[] }> =>
+        apiFetch('/admin/staff/performance'),
+
+    // Phase 512 — Task Templates
+    getTaskTemplates: (): Promise<{ templates: unknown[] }> =>
+        apiFetch('/admin/task-templates'),
+    createTaskTemplate: (body: { name: string; kind: string; description?: string }): Promise<unknown> =>
+        apiFetch('/admin/task-templates', { method: 'POST', body: JSON.stringify(body) }),
+    deleteTaskTemplate: (id: string): Promise<unknown> =>
+        apiFetch(`/admin/task-templates/${id}`, { method: 'DELETE' }),
+
+    // Phase 513 — Integrations
+    getIntegrations: (): Promise<{ properties: unknown[] }> =>
+        apiFetch('/admin/integrations'),
+    getIntegrationsSummary: (): Promise<{ enabled: number; disabled: number; stale: number; failed: number }> =>
+        apiFetch('/admin/integrations/summary'),
+
+    // Phase 514 — Rate Cards
+    getRateCards: (propertyId: string): Promise<{ rate_cards: unknown[] }> =>
+        apiFetch(`/properties/${propertyId}/rate-cards`),
+    getPricingSuggestion: (propertyId: string): Promise<{ suggestions: unknown[] }> =>
+        apiFetch(`/pricing/suggestion/${propertyId}`),
+
+    // Phase 545 — Export & Health
+    getHealthDetailed: (): Promise<{
+        uptime_seconds: number; process_start_utc: string;
+        request_counts: Record<string, number>;
+        error_counts: Record<string, { '4xx': number; '5xx': number }>;
+        latency: Record<string, { count: number; min_ms: number | null; max_ms: number | null; avg_ms: number | null; p95_ms: number | null }>;
+    }> => apiFetch('/health/detailed'),
+
+    getExportTypes: (): Promise<{ types: { id: string; label: string; description: string }[] }> =>
+        apiFetch('/export/types'),
+
+    exportCSV: (exportType: string, params?: { property_id?: string; date_from?: string; date_to?: string }): Promise<Blob> => {
+        const q = new URLSearchParams();
+        if (params?.property_id) q.set('property_id', params.property_id);
+        if (params?.date_from) q.set('date_from', params.date_from);
+        if (params?.date_to) q.set('date_to', params.date_to);
+        const headers: Record<string, string> = {};
+        if (_token) headers['Authorization'] = `Bearer ${_token}`;
+        return fetch(`${BASE_URL}/export/csv/${exportType}${q.size ? '?' + q : ''}`, { headers })
+            .then(r => r.blob());
+    },
+
+    // Phase 546 — Ops & Messaging
+    getTodaysArrivals: (): Promise<{ arrivals: unknown[] }> =>
+        apiFetch('/operations/arrivals'),
+
+    getTodaysDepartures: (): Promise<{ departures: unknown[] }> =>
+        apiFetch('/operations/departures'),
+
+    getOperationsTodayFull: (): Promise<{
+        arrivals_count: number; departures_count: number;
+        active_tasks_count: number; sla_breaches_count: number;
+        critical_pending_count: number;
+    }> => apiFetch('/operations/today'),
+
+    getGuestConversations: (): Promise<{ conversations: unknown[] }> =>
+        apiFetch('/guest-messages/conversations'),
+
+    getGuestMessages: (bookingRef: string): Promise<{ messages: unknown[] }> =>
+        apiFetch(`/guest-messages/${encodeURIComponent(bookingRef)}`),
+
+    getGuestReplySuggestion: (bookingRef: string): Promise<{ suggestion: string }> =>
+        apiFetch(`/guest-messages/${encodeURIComponent(bookingRef)}/suggest`, { method: 'POST' }),
+
+    getNotificationHistory: (params?: { limit?: number }): Promise<{ notifications: unknown[] }> => {
+        const q = new URLSearchParams();
+        if (params?.limit) q.set('limit', String(params.limit));
+        return apiFetch(`/notifications/history${q.size ? '?' + q : ''}`);
+    },
+
+    // Phase 547 — Settings & Session
+    getSessionInfo: (): Promise<{ tenant_id: string; role: string; email?: string }> =>
+        apiFetch('/auth/session'),
+
+    updatePassword: (currentPassword: string, newPassword: string): Promise<{ status: string }> =>
+        apiFetch('/auth/password', {
+            method: 'PUT',
+            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+        }),
+
+    getSchedulerStatus: (): Promise<{ total_jobs: number; jobs: Record<string, { description: string; interval_hours: number }> }> =>
+        apiFetch('/admin/scheduler/status'),
+
+    triggerJob: (jobName: string): Promise<{ status: string; job: string }> =>
+        apiFetch(`/admin/scheduler/trigger/${encodeURIComponent(jobName)}`, { method: 'POST' }),
+
+    // Phase 547 — Analytics
+    getAnalyticsSummary: (period?: string): Promise<unknown> => {
+        const q = period ? `?period=${period}` : '';
+        return apiFetch(`/analytics/summary${q}`);
+    },
 };
 
 // Phase 157 — Worker task types
@@ -890,4 +1015,64 @@ export interface MorningBriefingResponse {
     };
 }
 
+// ---------------------------------------------------------------------------
+// Phase 569 — Missing API methods (eliminate last (api as any) casts)
+// ---------------------------------------------------------------------------
 
+// Conflicts
+export interface ConflictItem {
+    conflict_id: string;
+    booking_a_id: string;
+    booking_b_id: string;
+    property_id: string;
+    overlap_start: string;
+    overlap_end: string;
+    status: string;
+    resolved_by?: string;
+    created_at: string;
+}
+
+// Maintenance  
+export interface MaintenanceRequestItem {
+    id: string;
+    property_id: string;
+    title: string;
+    description: string;
+    priority: string;
+    status: string;
+    assigned_to?: string;
+    created_at: string;
+    resolved_at?: string;
+}
+
+// Extend the api object with missing methods
+Object.assign(api, {
+    // Phase 569 — Conflicts
+    getConflicts: (): Promise<{ conflicts: ConflictItem[] }> =>
+        apiFetch('/conflicts'),
+
+    resolveConflict: (conflictId: string, resolution: string): Promise<unknown> =>
+        apiFetch(`/conflicts/${conflictId}/resolve`, {
+            method: 'POST',
+            body: JSON.stringify({ resolution }),
+        }),
+
+    // Phase 569 — Exchange rates / Currencies
+    getExchangeRates: (): Promise<{ rates: Record<string, number>; base: string }> =>
+        apiFetch('/currencies/rates'),
+
+    // Phase 569 — Maintenance
+    getMaintenanceRequests: (): Promise<{ requests: MaintenanceRequestItem[] }> =>
+        apiFetch('/maintenance'),
+
+    createMaintenanceRequest: (data: {
+        property_id: string;
+        title: string;
+        description: string;
+        priority: string;
+    }): Promise<MaintenanceRequestItem> =>
+        apiFetch('/maintenance', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+});

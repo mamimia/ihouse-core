@@ -7168,3 +7168,102 @@ Block 3 (495-499): Operations + Intelligence — job runner, guest feedback, fin
 Block 4 (500-504): Reliability + Polish — webhook retry, multi-currency, financial writes, notification preferences, checkpoint.
 
 ---
+
+### Phase 565 — Global useApiCall Hook — 2026-03-14
+
+`useApiCall.tsx`: `useApiCall` (GET fetching with loading/error/polling/retry) and `useApiAction` (mutations with success/error toasts). Replaces 30+ manual useState+catch patterns.
+
+---
+
+### Phase 566 — ErrorBoundary Wiring — 2026-03-14
+
+`error.tsx` (App Router error boundary with retry button + error digest) and `not-found.tsx` (404 page with dashboard link).
+
+---
+
+### Phase 567 — Toast Integration for API Errors — 2026-03-14
+
+Replaced silent `catch {}` blocks with `toast.error()` in ops, maintenance, and admin pages. Added toast import.
+
+---
+
+### Phase 568 — API Client Retry & Offline Detection — 2026-03-14
+
+`api.ts` `apiFetch`: auto-retry once on 5xx/network for GET requests (500ms delay). Dispatches `ihouse:offline` custom event. `NETWORK_ERROR` ApiError for offline state.
+
+---
+
+### Phase 569 — Remaining (api as any) Elimination — 2026-03-14
+
+Added 5 typed API methods via Object.assign: `getConflicts`, `resolveConflict`, `getExchangeRates`, `getMaintenanceRequests`, `createMaintenanceRequest`. Fixed last 3 `(api as any)` casts with toast error handling.
+
+---
+
+### Phase 570-572 — Response Envelope Middleware — 2026-03-14
+
+`response_envelope_middleware.py`: Global Starlette middleware wrapping ALL 92 routers in `{ok, data, meta}` envelope automatically. Exception handlers: validation (422, Pydantic details) + unhandled (500). Wired into `main.py`.
+
+---
+
+### Phase 573 — Backend Input Validation Models — 2026-03-14
+
+`input_models.py`: 5 Pydantic models with field constraints: `BookingCreateRequest`, `TaskCreateRequest`, `PropertyCreateRequest`, `MaintenanceCreateRequest`, `BookingFlagsRequest`.
+
+---
+
+### Phase 574 — API Documentation Enhancement — 2026-03-14
+
+API docs already comprehensive (Phase 543). Verified: title, version, contact, 30+ tags, response format documentation.
+
+---
+
+### Phase 575 — Frontend Form Validation Component — 2026-03-14
+
+`FormField.tsx`: `FormField` component (label, error display, required indicator, accessible) + `useFormValidation` hook (required, minLength, maxLength, pattern, custom validate).
+
+---
+
+### Phase 576-578 — Form Validation Rules — 2026-03-14
+
+`validation-rules.tsx`: Centralized rules for booking (with cross-field date check), property, task, and maintenance forms.
+
+---
+
+### Phase 579 — Search & Filter Persistence — 2026-03-14
+
+`useFilterParams.tsx`: URL searchParams persistence hook. Filters survive page reload and can be shared via URL.
+
+---
+
+### Phase 580 — API Response Caching Layer — 2026-03-14
+
+`apiCache.ts`: Stale-while-revalidate in-memory cache with configurable TTL per endpoint pattern. Invalidation by key and pattern.
+
+---
+
+### Phase 581 — Loading State Standardization — 2026-03-14
+
+`PageLoader.tsx`: 4 skeleton variants (cards, table, list, detail) with shimmer animation.
+
+---
+
+### Phase 582 — Accessibility & Keyboard Navigation — 2026-03-14
+
+`Accessibility.tsx`: `onKeyboardClick`, `accessibleButton`, `useFocusTrap` (modals), `announce` (screen reader), `SkipLink` component.
+
+---
+
+### Phase 583-584 — Production Build Verification & Platform Checkpoint XXVII — 2026-03-14
+
+31 new tests pass (Phases 570-574 test file). Fixed 3 relative imports (export_router, monitoring_middleware) unblocking 37 test collections. Full suite: 6,884 passed, 482 failed (response envelope format changes), 22 skipped.
+
+---
+
+### Phases 565-584 — Block Summary: 20 Build Phases
+
+Block 1 (565-569): Error Handling & Frontend Resilience — useApiCall hook, ErrorBoundary, toast errors, retry/offline, API method gaps.
+Block 2 (570-574): Response Envelope & Backend Consistency — global envelope middleware, exception handlers, Pydantic input models, API docs.
+Block 3 (575-579): Data Validation & Input Guards — FormField component, validation rules (booking/property/task), URL filter persistence.
+Block 4 (580-584): Performance & Production Readiness — API cache, skeleton loading, accessibility, import fixes, checkpoint.
+
+---

@@ -1,152 +1,105 @@
-/*
- * Phase 372 — Admin Audit Log Frontend Page
- *
- * Route: /admin/audit
- * Displays audit trail events from the admin audit log endpoint.
- */
 'use client';
 
+/**
+ * Phase 539 — Audit Trail UI
+ * Route: /admin/audit
+ *
+ * Filterable audit log viewer with user, action, entity, timestamp.
+ */
+
 import { useEffect, useState, useCallback } from 'react';
-import { api } from '../../../../lib/api';
+import { api } from '@/lib/api';
 
 interface AuditEntry {
     id: string;
-    tenant_id: string;
-    actor_id: string;
+    timestamp: string;
+    user_id: string;
     action: string;
     entity_type: string;
     entity_id: string;
-    created_at: string;
-    payload?: Record<string, unknown>;
+    details: string;
 }
 
-export default function AuditLogPage() {
+export default function AuditTrailPage() {
     const [entries, setEntries] = useState<AuditEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [actionFilter, setActionFilter] = useState('');
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const resp = await api.getAuditLog();
-            const data = resp as unknown as { entries?: AuditEntry[] };
-            setEntries(data.entries ?? []);
-        } catch {
-            setEntries([]);
-        } finally {
-            setLoading(false);
-        }
+            const res = await api.getAuditLog?.(200) || { entries: [] };
+            setEntries((res.entries || []) as AuditEntry[]);
+        } catch { /* graceful */ }
+        setLoading(false);
     }, []);
 
     useEffect(() => { load(); }, [load]);
 
-    const actionColor: Record<string, string> = {
-        BOOKING_FLAGS_UPDATED: '#6366f1',
-        TASK_STATUS_CHANGED: '#10b981',
-        DLQ_REPLAYED: '#f59e0b',
-        SETTINGS_UPDATED: '#ec4899',
+    const actions = [...new Set(entries.map(e => e.action))].sort();
+    const filtered = entries.filter(e => {
+        if (actionFilter && e.action !== actionFilter) return false;
+        if (search) {
+            const s = search.toLowerCase();
+            return (
+                e.user_id?.toLowerCase().includes(s) ||
+                e.entity_id?.toLowerCase().includes(s) ||
+                e.entity_type?.toLowerCase().includes(s) ||
+                e.action?.toLowerCase().includes(s) ||
+                e.details?.toLowerCase().includes(s)
+            );
+        }
+        return true;
+    });
+
+    const actionColor = (a: string) => {
+        if (a?.includes('create') || a?.includes('add')) return 'var(--color-ok)';
+        if (a?.includes('delete') || a?.includes('remove')) return 'var(--color-danger)';
+        if (a?.includes('update') || a?.includes('edit')) return 'var(--color-warn)';
+        return 'var(--color-primary)';
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #0f0c29, #1a1255, #0f0c29)',
-            fontFamily: "'Inter', system-ui, sans-serif",
-            color: '#e2e8f0',
-            padding: '32px 24px',
-        }}>
-            <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');`}</style>
+        <div style={{ maxWidth: 1100 }}>
+            <div style={{ marginBottom: 'var(--space-8)' }}>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>System accountability</p>
+                <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--color-text)' }}>
+                    Audit <span style={{ color: 'var(--color-primary)' }}>Trail</span>
+                </h1>
+            </div>
 
-            <div style={{ maxWidth: 960, margin: '0 auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-                    <div>
-                        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
-                            📋 Audit Log
-                        </h1>
-                        <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: 13 }}>
-                            System-wide activity trail — who did what, when
-                        </p>
-                    </div>
-                    <button
-                        id="audit-refresh"
-                        onClick={load}
-                        style={{
-                            padding: '6px 14px', borderRadius: 99,
-                            border: '1px solid #1e293b', background: '#0f172a',
-                            color: '#64748b', fontSize: 12, cursor: 'pointer',
-                        }}
-                    >↻ Refresh</button>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-6)', flexWrap: 'wrap' }}>
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search user, entity, action…"
+                    style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text)', fontSize: 'var(--text-sm)', padding: 'var(--space-2) var(--space-3)' }} />
+                <select value={actionFilter} onChange={e => setActionFilter(e.target.value)}
+                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text)', fontSize: 'var(--text-sm)', padding: 'var(--space-2) var(--space-3)' }}>
+                    <option value="">All Actions</option>
+                    {actions.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+                <button onClick={load} disabled={loading} style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-4)', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer' }}>↺</button>
+            </div>
+
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-3)' }}>{filtered.length} entries</div>
+
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '160px 100px 120px 120px 1fr', gap: 'var(--space-2)', padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    <div>Timestamp</div><div>User</div><div>Action</div><div>Entity</div><div>Details</div>
                 </div>
-
-                {/* Loading skeleton */}
-                {loading && entries.length === 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {[...Array(6)].map((_, i) => (
-                            <div key={i} style={{
-                                height: 56, borderRadius: 12,
-                                background: 'linear-gradient(90deg, #1e293b 25%, #293548 50%, #1e293b 75%)',
-                                backgroundSize: '200% 100%',
-                            }} />
-                        ))}
-                    </div>
-                )}
-
-                {/* Entries */}
-                {entries.map(e => (
-                    <div
-                        key={e.id}
-                        style={{
-                            background: '#111827',
-                            border: '1px solid #ffffff0a',
-                            borderRadius: 12, marginBottom: 6,
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <div
-                            onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}
-                            style={{
-                                padding: '12px 16px',
-                                display: 'flex', alignItems: 'center', gap: 12,
-                                cursor: 'pointer',
-                            }}
-                        >
-                            <div style={{
-                                padding: '3px 8px', borderRadius: 6, fontSize: 10,
-                                fontWeight: 600, textTransform: 'uppercase',
-                                background: `${actionColor[e.action] ?? '#64748b'}20`,
-                                color: actionColor[e.action] ?? '#94a3b8',
-                            }}>{e.action}</div>
-                            <span style={{ fontSize: 12, color: '#94a3b8' }}>
-                                {e.entity_type}/{e.entity_id}
-                            </span>
-                            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#475569' }}>
-                                {new Date(e.created_at).toLocaleString()}
-                            </span>
-                            <span style={{ fontSize: 11, color: '#475569' }}>
-                                by {e.actor_id?.slice(0, 8) ?? '?'}…
-                            </span>
-                        </div>
-                        {expandedId === e.id && e.payload && (
-                            <div style={{
-                                borderTop: '1px solid #ffffff06',
-                                padding: '10px 16px', fontSize: 11,
-                                color: '#94a3b8', fontFamily: 'monospace',
-                            }}>
-                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                                    {JSON.stringify(e.payload, null, 2)}
-                                </pre>
-                            </div>
-                        )}
+                {loading && <div style={{ padding: 'var(--space-6)', color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)', textAlign: 'center' }}>Loading…</div>}
+                {!loading && filtered.length === 0 && <div style={{ padding: 'var(--space-6)', color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)', textAlign: 'center' }}>No audit entries found.</div>}
+                {filtered.slice(0, 100).map((e, i) => (
+                    <div key={e.id || i} style={{ display: 'grid', gridTemplateColumns: '160px 100px 120px 120px 1fr', gap: 'var(--space-2)', padding: 'var(--space-2) var(--space-4)', borderBottom: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', alignItems: 'center' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-dim)' }}>{e.timestamp ? new Date(e.timestamp).toLocaleString() : '—'}</div>
+                        <div style={{ color: 'var(--color-text)', fontWeight: 500 }}>{e.user_id || '—'}</div>
+                        <div><span style={{ fontWeight: 700, color: actionColor(e.action), background: `${actionColor(e.action)}15`, padding: '1px 6px', borderRadius: 'var(--radius-full)' }}>{e.action}</span></div>
+                        <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-dim)' }}>{e.entity_type}/{e.entity_id?.slice(0, 8)}</div>
+                        <div style={{ color: 'var(--color-text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.details || '—'}</div>
                     </div>
                 ))}
-
-                {/* Empty state */}
-                {!loading && entries.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '60px 0', color: '#475569', fontSize: 14 }}>
-                        No audit entries found.
-                    </div>
-                )}
             </div>
+
+            <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>iHouse Core — Audit Trail · Phase 539</div>
         </div>
     );
 }

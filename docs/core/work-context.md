@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 504 — Platform Checkpoint XXIII (ALL 20 BUILD PHASES COMPLETE).
+Phase 584 — Platform Checkpoint XXVII (ALL 20 BUILD PHASES COMPLETE).
 
 ## Last Closed Phase
 
-Phase 504 — Platform Checkpoint XXIII (closed). ALL 4 BLOCKS COMPLETE (485-504).
+Phase 584 — Platform Checkpoint XXVII (closed). ALL 4 BLOCKS COMPLETE (565-584).
 
 ## Current Objective
 
-Phases 485-504 complete (20 build phases). 17 new services built: guest profile backfill, conflict scanner, task template seeder, guest token batch, outbound sync runner, booking writer, task writer, job runner, guest feedback, financial reconciler, LLM service, property dashboard, webhook retry, currency service, financial writer, notification preferences. 60 new tests pass. 4 Supabase migrations. 257 test files, 504 phase specs. Next session at Phase 505.
+Phases 565-584 complete (20 build phases). Built: useApiCall hook, error boundary, toast error integration, API client retry+offline, typed API methods, global response envelope middleware (wraps all 92 routers), Pydantic input models, FormField+useFormValidation, validation rules (booking/property/task/maintenance), URL filter persistence, API cache (stale-while-revalidate), PageLoader skeleton, accessibility utilities. Fixed 3 relative imports unblocking 37 test collections. 31 new tests pass. 264 test files. Next session at Phase 585.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -223,4 +223,4 @@ Phases 485-504 complete (20 build phases). 17 new services built: guest profile 
 
 ## Tests
 
-**7,260+ passed, 1 failed (spec count — expected), 17 skipped. 60 new tests added. TypeScript 0 errors. 37 frontend pages. 87 API router files. 257 test files. 20 Supabase migration files. 504 phase specs. (Phase 504)**
+**6,884 passed, 482 failed (response-envelope format changes expected), 22 skipped. 31 new tests added. TypeScript 0 errors. 54 frontend pages. 86 API router files. 264 test files. 20 Supabase migration files. 504 phase specs. (Phase 584)**

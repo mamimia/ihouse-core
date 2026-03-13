@@ -78,32 +78,35 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 _DESCRIPTION = """
 ## iHouse Core — Hospitality Operations API
 
-Canonical event pipeline for property management.
-All OTA provider webhooks enter the system through this API,
-passing through signature verification, JWT auth, rate limiting,
-and payload validation before being written to the event log.
+Full-stack property management and operations platform.
 
-### Request Flow
+### Core Capabilities
 
-```
-POST /webhooks/{provider}
-  → HMAC signature verification   (403)
-  → JWT auth (tenant_id from sub) (403)
-  → Per-tenant rate limiting      (429 + Retry-After)
-  → Payload validation            (400)
-  → Canonical event pipeline      (200 + idempotency_key)
-```
+| Area | Description |
+|------|-------------|
+| **Webhooks** | OTA ingestion (Booking.com, Expedia, Airbnb, Agoda, Trip.com) |
+| **Bookings** | State management, conflict resolution, calendar views |
+| **Financial** | Revenue extraction, reconciliation, owner statements, cashflow |
+| **Tasks** | Auto-generation, SLA enforcement, worker assignment |
+| **Guests** | Portal, messaging copilot, feedback collection |
+| **Operations** | Pre-arrival scan, check-in/out readiness, daily ops |
+| **Export** | CSV downloads for bookings, financials, feedback, audit |
+| **Monitoring** | Request metrics, latency tracking, health dashboard |
 
 ### Authentication
 
-All webhook endpoints require a valid **Bearer JWT** token.
+All endpoints require a valid **Bearer JWT** token (except `/health`).
 The `sub` claim is used as `tenant_id`.
-In development mode (`IHOUSE_JWT_SECRET` not set), auth is bypassed.
 
-### Supported Providers
+### Response Format (Phase 542)
 
-`bookingcom` · `expedia` · `airbnb` · `agoda` · `tripcom`
+Standardized envelope: `{"ok": true/false, "data": ..., "error": ..., "meta": ...}`
+
+### API Version
+
+v1.0 — Phase 543
 """
+
 
 _TAGS = [
     {"name": "ops", "description": "Operational endpoints (health, status). No authentication required."},
@@ -184,6 +187,19 @@ app.add_middleware(
 from middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
 
 app.add_middleware(SecurityHeadersMiddleware)
+
+# ---------------------------------------------------------------------------
+# Phase 570-572 — Response Envelope Middleware
+# ---------------------------------------------------------------------------
+
+from api.response_envelope_middleware import (  # noqa: E402
+    ResponseEnvelopeMiddleware,
+    register_exception_handlers,
+)
+
+app.add_middleware(ResponseEnvelopeMiddleware)
+register_exception_handlers(app)
+
 # Routers
 # ---------------------------------------------------------------------------
 
@@ -434,6 +450,30 @@ app.include_router(invite_router)
 
 from api.onboard_token_router import router as onboard_token_router  # noqa: E402  # Phase 402
 app.include_router(onboard_token_router)
+
+from api.property_dashboard_router import router as property_dashboard_api_router  # noqa: E402  # Phase 505
+app.include_router(property_dashboard_api_router)
+
+from api.financial_writer_router import router as financial_writer_router  # noqa: E402  # Phase 506
+app.include_router(financial_writer_router)
+
+from api.currency_router import router as currency_router  # noqa: E402  # Phase 507
+app.include_router(currency_router)
+
+from api.webhook_retry_router import router as webhook_retry_router  # noqa: E402  # Phase 508
+app.include_router(webhook_retry_router)
+
+from api.notification_pref_router import router as notification_pref_router  # noqa: E402  # Phase 509
+app.include_router(notification_pref_router)
+
+from api.job_runner_router import router as job_runner_router  # noqa: E402  # Phase 516
+app.include_router(job_runner_router)
+
+from api.export_router import router as export_router  # noqa: E402  # Phase 535
+app.include_router(export_router)
+
+from api.monitoring_middleware import MonitoringMiddleware  # noqa: E402  # Phase 537
+app.add_middleware(MonitoringMiddleware)
 
 
 # ---------------------------------------------------------------------------

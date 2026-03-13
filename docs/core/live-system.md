@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 464 — Full Closing Audit (2026-03-13)**
+**Last updated: Phase 520 — Live System Document Sync (2026-03-14)**
 
 ## Core Architecture
 
@@ -505,6 +505,86 @@ All **14 providers** implemented at full parity:
 | `POST /admin/properties/{id}/reject` | Reject property (pending → rejected) | 396 |
 | `POST /admin/properties/{id}/archive` | Archive property (approved → archived) | 396 |
 | `PATCH /admin/properties/{id}` | Update mutable property fields | 397 |
+
+### Property Dashboard (Phase 505)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/property-dashboard/{property_id}` | Full property dashboard: occupancy, revenue, tasks, upcoming, feedback | 505 |
+| `GET /admin/property-dashboard-overview` | Portfolio-level overview across all properties | 505 |
+
+### Financial Writer (Phase 506)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /admin/financial/payment` | Record manual payment or financial adjustment | 506 |
+| `POST /admin/financial/payout` | Generate owner payout record | 506 |
+
+### Currency Exchange (Phase 507)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/exchange-rates` | Get current exchange rates (live or fallback) | 507 |
+| `POST /admin/exchange-rates/refresh` | Force refresh from live API and cache | 507 |
+| `GET /admin/exchange-rates/convert` | Convert amount between currencies | 507 |
+
+### Webhook Retry (Phase 508)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/webhook-retry/queue` | List pending retry queue entries | 508 |
+| `POST /admin/webhook-retry/process` | Process pending retries (dry-run supported) | 508 |
+| `GET /admin/webhook-retry/dlq` | List webhook dead-letter queue entries | 508 |
+
+### Notification Preferences (Phase 509)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/notification-preferences/types` | List available notification types | 509 |
+| `GET /admin/notification-preferences/{user_id}` | Get user notification preferences | 509 |
+| `PUT /admin/notification-preferences/{user_id}` | Update user notification preferences | 509 |
+
+### Job Runner Management (Phase 516)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/jobs/status` | List all registered scheduled jobs | 516 |
+| `POST /admin/jobs/trigger` | Trigger job execution (specific jobs, force, dry-run) | 516 |
+| `GET /admin/jobs/history` | View recent job execution history | 516 |
+
+## Frontend Pages (Phase 510-514, 521-523)
+
+| Route | Description | Phase |
+|-------|-------------|-------|
+| `/admin/feedback` | Guest Feedback Dashboard — NPS, ratings, comments | 510 |
+| `/admin/staff` | Staff Performance — SLA compliance, ACK times, worker metrics | 511 |
+| `/admin/templates` | Task Templates — CRUD for housekeeping/maintenance | 512 |
+| `/admin/integrations` | Integration Management — OTA channel health per property | 513 |
+| `/admin/pricing` | Rate Cards & Dynamic Pricing — rate card CRUD + suggestions | 514 |
+| `/admin/bulk` | Bulk Operations — bulk cancel/assign/sync | 521 |
+| `/admin/webhooks` | Webhook Event Log — webhook event browser | 521 |
+| `/admin/portfolio` | Portfolio Overview — cross-property view | 522 |
+| `/admin/conflicts` | Conflict Dashboard — booking overlap management | 522 |
+| `/admin/jobs` | Scheduled Jobs — status and history viewer | 523 |
+| `/admin/currencies` | Exchange Rates — currency rate viewer | 523 |
+
+## Services Layer (Phases 485-504)
+
+Services added between Phases 485-504 that provide headless business logic:
+
+| Service | File | Description | Phase |
+|---------|------|-------------|-------|
+| Booking Writer | `services/booking_writer.py` | Manual booking create/cancel/amend | 493 |
+| Task Writer Frontend | `services/task_writer_frontend.py` | Frontend task CRUD operations | 494 |
+| Job Runner | `services/job_runner.py` | Central scheduled job executor | 495 |
+| Guest Feedback | `services/guest_feedback.py` | Guest feedback collection + aggregation | 496 |
+| Financial Reconciler | `services/financial_reconciler.py` | Booking↔financial fact reconciliation | 497 |
+| LLM Service | `services/llm_service.py` | Unified LLM interface with template fallback | 498 |
+| Property Dashboard | `services/property_dashboard.py` | Cross-table dashboard aggregation | 499 |
+| Webhook Retry | `services/webhook_retry.py` | Exponential backoff retry for failed webhooks | 500 |
+| Currency Service | `services/currency_service.py` | Multi-currency exchange rates + conversion | 501 |
+| Financial Writer | `services/financial_writer.py` | Manual payment recording + payout generation | 502 |
+| Notification Preferences | `services/notification_preferences.py` | Per-user notification pref center | 503 |
 
 ## Future Evolution
 

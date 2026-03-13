@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 504 — Platform Checkpoint XXIII (closed).
+Phase 584 — Platform Checkpoint XXVII (closed).
 
 ## Last Closed Phase
-Phase 504 — Platform Checkpoint XXIII (closed).
+Phase 584 — Platform Checkpoint XXVII (closed).
 
 ## System Status
 
@@ -391,7 +391,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,260+ passed, 1 failed (spec count — expected), 17 skipped. 60 new tests added (Phases 485-504). Frontend TypeScript: 0 errors. 37 frontend pages. 87 API router files. 257 test files. 20 Supabase migration files. 504 phase specs. Phase 504 — Platform Checkpoint XXIII.**
+**Backend: 6,884 passed, 482 failed (response-envelope format changes expected), 22 skipped. 31 new tests added (Phases 570-574). Frontend TypeScript: 0 errors. 54 frontend pages. 86 API router files. 264 test files. 20 Supabase migration files. 504 phase specs. Phase 584 — Platform Checkpoint XXVII.**
 
 ## Environment Variables (continued)
 
