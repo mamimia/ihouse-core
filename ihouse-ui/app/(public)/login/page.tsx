@@ -2,6 +2,7 @@
 
 /**
  * Phase 378 — Login Page (Platform Threshold)
+ * Phase 397 — JWT Role Claim + Role Selector
  * Route: /login
  *
  * The deliberate boundary between public and protected surfaces.
@@ -17,6 +18,7 @@ import { getRoleRoute } from '../../../lib/roleRoute';
 export default function LoginPage() {
     const [tenantId, setTenantId] = useState('');
     const [secret, setSecret] = useState('');
+    const [role, setRole] = useState('manager');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
@@ -34,7 +36,7 @@ export default function LoginPage() {
         setError(null);
         setLoading(true);
         try {
-            const resp = await api.login(tenantId.trim(), secret);
+            const resp = await api.login(tenantId.trim(), secret, role);
             setToken(resp.token);
             document.cookie = `ihouse_token=${resp.token}; path=/; max-age=${resp.expires_in}; SameSite=Lax`;
             window.location.href = getRoleRoute(resp.token);
@@ -216,6 +218,53 @@ export default function LoginPage() {
                                 }}>
                                     Default: <code style={{ color: 'var(--color-olive)' }}>dev</code> (local only)
                                 </div>
+                            </div>
+
+                            {/* Role Selector — Phase 397 */}
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    fontSize: 'var(--text-xs)',
+                                    fontWeight: 600,
+                                    color: 'rgba(234,229,222,0.5)',
+                                    marginBottom: 'var(--space-2)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.06em',
+                                }}>
+                                    Role
+                                </label>
+                                <select
+                                    id="select-role"
+                                    value={role}
+                                    onChange={e => setRole(e.target.value)}
+                                    disabled={loading}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 14px',
+                                        background: 'var(--color-midnight)',
+                                        border: '1px solid rgba(234,229,222,0.1)',
+                                        borderRadius: 'var(--radius-md)',
+                                        color: 'var(--color-stone)',
+                                        fontSize: 'var(--text-sm)',
+                                        fontFamily: 'var(--font-sans)',
+                                        transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
+                                        cursor: 'pointer',
+                                        appearance: 'none',
+                                        WebkitAppearance: 'none',
+                                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                                        backgroundRepeat: 'no-repeat',
+                                        backgroundPosition: 'right 14px center',
+                                    }}
+                                >
+                                    <option value="manager">Manager</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="owner">Owner</option>
+                                    <option value="ops">Operations</option>
+                                    <option value="worker">Worker</option>
+                                    <option value="checkin">Check-in Staff</option>
+                                    <option value="checkout">Check-out Staff</option>
+                                    <option value="maintenance">Maintenance</option>
+                                </select>
                             </div>
 
                             {/* Error */}

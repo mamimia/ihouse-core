@@ -4430,3 +4430,56 @@ Category: Admin / Property Management
 
 Metrics: 21/21 tests passed. TypeScript 0 errors. 36 pages. 82 API files.
 
+
+## Phase 397 — JWT Role Claim + Route Enforcement — 2026-03-13
+
+Role claim added to JWT. Middleware enforces per route group. Login page role selector. 14/14 tests passed.
+
+## Phase 398 — Checkin + Checkout Backend — 2026-03-13
+
+`booking_checkin_router.py` — POST /bookings/{id}/checkin + /checkout. Checkout auto-creates CLEANING task. Eliminated fake UI buttons. 10/10 tests passed.
+
+## Phase 399 — Access Token System Foundation — 2026-03-13
+
+**New files:**
+- `src/services/access_token_service.py` — HMAC-SHA256 token issue/verify/consume/revoke
+- `src/api/access_token_router.py` — admin + public endpoints
+- `supabase/migrations/20260313190000_phase399_access_tokens.sql` — access_tokens table + RLS
+- `tests/test_access_token_system.py` — 12 tests
+
+12/12 tests passed. TypeScript 0 errors.
+
+## Phase 400 — Guest Portal Backend — 2026-03-13
+
+`GET /guest/portal/{token}` added to guest_portal_router.py. Token verification + property lookup with PII scoping. 6/6 tests passed.
+
+## Phase 401 — Invite Flow Backend — 2026-03-13
+
+**New files:**
+- `src/api/invite_router.py` — create/validate/accept endpoints
+- `tests/test_invite_flow.py` — 6 tests
+
+Fixed UI deception: invite accept button was `setAccepted(true)` only. Now calls POST /invite/accept/{token}. 6/6 tests passed.
+
+## Phase 402 — Onboard Token Flow — 2026-03-13
+
+**New files:**
+- `src/api/onboard_token_router.py` — validate + submit endpoints
+- `tests/test_onboard_token_flow.py` — 6 tests
+
+POST /onboard/submit creates property in `pending_review` status. 6/6 tests passed.
+
+## Phase 403 — E2E + Shared Component Adoption — 2026-03-13
+
+**New files:**
+- `tests/test_e2e_flows.py` — 6 E2E tests
+
+Adopted `DataCard` shared component in dashboard page (replaced 39-line inline StatChip). TypeScript 0 errors.
+
+## Phase 404 — Property Onboarding Pipeline Completion — 2026-03-13
+
+**Modified:**
+- `src/api/property_admin_router.py` — post-approval channel_map bridge
+- `tests/test_property_pipeline.py` — 4 tests
+
+When property approved, auto-creates `property_channel_map` entry. Full pipeline: onboard → approve → channel_map. 50/50 combined tests passed.

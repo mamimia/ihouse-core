@@ -6373,3 +6373,75 @@ Depends on: Phase 395
 
 TypeScript: 0 errors ✅. Backend: 21/21 new tests passed. 36 pages. 82 API files.
 
+
+---
+
+### Phase 397 — JWT Role Claim + Route Enforcement
+
+Category: Security / Auth
+Depends on: Phase 396
+
+JWT tokens now include a `role` claim (admin/manager/worker/owner). Next.js middleware enforces route-level access per role. Login page includes role selector. 14 tests.
+
+---
+
+### Phase 398 — Checkin + Checkout Backend
+
+Category: Operational Core
+Depends on: Phase 397
+
+`POST /bookings/{id}/checkin` and `POST /bookings/{id}/checkout` endpoints. Checkout auto-creates CLEANING task. State machine: active → checked_in → checked_out. Eliminated UI deception (buttons were front-end-only). 10 tests.
+
+---
+
+### Phase 399 — Access Token System Foundation
+
+Category: Security / Token Infrastructure
+Depends on: Phase 398
+
+Universal `access_tokens` table with HMAC-SHA256 signing. `access_token_service.py` for issue/verify/consume/revoke. Admin endpoints for token management. Migration with RLS. 12 tests.
+
+---
+
+### Phase 400 — Guest Portal Backend
+
+Category: Guest Experience
+Depends on: Phase 399
+
+`GET /guest/portal/{token}` — token-in-URL, property lookup, PII-scoped response. Uses access token system for verification. 6 tests.
+
+---
+
+### Phase 401 — Invite Flow Backend
+
+Category: Team Management
+Depends on: Phase 399
+
+`POST /admin/invites`, `GET /invite/validate/{token}`, `POST /invite/accept/{token}`. Fixed UI deception — accept button was `setAccepted(true)` only. 6 tests.
+
+---
+
+### Phase 402 — Onboard Token Flow
+
+Category: Property Onboarding
+Depends on: Phase 399
+
+`GET /onboard/validate/{token}`, `POST /onboard/submit` — creates property in `pending_review` status. Full onboard lifecycle via access tokens. 6 tests.
+
+---
+
+### Phase 403 — E2E + Shared Component Adoption
+
+Category: Quality / UI
+Depends on: Phases 397-402
+
+6 E2E tests: login → checkin → checkout, invite lifecycle, onboard lifecycle, state machine guards, idempotency. Adopted `DataCard` shared component in dashboard (replaced inline StatChip).
+
+---
+
+### Phase 404 — Property Onboarding Pipeline Completion
+
+Category: Property Onboarding
+Depends on: Phases 395-402
+
+Post-approval channel_map bridge: when a property is approved, auto-creates `property_channel_map` entry (sync_enabled=false). Full pipeline: onboard submit → admin approve → channel_map provisioned. 4 tests.

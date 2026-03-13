@@ -428,6 +428,18 @@ app.include_router(worker_availability_router)
 from api.guest_messages_router import router as guest_messages_router  # noqa: E402  # Phase 236
 app.include_router(guest_messages_router)
 
+from api.booking_checkin_router import router as booking_checkin_router  # noqa: E402  # Phase 398
+app.include_router(booking_checkin_router)
+
+from api.access_token_router import router as access_token_router  # noqa: E402  # Phase 399
+app.include_router(access_token_router)
+
+from api.invite_router import router as invite_router  # noqa: E402  # Phase 401
+app.include_router(invite_router)
+
+from api.onboard_token_router import router as onboard_token_router  # noqa: E402  # Phase 402
+app.include_router(onboard_token_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

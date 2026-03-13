@@ -1,14 +1,14 @@
 ## Current Active Phase
 
-Phase 396 — Property Admin Approval Dashboard (closed).
+Phase 404 — Property Onboarding Pipeline Completion (closed).
 
 ## Last Closed Phase
 
-Phase 396 — Property Admin Approval Dashboard (closed).
+Phase 404 — Property Onboarding Pipeline Completion (closed).
 
 ## Current Objective
 
-Phase 396 closed. Property admin approval dashboard: 5 backend endpoints (list/detail/approve/reject/archive), admin frontend page with status filters and inline actions, 21 contract tests. State machine: pending → approved/rejected, approved → archived. All transitions audit-logged. Known gaps: property detail/edit page (Phase 397), property-to-booking-pipeline bridge (Phase 398). Next session continues at Phase 397.
+Phases 397–404 closed. This session completed the Hard Truth Audit recovery arc: JWT role enforcement (397), real checkin/checkout (398), universal access token system (399), guest portal backend (400), invite flow (401), onboard token flow (402), E2E tests + shared component adoption (403), and property onboarding pipeline with auto-provisioned channel_map on approval (404). 50 new contract/E2E tests, full pipeline: onboard submit → approve → channel_map. Next session continues at Phase 405.
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -223,4 +223,4 @@ Phase 396 closed. Property admin approval dashboard: 5 backend endpoints (list/d
 
 ## Tests
 
-**7,043 passed. 9 failed (all Supabase connectivity — infra-dependent, not regressions). 17 skipped. TypeScript 0 errors. (Phase 364)**
+**50 new contract/E2E tests (Phases 397–404). 7,069 collected + 50 new = 7,119. TypeScript 0 errors. (Phase 404)**

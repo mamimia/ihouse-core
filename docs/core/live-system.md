@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 355 — Cancel/Amend Adapter Test Repair (2026-03-12)**
+**Last updated: Phase 404 — Property Onboarding Pipeline Completion (2026-03-13)**
 
 ## Core Architecture
 
@@ -457,6 +457,54 @@ All **14 providers** implemented at full parity:
 | Endpoint | Description | Phase |
 |----------|-------------|-------|
 | `GET /owner/portal/{property_id}/summary` | Enriched owner summary: occupancy, financials, booking breakdown | 301 |
+
+### Booking Operations (Phases 398)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /bookings/{booking_id}/checkin` | Mark guest as arrived (active → checked_in) | 398 |
+| `POST /bookings/{booking_id}/checkout` | Mark guest as departed + create CLEANING task (checked_in → checked_out) | 398 |
+
+### Access Tokens (Phase 399)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /admin/access-tokens/issue` | Issue access token (invite/onboard/guest types) | 399 |
+| `GET /admin/access-tokens` | List tokens for entity | 399 |
+| `POST /admin/access-tokens/{id}/revoke` | Revoke an access token | 399 |
+| `POST /access-tokens/validate` | Validate a raw token (public) | 399 |
+
+### Guest Portal Token (Phase 400)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /guest/portal/{token}` | Token-authenticated guest portal view (property + booking, PII-scoped) | 400 |
+
+### Invite Flow (Phase 401)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /admin/invites` | Create invite token | 401 |
+| `GET /invite/validate/{token}` | Validate invite token (public) | 401 |
+| `POST /invite/accept/{token}` | Accept invite — consume token, create user | 401 |
+
+### Onboard Flow (Phase 402)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /onboard/validate/{token}` | Validate onboard token (public) | 402 |
+| `POST /onboard/submit` | Submit property via onboard token — creates property in pending_review | 402 |
+
+### Property Admin (Phase 396, enhanced Phase 404)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /admin/properties` | List properties with status filters, search, pagination | 396 |
+| `GET /admin/properties/{id}` | Property detail with channel_map | 396 |
+| `POST /admin/properties/{id}/approve` | Approve property (pending → approved) + auto-provision channel_map | 396/404 |
+| `POST /admin/properties/{id}/reject` | Reject property (pending → rejected) | 396 |
+| `POST /admin/properties/{id}/archive` | Archive property (approved → archived) | 396 |
+| `PATCH /admin/properties/{id}` | Update mutable property fields | 397 |
 
 ## Future Evolution
 

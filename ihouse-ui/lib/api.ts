@@ -282,6 +282,7 @@ export interface PermissionListResponse {
 export interface LoginResponse {
     token: string;
     tenant_id: string;
+    role: string;  // Phase 397
     expires_in: number;
 }
 
@@ -363,10 +364,10 @@ export interface BookingListResponse {
 
 export const api = {
     // Phase 179 — Auth
-    login: (tenant_id: string, secret: string): Promise<LoginResponse> =>
+    login: (tenant_id: string, secret: string, role: string = 'manager'): Promise<LoginResponse> =>
         apiFetch('/auth/token', {
             method: 'POST',
-            body: JSON.stringify({ tenant_id, secret }),
+            body: JSON.stringify({ tenant_id, secret, role }),
         }),
 
     // Phase 186 — Logout
@@ -633,6 +634,13 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ language }),
         }),
+
+    // Phase 398 — Booking Check-in / Check-out
+    checkinBooking: (bookingId: string): Promise<{ status: string; booking_id: string; checked_in_at: string; noop: boolean }> =>
+        apiFetch(`/bookings/${bookingId}/checkin`, { method: 'POST' }),
+
+    checkoutBooking: (bookingId: string): Promise<{ status: string; booking_id: string; checked_out_at: string; cleaning_tasks_created: number; noop: boolean }> =>
+        apiFetch(`/bookings/${bookingId}/checkout`, { method: 'POST' }),
 };
 
 // Phase 157 — Worker task types

@@ -168,10 +168,17 @@ export default function CheckInPage() {
 
     const handleConfirm = async (id: string) => {
         setActionLoading(true);
-        // In a real implementation, this would call an API endpoint
-        // For now, we mark it locally
-        setConfirmed(prev => new Set(prev).add(id));
-        setActionLoading(false);
+        try {
+            const resp = await api.checkinBooking(id);
+            if (resp.status === 'checked_in' || resp.status === 'already_checked_in') {
+                setConfirmed(prev => new Set(prev).add(id));
+            }
+        } catch (err) {
+            console.error('Check-in failed:', err);
+            alert(`Check-in failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     const remaining = arrivals.filter(b => !confirmed.has(b.booking_id));

@@ -1,5 +1,6 @@
 """
 Phase 179 — Auth Token Issuer
+Phase 397 — JWT Role Claim
 Phase 186 — Auth Logout
 
 POST /auth/token  — Issues a signed HS256 JWT for a given tenant_id.
@@ -47,9 +48,14 @@ _ALGORITHM = "HS256"
 _TOKEN_TTL_SECONDS = 86_400  # 24 hours
 
 
+# Valid roles for JWT role claim — controls frontend route access
+VALID_ROLES = {"admin", "manager", "ops", "worker", "owner", "checkin", "checkout", "maintenance"}
+
+
 class TokenRequest(BaseModel):
     tenant_id: str
     secret: str
+    role: str = "manager"  # Phase 397: optional role, must be a valid role
 
 
 @router.post(
@@ -106,11 +112,20 @@ async def issue_token(body: TokenRequest) -> JSONResponse:
             content={"error": "UNAUTHORIZED", "message": "Invalid secret"},
         )
 
+    # Phase 397: validate and normalize role
+    role = body.role.strip().lower() if body.role else "manager"
+    if role not in VALID_ROLES:
+        return JSONResponse(
+            status_code=422,
+            content={"error": "INVALID_ROLE", "message": f"Invalid role '{role}'. Must be one of: {', '.join(sorted(VALID_ROLES))}"},
+        )
+
     now = int(time.time())
     payload = {
         "sub": body.tenant_id.strip(),
         "iat": now,
         "exp": now + _TOKEN_TTL_SECONDS,
+        "role": role,  # Phase 397: role claim for frontend route enforcement
     }
 
     token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
@@ -121,6 +136,7 @@ async def issue_token(body: TokenRequest) -> JSONResponse:
         content={
             "token": token,
             "tenant_id": body.tenant_id.strip(),
+            "role": role,
             "expires_in": _TOKEN_TTL_SECONDS,
         },
     )

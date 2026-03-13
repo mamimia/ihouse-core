@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, OperationsToday, Task, OutboundHealthProvider, DlqSummaryEntry, PortfolioProperty } from '@/lib/api';
+import DataCard from '@/components/DataCard';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,45 +69,7 @@ function SectionCard({
     );
 }
 
-// ---------------------------------------------------------------------------
-// Stat chip
-// ---------------------------------------------------------------------------
-
-function StatChip({
-    label,
-    value,
-    accent,
-}: {
-    label: string;
-    value: number | string;
-    accent?: string;
-}) {
-    return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-1)',
-            background: 'var(--color-surface-2)',
-            borderRadius: 'var(--radius-md)',
-            padding: 'var(--space-4) var(--space-5)',
-            border: '1px solid var(--color-border)',
-        }}>
-            <span style={{
-                fontSize: 'var(--text-2xl)',
-                fontWeight: 700,
-                color: accent || 'var(--color-text)',
-                lineHeight: 1.1,
-                fontVariantNumeric: 'tabular-nums',
-            }}>{value}</span>
-            <span style={{
-                fontSize: 'var(--text-xs)',
-                color: 'var(--color-text-dim)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-            }}>{label}</span>
-        </div>
-    );
-}
+// StatChip → replaced by shared DataCard (Phase 403)
 
 // ---------------------------------------------------------------------------
 // Sync badge
@@ -305,20 +268,23 @@ export default function DashboardPage() {
                 {/* Section 2 — Today */}
                 <SectionCard title="Today">
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 'var(--space-3)' }}>
-                        <StatChip
+                        <DataCard
                             label="Arrivals"
                             value={data.today?.arrivals_today ?? '—'}
-                            accent="var(--color-accent)"
+                            icon="🛬"
+                            color="var(--color-accent)"
                         />
-                        <StatChip
+                        <DataCard
                             label="Departures"
                             value={data.today?.departures_today ?? '—'}
-                            accent="var(--color-primary)"
+                            icon="🛫"
+                            color="var(--color-primary)"
                         />
-                        <StatChip
+                        <DataCard
                             label="Cleanings"
                             value={data.today?.cleanings_due_today ?? '—'}
-                            accent="var(--color-warn)"
+                            icon="🧹"
+                            color="var(--color-warn)"
                         />
                     </div>
                 </SectionCard>

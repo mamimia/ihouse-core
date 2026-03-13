@@ -1,5 +1,5 @@
 """
-Session Router — Phase 297
+Session Router — Phase 297 + Phase 397 (role claim)
 ============================
 
 Server-side session management endpoints.
@@ -69,9 +69,14 @@ def _extract_token_from_request(request: Request) -> str | None:
 # Request models
 # ---------------------------------------------------------------------------
 
+# Phase 397: Valid roles — must match auth_router.py VALID_ROLES
+_VALID_ROLES = {"admin", "manager", "ops", "worker", "owner", "checkin", "checkout", "maintenance"}
+
+
 class LoginSessionRequest(BaseModel):
     tenant_id: str = Field(..., min_length=1)
     secret: str = Field(..., min_length=1)
+    role: str = Field(default="manager", description="User role for route enforcement")
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +131,14 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
             content={"error": "UNAUTHORIZED", "message": "Invalid secret"},
         )
 
+    # Phase 397: validate and normalize role
+    role = body.role.strip().lower() if body.role else "manager"
+    if role not in _VALID_ROLES:
+        return JSONResponse(
+            status_code=422,
+            content={"error": "INVALID_ROLE", "message": f"Invalid role '{role}'. Must be one of: {', '.join(sorted(_VALID_ROLES))}"},
+        )
+
     # Issue JWT
     now = int(time.time())
     payload = {
@@ -133,6 +146,7 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
         "iat": now,
         "exp": now + _TOKEN_TTL_SECONDS,
         "token_type": "session",
+        "role": role,  # Phase 397: role claim
     }
     token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
 
@@ -162,6 +176,7 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
             "token": token,
             "token_type": "session",
             "tenant_id": body.tenant_id.strip(),
+            "role": role,
             "expires_in": _TOKEN_TTL_SECONDS,
             "session": session,
         },
@@ -202,10 +217,22 @@ async def get_me(
         except Exception:
             session = None
 
+    # Phase 397: extract role from JWT for /auth/me response
+    role = None
+    if raw_token:
+        try:
+            jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
+            if jwt_secret:
+                claims = jwt.decode(raw_token, jwt_secret, algorithms=[_ALGORITHM])
+                role = claims.get("role")
+        except Exception:
+            pass
+
     return JSONResponse(
         status_code=200,
         content={
             "tenant_id": caller_id,
+            "role": role,
             "has_session": session is not None,
             "session": session,
         },

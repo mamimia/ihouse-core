@@ -6,6 +6,7 @@ Admin endpoints for managing properties submitted through the onboarding wizard.
 Endpoints:
     GET    /admin/properties                   — list all properties (filterable)
     GET    /admin/properties/{property_id}     — single property detail
+    PATCH  /admin/properties/{property_id}     — update mutable property fields (Phase 397)
     POST   /admin/properties/{property_id}/approve  — approve a pending property
     POST   /admin/properties/{property_id}/reject   — reject a pending property
     POST   /admin/properties/{property_id}/archive  — archive a property
@@ -326,8 +327,11 @@ async def approve_property(
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
-    """POST /admin/properties/{property_id}/approve."""
-    return await _transition_property(
+    """POST /admin/properties/{property_id}/approve.
+
+    Approves the property AND auto-provisions a channel_map entry (Phase 404).
+    """
+    result = await _transition_property(
         property_id=property_id,
         tenant_id=tenant_id,
         target_status="approved",
@@ -339,6 +343,52 @@ async def approve_property(
         },
         client=client,
     )
+
+    # Phase 404: Post-approval channel map provisioning
+    if result.status_code == 200:
+        try:
+            db = client if client is not None else _get_supabase_client()
+
+            # Check if channel_map already exists for this property
+            existing = (
+                db.table("property_channel_map")
+                .select("property_id")
+                .eq("property_id", property_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+
+            if not (existing.data or []):
+                # Auto-create a default channel map entry
+                db.table("property_channel_map").insert({
+                    "property_id": property_id,
+                    "tenant_id": tenant_id,
+                    "channels": [],  # Empty — admin will configure channels later
+                    "sync_enabled": False,  # Not auto-enabled — explicit action needed
+                    "provisioned_at": datetime.now(tz=timezone.utc).isoformat(),
+                    "provisioned_by": "system:auto_approve",
+                }).execute()
+
+                logger.info(
+                    "approve: auto-provisioned channel_map for property=%s tenant=%s",
+                    property_id, tenant_id,
+                )
+
+                # Update response to flag channel provisioning
+                import json
+                body = json.loads(result.body)
+                body["channel_map_provisioned"] = True
+                result = JSONResponse(status_code=200, content=body)
+
+        except Exception as exc:
+            logger.warning(
+                "approve: channel_map auto-provision failed for property=%s: %s",
+                property_id, exc,
+            )
+            # Non-fatal: approval stands even if channel map fails
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -423,6 +473,168 @@ async def archive_property(
 # ---------------------------------------------------------------------------
 # Shared transition logic
 # ---------------------------------------------------------------------------
+
+# Mutable fields that can be updated via PATCH
+_MUTABLE_FIELDS = frozenset({
+    "display_name", "timezone", "base_currency",
+    "property_type", "city", "country",
+    "max_guests", "bedrooms", "beds", "bathrooms",
+    "address", "description",
+})
+
+# Statuses that allow editing
+_EDITABLE_FROM = frozenset({"pending", "approved"})
+
+
+# ---------------------------------------------------------------------------
+# PATCH /admin/properties/{property_id} — edit mutable fields (Phase 397)
+# ---------------------------------------------------------------------------
+
+@router.patch(
+    "/admin/properties/{property_id}",
+    tags=["admin-properties"],
+    summary="Update mutable property fields (Phase 397)",
+    description=(
+        "Updates mutable fields on a property.\\n\\n"
+        "Only properties with status `pending` or `approved` can be edited.\\n\\n"
+        "Immutable fields (`property_id`, `tenant_id`, `status`) are ignored.\\n\\n"
+        "Audit-logged."
+    ),
+    responses={
+        200: {"description": "Property updated"},
+        400: {"description": "No valid fields in body"},
+        401: {"description": "Missing or invalid JWT token"},
+        404: {"description": "Property not found"},
+        409: {"description": "Property status does not allow editing"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def patch_property(
+    property_id: str,
+    body: Dict[str, Any],
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """PATCH /admin/properties/{property_id} — edit mutable fields."""
+    if not isinstance(body, dict):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "Request body must be a JSON object."},
+        )
+
+    # Filter to mutable fields only
+    update_data: Dict[str, Any] = {}
+    for key, value in body.items():
+        if key in _MUTABLE_FIELDS:
+            # Type coercions for numeric fields
+            if key in ("max_guests", "bedrooms", "beds"):
+                if value is not None:
+                    try:
+                        update_data[key] = int(value)
+                    except (ValueError, TypeError):
+                        continue
+                else:
+                    update_data[key] = None
+            elif key == "bathrooms":
+                if value is not None:
+                    try:
+                        update_data[key] = float(value)
+                    except (ValueError, TypeError):
+                        continue
+                else:
+                    update_data[key] = None
+            elif isinstance(value, str):
+                update_data[key] = value.strip() or None
+            else:
+                update_data[key] = value
+
+    if not update_data:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"No valid mutable fields provided. Allowed: {sorted(_MUTABLE_FIELDS)}"},
+        )
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # Fetch current state
+        prop_result = (
+            db.table("properties")
+            .select(_PROPERTY_COLS)
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .limit(1)
+            .execute()
+        )
+        prop_rows = prop_result.data or []
+
+        if not prop_rows:
+            return make_error_response(
+                status_code=404,
+                code=ErrorCode.BOOKING_NOT_FOUND,
+                extra={"detail": f"Property '{property_id}' not found."},
+            )
+
+        current = prop_rows[0]
+        current_status = current.get("status", "pending")
+
+        if current_status not in _EDITABLE_FROM:
+            return make_error_response(
+                status_code=409,
+                code="CONFLICT",
+                extra={
+                    "detail": (
+                        f"Cannot edit property — status is '{current_status}'. "
+                        f"Only {sorted(_EDITABLE_FROM)} properties can be edited."
+                    ),
+                    "current_status": current_status,
+                },
+            )
+
+        # Apply update
+        updated_result = (
+            db.table("properties")
+            .update(update_data)
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .execute()
+        )
+        updated_rows = updated_result.data or []
+        updated = updated_rows[0] if updated_rows else {**current, **update_data}
+
+        # Build before/after for audit
+        before = {k: current.get(k) for k in update_data}
+        after = {k: update_data[k] for k in update_data}
+
+        _write_audit_event(
+            db,
+            tenant_id=tenant_id,
+            actor=tenant_id,
+            action="edit_property",
+            property_id=property_id,
+            before_state=before,
+            after_state=after,
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "property_id": property_id,
+                "updated_fields": list(update_data.keys()),
+                "detail": _serialize_property(updated),
+            },
+        )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "PATCH /admin/properties/%s error tenant=%s: %s",
+            property_id, tenant_id, exc,
+        )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
 
 async def _transition_property(
     *,

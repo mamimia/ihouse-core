@@ -141,7 +141,20 @@ export default function InvitePage() {
 
                 <button
                     id="accept-invite"
-                    onClick={() => setAccepted(true)}
+                    onClick={async () => {
+                        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+                        try {
+                            const r = await fetch(`${API_BASE}/invite/accept/${encodeURIComponent(token)}`, { method: 'POST' });
+                            if (!r.ok) {
+                                const body = await r.json().catch(() => ({}));
+                                alert(body.message || 'Failed to accept invitation');
+                                return;
+                            }
+                            setAccepted(true);
+                        } catch {
+                            alert('Network error. Please try again.');
+                        }
+                    }}
                     style={{
                         padding: 'var(--space-4, 18px) var(--space-8, 48px)',
                         borderRadius: 'var(--radius-md, 14px)', border: 'none',

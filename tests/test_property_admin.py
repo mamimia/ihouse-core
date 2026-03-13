@@ -319,6 +319,101 @@ class TestRejectProperty:
 
 
 # ===========================================================================
+# PATCH /admin/properties/{id} — edit
+# ===========================================================================
+
+class TestPatchProperty:
+
+    def test_patch_pending_returns_200(self):
+        db = _db_with_property(_PENDING_PROPERTY)
+        with patch("api.property_admin_router._get_supabase_client", return_value=db), \
+             patch("api.auth.jwt_auth", return_value=_TENANT):
+            client = _make_client()
+            resp = client.patch(
+                "/admin/properties/prop-001",
+                json={"display_name": "Updated Villa", "city": "Bangkok"},
+                headers=_auth_header(),
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "updated_fields" in body
+        assert "display_name" in body["updated_fields"]
+
+    def test_patch_approved_returns_200(self):
+        db = _db_with_property(_APPROVED_PROPERTY)
+        with patch("api.property_admin_router._get_supabase_client", return_value=db), \
+             patch("api.auth.jwt_auth", return_value=_TENANT):
+            client = _make_client()
+            resp = client.patch(
+                "/admin/properties/prop-001",
+                json={"city": "Chiang Mai"},
+                headers=_auth_header(),
+            )
+        assert resp.status_code == 200
+
+    def test_patch_rejected_returns_409(self):
+        db = _db_with_property(_REJECTED_PROPERTY)
+        with patch("api.property_admin_router._get_supabase_client", return_value=db), \
+             patch("api.auth.jwt_auth", return_value=_TENANT):
+            client = _make_client()
+            resp = client.patch(
+                "/admin/properties/prop-001",
+                json={"city": "Bangkok"},
+                headers=_auth_header(),
+            )
+        assert resp.status_code == 409
+
+    def test_patch_archived_returns_409(self):
+        db = _db_with_property(_ARCHIVED_PROPERTY)
+        with patch("api.property_admin_router._get_supabase_client", return_value=db), \
+             patch("api.auth.jwt_auth", return_value=_TENANT):
+            client = _make_client()
+            resp = client.patch(
+                "/admin/properties/prop-001",
+                json={"city": "Bangkok"},
+                headers=_auth_header(),
+            )
+        assert resp.status_code == 409
+
+    def test_patch_no_valid_fields_returns_400(self):
+        db = _db_with_property(_PENDING_PROPERTY)
+        with patch("api.property_admin_router._get_supabase_client", return_value=db), \
+             patch("api.auth.jwt_auth", return_value=_TENANT):
+            client = _make_client()
+            resp = client.patch(
+                "/admin/properties/prop-001",
+                json={"status": "approved", "tenant_id": "evil"},
+                headers=_auth_header(),
+            )
+        assert resp.status_code == 400
+
+    def test_patch_unknown_returns_404(self):
+        with patch("api.property_admin_router._get_supabase_client", return_value=_empty_db()), \
+             patch("api.auth.jwt_auth", return_value=_TENANT):
+            client = _make_client()
+            resp = client.patch(
+                "/admin/properties/prop-unknown",
+                json={"city": "Bangkok"},
+                headers=_auth_header(),
+            )
+        assert resp.status_code == 404
+
+    def test_patch_filters_immutable_fields(self):
+        db = _db_with_property(_PENDING_PROPERTY)
+        with patch("api.property_admin_router._get_supabase_client", return_value=db), \
+             patch("api.auth.jwt_auth", return_value=_TENANT):
+            client = _make_client()
+            resp = client.patch(
+                "/admin/properties/prop-001",
+                json={"display_name": "Safe Name", "property_id": "evil-id", "status": "approved"},
+                headers=_auth_header(),
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["updated_fields"] == ["display_name"]
+
+
+# ===========================================================================
 # POST /admin/properties/{id}/archive
 # ===========================================================================
 

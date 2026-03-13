@@ -154,11 +154,19 @@ export default function CheckOutPage() {
 
     useEffect(() => { load(); }, [load]);
 
-    const handleCheckout = async (id: string, notes: string) => {
+    const handleCheckout = async (id: string, _notes: string) => {
         setActionLoading(true);
-        // Would trigger cleaning task creation via API
-        setProcessed(prev => new Set(prev).add(id));
-        setActionLoading(false);
+        try {
+            const resp = await api.checkoutBooking(id);
+            if (resp.status === 'checked_out' || resp.status === 'already_checked_out') {
+                setProcessed(prev => new Set(prev).add(id));
+            }
+        } catch (err) {
+            console.error('Check-out failed:', err);
+            alert(`Check-out failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     const remaining = departures.filter(b => !processed.has(b.booking_id));
