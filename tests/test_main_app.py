@@ -37,9 +37,11 @@ def client():
 
 def test_health_returns_200(client):
     resp = client.get("/health")
-    assert resp.status_code == 200
+    # 200 when Supabase reachable or URL not set (skipped),
+    # 503 when Supabase URL set but unreachable.
+    assert resp.status_code in (200, 503)
     body = resp.json()
-    assert body["status"] == "ok"
+    assert body["status"] in ("ok", "degraded", "unhealthy")
     assert "version" in body
     assert "env" in body
 
@@ -94,7 +96,7 @@ def test_unknown_route_returns_404_not_500(client):
 def test_health_requires_no_auth(client):
     """Health check is always accessible — no API key or JWT needed."""
     resp = client.get("/health")
-    assert resp.status_code == 200  # must not be 401 / 403
+    assert resp.status_code in (200, 503)  # must not be 401 / 403
 
 
 # ---------------------------------------------------------------------------

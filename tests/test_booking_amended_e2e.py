@@ -19,6 +19,15 @@ import uuid
 import pytest
 from supabase import create_client
 
+# These are live integration tests that require a Supabase connection.
+# Skip when SUPABASE_URL is not set or is a test dummy (set by other test modules).
+_supabase_url = os.environ.get("SUPABASE_URL", "")
+_is_real_supabase = _supabase_url and "test.supabase" not in _supabase_url and "fake.supabase" not in _supabase_url
+pytestmark = pytest.mark.skipif(
+    not _is_real_supabase,
+    reason="Requires live Supabase (SUPABASE_URL not set or is test dummy)",
+)
+
 SUPABASE_URL = os.environ.get(
     "SUPABASE_URL", "https://reykggmlcehswrxjviup.supabase.co"
 )

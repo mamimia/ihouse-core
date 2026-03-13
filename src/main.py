@@ -46,24 +46,13 @@ logging.basicConfig(
 logger = logging.getLogger("ihouse-core")
 
 # ---------------------------------------------------------------------------
-# Phase 359 — Startup env validation (best-effort: warn, never crash)
+# Phase 466 — Startup env validation (replaces Phase 359 inline checks)
 # ---------------------------------------------------------------------------
 
 _BUILD_VERSION = os.getenv("BUILD_VERSION", "0.1.0")
 
-_REQUIRED_IN_PRODUCTION = {
-    "SUPABASE_URL":  "Health checks and all DB operations will fail",
-    "SUPABASE_KEY":  "Health checks and all DB operations will fail",
-    "IHOUSE_JWT_SECRET": "Auth bypass is active — NOT safe for production",
-    "IHOUSE_GUEST_TOKEN_SECRET": "Guest token issuance and verification will return 503",
-}
-
-for _var, _impact in _REQUIRED_IN_PRODUCTION.items():
-    if not os.getenv(_var):
-        logger.warning(
-            "STARTUP WARNING: %s is not set. Impact: %s",
-            _var, _impact,
-        )
+from services.env_validator import validate_production_env  # noqa: E402
+_env_warnings = validate_production_env()
 
 # ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
@@ -189,6 +178,12 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
+# Security Headers — Phase 480
+# ---------------------------------------------------------------------------
+
+from middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
+
+app.add_middleware(SecurityHeadersMiddleware)
 # Routers
 # ---------------------------------------------------------------------------
 

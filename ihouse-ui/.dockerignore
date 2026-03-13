@@ -1,0 +1,11 @@
+# iHouse UI — Docker Ignore
+node_modules
+.next
+.git
+.gitignore
+*.md
+.env*
+.vscode
+.idea
+playwright-report
+test-results

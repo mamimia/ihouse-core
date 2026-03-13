@@ -236,3 +236,180 @@ async def list_financial(
         logger.exception("GET /financial error for tenant=%s: %s", tenant_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
 
+
+# ---------------------------------------------------------------------------
+# POST /financial/enrich  (Phase 470 — Financial Data Enrichment)
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/financial/enrich",
+    tags=["financial"],
+    summary="Re-extract financial facts for PARTIAL confidence bookings (Phase 470)",
+    responses={
+        200: {"description": "Enrichment results: how many records were upgraded"},
+        401: {"description": "Missing or invalid JWT token"},
+        503: {"description": "Supabase not configured"},
+    },
+)
+async def enrich_financial_facts(
+    provider: Optional[str] = None,
+    limit: int = 50,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Phase 470: Re-extract financial facts for PARTIAL confidence bookings.
+
+    Scans booking_financial_facts for rows with source_confidence=PARTIAL,
+    re-reads the raw_financial_fields, re-runs the financial extractor,
+    and appends a new row if confidence has improved (PARTIAL → FULL or ESTIMATED).
+
+    Append-only — never mutates existing rows.
+
+    **Query parameters:**
+    - `provider` — filter by OTA provider (optional)
+    - `limit` — max records to process (1–100, default 50)
+    """
+    limit = max(1, min(limit, 100))
+
+    try:
+        from adapters.ota.financial_extractor import extract_financial_facts
+        from adapters.ota.financial_writer import write_financial_facts
+
+        db = client if client is not None else _get_suellen_client()
+
+        # Find PARTIAL rows
+        query = (
+            db.table("booking_financial_facts")
+            .select("booking_id,tenant_id,provider,raw_financial_fields,event_kind,source_confidence")
+            .eq("tenant_id", tenant_id)
+            .eq("source_confidence", "PARTIAL")
+        )
+        if provider:
+            query = query.eq("provider", provider)
+        result = query.order("recorded_at", desc=True).limit(limit).execute()
+
+        rows = result.data or []
+        upgraded = 0
+        skipped = 0
+        errors = 0
+
+        for row in rows:
+            try:
+                raw = row.get("raw_financial_fields") or {}
+                prov = row.get("provider", "")
+                booking_id = row.get("booking_id", "")
+
+                # Re-run the financial extractor with stored raw fields
+                facts = extract_financial_facts(prov, raw)
+                if facts is None:
+                    skipped += 1
+                    continue
+
+                # Only write if confidence improved
+                if facts.source_confidence in ("FULL", "ESTIMATED"):
+                    write_financial_facts(
+                        booking_id=booking_id,
+                        tenant_id=tenant_id,
+                        event_kind=f"ENRICHED_FROM_{row.get('event_kind', 'UNKNOWN')}",
+                        facts=facts,
+                        client=db,
+                    )
+                    upgraded += 1
+                    logger.info(
+                        "financial/enrich: upgraded %s from PARTIAL → %s",
+                        booking_id, facts.source_confidence,
+                    )
+                else:
+                    skipped += 1
+            except Exception as exc:
+                logger.warning("financial/enrich: error for %s: %s", row.get("booking_id"), exc)
+                errors += 1
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "tenant_id": tenant_id,
+                "scanned": len(rows),
+                "upgraded": upgraded,
+                "skipped": skipped,
+                "errors": errors,
+            },
+        )
+
+    except Exception as exc:
+        logger.exception("POST /financial/enrich error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+def _get_suellen_client():
+    """Alias for _get_supabase_client (typo-safe)."""
+    return _get_supabase_client()
+
+
+# ---------------------------------------------------------------------------
+# GET /financial/confidence-report  (Phase 470)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/financial/confidence-report",
+    tags=["financial"],
+    summary="Confidence distribution report across all financial records (Phase 470)",
+    responses={
+        200: {"description": "Confidence breakdown by provider"},
+        401: {"description": "Missing or invalid JWT token"},
+    },
+)
+async def confidence_report(
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Phase 470: Report the distribution of source_confidence across all
+    financial records for the authenticated tenant.
+
+    Returns confidence counts by provider, useful for monitoring
+    data quality and tracking enrichment progress.
+    """
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        result = (
+            db.table("booking_financial_facts")
+            .select("provider,source_confidence")
+            .eq("tenant_id", tenant_id)
+            .execute()
+        )
+
+        rows = result.data or []
+
+        # Build distribution: { provider: { FULL: n, PARTIAL: n, ESTIMATED: n } }
+        distribution: dict[str, dict[str, int]] = {}
+        for row in rows:
+            prov = row.get("provider", "unknown")
+            conf = row.get("source_confidence", "UNKNOWN")
+            if prov not in distribution:
+                distribution[prov] = {}
+            distribution[prov][conf] = distribution[prov].get(conf, 0) + 1
+
+        totals = {
+            "FULL": sum(d.get("FULL", 0) for d in distribution.values()),
+            "PARTIAL": sum(d.get("PARTIAL", 0) for d in distribution.values()),
+            "ESTIMATED": sum(d.get("ESTIMATED", 0) for d in distribution.values()),
+            "OPERATOR_MANUAL": sum(d.get("OPERATOR_MANUAL", 0) for d in distribution.values()),
+        }
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "tenant_id": tenant_id,
+                "total_records": len(rows),
+                "totals": totals,
+                "by_provider": distribution,
+            },
+        )
+
+    except Exception as exc:
+        logger.exception("GET /financial/confidence-report error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+

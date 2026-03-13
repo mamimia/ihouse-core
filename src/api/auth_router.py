@@ -36,13 +36,15 @@ import os
 import time
 
 import jwt
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+from api.auth import jwt_auth  # noqa: E402  Phase 467
 
 _ALGORITHM = "HS256"
 _TOKEN_TTL_SECONDS = 86_400  # 24 hours
@@ -278,3 +280,184 @@ async def supabase_verify(body: SupabaseVerifyRequest) -> JSONResponse:
             "token_type": token_type,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 467 — Supabase Auth: Real User Signup / Signin / Me
+# ---------------------------------------------------------------------------
+
+def _get_supabase_admin():
+    """
+    Return a Supabase client with service_role key for admin Auth operations.
+    """
+    from supabase import create_client
+    url = os.environ.get("SUPABASE_URL", "")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not url or not key:
+        return None
+    return create_client(url, key)
+
+
+class SignUpRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str = ""
+
+
+class SignInRequest(BaseModel):
+    email: str
+    password: str
+
+
+@router.post(
+    "/auth/signup",
+    tags=["auth"],
+    summary="Register a new user via Supabase Auth (Phase 467)",
+    responses={
+        200: {"description": "User created — returns access token"},
+        400: {"description": "Signup failed (user exists, weak password, etc.)"},
+        503: {"description": "Supabase not configured"},
+    },
+)
+async def supabase_signup(body: SignUpRequest) -> JSONResponse:
+    """
+    Phase 467: Create a real user in Supabase Auth.
+
+    **Request body:**
+    ```json
+    {"email": "admin@domaniqo.com", "password": "...", "full_name": "Nir Admin"}
+    ```
+
+    **Response (200):**
+    ```json
+    {
+        "user_id": "uuid",
+        "email": "admin@domaniqo.com",
+        "access_token": "eyJ...",
+        "refresh_token": "...",
+        "expires_in": 3600
+    }
+    ```
+
+    The returned access_token is a Supabase-signed JWT and can be used
+    directly with all iHouse API endpoints that require JWT auth.
+    """
+    db = _get_supabase_admin()
+    if not db:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "SUPABASE_NOT_CONFIGURED", "message": "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set."},
+        )
+
+    try:
+        result = db.auth.admin.create_user({
+            "email": body.email.strip(),
+            "password": body.password,
+            "email_confirm": True,  # Auto-confirm for admin-created users
+            "user_metadata": {"full_name": body.full_name.strip()} if body.full_name else {},
+        })
+
+        user = result.user
+        if not user:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "SIGNUP_FAILED", "message": "User creation returned no user object."},
+            )
+
+        # Sign in immediately to get tokens
+        signin_result = db.auth.sign_in_with_password({
+            "email": body.email.strip(),
+            "password": body.password,
+        })
+
+        session = signin_result.session
+        logger.info("auth/signup: created user %s (%s)", user.id, body.email)
+        return JSONResponse(
+            status_code=200,
+            content={
+                "user_id": str(user.id),
+                "email": body.email.strip(),
+                "access_token": session.access_token if session else "",
+                "refresh_token": session.refresh_token if session else "",
+                "expires_in": session.expires_in if session else 0,
+            },
+        )
+    except Exception as exc:
+        error_msg = str(exc)
+        logger.warning("auth/signup: failed for %s — %s", body.email, error_msg)
+        return JSONResponse(
+            status_code=400,
+            content={"error": "SIGNUP_FAILED", "message": error_msg},
+        )
+
+
+@router.post(
+    "/auth/signin",
+    tags=["auth"],
+    summary="Sign in with email + password via Supabase Auth (Phase 467)",
+    responses={
+        200: {"description": "Authenticated — returns access token"},
+        401: {"description": "Invalid credentials"},
+        503: {"description": "Supabase not configured"},
+    },
+)
+async def supabase_signin(body: SignInRequest) -> JSONResponse:
+    """
+    Phase 467: Sign in an existing Supabase Auth user.
+
+    **Request body:**
+    ```json
+    {"email": "admin@domaniqo.com", "password": "..."}
+    ```
+
+    **Response (200):**
+    ```json
+    {
+        "user_id": "uuid",
+        "email": "admin@domaniqo.com",
+        "access_token": "eyJ...",
+        "refresh_token": "...",
+        "expires_in": 3600
+    }
+    ```
+    """
+    db = _get_supabase_admin()
+    if not db:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "SUPABASE_NOT_CONFIGURED", "message": "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set."},
+        )
+
+    try:
+        result = db.auth.sign_in_with_password({
+            "email": body.email.strip(),
+            "password": body.password,
+        })
+
+        session = result.session
+        user = result.user
+        if not session or not user:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "AUTH_FAILED", "message": "Invalid credentials."},
+            )
+
+        logger.info("auth/signin: authenticated %s (%s)", user.id, body.email)
+        return JSONResponse(
+            status_code=200,
+            content={
+                "user_id": str(user.id),
+                "email": body.email.strip(),
+                "access_token": session.access_token,
+                "refresh_token": session.refresh_token,
+                "expires_in": session.expires_in,
+            },
+        )
+    except Exception as exc:
+        error_msg = str(exc)
+        logger.warning("auth/signin: failed for %s — %s", body.email, error_msg)
+        return JSONResponse(
+            status_code=401,
+            content={"error": "AUTH_FAILED", "message": error_msg},
+        )
+

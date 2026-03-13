@@ -1,16 +1,23 @@
 # =============================================================================
 # iHouse Core — Docker Compose (Staging)
-# Phase 237 — Staging Environment & Integration Tests
+# Phase 468 — Staging Deploy (updated from Phase 237)
 # =============================================================================
 #
+# Staging environment — near-production but with safety guards.
+# Differs from production:
+#   - workers=2 (vs 4 in prod)
+#   - IHOUSE_DRY_RUN=true (no real outbound API calls)
+#   - Looser memory limits
+#   - Port 8001 (vs 8000 prod)
+#   - Frontend included
+#
 # Usage:
-#   docker compose -f docker-compose.staging.yml up         — start staging
-#   docker compose -f docker-compose.staging.yml run tests  — run integration tests
-#   docker compose -f docker-compose.staging.yml down       — tear down
+#   docker compose -f docker-compose.staging.yml up -d
+#   docker compose -f docker-compose.staging.yml logs -f api
+#   docker compose -f docker-compose.staging.yml run tests
+#   docker compose -f docker-compose.staging.yml down
 #
-# Requires: .env.staging (see .env.staging.example)
-#   SUPABASE_URL must point to a local or staging Supabase instance (not prod).
-#
+# Required: .env.staging or .env with staging secrets
 # =============================================================================
 
 services:
@@ -18,26 +25,68 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ihouse-core:staging
     container_name: ihouse-core-staging-api
     ports:
       - "${PORT:-8001}:8000"
     env_file:
-      - .env.staging
+      - .env
     environment:
       - IHOUSE_ENV=staging
       - PORT=8000
-    restart: "no"
+      - UVICORN_WORKERS=2
+      - IHOUSE_DEV_MODE=false
+      - IHOUSE_DRY_RUN=true
+      - IHOUSE_CORS_ORIGINS=${IHOUSE_CORS_ORIGINS:-http://localhost:3000}
+      - BUILD_VERSION=${BUILD_VERSION:-0.1.0-staging}
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       start_period: 20s
-      retries: 5
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
     logging:
       driver: json-file
       options:
-        max-size: "5m"
+        max-size: "20m"
+        max-file: "3"
+    labels:
+      - "com.ihouse.service=api"
+      - "com.ihouse.env=staging"
+
+  frontend:
+    build:
+      context: ./ihouse-ui
+      dockerfile: Dockerfile
+    image: ihouse-ui:staging
+    container_name: ihouse-core-frontend-staging
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8000
+      - NODE_ENV=production
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
         max-file: "2"
+    labels:
+      - "com.ihouse.service=frontend"
+      - "com.ihouse.env=staging"
 
   tests:
     build:
@@ -45,7 +94,7 @@ services:
       dockerfile: Dockerfile
     container_name: ihouse-core-staging-tests
     env_file:
-      - .env.staging
+      - .env
     environment:
       - IHOUSE_ENV=staging
     command:
