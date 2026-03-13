@@ -118,3 +118,48 @@ async def get_pre_arrival_queue(
         return make_error_response(
             500, ErrorCode.INTERNAL_ERROR, "Failed to query pre-arrival queue"
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 488 — POST /admin/pre-arrival/scan
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/admin/pre-arrival/scan",
+    tags=["admin"],
+    summary="Trigger pre-arrival scan for upcoming check-ins (Phase 488)",
+    responses={
+        200: {"description": "Scan results"},
+        401: {"description": "Missing or invalid JWT"},
+    },
+)
+async def trigger_pre_arrival_scan(
+    lookahead_hours: int = 48,
+    dry_run: bool = False,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    POST /admin/pre-arrival/scan?lookahead_hours=48&dry_run=false
+
+    Scans for bookings with check-in within lookahead_hours,
+    creates pre_arrival_queue entries and auto-generates tasks.
+    """
+    try:
+        from services.pre_arrival_scanner import run_pre_arrival_scan
+
+        result = run_pre_arrival_scan()
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "ok",
+                "tenant_id": tenant_id,
+                "lookahead_hours": lookahead_hours,
+                **result,
+            },
+        )
+    except Exception as exc:
+        logger.exception("POST /admin/pre-arrival/scan error: %s", exc)
+        return make_error_response(
+            500, ErrorCode.INTERNAL_ERROR, "Pre-arrival scan failed"
+        )

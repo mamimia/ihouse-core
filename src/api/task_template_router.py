@@ -292,3 +292,51 @@ async def deactivate_task_template(
     except Exception as exc:  # noqa: BLE001
         logger.exception("DELETE /admin/task-templates/%s error: %s", template_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 489 — POST /admin/task-templates/seed
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/admin/task-templates/seed",
+    tags=["admin"],
+    summary="Seed default task templates for this tenant (Phase 489)",
+    responses={
+        200: {"description": "Seed results"},
+        401: {"description": "Missing or invalid JWT"},
+    },
+)
+async def seed_task_templates(
+    dry_run: bool = False,
+    tenant_id: str = Depends(jwt_auth),
+    _client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    POST /admin/task-templates/seed?dry_run=false
+
+    Seeds 6 default operational task templates (Cleaning, Pre-Arrival,
+    Guest Welcome, Maintenance, VIP Setup, Linen Rotation).
+    Idempotent — skips kinds that already exist.
+    """
+    try:
+        from services.task_template_seeder import seed_default_templates
+        db = _client if _client is not None else _get_supabase_client()
+
+        result = seed_default_templates(
+            tenant_id=tenant_id,
+            dry_run=dry_run,
+            db=db,
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "ok",
+                "tenant_id": tenant_id,
+                **result,
+            },
+        )
+    except Exception as exc:
+        logger.exception("POST /admin/task-templates/seed error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

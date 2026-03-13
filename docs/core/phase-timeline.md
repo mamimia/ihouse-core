@@ -7039,3 +7039,132 @@ Final checkpoint. 20/20 phases complete. 0 test failures, 5 integration skips. S
 Security headers middleware (OWASP), operator runbook, performance baseline, UAT (10 scenarios), platform checkpoint. All 20 phases (465-484) complete.
 
 ---
+
+### Phase 485 — Guest Profile Hydration Pipeline — 2026-03-14
+
+Guest profile backfill service. Scans BOOKING_CREATED events, upserts to guest_profile table. POST /guests/backfill endpoint. Unique constraint added. 10 tests pass.
+
+---
+
+### Phase 486 — Real Notification Dispatch — 2026-03-14
+
+WhatsApp dispatch via Twilio API. notify_on_booking_event() auto-dispatches on BOOKING_CREATED. Notification_log channel check updated. 8 tests pass.
+
+---
+
+### Phase 487 — Conflict Detection Backfill Scanner — 2026-03-14
+
+conflict_scanner.py: per-property overlap detection, run_full_scan(). POST /conflicts/scan endpoint. 5 tests pass.
+
+---
+
+### Phase 488 — Pre-Arrival Task Automation — 2026-03-14
+
+POST /admin/pre-arrival/scan trigger endpoint added to pre_arrival_router.py. Existing scanner service (367 lines) unchanged.
+
+---
+
+### Phase 489 — Task Templates CRUD + Seed — 2026-03-14
+
+task_template_seeder.py: 6 default operational templates (Cleaning, Pre-Arrival Inspection, Guest Welcome, Maintenance, VIP Setup, Linen Rotation). POST /admin/task-templates/seed. 3 tests pass.
+
+---
+
+### Phase 490 — Guest Token Batch Issuance — 2026-03-14
+
+guest_token_batch.py: batch HMAC token issuance for bookings with guest profiles but no token in guest_tokens. Best-effort portal link notification dispatch. 1 test.
+
+---
+
+### Phase 491 — Owner Portal Real Data — 2026-03-14
+
+owner_portal_data.py (pre-existing, 325 lines): financial statements from booking_financial_facts, access verification, owner access seeding.
+
+---
+
+### Phase 492 — Outbound Sync Real Execution — 2026-03-14
+
+outbound_sync_runner.py: scans booking_state for channeled bookings, dispatches via provider adapters, logs to outbound_sync_log. Dry-run mode. 2 tests.
+
+---
+
+### Phase 493 — Booking Write Operations — 2026-03-14
+
+booking_writer.py: manual booking creation (event-sourced via event_log + booking_state), cancel, date amendment. Guest profile extraction on create. 3 tests.
+
+---
+
+### Phase 494 — Task Management Write Operations — 2026-03-14
+
+task_writer_frontend.py: create, claim, update status, add notes — all with admin_audit_log. 5 tests.
+
+---
+
+### Phase 495 — Scheduled Job Runner — 2026-03-14
+
+job_runner.py: interval-based scheduler with 5 job types (pre-arrival scan 6h, conflict scan 24h, SLA escalation 15m, token cleanup 24h, financial recon 24h). scheduled_job_log table. 3 tests.
+
+---
+
+### Phase 496 — Guest Feedback Collection — 2026-03-14
+
+guest_feedback.py: submit ratings 1-5, comments, per-property aggregation. guest_feedback table created. 4 tests.
+
+---
+
+### Phase 497 — Financial Reconciliation — 2026-03-14
+
+financial_reconciler.py: compares booking_state vs booking_financial_facts, coverage percentage, provider breakdown, zero-gross detection. 1 test.
+
+---
+
+### Phase 498 — Real LLM Integration — 2026-03-14
+
+llm_service.py: unified OpenAI integration for copilots with template fallback. Guest message generation (4 intents) and operational suggestions. 2 tests.
+
+---
+
+### Phase 499 — Property Management Dashboard — 2026-03-14
+
+property_dashboard.py: aggregates occupancy, revenue, tasks, upcoming arrivals, feedback per property. Portfolio overview. 1 test.
+
+---
+
+### Phase 500 — Webhook Retry Mechanism — 2026-03-14
+
+webhook_retry.py: exponential backoff (30s→2m→8m→30m→2h), max 5 retries, DLQ fallback. webhook_retry_queue + webhook_dlq tables. 3 tests.
+
+---
+
+### Phase 501 — Multi-Currency Exchange Rates — 2026-03-14
+
+currency_service.py: live exchange rate fetching + caching in exchange_rates table. THB-based conversion. Fallback to hardcoded rates. 3 tests.
+
+---
+
+### Phase 502 — Financial Write Operations — 2026-03-14
+
+financial_writer.py: manual payment recording with audit, payout record generation with management fee calculation. 2 tests.
+
+---
+
+### Phase 503 — Notification Preference Center — 2026-03-14
+
+notification_preferences.py: per-user opt-in/out for 10 notification types, quiet hours, preferred channel. notification_preferences table. 4 tests.
+
+---
+
+### Phase 504 — Platform Checkpoint XXIII — 2026-03-14
+
+20/20 build phases (485-504) complete. 60 new tests pass. 17 new service files. 6 new test files. 4 Supabase migrations. 504 total phase specs. 257 test files.
+
+---
+
+### Phases 485-504 — Block Summary: 20 Build Phases
+
+Block 1 (485-489): Data Pipeline Activation — guest profile hydration, WhatsApp dispatch, conflict scanner, pre-arrival scan, task template seeder.
+Block 2 (490-494): Portal + Sync — batch token issuance, owner portal data, outbound sync runner, booking writer, task writer.
+Block 3 (495-499): Operations + Intelligence — job runner, guest feedback, financial reconciliation, LLM integration, property dashboard.
+Block 4 (500-504): Reliability + Polish — webhook retry, multi-currency, financial writes, notification preferences, checkpoint.
+
+---

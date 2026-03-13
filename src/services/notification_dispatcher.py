@@ -439,3 +439,196 @@ def list_notification_log(
     except Exception as exc:
         logger.exception("list_notification_log error: %s", exc)
         return []
+
+
+# ---------------------------------------------------------------------------
+# WhatsApp dispatch (Twilio WhatsApp API) — Phase 486
+# ---------------------------------------------------------------------------
+
+def dispatch_whatsapp(
+    db: Any,
+    tenant_id: str,
+    to_number: str,
+    body: str,
+    notification_type: str = "generic",
+    reference_id: str | None = None,
+) -> dict:
+    """
+    Send a WhatsApp message via Twilio WhatsApp API.
+
+    Twilio WhatsApp uses the same credentials as SMS but prefixes
+    numbers with 'whatsapp:' and requires a pre-approved template
+    or 24-hour session window.
+
+    Env vars:
+        IHOUSE_TWILIO_SID    — same as SMS
+        IHOUSE_TWILIO_TOKEN  — same as SMS
+        IHOUSE_TWILIO_WHATSAPP_FROM — WhatsApp-enabled number (e.g. +14155238886)
+
+    DRY-RUN:
+        If env vars not set, logs status='dry_run'.
+    """
+    twilio_sid = os.environ.get("IHOUSE_TWILIO_SID", "")
+    twilio_token = os.environ.get("IHOUSE_TWILIO_TOKEN", "")
+    whatsapp_from = os.environ.get("IHOUSE_TWILIO_WHATSAPP_FROM", "")
+
+    log_row = _log_notification(
+        db=db,
+        tenant_id=tenant_id,
+        channel="whatsapp",
+        recipient=to_number,
+        notification_type=notification_type,
+        body_preview=_preview(body),
+        reference_id=reference_id,
+        status="pending",
+    )
+    notification_id = log_row.get("notification_id")
+
+    if not all([twilio_sid, twilio_token, whatsapp_from]):
+        logger.info(
+            "dispatch_whatsapp: dry_run (WhatsApp env vars not configured). to=%s type=%s",
+            to_number, notification_type,
+        )
+        if notification_id:
+            _update_log_status(db, notification_id, "dry_run")
+        return {
+            "notification_id": notification_id,
+            "status": "dry_run",
+            "channel": "whatsapp",
+            "recipient": to_number,
+        }
+
+    # Real Twilio WhatsApp dispatch
+    provider_id = None
+    try:
+        if Client is None:
+            raise RuntimeError("twilio package not installed")
+        client = Client(twilio_sid, twilio_token)
+        message = client.messages.create(
+            body=body,
+            from_=f"whatsapp:{whatsapp_from}",
+            to=f"whatsapp:{to_number}",
+        )
+        provider_id = message.sid
+        logger.info(
+            "dispatch_whatsapp: sent. to=%s sid=%s type=%s",
+            to_number, provider_id, notification_type,
+        )
+        if notification_id:
+            _update_log_status(db, notification_id, "sent", provider_id=provider_id)
+        return {
+            "notification_id": notification_id,
+            "status": "sent",
+            "channel": "whatsapp",
+            "recipient": to_number,
+            "provider_id": provider_id,
+        }
+    except Exception as exc:
+        err = str(exc)
+        logger.warning("dispatch_whatsapp: failed to=%s error=%s", to_number, err)
+        if notification_id:
+            _update_log_status(db, notification_id, "failed", error_message=err[:500])
+        return {
+            "notification_id": notification_id,
+            "status": "failed",
+            "channel": "whatsapp",
+            "recipient": to_number,
+            "error": err,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Booking event auto-notification — Phase 486
+# ---------------------------------------------------------------------------
+
+_CHANNEL_DISPATCH_MAP = {
+    "sms": dispatch_sms,
+    "email": dispatch_email,
+    "whatsapp": dispatch_whatsapp,
+}
+
+
+def notify_on_booking_event(
+    db: Any,
+    tenant_id: str,
+    booking_id: str,
+    event_type: str,
+    property_id: str = "",
+    guest_name: str = "",
+) -> list[dict]:
+    """
+    Auto-dispatch notifications for a booking event through all
+    active notification channels registered for the tenant.
+
+    Looks up notification_channels for the tenant, composes a message
+    per channel, and dispatches through the appropriate handler.
+
+    Returns:
+        List of dispatch result dicts.
+    """
+    results: list[dict] = []
+
+    try:
+        channels_result = (
+            db.table("notification_channels")
+            .select("user_id, channel_type, channel_id")
+            .eq("tenant_id", tenant_id)
+            .eq("active", True)
+            .execute()
+        )
+        channels = channels_result.data or []
+    except Exception as exc:
+        logger.warning("notify_on_booking_event: failed to load channels: %s", exc)
+        return results
+
+    if not channels:
+        logger.debug("notify_on_booking_event: no active channels for tenant %s", tenant_id)
+        return results
+
+    # Compose message
+    event_label = event_type.replace("BOOKING_", "").lower()
+    body = (
+        f"Booking {event_label}: {booking_id}\n"
+        f"Property: {property_id or 'N/A'}\n"
+        f"Guest: {guest_name or 'N/A'}\n"
+        f"— Domaniqo"
+    )
+
+    for channel in channels:
+        channel_type = channel.get("channel_type", "").lower()
+        channel_id = channel.get("channel_id", "")
+
+        dispatch_fn = _CHANNEL_DISPATCH_MAP.get(channel_type)
+        if not dispatch_fn:
+            logger.debug("notify_on_booking_event: unsupported channel %s", channel_type)
+            continue
+
+        try:
+            if channel_type == "email":
+                result = dispatch_email(
+                    db=db,
+                    tenant_id=tenant_id,
+                    to_email=channel_id,
+                    subject=f"Booking {event_label} — {booking_id}",
+                    body_html=f"<p>{body.replace(chr(10), '<br>')}</p>",
+                    notification_type=f"booking_{event_label}",
+                    reference_id=booking_id,
+                )
+            else:
+                result = dispatch_fn(
+                    db=db,
+                    tenant_id=tenant_id,
+                    to_number=channel_id,
+                    body=body,
+                    notification_type=f"booking_{event_label}",
+                    reference_id=booking_id,
+                )
+            results.append(result)
+        except Exception as exc:
+            logger.warning(
+                "notify_on_booking_event: dispatch failed for channel %s: %s",
+                channel_type, exc,
+            )
+
+    return results
+

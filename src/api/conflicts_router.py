@@ -662,3 +662,49 @@ async def get_conflict_dashboard(
             **dashboard,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 487 — POST /conflicts/scan (full property scan + backfill)
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/conflicts/scan",
+    tags=["conflicts", "admin"],
+    summary="Full conflict scan — detect all overlapping bookings (Phase 487)",
+    description=(
+        "Scans all properties for date overlaps among active bookings and "
+        "writes detected conflicts to the conflict_tasks table.\n\n"
+        "Supports dry_run mode for preview without writes."
+    ),
+    responses={
+        200: {"description": "Scan complete with results."},
+        401: {"description": "Missing or invalid JWT."},
+    },
+)
+async def scan_all_conflicts(
+    dry_run: bool = False,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    POST /conflicts/scan?dry_run=false
+
+    Triggers a full tenant-wide conflict scan. Writes detected overlaps
+    to conflict_tasks table. Safe to run multiple times (upserts on
+    deterministic conflict_task_id).
+    """
+    try:
+        from services.conflict_scanner import run_full_scan
+        result = run_full_scan(tenant_id=tenant_id, dry_run=dry_run)
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "ok",
+                "tenant_id": tenant_id,
+                **result,
+            },
+        )
+    except Exception as exc:
+        logger.exception("POST /conflicts/scan error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Conflict scan failed")

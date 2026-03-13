@@ -4703,3 +4703,36 @@ Baseline metrics via health endpoint and alerting thresholds. No code changes.
 ## Phase 484 — Platform Checkpoint XXII — 2026-03-13
 
 20/20 phases complete. 0 test failures. System production-ready.
+
+## Phases 485-504 — 20 Build Phases — 2026-03-14
+
+### Block 1 (485-489): Data Pipeline Activation
+- `src/services/guest_profile_backfill.py` — NEW — backfill from BOOKING_CREATED events
+- `src/services/notification_dispatcher.py` — MOD — WhatsApp dispatch + booking event auto-notify
+- `src/services/conflict_scanner.py` — NEW — per-property overlap detection
+- `src/api/pre_arrival_router.py` — MOD — POST /admin/pre-arrival/scan
+- `src/services/task_template_seeder.py` — NEW — 6 default operational templates
+
+### Block 2 (490-494): Portal + Sync
+- `src/services/guest_token_batch.py` — NEW — batch HMAC token issuance
+- `src/services/outbound_sync_runner.py` — NEW — dispatches to OTA adapters
+- `src/services/booking_writer.py` — NEW — event-sourced booking mutations
+- `src/services/task_writer_frontend.py` — NEW — task CRUD with audit
+
+### Block 3 (495-499): Operations + Intelligence
+- `src/services/job_runner.py` — NEW — 5 scheduled jobs, interval-based
+- `src/services/guest_feedback.py` — NEW — ratings 1-5, per-property aggregation
+- `src/services/financial_reconciler.py` — NEW — booking_state vs facts coverage
+- `src/services/llm_service.py` — NEW — OpenAI + template fallback
+- `src/services/property_dashboard.py` — NEW — occupancy+revenue+tasks aggregation
+
+### Block 4 (500-504): Reliability + Polish
+- `src/services/webhook_retry.py` — NEW — exponential backoff, DLQ
+- `src/services/currency_service.py` — NEW — live exchange rates + caching
+- `src/services/financial_writer.py` — NEW — manual payments + payouts
+- `src/services/notification_preferences.py` — NEW — per-user opt-in/out
+
+### Supabase Migrations
+- `scheduled_job_log`, `guest_feedback`, `webhook_retry_queue`, `webhook_dlq`, `exchange_rates`, `notification_preferences`, `task_notes`
+
+### Tests: 60 new tests across 6 test files. 257 total test files. 504 total phase specs.

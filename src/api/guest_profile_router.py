@@ -284,3 +284,54 @@ async def guest_profile_stats(
     except Exception as exc:
         logger.exception("GET /guests/stats error: %s", exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# POST /guests/backfill — Phase 485
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/guests/backfill",
+    tags=["guest", "admin"],
+    responses={
+        200: {"description": "Backfill results"},
+        401: {"description": "Missing or invalid JWT"},
+    },
+)
+async def guest_profile_backfill(
+    dry_run: bool = False,
+    batch_size: int = 100,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Phase 485: Retroactively extract guest profiles from event_log
+    BOOKING_CREATED events and upsert into guest_profile table.
+
+    This fills the gap for bookings created before the live extraction
+    pipeline was active.
+
+    Args:
+        dry_run: If true, extract but don't write to Supabase.
+        batch_size: Number of records to write per batch (default 100).
+    """
+    try:
+        from services.guest_profile_backfill import backfill_guest_profiles
+
+        result = backfill_guest_profiles(
+            tenant_id=tenant_id,
+            batch_size=batch_size,
+            dry_run=dry_run,
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "ok",
+                "tenant_id": tenant_id,
+                **result,
+            },
+        )
+
+    except Exception as exc:
+        logger.exception("POST /guests/backfill error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
