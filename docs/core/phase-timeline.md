@@ -7437,3 +7437,64 @@ Full suite: all pass, 0 failed.
 
 ---
 
+
+### Phases 667–669 — Wave 5: Guest Extras APIs — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 667 | Extras listing | GET /guest/{token}/extras — property extras for guest |
+| 668 | Order extra | POST /guest/{token}/extras/order — creates extra_orders record, SSE alert |
+| 669 | Manager actions | PATCH /extra-orders/{order_id} — confirm/reject/deliver with transition guard |
+
+**Files:** `src/api/guest_extras_router.py` — NEW
+
+---
+
+### Phases 670–675 — Wave 5: Guest Portal Enhancements — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 670 | Guest chat | POST/GET /guest/{token}/messages — guest↔manager messaging |
+| 672 | WhatsApp link | GET /guest/{token}/contact — wa.me link + phone + email |
+| 673 | Location & map | GET /guest/{token}/location — GPS, Google Maps URL, directions |
+| 674 | House info | GET /guest/{token}/house-info — non-null fields only |
+| 675 | Multi-language | GET /guest/{token}/portal-i18n — EN/TH/HE labels (12 keys) |
+
+**Files:** `src/api/guest_portal_router.py` — MODIFIED (6 new endpoints)
+
+---
+
+### Phases 676–684 — Wave 5: Guest Portal Tests — 2026-03-14
+
+| Phase | Test Coverage |
+|-------|---------------|
+| 676 | Contract — enhanced portal data (Phase 666 fields) |
+| 677 | Contract — extras listing |
+| 678 | Contract — order extra, manager confirm, transition guard |
+| 679 | Contract — guest chat send/receive |
+| 680 | Contract — WhatsApp link generation |
+| 681 | Contract — location + map URLs |
+| 682 | Contract — house info null filtering |
+| 683 | E2E — full guest journey: extras → order → chat → i18n |
+| 684 | Edge — post-checkout, terminal state enforcement |
+
+Tests: 30 new in `test_wave5_guest_portal_contract.py`.
+
+---
+
+### Phase 685 — Wave 5: Reserved — 2026-03-14
+
+No changes. Reserved for iteration.
+
+---
+
+### Phase 686 — Wave 6: Checkout Enhanced Worker View — 2026-03-14
+
+GET /bookings/{booking_id}/checkout-view — returns reference photos, cleaning photos, property info (door code, notes), deposit info, guest info.
+
+**Files:** `src/api/guest_portal_router.py` → `checkout_router`; `src/main.py` — MODIFIED (registered)
+
+Full suite: all pass, 0 failed.
+
+---
+

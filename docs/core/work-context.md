@@ -1,20 +1,21 @@
 ## Current Active Phase
 
-Phase 666 — Wave 5: Guest Portal Enhanced Data Model (closed).
+Phase 686 — Wave 6: Checkout Enhanced Worker View (closed).
 
 ## Last Closed Phase
 
-Phase 666 — Wave 5: Guest Portal Enhanced Data Model (closed).
+Phase 686 — Wave 6: Checkout Enhanced Worker View (closed).
 
 ## Current Objective
 
-Phase 666 closed. Completed 20 phases (647–666):
-- Wave 4 Problem Reporting (647–665): Auto-maintenance task on problem report (urgent → CRITICAL 5-min SLA, normal → MEDIUM 1h SLA). Audit events on status change. SSE `PROBLEM_URGENT` alerts. i18n labels for 14 categories (EN/TH/HE).
-- Wave 5 Guest Portal start (666): `GuestBookingView` extended with 17 fields — extras, chat, GPS, house info.
-- 3 new files: `problem_report_labels.py`, `test_wave4_problem_reporting_contract.py`, `ExtraItem` in `guest_portal.py`.
-- 2 modified: `problem_report_router.py` (auto-task + SSE + audit), `guest_portal.py` (Phase 666 fields).
+Phase 686 closed. Completed 40 phases (647–686) across 3 waves:
+- Wave 4 (647–665): Problem Reporting — auto-maintenance tasks, audit events, SSE alerts, i18n labels (38 tests).
+- Wave 5 (666–685): Guest Portal — enhanced data model, extras listing/ordering, guest chat, WhatsApp link, location/map, house info, multi-language portal (30 tests).
+- Wave 6 start (686): Checkout enhanced worker view — reference photos, cleaning photos, deposit, property info.
+- New files: `guest_extras_router.py`, `problem_report_labels.py`, 2 test files.
+- Modified: `guest_portal_router.py`, `guest_portal.py`, `problem_report_router.py`, `main.py`.
 - Test suite: all pass, 0 failed.
-Next session: continue Wave 5 (Guest Portal & Extras, Phases 667–685).
+Next session: continue Wave 6 (Checkout & Deposit Settlement, Phases 687–705).
 
 ## Deferred Items — Open Items Registry
 

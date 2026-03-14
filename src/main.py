@@ -517,6 +517,14 @@ app.include_router(cleaning_task_router)
 from api.worker_calendar_router import router as worker_calendar_router  # noqa: E402  # Phase 635
 app.include_router(worker_calendar_router)
 
+# --- Wave 4/5: Guest Portal & Extras (Phases 667–686) ---
+
+from api.guest_extras_router import router as guest_extras_router  # noqa: E402  # Phases 667-669
+app.include_router(guest_extras_router)
+
+from api.guest_portal_router import checkout_router  # noqa: E402  # Phase 686
+app.include_router(checkout_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint
