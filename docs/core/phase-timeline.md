@@ -7326,3 +7326,52 @@ Tests: 31 new in `test_wave2_guest_checkin_contract.py`.
 Full suite: 7,456 passed, 0 failed, 22 skipped.
 
 ---
+
+### Phases 626–645 — Wave 3: Task System Enhancement — 2026-03-14
+
+**Routers**: `cleaning_task_router.py` (8 endpoints), `worker_calendar_router.py` (2 endpoints).
+**Logic**: `cleaning_template_seeder.py` (default EN+TH checklist), `task_automator.py` enhanced (CHECKOUT_VERIFY).
+**Navigate**: `task_router.py` → `GET /tasks/{id}/navigate` (GPS + Google Maps).
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 626 | Cleaning Template CRUD | POST/GET /properties/{id}/cleaning-checklist |
+| 627 | Default Template Seeder | `cleaning_template_seeder.py` — 21 items, 7 supplies, EN+TH |
+| 628 | Cleaning Progress | POST /tasks/{id}/start-cleaning, PATCH .../cleaning-progress |
+| 629 | Room Photo Upload | POST /tasks/{id}/cleaning-photos |
+| 630 | Supply Check | PATCH /tasks/{id}/supply-check |
+| 631 | Complete Blocking | POST /tasks/{id}/complete-cleaning (3 pre-conditions) |
+| 632 | Reference vs Cleaning | GET /tasks/{id}/reference-vs-cleaning |
+| 633 | Task Navigation (GPS) | GET /tasks/{id}/navigate → maps.google.com |
+| 634 | CHECKOUT_VERIFY Auto | `task_automator.py` emits 3rd task on BOOKING_CREATED |
+| 635 | Worker Calendar | GET /workers/{id}/calendar, GET .../tasks/today |
+| 636-645 | Tests + Edge Cases | 39 new contract + E2E tests |
+
+Tests: 39 new in `test_wave3_task_enhancement_contract.py`.
+Full suite: 7,495 passed, 0 failed, 22 skipped.
+
+---
+
+### Phase 646 — PII Document Security Hardening — 2026-03-14
+
+**Security**: Passport photos, signatures, and cash deposit photos are now treated as PII with strict access controls.
+
+| Component | Implementation |
+|-----------|---------------|
+| PII Redaction | `_redact_guest_pii()`, `_redact_deposit_pii()` in `guest_checkin_form_router.py` |
+| POST-Submit Lockout | `GET /checkin-form` returns `***` for all PII URLs + boolean indicators |
+| Submit Response | Status indicators only (count + booleans), never raw URLs |
+| Admin-Only Retrieval | `GET /admin/pii-documents/{form_id}` — role=admin enforced, signed URLs (5-min expiry) |
+| Audit Logging | `PII_DOCUMENT_ACCESS` event in `audit_log` on every admin retrieval (actor, IP, docs) |
+| Retention Policy | Minimum 1 year from check-out, no auto-deletion, admin action required |
+
+**Files Changed:**
+- `src/api/guest_checkin_form_router.py` — MODIFIED — PII redaction + status-only submit
+- `src/api/pii_document_router.py` — NEW — admin-only signed URL endpoint + audit
+- `src/main.py` — MODIFIED — registered pii_document_router
+- `docs/core/work-context.md` — MODIFIED — PII retention invariant added
+
+Tests: 17 new in `test_pii_document_security.py`.
+Full suite: 7,512 passed, 0 failed, 22 skipped.
+
+---

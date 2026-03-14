@@ -1,14 +1,31 @@
 ## Current Active Phase
 
-Phase 585 — Booking Test Suite Repair (closed).
+Phase 646 — PII Document Security Hardening (closed).
 
 ## Last Closed Phase
 
-Phase 585 — Booking Test Suite Repair (closed).
+Phase 646 — PII Document Security Hardening (closed).
 
 ## Current Objective
 
-Phase 585 closed. Fixed all 143 test failures from the Phase 570 response envelope migration — 17 test files, ~170 assertion changes. Test suite: 7,380 passed, 0 failed, 22 skipped. Next session at Phase 586.
+Phase 646 closed. PII Document Security Hardening: passport photos, signatures, and cash deposit photos are now treated as PII.
+`GET /checkin-form` redacts all PII URLs to `***` with boolean indicators. `POST /submit` returns status only.
+Admin retrieval via `GET /admin/pii-documents/{form_id}` — role=admin enforced, signed URLs (5-min expiry), audit-logged.
+2 new files: `pii_document_router.py`, `test_pii_document_security.py`.
+2 modified: `guest_checkin_form_router.py` (PII redaction), `main.py` (router registration).
+Test suite: 7,495 passed, 0 failed, 22 skipped.
+Next session at Phase 646 (Wave 4: Problem Reporting).
+
+## Deferred Items — Open Items Registry
+
+> Must be reviewed and updated at every phase closure.
+
+| Phase | Title | Status | Reason | Unblock Condition | Planned Phase |
+|-------|-------|--------|--------|-------------------|---------------|
+| 614 | Pre-Arrival Email (SMTP) | 🟡 Deferred | Requires live SMTP config | `SMTP_HOST/PORT/USER/PASS` env vars configured | TBD — email infra |
+| 617 | Wire Form → Checkin Router | 🟡 Deferred | Requires live booking flow | Real check-in data flowing | TBD — live check-in |
+| 618 | Wire QR → Checkin Response | 🟡 Deferred | Same blocker as 617 | Same as 617 | TBD — with 617 |
+| — | Supabase Storage Buckets (5) | 🔴 Pending Decision | Tables ref `photo_url` but no actual storage | User decision needed | TBD — bucket mapping |
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -27,6 +44,8 @@ Phase 585 closed. Fixed all 143 test failures from the Phase 570 response envelo
 - External channels (LINE, WhatsApp, Telegram, SMS, Email) are escalation fallbacks ONLY — never source of truth
 - **No global fallback chain**: each worker has their preferred `channel_type` in `notification_channels`
 - CRITICAL_ACK_SLA_MINUTES = 5 (locked)
+- PII documents (passport photos, signatures, cash deposit photos) retained minimum 1 year from check-out, admin-only access, audit-logged. No auto-deletion.
+- `GET /checkin-form` NEVER returns raw PII URLs — always redacted. Admin uses `GET /admin/pii-documents/{form_id}` exclusively.
 
 ## Key Files — Channel Layer (Phases 124, 168, 177, 196, 203, 212, 213)
 

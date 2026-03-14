@@ -506,6 +506,17 @@ app.include_router(owner_visibility_router)
 from api.guest_checkin_form_router import router as guest_checkin_form_router  # noqa: E402  # Phases 606-618
 app.include_router(guest_checkin_form_router)
 
+from api.pii_document_router import router as pii_document_router  # noqa: E402  # PII Security
+app.include_router(pii_document_router)
+
+# --- Wave 3: Task System Enhancement (Phases 626–645) ---
+
+from api.cleaning_task_router import router as cleaning_task_router  # noqa: E402  # Phases 626-632
+app.include_router(cleaning_task_router)
+
+from api.worker_calendar_router import router as worker_calendar_router  # noqa: E402  # Phase 635
+app.include_router(worker_calendar_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

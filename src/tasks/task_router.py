@@ -324,6 +324,88 @@ async def patch_task_status(
 
 
 # ---------------------------------------------------------------------------
+# Phase 633 — GET /tasks/{task_id}/navigate
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/tasks/{task_id}/navigate",
+    tags=["tasks"],
+    summary="Get GPS navigation info for a task's property (Phase 633)",
+    responses={
+        200: {"description": "GPS coordinates and map URL"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Task or property not found"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def navigate_to_property(
+    task_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Return GPS coordinates and Google Maps URL for the property linked to this task.
+    Used by field workers to navigate to the property.
+    """
+    try:
+        db = client or _get_supabase_client()
+
+        # Look up the task
+        task_result = (
+            db.table("tasks")
+            .select("property_id, title")
+            .eq("task_id", task_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not task_result.data:
+            return make_error_response(404, ErrorCode.NOT_FOUND, f"Task '{task_id}' not found")
+
+        property_id = task_result.data[0].get("property_id", "")
+
+        # Look up property GPS
+        prop_result = (
+            db.table("properties")
+            .select("latitude, longitude, display_name")
+            .eq("property_id", property_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not prop_result.data:
+            return make_error_response(404, ErrorCode.NOT_FOUND, f"Property '{property_id}' not found")
+
+        prop = prop_result.data[0]
+        lat = prop.get("latitude")
+        lng = prop.get("longitude")
+
+        if lat is None or lng is None:
+            return JSONResponse(status_code=200, content={
+                "task_id": task_id,
+                "property_id": property_id,
+                "property_name": prop.get("display_name", ""),
+                "has_gps": False,
+                "message": "No GPS coordinates saved for this property",
+            })
+
+        map_url = f"https://maps.google.com/?q={lat},{lng}"
+        return JSONResponse(status_code=200, content={
+            "task_id": task_id,
+            "property_id": property_id,
+            "property_name": prop.get("display_name", ""),
+            "has_gps": True,
+            "latitude": lat,
+            "longitude": lng,
+            "map_url": map_url,
+        })
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("navigate_to_property error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to get navigation info")
+
+
+# ---------------------------------------------------------------------------
 # Phase 206 — POST /tasks/pre-arrival/{booking_id}
 # ---------------------------------------------------------------------------
 

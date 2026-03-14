@@ -11,11 +11,12 @@ Architecture constraints:
 - Task creation is deterministic: same input always produces the same task_id.
   (sha256(kind:booking_id:property_id)[:16] — inherited from task_model)
 
-Automation rules (locked at Phase 112):
+Automation rules (locked at Phase 112, enhanced Phase 634):
 
   BOOKING_CREATED:
-    → CHECKIN_PREP task  (priority: HIGH,   due: check_in date)
-    → CLEANING task      (priority: MEDIUM, due: check_in date, for turnover prep)
+    → CHECKIN_PREP task      (priority: HIGH,   due: check_in date)
+    → CLEANING task          (priority: MEDIUM, due: check_in date, for turnover prep)
+    → CHECKOUT_VERIFY task   (priority: MEDIUM, due: check_out date) [Phase 634]
 
   BOOKING_CANCELED:
     → Cancel all PENDING tasks for this booking_id
@@ -25,8 +26,9 @@ Automation rules (locked at Phase 112):
 
   BOOKING_AMENDED (dates changed):
     → If check_in changed: reschedule CHECKIN_PREP + CLEANING due_date
+    → If check_out changed: reschedule CHECKOUT_VERIFY due_date [Phase 634]
       Returns TaskRescheduleAction for each affected task.
-      Only emitted if new check_in date differs from current task due_date.
+      Only emitted if new date differs from current task due_date.
 
 Entry points:
   tasks_for_booking_created(payload) -> List[Task]
@@ -89,13 +91,15 @@ def tasks_for_booking_created(
     check_in: str,
     source: str = "unknown",
     created_at: Optional[str] = None,
+    check_out: Optional[str] = None,
 ) -> List[Task]:
     """
     Emit tasks for a BOOKING_CREATED event.
 
-    Rules (locked Phase 112):
-      - CHECKIN_PREP task: priority HIGH, due_date = check_in
-      - CLEANING task:     priority MEDIUM, due_date = check_in
+    Rules (locked Phase 112, enhanced Phase 634):
+      - CHECKIN_PREP task:    priority HIGH,   due_date = check_in
+      - CLEANING task:        priority MEDIUM, due_date = check_in
+      - CHECKOUT_VERIFY task: priority MEDIUM, due_date = check_out [Phase 634]
 
     Args:
         tenant_id:   Owning tenant.
@@ -104,9 +108,12 @@ def tasks_for_booking_created(
         check_in:    ISO 8601 date string for check_in (YYYY-MM-DD).
         source:      OTA provider name (for title context).
         created_at:  ISO 8601 UTC timestamp. Defaults to now.
+        check_out:   ISO 8601 date string for check_out (YYYY-MM-DD). If None,
+                     CHECKOUT_VERIFY task is not created.
 
     Returns:
-        List of two Tasks: [CHECKIN_PREP, CLEANING], always in this order.
+        List of Tasks: [CHECKIN_PREP, CLEANING, CHECKOUT_VERIFY*], in this order.
+        *CHECKOUT_VERIFY only if check_out is provided.
     """
     if created_at is None:
         created_at = datetime.now(tz=timezone.utc).isoformat()
@@ -133,7 +140,23 @@ def tasks_for_booking_created(
         priority=TaskPriority.MEDIUM,
     )
 
-    return [checkin_prep, cleaning]
+    tasks = [checkin_prep, cleaning]
+
+    # Phase 634 — CHECKOUT_VERIFY task
+    if check_out:
+        checkout_verify = Task.build(
+            kind=TaskKind.CHECKOUT_VERIFY,
+            tenant_id=tenant_id,
+            booking_id=booking_id,
+            property_id=property_id,
+            due_date=check_out,
+            title=f"Checkout verification for {booking_id}",
+            created_at=created_at,
+            priority=TaskPriority.MEDIUM,
+        )
+        tasks.append(checkout_verify)
+
+    return tasks
 
 
 # ---------------------------------------------------------------------------
@@ -179,43 +202,62 @@ def actions_for_booking_amended(
     booking_id: str,
     new_check_in: str,
     existing_tasks: List[Task],
+    new_check_out: Optional[str] = None,
 ) -> List[TaskRescheduleAction]:
     """
-    Emit reschedule actions for CHECKIN_PREP and CLEANING tasks when check_in changes.
+    Emit reschedule actions when booking dates change.
 
-    Only affects tasks whose kind is CHECKIN_PREP or CLEANING, status is not
-    terminal (COMPLETED or CANCELED), and whose due_date differs from new_check_in.
+    Phase 112 (locked): CHECKIN_PREP + CLEANING rescheduled when check_in changes.
+    Phase 634: CHECKOUT_VERIFY rescheduled when check_out changes.
+
+    Only affects tasks whose status is not terminal (COMPLETED or CANCELED)
+    and whose due_date differs from the new date.
 
     Args:
         booking_id:     The booking that was amended.
         new_check_in:   The new check_in date (YYYY-MM-DD).
         existing_tasks: All existing Task objects for this booking.
+        new_check_out:  The new check_out date (YYYY-MM-DD). Optional.
 
     Returns:
         TaskRescheduleAction for each affected task.
         Returns empty list if no rescheduling is needed.
     """
-    affected_kinds = {TaskKind.CHECKIN_PREP, TaskKind.CLEANING}
+    checkin_kinds = {TaskKind.CHECKIN_PREP, TaskKind.CLEANING}
     actions = []
 
     for task in existing_tasks:
         if task.booking_id != booking_id:
             continue
-        if task.kind not in affected_kinds:
-            continue
         if task.is_terminal():
             continue
-        if task.due_date == new_check_in:
-            continue  # already correct, no action needed
 
-        actions.append(
-            TaskRescheduleAction(
-                task_id=task.task_id,
-                booking_id=booking_id,
-                kind=task.kind,
-                old_due_date=task.due_date,
-                new_due_date=new_check_in,
+        # Check-in related tasks
+        if task.kind in checkin_kinds and task.due_date != new_check_in:
+            actions.append(
+                TaskRescheduleAction(
+                    task_id=task.task_id,
+                    booking_id=booking_id,
+                    kind=task.kind,
+                    old_due_date=task.due_date,
+                    new_due_date=new_check_in,
+                )
             )
-        )
+
+        # Phase 634 — Check-out related tasks
+        if (
+            task.kind == TaskKind.CHECKOUT_VERIFY
+            and new_check_out
+            and task.due_date != new_check_out
+        ):
+            actions.append(
+                TaskRescheduleAction(
+                    task_id=task.task_id,
+                    booking_id=booking_id,
+                    kind=task.kind,
+                    old_due_date=task.due_date,
+                    new_due_date=new_check_out,
+                )
+            )
 
     return actions

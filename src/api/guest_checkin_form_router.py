@@ -31,6 +31,40 @@ from api.error_models import ErrorCode, make_error_response
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["guest-checkin"])
 
+# ---------------------------------------------------------------------------
+# PII Redaction — passport photos, signatures, cash deposit photos
+# ---------------------------------------------------------------------------
+
+_PII_URL_FIELDS = ("passport_photo_url", "signature_url", "cash_photo_url")
+_REDACTED = "***"
+
+
+def _redact_guest_pii(guest: Dict[str, Any]) -> Dict[str, Any]:
+    """Replace PII URL with redaction marker and add boolean indicator."""
+    g = dict(guest)
+    if g.get("passport_photo_url"):
+        g["passport_photo_captured"] = True
+        g["passport_photo_url"] = _REDACTED
+    else:
+        g["passport_photo_captured"] = False
+    return g
+
+
+def _redact_deposit_pii(deposit: Dict[str, Any]) -> Dict[str, Any]:
+    """Replace PII URL fields on deposit record."""
+    d = dict(deposit)
+    if d.get("signature_url"):
+        d["signature_recorded"] = True
+        d["signature_url"] = _REDACTED
+    else:
+        d["signature_recorded"] = False
+    if d.get("cash_photo_url"):
+        d["cash_photo_captured"] = True
+        d["cash_photo_url"] = _REDACTED
+    else:
+        d["cash_photo_captured"] = False
+    return d
+
 
 def _get_supabase_client() -> Any:
     from supabase import create_client
@@ -131,7 +165,17 @@ async def get_checkin_form(
             db.table("guest_checkin_guests").select("*")
             .eq("form_id", form_id).order("guest_number", desc=False).execute()
         )
-        form["guests"] = guests_result.data or []
+
+        # PII redaction — passport photos never returned in this endpoint
+        form["guests"] = [_redact_guest_pii(g) for g in (guests_result.data or [])]
+
+        # Redact deposit PII if embedded
+        if form.get("signature_url"):
+            form["signature_recorded"] = True
+            form["signature_url"] = _REDACTED
+        if form.get("cash_photo_url"):
+            form["cash_photo_captured"] = True
+            form["cash_photo_url"] = _REDACTED
 
         return JSONResponse(status_code=200, content=form)
     except Exception as exc:
@@ -404,9 +448,13 @@ async def submit_form(
             "worker_id": body.get("worker_id"),
         }).eq("id", form_id).execute()
 
+        # PII-safe response — status indicators only, NEVER raw URLs
+        passport_count = sum(1 for g in guests if g.get("passport_photo_url"))
         return JSONResponse(status_code=200, content={
             "form_id": form_id, "form_status": "completed",
             "submitted_at": now, "guest_count": len(guests),
+            "passport_photo_count": passport_count,
+            "passport_photos_captured": passport_count > 0,
             "validation_bypassed": bool(force and validation_errors),
         })
     except Exception as exc:

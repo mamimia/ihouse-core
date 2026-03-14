@@ -4774,3 +4774,13 @@ Baseline metrics via health endpoint and alerting thresholds. No code changes.
 - `test_invite_flow.py`, `test_access_token_system.py` — reverted incorrect `["data"]` wrapping (non-migrated routers)
 
 ### Tests: 7,380 passed, 0 failed, 22 skipped. 264 test files. 505 phase specs.
+
+### Phase 646 — PII Document Security Hardening — 2026-03-14
+
+- `src/api/guest_checkin_form_router.py` — MODIFIED — `_redact_guest_pii()`, `_redact_deposit_pii()` helpers; `GET /checkin-form` redacts all PII URLs to `***` with boolean indicators; `POST /submit` returns status indicators only (counts, booleans), never raw URLs
+- `src/api/pii_document_router.py` — NEW — `GET /admin/pii-documents/{form_id}` admin-only endpoint; JWT role=admin enforced; Supabase Storage signed URLs (5-min expiry); `PII_DOCUMENT_ACCESS` audit log entry per access
+- `src/main.py` — MODIFIED — registered `pii_document_router`
+- `docs/core/work-context.md` — MODIFIED — PII retention policy + redaction invariant added to locked invariants
+- `tests/test_pii_document_security.py` — NEW — 17 contract tests (redaction helpers, form GET redaction, submit status-only, role enforcement, audit logging)
+
+### Tests: 7,512 passed, 0 failed, 22 skipped.
