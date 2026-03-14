@@ -7610,3 +7610,55 @@ Full suite: all pass, 0 failed.
 
 ---
 
+
+### Phases 727–728 — Wave 8: External Worker Push & Admin Toggle — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 727 | External Worker Push | POST /tasks/{id}/push-to-external → sanitized payload (no financial data) + notification queue |
+| 728 | Admin Maintenance Mode Toggle | PATCH/GET /settings/maintenance-mode → single vs specialists per tenant |
+
+**Files:** `src/api/owner_portal_v2_router.py` — MODIFIED (+176 lines, 3 endpoints)
+
+---
+
+### Phases 729–735 — Wave 8: Owner Portal & Maintenance Tests — 2026-03-14
+
+| Phase | Test Coverage |
+|-------|---------------|
+| 729 | Contract — visibility toggle CRUD |
+| 730 | Contract — filtered owner summary |
+| 732 | Contract — specialist CRUD |
+| 734 | Contract — external worker push |
+| 735 | Contract — maintenance mode toggle |
+
+---
+
+### Phases 736–742 — Wave 9: i18n & Localization — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 736 | String Catalog Infrastructure | GET /i18n/{lang} + /i18n/{lang}/{category} — 89 keys across 6 categories |
+| 737 | Guest Form Localization | 18 keys in EN/TH/HE — registration fields, validation |
+| 738 | Cleaning Checklist Localization | 15 keys in EN/TH/HE — cleaning items + supplies |
+| 739 | Problem Reporting Localization | 18 keys in EN/TH/HE — categories, priorities, statuses |
+| 740 | Guest Portal Localization | 13 keys in EN/TH/HE — portal sections |
+| 741 | Auto-Translate Integration | POST /translate — LLM-based with passthrough fallback |
+| 742 | Worker Language Preference | PATCH/GET /workers/{id}/language — EN/TH/HE preference |
+
+**New Files:** `src/i18n/i18n_catalog.py`, `src/api/i18n_router.py`
+
+---
+
+### Phases 743–745 — Wave 9: i18n Tests — 2026-03-14
+
+| Phase | Test Coverage |
+|-------|---------------|
+| 743 | Completeness — all keys in all 3 languages |
+| 744 | Contract — Thai + Hebrew translations |
+| 745 | RESERVED — Future Wave 2 (Russian, Italian, Spanish) |
+
+Tests: 31 new in `test_wave8_9_owner_i18n.py`. Full suite: all pass.
+
+---
+

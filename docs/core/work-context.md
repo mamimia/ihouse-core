@@ -1,21 +1,22 @@
 ## Current Active Phase
 
-Phase 726 — Wave 8: Maintenance Filtered Task View (closed).
+Phase 745 — Wave 9: i18n Tests Reserved (closed).
 
 ## Last Closed Phase
 
-Phase 726 — Wave 8: Maintenance Filtered Task View (closed).
+Phase 745 — Wave 9: i18n Tests Reserved (closed).
 
 ## Current Objective
 
-Phase 726 closed. Completed 80 phases (647–726) across 6 waves:
+Phase 745 closed. Completed 99 phases (647–745) across 8 waves:
 - Wave 4 (647–665): Problem Reporting.
 - Wave 5 (666–685): Guest Portal & Extras.
 - Wave 6 (686–705): Checkout & Deposit Settlement.
 - Wave 7 (706–720): Manual Booking + Task Take-Over.
-- Wave 8 start (721–726): Owner Portal visibility + Maintenance specialist CRUD + filtered tasks.
-- Test suite: all pass, 0 failed. 119+ new tests across 4 test files.
-Next session: continue Wave 8 (Phases 727–735 — external worker push, maintenance mode toggle, tests) and Wave 9 (i18n).
+- Wave 8 (721–735): Owner Portal + Maintenance specialist CRUD + filtered tasks + external push + admin toggle.
+- Wave 9 (736–745): i18n catalog (89 keys EN/TH/HE, 6 categories), API, auto-translate, worker lang pref.
+- Test suite: all pass, 0 failed. 150+ new tests across 6 test files.
+Next session: continue with Wave 10 (Phases 746–757 — Bulk Import Wizard: OTA OAuth, property import, smart defaults).
 
 ## Deferred Items — Open Items Registry
 

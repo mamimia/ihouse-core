@@ -546,6 +546,11 @@ app.include_router(owner_portal_v2_router)
 from api.owner_portal_v2_router import maintenance_router  # noqa: E402  # Phases 725-726
 app.include_router(maintenance_router)
 
+# --- Wave 9: i18n & Localization (Phases 736–742) ---
+
+from api.i18n_router import router as i18n_router  # noqa: E402  # Phases 736, 741-742
+app.include_router(i18n_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

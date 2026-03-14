@@ -1,5 +1,5 @@
 """
-Phases 721–726 — Owner Portal & Maintenance
+Phases 721–728 — Owner Portal & Maintenance
 ==============================================
 
 721: PUT/GET /owners/{owner_id}/properties/{property_id}/visibility
@@ -8,6 +8,8 @@ Phases 721–726 — Owner Portal & Maintenance
 724: Owner auth concept (placeholder — uses JWT with role=owner)
 725: CRUD /maintenance/specialties + /workers/{id}/specialties
 726: GET /workers/{worker_id}/maintenance-tasks — filtered by specialty
+727: POST /tasks/{task_id}/push-to-external — send task to external worker
+728: PATCH /settings/maintenance-mode — toggle single vs specialists
 """
 from __future__ import annotations
 
@@ -397,4 +399,176 @@ async def worker_maintenance_tasks(
         })
     except Exception as exc:
         logger.exception("worker_maintenance_tasks error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
+# Phase 727 — Maintenance: External Worker Push
+# ===========================================================================
+
+@maintenance_router.post("/tasks/{task_id}/push-to-external",
+                         summary="Push task to external worker (Phase 727)")
+async def push_task_to_external(
+    task_id: str, body: Dict[str, Any],
+    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+) -> JSONResponse:
+    worker_id = str(body.get("worker_id") or "").strip()
+    if not worker_id:
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR,
+                                   extra={"detail": "worker_id required"})
+
+    try:
+        db = client if client is not None else _get_db()
+
+        # Get task details
+        task_res = db.table("tasks").select("*").eq("id", task_id).limit(1).execute()
+        task_rows = task_res.data or []
+        if not task_rows:
+            return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
+
+        task = task_rows[0]
+        now = _now_iso()
+
+        # Build sanitized payload — external worker sees NO financial data
+        sanitized_task = {
+            "task_id": task["id"],
+            "task_kind": task.get("task_kind"),
+            "status": task.get("status"),
+            "priority": task.get("priority"),
+            "property_id": task.get("property_id"),
+            "booking_id": task.get("booking_id"),
+            "description": task.get("description"),
+        }
+
+        # Get property name + address + navigation
+        prop_id = task.get("property_id")
+        if prop_id:
+            try:
+                prop = db.table("properties").select("name, address, latitude, longitude, door_code").eq("property_id", prop_id).limit(1).execute()
+                if prop.data:
+                    sanitized_task["property"] = prop.data[0]
+            except Exception:
+                pass
+
+        # Get photos for the task
+        if prop_id:
+            try:
+                photos = db.table("property_reference_photos").select("photo_url, room_label").eq("property_id", prop_id).execute()
+                sanitized_task["photos"] = photos.data or []
+            except Exception:
+                pass
+
+        # Queue notification
+        notif_id = hashlib.sha256(f"EXT_PUSH:{task_id}:{worker_id}:{now}".encode()).hexdigest()[:16]
+        db.table("notification_queue").insert({
+            "id": notif_id,
+            "recipient_id": worker_id,
+            "channel": "auto",
+            "message": f"New task assigned: {task.get('task_kind', 'Task')} at {sanitized_task.get('property', {}).get('name', 'property')}",
+            "notification_type": "external_task_push",
+            "reference_type": "task",
+            "reference_id": task_id,
+            "payload": sanitized_task,
+            "tenant_id": tenant_id,
+            "status": "queued",
+            "created_at": now,
+        }).execute()
+
+        # Mark task as assigned to external
+        db.table("tasks").update({
+            "assigned_to": worker_id,
+            "assigned_type": "external",
+            "assigned_at": now,
+        }).eq("id", task_id).execute()
+
+        # Audit
+        try:
+            from services.audit_writer import write_audit_event
+            write_audit_event(db, tenant_id=tenant_id, entity_type="task",
+                              entity_id=task_id, action="pushed_to_external",
+                              details={"external_worker_id": worker_id})
+        except Exception:
+            pass
+
+        return JSONResponse(status_code=200, content={
+            "task_id": task_id,
+            "external_worker_id": worker_id,
+            "notification_sent": True,
+            "sanitized_fields": list(sanitized_task.keys()),
+        })
+    except Exception as exc:
+        logger.exception("push_task_to_external error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
+# Phase 728 — Maintenance: Admin Toggle (One vs Multiple)
+# ===========================================================================
+
+_VALID_MODES = frozenset({"single", "specialists"})
+
+
+@maintenance_router.patch("/settings/maintenance-mode",
+                          summary="Toggle maintenance mode (Phase 728)")
+async def set_maintenance_mode(
+    body: Dict[str, Any],
+    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+) -> JSONResponse:
+    mode = str(body.get("mode") or "").strip().lower()
+    if mode not in _VALID_MODES:
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR,
+                                   extra={"detail": f"mode must be one of: {sorted(_VALID_MODES)}"})
+
+    try:
+        db = client if client is not None else _get_db()
+        now = _now_iso()
+
+        # Upsert tenant setting
+        setting_id = hashlib.sha256(f"MAINT_MODE:{tenant_id}".encode()).hexdigest()[:16]
+        db.table("tenant_settings").upsert({
+            "id": setting_id,
+            "tenant_id": tenant_id,
+            "setting_key": "maintenance_mode",
+            "setting_value": mode,
+            "updated_at": now,
+            "updated_by": tenant_id,
+        }).execute()
+
+        # Audit
+        try:
+            from services.audit_writer import write_audit_event
+            write_audit_event(db, tenant_id=tenant_id, entity_type="settings",
+                              entity_id="maintenance_mode", action="mode_changed",
+                              details={"new_mode": mode})
+        except Exception:
+            pass
+
+        return JSONResponse(status_code=200, content={
+            "maintenance_mode": mode,
+            "description": "All workers see all tasks" if mode == "single" else "Workers filtered by specialty",
+        })
+    except Exception as exc:
+        logger.exception("set_maintenance_mode error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+@maintenance_router.get("/settings/maintenance-mode",
+                        summary="Get maintenance mode (Phase 728)")
+async def get_maintenance_mode(
+    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+) -> JSONResponse:
+    try:
+        db = client if client is not None else _get_db()
+        result = (db.table("tenant_settings").select("setting_value")
+                  .eq("tenant_id", tenant_id).eq("setting_key", "maintenance_mode")
+                  .limit(1).execute())
+        rows = result.data or []
+        mode = rows[0]["setting_value"] if rows else "single"
+
+        return JSONResponse(status_code=200, content={
+            "maintenance_mode": mode,
+            "description": "All workers see all tasks" if mode == "single" else "Workers filtered by specialty",
+        })
+    except Exception as exc:
+        logger.exception("get_maintenance_mode error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR)
