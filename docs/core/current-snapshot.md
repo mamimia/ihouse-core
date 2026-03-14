@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 757 — Wave 10: Bulk Import Wizard RESERVED (closed). **ROADMAP COMPLETE.**
+Phase 775 — Deployment & Staging Activation complete. **Checkpoint XXIV.**
 
 ## Last Closed Phase
-Phase 757 — 172 phases across 10 waves. All implemented.
+Phase 775 — 18 phases (758–775): runtime baseline, storage, auth, staging deploy, monitoring.
 
 ## System Status
 
@@ -20,7 +20,7 @@ Phase 757 — 172 phases across 10 waves. All implemented.
 | 614 | Pre-Arrival Email (SMTP) | 🟡 Deferred | Requires live SMTP configuration | `SMTP_HOST/PORT/USER/PASS` env vars configured + verified | TBD — when email infra provisioned |
 | 617 | Wire Form → Checkin Router | 🟡 Deferred | Requires live booking flow | Real check-in data flowing through `booking_checkin_router.py` | TBD — when live check-in activated |
 | 618 | Wire QR → Checkin Response | 🟡 Deferred | Requires live booking flow (same as 617) | Same as Phase 617 | TBD — together with Phase 617 |
-| — | Supabase Storage Buckets (5) | 🔴 Pending Decision | Buckets not created; tables reference `photo_url` but no actual storage | User decision: create via MCP or manage separately | TBD — see bucket mapping |
+| — | Supabase Storage Buckets (5) | ✅ Resolved (Phase 764) | 4 buckets created: pii-documents, property-photos, guest-uploads, exports | N/A | Resolved |
 
 
 apply_envelope is the only authority for canonical state mutations.
@@ -403,7 +403,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,380 passed, 0 failed, 22 skipped. Frontend TypeScript: 0 errors. 54 frontend pages. 86 API router files. 264 test files. 20 Supabase migration files. 505 phase specs. Phase 585 — Booking Test Suite Repair.**
+**Backend: 277 tests pass (post-cleanup), 0 failed. Frontend TypeScript: 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phases 758–775: Deployment & Staging Activation.**
 
 ## Environment Variables (continued)
 

@@ -4804,3 +4804,40 @@ New tests: 170+ (all pass)
 Git commits: 3 this session
 
 🏁 ROADMAP COMPLETE.
+
+## Phases 758–775 — Deployment & Staging Activation — 2026-03-15
+
+Stage: Post-roadmap hardening — runtime baseline, storage, auth, staging deploy, external activation.
+
+### Block A — Runtime Baseline (758–763)
+- Docker python:3.14-slim fix
+- `src/services/role_authority.py` — NEW — DB role is authoritative, self-declared roles ignored
+- `src/services/tenant_bridge.py` — NEW — bridges Supabase UUID to iHouse tenant_id
+- `src/api/bootstrap_router.py` — NEW — POST /admin/bootstrap (idempotent first admin)
+- RLS enabled on all 48 public tables, 0 security advisories
+- IHOUSE_BOOTSTRAP_SECRET added to env config
+
+### Block B — Storage (764–765)
+- 4 Supabase Storage buckets: pii-documents, property-photos, guest-uploads, exports
+- RLS policies per bucket
+- `GET /admin/storage-health` — upload/read/delete probe
+
+### Block C — Auth Completion (766–768)
+- 6 E2E auth flow tests
+- Invite accept creates Supabase Auth user + tenant_permissions
+- POST /auth/password-reset (Supabase recovery, no user enumeration)
+- POST /auth/password-update (admin-only)
+
+### Block D — Staging Deploy + Frontend (769–771)
+- docker-compose.staging.yml updated with bootstrap secret
+- Frontend production build: 54 pages standalone
+- Frontend runtime audit: 29 usable / 25 data-dependent / 0 broken
+
+### Block E — External Activation (772–775)
+- `src/api/webhook_test_router.py` — NEW — POST /admin/webhook-test
+- `src/api/notification_health_router.py` — NEW — GET /admin/notification-health
+- `src/api/system_status_router.py` — NEW — GET /admin/system-status
+- Documentation closure + Checkpoint XXIV
+
+### Tests: 277 passed, 0 failed. Frontend: 54 pages compile. 48 RLS-protected tables.
+

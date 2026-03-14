@@ -1,26 +1,18 @@
 ## Current Active Phase
 
-Phase 757 — Wave 10: Bulk Import Wizard RESERVED (closed). **ROADMAP COMPLETE.**
+Phase 775 — Deployment & Staging Activation complete. **Checkpoint XXIV.**
 
 ## Last Closed Phase
 
-Phase 757 — 172 phases across 10 waves.
+Phase 775 — 18 phases (758–775): runtime baseline, storage, auth, staging deploy, monitoring.
 
 ## Current Objective
 
-🏁 **ROADMAP COMPLETE.** 172 phases (586–757) across 10 waves:
-- Wave 1 (586–605): Foundation.
-- Wave 2 (606–625): Guest Check-in.
-- Wave 3 (626–645): Task Enhancement.
-- Wave 4 (647–665): Problem Reporting.
-- Wave 5 (666–685): Guest Portal & Extras.
-- Wave 6 (686–705): Checkout & Deposit Settlement.
-- Wave 7 (706–720): Manual Booking + Task Take-Over.
-- Wave 8 (721–735): Owner Portal + Maintenance.
-- Wave 9 (736–745): i18n & Localization.
-- Wave 10 (746–757): Bulk Import Wizard.
-- Test suite: all pass. 170+ new tests across 7 test files.
-- 50+ new API endpoints.
+🏁 **Deployment & Staging Activation COMPLETE.** Next step: Platform Layer + Tenant Onboarding Model.
+- Multi-tenant reality check completed — architectural gaps documented.
+- 5 new admin ops endpoints deployed.
+- 277 tests pass, 48 RLS-protected tables, 4 storage buckets.
+- Next recommended: JWT model cleanup → tenant_id on bookings → role enforcement → platform admin.
 
 ## Deferred Items — Open Items Registry
 
@@ -31,7 +23,7 @@ Phase 757 — 172 phases across 10 waves.
 | 614 | Pre-Arrival Email (SMTP) | 🟡 Deferred | Requires live SMTP config | `SMTP_HOST/PORT/USER/PASS` env vars configured | TBD — email infra |
 | 617 | Wire Form → Checkin Router | 🟡 Deferred | Requires live booking flow | Real check-in data flowing | TBD — live check-in |
 | 618 | Wire QR → Checkin Response | 🟡 Deferred | Same blocker as 617 | Same as 617 | TBD — with 617 |
-| — | Supabase Storage Buckets (5) | 🔴 Pending Decision | Tables ref `photo_url` but no actual storage | User decision needed | TBD — bucket mapping |
+| — | Supabase Storage Buckets | ✅ Resolved (Phase 764) | 4 buckets created | N/A | Resolved |
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -248,4 +240,4 @@ Phase 757 — 172 phases across 10 waves.
 
 ## Tests
 
-**7,380 passed, 0 failed, 22 skipped. TypeScript 0 errors. 54 frontend pages. 86 API router files. 264 test files. 20 Supabase migration files. 505 phase specs. (Phase 585)**
+**277 tests pass (post-cleanup), 0 failed. TypeScript 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. (Phase 775)**

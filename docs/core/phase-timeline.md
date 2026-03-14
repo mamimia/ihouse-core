@@ -7708,3 +7708,37 @@ Tests: 20 new in `test_wave10_bulk_import.py`. Full suite: all pass.
 | 9 | 736–745 | i18n & Localization | ✅ |
 | 10 | 746–757 | Bulk Import Wizard | ✅ |
 
+
+---
+
+### Phases 758–775 — Deployment & Staging Activation — 2026-03-15
+
+Stage: Deployment & Staging Activation (post-roadmap hardening).
+
+| Phase | Title | Outcome |
+|-------|-------|---------|
+| 758 | Docker + Dependency Fix | python:3.14-slim, Pydantic v2 compat |
+| 759a | Role Authority Service | DB role overwrites self-declared roles |
+| 759b | User↔Tenant Bridge | Supabase UUID → iHouse tenant_id |
+| 761 | Admin Bootstrap | POST /admin/bootstrap (idempotent first admin) |
+| 762 | RLS Audit | 48/48 public tables RLS enabled, 0 security advisories |
+| 763 | Environment Config | IHOUSE_BOOTSTRAP_SECRET added |
+| 764 | Storage Bucket Provisioning | 4 buckets (pii-documents, property-photos, guest-uploads, exports) |
+| 765 | Storage Health Endpoint | GET /admin/storage-health (upload/read/delete probe) |
+| 766 | Auth E2E Tests | 6 E2E tests (dev token, session, bootstrap, signup, secret rejection, cookie logout) |
+| 767 | Invite Flow Completion | Accept creates Supabase Auth user + tenant_permissions |
+| 768 | Password Reset | POST /auth/password-reset + POST /auth/password-update |
+| 769 | Staging Deploy Config | docker-compose.staging.yml updated |
+| 770 | Frontend Production Build | npm run build — 54 pages, standalone output |
+| 771 | Frontend Runtime Audit | 29 usable / 25 data-dependent / 0 broken |
+| 772 | Webhook Pipeline Test | POST /admin/webhook-test — synthetic OTA event pipeline trace |
+| 773 | Notification Channel Health | GET /admin/notification-health — 5 channel config check |
+| 774 | Monitoring Setup | GET /admin/system-status — unified DB/storage/env/notif health |
+| 775 | Walkthrough + Checkpoint XXIV | Documentation closure |
+
+**New Files:** `src/services/role_authority.py`, `src/services/tenant_bridge.py`, `src/api/bootstrap_router.py`, `src/api/webhook_test_router.py`, `src/api/notification_health_router.py`, `src/api/system_status_router.py`
+
+**Tests:** 277 pass, 0 fail. Frontend: 54 pages compile.
+
+---
+
