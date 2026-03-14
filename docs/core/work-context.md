@@ -1,21 +1,21 @@
 ## Current Active Phase
 
-Phase 706 — Wave 7: Manual Booking Create API (closed).
+Phase 726 — Wave 8: Maintenance Filtered Task View (closed).
 
 ## Last Closed Phase
 
-Phase 706 — Wave 7: Manual Booking Create API (closed).
+Phase 726 — Wave 8: Maintenance Filtered Task View (closed).
 
 ## Current Objective
 
-Phase 706 closed. Completed 60 phases (647–706) across 4 waves:
+Phase 726 closed. Completed 80 phases (647–726) across 6 waves:
 - Wave 4 (647–665): Problem Reporting.
 - Wave 5 (666–685): Guest Portal & Extras.
-- Wave 6 (686–705): Checkout & Deposit Settlement — collect/return deposits, deduction CRUD, photo comparison, checkout with settlement pre-check.
-- Wave 7 start (706): Manual booking create API with source-based task creation.
-- New files: `deposit_settlement_router.py`, `manual_booking_router.py`, 3 test files.
-- Test suite: all pass, 0 failed.
-Next session: continue Wave 7 (Manual Booking & Task Take-Over, Phases 707–720).
+- Wave 6 (686–705): Checkout & Deposit Settlement.
+- Wave 7 (706–720): Manual Booking + Task Take-Over.
+- Wave 8 start (721–726): Owner Portal visibility + Maintenance specialist CRUD + filtered tasks.
+- Test suite: all pass, 0 failed. 119+ new tests across 4 test files.
+Next session: continue Wave 8 (Phases 727–735 — external worker push, maintenance mode toggle, tests) and Wave 9 (i18n).
 
 ## Deferred Items — Open Items Registry
 

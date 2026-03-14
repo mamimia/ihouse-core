@@ -535,6 +535,17 @@ app.include_router(deposit_settlement_router)
 from api.manual_booking_router import router as manual_booking_router  # noqa: E402  # Phase 706
 app.include_router(manual_booking_router)
 
+from api.task_takeover_router import router as task_takeover_router  # noqa: E402  # Phases 710-712
+app.include_router(task_takeover_router)
+
+# --- Wave 8: Owner Portal & Maintenance (Phases 721–726) ---
+
+from api.owner_portal_v2_router import router as owner_portal_v2_router  # noqa: E402  # Phases 721-723
+app.include_router(owner_portal_v2_router)
+
+from api.owner_portal_v2_router import maintenance_router  # noqa: E402  # Phases 725-726
+app.include_router(maintenance_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

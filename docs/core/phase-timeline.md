@@ -7551,3 +7551,62 @@ Full suite: all pass, 0 failed.
 
 ---
 
+
+### Phases 707–709 — Wave 7: Manual Booking OTA Block & Cancel — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 707 | OTA Date Blocking | On manual booking creation → queue outbound sync to block dates on all connected OTAs |
+| 708 | Selective Task Creation | Source-based task creation: direct=all, self_use/owner_use=selective, maintenance_block=none |
+| 709 | Cancel + Unblock | DELETE /bookings/{id}/manual → cancel booking + tasks + queue OTA unblock |
+
+**Files:** `src/api/manual_booking_router.py` — MODIFIED (3 helpers + 1 endpoint)
+
+---
+
+### Phases 710–712 — Wave 7: Task Take-Over — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 710 | Take-Over API | POST /tasks/{id}/take-over → validates reason, marks task taken_over |
+| 711 | Worker Notification | Queue notification to original worker via notification_queue + SSE |
+| 712 | Manager Context | GET /tasks/{id}/context → property, booking, photos, checklist |
+
+**Files:** `src/api/task_takeover_router.py` — NEW (2 endpoints + 2 helpers)
+
+---
+
+### Phases 713–720 — Wave 7: Manual Booking & Take-Over Tests — 2026-03-14
+
+| Phase | Test Coverage |
+|-------|---------------|
+| 713 | Contract — manual booking create with OTA blocking |
+| 714 | Contract — OTA date blocking helper |
+| 715 | Contract — selective task opt-out |
+| 716 | Contract — manual booking cancel + unblock |
+| 717 | Contract — task take-over API |
+| 718 | Contract — worker notification on take-over |
+| 719 | E2E — manual self-use booking flow |
+| 720 | E2E — take-over flow: worker MIA → manager takes → gets context |
+
+Tests: 27 new in `test_wave7_manual_booking_takeover.py`.
+
+---
+
+### Phases 721–726 — Wave 8: Owner Portal & Maintenance — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 721 | Owner Visibility | PUT/GET /owners/{id}/properties/{id}/visibility — per-field toggle (8 fields) |
+| 722 | Filtered Summary | GET /owner-portal/{id}/properties/{id}/summary — filtered by visibility settings |
+| 723 | Maintenance Reports | Owner summary includes problem reports if enabled via visibility |
+| 724 | Owner Auth Concept | Placeholder — uses JWT with role validation |
+| 725 | Specialist CRUD | POST/GET/PATCH/DELETE /maintenance/specialties + /workers/{id}/specialties |
+| 726 | Filtered Tasks | GET /workers/{id}/maintenance-tasks — filtered by specialty or all |
+
+**Files:** `src/api/owner_portal_v2_router.py` — NEW (12 endpoints across 2 routers)
+
+Full suite: all pass, 0 failed.
+
+---
+
