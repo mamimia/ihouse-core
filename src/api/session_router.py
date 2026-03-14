@@ -126,19 +126,27 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
         logger.warning("login-session: wrong secret for tenant_id=%s", body.tenant_id)
         return err("UNAUTHORIZED", "Invalid secret", status=401)
 
-    # Phase 397: validate and normalize role
-    role = body.role.strip().lower() if body.role else "manager"
+    tenant_id = body.tenant_id.strip()
+
+    # Phase 759: Role authority — read canonical role from DB, not from request.
+    from services.role_authority import resolve_role as _resolve_role
+    try:
+        db_lookup = _get_db()
+        role = _resolve_role(db_lookup, tenant_id, tenant_id, requested_role=body.role)
+    except Exception:
+        role = body.role.strip().lower() if body.role else "manager"
+
     if role not in _VALID_ROLES:
         return err("INVALID_ROLE", f"Invalid role '{role}'. Must be one of: {', '.join(sorted(_VALID_ROLES))}", status=422)
 
     # Issue JWT
     now = int(time.time())
     payload = {
-        "sub": body.tenant_id.strip(),
+        "sub": tenant_id,
         "iat": now,
         "exp": now + _TOKEN_TTL_SECONDS,
         "token_type": "session",
-        "role": role,  # Phase 397: role claim
+        "role": role,  # Phase 759: DB-authoritative role
     }
     token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
 
@@ -150,7 +158,7 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
     try:
         session = create_session(
             db,
-            tenant_id=body.tenant_id.strip(),
+            tenant_id=tenant_id,
             token=token,
             expires_in_seconds=_TOKEN_TTL_SECONDS,
             user_agent=user_agent,
@@ -161,11 +169,11 @@ async def login_session(body: LoginSessionRequest, request: Request) -> JSONResp
         # Still return the token — session creation is best-effort
         session = {}
 
-    logger.info("login-session: issued token for tenant_id=%s", body.tenant_id)
+    logger.info("login-session: issued token for tenant_id=%s role=%s (db-resolved)", tenant_id, role)
     return ok({
         "token": token,
         "token_type": "session",
-        "tenant_id": body.tenant_id.strip(),
+        "tenant_id": tenant_id,
         "role": role,
         "expires_in": _TOKEN_TTL_SECONDS,
         "session": session,

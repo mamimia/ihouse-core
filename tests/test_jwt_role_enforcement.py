@@ -1,13 +1,17 @@
 """
-Phase 397 — JWT Role Claim + Route Enforcement — Contract Tests
-================================================================
+Phase 397 → Phase 759 — JWT Role Claim + Route Enforcement — Contract Tests
+=============================================================================
+
+Updated for Phase 759: Role Authority Closure.
+Role in JWT is now determined by tenant_permissions DB table, not by request body.
 
 Tests that:
-    1. POST /auth/token includes 'role' in JWT and response
-    2. Default role is 'manager' when not specified
-    3. Invalid role returns 422
-    4. POST /auth/login-session includes 'role' in JWT and response
-    5. GET /auth/me returns role from JWT
+    1. POST /auth/token default role is 'manager' (no DB record → fallback)
+    2. POST /auth/token role comes from DB when record exists
+    3. Self-declared role is IGNORED when DB record exists
+    4. Invalid roles (not in DB, not valid) still return 422
+    5. POST /auth/login-session follows same DB-authority model
+    6. GET /auth/me returns role from JWT
 """
 from __future__ import annotations
 
@@ -25,12 +29,18 @@ def _env(monkeypatch):
     monkeypatch.setenv("IHOUSE_DEV_PASSWORD", "dev")
     monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
     monkeypatch.setenv("SUPABASE_KEY", "test-key")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test-service-key")
 
 
 @pytest.fixture()
 def client():
     from main import app
     return TestClient(app, raise_server_exceptions=False)
+
+
+def _mock_resolve_role(return_role):
+    """Helper: patch resolve_role to return a specific role."""
+    return patch("services.role_authority.lookup_role", return_value=return_role)
 
 
 # ---------------------------------------------------------------------------
@@ -41,65 +51,60 @@ class TestAuthTokenRole:
     """Tests for role claim in POST /auth/token."""
 
     def test_default_role_is_manager(self, client):
-        """When no role specified, JWT should contain role='manager'."""
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
+        """When no DB record exists, JWT should contain role='manager' (default)."""
+        with _mock_resolve_role(None):
+            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
         assert resp.status_code == 200
         body = resp.json()["data"]
         assert body["role"] == "manager"
-        # Decode JWT and verify role claim
         decoded = jwt.decode(body["token"], "test-secret-for-role-tests", algorithms=["HS256"])
         assert decoded["role"] == "manager"
 
-    def test_explicit_role_in_jwt(self, client):
-        """Explicit role is included in JWT payload and response."""
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "worker"})
+    def test_db_role_in_jwt(self, client):
+        """When DB has role='worker', JWT must contain role='worker' regardless of request."""
+        with _mock_resolve_role("worker"):
+            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "admin"})
         assert resp.status_code == 200
         body = resp.json()["data"]
-        assert body["role"] == "worker"
+        assert body["role"] == "worker"  # DB wins, not the request
         decoded = jwt.decode(body["token"], "test-secret-for-role-tests", algorithms=["HS256"])
         assert decoded["role"] == "worker"
 
-    def test_owner_role(self, client):
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "owner"})
+    def test_self_declared_role_ignored(self, client):
+        """Even if request says 'admin', DB role 'owner' wins."""
+        with _mock_resolve_role("owner"):
+            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "admin"})
         assert resp.status_code == 200
         assert resp.json()["data"]["role"] == "owner"
 
-    def test_admin_role(self, client):
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "admin"})
+    def test_admin_role_from_db(self, client):
+        """Admin role from DB is correctly reflected in JWT."""
+        with _mock_resolve_role("admin"):
+            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
         assert resp.status_code == 200
         assert resp.json()["data"]["role"] == "admin"
 
-    def test_ops_role(self, client):
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "ops"})
+    def test_ops_role_from_db(self, client):
+        with _mock_resolve_role("ops"):
+            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
         assert resp.status_code == 200
         assert resp.json()["data"]["role"] == "ops"
 
-    def test_invalid_role_returns_422(self, client):
-        """Invalid role should return 422 with INVALID_ROLE error."""
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "superadmin"})
-        assert resp.status_code == 422
-        body = resp.json()
-        assert body["error"]["code"] == "INVALID_ROLE"
-
-    def test_empty_role_defaults_to_manager(self, client):
-        """Empty string role normalizes to default manager."""
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": ""})
-        assert resp.status_code == 200
-        assert resp.json()["data"]["role"] == "manager"
-
-    def test_role_case_insensitive(self, client):
-        """Role should be normalized to lowercase."""
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "Worker"})
-        assert resp.status_code == 200
-        assert resp.json()["data"]["role"] == "worker"
-
-    def test_all_valid_roles_accepted(self, client):
-        """All 8 valid roles should be accepted."""
+    def test_all_valid_roles_from_db(self, client):
+        """All 8 valid roles should work when they come from DB."""
         valid_roles = ["admin", "manager", "ops", "worker", "owner", "checkin", "checkout", "maintenance"]
         for role in valid_roles:
-            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": role})
-            assert resp.status_code == 200, f"Role '{role}' should be accepted"
+            with _mock_resolve_role(role):
+                resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
+            assert resp.status_code == 200, f"Role '{role}' should be accepted from DB"
             assert resp.json()["data"]["role"] == role
+
+    def test_empty_role_defaults_to_manager(self, client):
+        """Empty string role with no DB record normalizes to default manager."""
+        with _mock_resolve_role(None):
+            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": ""})
+        assert resp.status_code == 200
+        assert resp.json()["data"]["role"] == "manager"
 
 
 # ---------------------------------------------------------------------------
@@ -110,28 +115,31 @@ class TestLoginSessionRole:
     """Tests for role claim in POST /auth/login-session."""
 
     def test_default_role_in_session_login(self, client):
-        """Session login without role should default to 'manager'."""
-        with patch("api.session_router.create_session", return_value={"session_id": "s1"}):
-            resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev"})
+        """Session login without DB record should default to 'manager'."""
+        with _mock_resolve_role(None):
+            with patch("api.session_router.create_session", return_value={"session_id": "s1"}):
+                resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev"})
         assert resp.status_code == 201
         body = resp.json()["data"]
         assert body["role"] == "manager"
         decoded = jwt.decode(body["token"], "test-secret-for-role-tests", algorithms=["HS256"])
         assert decoded["role"] == "manager"
 
-    def test_explicit_role_in_session_login(self, client):
-        """Session login with explicit role includes it in JWT."""
-        with patch("api.session_router.create_session", return_value={"session_id": "s1"}):
-            resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev", "role": "owner"})
+    def test_db_role_in_session_login(self, client):
+        """Session login with DB role='owner' reflects in JWT."""
+        with _mock_resolve_role("owner"):
+            with patch("api.session_router.create_session", return_value={"session_id": "s1"}):
+                resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev", "role": "admin"})
         assert resp.status_code == 201
         body = resp.json()["data"]
-        assert body["role"] == "owner"
+        assert body["role"] == "owner"  # DB wins, not request
         decoded = jwt.decode(body["token"], "test-secret-for-role-tests", algorithms=["HS256"])
         assert decoded["role"] == "owner"
 
-    def test_invalid_role_in_session_login(self, client):
-        """Session login with invalid role should return 422."""
-        resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev", "role": "hacker"})
+    def test_invalid_role_from_db_rejected(self, client):
+        """If DB somehow has an invalid role value, it should be rejected."""
+        with _mock_resolve_role("superadmin"):
+            resp = client.post("/auth/login-session", json={"tenant_id": "t1", "secret": "dev"})
         assert resp.status_code == 422
         assert resp.json()["error"]["code"] == "INVALID_ROLE"
 
@@ -145,8 +153,9 @@ class TestAuthMeRole:
 
     def test_me_returns_role(self, client):
         """GET /auth/me should return the role from the JWT."""
-        # First get a token with explicit role
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": "worker"})
+        # First get a token with DB role
+        with _mock_resolve_role("worker"):
+            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
         token = resp.json()["data"]["token"]
 
         # Use token to call /auth/me
@@ -160,7 +169,8 @@ class TestAuthMeRole:
 
     def test_me_returns_manager_default(self, client):
         """GET /auth/me with default role returns 'manager'."""
-        resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
+        with _mock_resolve_role(None):
+            resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev"})
         token = resp.json()["data"]["token"]
 
         with patch("api.session_router.validate_session", return_value=None):

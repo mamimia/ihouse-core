@@ -215,7 +215,8 @@ class TestLoginSession:
         session = {"session_id": "sid-1", "tenant_id": "dev-tenant",
                    "created_at": "2026-03-12T00:00:00Z", "expires_at": "2026-03-13T00:00:00Z"}
         with patch("api.session_router._get_db"), \
-             patch("api.session_router.create_session", return_value=session):
+             patch("api.session_router.create_session", return_value=session), \
+             patch("services.role_authority.lookup_role", return_value=None):
             resp = client.post(
                 "/auth/login-session",
                 json={"tenant_id": "dev-tenant", "secret": "dev"},

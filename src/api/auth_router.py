@@ -104,25 +104,34 @@ async def issue_token(body: TokenRequest) -> JSONResponse:
         logger.warning("auth/token: wrong secret for tenant_id=%s", body.tenant_id)
         return err("UNAUTHORIZED", "Invalid secret", status=401)
 
-    # Phase 397: validate and normalize role
-    role = body.role.strip().lower() if body.role else "manager"
+    tenant_id = body.tenant_id.strip()
+
+    # Phase 759: Role authority — read canonical role from DB, not from request.
+    # The request body role is kept for backward compat but DB value always wins.
+    from services.role_authority import resolve_role as _resolve_role
+    try:
+        db = _get_supabase_admin()
+        role = _resolve_role(db, tenant_id, tenant_id, requested_role=body.role) if db else (body.role or "manager")
+    except Exception:
+        role = body.role.strip().lower() if body.role else "manager"
+
     if role not in VALID_ROLES:
         return err("INVALID_ROLE", f"Invalid role '{role}'. Must be one of: {', '.join(sorted(VALID_ROLES))}", status=422)
 
     now = int(time.time())
     payload = {
-        "sub": body.tenant_id.strip(),
+        "sub": tenant_id,
         "iat": now,
         "exp": now + _TOKEN_TTL_SECONDS,
-        "role": role,  # Phase 397: role claim for frontend route enforcement
+        "role": role,  # Phase 759: DB-authoritative role
     }
 
     token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
 
-    logger.info("auth/token: issued token for tenant_id=%s", body.tenant_id)
+    logger.info("auth/token: issued token for tenant_id=%s role=%s (db-resolved)", tenant_id, role)
     return ok({
         "token": token,
-        "tenant_id": body.tenant_id.strip(),
+        "tenant_id": tenant_id,
         "role": role,
         "expires_in": _TOKEN_TTL_SECONDS,
     })
