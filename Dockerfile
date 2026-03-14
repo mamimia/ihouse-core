@@ -54,7 +54,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy application source — ONLY src/ (the live production codebase)
 # Note: app/ is the old Phase 13C SQLite entrypoint — NOT used in production.
 COPY src/ ./src/
-COPY pytest.ini ./
 
 # Set PYTHONPATH so imports resolve correctly
 ENV PYTHONPATH="/app/src"
