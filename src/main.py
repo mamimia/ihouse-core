@@ -559,6 +559,9 @@ app.include_router(i18n_router)
 from api.bulk_import_router import router as bulk_import_router  # noqa: E402  # Phases 746-757
 app.include_router(bulk_import_router)
 
+from api.storage_health_router import router as storage_health_router  # noqa: E402  # Phase 765
+app.include_router(storage_health_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint
