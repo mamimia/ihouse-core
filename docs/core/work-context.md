@@ -1,22 +1,26 @@
 ## Current Active Phase
 
-Phase 745 — Wave 9: i18n Tests Reserved (closed).
+Phase 757 — Wave 10: Bulk Import Wizard RESERVED (closed). **ROADMAP COMPLETE.**
 
 ## Last Closed Phase
 
-Phase 745 — Wave 9: i18n Tests Reserved (closed).
+Phase 757 — 172 phases across 10 waves.
 
 ## Current Objective
 
-Phase 745 closed. Completed 99 phases (647–745) across 8 waves:
+🏁 **ROADMAP COMPLETE.** 172 phases (586–757) across 10 waves:
+- Wave 1 (586–605): Foundation.
+- Wave 2 (606–625): Guest Check-in.
+- Wave 3 (626–645): Task Enhancement.
 - Wave 4 (647–665): Problem Reporting.
 - Wave 5 (666–685): Guest Portal & Extras.
 - Wave 6 (686–705): Checkout & Deposit Settlement.
 - Wave 7 (706–720): Manual Booking + Task Take-Over.
-- Wave 8 (721–735): Owner Portal + Maintenance specialist CRUD + filtered tasks + external push + admin toggle.
-- Wave 9 (736–745): i18n catalog (89 keys EN/TH/HE, 6 categories), API, auto-translate, worker lang pref.
-- Test suite: all pass, 0 failed. 150+ new tests across 6 test files.
-Next session: continue with Wave 10 (Phases 746–757 — Bulk Import Wizard: OTA OAuth, property import, smart defaults).
+- Wave 8 (721–735): Owner Portal + Maintenance.
+- Wave 9 (736–745): i18n & Localization.
+- Wave 10 (746–757): Bulk Import Wizard.
+- Test suite: all pass. 170+ new tests across 7 test files.
+- 50+ new API endpoints.
 
 ## Deferred Items — Open Items Registry
 

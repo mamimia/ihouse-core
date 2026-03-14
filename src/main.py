@@ -551,6 +551,11 @@ app.include_router(maintenance_router)
 from api.i18n_router import router as i18n_router  # noqa: E402  # Phases 736, 741-742
 app.include_router(i18n_router)
 
+# --- Wave 10: Bulk Import Wizard (Phases 746–757) ---
+
+from api.bulk_import_router import router as bulk_import_router  # noqa: E402  # Phases 746-757
+app.include_router(bulk_import_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

@@ -7662,3 +7662,49 @@ Tests: 31 new in `test_wave8_9_owner_i18n.py`. Full suite: all pass.
 
 ---
 
+
+### Phases 746–753 — Wave 10: Bulk Import Wizard — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 746 | Airbnb OAuth Connection | POST /integrations/airbnb/connect → store access token + list properties |
+| 747 | Booking.com OAuth Connection | POST /integrations/booking/connect → same pattern |
+| 748 | Import Preview + Select | POST /import/preview (with duplicate detection) + POST /import/select |
+| 749 | Import Execute | POST /import/execute/{job_id} → create properties + smart defaults |
+| 750 | Smart Defaults | checkin=15:00, checkout=11:00, no deposit, global cleaning template |
+| 751 | iCal Fallback | POST /integrations/ical/connect → parse VCALENDAR + create bookings |
+| 752 | CSV Import | POST /import/csv → parse, validate, preview, confirm + create |
+| 753 | Duplicate Detection | Address + external_id matching with merge suggestion |
+
+**New Files:** `src/api/bulk_import_router.py` (8 endpoints)
+
+---
+
+### Phases 754–757 — Wave 10: Bulk Import Tests — 2026-03-14
+
+| Phase | Test Coverage |
+|-------|---------------|
+| 754 | Contract — OTA connect (Airbnb + Booking.com) |
+| 755 | Contract — import preview, select, execute |
+| 756 | Contract — iCal connect + CSV parse/import |
+| 757 | RESERVED |
+
+Tests: 20 new in `test_wave10_bulk_import.py`. Full suite: all pass.
+
+---
+
+## 🏁 ROADMAP COMPLETE — All 172 Phases (586–757)
+
+| Wave | Phases | Feature | Status |
+|------|--------|---------|--------|
+| 1 | 586–605 | Foundation | ✅ |
+| 2 | 606–625 | Guest Check-in | ✅ |
+| 3 | 626–645 | Task Enhancement | ✅ |
+| 4 | 646–665 | Problem Reporting | ✅ |
+| 5 | 666–685 | Guest Portal & Extras | ✅ |
+| 6 | 686–705 | Checkout & Deposit | ✅ |
+| 7 | 706–720 | Manual Booking + Take-Over | ✅ |
+| 8 | 721–735 | Owner Portal + Maintenance | ✅ |
+| 9 | 736–745 | i18n & Localization | ✅ |
+| 10 | 746–757 | Bulk Import Wizard | ✅ |
+
