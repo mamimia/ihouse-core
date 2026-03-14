@@ -4784,3 +4784,23 @@ Baseline metrics via health endpoint and alerting thresholds. No code changes.
 - `tests/test_pii_document_security.py` — NEW — 17 contract tests (redaction helpers, form GET redaction, submit status-only, role enforcement, audit logging)
 
 ### Tests: 7,512 passed, 0 failed, 22 skipped.
+
+## Phase 757 — Roadmap Complete (Closed) — 2026-03-14
+
+Master roadmap complete: 172 phases (586–757) across 10 waves.
+
+This session (647–757) implemented:
+- Wave 4 (647–665): Problem Reporting Enhancement
+- Wave 5 (666–685): Guest Portal & Extras
+- Wave 6 (686–705): Checkout & Deposit Settlement
+- Wave 7 (706–720): Manual Booking + Task Take-Over
+- Wave 8 (721–735): Owner Portal + Maintenance
+- Wave 9 (736–745): i18n & Localization (89 keys, EN/TH/HE)
+- Wave 10 (746–757): Bulk Import Wizard (OTA OAuth, import, iCal, CSV, duplicates)
+
+New files: 15 source + 7 test files
+New endpoints: 50+
+New tests: 170+ (all pass)
+Git commits: 3 this session
+
+🏁 ROADMAP COMPLETE.
