@@ -565,6 +565,9 @@ app.include_router(storage_health_router)
 from api.webhook_test_router import router as webhook_test_router  # noqa: E402  # Phase 772
 app.include_router(webhook_test_router)
 
+from api.notification_health_router import router as notification_health_router  # noqa: E402  # Phase 773
+app.include_router(notification_health_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint
