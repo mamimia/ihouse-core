@@ -7375,3 +7375,65 @@ Tests: 17 new in `test_pii_document_security.py`.
 Full suite: 7,512 passed, 0 failed, 22 skipped.
 
 ---
+
+### Phases 647–652 — Wave 4: Problem Reporting Enhancement — 2026-03-14
+
+**Problem Reporting System**: Extended problem report router with auto-maintenance task creation, audit events, SSE alerts, and i18n labels.
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 647 | Photo Upload Enhancements | Already existed from Phase 598 (CRUD complete) |
+| 648 | Auto-Create Maintenance Task | Urgent → CRITICAL (5-min ACK SLA), Normal → MEDIUM (1h SLA) |
+| 649 | List & Filter Enhancements | Photo count, reporter name joined |
+| 650 | Update Status + Audit Event | `PROBLEM_REPORT_STATUS_CHANGED` audit event emitted |
+| 651 | SSE Alert for Urgent Problems | `PROBLEM_URGENT` SSE event via `sse_broker.py` |
+| 652 | i18n Category Icons & Labels | 14 categories × 3 languages (EN/TH/HE) + emoji icons |
+
+**Files Changed:**
+- `src/api/problem_report_router.py` — MODIFIED — auto-task + SSE + audit
+- `src/i18n/problem_report_labels.py` — NEW — i18n labels for 14 categories
+- `tests/test_wave4_problem_reporting_contract.py` — NEW — 38 tests
+
+---
+
+### Phases 653–660 — Wave 4: Problem Reporting Tests — 2026-03-14
+
+| Phase | Test Coverage |
+|-------|---------------|
+| 653 | Contract: create, photo upload |
+| 654 | Contract: auto-maintenance task creation |
+| 655 | Contract: urgent → SSE alert |
+| 656 | Contract: list, filter, pagination |
+| 657 | E2E: report → auto task → SLA countdown |
+| 658 | E2E: urgent report → admin dashboard alert |
+| 659 | Edge: problem without booking (standalone) |
+| 660 | Edge: multiple photos per report |
+
+Tests: 38 new in `test_wave4_problem_reporting_contract.py`.
+
+---
+
+### Phases 661–665 — Wave 4: Buffer (Reserved) — 2026-03-14
+
+No changes. Reserved for iteration and refinements.
+
+---
+
+### Phase 666 — Wave 5: Guest Portal Enhanced Data Model — 2026-03-14
+
+**Guest Portal**: Extended `GuestBookingView` with 17 new fields.
+
+| Component | Addition |
+|-----------|----------|
+| Extras | `extras_available` (list of `ExtraItem`), `ExtraItem` dataclass |
+| Chat | `chat_enabled` boolean |
+| GPS | `property_latitude`, `property_longitude` |
+| House Info | ac_instructions, hot_water_info, stove_instructions, parking_info, pool_instructions, laundry_info, tv_info, safe_code, door_code, key_location, breaker_location, trash_instructions, extra_notes |
+
+**Files Changed:**
+- `src/services/guest_portal.py` — MODIFIED — 17 new fields + `ExtraItem` dataclass
+
+Full suite: all pass, 0 failed.
+
+---
+

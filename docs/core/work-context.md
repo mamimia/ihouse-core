@@ -1,20 +1,20 @@
 ## Current Active Phase
 
-Phase 646 — PII Document Security Hardening (closed).
+Phase 666 — Wave 5: Guest Portal Enhanced Data Model (closed).
 
 ## Last Closed Phase
 
-Phase 646 — PII Document Security Hardening (closed).
+Phase 666 — Wave 5: Guest Portal Enhanced Data Model (closed).
 
 ## Current Objective
 
-Phase 646 closed. PII Document Security Hardening: passport photos, signatures, and cash deposit photos are now treated as PII.
-`GET /checkin-form` redacts all PII URLs to `***` with boolean indicators. `POST /submit` returns status only.
-Admin retrieval via `GET /admin/pii-documents/{form_id}` — role=admin enforced, signed URLs (5-min expiry), audit-logged.
-2 new files: `pii_document_router.py`, `test_pii_document_security.py`.
-2 modified: `guest_checkin_form_router.py` (PII redaction), `main.py` (router registration).
-Test suite: 7,495 passed, 0 failed, 22 skipped.
-Next session at Phase 646 (Wave 4: Problem Reporting).
+Phase 666 closed. Completed 20 phases (647–666):
+- Wave 4 Problem Reporting (647–665): Auto-maintenance task on problem report (urgent → CRITICAL 5-min SLA, normal → MEDIUM 1h SLA). Audit events on status change. SSE `PROBLEM_URGENT` alerts. i18n labels for 14 categories (EN/TH/HE).
+- Wave 5 Guest Portal start (666): `GuestBookingView` extended with 17 fields — extras, chat, GPS, house info.
+- 3 new files: `problem_report_labels.py`, `test_wave4_problem_reporting_contract.py`, `ExtraItem` in `guest_portal.py`.
+- 2 modified: `problem_report_router.py` (auto-task + SSE + audit), `guest_portal.py` (Phase 666 fields).
+- Test suite: all pass, 0 failed.
+Next session: continue Wave 5 (Guest Portal & Extras, Phases 667–685).
 
 ## Deferred Items — Open Items Registry
 
