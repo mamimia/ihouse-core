@@ -333,6 +333,13 @@ async def supabase_signup(body: SignUpRequest) -> JSONResponse:
         if not user:
             return err("SIGNUP_FAILED", "User creation returned no user object.", status=400)
 
+        # Phase 760: Auto-provision tenant_permissions row for the new user.
+        # This bridges Supabase Auth UUID → iHouse tenant_id.
+        from services.tenant_bridge import provision_user_tenant
+        tenant_record = provision_user_tenant(db, str(user.id))
+        tenant_id = tenant_record.get("tenant_id", "") if tenant_record else ""
+        role = tenant_record.get("role", "manager") if tenant_record else "manager"
+
         # Sign in immediately to get tokens
         signin_result = db.auth.sign_in_with_password({
             "email": body.email.strip(),
@@ -340,10 +347,12 @@ async def supabase_signup(body: SignUpRequest) -> JSONResponse:
         })
 
         session = signin_result.session
-        logger.info("auth/signup: created user %s (%s)", user.id, body.email)
+        logger.info("auth/signup: created user %s (%s) → tenant=%s role=%s", user.id, body.email, tenant_id, role)
         return ok({
             "user_id": str(user.id),
             "email": body.email.strip(),
+            "tenant_id": tenant_id,
+            "role": role,
             "access_token": session.access_token if session else "",
             "refresh_token": session.refresh_token if session else "",
             "expires_in": session.expires_in if session else 0,
@@ -399,10 +408,21 @@ async def supabase_signin(body: SignInRequest) -> JSONResponse:
         if not session or not user:
             return err("AUTH_FAILED", "Invalid credentials.", status=401)
 
-        logger.info("auth/signin: authenticated %s (%s)", user.id, body.email)
+        # Phase 760: Look up the user's tenant mapping.
+        from services.tenant_bridge import lookup_user_tenant
+        tenant_record = lookup_user_tenant(db, str(user.id))
+        tenant_id = tenant_record.get("tenant_id", "") if tenant_record else ""
+        role = tenant_record.get("role", "") if tenant_record else ""
+
+        logger.info(
+            "auth/signin: authenticated %s (%s) → tenant=%s role=%s",
+            user.id, body.email, tenant_id, role,
+        )
         return ok({
             "user_id": str(user.id),
             "email": body.email.strip(),
+            "tenant_id": tenant_id,
+            "role": role,
             "access_token": session.access_token,
             "refresh_token": session.refresh_token,
             "expires_in": session.expires_in,

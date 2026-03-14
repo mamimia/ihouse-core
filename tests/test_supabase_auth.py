@@ -59,7 +59,10 @@ def test_signup_success_returns_user_and_token(client):
     mock_db.auth.admin.create_user.return_value = mock_create_result
     mock_db.auth.sign_in_with_password.return_value = mock_signin_result
 
-    with patch("api.auth_router._get_supabase_admin", return_value=mock_db):
+    with patch("api.auth_router._get_supabase_admin", return_value=mock_db), \
+         patch("services.tenant_bridge.provision_user_tenant", return_value={
+             "tenant_id": "tenant_e2e_amended", "role": "manager",
+         }):
         resp = client.post("/auth/signup", json={
             "email": "admin@domaniqo.com",
             "password": "SecurePass123!",
@@ -70,6 +73,8 @@ def test_signup_success_returns_user_and_token(client):
     data = resp.json()["data"]
     assert data["user_id"] == "user-uuid-123"
     assert data["email"] == "admin@domaniqo.com"
+    assert data["tenant_id"] == "tenant_e2e_amended"  # Phase 760
+    assert data["role"] == "manager"  # Phase 760
     assert data["access_token"] == "eyJ_access_token"
     assert data["refresh_token"] == "refresh_token_abc"
     assert data["expires_in"] == 3600
@@ -106,7 +111,10 @@ def test_signin_success_returns_token(client):
     mock_db = MagicMock()
     mock_db.auth.sign_in_with_password.return_value = mock_result
 
-    with patch("api.auth_router._get_supabase_admin", return_value=mock_db):
+    with patch("api.auth_router._get_supabase_admin", return_value=mock_db), \
+         patch("services.tenant_bridge.lookup_user_tenant", return_value={
+             "tenant_id": "tenant_e2e_amended", "role": "admin",
+         }):
         resp = client.post("/auth/signin", json={
             "email": "admin@domaniqo.com",
             "password": "SecurePass123!",
@@ -116,6 +124,8 @@ def test_signin_success_returns_token(client):
     data = resp.json()["data"]
     assert data["access_token"] == "eyJ_access"
     assert data["user_id"] == "user-uuid-123"
+    assert data["tenant_id"] == "tenant_e2e_amended"  # Phase 760
+    assert data["role"] == "admin"  # Phase 760
 
 
 def test_signin_failure_returns_401(client):
