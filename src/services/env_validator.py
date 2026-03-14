@@ -34,6 +34,7 @@ RECOMMENDED = [
     "IHOUSE_TENANT_ID",
     "IHOUSE_API_KEY",
     "IHOUSE_ENV",
+    "IHOUSE_BOOTSTRAP_SECRET",  # Phase 761 — first admin creation
     "SENTRY_DSN",
 ]
 
