@@ -7273,3 +7273,56 @@ Block 4 (580-584): Performance & Production Readiness — API cache, skeleton lo
 Fixed all 143 test failures from the Phase 570 response envelope migration. Updated 17 test files with ~170 assertion changes: success data under `["data"]`, error fields under `["error"]`, and reverted incorrect wrapping on non-migrated routers. Full suite: 7,380 passed, 0 failed, 22 skipped.
 
 ---
+
+### Phases 586–605 — Wave 1: Foundation (Domaniqo Product Vision) — 2026-03-14
+
+**Migration**: `20260314201500_phase586_605_foundation.sql` — 18 new tables, ~30 new columns across `properties` and `users`.
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 586 | Property GPS & Location | `property_location_router.py` — save/get GPS with Google Maps URL |
+| 587 | Check-in/out Times | Extended `properties_router.py` PATCH |
+| 588 | Deposit Config | Extended `properties_router.py` PATCH |
+| 589 | House Rules JSONB | `property_house_rules_router.py` |
+| 590 | Property Details (16 fields) | Extended `properties_router.py` PATCH + `_format_property` |
+| 591-592 | Reference + Marketing Photos | `property_photos_router.py` |
+| 593 | Amenities (bulk upsert) | `property_amenities_router.py` |
+| 594 | Worker ID System | Migration ALTER TABLE users |
+| 595 | Worker Action Tracking | Migration (task_actions table) |
+| 596 | Extras Catalog CRUD | `extras_catalog_router.py` |
+| 597 | Property-Extras Mapping | `property_extras_router.py` |
+| 598 | Problem Reports | `problem_report_router.py` (6 endpoints) |
+| 599-602 | Schema — forms, checklists, orders, chat | Migration DDL only |
+| 603 | Maintenance Mode | Migration + properties_router field |
+| 604 | Owner Visibility Settings | `owner_visibility_router.py` |
+| 605 | QR Token + Manual Booking | Migration DDL |
+
+Tests: 45 new in `test_wave1_foundation_contract.py`.
+
+---
+
+### Phases 606–625 — Wave 2: Guest Check-in System — 2026-03-14
+
+**Router**: `guest_checkin_form_router.py` — full lifecycle API (12 endpoints).
+**i18n**: `src/i18n/checkin_form_labels.py` — EN/TH/HE labels + tourist/resident field rules.
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 606 | Form Create/Get | POST/GET /bookings/{id}/checkin-form |
+| 607 | Add Guests | POST /checkin-forms/{id}/guests |
+| 608 | Passport Photo Upload | POST /checkin-forms/{id}/guests/{gid}/passport-photo |
+| 609 | Tourist vs Resident Logic | `checkin_form_labels.py` required fields |
+| 610 | Deposit Collection | POST /bookings/{id}/deposit |
+| 611 | Digital Signature | POST /checkin-forms/{id}/signature |
+| 612 | Form Submit + Complete | POST /checkin-forms/{id}/submit (validation + force override) |
+| 613 | QR Code Generation | POST /bookings/{id}/generate-qr (nanoid tokens) |
+| 614 | Pre-Arrival Email | Deferred (requires live SMTP) |
+| 615 | Guest Self-Service Portal | GET/POST /guest/pre-arrival/{token} (public, token-gated) |
+| 616 | Language Selection | EN/TH/HE labels with fallback |
+| 617-618 | Wire to Booking Router | Deferred (requires live booking integration) |
+| 619-625 | Tests + Edge Cases | E2E flow, edge case coverage |
+
+Tests: 31 new in `test_wave2_guest_checkin_contract.py`.
+Full suite: 7,456 passed, 0 failed, 22 skipped.
+
+---

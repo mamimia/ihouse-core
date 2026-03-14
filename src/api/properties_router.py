@@ -56,17 +56,41 @@ def _get_supabase_client() -> Any:
 # Row formatting
 # ---------------------------------------------------------------------------
 
+# All updatable property fields (Phases 587-590)
+_PROPERTY_DETAIL_FIELDS = [
+    "checkin_time", "checkout_time",  # Phase 587
+    "deposit_required", "deposit_amount", "deposit_currency", "deposit_method",  # Phase 588
+    "door_code", "key_location", "wifi_name", "wifi_password",  # Phase 590
+    "ac_instructions", "hot_water_info", "stove_instructions",
+    "breaker_location", "trash_instructions", "parking_info",
+    "pool_instructions", "laundry_info", "tv_info", "safe_code",
+    "emergency_contact", "extra_notes",
+    "maintenance_mode",  # Phase 603
+]
+
+
 def _format_property(row: Dict[str, Any]) -> Dict[str, Any]:
-    return {
+    result = {
         "id":            row.get("id"),
         "property_id":   row.get("property_id"),
         "tenant_id":     row.get("tenant_id"),
         "display_name":  row.get("display_name"),
         "timezone":      row.get("timezone", "UTC"),
         "base_currency": row.get("base_currency", "USD"),
+        # Phase 586 — GPS
+        "latitude":      row.get("latitude"),
+        "longitude":     row.get("longitude"),
+        "gps_source":    row.get("gps_source"),
+        # Phase 589 — House Rules
+        "house_rules":   row.get("house_rules", []),
         "created_at":    row.get("created_at"),
         "updated_at":    row.get("updated_at"),
     }
+    # Include all detail fields
+    for f in _PROPERTY_DETAIL_FIELDS:
+        if f in row:
+            result[f] = row[f]
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -335,11 +359,16 @@ async def update_property(
             )
         update_data["base_currency"] = val
 
+    # Phase 587-590: Accept all new property detail fields
+    for field in _PROPERTY_DETAIL_FIELDS:
+        if field in body:
+            update_data[field] = body[field]
+
     if not update_data:
         return make_error_response(
             status_code=400,
             code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": "No updatable fields provided. Allowed: display_name, timezone, base_currency."},
+            extra={"detail": "No updatable fields provided."},
         )
 
     try:

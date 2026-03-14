@@ -475,6 +475,37 @@ app.include_router(export_router)
 from api.monitoring_middleware import MonitoringMiddleware  # noqa: E402  # Phase 537
 app.add_middleware(MonitoringMiddleware)
 
+# --- Wave 1: Foundation (Phases 586–605) ---
+
+from api.property_location_router import router as property_location_router  # noqa: E402  # Phase 586
+app.include_router(property_location_router)
+
+from api.property_house_rules_router import router as property_house_rules_router  # noqa: E402  # Phase 589
+app.include_router(property_house_rules_router)
+
+from api.property_photos_router import router as property_photos_router  # noqa: E402  # Phases 591-592
+app.include_router(property_photos_router)
+
+from api.property_amenities_router import router as property_amenities_router  # noqa: E402  # Phase 593
+app.include_router(property_amenities_router)
+
+from api.extras_catalog_router import router as extras_catalog_router  # noqa: E402  # Phase 596
+app.include_router(extras_catalog_router)
+
+from api.property_extras_router import router as property_extras_router  # noqa: E402  # Phase 597
+app.include_router(property_extras_router)
+
+from api.problem_report_router import router as problem_report_router  # noqa: E402  # Phase 598
+app.include_router(problem_report_router)
+
+from api.owner_visibility_router import router as owner_visibility_router  # noqa: E402  # Phase 604
+app.include_router(owner_visibility_router)
+
+# --- Wave 2: Guest Check-in (Phases 606–618) ---
+
+from api.guest_checkin_form_router import router as guest_checkin_form_router  # noqa: E402  # Phases 606-618
+app.include_router(guest_checkin_form_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint

@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 585 — Booking Test Suite Repair (closed).
+Phase 625 — Guest Check-in Edge Cases & Tests (closed).
 
 ## Last Closed Phase
-Phase 585 — Booking Test Suite Repair (closed).
+Phase 625 — Guest Check-in Edge Cases & Tests (closed).
 
 ## System Status
 
