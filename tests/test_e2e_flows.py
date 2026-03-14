@@ -156,10 +156,15 @@ class TestE2EInviteFlow:
         mock_db2.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
         mock_db2.table.return_value.insert.return_value.execute.return_value = MagicMock()
 
-        with patch("api.invite_router._get_db", return_value=mock_db2):
-            accept_resp = client.post(f"/invite/accept/{raw_token}")
+        with patch("api.invite_router._get_db", return_value=mock_db2), \
+             patch.dict("os.environ", {"SUPABASE_URL": "", "SUPABASE_SERVICE_ROLE_KEY": ""}):
+            accept_resp = client.post(f"/invite/accept/{raw_token}", json={
+                "password": "SecurePass123!",
+                "full_name": "Staff User",
+            })
         assert accept_resp.status_code == 200
         assert accept_resp.json()["status"] == "accepted"
+        assert accept_resp.json()["role"] == "worker"
 
 
 class TestE2EOnboardFlow:

@@ -122,8 +122,11 @@ class TestInviteFlow:
         # audit insert succeeds
         mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock()
 
-        with patch("api.invite_router._get_db", return_value=mock_db):
-            resp = client.post(f"/invite/accept/{raw_token}")
+        with patch("api.invite_router._get_db", return_value=mock_db), \
+             patch.dict("os.environ", {"SUPABASE_URL": "", "SUPABASE_SERVICE_ROLE_KEY": ""}):
+            resp = client.post(f"/invite/accept/{raw_token}", json={
+                "password": "SecurePass123!",
+            })
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "accepted"
@@ -133,5 +136,7 @@ class TestInviteFlow:
         """Accept with invalid token returns 401."""
         mock_db = MagicMock()
         with patch("api.invite_router._get_db", return_value=mock_db):
-            resp = client.post("/invite/accept/invalid-token-xyz")
+            resp = client.post("/invite/accept/invalid-token-xyz", json={
+                "password": "SecurePass123!",
+            })
         assert resp.status_code == 401

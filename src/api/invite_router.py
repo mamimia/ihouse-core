@@ -192,18 +192,25 @@ async def validate_invite(token: str) -> JSONResponse:
         })
 
 
+class AcceptInviteRequest(BaseModel):
+    password: str = Field(..., min_length=8, description="Password for the new user account")
+    full_name: str = Field("", description="Full name of the user")
+
+
 @router.post(
     "/invite/accept/{token}",
     tags=["public"],
-    summary="Accept an invitation (Phase 401)",
+    summary="Accept an invitation and create user account (Phase 401 + 767)",
 )
-async def accept_invite(token: str) -> JSONResponse:
+async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
     """
     POST /invite/accept/{token}
 
-    Public endpoint. Consumes the invite token (one-use).
-    In a full implementation, this would create a user record.
-    For now: marks the token as used and returns success + role info.
+    Public endpoint. Accepts the invite, creates a Supabase Auth user,
+    provisions tenant_permissions with the invited role, and returns
+    access credentials.
+
+    Phase 767: completes the invite flow by actually creating the user.
     """
     db = _get_db()
     claims = validate_and_consume(
@@ -219,27 +226,86 @@ async def accept_invite(token: str) -> JSONResponse:
         })
 
     metadata = claims.get("metadata") or {}
+    email = claims.get("email", "")
+    role = metadata.get("role", "staff")
+    tenant_id = claims.get("entity_id", "")
+
+    # Phase 767: Create Supabase Auth user + sign in for tokens
+    from supabase import create_client
+    supa_url = os.environ.get("SUPABASE_URL", "")
+    supa_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    user_id = None
+    access_token = ""
+    refresh_token = ""
+
+    if supa_url and supa_key:
+        try:
+            supa = create_client(supa_url, supa_key)
+            result = supa.auth.admin.create_user({
+                "email": email,
+                "password": body.password,
+                "email_confirm": True,
+                "user_metadata": {
+                    "full_name": body.full_name.strip() if body.full_name else "",
+                    "invited_role": role,
+                },
+            })
+            user_id = str(result.user.id) if result.user else None
+
+            # Sign in to get tokens
+            if user_id:
+                signin = supa.auth.sign_in_with_password({
+                    "email": email,
+                    "password": body.password,
+                })
+                if signin.session:
+                    access_token = signin.session.access_token
+                    refresh_token = signin.session.refresh_token
+
+                # Provision tenant_permissions
+                from services.tenant_bridge import provision_user_tenant
+                provision_user_tenant(
+                    supa, user_id,
+                    tenant_id=tenant_id if tenant_id else None,
+                    role=role,
+                )
+
+            logger.info("invite/accept: created user %s (%s) role=%s", user_id, email, role)
+        except Exception as exc:
+            logger.warning("invite/accept: user creation failed for %s: %s", email, exc)
+            # If user already exists, the invite was consumed — that's fine
+            error_msg = str(exc).lower()
+            if "already" not in error_msg and "exists" not in error_msg:
+                return JSONResponse(status_code=400, content={
+                    "error": "USER_CREATION_FAILED",
+                    "message": str(exc),
+                })
 
     # Log audit event
     try:
         db.table("audit_events").insert({
-            "tenant_id": claims.get("entity_id", ""),
+            "tenant_id": tenant_id,
             "event_type": "invite_accepted",
             "entity_type": "invite",
             "entity_id": claims.get("db_id", ""),
             "payload": {
-                "email": claims.get("email"),
-                "role": metadata.get("role"),
+                "email": email,
+                "role": role,
+                "user_id": user_id,
             },
         }).execute()
     except Exception:
         pass  # Best-effort audit
 
-    logger.info("invite: accepted email=%s role=%s", claims.get("email"), metadata.get("role"))
+    logger.info("invite: accepted email=%s role=%s user_id=%s", email, role, user_id)
 
     return JSONResponse(status_code=200, content={
         "status": "accepted",
-        "role": metadata.get("role", "staff"),
+        "role": role,
         "organization_name": metadata.get("organization_name", "Domaniqo"),
-        "email": claims.get("email"),
+        "email": email,
+        "user_id": user_id,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
     })
+
