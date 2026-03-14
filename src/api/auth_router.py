@@ -432,3 +432,89 @@ async def supabase_signin(body: SignInRequest) -> JSONResponse:
         logger.warning("auth/signin: failed for %s — %s", body.email, error_msg)
         return err("AUTH_FAILED", error_msg, status=401)
 
+
+# ---------------------------------------------------------------------------
+# Phase 768 — Password Reset / Recovery
+# ---------------------------------------------------------------------------
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+
+class PasswordUpdateRequest(BaseModel):
+    user_id: str
+    new_password: str
+
+
+@router.post(
+    "/auth/password-reset",
+    tags=["auth"],
+    summary="Request a password reset email (Phase 768)",
+    responses={
+        200: {"description": "Reset email sent (always returns 200 for security)"},
+        503: {"description": "Supabase not configured"},
+    },
+)
+async def password_reset_request(body: PasswordResetRequest) -> JSONResponse:
+    """
+    Phase 768: Initiate password reset via Supabase Auth.
+
+    Sends a recovery email to the user. Always returns 200 regardless
+    of whether the email exists (prevents user enumeration).
+
+    The redirect URL comes from IHOUSE_PASSWORD_RESET_REDIRECT env var
+    or defaults to the CORS origin.
+    """
+    db = _get_supabase_admin()
+    if not db:
+        return err("SUPABASE_NOT_CONFIGURED", "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set.", status=503)
+
+    email = body.email.strip().lower()
+    redirect_to = os.environ.get(
+        "IHOUSE_PASSWORD_RESET_REDIRECT",
+        os.environ.get("IHOUSE_CORS_ORIGINS", "http://localhost:3000").split(",")[0].strip()
+    )
+
+    try:
+        db.auth.reset_password_email(email, options={"redirect_to": redirect_to})
+        logger.info("auth/password-reset: sent recovery email to %s", email)
+    except Exception as exc:
+        # Log but don't expose whether the email exists
+        logger.warning("auth/password-reset: failed for %s — %s", email, exc)
+
+    # Always 200 — don't reveal whether email exists
+    return ok({"message": "If that email is registered, a reset link has been sent."})
+
+
+@router.post(
+    "/auth/password-update",
+    tags=["auth"],
+    summary="Update a user's password (Phase 768, admin only)",
+    responses={
+        200: {"description": "Password updated"},
+        400: {"description": "Update failed"},
+        503: {"description": "Supabase not configured"},
+    },
+)
+async def password_update(body: PasswordUpdateRequest) -> JSONResponse:
+    """
+    Phase 768: Update a user's password via admin API.
+
+    This is for admin-initiated password resets (e.g. from support).
+    Users who click the recovery link go through Supabase's built-in flow.
+    """
+    db = _get_supabase_admin()
+    if not db:
+        return err("SUPABASE_NOT_CONFIGURED", "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set.", status=503)
+
+    try:
+        db.auth.admin.update_user_by_id(
+            body.user_id,
+            {"password": body.new_password},
+        )
+        logger.info("auth/password-update: updated for user %s", body.user_id)
+        return ok({"message": "Password updated successfully.", "user_id": body.user_id})
+    except Exception as exc:
+        error_msg = str(exc)
+        logger.warning("auth/password-update: failed for user %s — %s", body.user_id, error_msg)
+        return err("UPDATE_FAILED", error_msg, status=400)
