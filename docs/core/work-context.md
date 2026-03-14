@@ -1,21 +1,21 @@
 ## Current Active Phase
 
-Phase 686 — Wave 6: Checkout Enhanced Worker View (closed).
+Phase 706 — Wave 7: Manual Booking Create API (closed).
 
 ## Last Closed Phase
 
-Phase 686 — Wave 6: Checkout Enhanced Worker View (closed).
+Phase 706 — Wave 7: Manual Booking Create API (closed).
 
 ## Current Objective
 
-Phase 686 closed. Completed 40 phases (647–686) across 3 waves:
-- Wave 4 (647–665): Problem Reporting — auto-maintenance tasks, audit events, SSE alerts, i18n labels (38 tests).
-- Wave 5 (666–685): Guest Portal — enhanced data model, extras listing/ordering, guest chat, WhatsApp link, location/map, house info, multi-language portal (30 tests).
-- Wave 6 start (686): Checkout enhanced worker view — reference photos, cleaning photos, deposit, property info.
-- New files: `guest_extras_router.py`, `problem_report_labels.py`, 2 test files.
-- Modified: `guest_portal_router.py`, `guest_portal.py`, `problem_report_router.py`, `main.py`.
+Phase 706 closed. Completed 60 phases (647–706) across 4 waves:
+- Wave 4 (647–665): Problem Reporting.
+- Wave 5 (666–685): Guest Portal & Extras.
+- Wave 6 (686–705): Checkout & Deposit Settlement — collect/return deposits, deduction CRUD, photo comparison, checkout with settlement pre-check.
+- Wave 7 start (706): Manual booking create API with source-based task creation.
+- New files: `deposit_settlement_router.py`, `manual_booking_router.py`, 3 test files.
 - Test suite: all pass, 0 failed.
-Next session: continue Wave 6 (Checkout & Deposit Settlement, Phases 687–705).
+Next session: continue Wave 7 (Manual Booking & Task Take-Over, Phases 707–720).
 
 ## Deferred Items — Open Items Registry
 

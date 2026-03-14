@@ -7498,3 +7498,56 @@ Full suite: all pass, 0 failed.
 
 ---
 
+
+### Phases 687–690 — Wave 6: Deposit Settlement & Checkout — 2026-03-14
+
+| Phase | Feature | Implementation |
+|-------|---------|---------------|
+| 687 | Deposit Collection & Return | POST/GET /deposits, POST /deposits/{id}/return — collect, lookup, full return with audit |
+| 688 | Deduction CRUD | POST/DELETE /deposits/{id}/deductions/{did}, GET /deposits/{id}/settlement — auto-refund recalc |
+| 689 | Photo Comparison | GET /bookings/{id}/photo-comparison — reference + cleaning + checkout photos side-by-side |
+| 690 | Checkout Completion | POST /bookings/{id}/checkout — settlement pre-check, auto-cleaning task, audit event |
+
+**Files:** `src/api/deposit_settlement_router.py` — NEW (8 endpoints)
+
+---
+
+### Phases 691–698 — Wave 6: Checkout Tests — 2026-03-14
+
+| Phase | Test Coverage |
+|-------|---------------|
+| 691 | Contract — photo comparison returns 3 photo categories |
+| 692 | Contract — deposit full return |
+| 693 | Contract — deposit partial return with deductions |
+| 694 | Contract — deduction CRUD + refund recalculation |
+| 695 | Contract — photo comparison missing-booking 404 |
+| 696 | E2E — full checkout: deposit → deduction → settlement → checkout |
+| 697 | Edge — checkout with no deposit succeeds |
+| 698 | Edge — unsettled deposit blocks checkout; force=true overrides |
+
+Tests: 24 new in `test_wave6_checkout_deposit_contract.py`. All pass.
+
+---
+
+### Phases 699–705 — Wave 6: Reserved — 2026-03-14
+
+No changes. Reserved for iteration.
+
+---
+
+### Phase 706 — Wave 7: Manual Booking Create API — 2026-03-14
+
+POST /bookings/manual — create manual booking with source ('direct'/'self_use'/'owner_use'/'maintenance_block').
+- Supports tasks_opt_out to selectively skip CHECKIN/CLEANING/CHECKOUT tasks.
+- maintenance_block creates no tasks.
+- Generates deterministic booking_id: MAN-{property}-{YYYYMMDD}-{hash4}.
+- Audit event on creation.
+
+**Files:** `src/api/manual_booking_router.py` — NEW
+
+Tests: 8 tests in `test_wave6_checkout_deposit_contract.py` (706 section). All pass.
+
+Full suite: all pass, 0 failed.
+
+---
+

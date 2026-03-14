@@ -525,6 +525,16 @@ app.include_router(guest_extras_router)
 from api.guest_portal_router import checkout_router  # noqa: E402  # Phase 686
 app.include_router(checkout_router)
 
+# --- Wave 6: Deposit Settlement & Checkout (Phases 687–690) ---
+
+from api.deposit_settlement_router import router as deposit_settlement_router  # noqa: E402  # Phases 687-690
+app.include_router(deposit_settlement_router)
+
+# --- Wave 7: Manual Booking (Phase 706) ---
+
+from api.manual_booking_router import router as manual_booking_router  # noqa: E402  # Phase 706
+app.include_router(manual_booking_router)
+
 
 # ---------------------------------------------------------------------------
 # Phase 221 — Scheduler status endpoint
