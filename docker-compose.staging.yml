@@ -38,6 +38,7 @@ services:
       - IHOUSE_DEV_MODE=false
       - IHOUSE_DRY_RUN=true
       - IHOUSE_CORS_ORIGINS=${IHOUSE_CORS_ORIGINS:-http://localhost:3000}
+      - IHOUSE_BOOTSTRAP_SECRET=${IHOUSE_BOOTSTRAP_SECRET:-}
       - BUILD_VERSION=${BUILD_VERSION:-0.1.0-staging}
     restart: unless-stopped
     healthcheck:
