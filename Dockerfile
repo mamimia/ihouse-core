@@ -23,7 +23,7 @@ WORKDIR /build
 
 # Install system deps needed for some Python packages (cffi, cryptography)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc libffi-dev && \
+    apt-get install -y --no-install-recommends gcc g++ libffi-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Create venv and install deps
