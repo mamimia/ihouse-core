@@ -6,7 +6,7 @@ This module is **purely read-only** — it never writes to booking_state,
 event_log, or any other table.
 
 Detection categories:
-  A. DATE_OVERLAP      — Two ACTIVE bookings on the same property overlap in dates
+  A. DATE_OVERLAP      — Two OCCUPIED bookings (active/observed/blocked) on the same property overlap in dates
   B. MISSING_DATES     — An ACTIVE booking has no check_in or check_out recorded
   C. MISSING_PROPERTY  — An ACTIVE booking has no property_id recorded
   D. DUPLICATE_REF     — Two bookings share the same (provider, reservation_id) pair
@@ -137,9 +137,14 @@ def _dates_overlap(
     return check_in_a < check_out_b and check_in_b < check_out_a
 
 
+# Statuses that occupy calendar dates (block availability)
+_OCCUPIED_STATUSES = ["active", "observed", "blocked"]
+
+
 def _fetch_active_bookings(db: Any, tenant_id: str):
     """
-    Fetch all ACTIVE bookings for the tenant from booking_state.
+    Fetch all OCCUPIED bookings for the tenant from booking_state.
+    Includes active (confirmed), observed (iCal unverified), and blocked (iCal blocked).
     Returns (rows, failed_bool).
     """
     try:
@@ -147,7 +152,7 @@ def _fetch_active_bookings(db: Any, tenant_id: str):
             db.table("booking_state")
             .select("booking_id, status, tenant_id, state_json, provider, reservation_id")
             .eq("tenant_id", tenant_id)
-            .eq("status", "active")
+            .in_("status", _OCCUPIED_STATUSES)
             .execute()
         )
         return result.data or [], False

@@ -166,7 +166,7 @@ async def get_booking(
 # GET /bookings (Phase 106)
 # ---------------------------------------------------------------------------
 
-_VALID_STATUSES = frozenset({"active", "canceled"})
+_VALID_STATUSES = frozenset({"active", "canceled", "observed", "blocked"})
 _VALID_SORT_BY = frozenset({"check_in", "check_out", "updated_at", "created_at"})
 # Map user-facing sort_by names to actual DB column names
 _SORT_BY_COLUMN = {
