@@ -180,13 +180,15 @@ async def bootstrap_admin(body: BootstrapRequest) -> JSONResponse:
         results["tenant_permissions"] = f"failed: {exc}"
 
     # ── Step 5: upsert org_members (org_admin) ──
+    # Schema: id(uuid), org_id(uuid), tenant_id(text), role(text), invited_by(text), joined_at(timestamptz)
     try:
         db.table("org_members").upsert({
             "org_id": DEFAULT_ORG_ID,
-            "user_id": user_id,
+            "tenant_id": DEFAULT_TENANT_ID,
             "role": "org_admin",
-            "updated_at": now,
-        }, on_conflict="org_id,user_id").execute()
+            "invited_by": "bootstrap",
+            "joined_at": now,
+        }, on_conflict="org_id,tenant_id").execute()
         results["org_members"] = "upserted"
         logger.info("admin/bootstrap: org_members upserted for %s", user_id)
     except Exception as exc:
@@ -194,18 +196,44 @@ async def bootstrap_admin(body: BootstrapRequest) -> JSONResponse:
         results["org_members"] = f"failed: {exc}"
 
     # ── Step 6: upsert tenant_org_map ──
+    # Schema: tenant_id(text PK), org_id(uuid FK), role(text), updated_at(timestamptz)
     try:
         db.table("tenant_org_map").upsert({
             "tenant_id": DEFAULT_TENANT_ID,
             "org_id": DEFAULT_ORG_ID,
             "role": "org_admin",
             "updated_at": now,
-        }, on_conflict="tenant_id,org_id").execute()
+        }, on_conflict="tenant_id").execute()
         results["tenant_org_map"] = "upserted"
         logger.info("admin/bootstrap: tenant_org_map upserted for %s → %s", DEFAULT_TENANT_ID, DEFAULT_ORG_ID)
     except Exception as exc:
         logger.warning("admin/bootstrap: tenant_org_map upsert failed: %s", exc)
         results["tenant_org_map"] = f"failed: {exc}"
+
+    # ── Step 6b: also create tenant_permissions for tenant_id identity ──
+    # Session login uses tenant_id as JWT sub, so resolve_role looks up by tenant_id.
+    # This ensures the session login admin can also resolve as admin.
+    try:
+        db.table("tenant_permissions").upsert({
+            "tenant_id": DEFAULT_TENANT_ID,
+            "user_id": DEFAULT_TENANT_ID,  # tenant_id as user_id for session login
+            "role": "admin",
+            "permissions": {
+                "can_manage_workers": True,
+                "can_view_financials": True,
+                "can_manage_properties": True,
+                "can_manage_integrations": True,
+                "is_bootstrap_admin": True,
+                "linked_auth_user": user_id,  # link back to real auth UUID
+            },
+            "created_at": now,
+            "updated_at": now,
+        }, on_conflict="tenant_id,user_id").execute()
+        results["tenant_permissions_session"] = "upserted"
+        logger.info("admin/bootstrap: tenant_permissions (session identity) upserted for %s", DEFAULT_TENANT_ID)
+    except Exception as exc:
+        logger.warning("admin/bootstrap: tenant_permissions (session) upsert failed: %s", exc)
+        results["tenant_permissions_session"] = f"failed: {exc}"
 
     # ── Step 7: summary ──
     all_ok = all(
