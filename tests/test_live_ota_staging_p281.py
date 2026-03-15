@@ -43,7 +43,9 @@ from fastapi.testclient import TestClient
 from api.webhooks import router
 
 _WEBHOOK_SECRET = "p281-staging-secret-abcdef1234567890"
-_MOCK_TARGET = "api.webhooks.ingest_provider_event"
+_MOCK_TARGET = "api.webhooks.ingest_provider_event_with_dlq"
+_MOCK_APPLY_FN = "api.webhooks._build_apply_fn"
+_MOCK_SKILL_ROUTER = "api.webhooks._build_skill_router"
 
 
 @dataclass
@@ -112,7 +114,9 @@ class TestGroupAFullStackHappyPath:
         payload = _canonical_bookingcom_payload("a1")
         body = json.dumps(payload).encode()
         sig = _sign(body)
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED", "idempotency_key": "k1"}), \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=body,
@@ -126,7 +130,9 @@ class TestGroupAFullStackHappyPath:
         payload = _canonical_bookingcom_payload("a2")
         body = json.dumps(payload).encode()
         sig = _sign(body)
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope(idempotency_key=key)):
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED", "idempotency_key": key}), \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=body,
@@ -140,7 +146,9 @@ class TestGroupAFullStackHappyPath:
         payload = _canonical_bookingcom_payload("a3")
         body = json.dumps(payload).encode()
         sig = _sign(body)
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()) as mock_ingest:
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED", "idempotency_key": "k3"}) as mock_ingest, \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             client.post(
                 "/webhooks/bookingcom",
                 content=body,
@@ -160,7 +168,9 @@ class TestGroupBHmacGate:
         payload = _canonical_bookingcom_payload("b1")
         body = json.dumps(payload).encode()
         bad_sig = _sign(body, secret="wrong-secret-here!!!!!!!!!!!!!!!")
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED"}), \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=body,
@@ -176,7 +186,9 @@ class TestGroupBHmacGate:
         sig = _sign(body)
         tampered = {**original, "reservation_id": "HACKED-999"}
         tampered_body = json.dumps(tampered).encode()
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED"}), \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=tampered_body,
@@ -188,7 +200,9 @@ class TestGroupBHmacGate:
         monkeypatch.setenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", _WEBHOOK_SECRET)
         payload = _canonical_bookingcom_payload("b3")
         body = json.dumps(payload).encode()
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED"}), \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=body,
@@ -278,7 +292,9 @@ class TestGroupEIdempotencyKey:
         monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
         payload = _canonical_bookingcom_payload("e1")
         body = json.dumps(payload).encode()
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED", "idempotency_key": "ke1"}), \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=body,
@@ -291,7 +307,9 @@ class TestGroupEIdempotencyKey:
         monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
         payload = _canonical_bookingcom_payload("e2")
         body = json.dumps(payload).encode()
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED", "idempotency_key": "ke2"}), \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=body,
@@ -306,7 +324,9 @@ class TestGroupEIdempotencyKey:
         payload = _canonical_bookingcom_payload("e3")
         body = json.dumps(payload).encode()
         fixed_key = "bookingcom:reservation_created:LIVE281-e3"
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope(idempotency_key=fixed_key)):
+        with patch(_MOCK_TARGET, return_value={"status": "APPLIED", "idempotency_key": fixed_key}), \
+             patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+             patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
             resp1 = client.post(
                 "/webhooks/bookingcom",
                 content=body,

@@ -106,7 +106,7 @@ class TestGroupATenantSummary:
             "tenant_id":    TENANT,
             "status":       "active",
             "event_kind":   "BOOKING_CREATED",
-            "updated_at":   "2026-03-11T12:00:00Z",
+            "updated_at_ms": 1741694400000,
             "created_at":   "2026-03-11T00:00:00Z",
             "provider":     "bookingcom",
             "envelope_id":  "env-001",

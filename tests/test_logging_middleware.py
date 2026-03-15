@@ -21,7 +21,9 @@ from fastapi.testclient import TestClient
 
 from main import app
 
-_MOCK_TARGET = "api.webhooks.ingest_provider_event"
+_MOCK_TARGET = "api.webhooks.ingest_provider_event_with_dlq"
+_MOCK_APPLY_FN = "api.webhooks._build_apply_fn"
+_MOCK_SKILL_ROUTER = "api.webhooks._build_skill_router"
 
 _VALID_PAYLOAD = {
     "reservation_id": "RES-LOG-001",
@@ -57,7 +59,9 @@ def client():
 
 def test_request_id_header_present_on_200(client, monkeypatch):
     monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
-    with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+    with patch(_MOCK_TARGET, return_value={"status": "APPLIED", "idempotency_key": "k1"}), \
+         patch(_MOCK_APPLY_FN, return_value=lambda e, em: {"status": "APPLIED"}), \
+         patch(_MOCK_SKILL_ROUTER, return_value=lambda et, p: []):
         resp = client.post(
             "/webhooks/bookingcom",
             content=json.dumps(_VALID_PAYLOAD).encode(),

@@ -111,17 +111,17 @@ def _count_amendments(db: Any, tenant_id: str) -> int:
 
 
 def _last_event_at(db: Any, tenant_id: str) -> Optional[str]:
-    """Return updated_at of the most recently modified booking, or None."""
+    """Return updated_at_ms of the most recently modified booking, or None."""
     result = (
         db.table("booking_state")
-        .select("updated_at")
+        .select("updated_at_ms")
         .eq("tenant_id", tenant_id)
-        .order("updated_at", desc=True)
+        .order("updated_at_ms", desc=True)
         .limit(1)
         .execute()
     )
     rows = result.data or []
-    return rows[0]["updated_at"] if rows else None
+    return rows[0]["updated_at_ms"] if rows else None
 
 
 def _get_provider_health(db: Any, tenant_id: str) -> list:

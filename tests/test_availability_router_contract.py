@@ -292,7 +292,7 @@ class TestGroupD_CanceledExcluded:
             c.get(_url(from_="2026-04-01", to="2026-04-10"))
         # Verify .eq("lifecycle_status", "ACTIVE") was called
         calls = str(db.table.return_value.select.return_value.eq.call_args_list)
-        assert "ACTIVE" in calls
+        assert "active" in calls
 
 
 # ===========================================================================

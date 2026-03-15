@@ -402,7 +402,7 @@ class TestGroupI_CanceledExcluded:
         c = _make_app()
         _get(c, db)
         eq_calls = [str(call) for call in db.table.return_value.select.return_value.eq.call_args_list]
-        assert any("ACTIVE" in call for call in eq_calls)
+        assert any("active" in call for call in eq_calls)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
