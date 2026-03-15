@@ -414,6 +414,9 @@ app.include_router(onboarding_router)
 from api.property_admin_router import router as property_admin_router  # noqa: E402  # Phase 396
 app.include_router(property_admin_router)
 
+from api.property_config_router import router as property_config_router  # noqa: E402  # Phase 801
+app.include_router(property_config_router)
+
 from api.revenue_report_router import router as revenue_report_router  # noqa: E402  # Phase 215
 app.include_router(revenue_report_router)
 

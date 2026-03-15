@@ -7785,3 +7785,20 @@ Stage: Production-grade staging activation with live Supabase, real OTA webhooks
 **Supabase Auth Users:** admin@domaniqo.com (25407914), manager@domaniqo.com (ecc69a1a), worker@domaniqo.com (19f9f4ed)
 
 ---
+
+### Phase 801 — Property Config & Channel Mapping — 2026-03-15
+
+Seeded 3 properties + 7 channel mappings for `tenant_e2e_amended` in Supabase Live. Created composite `property_config_router.py` — single-call endpoint returning property metadata + OTA channel mappings.
+
+| Component | Implementation |
+|-----------|---------------|
+| Data Seeding | 3 properties (Phangan/Samui/Chiang Mai), 7 channel mappings (Booking.com/Airbnb/Agoda/Expedia) |
+| Composite Endpoint | GET /admin/property-config/{property_id} (single) + GET /admin/property-config (list) |
+
+**New Files:** `src/api/property_config_router.py`, `tests/test_property_config_contract.py`
+**Modified:** `src/main.py` (router registration)
+
+Tests: 15 new pass. 46 existing channel-map tests pass. 0 regressions.
+
+---
+

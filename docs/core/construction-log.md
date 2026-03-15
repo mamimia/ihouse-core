@@ -4897,3 +4897,18 @@ Full staging activation from Docker build to runtime-verified auth identity.
 - worker@domaniqo.com → role=worker ✅
 
 ### Checkpoint XXV-B — Phase 800 complete. Ready for Phase 801.
+
+## Phase 801 — Property Config & Channel Mapping — 2026-03-15
+
+Seeded Supabase Live data for `tenant_e2e_amended`:
+- 3 properties: phangan-villa-01 (Sunset Villa Koh Phangan), samui-resort-02 (Ocean View Resort Samui), chiangmai-house-03 (Mountain House Chiang Mai) — all approved, THB, Asia/Bangkok
+- 7 channel mappings: 3× bookingcom/airbnb/agoda for Phangan, 2× bookingcom/expedia for Samui, 2× airbnb/agoda for Chiang Mai
+
+Created `src/api/property_config_router.py` — composite read endpoint:
+- `GET /admin/property-config/{property_id}` — property + channels in one call
+- `GET /admin/property-config` — all properties with grouped channels
+
+Registered in `src/main.py`. Created `tests/test_property_config_contract.py` (15 tests).
+
+Tests: 15/15 new pass, 46/46 existing channel-map pass. 0 regressions.
+
