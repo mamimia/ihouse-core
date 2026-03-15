@@ -28,6 +28,8 @@ PR_METADATA.txt
 # Local environment variables
 .env
 .env.local
+.env.staging
+.env.production
 .env.*.local
 
 # Local agent skills

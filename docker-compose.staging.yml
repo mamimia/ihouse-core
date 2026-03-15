@@ -30,7 +30,7 @@ services:
     ports:
       - "${PORT:-8001}:8000"
     env_file:
-      - .env
+      - .env.staging
     environment:
       - IHOUSE_ENV=staging
       - PORT=8000
@@ -95,7 +95,7 @@ services:
       dockerfile: Dockerfile
     container_name: ihouse-core-staging-tests
     env_file:
-      - .env
+      - .env.staging
     environment:
       - IHOUSE_ENV=staging
     command:
