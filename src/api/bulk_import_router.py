@@ -375,15 +375,25 @@ async def connect_ical(
 
 
 def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: str) -> int:
-    """Parse iCal from URL and create booking records. Best-effort."""
+    """Parse iCal from URL and create booking records. Best-effort.
+
+    Matches actual `bookings` table schema:
+        booking_id, property_id, external_ref, start_date, end_date,
+        status, guest_name, created_at_ms, updated_at_ms
+
+    Bookings from external iCal feeds are labelled with '[EXTERNAL_ICAL]'
+    prefix in guest_name to distinguish from simulation / test data.
+    """
     try:
         import urllib.request
-        response = urllib.request.urlopen(ical_url, timeout=10)
+        import time as _time
+
+        response = urllib.request.urlopen(ical_url, timeout=15)
         content = response.read().decode("utf-8", errors="replace")
 
         # Simple iCal parser — extract VEVENT blocks
-        events = []
-        current = {}
+        events: list[dict] = []
+        current: dict = {}
         in_event = False
         for line in content.split("\n"):
             line = line.strip()
@@ -396,11 +406,11 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
                     events.append(current)
             elif in_event and ":" in line:
                 key, _, val = line.partition(":")
-                key = key.split(";")[0]  # Strip parameters
+                key = key.split(";")[0]  # Strip parameters (e.g. VALUE=DATE)
                 current[key] = val
 
         created = 0
-        now = _now_iso()
+        now_ms = int(_time.time() * 1000)
         for ev in events:
             dtstart = ev.get("DTSTART", "")
             dtend = ev.get("DTEND", "")
@@ -410,20 +420,27 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
             if not dtstart:
                 continue
 
+            # Format dates as YYYY-MM-DD
+            start_date = f"{dtstart[:4]}-{dtstart[4:6]}-{dtstart[6:8]}" if len(dtstart) >= 8 else dtstart
+            end_date = f"{dtend[:4]}-{dtend[4:6]}-{dtend[6:8]}" if len(dtend) >= 8 else dtend
+
             bid = hashlib.sha256(f"ICAL:{property_id}:{uid or dtstart}".encode()).hexdigest()[:12]
+
+            # Label with [EXTERNAL_ICAL] to mark real-world data
+            labelled_name = f"[EXTERNAL_ICAL] {summary}"
+
             try:
-                db.table("bookings").insert({
+                db.table("bookings").upsert({
                     "booking_id": f"ICAL-{bid}",
                     "property_id": property_id,
-                    "check_in": dtstart[:10] if len(dtstart) >= 10 else dtstart,
-                    "check_out": dtend[:10] if len(dtend) >= 10 else dtend,
-                    "guest_name": summary,
-                    "source": "ical",
+                    "external_ref": uid,
+                    "start_date": start_date,
+                    "end_date": end_date,
                     "status": "confirmed",
-                    "tenant_id": tenant_id,
-                    "external_id": uid,
-                    "created_at": now,
-                }).execute()
+                    "guest_name": labelled_name,
+                    "created_at_ms": now_ms,
+                    "updated_at_ms": now_ms,
+                }, on_conflict="booking_id").execute()
                 created += 1
             except Exception:
                 pass
