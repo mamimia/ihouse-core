@@ -116,21 +116,25 @@ async def list_tasks(
             f"limit must be between 1 and {_MAX_LIMIT}",
         )
 
-    # --- validate status ---
-    if status is not None and status not in _VALID_TASK_STATUSES:
-        return make_error_response(
-            400,
-            ErrorCode.VALIDATION_ERROR,
-            f"Invalid status '{status}'. Must be one of: {', '.join(sorted(_VALID_TASK_STATUSES))}",
-        )
+    # --- normalize + validate status (case-insensitive) ---
+    if status is not None:
+        status = status.upper()
+        if status not in _VALID_TASK_STATUSES:
+            return make_error_response(
+                400,
+                ErrorCode.VALIDATION_ERROR,
+                f"Invalid status '{status}'. Must be one of: {', '.join(sorted(_VALID_TASK_STATUSES))}",
+            )
 
-    # --- validate kind ---
-    if kind is not None and kind not in _VALID_TASK_KINDS:
-        return make_error_response(
-            400,
-            ErrorCode.VALIDATION_ERROR,
-            f"Invalid kind '{kind}'. Must be one of: {', '.join(sorted(_VALID_TASK_KINDS))}",
-        )
+    # --- normalize + validate kind (case-insensitive) ---
+    if kind is not None:
+        kind = kind.upper()
+        if kind not in _VALID_TASK_KINDS:
+            return make_error_response(
+                400,
+                ErrorCode.VALIDATION_ERROR,
+                f"Invalid kind '{kind}'. Must be one of: {', '.join(sorted(_VALID_TASK_KINDS))}",
+            )
 
     # --- query ---
     try:
@@ -260,6 +264,8 @@ async def patch_task_status(
             400, ErrorCode.VALIDATION_ERROR, "Request body must include 'status'"
         )
 
+    # Normalize to uppercase (case-insensitive)
+    new_status_str = new_status_str.upper()
     if new_status_str not in _VALID_TASK_STATUSES:
         return make_error_response(
             400,

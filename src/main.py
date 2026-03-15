@@ -205,8 +205,27 @@ register_exception_handlers(app)
 
 app.include_router(webhooks_router)
 
+# Phase 789: Specific /financial/* routes MUST register before the catch-all
+# /financial/{booking_id} in financial_router to prevent route masking.
+from api.financial_aggregation_router import router as financial_aggregation_router  # noqa: E402
+app.include_router(financial_aggregation_router)
+
+from api.financial_dashboard_router import router as financial_dashboard_router  # noqa: E402
+app.include_router(financial_dashboard_router)
+
+from api.financial_correction_router import router as financial_correction_router  # noqa: E402  # Phase 162
+app.include_router(financial_correction_router)
+
+from api.financial_explainer_router import router as financial_explainer_router  # noqa: E402  # Phase 224
+app.include_router(financial_explainer_router)
+
+from api.financial_writer_router import router as financial_writer_router  # noqa: E402  # Phase 506
+app.include_router(financial_writer_router)
+
+# LAST: catch-all /financial/{booking_id}
 from api.financial_router import router as financial_router  # noqa: E402
 app.include_router(financial_router)
+
 
 from api.bookings_router import router as bookings_router  # noqa: E402
 app.include_router(bookings_router)
@@ -226,11 +245,6 @@ app.include_router(amendments_router)
 from tasks.task_router import router as task_router  # noqa: E402
 app.include_router(task_router)
 
-from api.financial_aggregation_router import router as financial_aggregation_router  # noqa: E402
-app.include_router(financial_aggregation_router)
-
-from api.financial_dashboard_router import router as financial_dashboard_router  # noqa: E402
-app.include_router(financial_dashboard_router)
 
 from api.reconciliation_router import router as reconciliation_router  # noqa: E402
 app.include_router(reconciliation_router)
@@ -355,8 +369,8 @@ app.include_router(properties_router)
 from api.guest_profile_router import router as guest_profile_router  # noqa: E402  # Phase 159
 app.include_router(guest_profile_router)
 
-from api.financial_correction_router import router as financial_correction_router  # noqa: E402  # Phase 162
-app.include_router(financial_correction_router)
+# financial_correction_router already registered above (Phase 789 route ordering fix)
+
 
 from api.permissions_router import router as permissions_router  # noqa: E402  # Phase 165
 app.include_router(permissions_router)
@@ -412,8 +426,8 @@ app.include_router(ai_context_router)
 from api.manager_copilot_router import router as manager_copilot_router  # noqa: E402  # Phase 223
 app.include_router(manager_copilot_router)
 
-from api.financial_explainer_router import router as financial_explainer_router  # noqa: E402  # Phase 224
-app.include_router(financial_explainer_router)
+# financial_explainer_router already registered above (Phase 789 route ordering fix)
+
 
 from api.task_recommendation_router import router as task_recommendation_router  # noqa: E402  # Phase 225
 app.include_router(task_recommendation_router)
@@ -457,8 +471,8 @@ app.include_router(onboard_token_router)
 from api.property_dashboard_router import router as property_dashboard_api_router  # noqa: E402  # Phase 505
 app.include_router(property_dashboard_api_router)
 
-from api.financial_writer_router import router as financial_writer_router  # noqa: E402  # Phase 506
-app.include_router(financial_writer_router)
+# financial_writer_router already registered above (Phase 789 route ordering fix)
+
 
 from api.currency_router import router as currency_router  # noqa: E402  # Phase 507
 app.include_router(currency_router)

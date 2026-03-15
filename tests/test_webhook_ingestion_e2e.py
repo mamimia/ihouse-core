@@ -99,10 +99,26 @@ AGODA_PAYLOAD = {
 }
 
 
-def _mock_envelope(provider: str = "airbnb", booking_id: str = "bk001"):
-    env = MagicMock()
-    env.idempotency_key = f"{provider}_{booking_id}_v1"
-    return env
+# Phase 784: Pipeline mock infrastructure
+_MOCK_INGEST = "api.webhooks.ingest_provider_event_with_dlq"
+_MOCK_APPLY_FN = "api.webhooks._build_apply_fn"
+_MOCK_SKILL_ROUTER = "api.webhooks._build_skill_router"
+
+
+def _mock_result(provider: str = "airbnb", booking_id: str = "bk001"):
+    return {"status": "APPLIED", "idempotency_key": f"{provider}_{booking_id}_v1"}
+
+
+def _pipeline_patches(return_value=None):
+    if return_value is None:
+        return_value = _mock_result()
+    mock_ingest = MagicMock(return_value=return_value)
+    from contextlib import ExitStack
+    stack = ExitStack()
+    stack.enter_context(patch(_MOCK_INGEST, mock_ingest))
+    stack.enter_context(patch(_MOCK_APPLY_FN, MagicMock(return_value=MagicMock())))
+    stack.enter_context(patch(_MOCK_SKILL_ROUTER, MagicMock(return_value=MagicMock())))
+    return stack, mock_ingest
 
 
 def _post_webhook(provider: str, payload: dict, extra_headers: dict | None = None):
@@ -123,27 +139,32 @@ def _post_webhook(provider: str, payload: dict, extra_headers: dict | None = Non
 class TestGroupAHappyPath:
 
     def test_a1_airbnb_valid_payload_returns_200(self):
-        with patch("api.webhooks.ingest_provider_event", return_value=_mock_envelope("airbnb")):
+        stack, _ = _pipeline_patches(_mock_result("airbnb"))
+        with stack:
             r = _post_webhook("airbnb", AIRBNB_PAYLOAD)
         assert r.status_code == 200, f"Got {r.status_code}: {r.text}"
 
     def test_a2_airbnb_response_status_accepted(self):
-        with patch("api.webhooks.ingest_provider_event", return_value=_mock_envelope("airbnb")):
+        stack, _ = _pipeline_patches(_mock_result("airbnb"))
+        with stack:
             r = _post_webhook("airbnb", AIRBNB_PAYLOAD)
         assert r.json()["status"] == "ACCEPTED"
 
     def test_a3_airbnb_response_has_idempotency_key(self):
-        with patch("api.webhooks.ingest_provider_event", return_value=_mock_envelope("airbnb")):
+        stack, _ = _pipeline_patches(_mock_result("airbnb"))
+        with stack:
             r = _post_webhook("airbnb", AIRBNB_PAYLOAD)
         assert "idempotency_key" in r.json()
 
     def test_a4_bookingcom_valid_payload_returns_200(self):
-        with patch("api.webhooks.ingest_provider_event", return_value=_mock_envelope("bookingcom")):
+        stack, _ = _pipeline_patches(_mock_result("bookingcom"))
+        with stack:
             r = _post_webhook("bookingcom", BOOKINGCOM_PAYLOAD)
         assert r.status_code == 200, f"Got {r.status_code}: {r.text}"
 
     def test_a5_agoda_valid_payload_returns_200(self):
-        with patch("api.webhooks.ingest_provider_event", return_value=_mock_envelope("agoda")):
+        stack, _ = _pipeline_patches(_mock_result("agoda"))
+        with stack:
             r = _post_webhook("agoda", AGODA_PAYLOAD)
         assert r.status_code == 200, f"Got {r.status_code}: {r.text}"
 
@@ -235,7 +256,8 @@ class TestGroupDPayloadValidation:
 class TestGroupEResponseShape:
 
     def test_e1_200_body_is_json(self):
-        with patch("api.webhooks.ingest_provider_event", return_value=_mock_envelope("airbnb")):
+        stack, _ = _pipeline_patches(_mock_result("airbnb"))
+        with stack:
             r = _post_webhook("airbnb", AIRBNB_PAYLOAD)
         assert r.headers["content-type"].startswith("application/json")
 
@@ -248,7 +270,8 @@ class TestGroupEResponseShape:
         assert "error" in r.json()
 
     def test_e4_idempotency_key_is_string(self):
-        with patch("api.webhooks.ingest_provider_event", return_value=_mock_envelope("airbnb", "res001")):
+        stack, _ = _pipeline_patches(_mock_result("airbnb", "res001"))
+        with stack:
             r = _post_webhook("airbnb", AIRBNB_PAYLOAD)
         assert isinstance(r.json()["idempotency_key"], str)
 

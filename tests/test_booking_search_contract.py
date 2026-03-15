@@ -198,20 +198,20 @@ class TestGroupC_SortBy:
         assert any("check_out" in call for call in order_calls)
 
     def test_c3_sort_by_updated_at_forwarded(self) -> None:
-        """C3: ?sort_by=updated_at → .order('updated_at', ...) called."""
+        """C3: ?sort_by=updated_at → .order('updated_at_ms', ...) called (DB column mapping)."""
         db = _mock_db([])
         c = _make_app()
         _get(c, db, "/bookings?sort_by=updated_at")
         order_calls = [str(call) for call in db.table.return_value.select.return_value.order.call_args_list]
-        assert any("updated_at" in call for call in order_calls)
+        assert any("updated_at_ms" in call for call in order_calls)
 
     def test_c4_sort_by_created_at_forwarded(self) -> None:
-        """C4: ?sort_by=created_at → .order('created_at', ...) called."""
+        """C4: ?sort_by=created_at → .order('updated_at_ms', ...) called (no created_at column in DB)."""
         db = _mock_db([])
         c = _make_app()
         _get(c, db, "/bookings?sort_by=created_at")
         order_calls = [str(call) for call in db.table.return_value.select.return_value.order.call_args_list]
-        assert any("created_at" in call for call in order_calls)
+        assert any("updated_at_ms" in call for call in order_calls)
 
     def test_c5_invalid_sort_by_returns_400(self) -> None:
         """C5: ?sort_by=invalid_field → 400 VALIDATION_ERROR."""
@@ -221,12 +221,12 @@ class TestGroupC_SortBy:
         assert resp.status_code == 400
 
     def test_c6_default_sort_is_updated_at(self) -> None:
-        """C6: No sort_by → defaults to updated_at ordering."""
+        """C6: No sort_by → defaults to updated_at_ms ordering (DB column mapping)."""
         db = _mock_db([])
         c = _make_app()
         _get(c, db, "/bookings")
         order_calls = [str(call) for call in db.table.return_value.select.return_value.order.call_args_list]
-        assert any("updated_at" in call for call in order_calls)
+        assert any("updated_at_ms" in call for call in order_calls)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

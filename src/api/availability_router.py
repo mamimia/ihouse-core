@@ -246,13 +246,13 @@ async def get_availability(
         result = (
             db.table("booking_state")
             .select(
-                "booking_id, canonical_check_in, canonical_check_out, "
-                "lifecycle_status, tenant_id"
+                "booking_id, check_in, check_out, "
+                "status, tenant_id"
             )
             .eq("property_id", property_id)
-            .eq("lifecycle_status", "ACTIVE")
-            .lt("canonical_check_in", to_raw)       # check_in < to
-            .gt("canonical_check_out", from_raw)    # check_out > from
+            .eq("status", "active")
+            .lt("check_in", to_raw)       # check_in < to
+            .gt("check_out", from_raw)    # check_out > from
             .execute()
         )
         bookings = result.data or []

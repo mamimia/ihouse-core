@@ -1,18 +1,18 @@
 ## Current Active Phase
 
-Phase 775 — Deployment & Staging Activation complete. **Checkpoint XXIV.**
+Phase 789 — Staging Activation: Runtime Fixes complete. **Checkpoint XXV.**
 
 ## Last Closed Phase
 
-Phase 775 — 18 phases (758–775): runtime baseline, storage, auth, staging deploy, monitoring.
+Phase 789 — 6 phases (784–789): webhook fix, column drift, case mismatch, frontend runtime audit + fixes.
 
 ## Current Objective
 
-🏁 **Deployment & Staging Activation COMPLETE.** Next step: Platform Layer + Tenant Onboarding Model.
-- Multi-tenant reality check completed — architectural gaps documented.
-- 5 new admin ops endpoints deployed.
-- 277 tests pass, 48 RLS-protected tables, 4 storage buckets.
-- Next recommended: JWT model cleanup → tenant_id on bookings → role enforcement → platform admin.
+🏁 **Staging Activation Runtime Fixes COMPLETE.** All 5 core frontend flows verified working.
+- Dashboard, Bookings, Tasks, Financial, Admin Properties — all working end-to-end.
+- 7 code fixes across 7 files: case normalization, envelope unwrap, route reorder, null-safe reads, auth tokens.
+- 278 test items, 48 RLS-protected tables, 4 storage buckets.
+- Next recommended: resolve 20 pre-existing E2E test failures → platform layer + tenant onboarding.
 
 ## Deferred Items — Open Items Registry
 
@@ -240,4 +240,4 @@ Phase 775 — 18 phases (758–775): runtime baseline, storage, auth, staging de
 
 ## Tests
 
-**277 tests pass (post-cleanup), 0 failed. TypeScript 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. (Phase 775)**
+**278 test items collected, 20 pre-existing E2E failures. TypeScript 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. 5 core frontend flows verified working. (Phase 789)**

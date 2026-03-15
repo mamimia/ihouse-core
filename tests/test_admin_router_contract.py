@@ -88,7 +88,7 @@ def _make_db(
     total_data = total_rows if total_rows is not None else [{"booking_id": "b1"}, {"booking_id": "b2"}, {"booking_id": "b3"}]
     dlq_data = dlq_rows if dlq_rows is not None else [{"id": 1, "replay_result": None}]
     amendment_data = amendment_rows if amendment_rows is not None else [{"id": 1}]
-    last_data = last_event_rows if last_event_rows is not None else [{"updated_at": "2026-10-05T00:00:00Z"}]
+    last_data = last_event_rows if last_event_rows is not None else [{"updated_at_ms": 1791244800000}]
 
     # We need select to return different mock chains depending on sequence of calls
     call_results = [active_data, canceled_data, total_data, dlq_data, amendment_data, last_data]
@@ -164,10 +164,10 @@ class TestAdminSummary200:
         assert resp.json()["amendment_count"] == 3
 
     def test_200_last_event_at_present(self) -> None:
-        db = _make_db(last_event_rows=[{"updated_at": "2026-10-05T00:00:00Z"}])
+        db = _make_db(last_event_rows=[{"updated_at_ms": 1791244800000}])
         with patch("api.admin_router._get_supabase_client", return_value=db):
             resp = _make_app().get("/admin/summary")
-        assert resp.json()["last_event_at"] == "2026-10-05T00:00:00Z"
+        assert resp.json()["last_event_at"] == 1791244800000
 
     def test_200_last_event_at_none_when_no_bookings(self) -> None:
         db = _make_db(last_event_rows=[])

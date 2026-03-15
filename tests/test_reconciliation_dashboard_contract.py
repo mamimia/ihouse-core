@@ -112,7 +112,8 @@ class TestGroupAResponseShape:
     def test_a3_tenant_id_echoed(self):
         with patch(_PATCH_TARGET, return_value=_fake_db_clean()):
             resp = client.get(_URL, headers=_BEARER)
-        assert resp.json()["tenant_id"] == "dev-tenant"
+        import os; expected = os.environ.get("IHOUSE_TENANT_ID", "dev-tenant")
+        assert resp.json()["tenant_id"] == expected
 
     def test_a4_generated_at_is_iso(self):
         with patch(_PATCH_TARGET, return_value=_fake_db_clean()):

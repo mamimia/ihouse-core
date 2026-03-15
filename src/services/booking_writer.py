@@ -81,14 +81,10 @@ def create_manual_booking(
         "booking_id": booking_id,
         "property_id": property_id,
         "tenant_id": tenant_id,
-        "provider": source,
-        "status": "ACTIVE",
-        "lifecycle_status": "ACTIVE",
+        "source": source,
+        "status": "active",
         "check_in": check_in,
         "check_out": check_out,
-        "canonical_check_in": check_in,
-        "canonical_check_out": check_out,
-        "guest_name": guest_name,
     }
 
     try:
@@ -149,17 +145,16 @@ def cancel_booking(
         result = (
             db.table("booking_state")
             .update({
-                "status": "CANCELED",
-                "lifecycle_status": "CANCELED",
+                "status": "canceled",
             })
             .eq("booking_id", booking_id)
             .eq("tenant_id", tenant_id)
             .execute()
         )
-        return result.data[0] if result.data else {"booking_id": booking_id, "status": "CANCELED"}
+        return result.data[0] if result.data else {"booking_id": booking_id, "status": "canceled"}
     except Exception as exc:
         logger.warning("cancel_booking: booking_state update failed: %s", exc)
-        return {"booking_id": booking_id, "status": "CANCELED", "error": str(exc)}
+        return {"booking_id": booking_id, "status": "canceled", "error": str(exc)}
 
 
 def update_booking_dates(

@@ -124,10 +124,10 @@ export default function DashboardPage() {
 
             setData({
                 today: todayRes.status === 'fulfilled' ? todayRes.value : null,
-                criticalTasks: tasksRes.status === 'fulfilled' ? tasksRes.value.tasks : [],
-                syncProviders: healthRes.status === 'fulfilled' ? healthRes.value.providers : [],
-                dlqPending: dlqRes.status === 'fulfilled' ? dlqRes.value.entries : [],
-                portfolio: portfolioRes.status === 'fulfilled' ? portfolioRes.value.properties : [],
+                criticalTasks: tasksRes.status === 'fulfilled' ? (tasksRes.value?.tasks ?? []) : [],
+                syncProviders: healthRes.status === 'fulfilled' ? (healthRes.value?.providers ?? []) : [],
+                dlqPending: dlqRes.status === 'fulfilled' ? (dlqRes.value?.entries ?? []) : [],
+                portfolio: portfolioRes.status === 'fulfilled' ? (portfolioRes.value?.properties ?? []) : [],
             });
             setLastRefresh(new Date());
         } finally {

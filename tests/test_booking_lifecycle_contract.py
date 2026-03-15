@@ -117,8 +117,10 @@ class TestGroupAShape:
             assert k in body
 
     def test_a3_tenant_id_present(self):
+        import os
         body = self._body()
-        assert body["tenant_id"] == "dev-tenant"
+        expected = os.environ.get("IHOUSE_TENANT_ID", "dev-tenant")
+        assert body["tenant_id"] == expected
 
     def test_a4_generated_at_is_iso(self):
         body = self._body()

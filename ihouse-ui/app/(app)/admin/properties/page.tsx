@@ -45,11 +45,22 @@ interface StatusSummary {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 async function fetchAPI(path: string, options?: RequestInit) {
+    // Read JWT from cookie (matches middleware.ts auth pattern)
+    const token = typeof document !== 'undefined'
+        ? document.cookie.split('; ').find(c => c.startsWith('ihouse_token='))?.split('=')[1] ?? ''
+        : '';
     const res = await fetch(`${API_BASE}${path}`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         ...options,
     });
-    return res.json();
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    const body = await res.json();
+    // Unwrap {ok, data} envelope if present
+    if (body && typeof body === 'object' && body.ok === true && 'data' in body) return body.data;
+    return body;
 }
 
 /* ------------------------------------------------------------------ */

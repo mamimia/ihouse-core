@@ -93,7 +93,15 @@ async function apiFetch<T>(path: string, init?: RequestInit, _retryCount = 0): P
         }
         throw new ApiError(resp.status, body?.error || "UNKNOWN_ERROR", body);
     }
-    return resp.json();
+    const body = await resp.json();
+    // Phase 789: Unwrap canonical {ok, data} envelope from backend
+    // Some routers (bookings, auth, checkin, session) use api.envelope.ok()
+    // which wraps responses in {ok: true, data: {...}}. Transparently unwrap
+    // so consumer code always sees the inner payload directly.
+    if (body && typeof body === 'object' && body.ok === true && 'data' in body) {
+        return body.data as T;
+    }
+    return body as T;
 }
 
 export class ApiError extends Error {

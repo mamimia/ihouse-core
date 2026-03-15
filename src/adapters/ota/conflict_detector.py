@@ -147,7 +147,7 @@ def _fetch_active_bookings(db: Any, tenant_id: str):
             db.table("booking_state")
             .select("booking_id, status, tenant_id, state_json, provider, reservation_id")
             .eq("tenant_id", tenant_id)
-            .eq("status", "ACTIVE")
+            .eq("status", "active")
             .execute()
         )
         return result.data or [], False

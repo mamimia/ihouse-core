@@ -34,7 +34,7 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 # Active lifecycle statuses to include in the scan
-_ACTIVE_STATUSES = ("CONFIRMED", "ACTIVE")
+_ACTIVE_STATUSES = ("active",)
 
 # Days ahead to scan (check-in between today+1 and today+LOOKAHEAD_DAYS)
 _LOOKAHEAD_DAYS = 3
@@ -252,11 +252,11 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
             db.table("booking_state")
             .select(
                 "booking_id, tenant_id, property_id, check_in, check_out, "
-                "guest_name, lifecycle_status"
+                "status"
             )
             .gte("check_in", date_from)
             .lte("check_in", date_to)
-            .in_("lifecycle_status", list(_ACTIVE_STATUSES))
+            .in_("status", list(_ACTIVE_STATUSES))
             .limit(200)
             .execute()
         )

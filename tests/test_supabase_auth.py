@@ -153,4 +153,5 @@ def test_auth_me_returns_identity_in_dev_mode(client):
         resp = client.get("/auth/me")
     assert resp.status_code == 200
     data = resp.json()["data"]
-    assert data["tenant_id"] == "dev-tenant"
+    import os; expected = os.environ.get("IHOUSE_TENANT_ID", "dev-tenant")
+    assert data["tenant_id"] == expected

@@ -58,7 +58,7 @@ _bearer = HTTPBearer(auto_error=False)
 _ENV_SECRET = "IHOUSE_JWT_SECRET"
 _ENV_VAR = _ENV_SECRET  # backward-compat alias (used in older tests)
 _ENV_DEV_MODE = "IHOUSE_DEV_MODE"
-_DEV_TENANT = "dev-tenant"
+_DEV_TENANT = os.environ.get("IHOUSE_TENANT_ID", "dev-tenant")
 _ALGORITHM = "HS256"
 
 # Supabase Auth expected claims (Phase 276)

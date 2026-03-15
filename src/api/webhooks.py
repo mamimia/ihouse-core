@@ -13,11 +13,16 @@ Flow:
     2.  verify_webhook_signature  → 403 SignatureVerificationError
     3.  json.loads(raw_body)      → payload dict
     4.  validate_ota_payload      → 400 if invalid
-    5.  ingest_provider_event     → 200 with idempotency_key
+    5.  ingest_provider_event_with_dlq  → full write pipeline:
+        a. process_ota_event → canonical envelope
+        b. skill_fn(payload) → emitted events
+        c. apply_fn(envelope, emitted) → Supabase apply_envelope RPC
+        d. DLQ routing on non-APPLIED status
+        e. Financial facts, tasks, outbound sync (best-effort)
     6.  Any unexpected exception  → 500
 
 HTTP status codes (locked):
-    200  ACCEPTED          — envelope created, idempotency_key returned
+    200  ACCEPTED          — envelope created AND persisted via apply_envelope
     400  PAYLOAD_VALIDATION_FAILED  — structural/semantic validation error
     403  SIGNATURE_VERIFICATION_FAILED — HMAC mismatch or unknown provider
     500  INTERNAL_ERROR    — unexpected exception (never surfaces internals)
@@ -34,9 +39,11 @@ Rate limiting (Phase 62):
 """
 from __future__ import annotations
 
+import importlib
 import json
 import logging
-from typing import Any, Dict
+import os
+from typing import Any, Callable, Dict, List
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -45,7 +52,7 @@ from api.auth import jwt_auth
 from api.rate_limiter import rate_limit
 
 from adapters.ota.payload_validator import validate_ota_payload
-from adapters.ota.service import ingest_provider_event
+from adapters.ota.service import ingest_provider_event_with_dlq
 from adapters.ota.signature_verifier import (
     SignatureVerificationError,
     get_signature_header_name,
@@ -64,6 +71,72 @@ router = APIRouter()
 
 
 # ---------------------------------------------------------------------------
+# apply_fn / skill_fn factories — wiring the canonical write pipeline
+# ---------------------------------------------------------------------------
+
+def _build_apply_fn() -> Callable[[Dict[str, Any], List[Dict[str, Any]]], Dict[str, Any]]:
+    """
+    Build the apply_fn that calls the Supabase apply_envelope RPC.
+
+    Returns a callable: (envelope_dict, emitted_events) -> {"status": "APPLIED" | ...}
+    """
+    from supabase import create_client  # type: ignore[import]
+
+    client = create_client(
+        os.environ["SUPABASE_URL"],
+        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+    )
+
+    def _apply(envelope_dict: Dict[str, Any], emitted: List[Dict[str, Any]]) -> Dict[str, Any]:
+        response = client.rpc(
+            "apply_envelope",
+            {
+                "p_envelope": envelope_dict,
+                "p_emit": emitted,
+            },
+        ).execute()
+
+        if not response.data:
+            raise RuntimeError("apply_envelope RPC returned no result")
+
+        # response.data can be a list or a dict — normalize
+        data = response.data
+        if isinstance(data, list) and len(data) > 0:
+            data = data[0]
+        if isinstance(data, dict):
+            return data
+        return {"status": str(data)}
+
+    return _apply
+
+
+def _build_skill_router() -> Callable[[str, Dict[str, Any]], Any]:
+    """
+    Build a universal skill_router(event_type, payload) that routes
+    to the correct core skill module via skill_exec_registry.core.json.
+
+    Returns a callable: (event_type, payload) -> SkillOutput
+    """
+    from pathlib import Path
+
+    registry_path = Path(__file__).resolve().parent.parent / "core" / "skill_exec_registry.core.json"
+    with open(registry_path, encoding="utf-8") as f:
+        skill_exec_registry: Dict[str, str] = json.load(f)
+
+    def _route(event_type: str, payload: Dict[str, Any]) -> Any:
+        module_path = skill_exec_registry.get(event_type)
+        if not module_path:
+            raise ValueError(f"No skill registered for event type: {event_type}")
+        mod = importlib.import_module(module_path)
+        run_fn = getattr(mod, "run", None)
+        if not callable(run_fn):
+            raise ValueError(f"Skill module {module_path} has no run() function")
+        return run_fn(payload)
+
+    return _route
+
+
+# ---------------------------------------------------------------------------
 # POST /webhooks/{provider}
 # ---------------------------------------------------------------------------
 
@@ -75,7 +148,7 @@ router = APIRouter()
     responses={
         200: {
             "model": WebhookAcceptedResponse,
-            "description": "Event accepted and queued for canonical processing",
+            "description": "Event accepted and persisted via apply_envelope",
         },
         400: {
             "model": ValidationErrorResponse,
@@ -205,14 +278,34 @@ async def receive_webhook(
     # tenant_id is injected by jwt_auth — no extraction from payload needed
 
     # ------------------------------------------------------------------
-    # Step 6 — Ingest through the canonical OTA pipeline
+    # Step 6 — Ingest through the FULL canonical OTA pipeline
+    #
+    # Phase 784: switched from ingest_provider_event (envelope-only, no DB write)
+    # to ingest_provider_event_with_dlq which chains:
+    #   a. process_ota_event → canonical envelope
+    #   b. skill_fn(payload) → emitted events via core skill
+    #   c. apply_fn(envelope, emitted) → Supabase apply_envelope RPC
+    #   d. DLQ routing on non-APPLIED status
+    #   e. Financial facts, tasks, outbound sync (best-effort)
     # ------------------------------------------------------------------
     try:
-        envelope = ingest_provider_event(
+        # Build the apply_fn that calls the Supabase apply_envelope RPC
+        apply_fn = _build_apply_fn()
+
+        # Phase 784: Use skill_router instead of pre-classifying.
+        # process_ota_event inside ingest_provider_event_with_dlq already
+        # classifies the event and sets envelope.type. The skill_router
+        # receives (event_type, payload) and routes to the correct skill.
+        skill_router = _build_skill_router()
+
+        result = ingest_provider_event_with_dlq(
             provider=provider,
             payload=payload,
             tenant_id=tenant_id,
+            apply_fn=apply_fn,
+            skill_router=skill_router,
         )
+
     except Exception as exc:  # noqa: BLE001
         logger.exception("[%s] Unexpected error during ingestion: %s", provider, exc)
         return JSONResponse(
@@ -220,10 +313,28 @@ async def receive_webhook(
             content={"error": "INTERNAL_ERROR"},
         )
 
+    # Extract idempotency_key from envelope for the response
+    # ingest_provider_event_with_dlq returns a dict with status
+    idempotency_key = result.get("idempotency_key", "") if isinstance(result, dict) else ""
+
+    # If the result doesn't contain an idempotency_key, generate one from payload
+    if not idempotency_key:
+        from adapters.ota.pipeline import process_ota_event
+        try:
+            envelope = process_ota_event(
+                provider=provider,
+                payload=payload,
+                tenant_id=tenant_id,
+            )
+            idempotency_key = envelope.idempotency_key or ""
+        except Exception:
+            idempotency_key = ""
+
     return JSONResponse(
         status_code=200,
         content={
             "status": "ACCEPTED",
-            "idempotency_key": envelope.idempotency_key,
+            "idempotency_key": idempotency_key,
         },
     )
+

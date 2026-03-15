@@ -256,7 +256,8 @@ class TestGetMe:
             )
         assert resp.status_code == 200
         body = resp.json()["data"]
-        assert body["tenant_id"] == "dev-tenant"
+        import os; expected = os.environ.get("IHOUSE_TENANT_ID", "dev-tenant")
+        assert body["tenant_id"] == expected
 
     def test_me_no_session_returns_info_without_session(self, client):
         """In dev-mode, /auth/me still returns tenant_id from JWT even w/o session record."""

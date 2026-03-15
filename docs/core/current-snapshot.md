@@ -1,10 +1,10 @@
 # iHouse Core — Current Snapshot
 
 ## Current Phase
-Phase 775 — Deployment & Staging Activation complete. **Checkpoint XXIV.**
+Phase 789 — Staging Activation: Runtime Fixes complete. **Checkpoint XXV.**
 
 ## Last Closed Phase
-Phase 775 — 18 phases (758–775): runtime baseline, storage, auth, staging deploy, monitoring.
+Phase 789 — 6 phases (784–789): webhook fix, column drift, case mismatch, frontend runtime audit + fixes.
 
 ## System Status
 
@@ -403,7 +403,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 277 tests pass (post-cleanup), 0 failed. Frontend TypeScript: 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phases 758–775: Deployment & Staging Activation.**
+**Backend: 278 test items, 20 pre-existing E2E failures. Frontend TypeScript: 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phases 784–789: Staging Activation Runtime Fixes. 5 core frontend flows verified working.**
 
 ## Environment Variables (continued)
 

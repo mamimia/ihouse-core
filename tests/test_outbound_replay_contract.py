@@ -27,7 +27,8 @@ from fastapi.testclient import TestClient
 
 pytest.importorskip("fastapi")
 
-TENANT_A   = "dev-tenant"   # what jwt_auth returns in no-secret mode
+import os
+TENANT_A   = os.environ.get("IHOUSE_TENANT_ID", "dev-tenant")   # what jwt_auth returns in no-secret mode
 BOOKING_1  = "airbnb_BK001"
 PROVIDER   = "airbnb"
 EXT_ID     = "AIRBNB-EXT-001"

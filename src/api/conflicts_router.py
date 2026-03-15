@@ -231,11 +231,11 @@ async def get_conflicts(
             db.table("booking_state")
             .select(
                 "booking_id, property_id, "
-                "canonical_check_in, canonical_check_out, "
-                "lifecycle_status, tenant_id"
+                "check_in, check_out, "
+                "status, tenant_id"
             )
             .eq("tenant_id", tenant_id)
-            .eq("lifecycle_status", "ACTIVE")
+            .eq("status", "active")
         )
         if property_id:
             query = query.eq("property_id", property_id)
@@ -629,12 +629,11 @@ async def get_conflict_dashboard(
             db.table("booking_state")
             .select(
                 "booking_id, property_id, "
-                "canonical_check_in, canonical_check_out, "
                 "check_in, check_out, "
-                "lifecycle_status, tenant_id"
+                "status, tenant_id"
             )
             .eq("tenant_id", tenant_id)
-            .eq("lifecycle_status", "ACTIVE")
+            .eq("status", "active")
         )
         if property_id:
             query = query.eq("property_id", property_id)

@@ -60,15 +60,14 @@ class TestBookingWriterContracts:
             guest_name="John", source="manual",
         )
         assert result["property_id"] == "p1"
-        assert result["status"] == "ACTIVE"
-        assert result["guest_name"] == "John"
+        assert result["status"] == "active"
         assert result["booking_id"].startswith("manual_")
 
     def test_cancel_booking_returns_canceled(self):
         from services.booking_writer import cancel_booking
         result = cancel_booking(MockDB(), "t1", "booking_abc")
         assert result["booking_id"] == "booking_abc"
-        assert result["status"] == "CANCELED"
+        assert result["status"] == "canceled"
 
     def test_update_booking_dates_returns_booking_id(self):
         from services.booking_writer import update_booking_dates

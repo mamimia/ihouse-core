@@ -14,8 +14,8 @@ Coverage:
     5.  Invalid payload (missing required fields) → 400 + codes list
     6.  Non-JSON body → 400
     7.  Unknown provider → 403 (ValueError from signature layer)
-    8.  ingest_provider_event raises unexpectedly → 500
-    9.  tenant_id from JWT (dev-mode 'dev-tenant') propagated correctly
+    8.  ingest_provider_event_with_dlq raises unexpectedly → 500
+    9.  tenant_id from JWT (dev-mode) propagated correctly
     10. Response 200 contains correct idempotency_key value
     11. Response 400 body contains "codes" list
     12. All 5 providers accepted in path → 200 (parametrized)
@@ -86,7 +86,36 @@ _VALID_PAYLOAD = {
     "property_id": "PROP-1",
 }
 
-_MOCK_TARGET = "api.webhooks.ingest_provider_event"
+# Mock targets — we mock the full pipeline function and its helpers
+_MOCK_INGEST = "api.webhooks.ingest_provider_event_with_dlq"
+_MOCK_APPLY_FN = "api.webhooks._build_apply_fn"
+_MOCK_SKILL_ROUTER = "api.webhooks._build_skill_router"
+
+
+def _mock_pipeline_result(idempotency_key="bookingcom:reservation_created:abc123"):
+    """Build a mock result dict for ingest_provider_event_with_dlq."""
+    return {"status": "APPLIED", "idempotency_key": idempotency_key}
+
+
+def _pipeline_patches(return_value=None, side_effect=None):
+    """
+    Context manager that patches all the functions the webhook handler
+    calls when wiring the write pipeline. Returns the mock for the
+    ingest function.
+    """
+    if return_value is None and side_effect is None:
+        return_value = _mock_pipeline_result()
+
+    mock_ingest = MagicMock(return_value=return_value, side_effect=side_effect)
+    mock_apply = MagicMock(return_value=MagicMock())  # _build_apply_fn returns a callable
+    mock_router = MagicMock(return_value=MagicMock())  # _build_skill_router returns a callable
+
+    from contextlib import ExitStack
+    stack = ExitStack()
+    stack.enter_context(patch(_MOCK_INGEST, mock_ingest))
+    stack.enter_context(patch(_MOCK_APPLY_FN, mock_apply))
+    stack.enter_context(patch(_MOCK_SKILL_ROUTER, mock_router))
+    return stack, mock_ingest
 
 
 def _compute_sig(secret: str, body: bytes) -> str:
@@ -101,7 +130,8 @@ def _compute_sig(secret: str, body: bytes) -> str:
 def test_valid_payload_dev_mode_no_secret(client, monkeypatch):
     """When no secret is configured, signature check is skipped → 200."""
     monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
-    with patch(_MOCK_TARGET, return_value=_FakeEnvelope()) as mock_ingest:
+    stack, mock_ingest = _pipeline_patches()
+    with stack:
         resp = client.post(
             "/webhooks/bookingcom",
             content=json.dumps(_VALID_PAYLOAD).encode(),
@@ -122,7 +152,8 @@ def test_valid_signature_accepted(client, monkeypatch):
     monkeypatch.setenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", secret)
     raw = json.dumps(_VALID_PAYLOAD).encode()
     sig = _compute_sig(secret, raw)
-    with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+    stack, _ = _pipeline_patches()
+    with stack:
         resp = client.post(
             "/webhooks/bookingcom",
             content=raw,
@@ -138,7 +169,8 @@ def test_valid_signature_accepted(client, monkeypatch):
 def test_wrong_signature_rejected(client, monkeypatch):
     monkeypatch.setenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", "real-secret")
     raw = json.dumps(_VALID_PAYLOAD).encode()
-    with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+    stack, _ = _pipeline_patches()
+    with stack:
         resp = client.post(
             "/webhooks/bookingcom",
             content=raw,
@@ -158,7 +190,8 @@ def test_wrong_signature_rejected(client, monkeypatch):
 def test_missing_signature_header_rejected(client, monkeypatch):
     monkeypatch.setenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", "real-secret")
     raw = json.dumps(_VALID_PAYLOAD).encode()
-    with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+    stack, _ = _pipeline_patches()
+    with stack:
         resp = client.post(
             "/webhooks/bookingcom",
             content=raw,
@@ -218,12 +251,13 @@ def test_unknown_provider_returns_403(client, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Test 8: ingest_provider_event raises unexpectedly → 500
+# Test 8: ingest_provider_event_with_dlq raises unexpectedly → 500
 # ---------------------------------------------------------------------------
 
 def test_ingest_error_returns_500(client, monkeypatch):
     monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
-    with patch(_MOCK_TARGET, side_effect=RuntimeError("db is down")):
+    stack, _ = _pipeline_patches(side_effect=RuntimeError("db is down"))
+    with stack:
         resp = client.post(
             "/webhooks/bookingcom",
             content=json.dumps(_VALID_PAYLOAD).encode(),
@@ -234,23 +268,24 @@ def test_ingest_error_returns_500(client, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Test 9: tenant_id propagated correctly to ingest_provider_event
+# Test 9: tenant_id propagated correctly to ingest_provider_event_with_dlq
 # ---------------------------------------------------------------------------
 
 def test_tenant_id_propagated(client, monkeypatch):
-    """Phase 276: tenant_id comes from JWT; dev-mode returns 'dev-tenant'."""
+    """Phase 276: tenant_id comes from JWT; dev-mode returns env-configured tenant."""
     monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
     monkeypatch.delenv("IHOUSE_JWT_SECRET", raising=False)
-    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")   # Phase 276: explicit dev mode
-    with patch(_MOCK_TARGET, return_value=_FakeEnvelope()) as mock_ingest:
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
+    stack, mock_ingest = _pipeline_patches()
+    with stack:
         client.post(
             "/webhooks/bookingcom",
             content=json.dumps(_VALID_PAYLOAD).encode(),
             headers={"Content-Type": "application/json"},
         )
     _args, kwargs = mock_ingest.call_args
-    # In dev-mode (IHOUSE_DEV_MODE=true), jwt_auth returns "dev-tenant"
-    assert kwargs.get("tenant_id") == "dev-tenant"
+    import os; expected = os.environ.get("IHOUSE_TENANT_ID", "dev-tenant")
+    assert kwargs.get("tenant_id") == expected
 
 
 # ---------------------------------------------------------------------------
@@ -260,8 +295,8 @@ def test_tenant_id_propagated(client, monkeypatch):
 def test_200_response_contains_idempotency_key(client, monkeypatch):
     monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
     expected_key = "bookingcom:reservation_create:RES-001"
-    fake = _FakeEnvelope(idempotency_key=expected_key)
-    with patch(_MOCK_TARGET, return_value=fake):
+    stack, _ = _pipeline_patches(return_value=_mock_pipeline_result(expected_key))
+    with stack:
         resp = client.post(
             "/webhooks/bookingcom",
             content=json.dumps(_VALID_PAYLOAD).encode(),
@@ -320,7 +355,8 @@ def test_all_providers_accepted(provider, client, monkeypatch):
     env_key = f"IHOUSE_WEBHOOK_SECRET_{provider.upper()}"
     monkeypatch.delenv(env_key, raising=False)
     payload = _PROVIDER_PAYLOADS[provider]
-    with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+    stack, _ = _pipeline_patches()
+    with stack:
         resp = client.post(
             f"/webhooks/{provider}",
             content=json.dumps(payload).encode(),

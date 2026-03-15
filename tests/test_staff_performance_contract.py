@@ -93,7 +93,8 @@ class TestGroupAAll:
 
     def test_a5_tenant_id_echoed(self):
         b = _get().json()
-        assert b["tenant_id"] == "dev-tenant"
+        import os; expected = os.environ.get("IHOUSE_TENANT_ID", "dev-tenant")
+        assert b["tenant_id"] == expected
 
 
 # ---------------------------------------------------------------------------

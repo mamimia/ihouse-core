@@ -168,6 +168,13 @@ async def get_booking(
 
 _VALID_STATUSES = frozenset({"active", "canceled"})
 _VALID_SORT_BY = frozenset({"check_in", "check_out", "updated_at", "created_at"})
+# Map user-facing sort_by names to actual DB column names
+_SORT_BY_COLUMN = {
+    "check_in": "check_in",
+    "check_out": "check_out",
+    "updated_at": "updated_at_ms",
+    "created_at": "updated_at_ms",  # no created_at column — fallback to updated_at_ms
+}
 _VALID_SORT_DIR = frozenset({"asc", "desc"})
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
@@ -265,7 +272,7 @@ async def list_bookings(
 
     # Clamp limit
     limit = max(1, min(limit, _MAX_LIMIT))
-    _sort_field = sort_by or "updated_at"
+    _sort_field = _SORT_BY_COLUMN.get(sort_by or "updated_at", "updated_at_ms")
     _sort_desc = sort_dir == "desc"
 
     try:
@@ -322,7 +329,7 @@ async def list_bookings(
                 "check_out":       r.get("check_out"),
                 "version":         r.get("version"),
                 "created_at":      r.get("created_at"),
-                "updated_at":      r.get("updated_at"),
+                "updated_at":      r.get("updated_at_ms"),
             }
             for r in rows
         ]
@@ -331,7 +338,7 @@ async def list_bookings(
             "tenant_id": tenant_id,
             "count":     len(bookings),
             "limit":     limit,
-            "sort_by":   _sort_field,
+            "sort_by":   sort_by or "updated_at",
             "sort_dir":  sort_dir,
             "bookings":  bookings,
         })

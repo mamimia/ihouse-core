@@ -126,23 +126,27 @@ async def list_worker_tasks(
             f"limit must be between 1 and {_MAX_LIMIT}",
         )
 
-    # -- validate worker_role --
-    if worker_role is not None and worker_role not in _VALID_WORKER_ROLES:
-        return make_error_response(
-            400,
-            ErrorCode.VALIDATION_ERROR,
-            f"Invalid worker_role '{worker_role}'. "
-            f"Must be one of: {', '.join(sorted(_VALID_WORKER_ROLES))}",
-        )
+    # -- validate worker_role (case-insensitive) --
+    if worker_role is not None:
+        worker_role = worker_role.upper()
+        if worker_role not in _VALID_WORKER_ROLES:
+            return make_error_response(
+                400,
+                ErrorCode.VALIDATION_ERROR,
+                f"Invalid worker_role '{worker_role}'. "
+                f"Must be one of: {', '.join(sorted(_VALID_WORKER_ROLES))}",
+            )
 
-    # -- validate status --
-    if status is not None and status not in _VALID_TASK_STATUSES:
-        return make_error_response(
-            400,
-            ErrorCode.VALIDATION_ERROR,
-            f"Invalid status '{status}'. "
-            f"Must be one of: {', '.join(sorted(_VALID_TASK_STATUSES))}",
-        )
+    # -- validate status (case-insensitive) --
+    if status is not None:
+        status = status.upper()
+        if status not in _VALID_TASK_STATUSES:
+            return make_error_response(
+                400,
+                ErrorCode.VALIDATION_ERROR,
+                f"Invalid status '{status}'. "
+                f"Must be one of: {', '.join(sorted(_VALID_TASK_STATUSES))}",
+            )
 
     try:
         db = client or _get_supabase_client()

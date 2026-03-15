@@ -37,7 +37,8 @@ def ingest_provider_event_with_dlq(
     tenant_id: str,
     *,
     apply_fn: Any,
-    skill_fn: Any,
+    skill_fn: Any = None,
+    skill_router: Any = None,
 ) -> Dict[str, Any]:
     """
     Extended ingestion entry point that routes rejections to the DLQ.
@@ -67,6 +68,7 @@ def ingest_provider_event_with_dlq(
 
     envelope_dict = {
         "type": envelope.type,
+        "tenant_id": tenant_id,
         "idempotency": {"request_id": envelope.idempotency_key or ""},
         "payload": envelope.payload,
         "occurred_at": envelope.occurred_at.isoformat() if hasattr(envelope.occurred_at, "isoformat") else str(envelope.occurred_at),
@@ -74,7 +76,13 @@ def ingest_provider_event_with_dlq(
     }
 
     try:
-        skill_out = skill_fn(envelope.payload)
+        # Phase 784: support skill_router(event_type, payload) for type-aware routing
+        if skill_router is not None:
+            skill_out = skill_router(envelope.type, envelope.payload)
+        elif skill_fn is not None:
+            skill_out = skill_fn(envelope.payload)
+        else:
+            raise ValueError("Either skill_fn or skill_router must be provided")
         emitted = [{"type": e.type, "payload": dict(e.payload)} for e in skill_out.events_to_emit]
     except Exception as exc:
         write_to_dlq(

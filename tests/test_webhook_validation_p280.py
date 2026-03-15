@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import os
 
@@ -45,7 +45,27 @@ from api.webhooks import router
 _JWT_SECRET = "phase280-test-jwt-secret-must-be-64-chars-long-here-padding0000"
 _WEBHOOK_SECRET = "phase280-webhook-secret-xyz"
 _ALGORITHM = "HS256"
-_MOCK_TARGET = "api.webhooks.ingest_provider_event"
+
+# Mock targets — aligned with Phase 784 write-path rewrite
+_MOCK_INGEST = "api.webhooks.ingest_provider_event_with_dlq"
+_MOCK_APPLY_FN = "api.webhooks._build_apply_fn"
+_MOCK_SKILL_ROUTER = "api.webhooks._build_skill_router"
+
+
+def _mock_result(idempotency_key="phase280-test:created:abc"):
+    return {"status": "APPLIED", "idempotency_key": idempotency_key}
+
+
+def _pipeline_patches(return_value=None, side_effect=None):
+    if return_value is None and side_effect is None:
+        return_value = _mock_result()
+    mock_ingest = MagicMock(return_value=return_value, side_effect=side_effect)
+    from contextlib import ExitStack
+    stack = ExitStack()
+    stack.enter_context(patch(_MOCK_INGEST, mock_ingest))
+    stack.enter_context(patch(_MOCK_APPLY_FN, MagicMock(return_value=MagicMock())))
+    stack.enter_context(patch(_MOCK_SKILL_ROUTER, MagicMock(return_value=MagicMock())))
+    return stack, mock_ingest
 
 
 @dataclass
@@ -132,7 +152,8 @@ class TestGroupAJwtRejection:
         monkeypatch.delenv("IHOUSE_JWT_SECRET", raising=False)
         monkeypatch.setenv("IHOUSE_DEV_MODE", "false")
         monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=json.dumps(_VALID_PAYLOAD).encode(),
@@ -145,7 +166,8 @@ class TestGroupAJwtRejection:
         monkeypatch.setenv("IHOUSE_DEV_MODE", "false")
         monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
         expired_token = _make_jwt(exp_offset=-10)  # expired 10s ago
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=json.dumps(_VALID_PAYLOAD).encode(),
@@ -163,7 +185,8 @@ class TestGroupAJwtRejection:
         # Tamper by appending garbage to a valid token
         valid = _make_jwt()
         tampered = valid[:-5] + "XXXXX"
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=json.dumps(_VALID_PAYLOAD).encode(),
@@ -183,7 +206,8 @@ class TestGroupAJwtRejection:
             "wrong-secret-entirely!!!!!!!!!!!!!!!123",
             algorithm=_ALGORITHM,
         )
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=json.dumps(_VALID_PAYLOAD).encode(),
@@ -202,7 +226,8 @@ class TestGroupAJwtRejection:
         token = _make_jwt()
         raw = json.dumps(_VALID_PAYLOAD).encode()
         sig = _compute_sig(_WEBHOOK_SECRET, raw)
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=raw,
@@ -222,7 +247,8 @@ class TestGroupAJwtRejection:
             {"data": "no sub claim", "exp": int(time.time()) + 3600},
             _JWT_SECRET, algorithm=_ALGORITHM,
         )
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=json.dumps(_VALID_PAYLOAD).encode(),
@@ -269,7 +295,8 @@ def test_b_real_hmac_accepted_per_provider(provider, client, monkeypatch):
     raw = json.dumps(payload).encode()
     sig = _compute_sig(_WEBHOOK_SECRET, raw)
     header_name = _sig_header_for(provider)
-    with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+    stack, _ = _pipeline_patches()
+    with stack:
         resp = client.post(
             f"/webhooks/{provider}",
             content=raw,
@@ -296,7 +323,8 @@ class TestGroupCTamperingAndReplay:
         sig = _compute_sig(_WEBHOOK_SECRET, original_raw)
         tampered_payload = {**_VALID_PAYLOAD, "reservation_id": "HACKED-999"}
         tampered_raw = json.dumps(tampered_payload).encode()
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=tampered_raw,
@@ -312,7 +340,8 @@ class TestGroupCTamperingAndReplay:
         """Empty body with secret set → either 400 (parse) or 403 (sig)."""
         monkeypatch.setenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", _WEBHOOK_SECRET)
         monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=b"",
@@ -327,7 +356,8 @@ class TestGroupCTamperingAndReplay:
         raw = json.dumps(_VALID_PAYLOAD).encode()
         raw_hex = hmac.new(_WEBHOOK_SECRET.encode(), raw, hashlib.sha256).hexdigest()
         sig_with_prefix = f"sha256={raw_hex}"
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=raw,
@@ -345,7 +375,8 @@ class TestGroupCTamperingAndReplay:
         raw = json.dumps(_VALID_PAYLOAD).encode()
         raw_hex = hmac.new(_WEBHOOK_SECRET.encode(), raw, hashlib.sha256).hexdigest()
         # No prefix
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope()):
+        stack, _ = _pipeline_patches()
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=raw,
@@ -395,7 +426,8 @@ class TestGroupEErrorSchema:
     def test_e3_200_has_status_accepted_and_idempotency_key(self, client, monkeypatch):
         monkeypatch.delenv("IHOUSE_WEBHOOK_SECRET_BOOKINGCOM", raising=False)
         monkeypatch.setenv("IHOUSE_DEV_MODE", "true")
-        with patch(_MOCK_TARGET, return_value=_FakeEnvelope(idempotency_key="k:test:001")):
+        stack, _ = _pipeline_patches(return_value=_mock_result("k:test:001"))
+        with stack:
             resp = client.post(
                 "/webhooks/bookingcom",
                 content=json.dumps(_VALID_PAYLOAD).encode(),

@@ -7742,3 +7742,21 @@ Stage: Deployment & Staging Activation (post-roadmap hardening).
 
 ---
 
+### Phases 784–789 — Staging Activation: Runtime Fixes — 2026-03-15
+
+Stage: Post-deployment runtime fix cycle — fixing all blockers for 5 core frontend flows.
+
+| Phase | Title | Outcome |
+|-------|-------|---------|
+| 784 | Webhook Write-Path Fix | 3 bugs: RLS bypass, column names, query structure |
+| 785 | admin_audit_log Table | Created missing table in live DB |
+| 786 | Column Drift | 6 columns added to match code expectations |
+| 787 | Status/Column Case Mismatch | 5 files fixed — status values now case-insensitive |
+| 788 | Frontend Runtime Flow Audit | 5 flows tested — identified 4 critical issues |
+| 789 | Frontend Fixes | 7 code fixes across 7 files — all 5 flows verified working |
+
+**Files Modified:** `task_router.py`, `worker_router.py`, `admin_router.py`, `main.py`, `lib/api.ts`, `dashboard/page.tsx`, `admin/properties/page.tsx`
+
+**Tests:** 278 items collected. 20 pre-existing E2E/integration failures. Frontend: 54 pages, 5 core flows verified working.
+
+---

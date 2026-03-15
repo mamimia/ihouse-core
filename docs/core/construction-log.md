@@ -4841,3 +4841,22 @@ Stage: Post-roadmap hardening — runtime baseline, storage, auth, staging deplo
 
 ### Tests: 277 passed, 0 failed. Frontend: 54 pages compile. 48 RLS-protected tables.
 
+## Phases 784–789 — Staging Activation: Runtime Fixes — 2026-03-15
+
+Post-deployment runtime fix cycle. 6 phases fixing all blockers for 5 core frontend flows.
+
+- Phase 784: Webhook write-path — 3 bugs (RLS, column drift, query structure)
+- Phase 785: admin_audit_log table — created in live DB
+- Phase 786: Column drift — 6 columns added (booking_state, tasks, booking_financial_facts)
+- Phase 787: Status/column case mismatch — 5 backend files normalized to case-insensitive
+- Phase 788: Frontend runtime flow audit — Dashboard/Bookings/Tasks/Financial/Admin tested
+- Phase 789: Frontend fixes — 7 code changes across 7 files:
+  - `task_router.py` + `worker_router.py`: case-insensitive status/kind normalization
+  - `admin_router.py`: `updated_at_ms` → `updated_at` column drift
+  - `main.py`: financial sub-routers before catch-all `/{booking_id}`
+  - `lib/api.ts`: auto-unwrap `{ok, data}` envelope
+  - `dashboard/page.tsx`: null-safe optional chaining
+  - `admin/properties/page.tsx`: JWT auth + envelope unwrap
+
+Tests: 278 items collected. 20 pre-existing E2E/integration failures. 5 core frontend flows verified working.
+
