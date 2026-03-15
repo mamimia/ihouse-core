@@ -12,6 +12,7 @@ Endpoints:
 
 Invariants:
     - JWT auth required on all endpoints.
+    - Role guard: admin + manager only. Workers get 403.
     - Tenant isolation: tenant_id set from JWT sub — never from body.
     - Read-only: no writes to any table.
     - Source tables: `properties` + `property_channel_map`.
@@ -26,8 +27,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth
+from api.auth import jwt_identity
 from api.error_models import ErrorCode, make_error_response
+
+_ALLOWED_ROLES = frozenset({"admin", "manager"})
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -107,7 +110,7 @@ def _format_channel(row: Dict[str, Any]) -> Dict[str, Any]:
 )
 async def get_property_config(
     property_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -115,6 +118,15 @@ async def get_property_config(
 
     Returns: { property: {...}, channels: { count, mappings: [...] } }
     """
+    tenant_id = identity["tenant_id"]
+    role = identity.get("role", "")
+    if role not in _ALLOWED_ROLES:
+        return make_error_response(
+            status_code=403,
+            code="FORBIDDEN",
+            extra={"detail": f"Role '{role}' is not allowed to access property config. Requires admin or manager."},
+        )
+
     try:
         db = client if client is not None else _get_supabase_client()
 
@@ -187,7 +199,7 @@ async def get_property_config(
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
 async def list_property_configs(
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -195,6 +207,15 @@ async def list_property_configs(
 
     Returns: { tenant_id, count, properties: [{ property, channels }] }
     """
+    tenant_id = identity["tenant_id"]
+    role = identity.get("role", "")
+    if role not in _ALLOWED_ROLES:
+        return make_error_response(
+            status_code=403,
+            code="FORBIDDEN",
+            extra={"detail": f"Role '{role}' is not allowed to access property config. Requires admin or manager."},
+        )
+
     try:
         db = client if client is not None else _get_supabase_client()
 

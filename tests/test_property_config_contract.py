@@ -141,25 +141,25 @@ def _mock_db_two_tables(
     return db
 
 
-def _override(tenant: str = _TENANT):
-    from api.auth import jwt_auth
-    _app.dependency_overrides[jwt_auth] = lambda: tenant
+def _override(tenant: str = _TENANT, role: str = "admin"):
+    from api.auth import jwt_identity
+    _app.dependency_overrides[jwt_identity] = lambda: {"user_id": "test-user", "tenant_id": tenant, "role": role}
 
 
 def _clear():
     _app.dependency_overrides.clear()
 
 
-def _get_single(property_id: str, db: Any, tenant: str = _TENANT) -> Any:
-    _override(tenant)
+def _get_single(property_id: str, db: Any, tenant: str = _TENANT, role: str = "admin") -> Any:
+    _override(tenant, role)
     with patch("api.property_config_router._get_supabase_client", return_value=db):
         r = _client.get(f"/admin/property-config/{property_id}")
     _clear()
     return r
 
 
-def _get_list(db: Any, tenant: str = _TENANT) -> Any:
-    _override(tenant)
+def _get_list(db: Any, tenant: str = _TENANT, role: str = "admin") -> Any:
+    _override(tenant, role)
     with patch("api.property_config_router._get_supabase_client", return_value=db):
         r = _client.get("/admin/property-config")
     _clear()
@@ -332,3 +332,27 @@ def test_all_endpoints_403_no_jwt():
         r2 = _client.get("/admin/property-config")
     assert r1.status_code == 403
     assert r2.status_code == 403
+
+
+def test_worker_blocked_single():
+    db = _mock_db_two_tables([_prop_row()], [_chan_row()])
+    r = _get_single(_PROP_1, db, role="worker")
+    assert r.status_code == 403
+
+
+def test_worker_blocked_list():
+    db = _mock_db_two_tables([_prop_row()], [])
+    r = _get_list(db, role="worker")
+    assert r.status_code == 403
+
+
+def test_manager_allowed_single():
+    db = _mock_db_two_tables([_prop_row()], [_chan_row()])
+    r = _get_single(_PROP_1, db, role="manager")
+    assert r.status_code == 200
+
+
+def test_manager_allowed_list():
+    db = _mock_db_two_tables([_prop_row()], [])
+    r = _get_list(db, role="manager")
+    assert r.status_code == 200
