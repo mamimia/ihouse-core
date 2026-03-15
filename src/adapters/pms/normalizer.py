@@ -99,11 +99,35 @@ def normalize_pms_bookings(
         }
 
         try:
-            # 1. Write to booking_state (canonical)
+            # Generate event_id
             evt_id = hashlib.sha256(
                 f"PMS:{provider}:{booking_id}:{now_ms}".encode()
             ).hexdigest()[:24]
+            full_event_id = f"pms-{evt_id}"
 
+            # 1. Write to event_log FIRST (booking_state.last_event_id FK requires this)
+            db.table("event_log").insert({
+                "event_id": full_event_id,
+                "kind": event_kind,
+                "occurred_at": now_iso,
+                "payload_json": {
+                    "source": provider,
+                    "source_type": "pms",
+                    "booking_id": booking_id,
+                    "property_id": domaniqo_property,
+                    "external_id": booking.external_id,
+                    "status": booking.status,
+                    "check_in": booking.check_in,
+                    "check_out": booking.check_out,
+                    "guest_name": booking.guest_name,
+                    "total_price": booking.total_price,
+                    "currency": booking.currency,
+                    "channel": booking.channel,
+                    "raw_payload_keys": list(booking.raw.keys())[:20],
+                },
+            }).execute()
+
+            # 2. Write to booking_state (canonical) — FK on last_event_id now satisfied
             db.table("booking_state").upsert({
                 "booking_id": booking_id,
                 "tenant_id": tenant_id,
@@ -120,34 +144,9 @@ def normalize_pms_bookings(
                 "currency": booking.currency,
                 "state_json": state_json,
                 "version": new_version,
-                "last_event_id": f"pms-{evt_id}",
+                "last_event_id": full_event_id,
                 "updated_at_ms": now_ms,
             }, on_conflict="booking_id").execute()
-
-            # 2. Write to event_log (raw audit trail)
-            try:
-                db.table("event_log").insert({
-                    "event_id": f"pms-{evt_id}",
-                    "kind": event_kind,
-                    "occurred_at": now_iso,
-                    "payload_json": {
-                        "source": provider,
-                        "source_type": "pms",
-                        "booking_id": booking_id,
-                        "property_id": domaniqo_property,
-                        "external_id": booking.external_id,
-                        "status": booking.status,
-                        "check_in": booking.check_in,
-                        "check_out": booking.check_out,
-                        "guest_name": booking.guest_name,
-                        "total_price": booking.total_price,
-                        "currency": booking.currency,
-                        "channel": booking.channel,
-                        "raw_payload_keys": list(booking.raw.keys())[:20],
-                    },
-                }).execute()
-            except Exception as exc:
-                logger.warning("pms_normalizer: event_log insert failed for %s: %s", booking_id, exc)
 
         except Exception as exc:
             logger.exception("pms_normalizer: failed %s: %s", booking_id, exc)

@@ -283,7 +283,7 @@ async def map_property(
             "property_id": dom_id,
             "provider": provider,
             "external_id": ext_id,
-            "sync_mode": "inbound",
+            "sync_mode": "api_first",
             "sync_strategy": "poll",
             "enabled": True,
         }, on_conflict="tenant_id,property_id,provider").execute()
