@@ -425,6 +425,8 @@ app.include_router(portfolio_dashboard_router)
 
 from api.integration_management_router import router as integration_management_router  # noqa: E402  # Phase 217
 app.include_router(integration_management_router)
+from api.pms_connect_router import router as pms_connect_router  # noqa: E402  # Phase 808
+app.include_router(pms_connect_router)
 
 from api.ai_context_router import router as ai_context_router  # noqa: E402  # Phase 222
 app.include_router(ai_context_router)
