@@ -313,6 +313,10 @@ export interface LoginResponse {
     tenant_id: string;
     role: string;  // Phase 397
     expires_in: number;
+    user_id?: string;       // Pre-801: Supabase Auth UUID
+    email?: string;         // Pre-801: user email
+    full_name?: string;     // Pre-801: user full name
+    auth_method?: string;   // Pre-801: 'supabase' for production login
 }
 
 // Phase 191 — Multi-Currency Overview types
@@ -392,9 +396,16 @@ export interface BookingListResponse {
 // ---------------------------------------------------------------------------
 
 export const api = {
-    // Phase 179 — Auth
+    // Pre-801: Production login (email + password → Supabase Auth)
+    loginWithEmail: (email: string, password: string): Promise<LoginResponse> =>
+        apiFetch('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+        }),
+
+    // Phase 179 — Dev login (backward compat, uses tenant_id + secret)
     login: (tenant_id: string, secret: string, role: string = 'manager'): Promise<LoginResponse> =>
-        apiFetch('/auth/token', {
+        apiFetch('/auth/login-session', {
             method: 'POST',
             body: JSON.stringify({ tenant_id, secret, role }),
         }),

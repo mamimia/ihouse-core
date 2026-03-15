@@ -7760,3 +7760,28 @@ Stage: Post-deployment runtime fix cycle — fixing all blockers for 5 core fron
 **Tests:** 278 items collected. 20 pre-existing E2E/integration failures. Frontend: 54 pages, 5 core flows verified working.
 
 ---
+
+### Phases 793–800 — Single-Tenant Live Activation — 2026-03-15
+
+Stage: Production-grade staging activation with live Supabase, real OTA webhooks, real users, and runtime-verified auth identity.
+
+| Phase | Title | Outcome |
+|-------|-------|---------|
+| 793 | Docker Build Validation & Health | Backend + frontend Docker builds clean. /health responds. Fixes: python-multipart, openai, g++ pins |
+| 794 | Environment Configuration & Secrets | .env.staging with real Supabase + 5 secrets. /health 200 OK (433ms) |
+| 795 | Supabase Auth: First Real Admin | admin@domaniqo.com created. JWT + session tracking. /admin/summary: 1000 bookings |
+| 796 | Staging Deploy & Smoke Test | Bootstrap 4 tables. Admin role correct. Health/summary/auth/bookings/tasks pass |
+| 797 | First Real OTA Webhook | Full ingestion chain proven: webhook → event_log → booking_state → financial → 2 tasks |
+| 798 | Admin Dashboard Live Walkthrough | All admin endpoints verified against live P797 data. No DB↔API gaps |
+| 799 | First Notification Dispatch | SMS + Email dry_run. notification_log correct. Pipeline proven to provider boundary |
+| 800 | Worker & Manager Invite + Auth Identity Fix | Invite flow complete. 3 auth fixes: service-role separation, POST /auth/login (UUID identity), login UI email+password |
+
+**New Files:** `src/api/auth_login_router.py`, `ihouse-ui/app/(public)/dev-login/page.tsx`, `docs/product/admin-preview-mode.md`, `docs/product/staffing-flexibility.md`
+
+**Modified Files:** `src/api/invite_router.py`, `src/api/auth.py`, `src/api/session_router.py`, `src/main.py`, `ihouse-ui/lib/api.ts`, `ihouse-ui/app/(public)/login/page.tsx`
+
+**Runtime Proof:** admin→admin, manager→manager, worker→worker — all verified via POST /auth/login on staging Docker.
+
+**Supabase Auth Users:** admin@domaniqo.com (25407914), manager@domaniqo.com (ecc69a1a), worker@domaniqo.com (19f9f4ed)
+
+---

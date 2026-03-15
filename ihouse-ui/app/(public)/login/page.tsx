@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Phase 378 — Login Page (Platform Threshold)
- * Phase 397 — JWT Role Claim + Role Selector
+ * Login Page — Production (Pre-801 Fix)
  * Route: /login
  *
- * The deliberate boundary between public and protected surfaces.
- * Dark background (Midnight Graphite), D monogram, Instrument Serif headline.
- * Using Domaniqo design tokens. No sidebar hack needed (public route group).
+ * Clean email + password login. No role selector, no tenant_id, no secret.
+ * Server resolves identity: user_id, tenant_id, role.
+ *
+ * For dev/internal login, see /dev-login.
  */
 
 import { useState, useEffect } from 'react';
@@ -16,9 +16,8 @@ import DMonogram from '../../../components/DMonogram';
 import { getRoleRoute } from '../../../lib/roleRoute';
 
 export default function LoginPage() {
-    const [tenantId, setTenantId] = useState('');
-    const [secret, setSecret] = useState('');
-    const [role, setRole] = useState('manager');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
@@ -32,19 +31,22 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!tenantId.trim()) { setError('Tenant ID is required'); return; }
+        if (!email.trim()) { setError('Email is required'); return; }
+        if (!password) { setError('Password is required'); return; }
         setError(null);
         setLoading(true);
         try {
-            const resp = await api.login(tenantId.trim(), secret, role);
+            const resp = await api.loginWithEmail(email.trim(), password);
             setToken(resp.token);
             document.cookie = `ihouse_token=${resp.token}; path=/; max-age=${resp.expires_in}; SameSite=Lax`;
             window.location.href = getRoleRoute(resp.token);
         } catch (err: unknown) {
             if (err instanceof Error && err.message.includes('401')) {
-                setError('Invalid credentials. Check your tenant ID and secret.');
+                setError('Invalid email or password.');
+            } else if (err instanceof Error && err.message.includes('403')) {
+                setError('Your account is not assigned to any organization. Contact your administrator.');
             } else if (err instanceof Error && err.message.includes('503')) {
-                setError('Auth not configured. Contact your administrator.');
+                setError('Authentication not configured. Contact your administrator.');
             } else {
                 setError(err instanceof Error ? err.message : 'Login failed');
             }
@@ -142,7 +144,7 @@ export default function LoginPage() {
                         </p>
 
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                            {/* Tenant ID */}
+                            {/* Email */}
                             <div>
                                 <label style={{
                                     display: 'block',
@@ -153,16 +155,16 @@ export default function LoginPage() {
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.06em',
                                 }}>
-                                    Tenant ID
+                                    Email
                                 </label>
                                 <input
-                                    id="input-tenant-id"
+                                    id="input-email"
                                     className="login-input"
-                                    type="text"
-                                    value={tenantId}
-                                    onChange={e => setTenantId(e.target.value)}
-                                    placeholder="my-property-group"
-                                    autoComplete="username"
+                                    type="email"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    placeholder="you@domaniqo.com"
+                                    autoComplete="email"
                                     disabled={loading}
                                     style={{
                                         width: '100%',
@@ -173,12 +175,12 @@ export default function LoginPage() {
                                         color: 'var(--color-stone)',
                                         fontSize: 'var(--text-sm)',
                                         transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
-                                        fontFamily: 'var(--font-mono)',
+                                        fontFamily: 'var(--font-sans)',
                                     }}
                                 />
                             </div>
 
-                            {/* Secret */}
+                            {/* Password */}
                             <div>
                                 <label style={{
                                     display: 'block',
@@ -189,14 +191,14 @@ export default function LoginPage() {
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.06em',
                                 }}>
-                                    Secret
+                                    Password
                                 </label>
                                 <input
-                                    id="input-secret"
+                                    id="input-password"
                                     className="login-input"
                                     type="password"
-                                    value={secret}
-                                    onChange={e => setSecret(e.target.value)}
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
                                     placeholder="••••••••"
                                     autoComplete="current-password"
                                     disabled={loading}
@@ -211,60 +213,6 @@ export default function LoginPage() {
                                         transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
                                     }}
                                 />
-                                <div style={{
-                                    fontSize: 'var(--text-xs)',
-                                    color: 'rgba(234,229,222,0.3)',
-                                    marginTop: 'var(--space-2)',
-                                }}>
-                                    Default: <code style={{ color: 'var(--color-olive)' }}>dev</code> (local only)
-                                </div>
-                            </div>
-
-                            {/* Role Selector — Phase 397 */}
-                            <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: 'var(--text-xs)',
-                                    fontWeight: 600,
-                                    color: 'rgba(234,229,222,0.5)',
-                                    marginBottom: 'var(--space-2)',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.06em',
-                                }}>
-                                    Role
-                                </label>
-                                <select
-                                    id="select-role"
-                                    value={role}
-                                    onChange={e => setRole(e.target.value)}
-                                    disabled={loading}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px 14px',
-                                        background: 'var(--color-midnight)',
-                                        border: '1px solid rgba(234,229,222,0.1)',
-                                        borderRadius: 'var(--radius-md)',
-                                        color: 'var(--color-stone)',
-                                        fontSize: 'var(--text-sm)',
-                                        fontFamily: 'var(--font-sans)',
-                                        transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
-                                        cursor: 'pointer',
-                                        appearance: 'none',
-                                        WebkitAppearance: 'none',
-                                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                                        backgroundRepeat: 'no-repeat',
-                                        backgroundPosition: 'right 14px center',
-                                    }}
-                                >
-                                    <option value="manager">Manager</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="owner">Owner</option>
-                                    <option value="ops">Operations</option>
-                                    <option value="worker">Worker</option>
-                                    <option value="checkin">Check-in Staff</option>
-                                    <option value="checkout">Check-out Staff</option>
-                                    <option value="maintenance">Maintenance</option>
-                                </select>
                             </div>
 
                             {/* Error */}
@@ -286,7 +234,7 @@ export default function LoginPage() {
                                 id="btn-login"
                                 type="submit"
                                 className="login-btn"
-                                disabled={loading || !tenantId.trim()}
+                                disabled={loading || !email.trim() || !password}
                                 style={{
                                     padding: '14px',
                                     background: 'var(--color-moss)',
@@ -297,8 +245,8 @@ export default function LoginPage() {
                                     fontWeight: 600,
                                     fontFamily: 'var(--font-brand)',
                                     letterSpacing: '-0.01em',
-                                    cursor: loading || !tenantId.trim() ? 'not-allowed' : 'pointer',
-                                    opacity: loading || !tenantId.trim() ? 0.4 : 1,
+                                    cursor: loading || !email.trim() || !password ? 'not-allowed' : 'pointer',
+                                    opacity: loading || !email.trim() || !password ? 0.4 : 1,
                                     transition: 'all var(--transition-fast)',
                                     boxShadow: 'var(--shadow-glow-moss)',
                                     marginTop: 'var(--space-2)',

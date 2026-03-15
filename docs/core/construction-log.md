@@ -4860,3 +4860,40 @@ Post-deployment runtime fix cycle. 6 phases fixing all blockers for 5 core front
 
 Tests: 278 items collected. 20 pre-existing E2E/integration failures. 5 core frontend flows verified working.
 
+
+## Phases 793–800 — Single-Tenant Live Activation — 2026-03-15
+
+Full staging activation from Docker build to runtime-verified auth identity.
+
+### Block A — Docker & Environment (793–794)
+- Backend Dockerfile: python-multipart pin, openai pin, g++ for pyroaring
+- Frontend Dockerfile: builds clean, standalone output
+- `.env.staging` with real Supabase credentials + 5 generated secrets
+- /health returns 200 OK with 433ms Supabase latency
+
+### Block B — First Real Users (795–796)
+- Admin bootstrap: `admin@domaniqo.com` via Supabase Auth
+- Bootstrap: 4 tables upsert successfully
+- Smoke test pass: health, summary, auth/me, bookings, tasks, frontend
+
+### Block C — Live Data Proof (797–799)
+- OTA webhook `POST /webhooks/bookingcom` → full chain: event_log, booking_state, financial_facts, 2 tasks
+- Admin dashboard: all endpoints verified against live P797 data, no gaps
+- Notification dispatch: SMS + Email dry_run, notification_log correct
+
+### Block D — Auth Identity Fix (800 + Pre-801)
+- Invite flow: manager + worker users created in Supabase Auth
+- Fix 1: Service-role client separation in `invite_router.py`
+- Fix 2: New `POST /auth/login` endpoint (email+password → Supabase Auth → UUID identity)
+- Fix 3: Login UI cleanup (email+password only, old form → /dev-login)
+- `src/api/auth_login_router.py` — NEW
+- `src/api/auth.py` — MODIFIED (`get_identity()`, `jwt_identity`, dual JWT format)
+- `src/api/session_router.py` — MODIFIED (renamed to /auth/dev-login)
+- Product docs: `admin-preview-mode.md`, `staffing-flexibility.md`
+
+### Runtime Proof
+- admin@domaniqo.com → role=admin ✅
+- manager@domaniqo.com → role=manager ✅
+- worker@domaniqo.com → role=worker ✅
+
+### Checkpoint XXV-B — Phase 800 complete. Ready for Phase 801.

@@ -143,14 +143,24 @@ def verify_jwt(
         raise HTTPException(status_code=403, detail=f"Invalid token: {exc}")
 
     # Extract tenant_id from sub claim
-    tenant_id: str | None = payload.get("sub")
-    if not tenant_id or not str(tenant_id).strip():
+    sub: str | None = payload.get("sub")
+    if not sub or not str(sub).strip():
         raise HTTPException(
             status_code=403,
-            detail="Token missing 'sub' claim (tenant_id)",
+            detail="Token missing 'sub' claim",
         )
 
-    tenant_id = str(tenant_id).strip()
+    sub = str(sub).strip()
+
+    # New format (auth_login_router): sub = user_id UUID, tenant_id in claims
+    # Legacy format (session_router/dev): sub = tenant_id
+    tenant_id_claim = payload.get("tenant_id")
+    if tenant_id_claim:
+        # New format: return tenant_id from explicit claim
+        tenant_id = str(tenant_id_claim).strip()
+    else:
+        # Legacy format: sub IS the tenant_id
+        tenant_id = sub
 
     # Phase 276: log Supabase Auth tokens distinctly for audit trail
     aud = payload.get("aud")
@@ -158,7 +168,7 @@ def verify_jwt(
     if aud == _SUPABASE_AUD or role == _SUPABASE_ROLE:
         logger.info(
             "Supabase Auth JWT accepted: sub=%s aud=%s role=%s",
-            tenant_id, aud, role,
+            sub, aud, role,
         )
 
     return tenant_id
@@ -180,6 +190,86 @@ def decode_jwt_claims(token: str, secret: str) -> dict:
         )
     except Exception:
         return {}
+
+
+def get_identity(
+    credentials: HTTPAuthorizationCredentials | None = None,
+) -> dict:
+    """
+    Extract full identity from JWT: {user_id, tenant_id, role}.
+
+    Supports both token formats:
+      - New (auth_login_router): sub=user_id, tenant_id in claims, role in claims
+      - Legacy (session_router): sub=tenant_id, role in claims, user_id=tenant_id
+
+    Returns:
+        {"user_id": str, "tenant_id": str, "role": str}
+
+    Raises HTTPException if token is invalid.
+    """
+    if _is_dev_mode():
+        return {
+            "user_id": _DEV_TENANT,
+            "tenant_id": _DEV_TENANT,
+            "role": "admin",
+        }
+
+    secret = os.environ.get(_ENV_SECRET, "")
+    if not secret:
+        raise HTTPException(status_code=503, detail="AUTH_NOT_CONFIGURED")
+
+    if credentials is None or not credentials.credentials:
+        raise HTTPException(status_code=403, detail="Missing Authorization header")
+
+    try:
+        payload = jwt.decode(
+            credentials.credentials,
+            secret,
+            algorithms=[_ALGORITHM],
+            options={"verify_aud": False},
+        )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=403, detail="Token has expired")
+    except jwt.InvalidTokenError as exc:
+        raise HTTPException(status_code=403, detail=f"Invalid token: {exc}")
+
+    sub = str(payload.get("sub", "")).strip()
+    if not sub:
+        raise HTTPException(status_code=403, detail="Token missing 'sub' claim")
+
+    # Detect format: new tokens have explicit tenant_id claim
+    tenant_id_claim = payload.get("tenant_id")
+    if tenant_id_claim:
+        # New format: sub=user_id, tenant_id explicit
+        return {
+            "user_id": sub,
+            "tenant_id": str(tenant_id_claim).strip(),
+            "role": str(payload.get("role", "manager")).strip(),
+        }
+    else:
+        # Legacy format: sub=tenant_id, user_id=tenant_id
+        return {
+            "user_id": sub,
+            "tenant_id": sub,
+            "role": str(payload.get("role", "manager")).strip(),
+        }
+
+
+def _make_identity_dependency():
+    """Returns a Depends-compatible callable that returns full identity dict."""
+    from fastapi import Depends
+
+    async def _dep(
+        credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    ) -> dict:
+        return get_identity(credentials)
+
+    return _dep
+
+
+# Depends-injectable that returns {user_id, tenant_id, role}
+jwt_identity = _make_identity_dependency()
+
 
 
 def _make_bearer_dependency():

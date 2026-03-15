@@ -1,18 +1,20 @@
 ## Current Active Phase
 
-Phase 789 — Staging Activation: Runtime Fixes complete. **Checkpoint XXV.**
+Phase 800 — Single-Tenant Live Activation + Auth Identity Fix complete. **Checkpoint XXV-B.**
 
 ## Last Closed Phase
 
-Phase 789 — 6 phases (784–789): webhook fix, column drift, case mismatch, frontend runtime audit + fixes.
+Phase 800 — 8 phases (793–800): Docker build, staging config, first admin, smoke test, OTA webhook, admin walkthrough, notifications, invite flow + auth identity fix.
 
 ## Current Objective
 
-🏁 **Staging Activation Runtime Fixes COMPLETE.** All 5 core frontend flows verified working.
-- Dashboard, Bookings, Tasks, Financial, Admin Properties — all working end-to-end.
-- 7 code fixes across 7 files: case normalization, envelope unwrap, route reorder, null-safe reads, auth tokens.
-- 278 test items, 48 RLS-protected tables, 4 storage buckets.
-- Next recommended: resolve 20 pre-existing E2E test failures → platform layer + tenant onboarding.
+🏁 **Single-Tenant Live Activation COMPLETE.** Auth identity runtime-verified.
+- Docker staging: healthy on port 8001, Supabase connected
+- 3 Supabase Auth users: admin, manager, worker — all verified via POST /auth/login
+- OTA webhook → booking_state → financial_facts → tasks: full chain proven
+- Notification dispatch proven to provider boundary
+- Login UI: email+password only (old login at /dev-login)
+- Next: Phase 801 — Property Config & Channel Mapping
 
 ## Deferred Items — Open Items Registry
 
@@ -240,4 +242,4 @@ Phase 789 — 6 phases (784–789): webhook fix, column drift, case mismatch, fr
 
 ## Tests
 
-**278 test items collected, 20 pre-existing E2E failures. TypeScript 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. 5 core frontend flows verified working. (Phase 789)**
+**278 test items collected, 20 pre-existing E2E failures. TypeScript 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. 5 core frontend flows verified working. 3 Supabase Auth login flows runtime-verified (admin→admin, manager→manager, worker→worker). (Phase 800)**

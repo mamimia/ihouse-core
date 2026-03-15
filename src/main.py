@@ -303,6 +303,9 @@ app.include_router(org_router)
 from api.session_router import router as session_router  # noqa: E402  # Phase 297
 app.include_router(session_router)
 
+from api.auth_login_router import router as auth_login_router  # noqa: E402  # Pre-801 Fix
+app.include_router(auth_login_router)
+
 from api.guest_token_router import router as guest_token_router  # noqa: E402  # Phase 298
 app.include_router(guest_token_router)
 

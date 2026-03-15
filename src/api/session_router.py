@@ -86,13 +86,31 @@ class LoginSessionRequest(BaseModel):
 
 @router.post(
     "/auth/login-session",
-    summary="Login: issue JWT + create tracked session (Phase 297)",
+    summary="Dev login: issue JWT via tenant_id+secret (use /auth/login for production)",
+    status_code=201,
+    tags=["auth"],
+    deprecated=True,
+)
+async def login_session(body: LoginSessionRequest, request: Request) -> JSONResponse:
+    return await _dev_login_impl(body, request)
+
+
+@router.post(
+    "/auth/dev-login",
+    summary="Dev login: issue JWT via tenant_id+secret (internal/debug only)",
     status_code=201,
     tags=["auth"],
 )
-async def login_session(body: LoginSessionRequest, request: Request) -> JSONResponse:
+async def dev_login(body: LoginSessionRequest, request: Request) -> JSONResponse:
+    return await _dev_login_impl(body, request)
+
+
+async def _dev_login_impl(body: LoginSessionRequest, request: Request) -> JSONResponse:
     """
-    POST /auth/login-session
+    POST /auth/dev-login (also /auth/login-session for backward compat)
+
+    Dev/internal login via tenant_id + shared secret.
+    For production login, use POST /auth/login (email + password).
 
     Issues a signed HS256 JWT AND creates a server-side session record.
     The session record allows explicit revocation (logout) and auditing.

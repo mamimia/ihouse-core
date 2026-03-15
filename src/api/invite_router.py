@@ -230,18 +230,21 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
     role = metadata.get("role", "staff")
     tenant_id = claims.get("entity_id", "")
 
-    # Phase 767: Create Supabase Auth user + sign in for tokens
+    # Phase 767 + Fix 800b: Create Supabase Auth user + sign in for tokens
+    # Uses TWO separate clients to avoid sign_in tainting service_role privileges.
     from supabase import create_client
     supa_url = os.environ.get("SUPABASE_URL", "")
-    supa_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    supa_service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    supa_anon_key = os.environ.get("SUPABASE_KEY", supa_service_key)
     user_id = None
     access_token = ""
     refresh_token = ""
 
-    if supa_url and supa_key:
+    if supa_url and supa_service_key:
         try:
-            supa = create_client(supa_url, supa_key)
-            result = supa.auth.admin.create_user({
+            # Client 1: service_role — for admin operations (create user, provision perms)
+            supa_admin = create_client(supa_url, supa_service_key)
+            result = supa_admin.auth.admin.create_user({
                 "email": email,
                 "password": body.password,
                 "email_confirm": True,
@@ -252,9 +255,10 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
             })
             user_id = str(result.user.id) if result.user else None
 
-            # Sign in to get tokens
+            # Sign in to get tokens — uses a SEPARATE client so service_role is not tainted
             if user_id:
-                signin = supa.auth.sign_in_with_password({
+                supa_login = create_client(supa_url, supa_anon_key)
+                signin = supa_login.auth.sign_in_with_password({
                     "email": email,
                     "password": body.password,
                 })
@@ -262,10 +266,10 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
                     access_token = signin.session.access_token
                     refresh_token = signin.session.refresh_token
 
-                # Provision tenant_permissions
+                # Provision tenant_permissions — uses service_role client (not tainted)
                 from services.tenant_bridge import provision_user_tenant
                 provision_user_tenant(
-                    supa, user_id,
+                    supa_admin, user_id,
                     tenant_id=tenant_id if tenant_id else None,
                     role=role,
                 )
