@@ -252,6 +252,7 @@ class Task:
         description     Optional detailed task description
         created_at      ISO 8601 UTC timestamp when the task was created
         updated_at      ISO 8601 UTC timestamp of last status change
+        assigned_to     Optional worker user_id assigned to this task (Phase E-1)
         notes           Optional list of operator/worker notes (append-only in spirit)
         canceled_reason Optional cancellation reason (set when status → CANCELED)
     """
@@ -271,6 +272,7 @@ class Task:
     created_at: str
     updated_at: str
     description: Optional[str] = None
+    assigned_to: Optional[str] = None
     notes: List[str] = field(default_factory=list)
     canceled_reason: Optional[str] = None
 
@@ -287,6 +289,7 @@ class Task:
         priority: Optional[TaskPriority] = None,
         worker_role: Optional[WorkerRole] = None,
         description: Optional[str] = None,
+        assigned_to: Optional[str] = None,
     ) -> "Task":
         """
         Factory method. Auto-derives:
@@ -297,6 +300,7 @@ class Task:
         - ack_sla_minutes from PRIORITY_ACK_SLA_MINUTES canonical map
 
         Initial status is always PENDING.
+        assigned_to is optional — NULL means unassigned (visible to all matching workers).
         """
         resolved_priority = priority if priority is not None else KIND_DEFAULT_PRIORITY[kind]
         resolved_role = worker_role if worker_role is not None else KIND_DEFAULT_WORKER_ROLE[kind]
@@ -317,6 +321,7 @@ class Task:
             created_at=created_at,
             updated_at=created_at,
             description=description,
+            assigned_to=assigned_to,
         )
 
     def is_terminal(self) -> bool:

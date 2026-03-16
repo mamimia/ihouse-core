@@ -375,18 +375,22 @@ async def connect_ical(
 
 
 def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: str) -> int:
-    """Parse iCal from URL and create booking records. Best-effort.
+    """Parse iCal from URL and write to canonical booking_state + event_log.
 
-    Matches actual `bookings` table schema:
-        booking_id, property_id, external_ref, start_date, end_date,
-        status, guest_name, created_at_ms, updated_at_ms
+    Strategic pivot (iCal = main path):
+        Writes to booking_state (not legacy bookings table) so iCal-sourced
+        bookings flow through the full downstream pipeline: tasks, financial,
+        calendar, owner statements.
 
-    Bookings from external iCal feeds are labelled with '[EXTERNAL_ICAL]'
-    prefix in guest_name to distinguish from simulation / test data.
+    Pattern matches PMS normalizer (adapters/pms/normalizer.py):
+        1. Write event_log entry FIRST (booking_state.last_event_id FK)
+        2. Upsert booking_state with canonical fields
+        3. Idempotent by UID-based booking_id
     """
     try:
         import urllib.request
         import time as _time
+        from datetime import datetime, timezone as _tz
 
         response = urllib.request.urlopen(ical_url, timeout=15)
         content = response.read().decode("utf-8", errors="replace")
@@ -411,42 +415,129 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
 
         created = 0
         now_ms = int(_time.time() * 1000)
+        now_iso = datetime.now(tz=_tz.utc).isoformat()
+
         for ev in events:
             dtstart = ev.get("DTSTART", "")
             dtend = ev.get("DTEND", "")
             summary = ev.get("SUMMARY", "iCal Booking")
             uid = ev.get("UID", "")
+            description = ev.get("DESCRIPTION", "")
+            dtstamp = ev.get("DTSTAMP", "")
+
+            # Extract structured data from DESCRIPTION (Airbnb, Booking.com, etc.)
+            reservation_url = ""
+            phone_last4 = ""
+            reservation_code = ""
+            if description:
+                import re as _re
+                url_match = _re.search(r'https?://[^\s\\]+reservations/details/([A-Z0-9]+)', description)
+                if url_match:
+                    reservation_url = url_match.group(0)
+                    reservation_code = url_match.group(1)
+                phone_match = _re.search(r'Phone\s+Number.*?:\s*(\d{4})', description)
+                if phone_match:
+                    phone_last4 = phone_match.group(1)
 
             if not dtstart:
                 continue
 
             # Format dates as YYYY-MM-DD
-            start_date = f"{dtstart[:4]}-{dtstart[4:6]}-{dtstart[6:8]}" if len(dtstart) >= 8 else dtstart
-            end_date = f"{dtend[:4]}-{dtend[4:6]}-{dtend[6:8]}" if len(dtend) >= 8 else dtend
+            check_in = f"{dtstart[:4]}-{dtstart[4:6]}-{dtstart[6:8]}" if len(dtstart) >= 8 else dtstart
+            check_out = f"{dtend[:4]}-{dtend[4:6]}-{dtend[6:8]}" if len(dtend) >= 8 else dtend
 
+            # Stable booking_id from UID (idempotent on re-sync)
             bid = hashlib.sha256(f"ICAL:{property_id}:{uid or dtstart}".encode()).hexdigest()[:12]
+            booking_id = f"ICAL-{bid}"
 
-            # Label with [EXTERNAL_ICAL] to mark real-world data
-            labelled_name = f"[EXTERNAL_ICAL] {summary}"
+            # Detect if this is a new or updated booking
+            existing = (db.table("booking_state")
+                        .select("booking_id, version")
+                        .eq("booking_id", booking_id)
+                        .limit(1)
+                        .execute())
+            is_update = bool(existing.data)
+            new_version = ((existing.data[0].get("version") or 0) + 1) if is_update else 1
+            event_kind = "BOOKING_AMENDED" if is_update else "BOOKING_CREATED"
+
+            # Extract guest name from SUMMARY (iCal typically has "Reserved" or guest name)
+            guest_name = summary if summary != "iCal Booking" else ""
 
             try:
-                db.table("bookings").upsert({
-                    "booking_id": f"ICAL-{bid}",
+                # 1. Write event_log FIRST (booking_state.last_event_id FK)
+                evt_hash = hashlib.sha256(
+                    f"ICAL:{booking_id}:{now_ms}".encode()
+                ).hexdigest()[:24]
+                event_id = f"ical-{evt_hash}"
+
+                db.table("event_log").insert({
+                    "event_id": event_id,
+                    "kind": event_kind,
+                    "occurred_at": now_iso,
+                    "payload_json": {
+                        "source": "ical",
+                        "source_type": "ical",
+                        "booking_id": booking_id,
+                        "property_id": property_id,
+                        "uid": uid,
+                        "check_in": check_in,
+                        "check_out": check_out,
+                        "summary": summary,
+                        "ical_url": ical_url,
+                    },
+                }).execute()
+
+                # 2. Upsert booking_state (canonical)
+                db.table("booking_state").upsert({
+                    "booking_id": booking_id,
+                    "tenant_id": tenant_id,
                     "property_id": property_id,
-                    "external_ref": uid,
-                    "start_date": start_date,
-                    "end_date": end_date,
-                    "status": "confirmed",
-                    "guest_name": labelled_name,
-                    "created_at_ms": now_ms,
+                    "reservation_ref": uid or booking_id,
+                    "source": "ical",
+                    "source_type": "ical",
+                    "status": "active",
+                    "check_in": check_in,
+                    "check_out": check_out,
+                    "guest_name": guest_name,
+                    "state_json": {
+                        "ical_summary": summary,
+                        "ical_description": description[:500] if description else "",
+                        "ical_uid": uid,
+                        "ical_url": ical_url,
+                        "ical_dtstamp": dtstamp,
+                        "reservation_url": reservation_url,
+                        "reservation_code": reservation_code,
+                        "phone_last4": phone_last4,
+                    },
+                    "version": new_version,
+                    "last_event_id": event_id,
                     "updated_at_ms": now_ms,
                 }, on_conflict="booking_id").execute()
-                created += 1
-            except Exception:
-                pass
 
+                # 3. Create operational tasks for NEW bookings (same path as OTA webhook)
+                if not is_update:
+                    try:
+                        from tasks.task_writer import write_tasks_for_booking_created
+                        write_tasks_for_booking_created(
+                            tenant_id=tenant_id,
+                            booking_id=booking_id,
+                            property_id=property_id,
+                            check_in=check_in,
+                            provider="ical",
+                            client=db,
+                        )
+                    except Exception as t_exc:
+                        logger.warning("_parse_ical_bookings: task creation failed %s: %s", booking_id, t_exc)
+
+                created += 1
+            except Exception as exc:
+                logger.warning("_parse_ical_bookings: failed %s: %s", booking_id, exc)
+
+        logger.info("_parse_ical_bookings: property=%s created/updated=%d from %d events",
+                     property_id, created, len(events))
         return created
-    except Exception:
+    except Exception as exc:
+        logger.warning("_parse_ical_bookings: fetch/parse failed: %s", exc)
         return 0
 
 

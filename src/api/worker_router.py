@@ -93,6 +93,7 @@ async def list_worker_tasks(
     worker_role: Optional[str] = None,
     status: Optional[str] = None,
     date: Optional[str] = None,
+    assigned_to: Optional[str] = None,
     limit: int = _DEFAULT_LIMIT,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
@@ -107,6 +108,7 @@ async def list_worker_tasks(
     - `status`      — filter by TaskStatus (PENDING / ACKNOWLEDGED / IN_PROGRESS /
       COMPLETED / CANCELED)
     - `date`        — filter by due_date (YYYY-MM-DD)
+    - `assigned_to` — filter by assigned worker user_id (Phase E-3)
     - `limit`       — max results, 1–100 (default 50)
 
     **Tenant isolation:** Only tasks belonging to the authenticated tenant.
@@ -183,6 +185,9 @@ async def list_worker_tasks(
             query = query.eq("status", status)
         if date is not None:
             query = query.eq("due_date", date)
+        # Phase E-3 — assigned_to filter for personal task lists
+        if assigned_to is not None:
+            query = query.eq("assigned_to", assigned_to)
 
         result = query.execute()
         tasks = result.data if result.data else []
@@ -192,6 +197,7 @@ async def list_worker_tasks(
                 "tasks": tasks,
                 "count": len(tasks),
                 "role_scoped": effective_worker_role is not None,
+                "assignment_filtered": assigned_to is not None,
             },
         )
 

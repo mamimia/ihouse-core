@@ -70,6 +70,9 @@ DLQ_ALERT_THRESHOLD: int = _int_env("IHOUSE_DLQ_ALERT_THRESHOLD", 5)
 # Phase 232 — Pre-arrival scan: UTC hour to run daily (default 06:00 UTC)
 PRE_ARRIVAL_SCAN_HOUR: int = _int_env("IHOUSE_PRE_ARRIVAL_SCAN_HOUR", 6)
 
+# iCal re-sync interval (default 15 minutes = 900 seconds)
+ICAL_RESYNC_INTERVAL_S: int = _int_env("IHOUSE_ICAL_RESYNC_INTERVAL_S", 900)
+
 SCHEDULER_ENABLED: bool = _bool_env("IHOUSE_SCHEDULER_ENABLED", True)
 
 
@@ -326,6 +329,77 @@ def _run_pre_arrival_scan() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Job 5: iCal re-sync (main booking intake path)
+# ---------------------------------------------------------------------------
+
+def _run_ical_resync() -> None:
+    """
+    Re-fetch all active iCal feed connections and upsert bookings.
+
+    iCal is the primary booking intake path (strategic pivot).
+    Reads ical_connections where status='active', re-parses each URL,
+    and writes to booking_state + event_log via the same parser used
+    in the connect endpoint.
+
+    Best-effort: failures on individual feeds are logged but don't
+    block other feeds.
+    """
+    try:
+        db = _get_db()
+    except RuntimeError as exc:
+        logger.debug("ical_resync: skipping — %s", exc)
+        return
+
+    try:
+        result = (
+            db.table("ical_connections")
+            .select("id, property_id, ical_url, tenant_id")
+            .eq("status", "active")
+            .execute()
+        )
+        connections = result.data or []
+    except Exception as exc:
+        logger.warning("ical_resync: DB query failed: %s", exc)
+        return
+
+    if not connections:
+        logger.debug("ical_resync: no active iCal connections")
+        return
+
+    total_created = 0
+    total_errors = 0
+
+    for conn in connections:
+        try:
+            from api.bulk_import_router import _parse_ical_bookings
+            count = _parse_ical_bookings(
+                db=db,
+                property_id=conn["property_id"],
+                ical_url=conn["ical_url"],
+                tenant_id=conn["tenant_id"],
+            )
+            total_created += count
+
+            # Update last_sync_at
+            now_iso = datetime.now(tz=timezone.utc).isoformat()
+            db.table("ical_connections").update({
+                "last_sync_at": now_iso,
+            }).eq("id", conn["id"]).execute()
+
+        except Exception as exc:
+            logger.warning(
+                "ical_resync: failed for connection %s (property=%s): %s",
+                conn.get("id"), conn.get("property_id"), exc,
+            )
+            total_errors += 1
+
+    logger.info(
+        "ical_resync: processed %d connections, %d bookings created/updated, %d errors",
+        len(connections), total_created, total_errors,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Scheduler lifecycle
 # ---------------------------------------------------------------------------
 
@@ -393,12 +467,26 @@ def build_scheduler() -> Any:
         misfire_grace_time=300,
     )
 
+    # Job 5: iCal re-sync (main booking intake path)
+    sched.add_job(
+        _run_ical_resync,
+        "interval",
+        seconds=ICAL_RESYNC_INTERVAL_S,
+        id="ical_resync",
+        name="iCal Re-Sync",
+        replace_existing=True,
+        max_instances=1,
+        misfire_grace_time=120,
+    )
+
     logger.info(
-        "Scheduler built: sla_sweep=%ds, dlq_check=%ds, health_log=%ds, pre_arrival_scan=daily@%02d:00UTC",
+        "Scheduler built: sla_sweep=%ds, dlq_check=%ds, health_log=%ds, "
+        "pre_arrival_scan=daily@%02d:00UTC, ical_resync=%ds",
         SLA_SWEEP_INTERVAL_S,
         DLQ_CHECK_INTERVAL_S,
         HEALTH_LOG_INTERVAL_S,
         PRE_ARRIVAL_SCAN_HOUR,
+        ICAL_RESYNC_INTERVAL_S,
     )
     return sched
 

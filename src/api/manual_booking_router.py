@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -83,25 +84,67 @@ async def create_manual_booking(
     booking_id = _generate_booking_id(property_id, check_in)
     now = datetime.now(tz=timezone.utc).isoformat()
 
+    now_ms = int(time.time() * 1000)
+    event_id = hashlib.sha256(f"EVT:{booking_id}:{now}".encode()).hexdigest()[:16]
+
     row = {
         "booking_id": booking_id,
+        "version": 1,
         "tenant_id": tenant_id,
         "property_id": property_id,
         "check_in": check_in,
         "check_out": check_out,
         "guest_name": guest_name or f"[{booking_source}]",
         "status": "confirmed",
-        "source": booking_source,
-        "number_of_guests": number_of_guests,
-        "notes": notes,
+        "source": "manual",
+        "source_type": "manual",
+        "booking_source": booking_source,
+        "guest_count": number_of_guests,
         "tasks_opt_out": tasks_opt_out,
-        "created_by": tenant_id,
-        "created_at": now,
+        "updated_at_ms": now_ms,
+        "last_event_id": event_id,
+        "state_json": {"notes": notes, "created_by": tenant_id},
     }
 
     try:
         db = client if client is not None else _get_db()
-        result = db.table("bookings").insert(row).execute()
+
+        # Overlap detection — reject if active bookings exist on same property + overlapping dates
+        overlap_res = (db.table("booking_state")
+                       .select("booking_id, check_in, check_out, guest_name, status")
+                       .eq("property_id", property_id)
+                       .in_("status", ["confirmed", "active", "observed"])
+                       .lt("check_in", check_out)
+                       .gt("check_out", check_in)
+                       .limit(5)
+                       .execute())
+        conflicts = overlap_res.data or []
+        if conflicts:
+            return make_error_response(409, "CONFLICT", extra={
+                "detail": f"Overlapping booking(s) found on {property_id} for {check_in} — {check_out}",
+                "conflicts": [{
+                    "booking_id": c["booking_id"],
+                    "check_in": c["check_in"],
+                    "check_out": c["check_out"],
+                    "guest_name": c.get("guest_name", ""),
+                    "status": c["status"],
+                } for c in conflicts],
+            })
+
+        # Write event_log FIRST (booking_state.last_event_id FK → event_log.event_id)
+        db.table("event_log").insert({
+            "event_id": event_id,
+            "kind": "BOOKING_CREATED",
+            "occurred_at": now,
+            "payload_json": {
+                "booking_id": booking_id, "source": "manual",
+                "booking_source": booking_source, "guest_name": guest_name,
+                "check_in": check_in, "check_out": check_out,
+                "property_id": property_id, "tenant_id": tenant_id,
+            },
+        }).execute()
+
+        result = db.table("booking_state").insert(row).execute()
         rows = result.data or []
         if not rows:
             return make_error_response(500, ErrorCode.INTERNAL_ERROR)
@@ -109,7 +152,7 @@ async def create_manual_booking(
         booking = rows[0]
 
         # Auto-create tasks based on source and opt-outs (best-effort)
-        tasks_created = _create_tasks_for_manual_booking(db, booking_id, property_id, booking_source, tasks_opt_out, tenant_id)
+        tasks_created = _create_tasks_for_manual_booking(db, booking_id, property_id, check_in, booking_source, tasks_opt_out, tenant_id)
 
         # Phase 707 — Trigger outbound sync to block dates on connected OTAs (best-effort)
         ota_block_result = _trigger_ota_date_block(db, property_id, check_in, check_out, booking_id, tenant_id)
@@ -185,37 +228,34 @@ def _trigger_ota_date_block(db: Any, property_id: str, check_in: str, check_out:
 
 def _create_tasks_for_manual_booking(
     db: Any, booking_id: str, property_id: str,
-    source: str, opt_out: List[str], tenant_id: str,
+    check_in: str, source: str, opt_out: List[str], tenant_id: str,
 ) -> List[str]:
-    """Create tasks based on booking source and opt-outs. Returns list of created task kinds."""
+    """Create operational tasks for a manual booking using the canonical task_writer.
+
+    Uses write_tasks_for_booking_created (same function as OTA webhook path)
+    which generates CHECKIN_PREP + CLEANING tasks via task_automator.
+
+    Returns list of created task kinds.
+    """
     if source == "maintenance_block":
         return []  # No tasks for maintenance blocks
 
-    all_tasks = ["checkin", "cleaning", "checkout"]
-    if source in ("self_use", "owner_use"):
-        tasks_to_create = [t for t in all_tasks if t not in opt_out]
-    else:  # direct
-        tasks_to_create = all_tasks  # Always create all
-
-    created = []
-    for task_kind in tasks_to_create:
-        try:
-            from tasks.task_model import Task
-            from tasks.task_automator import create_task_if_needed
-            kind_map = {"checkin": "CHECKIN_PREP", "cleaning": "CLEANING", "checkout": "CHECKOUT_VERIFY"}
-            task = Task.build(
-                task_kind=kind_map.get(task_kind, task_kind.upper()),
-                booking_id=booking_id,
-                property_id=property_id,
-                priority="MEDIUM",
-                ack_sla_minutes=60,
-            )
-            create_task_if_needed(db, task, tenant_id=tenant_id)
-            created.append(task_kind)
-        except Exception:
-            logger.warning("Failed to create %s task for manual booking %s", task_kind, booking_id)
-
-    return created
+    try:
+        from tasks.task_writer import write_tasks_for_booking_created
+        count = write_tasks_for_booking_created(
+            tenant_id=tenant_id,
+            booking_id=booking_id,
+            property_id=property_id,
+            check_in=check_in,
+            provider=f"manual:{source}",
+            client=db,
+        )
+        if count > 0:
+            return ["CHECKIN_PREP", "CLEANING"][:count]
+        return []
+    except Exception:
+        logger.warning("Failed to create tasks for manual booking %s", booking_id)
+        return []
 
 
 # ===========================================================================
@@ -232,7 +272,7 @@ async def cancel_manual_booking(
         db = client if client is not None else _get_db()
 
         # Check booking exists and is manual
-        booking_res = db.table("bookings").select("booking_id, status, property_id, source, check_in, check_out").eq("booking_id", booking_id).limit(1).execute()
+        booking_res = db.table("booking_state").select("booking_id, status, property_id, source, check_in, check_out, version").eq("booking_id", booking_id).limit(1).execute()
         booking_rows = booking_res.data or []
         if not booking_rows:
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Booking '{booking_id}' not found."})
@@ -242,9 +282,14 @@ async def cancel_manual_booking(
             return make_error_response(400, ErrorCode.VALIDATION_ERROR, extra={"detail": "Booking already canceled."})
 
         now = datetime.now(tz=timezone.utc).isoformat()
+        now_ms = int(time.time() * 1000)
 
         # Cancel the booking
-        db.table("bookings").update({"status": "canceled", "canceled_at": now, "canceled_by": tenant_id}).eq("booking_id", booking_id).execute()
+        db.table("booking_state").update({
+            "status": "canceled",
+            "version": (booking.get("version") or 0) + 1,
+            "updated_at_ms": now_ms,
+        }).eq("booking_id", booking_id).execute()
 
         # Cancel all related tasks (best-effort)
         tasks_canceled = 0
@@ -312,3 +357,96 @@ def _trigger_ota_date_unblock(db: Any, property_id: str, check_in: str, check_ou
     except Exception:
         logger.warning("OTA date unblocking failed for booking %s", booking_id)
         return "error"
+
+
+# ===========================================================================
+# Phase 710 — Edit Manual Booking (strategic pivot: manual as main path)
+# ===========================================================================
+
+_EDITABLE_FIELDS = frozenset({"check_in", "check_out", "guest_name", "notes", "number_of_guests"})
+
+
+@router.patch("/bookings/{booking_id}/manual", summary="Edit manual booking (Phase 710)")
+async def edit_manual_booking(
+    booking_id: str,
+    body: Dict[str, Any],
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Edit a manual booking's dates, guest name, or notes.
+
+    Only manual-source bookings can be edited (direct, self_use, owner_use, maintenance_block).
+    iCal and webhook-sourced bookings are managed by their respective sources.
+    """
+    try:
+        db = client if client is not None else _get_db()
+
+        # Fetch existing booking
+        booking_res = (db.table("booking_state")
+                       .select("booking_id, status, source, property_id, check_in, check_out, version")
+                       .eq("booking_id", booking_id)
+                       .limit(1)
+                       .execute())
+        booking_rows = booking_res.data or []
+        if not booking_rows:
+            return make_error_response(404, "NOT_FOUND",
+                                       extra={"detail": f"Booking '{booking_id}' not found."})
+
+        booking = booking_rows[0]
+
+        # Only allow editing of manual bookings
+        source = booking.get("source", "")
+        if source and source not in _VALID_SOURCES:
+            return make_error_response(400, ErrorCode.VALIDATION_ERROR,
+                                       extra={"detail": f"Cannot edit non-manual booking (source={source})."})
+
+        if booking.get("status") == "canceled":
+            return make_error_response(400, ErrorCode.VALIDATION_ERROR,
+                                       extra={"detail": "Cannot edit a canceled booking."})
+
+        # Build update payload from allowed fields only
+        updates: Dict[str, Any] = {}
+        for field in _EDITABLE_FIELDS:
+            if field in body:
+                val = body[field]
+                if isinstance(val, str):
+                    val = val.strip()
+                if val is not None and val != "":
+                    updates[field] = val
+
+        if not updates:
+            return make_error_response(400, ErrorCode.VALIDATION_ERROR,
+                                       extra={"detail": f"No valid fields to update. Editable: {sorted(_EDITABLE_FIELDS)}"})
+
+        # Date validation
+        new_check_in = updates.get("check_in", booking.get("check_in", ""))
+        new_check_out = updates.get("check_out", booking.get("check_out", ""))
+        if new_check_in and new_check_out and new_check_in >= new_check_out:
+            return make_error_response(400, ErrorCode.VALIDATION_ERROR,
+                                       extra={"detail": "check_in must be before check_out"})
+
+        now_ms = int(time.time() * 1000)
+        updates["updated_at_ms"] = now_ms
+        updates["version"] = (booking.get("version") or 0) + 1
+
+        db.table("booking_state").update(updates).eq("booking_id", booking_id).execute()
+
+        # Audit
+        try:
+            from services.audit_writer import write_audit_event
+            write_audit_event(db, tenant_id=tenant_id, entity_type="booking",
+                              entity_id=booking_id, action="manual_edited",
+                              details={"fields_updated": list(updates.keys())})
+        except Exception:
+            pass
+
+        return JSONResponse(status_code=200, content={
+            "booking_id": booking_id,
+            "updated_fields": list(updates.keys()),
+            "status": "ok",
+        })
+    except Exception as exc:
+        logger.exception("edit_manual_booking error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+

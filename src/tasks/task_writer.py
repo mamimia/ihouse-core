@@ -78,6 +78,7 @@ def _task_to_row(task: Task) -> dict:
         "description": task.description,
         "created_at": task.created_at,
         "updated_at": task.updated_at,
+        "assigned_to": task.assigned_to,
         "notes": task.notes if task.notes else [],
         "canceled_reason": task.canceled_reason,
     }
@@ -286,6 +287,7 @@ def reschedule_tasks_for_booking_amended(
                     due_date=row["due_date"],
                     title=row["title"],
                     description=row.get("description"),
+                    assigned_to=row.get("assigned_to"),
                     notes=row.get("notes") or [],
                     canceled_reason=row.get("canceled_reason"),
                     created_at=row["created_at"],
