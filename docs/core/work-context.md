@@ -1,20 +1,35 @@
 ## Current Active Phase
 
-Phase 800 — Single-Tenant Live Activation + Auth Identity Fix complete. **Checkpoint XXV-B.**
+Phase 812 — PMS Pipeline Proof complete. Auth Flow Redesign complete. **Checkpoint XXV-C.**
 
 ## Last Closed Phase
 
-Phase 800 — 8 phases (793–800): Docker build, staging config, first admin, smoke test, OTA webhook, admin walkthrough, notifications, invite flow + auth identity fix.
+Phase 812 — Phases 801–812: Property config + channel mapping, operational day simulation (10/10 E2E), PMS connector layer (Guesty MVP, 979 lines), PMS pipeline proof (48/48). Auth flow redesign (cross-cutting, 7 screens, 3 flows proven).
 
 ## Current Objective
 
-🏁 **Single-Tenant Live Activation COMPLETE.** Auth identity runtime-verified.
-- Docker staging: healthy on port 8001, Supabase connected
-- 3 Supabase Auth users: admin, manager, worker — all verified via POST /auth/login
-- OTA webhook → booking_state → financial_facts → tasks: full chain proven
-- Notification dispatch proven to provider boundary
-- Login UI: email+password only (old login at /dev-login)
-- Next: Phase 801 — Property Config & Channel Mapping
+🏗️ **Operational Core Wave** — Building product-facing operational surfaces.
+- Wave 1 Foundation (Phases 586–605): Schema complete — 21 tables, 37 columns, all RLS-enabled
+- Previous: PMS Pipeline Proof complete (Phase 812, Checkpoint XXV-C)
+- PMS / Channel Manager layer: **DEFERRED** (not discarded) behind Operational Core
+- Auth Flow Redesign: complete (7 screens, 3 flows proven, Google blocked externally)
+- Next: Operational Core Phase E — Mobile Cleaner Flow
+
+### Operational Core Sequence
+```
+Phase A — Property Detail (6-tab view)         ✅ DONE (gaps A-1 to A-4 tracked)
+Phase B — Staff Management (Manage Users)      ✅ DONE (gaps B-1 to B-5 tracked)
+Phase C — Dashboard Flight Cards (Admin + Ops) ✅ DONE
+──── Checkpoint: Operational Awareness ──── ✅ PASSED
+Phase D — Mobile Check-in Flow                 ✅ DONE (gaps D-1 to D-7 tracked)
+  ⚠ SCOPE RULE: Tenant-wide check-in list (today's arrivals for the tenant).
+    NOT assignment-aware. No "my properties" / "my check-ins" UX.
+    Worker-to-property assignment (B-1) layered on later.
+Phase E — Mobile Cleaner Flow                  ← NEXT (not started)
+Phase F — Problem Reporting                    ← exception handling from field
+──── Checkpoint: One Property, End-to-End ────
+Then: PMS resumes
+```
 
 ## Deferred Items — Open Items Registry
 
@@ -26,6 +41,39 @@ Phase 800 — 8 phases (793–800): Docker build, staging config, first admin, s
 | 617 | Wire Form → Checkin Router | 🟡 Deferred | Requires live booking flow | Real check-in data flowing | TBD — live check-in |
 | 618 | Wire QR → Checkin Response | 🟡 Deferred | Same blocker as 617 | Same as 617 | TBD — with 617 |
 | — | Supabase Storage Buckets | ✅ Resolved (Phase 764) | 4 buckets created | N/A | Resolved |
+| — | PMS / Channel Manager Layer | 🟡 Deferred | Operational Core gaps identified | After "One Property End-to-End" checkpoint | Post Operational Core wave |
+| A-1 | Reference Photos upload UI | 🟠 Phase A gap | Backend CRUD ready, frontend has list+group but no upload widget | Add file picker + POST to `/properties/{id}/reference-photos` | Phase A follow-up |
+| A-2 | Tasks tab — read-only | 🟠 Phase A gap | Tasks display works but no create/assign/status change from property detail | Wire task mutation actions to property context | Phase D or separate |
+| A-3 | Issues tab — placeholder | 🟠 Phase A gap | `problem_reports` table exists but no API endpoints or UI | Build Issues API + wire to tab | Phase F |
+| A-4 | Audit tab — data flow unproven | 🟠 Phase A gap | Table structure renders but property-linked audit entries may not exist | Verify audit `entity_id` filtering works with real data | Phase A follow-up |
+
+> **Phase A Status: Usable Foundation** — House Info (16 editable fields) and Overview (6 live cards) are fully deep. Photos, Tasks, Issues, and Audit tabs are structural but not spec-complete. See gaps A-1 through A-4 above.
+
+| B-1 | Worker-to-property assignment missing | 🟠 Phase B gap | Workers are global per tenant, no way to assign worker to specific properties | Build `worker_property_assignments` table + UI assignment surface | Phase D or separate |
+| B-2 | Role is label-only, no role-specific behavior | 🟠 Phase B gap | Cleaner/CheckIn/Maintenance get same UI and permissions — role doesn't drive behavior | Wire role to route guards + role-specific dashboards | Phase C/D |
+| B-3 | Communication channel config not surfaced | 🟠 Phase B gap | `worker_preferences` API exists but Manage Users doesn't show/edit channel per worker | Add channel selector (LINE/WhatsApp/SMS) to User Detail panel | Phase D/E |
+| B-4 | No avatar / profile photo | 🟠 Phase B gap | No visual identity for workers — harder to identify in operations | Add photo upload to User Detail + display in table | Follow-up |
+| B-5 | UUID-only users need display_name | 🟠 Phase B gap | 4 of 6 users show as raw UUIDs because display_name is empty | Populate via data migration or require on invite | Data cleanup task |
+
+> **Phase B Status: Usable User Management Foundation** — Role+permission CRUD works (invite, edit role, toggle permissions, deactivate). Not operational staff management yet: no property assignment, no channel config, no role-specific behavior, no avatar. See gaps B-1 through B-5 above.
+
+| D-1 | Passport capture — dev bypass active, no camera/storage | 🟠 Phase D gap | `DEV_PASSPORT_BYPASS=true` in page.tsx: number + photo both skippable. **Production rule**: number + photo BOTH required before Continue. Flip flag to `false` when camera capture + storage are wired. | Build passport_documents table + upload API + camera integration, then set `DEV_PASSPORT_BYPASS=false` | Phase D deepening |
+| D-2 | Deposit handling — no persistence/audit | 🟠 Phase D gap | Deposit method/amount selected in UI only — no record saved | Build deposit_payments table + POST endpoint + audit trail | Phase D deepening |
+| D-3 | Welcome info — no real messaging integration | 🟠 Phase D gap | LINE/Telegram/WhatsApp buttons show toast but send nothing | Wire to messaging provider APIs (LINE first) + message log | Phase D/E deepening |
+| D-4 | Navigate button — no-op | 🟠 Phase D gap | 📍 button does nothing — should open Maps with property GPS coordinates | Wire to `gps_latitude`/`gps_longitude` from property record → Google Maps | Quick fix |
+| D-5 | Property state not changed on complete | 🟠 Phase D gap | Complete Check-in only PATCHes booking status, not property state → Occupied | Add property state transition in complete handler | Phase D deepening |
+| D-6 | No audit event on check-in completion | 🟠 Phase D gap | Spec requires audit event written on completion — not implemented | POST audit event on Complete Check-in | Phase D deepening |
+| D-7 | Check-out flow not built | 🔴 Phase D gap | 4-step check-out (Inspection → Issues → Deposit Resolution → Complete) entirely missing | Build checkout flow as separate view or tab in /ops/checkin | Phase D or Phase F |
+
+> **Phase D Status: Usable Mobile Check-in UI Foundation** — 6-step flow renders with real booking data (50 bookings from tenant). Only the final status PATCH is wired to backend. Passport, deposit, welcome, navigation, property state change, and audit are all UI-only. Check-out flow not built. See gaps D-1 through D-7 above.
+
+## Permanent Workflow Principles (Locked)
+
+1. **Architecture-aware product build** — always check `.agent/architecture/` and `docs/vision/` before building
+2. **PMS deferred, not discarded** — all PMS code/docs/schemas remain; resumes after Operational Core
+3. **UI walkthrough checkpoints every 1–3 phases** — no invisible progress without surfaced product proof
+4. **Docs-first alignment before major wave changes** — full gap analysis required before starting new waves
+5. **Gap prevention checklist at every audit** — cross-reference architecture docs, Supabase tables, and frontend pages
 
 ## Key Invariants (Locked — Do Not Change)
 
@@ -242,4 +290,4 @@ Phase 800 — 8 phases (793–800): Docker build, staging config, first admin, s
 
 ## Tests
 
-**278 test items collected, 20 pre-existing E2E failures. TypeScript 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. 5 core frontend flows verified working. 3 Supabase Auth login flows runtime-verified (admin→admin, manager→manager, worker→worker). (Phase 800)**
+**278 test items + 48 PMS pipeline proof, 20 pre-existing E2E failures. TypeScript 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. 5 core frontend flows verified working. 3 Supabase Auth login flows runtime-verified (admin→admin, manager→manager, worker→worker). PMS pipeline proven (Phase 812). Auth flow redesign: 7 screens, 3 flows proven. (Phase 812)**

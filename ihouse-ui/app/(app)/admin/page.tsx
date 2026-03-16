@@ -138,40 +138,38 @@ function ProviderRow({ p, onPatch }: {
 
     return (
         <div style={{
-            display: 'grid',
-            gridTemplateColumns: '140px 44px 1fr 1fr 1fr 120px',
+            display: 'flex',
             alignItems: 'center',
-            gap: 'var(--space-4)',
+            gap: 'var(--space-5)',
             padding: 'var(--space-3) var(--space-4)',
             background: 'var(--color-surface-2)',
             borderRadius: 'var(--radius-md)',
             marginBottom: 'var(--space-2)',
+            flexWrap: 'wrap',
         }}>
-            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
+            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', minWidth: 110 }}>
                 {p.provider}
             </span>
             <Chip label={`T${p.tier}`} color={tierColors[p.tier] || 'var(--color-text-dim)'} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ToggleBtn
                     active={p.supports_api_write}
                     label="Toggle API write"
                     onToggle={() => onPatch(p.provider, { supports_api_write: !p.supports_api_write })}
                 />
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>API write</span>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>API</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ToggleBtn
                     active={p.supports_ical_push}
                     label="Toggle iCal push"
                     onToggle={() => onPatch(p.provider, { supports_ical_push: !p.supports_ical_push })}
                 />
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>iCal push</span>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>iCal</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)' }}>
-                    {p.rate_limit_per_min} req/min
-                </span>
-            </div>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginLeft: 'auto' }}>
+                {p.rate_limit_per_min}/min
+            </span>
             <Chip
                 label={p.auth_method.toUpperCase()}
                 color="var(--color-text-faint)"
@@ -336,22 +334,6 @@ export default function AdminPage() {
                     </p>
                 ) : (
                     <>
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: '140px 44px 1fr 1fr 1fr 120px',
-                            gap: 'var(--space-4)',
-                            padding: '0 var(--space-4)',
-                            marginBottom: 'var(--space-2)',
-                        }}>
-                            {['Provider', 'Tier', 'API write', 'iCal push', 'Rate', 'Auth'].map(h => (
-                                <span key={h} style={{
-                                    fontSize: 'var(--text-xs)',
-                                    color: 'var(--color-text-faint)',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.06em',
-                                }}>{h}</span>
-                            ))}
-                        </div>
                         {providers.map(p => (
                             <ProviderRow key={p.provider} p={p} onPatch={handlePatchProvider} />
                         ))}

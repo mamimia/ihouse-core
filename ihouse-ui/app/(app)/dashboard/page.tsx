@@ -227,7 +227,140 @@ export default function DashboardPage() {
                 </p>
             )}
 
-            {/* Grid layout */}
+            {/* ══════════ Flight Cards — Row 1 (4 cards) ══════════ */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 'var(--space-4)',
+                marginBottom: 'var(--space-6)',
+            }}>
+                {/* Card 1: Check-ins Today */}
+                {(() => {
+                    const checkins = data.today?.arrivals_today ?? 0;
+                    return (
+                        <div style={{
+                            background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+                            display: 'flex', flexDirection: 'column', gap: 'var(--space-2)',
+                        }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                                Check-ins Today
+                            </div>
+                            <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: checkins > 0 ? 'var(--color-accent)' : 'var(--color-text)', letterSpacing: '-0.03em' }}>
+                                {checkins}
+                            </div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                                Next: {data.today?.date || '—'}
+                            </div>
+                            <button onClick={() => window.location.href = '/bookings'} style={{
+                                marginTop: 'auto', padding: '6px 0', background: 'none', border: 'none',
+                                color: 'var(--color-primary)', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                cursor: 'pointer', textAlign: 'left',
+                            }}>
+                                Open Today's Check-ins →
+                            </button>
+                        </div>
+                    );
+                })()}
+
+                {/* Card 2: Villas At Risk */}
+                {(() => {
+                    const atRisk = data.portfolio.filter(p => {
+                        const pd = p as any;
+                        return pd.status === 'AtRisk' || pd.status === 'atrisk' || (pd.tasks?.pending_tasks > 0 && pd.sync_health?.stale);
+                    }).length;
+                    const isRed = atRisk > 0;
+                    return (
+                        <div style={{
+                            background: 'var(--color-surface)',
+                            border: `1px solid ${isRed ? 'rgba(248,81,73,0.5)' : 'var(--color-border)'}`,
+                            borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+                            display: 'flex', flexDirection: 'column', gap: 'var(--space-2)',
+                            ...(isRed ? { boxShadow: '0 0 12px rgba(248,81,73,0.15)' } : {}),
+                        }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: isRed ? '#f85149' : 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                                Villas At Risk
+                            </div>
+                            <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: isRed ? '#f85149' : 'var(--color-ok)', letterSpacing: '-0.03em' }}>
+                                {atRisk}
+                            </div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                                {isRed ? 'Action required' : 'All clear'}
+                            </div>
+                            <button onClick={() => window.location.href = '/admin/properties'} style={{
+                                marginTop: 'auto', padding: '6px 0', background: 'none', border: 'none',
+                                color: isRed ? '#f85149' : 'var(--color-primary)', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                cursor: 'pointer', textAlign: 'left',
+                            }}>
+                                Open Risk Queue →
+                            </button>
+                        </div>
+                    );
+                })()}
+
+                {/* Card 3: Occupancy % */}
+                {(() => {
+                    const total = data.portfolio.length;
+                    const occupied = data.portfolio.filter(p => (p.occupancy?.active_bookings ?? 0) > 0).length;
+                    const pct = total > 0 ? Math.round((occupied / total) * 100) : 0;
+                    return (
+                        <div style={{
+                            background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+                            display: 'flex', flexDirection: 'column', gap: 'var(--space-2)',
+                        }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                                Occupancy
+                            </div>
+                            <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: 'var(--color-primary)', letterSpacing: '-0.03em' }}>
+                                {pct}%
+                            </div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                                {occupied} of {total} properties occupied
+                            </div>
+                            <button onClick={() => window.location.href = '/admin/properties'} style={{
+                                marginTop: 'auto', padding: '6px 0', background: 'none', border: 'none',
+                                color: 'var(--color-primary)', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                cursor: 'pointer', textAlign: 'left',
+                            }}>
+                                Open Occupancy View →
+                            </button>
+                        </div>
+                    );
+                })()}
+
+                {/* Card 4: Revenue This Month */}
+                {(() => {
+                    const totalRevenue = data.portfolio.reduce((sum, p) => sum + Number(p.revenue?.gross_total || 0), 0);
+                    const currency = data.portfolio[0]?.revenue?.currency || 'THB';
+                    return (
+                        <div style={{
+                            background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+                            display: 'flex', flexDirection: 'column', gap: 'var(--space-2)',
+                        }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                                Revenue This Month
+                            </div>
+                            <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, color: 'var(--color-ok)', letterSpacing: '-0.03em' }}>
+                                {totalRevenue > 0 ? `${currency} ${totalRevenue.toLocaleString()}` : '—'}
+                            </div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                                Across {data.portfolio.length} properties
+                            </div>
+                            <button onClick={() => window.location.href = '/financial'} style={{
+                                marginTop: 'auto', padding: '6px 0', background: 'none', border: 'none',
+                                color: 'var(--color-primary)', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                cursor: 'pointer', textAlign: 'left',
+                            }}>
+                                Open Revenue →
+                            </button>
+                        </div>
+                    );
+                })()}
+            </div>
+
+            {/* ══════════ Rows 2-4: Existing sections ══════════ */}
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',

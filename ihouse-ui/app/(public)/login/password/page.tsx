@@ -1,64 +1,65 @@
 'use client';
 
 /**
- * Login Screen 1 — Email First
- * Route: /login
+ * Login Screen 2 — Password Step
+ * Route: /login/password
  *
- * Clean, minimal email-first auth screen.
- * Email field → Continue → Screen 2 (password)
- * Google sign-in option
- * Links: Host login, Register
+ * Receives email from Screen 1 via query param.
+ * Shows: email (with Change link), password field, Remember me, Sign In, Google, links.
  */
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import AuthCard from '../../../components/auth/AuthCard';
-import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
-import AuthDivider from '../../../components/auth/AuthDivider';
-import { supabase, isSupabaseConfigured } from '../../../lib/supabaseClient';
-import { getRoleRoute } from '../../../lib/roleRoute';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import AuthCard from '../../../../components/auth/AuthCard';
+import GoogleSignInButton from '../../../../components/auth/GoogleSignInButton';
+import AuthDivider from '../../../../components/auth/AuthDivider';
+import { supabase } from '@/lib/supabaseClient';
+import { api, setToken } from '../../../../lib/api';
+import { getRoleRoute } from '../../../../lib/roleRoute';
 
-export default function LoginPage() {
-    const router = useRouter();
-    const [email, setEmail] = useState('');
-    const [remember, setRemember] = useState(false);
+function PasswordForm() {
+    const searchParams = useSearchParams();
+    const emailParam = searchParams.get('email') || '';
+    const rememberParam = searchParams.get('remember') === '1';
+
+    const [password, setPassword] = useState('');
+    const [remember, setRemember] = useState(rememberParam);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [mounted, setMounted] = useState(false);
 
-    useEffect(() => {
-        setMounted(true);
-        // If already logged in, redirect to role-appropriate page
-        if (typeof window !== 'undefined' && localStorage.getItem('ihouse_token')) {
-            window.location.href = getRoleRoute(localStorage.getItem('ihouse_token') ?? undefined);
-        }
-        // Restore remembered email
-        const stored = localStorage.getItem('domaniqo_remember_email');
-        if (stored) {
-            setEmail(stored);
-            setRemember(true);
-        }
-    }, []);
-
-    const handleContinue = (e: React.FormEvent) => {
+    const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!email.trim()) {
-            setError('Please enter your email address');
+        if (!password) {
+            setError('Please enter your password');
             return;
         }
-        // Basic email validation
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            setError('Please enter a valid email address');
-            return;
+        setError(null);
+        setLoading(true);
+        try {
+            const resp = await api.loginWithEmail(emailParam, password);
+            setToken(resp.token);
+            // Set cookie with appropriate maxAge
+            const maxAge = remember ? 30 * 24 * 3600 : resp.expires_in; // 30 days if remember, else default
+            document.cookie = `ihouse_token=${resp.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+            // Persist email if remember
+            if (remember) {
+                localStorage.setItem('domaniqo_remember_email', emailParam);
+            }
+            window.location.href = getRoleRoute(resp.token);
+        } catch (err: unknown) {
+            if (err instanceof Error && err.message.includes('401')) {
+                setError('Invalid email or password.');
+            } else if (err instanceof Error && err.message.includes('403')) {
+                setError('Your account is not assigned to any organization. Contact your administrator.');
+            } else if (err instanceof Error && err.message.includes('503')) {
+                setError('Authentication not configured. Contact your administrator.');
+            } else {
+                setError(err instanceof Error ? err.message : 'Login failed');
+            }
+        } finally {
+            setLoading(false);
         }
-        // Persist remember choice
-        if (remember) {
-            localStorage.setItem('domaniqo_remember_email', email.trim());
-        } else {
-            localStorage.removeItem('domaniqo_remember_email');
-        }
-        // Pass email to password screen via query param
-        router.push(`/login/password?email=${encodeURIComponent(email.trim())}${remember ? '&remember=1' : ''}`);
     };
 
     const handleGoogleSignIn = async () => {
@@ -77,14 +78,11 @@ export default function LoginPage() {
                 setError('Google sign-in failed. Please try again.');
                 setLoading(false);
             }
-            // Supabase will redirect to Google → then to /auth/callback
         } catch {
             setError('Google sign-in failed. Please try again.');
             setLoading(false);
         }
     };
-
-    if (!mounted) return null;
 
     const inputStyle: React.CSSProperties = {
         width: '100%',
@@ -100,9 +98,43 @@ export default function LoginPage() {
     };
 
     return (
-        <AuthCard title="Welcome" subtitle="Please enter your details to sign in">
-            <form onSubmit={handleContinue} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
-                {/* Email */}
+        <AuthCard title="Welcome" subtitle="Enter your password to continue">
+            <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
+                {/* Email display + Change link */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 14px',
+                    background: 'rgba(234,229,222,0.03)',
+                    border: '1px solid rgba(234,229,222,0.06)',
+                    borderRadius: 'var(--radius-md, 12px)',
+                }}>
+                    <span style={{
+                        fontSize: 'var(--text-sm, 14px)',
+                        color: 'var(--color-stone, #EAE5DE)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}>
+                        {emailParam}
+                    </span>
+                    <a
+                        href="/login"
+                        style={{
+                            fontSize: 'var(--text-xs, 12px)',
+                            color: 'var(--color-copper, #B56E45)',
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                            flexShrink: 0,
+                            marginLeft: 12,
+                        }}
+                    >
+                        Change
+                    </a>
+                </div>
+
+                {/* Password */}
                 <div>
                     <label style={{
                         display: 'block',
@@ -113,16 +145,16 @@ export default function LoginPage() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.06em',
                     }}>
-                        Email
+                        Password
                     </label>
                     <input
-                        id="input-email"
+                        id="input-password"
                         className="auth-input"
-                        type="email"
-                        value={email}
-                        onChange={e => { setEmail(e.target.value); setError(null); }}
-                        placeholder="you@example.com"
-                        autoComplete="email"
+                        type="password"
+                        value={password}
+                        onChange={e => { setPassword(e.target.value); setError(null); }}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
                         autoFocus
                         disabled={loading}
                         style={inputStyle}
@@ -161,12 +193,12 @@ export default function LoginPage() {
                     </div>
                 )}
 
-                {/* Continue */}
+                {/* Sign In */}
                 <button
-                    id="btn-continue"
+                    id="btn-signin"
                     type="submit"
                     className="auth-btn"
-                    disabled={loading || !email.trim()}
+                    disabled={loading || !password}
                     style={{
                         padding: '14px',
                         background: 'var(--color-moss, #334036)',
@@ -177,14 +209,14 @@ export default function LoginPage() {
                         fontWeight: 600,
                         fontFamily: 'var(--font-brand, "Inter", sans-serif)',
                         letterSpacing: '-0.01em',
-                        cursor: loading || !email.trim() ? 'not-allowed' : 'pointer',
-                        opacity: loading || !email.trim() ? 0.4 : 1,
+                        cursor: loading || !password ? 'not-allowed' : 'pointer',
+                        opacity: loading || !password ? 0.4 : 1,
                         transition: 'all 0.2s',
                         marginTop: 'var(--space-1, 4px)',
                         minHeight: 48,
                     }}
                 >
-                    Continue
+                    {loading ? 'Signing in…' : 'Sign In'}
                 </button>
             </form>
 
@@ -203,6 +235,13 @@ export default function LoginPage() {
                 gap: 'var(--space-3, 12px)',
                 textAlign: 'center',
             }}>
+                <a href="/login/forgot" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
+                    Forgot password?
+                </a>
+                <a href="/login/help" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
+                    Need help?
+                </a>
+                <div style={{ height: 1, background: 'rgba(234,229,222,0.04)', margin: '4px 0' }} />
                 <a href="/login?role=host" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
                     Domaniqo for Host users? <span style={{ textDecoration: 'underline' }}>Log in here</span>
                 </a>
@@ -211,5 +250,13 @@ export default function LoginPage() {
                 </a>
             </div>
         </AuthCard>
+    );
+}
+
+export default function PasswordPage() {
+    return (
+        <Suspense fallback={null}>
+            <PasswordForm />
+        </Suspense>
     );
 }

@@ -4912,3 +4912,87 @@ Registered in `src/main.py`. Created `tests/test_property_config_contract.py` (1
 
 Tests: 15/15 new pass, 46/46 existing channel-map pass. 0 regressions.
 
+
+## Auth Flow Redesign (Operational Core — Cross-Cutting) — 2026-03-16
+
+Redesigned Domaniqo auth/register UI flow with smart behavior and precision audit.
+
+### Changes
+- Middleware: `/register`, `/auth` added to PUBLIC_PREFIXES
+- AuthCard: LTR + left-aligned form layout enforced
+- New CountrySelect component + countryData.ts (200+ countries, timezone auto-detect)
+- Register Step 3: country → phone prefix → currency auto-fill
+- `/login/reset` page: password reset completion with token handling
+- Forgot password redirectTo → `/login/reset`
+- Frontend `.env.local`: added NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY
+- Host users link: `/login?role=host` (marker only)
+
+### Proven
+- Email/password login e2e, registration signUp creates real Supabase user, forgot password API call, smart country auto-detect
+
+### Blocked
+- Google sign-in (external OAuth setup), forgot password full loop (needs inbox), Remember Me (JWT 24h kills session)
+
+
+## Phase 802 — Operational Day Simulation — 2026-03-15
+
+- `tests/day_simulation_e2e.py`: 10-step E2E against staging Docker
+- Proves: webhook→booking_state→task_automator→sync_trigger→transitions→cancel
+- Tasks auto-created: CHECKIN_PREP + CLEANING from BOOKING_CREATED
+- Task lifecycle: PENDING→ACKNOWLEDGED→IN_PROGRESS→COMPLETED
+- Sync trigger: 3 channels (agoda+airbnb+bookingcom) from P801 mappings
+- Cancellation: booking status→CANCELED, tasks canceled
+- Result: 10/10 pass
+
+## Phases 803–811 — PMS Connector Layer (Foundation + Guesty MVP) — 2026-03-15
+
+- Phase 803: `pms_connections` table + guesty/hostaway in provider_capability_registry
+- Phase 804: PMSAdapter ABC + data classes (PMSProperty, PMSBooking, PMSAuthResult, PMSSyncResult)
+- Phases 805-807: GuestyAdapter — OAuth2 auth, property discovery (pagination), booking fetch (status mapping, financials)
+- Phases 808-809: pms_connect_router.py — 5 endpoints (connect, discover, map, sync, list)
+- Phase 810: PMS normalizer — PMSBooking → booking_state + event_log (new/update/cancel detection)
+- Phase 811: Full ingest pipeline wired end-to-end
+- New files: `src/adapters/pms/base.py`, `guesty.py`, `normalizer.py`, `pms_connect_router.py`
+- Result: 979 lines added, pipeline wired
+
+## Phase 812 — PMS Pipeline Proof — 2026-03-16
+
+- Fix: write event_log BEFORE booking_state (last_event_id FK constraint)
+- Fix: sync_mode='api_first' (property_channel_map constraint)
+- 7 proofs: OAuth2 → property discovery → mapping → booking fetch → normalization → task automator → re-sync
+- Modified: `normalizer.py`, `pms_connect_router.py`
+- Result: 48/48 tests pass. Pipeline-proven. Live-PMS awaits Guesty credentials.
+
+
+## Operational Core Phase A — Property Detail (6-Tab View) — 2026-03-15
+
+- Built property detail: 6 tabs (Overview, House Info, Photos, Tasks, Issues, Audit)
+- Overview: 6 live data cards. House Info: 16 editable fields from Supabase `properties`.
+- Photos/Tasks/Issues/Audit: structural only, not spec-complete (gaps A-1 to A-4)
+- Modified: `admin/properties/[propertyId]/page.tsx`
+
+## Operational Core Phase B — Staff Management — 2026-03-15
+
+- Role+permission CRUD: invite, edit role, toggle permissions, deactivate
+- Creates real Supabase Auth users + tenant_permissions rows
+- Gaps: no property assignment (B-1), role label-only (B-2), no channel config UI (B-3), no avatar (B-4), UUID display names (B-5)
+- Modified: `admin/staff/page.tsx`
+
+## Operational Core Phase C — Dashboard Flight Cards — 2026-03-15
+
+- Admin + Ops dashboards with live operational flight cards
+- Checkpoint: Operational Awareness (A+B+C = usable foundations) ✅
+- Modified: `dashboard/page.tsx`, `admin/page.tsx`
+
+## Operational Core Phase D — Mobile Check-in Flow — 2026-03-15
+
+- 6-step flow: Arrival Confirmation → Property Status → Passport → Deposit → Welcome → Complete
+- 50 real bookings from tenant API. Summary cards (check-ins / completed).
+- Only step 6 (Complete) wired to backend PATCH. All others UI-only.
+- DEV_PASSPORT_BYPASS=true. No camera, deposit persistence, or messaging.
+- Navigate button: no-op. Property state: not changed. Audit event: not written.
+- Check-out flow: not built.
+- Scope rule: tenant-wide, NOT assignment-aware.
+- Gaps D-1 through D-7 tracked in work-context.md
+- Modified: `ops/checkin/page.tsx`, `src/api/booking_checkin_router.py`
+

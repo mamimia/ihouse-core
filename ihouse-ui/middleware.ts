@@ -22,6 +22,8 @@ import { NextRequest, NextResponse } from 'next/server';
 // Routes that do NOT require auth — prefix-matched
 const PUBLIC_PREFIXES = [
     '/login',
+    '/register',
+    '/auth',
     '/favicon.ico',
     '/about',
     '/channels',

@@ -1,7 +1,31 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { api } from '@/lib/api';
+import { useEffect, useState } from 'react';
+import { getToken } from '@/lib/api';
+
+/**
+ * Decode the JWT payload from localStorage to extract profile info.
+ * The JWT contains: sub (tenant_id), role, email, exp, etc.
+ */
+function decodeJwtProfile(): { tenant_id: string; role: string; email?: string } | null {
+    try {
+        const token = getToken();
+        if (!token) return null;
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        // Base64url decode the payload (part[1])
+        const payload = JSON.parse(
+            atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+        );
+        return {
+            tenant_id: payload.sub || payload.tenant_id || '—',
+            role: payload.role || '—',
+            email: payload.email || payload.user_email || undefined,
+        };
+    } catch {
+        return null;
+    }
+}
 
 export default function SettingsPage() {
     const [profile, setProfile] = useState<{ tenant_id: string; role: string; email?: string } | null>(null);
@@ -14,13 +38,9 @@ export default function SettingsPage() {
     const showNotice = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(null), 3000); };
 
     useEffect(() => {
-        (async () => {
-            try {
-                const res = await api.getSessionInfo();
-                setProfile(res as any);
-            } catch { setProfile({ tenant_id: '—', role: '—' }); }
-            setLoading(false);
-        })();
+        const decoded = decodeJwtProfile();
+        setProfile(decoded || { tenant_id: '—', role: '—' });
+        setLoading(false);
     }, []);
 
     const handlePasswordChange = async () => {

@@ -101,29 +101,60 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 
 ---
 
-## Active Direction — Phase 445+
+## Active Direction — Operational Core Wave
 
-Phases 355–374: Cancel/Amend adapter repair, Layer C alignment, Supabase schema sync, production readiness hardening, frontend error boundaries, rate limiter hardening, Platform Checkpoints XVIII-XIX.
+> [!IMPORTANT]
+> As of 2026-03-16, the system focus has shifted from deployment/PMS expansion to **product-facing operational surfaces**.
+> A full architecture-aware audit revealed that the backend is strong but critical product layers are missing.
 
-Phases 375–394: 20-phase frontend platform consolidation — route group split, responsive adaptation, mobile role surfaces, access-link system, shared component extraction.
+### Wave 1 Foundation (Phases 586-605) — ✅ COMPLETE
+21 new tables, 37 new columns across 3 existing tables. All RLS-enabled with tenant isolation.
 
-Phases 395–404: Hard Truth Audit recovery — Property Onboarding, Admin Dashboard, JWT enforcement, Checkin/Checkout backend, Access Token System, Guest/Invite/Onboard flows, E2E tests.
+### Operational Core Sequence (Next)
 
-Phases 405–414: Foundation Checkpoint (405–408), Product Connection (409–413), Closing Audit (414).
+| Phase | Surface | Architecture Source | Status |
+|-------|---------|-------------------|--------|
+| A | Property Detail (6-tab view) | `.agent/architecture/property-detail.md` | **NEXT** |
+| B | Staff Management (Manage Users) | `.agent/architecture/manage-users.md` | Pending A |
+| C | Dashboard Flight Cards (Admin + Ops) | `.agent/architecture/dashboard-flight-mode.md` | Pending B |
+| — | **Checkpoint: Operational Awareness** | — | — |
+| D | Mobile Check-in Flow (6-step) | `.agent/architecture/mobile-checkin.md` | Pending A-C |
+| E | Mobile Cleaner Flow (checklist+photos) | `.agent/architecture/mobile-cleaner.md` | Pending A-C |
+| F | Problem Reporting | `.agent/architecture/mobile-maintenance.md` | Pending A-C |
+| — | **Checkpoint: One Property, End-to-End** | — | — |
 
-Phases 415–424: Production readiness block — dead code cleanup, schema reference, env validation, error handling tests, E2E smoke tests, staging guide.
+### PMS / Channel Manager — DEFERRED (NOT DISCARDED)
 
-Phases 425–444: Production readiness verification — 4 blocks: document truth + test green (425-429), production infrastructure (430-434), real integration + monitoring (435-439), hardening + closing audit (440-444). 7,200 passed, zero regressions. Supabase live with 5,335 events, 1,516 bookings, 14 tenants.
+The PMS layer (Guesty adapter, Hostaway adapter, PMS Connect UI, channel mapping) is **deferred**, not removed.
+- All PMS code, schemas, and documentation remain in the codebase
+- PMS resumes after the "One Property, End-to-End" checkpoint
+- No PMS code or docs should be deleted
 
-### Next Direction — Phase 445+
+### Previous Completed Directions
 
-Focus: **First real deployment and live operations** — Docker build + deploy to staging, Supabase Auth first user, first real notification dispatch, real OTA provider webhook, production scaling, multi-property onboarding.
+Phases 445–504: Docker staging, Supabase Auth, first live operations.
+Phases 505–584: Brand identity, payment and subscription system, onboarding and access link flows, admin dashboard, frontend infrastructure.
+Phases 585–605: Wave 1 Foundation schema extensions (21 tables, full operational data model).
+Phases 730–800: Pre-801 auth identity fix, PII document security, guest token system, webhook infrastructure, channel map system.
 
 ---
 
 ## Where We're Headed
 
-**Short-term (Phase 445+):** First Docker build + staging deploy. First Supabase Auth user. First real notification dispatch (LINE or email). First real OTA webhook from a live provider. Multi-property scaling.
+**Immediate (Operational Core A-C):** Build the three missing product-facing surfaces that block operational use: Property Detail (6-tab), Staff Management, Dashboard Flight Cards. Target: "Operational Awareness" — admin/manager can see properties, staff, and today's operations.
 
-**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. The system is verified production-ready from code and architecture perspective. Focus shifts to **real deployment and real operations**.
+**Short-term (Operational Core D-F):** Build the three field operations: Check-in (6-step), Cleaner (checklist+photos), Problem Reports. Target: "One Property, End-to-End" — a single property can be operated from booking to checkout through the UI.
+
+**After Operational Core:** PMS / Channel Manager layer resumes. Live PMS credentials integration. Production multi-property scaling.
+
+**Architecture:** The canonical core remains unchanged — `apply_envelope` is still the only write authority. All new surfaces consume projections and write through existing API patterns.
+
+### Workflow Rules (Permanently Locked)
+
+1. **UI proof every 1–3 phases** — no invisible progress
+2. **Architecture-first** — check `.agent/architecture/` before building
+3. **Docs-first wave changes** — full gap analysis before starting new waves
+4. **Gap prevention checklist** at every Phase 20 audit
+5. **PMS deferred, not discarded** — resumes after Operational Core
+
 

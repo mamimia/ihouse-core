@@ -158,20 +158,22 @@ async def checkin_booking(
                 "noop": True,
             })
 
-        # Only 'active' bookings can be checked in
-        if current_status != "active":
+        # Only 'active' or 'observed' bookings can be checked in
+        # 'observed' = iCal-imported bookings that are valid arrivals
+        if current_status not in ("active", "observed"):
             return err(
                 "INVALID_STATE",
-                f"Cannot check in booking with status '{current_status}'. Must be 'active'.",
+                f"Cannot check in booking with status '{current_status}'. Must be 'active' or 'observed'.",
                 status=409,
                 booking_id=booking_id,
                 current_status=current_status,
             )
 
         # Update booking_state
+        now_ms = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
         db.table("booking_state").update({
             "status": "checked_in",
-            "updated_at": now,
+            "updated_at_ms": now_ms,
         }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
         # Audit events (best-effort)
@@ -260,9 +262,10 @@ async def checkout_booking(
             )
 
         # Update booking_state
+        now_ms = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
         db.table("booking_state").update({
             "status": "checked_out",
-            "updated_at": now,
+            "updated_at_ms": now_ms,
         }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
         # Create CLEANING task (best-effort)

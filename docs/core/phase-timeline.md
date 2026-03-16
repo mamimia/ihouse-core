@@ -7802,3 +7802,146 @@ Tests: 15 new pass. 46 existing channel-map tests pass. 0 regressions.
 
 ---
 
+
+---
+
+### Auth Flow Redesign (Operational Core — Cross-Cutting) — 2026-03-16
+
+Redesigned Domaniqo auth/register flow: email-first login, multi-step registration, smart country/phone/currency auto-fill, forgot password recovery, LTR enforcement.
+
+| Component | Implementation |
+|-----------|---------------|
+| Middleware Fix | `/register`, `/auth` added to PUBLIC_PREFIXES |
+| AuthCard LTR Lock | Explicit LTR + left-aligned forms for English auth |
+| Smart Country Select | `CountrySelect.tsx` — 200+ countries, timezone auto-detect |
+| Register Step 3 | Country → phone prefix → currency auto-fill |
+| Password Reset Page | `/login/reset` — token from URL hash, expired-link detection |
+| Forgot Password | `resetPasswordForEmail()` + redirectTo `/login/reset` |
+| Frontend Supabase Config | Added `NEXT_PUBLIC_SUPABASE_URL` + anon key to `.env.local` |
+
+**New Files:** `CountrySelect.tsx`, `countryData.ts`, `supabaseClient.ts`, `login/reset/page.tsx`, `login/forgot/page.tsx`, `login/password/page.tsx`, `register/email/page.tsx`, `register/profile/page.tsx`, `auth/callback/page.tsx`, `auth-google-setup.md`
+
+**Proven:** email/password login e2e, registration signUp, forgot password send, smart country auto-detect
+**Blocked:** Google sign-in (needs OAuth credentials), forgot password full loop (needs inbox), Remember Me (email only, JWT 24h)
+
+---
+
+
+### Phase 802 — Operational Day Simulation — 2026-03-15
+
+10-step E2E simulation against staging Docker: webhook → booking_state → task_automator → sync_trigger → transitions → cancellation. All 10 steps pass.
+
+| Step | Proof |
+|------|-------|
+| Webhook ingestion | BOOKING_CREATED → booking_state row |
+| Task auto-creation | CHECKIN_PREP + CLEANING auto-generated |
+| Task lifecycle | PENDING → ACKNOWLEDGED → IN_PROGRESS → COMPLETED |
+| Sync trigger | 3 channels (agoda + airbnb + bookingcom) triggered |
+| Cancellation | Status → CANCELED, tasks canceled |
+| Property config | 3 properties survive simulation intact |
+
+**New Files:** `tests/day_simulation_e2e.py`
+
+---
+
+### Phases 803–811 — PMS Connector Layer (Foundation + Guesty MVP) — 2026-03-15
+
+PMS connector layer: abstract adapter base, Guesty OAuth2 implementation, property discovery, booking fetch + normalization pipeline, 5-endpoint REST API.
+
+| Phase | Component |
+|-------|-----------|
+| 803 | `pms_connections` table + guesty/hostaway in provider_capability_registry |
+| 804 | PMSAdapter ABC + data classes (PMSProperty, PMSBooking, PMSAuthResult, PMSSyncResult) |
+| 805–807 | GuestyAdapter: OAuth2 auth, property discovery (pagination), booking fetch (status mapping, financials) |
+| 808–809 | pms_connect_router.py — 5 endpoints (connect, discover, map, sync, list) |
+| 810 | PMS normalizer — PMSBooking → booking_state + event_log |
+| 811 | Full ingest pipeline wired end-to-end |
+
+**New Files:** `src/adapters/pms/base.py`, `src/adapters/pms/guesty.py`, `src/adapters/pms/normalizer.py`, `src/api/pms_connect_router.py`
+
+---
+
+### Phase 812 — PMS Pipeline Proof — 2026-03-16
+
+Mock Guesty server with 7 proofs: OAuth2 auth, property discovery (3), mapping, booking fetch (5), normalization (5 booking_state + 5 event_log), task automator (PMS tasks, iCal suppressed), re-sync (5 updates, 0 new, no duplicates). FK ordering fix: event_log before booking_state. 48/48 tests pass.
+
+**Modified:** `src/adapters/pms/normalizer.py`, `src/api/pms_connect_router.py`
+
+---
+
+
+### Operational Core Phase A — Property Detail (6-Tab View) — 2026-03-15
+
+Built the property detail page with 6 tabs. Core data foundation for all operational work.
+
+| Tab | Status |
+|-----|--------|
+| Overview | ✅ Deep — 6 live cards (occupancy, revenue, tasks, active bookings, channel count, property status) |
+| House Info | ✅ Deep — 16 editable fields, read/write from Supabase `properties` table |
+| Photos | ⚠️ Structural — list + group rendering, no upload widget (gap A-1) |
+| Tasks | ⚠️ Structural — read-only display, no create/assign/status from property context (gap A-2) |
+| Issues | ⚠️ Placeholder — `problem_reports` table exists, no API or UI (gap A-3) |
+| Audit | ⚠️ Structural — table renders, entity_id filtering unproven (gap A-4) |
+
+**Modified Files:** `ihouse-ui/app/(app)/admin/properties/[propertyId]/page.tsx`
+**Status:** Usable Foundation. Gaps A-1 through A-4 deferred.
+
+---
+
+### Operational Core Phase B — Staff Management (Manage Users) — 2026-03-15
+
+Staff management with role+permission CRUD: invite, edit role, toggle permissions, deactivate.
+
+| Feature | Status |
+|---------|--------|
+| Invite user | ✅ Working (creates Supabase Auth user + tenant_permissions) |
+| Edit role | ✅ Working |
+| Toggle permissions | ✅ Working |
+| Deactivate user | ✅ Working |
+| Worker-to-property assignment | ❌ Missing (gap B-1) |
+| Role-specific behavior | ❌ Label-only (gap B-2) |
+| Channel config in UI | ❌ Not surfaced (gap B-3) |
+| Avatar/profile photo | ❌ Not implemented (gap B-4) |
+| Display names | ⚠️ 4/6 users show UUID only (gap B-5) |
+
+**Modified Files:** `ihouse-ui/app/(app)/admin/staff/page.tsx`
+**Status:** Usable User Management Foundation. Gaps B-1 through B-5 deferred.
+
+---
+
+### Operational Core Phase C — Dashboard Flight Cards (Admin + Ops) — 2026-03-15
+
+Admin dashboard with operational visibility flight cards. Admin + Ops views with live data.
+
+**Modified Files:** `ihouse-ui/app/(app)/dashboard/page.tsx`, `ihouse-ui/app/(app)/admin/page.tsx`
+**Status:** ✅ Complete (Operational Awareness Checkpoint: A+B+C = usable foundations)
+
+---
+
+### Operational Core Phase D — Mobile Check-in Flow — 2026-03-15
+
+6-step mobile check-in flow with real booking data. Tenant-wide (not assignment-aware).
+
+| Step | Status |
+|------|--------|
+| 1. Arrival Confirmation | ✅ UI complete |
+| 2. Property Status (Ready/Not Ready) | ✅ UI complete |
+| 3. Passport Capture | ⚠️ DEV_PASSPORT_BYPASS=true, no camera/storage (gap D-1) |
+| 4. Deposit Handling | ⚠️ UI-only, no persistence (gap D-2) |
+| 5. Welcome Info | ⚠️ Buttons show toast, nothing sent (gap D-3) |
+| 6. Complete Check-in → InStay | ✅ PATCH status to backend |
+
+Additional:
+- 50 real bookings loaded from tenant API
+- Summary cards: Check-ins count, Completed count
+- Navigate button: no-op (gap D-4)
+- Property state not changed on complete (gap D-5)
+- No audit event on completion (gap D-6)
+- Check-out flow not built (gap D-7)
+
+**Modified Files:** `ihouse-ui/app/(app)/ops/checkin/page.tsx`, `src/api/booking_checkin_router.py`
+**Status:** Usable Mobile Check-in UI Foundation. 7 gaps (D-1 through D-7) deferred.
+**Scope Rule:** Tenant-wide, NOT assignment-aware. Worker-to-property assignment layered later.
+
+---
+
