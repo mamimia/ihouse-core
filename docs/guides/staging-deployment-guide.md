@@ -72,7 +72,7 @@ docker-compose -f docker-compose.production.yml up -d
 
 1. Health check: `curl http://localhost:8000/health`
 2. OpenAPI docs: `http://localhost:8000/docs`
-3. Frontend: `http://localhost:3000`
+3. Frontend: `http://localhost:8001`
 4. Login with admin credentials
 
 ## Troubleshooting

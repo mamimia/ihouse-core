@@ -24,7 +24,7 @@ curl http://localhost:8001/health
 # Expected: {"status":"ok","version":"0.1.0-staging",...}
 
 # 5. Verify frontend
-open http://localhost:3000
+open http://localhost:8001
 
 # 6. Run integration tests
 docker compose -f docker-compose.staging.yml run tests
