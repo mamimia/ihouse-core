@@ -395,6 +395,8 @@ class TestPhase706_ManualBooking(unittest.TestCase):
     def test_create_direct_booking(self):
         from api.manual_booking_router import create_manual_booking
         mock_db = MagicMock()
+        # Mock overlap detection to return no conflicts
+        mock_db.table.return_value.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
         mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(
             data=[{"booking_id": "MAN-KOH-20260320-ab12", "guest_name": "John", "status": "confirmed", "source": "direct"}]
         )
@@ -410,6 +412,8 @@ class TestPhase706_ManualBooking(unittest.TestCase):
     def test_maintenance_block_no_guest_name(self):
         from api.manual_booking_router import create_manual_booking
         mock_db = MagicMock()
+        # Mock overlap detection to return no conflicts
+        mock_db.table.return_value.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
         mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(
             data=[{"booking_id": "MAN-X-20260320-ab12", "guest_name": "[maintenance_block]", "source": "maintenance_block"}]
         )
@@ -449,7 +453,7 @@ class TestPhase706_ManualBooking(unittest.TestCase):
     def test_task_creation_logic(self):
         from api.manual_booking_router import _create_tasks_for_manual_booking
         # maintenance_block → no tasks
-        result = _create_tasks_for_manual_booking(MagicMock(), "B1", "P1", "maintenance_block", [], "t1")
+        result = _create_tasks_for_manual_booking(MagicMock(), "B1", "P1", "2026-03-20", "maintenance_block", [], "t1")
         self.assertEqual(result, [])
 
     def test_booking_id_format(self):
