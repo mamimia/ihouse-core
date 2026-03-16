@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 812 — PMS Pipeline Proof complete. Auth Flow Redesign complete. **Checkpoint XXV-C.**
+Phase 814 — Documentation Sync. Phases 813–842 execution plan active.
 
 ## Last Closed Phase
 
-Phase 812 — Phases 801–812: Property config + channel mapping, operational day simulation (10/10 E2E), PMS connector layer (Guesty MVP, 979 lines), PMS pipeline proof (48/48). Auth flow redesign (cross-cutting, 7 screens, 3 flows proven).
+Phase 813 — Git Commit + Push: 7 commits (29 files), test fixes (7765/0/12), pushed to GitHub.
 
 ## Current Objective
 
@@ -25,9 +25,9 @@ Phase D — Mobile Check-in Flow                 ✅ DONE (gaps D-1 to D-7 track
   ⚠ SCOPE RULE: Tenant-wide check-in list (today's arrivals for the tenant).
     NOT assignment-aware. No "my properties" / "my check-ins" UX.
     Worker-to-property assignment (B-1) layered on later.
-Phase E — Mobile Cleaner Flow                  ← NEXT (not started)
-Phase F — Problem Reporting                    ← exception handling from field
-──── Checkpoint: One Property, End-to-End ────
+Phase E — Mobile Cleaner Flow                  ← IN PROGRESS (page + tests committed)
+Phase F — Problem Reporting                    ← NEXT
+──── Checkpoint: One Property, End-to-End ──── ← TARGET (Phase 842)
 Then: PMS resumes
 ```
 
@@ -290,4 +290,4 @@ Then: PMS resumes
 
 ## Tests
 
-**278 test items + 48 PMS pipeline proof, 20 pre-existing E2E failures. TypeScript 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. 5 core frontend flows verified working. 3 Supabase Auth login flows runtime-verified (admin→admin, manager→manager, worker→worker). PMS pipeline proven (Phase 812). Auth flow redesign: 7 screens, 3 flows proven. (Phase 812)**
+**7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phases 813–842: closing gaps, building Phase E+F. (Phase 813+)**

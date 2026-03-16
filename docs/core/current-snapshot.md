@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 812 — PMS Pipeline Proof complete. Auth Flow Redesign complete. **Checkpoint XXV-C.**
+Phase 813 — Git Commit + Push complete. Phases 813–842 execution plan active. **Targeting Checkpoint: One Property, End-to-End.**
 
 ## Last Closed Phase
-Phase 812 — Phases 801–812: Property config, operational day simulation, PMS connector layer (Guesty MVP), PMS pipeline proof (48/48). Auth flow redesign (cross-cutting).
+Phase 813 — Git Commit + Push: 7 logical commits (29 files), test fixes (8 tests fixed, 7765 passing), auth flow cache fix, cleaner WIP committed, pushed to GitHub.
 
 ## System Status
 
@@ -401,7 +401,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 278 test items + 48 PMS pipeline proof, 20 pre-existing E2E failures. Frontend TypeScript: 0 errors. 54 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phases 784–789: Staging Activation Runtime Fixes. 5 core frontend flows verified working. PMS pipeline proven (Phase 812). Auth flow redesign: 7 UI screens, 3 flows proven.**
+**Backend: 7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phases 813–842: Closing gaps D-1→D-7, B-1→B-5, A-1→A-4. Building Phase E (Cleaner Flow) + Phase F (Problem Reporting). Targeting One Property End-to-End checkpoint.**
 
 ## Environment Variables (continued)
 

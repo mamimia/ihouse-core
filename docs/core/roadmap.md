@@ -3,7 +3,7 @@
 > [!NOTE]
 > This document is a living directional guide, not a binding contract.
 > Updated every checkpoint to reflect what has been learned and where the system is headed.
-> Last updated: Phase 415 (2026-03-13). [Antigravity]
+> Last updated: Phase 814 (2026-03-17). [Antigravity]
 
 
 ## Architectural Constraints — Permanently Locked
@@ -26,27 +26,27 @@
 
 ---
 
-## System Numbers — Phase 444 (2026-03-13)
+## System Numbers — Phase 814 (2026-03-17)
 
 | Metric | Value |
 |--------|-------|
 | **OTA Adapters** | 15 (14 unique + ctrip alias): Airbnb, Booking.com, Expedia, Agoda, Trip.com/Ctrip, Traveloka, Vrbo, GVR, MakeMyTrip, Klook, Despegar, Rakuten, Hotelbeds, Hostelworld |
 | **Escalation Channels** | 5 live (LINE, WhatsApp, Telegram, SMS, Email) |
 | **Task Kinds** | 6 (CLEANING, CHECKIN_PREP, CHECKOUT_VERIFY, MAINTENANCE, GENERAL, GUEST_WELCOME) |
-| **API Router Files** | 87 files in `src/api/` |
-| **Service Files** | 29 files in `src/services/` |
+| **API Router Files** | 126 files in `src/api/` |
+| **Service Files** | 55 files in `src/services/` |
 | **Financial Rings** | 6 complete (extraction → persistence → aggregation → reconciliation → cashflow → owner statement) |
 | **AI Copilot Endpoints** | 8 (context aggregation, morning briefing, financial explainer, task recommendations, anomaly alerts, guest messaging, AI audit trail, worker copilot) |
-| **Tests** | 7,187 passed / 9 failed (pre-existing Supabase infra) / 17 skipped |
-| **Test Files** | 251 test files |
+| **Tests** | 7,765 passed / 0 failed / 12 skipped |
+| **Test Files** | 281 test files |
 | **Supabase Migrations** | 16 migration files (includes 1 baseline that consolidated early schemas) |
 | **E2E Test Files** | 6 files (booking, financial, task, webhook, admin, DLQ) |
 | **Production Infra** | Dockerfile, docker-compose.production.yml (frontend included Phase 313), .env.production.example, deploy_checklist.sh |
 | **CI Pipeline** | Python 3.14, blocking ruff lint, migrations validation, security gate (Phase 279) |
 | **Brand** | External: **Domaniqo** (domaniqo.com) — internal codename remains iHouse Core |
-| **Frontend** | Next.js 16 / React 19, 37 pages (24 protected + 13 public), Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
+| **Frontend** | Next.js 16 / React 19, 63 pages, Domaniqo branding, 60s auto-refresh, SSE 6-channel live events |
 | **CORS** | CORSMiddleware via `IHOUSE_CORS_ORIGINS` env var (Phase 313) |
-| **Auth** | JWT with role claim (admin/manager/worker/owner), HMAC-SHA256 access tokens, real login/session endpoints |
+| **Auth** | JWT with role claim (admin/manager/worker/owner), HMAC-SHA256 access tokens, real login/session endpoints, 7 auth UI screens |
 
 ---
 
@@ -110,18 +110,18 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 ### Wave 1 Foundation (Phases 586-605) — ✅ COMPLETE
 21 new tables, 37 new columns across 3 existing tables. All RLS-enabled with tenant isolation.
 
-### Operational Core Sequence (Next)
+### Operational Core Sequence
 
 | Phase | Surface | Architecture Source | Status |
 |-------|---------|-------------------|--------|
-| A | Property Detail (6-tab view) | `.agent/architecture/property-detail.md` | **NEXT** |
-| B | Staff Management (Manage Users) | `.agent/architecture/manage-users.md` | Pending A |
-| C | Dashboard Flight Cards (Admin + Ops) | `.agent/architecture/dashboard-flight-mode.md` | Pending B |
-| — | **Checkpoint: Operational Awareness** | — | — |
-| D | Mobile Check-in Flow (6-step) | `.agent/architecture/mobile-checkin.md` | Pending A-C |
-| E | Mobile Cleaner Flow (checklist+photos) | `.agent/architecture/mobile-cleaner.md` | Pending A-C |
-| F | Problem Reporting | `.agent/architecture/mobile-maintenance.md` | Pending A-C |
-| — | **Checkpoint: One Property, End-to-End** | — | — |
+| A | Property Detail (6-tab view) | `.agent/architecture/property-detail.md` | ✅ Done (gaps A-1 to A-4) |
+| B | Staff Management (Manage Users) | `.agent/architecture/manage-users.md` | ✅ Done (gaps B-1 to B-5) |
+| C | Dashboard Flight Cards (Admin + Ops) | `.agent/architecture/dashboard-flight-mode.md` | ✅ Done |
+| — | **Checkpoint: Operational Awareness** | — | ✅ Passed |
+| D | Mobile Check-in Flow (6-step) | `.agent/architecture/mobile-checkin.md` | ✅ Done (gaps D-1 to D-7) |
+| E | Mobile Cleaner Flow (checklist+photos) | `.agent/architecture/mobile-cleaner.md` | 🔧 In Progress |
+| F | Problem Reporting | `.agent/architecture/mobile-maintenance.md` | ⬜ Next |
+| — | **Checkpoint: One Property, End-to-End** | — | ⬜ Pending |
 
 ### PMS / Channel Manager — DEFERRED (NOT DISCARDED)
 
