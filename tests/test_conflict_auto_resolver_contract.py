@@ -31,6 +31,7 @@ def _make_db_with_bookings(rows: list) -> MagicMock:
     chain.execute.return_value = MagicMock(data=rows)
     chain.select.return_value = chain
     chain.eq.return_value = chain
+    chain.in_.return_value = chain
     chain.limit.return_value = chain
 
     upsert_chain = MagicMock()
@@ -164,6 +165,7 @@ def _endpoint_db(
     }])
     booking_chain.select.return_value = booking_chain
     booking_chain.eq.return_value = booking_chain
+    booking_chain.in_.return_value = booking_chain
     booking_chain.limit.return_value = booking_chain
 
     # For conflict scan
@@ -172,6 +174,7 @@ def _endpoint_db(
     scan_chain.execute.return_value = MagicMock(data=active_bookings)
     scan_chain.select.return_value = scan_chain
     scan_chain.eq.return_value = scan_chain
+    scan_chain.in_.return_value = scan_chain
     scan_chain.limit.return_value = scan_chain
 
     upsert_chain = MagicMock()
@@ -208,6 +211,7 @@ def _endpoint_not_found_db() -> MagicMock:
     chain.execute.return_value = MagicMock(data=[])
     chain.select.return_value = chain
     chain.eq.return_value = chain
+    chain.in_.return_value = chain
     chain.limit.return_value = chain
     db = MagicMock()
     db.table.return_value.select.return_value = chain
@@ -292,7 +296,7 @@ class TestGroupC_PartialScan:
         """C1: If booking_state query fails, partial=True."""
         from services.conflict_auto_resolver import run_auto_check
         db = MagicMock()
-        db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.side_effect = RuntimeError("DB down")
+        db.table.return_value.select.return_value.eq.return_value.in_.return_value.execute.side_effect = RuntimeError("DB down")
         result = run_auto_check(
             db=db,
             tenant_id="t1",
@@ -305,7 +309,7 @@ class TestGroupC_PartialScan:
         """C2: DB failure → conflicts_found=0."""
         from services.conflict_auto_resolver import run_auto_check
         db = MagicMock()
-        db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.side_effect = RuntimeError("DB down")
+        db.table.return_value.select.return_value.eq.return_value.in_.return_value.execute.side_effect = RuntimeError("DB down")
         result = run_auto_check(
             db=db,
             tenant_id="t1",

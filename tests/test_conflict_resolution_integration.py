@@ -89,7 +89,7 @@ def _row(
 
 def _mock_db(rows: list) -> MagicMock:
     db = MagicMock()
-    db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = rows
+    db.table.return_value.select.return_value.eq.return_value.in_.return_value.execute.return_value.data = rows
     return db
 
 
@@ -248,7 +248,7 @@ class TestConflictReportShape:
 
     def test_db_failure_returns_partial_report(self):
         db = MagicMock()
-        db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.side_effect = Exception("DB down")
+        db.table.return_value.select.return_value.eq.return_value.in_.return_value.execute.side_effect = Exception("DB down")
         report = detect_conflicts(db, "tenant-1")
         assert report.partial is True
         assert report.conflicts == []
@@ -290,7 +290,7 @@ class TestAutoResolverChain:
 
     def test_db_failure_never_raises(self):
         db = MagicMock()
-        db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.side_effect = Exception("DB down")
+        db.table.return_value.select.return_value.eq.return_value.in_.return_value.execute.side_effect = Exception("DB down")
         result = run_auto_check(db, "tenant-1", "B1", "P1")
         assert isinstance(result, ConflictAutoCheckResult)
         assert result.partial is True

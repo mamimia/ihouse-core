@@ -49,6 +49,7 @@ def _make_db(rows=None, raises=False) -> MagicMock:
 
     mock_table.select = _chain
     mock_table.eq = _chain
+    mock_table.in_ = _chain
     mock_table.order = _chain
     mock_table.limit = _chain
 

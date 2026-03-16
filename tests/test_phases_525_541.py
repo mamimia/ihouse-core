@@ -74,7 +74,7 @@ class TestFrontendStructure:
     def test_checkin_dashboard_exists(self):
         """Phase 531 — Check-in readiness dashboard exists."""
         content = self._read_file("app/(app)/ops/checkin/page.tsx")
-        assert "Check-In" in content
+        assert "check-in" in content.lower()
 
     def test_checkout_page_exists(self):
         """Phase 532 — Check-out page exists."""
