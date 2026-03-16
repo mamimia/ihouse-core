@@ -61,7 +61,7 @@
 ### Blocked by your account access
 - **Google Cloud OAuth**: create client ID + secret at console.cloud.google.com
 - **Supabase Dashboard**: enable Google provider with OAuth credentials + set Redirect URI `https://reykggmlcehswrxjviup.supabase.co/auth/v1/callback`
-- **Supabase Site URL**: verify it's set to `http://localhost:3000` (for dev) — needed for password reset redirect
+- **Supabase Site URL**: verify it's set to `http://localhost:8001` (for dev) — needed for password reset redirect
 
 ### Placeholder or misleading only
 - **Host users link**: `/login?role=host` — URL marker, zero behavior
@@ -197,7 +197,7 @@ These were modified in previous sessions. Review them before including in a comm
 2. Create OAuth client (Web application) → Authorized redirect URI: `https://reykggmlcehswrxjviup.supabase.co/auth/v1/callback`
 3. Copy Client ID + Client Secret
 4. Go to [Supabase Dashboard](https://supabase.com/dashboard/project/reykggmlcehswrxjviup/auth/providers) → Auth → Providers → Google → Enable → Paste Client ID + Secret
-5. Verify Site URL is `http://localhost:3000` and Redirect URLs include `http://localhost:3000/auth/callback`
+5. Verify Site URL is `http://localhost:8001` and Redirect URLs include `http://localhost:8001/auth/callback`
 
 **What I can do after that:**
 - Test Google sign-in end-to-end

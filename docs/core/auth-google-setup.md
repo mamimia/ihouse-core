@@ -34,7 +34,7 @@ User clicks "Sign in with Google"
 4. Under **Auth** → **URL Configuration**:
    - Add to **Redirect URLs**:
      - Production: `https://your-app.com/auth/callback`
-     - Local:      `http://localhost:3000/auth/callback`
+     - Local:      `http://localhost:8001/auth/callback`
 
 ## Step 3: Environment Variables
 

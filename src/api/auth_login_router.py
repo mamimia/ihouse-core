@@ -41,20 +41,33 @@ _TOKEN_TTL_SECONDS = 86_400  # 24 hours
 _VALID_ROLES = {"admin", "manager", "ops", "worker", "owner", "checkin", "checkout", "maintenance"}
 
 
+# ---------------------------------------------------------------------------
+# Cached Supabase clients — singleton per process (avoids per-request overhead)
+# ---------------------------------------------------------------------------
+_service_db = None
+_anon_db = None
+
+
 def _get_service_db():
-    """Get Supabase client with service_role key."""
-    from supabase import create_client
-    url = os.environ["SUPABASE_URL"]
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SUPABASE_KEY"]
-    return create_client(url, key)
+    """Get cached Supabase client with service_role key."""
+    global _service_db
+    if _service_db is None:
+        from supabase import create_client
+        url = os.environ["SUPABASE_URL"]
+        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SUPABASE_KEY"]
+        _service_db = create_client(url, key)
+    return _service_db
 
 
 def _get_anon_db():
-    """Get Supabase client with anon key (for sign_in)."""
-    from supabase import create_client
-    url = os.environ["SUPABASE_URL"]
-    key = os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-    return create_client(url, key)
+    """Get cached Supabase client with anon key (for sign_in)."""
+    global _anon_db
+    if _anon_db is None:
+        from supabase import create_client
+        url = os.environ["SUPABASE_URL"]
+        key = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        _anon_db = create_client(url, key)
+    return _anon_db
 
 
 # ---------------------------------------------------------------------------

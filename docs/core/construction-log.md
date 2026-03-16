@@ -4179,7 +4179,7 @@ Build exit 0, 19 pages.
 Implemented:
 - CORS middleware in `src/main.py`
   - Configurable via `IHOUSE_CORS_ORIGINS` env var
-  - Defaults: `http://localhost:3000,http://localhost:8000`
+  - Defaults: `http://localhost:8001,http://localhost:8000`
   - Exposes: X-Request-ID, X-API-Version headers
 - `docker-compose.production.yml` updated:
   - Frontend Next.js service (depends_on api healthy)
@@ -4996,3 +4996,23 @@ Redesigned Domaniqo auth/register UI flow with smart behavior and precision audi
 - Gaps D-1 through D-7 tracked in work-context.md
 - Modified: `ops/checkin/page.tsx`, `src/api/booking_checkin_router.py`
 
+## Login Path Fix — 2026-03-16
+
+Login proven operationally on `localhost:8001`. 3 bugs found and fixed:
+
+1. **Supabase client timeout** — `_get_anon_db()` in `auth_login_router.py` created new Supabase client per request (10s+ overhead). Fixed: module-level singleton cache. Response time: >15s → 1.24s (first), 0.60s (cached).
+2. **CORS origins** — `.env` had `IHOUSE_CORS_ORIGINS=localhost:3000,3001` but frontend runs on port 8001. Fixed: added `http://localhost:8001`.
+3. **Unknown passwords** — Supabase Auth users existed but passwords unknown. Fixed: admin reset to known values via `admin.update_user_by_id()`.
+
+Proven credentials:
+- URL: `http://localhost:8001/login`
+- Email: `admin@domaniqo.com` / Password: `Admin123!`
+- Email: `manager@domaniqo.com` / Password: `Manager123!`
+
+Auth status matrix:
+- ✅ Email+password login: operationally proven (3 layers: API, JWT, browser)
+- ⬜ Google OAuth: not yet proven (needs Google Cloud setup)
+- ⬜ Forgot password: not yet proven
+- ⬜ Remember me: UI implemented, persistence not fully verified
+
+Modified: `src/api/auth_login_router.py`, `.env`
