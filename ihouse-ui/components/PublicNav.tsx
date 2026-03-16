@@ -34,7 +34,15 @@ export default function PublicNav() {
             style={{
                 position: 'fixed',
                 top: 0,
-                insetInline: 0,
+                /* LOCKED — physical properties only, never logical (insetInline).
+                 * direction + flexDirection guarantee:
+                 *   LEFT  = logo + wordmark
+                 *   RIGHT = CTA
+                 * This must never change regardless of page, layout, or context. */
+                left: 0,
+                right: 0,
+                direction: 'ltr',
+                flexDirection: 'row',
                 zIndex: 90,
                 display: 'flex',
                 alignItems: 'center',

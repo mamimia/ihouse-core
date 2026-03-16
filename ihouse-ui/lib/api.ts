@@ -588,6 +588,50 @@ export const api = {
         return apiFetch(`/bookings${q.size ? '?' + q : ''}`);
     },
 
+    // Strategic pivot — Manual Booking (main path)
+    createManualBooking: (body: {
+        property_id: string;
+        check_in: string;
+        check_out: string;
+        guest_name: string;
+        booking_source?: string;
+        notes?: string;
+        number_of_guests?: number;
+        tasks_opt_out?: string[];
+    }): Promise<{ booking_id: string; status: string; tasks_created: string[]; ota_blocked: string | null }> =>
+        apiFetch('/bookings/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }),
+
+    // Strategic pivot — iCal Feed (main path)
+    connectIcalFeed: (body: {
+        property_id: string;
+        ical_url: string;
+    }): Promise<{ connection_id: string; bookings_created: number; status: string }> =>
+        apiFetch('/integrations/ical/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }),
+
+    // Properties list (for dropdowns)
+    listProperties: (): Promise<{ properties: Array<{ property_id: string; display_name: string; status: string }> }> =>
+        apiFetch('/properties'),
+
+    createProperty: (body: {
+        property_id: string;
+        display_name?: string;
+        timezone?: string;
+        base_currency?: string;
+    }): Promise<{ property_id: string; display_name: string; timezone: string; base_currency: string }> =>
+        apiFetch('/properties', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }),
+
     // Phase 201 — Worker Channel Preferences
     getWorkerPreferences: (): Promise<WorkerPreferencesResponse> =>
         apiFetch('/worker/preferences'),

@@ -21,6 +21,7 @@ type Role = 'admin' | 'manager' | 'owner' | 'worker';
 const NAV_ITEMS: { key: TranslationKey; href: string; icon: string; roles: Role[] }[] = [
   { key: 'nav.dashboard', href: '/dashboard', icon: '▪', roles: ['admin', 'manager', 'owner', 'worker'] },
   { key: 'nav.tasks',     href: '/tasks',     icon: '✓', roles: ['admin', 'manager', 'worker'] },
+  { key: 'nav.cleaning' as TranslationKey, href: '/ops/cleaner', icon: '🧹', roles: ['worker'] },
   { key: 'nav.bookings',  href: '/bookings',  icon: '📅', roles: ['admin', 'manager', 'owner'] },
   { key: 'nav.calendar',  href: '/calendar',  icon: '📆', roles: ['admin', 'manager', 'owner'] },
   { key: 'nav.financial', href: '/financial', icon: '₿', roles: ['admin', 'manager', 'owner'] },

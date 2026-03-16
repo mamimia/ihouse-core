@@ -217,7 +217,7 @@ export default function MobileCheckinPage() {
     const getStepNumber = (s: CheckInStep): number => {
         const flow = getFlow();
         const visibleSteps = flow.filter(f => f !== 'list');
-        const idx = visibleSteps.indexOf(s);
+        const idx = visibleSteps.indexOf(s as typeof visibleSteps[number]);
         return idx >= 0 ? idx + 1 : 1;
     };
     const getStepTotal = (): number => getFlow().length - 1; // exclude 'list'

@@ -240,6 +240,148 @@ function PropertyRow({ p, onAction }: {
 }
 
 /* ------------------------------------------------------------------ */
+/* Add Property Modal                                                  */
+/* ------------------------------------------------------------------ */
+
+function AddPropertyModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+    const [propertyId, setPropertyId] = useState('');
+    const [displayName, setDisplayName] = useState('');
+    const [tz, setTz] = useState('Asia/Bangkok');
+    const [currency, setCurrency] = useState('THB');
+    const [sourceUrl, setSourceUrl] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleSubmit = async () => {
+        if (!propertyId.trim()) { setError('Property ID is required'); return; }
+        setSaving(true);
+        setError(null);
+        try {
+            const body: Record<string, string> = {
+                property_id: propertyId.trim().toLowerCase().replace(/\s+/g, '-'),
+                timezone: tz,
+                base_currency: currency,
+            };
+            if (displayName.trim()) body.display_name = displayName.trim();
+            if (sourceUrl.trim()) body.source_url = sourceUrl.trim();
+            await fetchAPI('/properties', {
+                method: 'POST',
+                body: JSON.stringify(body),
+            });
+            onCreated();
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed to create property';
+            setError(msg.includes('409') ? 'Property ID already exists' : msg);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const inputStyle: React.CSSProperties = {
+        width: '100%',
+        padding: 'var(--space-3) var(--space-4)',
+        background: 'var(--color-surface-2)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-md)',
+        color: 'var(--color-text)',
+        fontSize: 'var(--text-sm)',
+        fontFamily: 'inherit',
+    };
+
+    const labelStyle: React.CSSProperties = {
+        fontSize: 'var(--text-xs)',
+        color: 'var(--color-text-dim)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        marginBottom: 4,
+        display: 'block',
+    };
+
+    return (
+        <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+        }} onClick={onClose}>
+            <div style={{
+                background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+                padding: 'var(--space-8)', width: 480, maxHeight: '80vh', overflow: 'auto',
+                border: '1px solid var(--color-border)', boxShadow: '0 16px 64px rgba(0,0,0,0.5)',
+            }} onClick={e => e.stopPropagation()}>
+                <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, marginBottom: 'var(--space-6)' }}>
+                    Add <span style={{ color: 'var(--color-primary)' }}>Property</span>
+                </h2>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                    <div>
+                        <label style={labelStyle}>Property ID *</label>
+                        <input style={inputStyle} placeholder="e.g. samui-villa-03" value={propertyId}
+                               onChange={e => setPropertyId(e.target.value)} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Display Name</label>
+                        <input style={inputStyle} placeholder="e.g. Villa Sunset 3BR" value={displayName}
+                               onChange={e => setDisplayName(e.target.value)} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                        <div>
+                            <label style={labelStyle}>Timezone</label>
+                            <select style={inputStyle} value={tz} onChange={e => setTz(e.target.value)}>
+                                <option value="Asia/Bangkok">Asia/Bangkok</option>
+                                <option value="UTC">UTC</option>
+                                <option value="Europe/London">Europe/London</option>
+                                <option value="America/New_York">America/New_York</option>
+                                <option value="America/Los_Angeles">America/Los_Angeles</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Currency</label>
+                            <select style={inputStyle} value={currency} onChange={e => setCurrency(e.target.value)}>
+                                <option value="THB">THB</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="GBP">GBP</option>
+                                <option value="SGD">SGD</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Listing URL (optional — for future enrichment)</label>
+                        <input style={inputStyle} placeholder="https://airbnb.com/rooms/..." value={sourceUrl}
+                               onChange={e => setSourceUrl(e.target.value)} />
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 2, display: 'block' }}>
+                            URL will be saved. Auto-enrichment coming soon.
+                        </span>
+                    </div>
+                </div>
+
+                {error && (
+                    <div style={{
+                        marginTop: 'var(--space-4)', padding: 'var(--space-3)',
+                        background: '#ef444415', border: '1px solid #ef444433',
+                        borderRadius: 'var(--radius-md)', color: '#ef4444',
+                        fontSize: 'var(--text-sm)',
+                    }}>✗ {error}</div>
+                )}
+
+                <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-6)', justifyContent: 'flex-end' }}>
+                    <button onClick={onClose} style={{
+                        padding: 'var(--space-2) var(--space-5)', borderRadius: 'var(--radius-md)',
+                        background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                        color: 'var(--color-text)', fontWeight: 600, cursor: 'pointer',
+                    }}>Cancel</button>
+                    <button onClick={handleSubmit} disabled={saving || !propertyId.trim()} style={{
+                        padding: 'var(--space-2) var(--space-5)', borderRadius: 'var(--radius-md)',
+                        background: 'var(--color-primary)', border: 'none',
+                        color: '#fff', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+                        opacity: saving || !propertyId.trim() ? 0.6 : 1,
+                    }}>{saving ? 'Creating…' : 'Create Property'}</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ------------------------------------------------------------------ */
 /* Main page                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -249,6 +391,7 @@ export default function AdminPropertiesPage() {
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [notice, setNotice] = useState<string | null>(null);
+    const [showCreate, setShowCreate] = useState(false);
 
     const showNotice = (msg: string) => {
         setNotice(msg);
@@ -306,24 +449,42 @@ export default function AdminPropertiesPage() {
                     }}>
                         Property <span style={{ color: 'var(--color-primary)' }}>Approvals</span>
                     </h1>
-                    <button
-                        onClick={load}
-                        disabled={loading}
-                        style={{
-                            background: loading ? 'var(--color-surface-3)' : 'var(--color-primary)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: 'var(--radius-md)',
-                            padding: 'var(--space-2) var(--space-5)',
-                            fontSize: 'var(--text-sm)',
-                            fontWeight: 600,
-                            opacity: loading ? 0.7 : 1,
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            transition: 'all var(--transition-fast)',
-                        }}
-                    >
-                        {loading ? '⟳  Refreshing…' : '↺  Refresh'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                        <button
+                            onClick={() => setShowCreate(true)}
+                            style={{
+                                background: 'var(--color-primary)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--space-2) var(--space-5)',
+                                fontSize: 'var(--text-sm)',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all var(--transition-fast)',
+                            }}
+                        >
+                            + Add Property
+                        </button>
+                        <button
+                            onClick={load}
+                            disabled={loading}
+                            style={{
+                                background: loading ? 'var(--color-surface-3)' : 'var(--color-surface)',
+                                color: 'var(--color-text)',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--space-2) var(--space-5)',
+                                fontSize: 'var(--text-sm)',
+                                fontWeight: 600,
+                                opacity: loading ? 0.7 : 1,
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                transition: 'all var(--transition-fast)',
+                            }}
+                        >
+                            {loading ? '⟳  Refreshing…' : '↺  Refresh'}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -401,6 +562,9 @@ export default function AdminPropertiesPage() {
                     zIndex: 100,
                 }}>{notice}</div>
             )}
+
+            {/* Add Property Modal */}
+            {showCreate && <AddPropertyModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); showNotice('✓ Property created'); }} />}
 
             {/* Footer */}
             <div style={{
