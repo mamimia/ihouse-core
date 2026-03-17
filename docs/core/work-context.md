@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 831+ — Intake Proof Sequence. System at true zero-state.
+Phase 833 — Intake Proof: First Property + Manual Booking E2E. System at true zero-state.
 
 ## Last Closed Phase
 
-Phase 830 — System Re-Baseline + Data Seed + Zero-State Reset: reality audit, seed script, full env reset (~15,543 rows), auth E2E proven, task lifecycle policy locked.
+Phase 832 — Worker Task Start + Guest Name Enrichment: PATCH /worker/tasks/{id}/start, guest_name in booking responses.
 
 ## Current Objective
 
@@ -12,15 +12,19 @@ Phase 830 — System Re-Baseline + Data Seed + Zero-State Reset: reality audit, 
 - System reset to zero-state (Phase 830)
 - Auth E2E proven: dev-login → JWT → API access
 - Task lifecycle policy: no production delete, CANCELLED + canceled_reason
+- Cleaner role added across auth + routing stack (Phase 831)
+- Worker task start endpoint + guest_name enrichment (Phase 832)
 - Next: Create first property → Connect iCal → Pull first booking → Verify task generation
 
 ### Next Phase Sequence
 ```
-Phase 831 — Prove Manual Booking Intake E2E     ← NEXT
-Phase 832 — Prove iCal Intake E2E               ← NEXT
-Phase 833 — Prove Task Generation from Booking  ← NEXT
-Phase 834+ — Continue per roadmap               ← PLANNED
-──── Checkpoint: One Property, End-to-End ────  ← TARGET
+Phase 833 — Intake Proof: First Property + Manual Booking E2E  ← NEXT
+Phase 834 — Intake Proof: iCal Intake E2E                     ← PLANNED
+Phase 835 — Intake Proof: Task Generation from Booking         ← PLANNED
+──── Checkpoint: One Property, End-to-End ────                 ← TARGET
+Phase 836 — Critical Surface Localization + Language Selector   ← PLANNED
+Phase 837 — Guest Portal Enhancement                           ← PLANNED
+Phase 838 — Owner Mobile Optimization                          ← PLANNED
 ```
 
 ## Deferred Items — Open Items Registry
@@ -282,4 +286,4 @@ Phase 834+ — Continue per roadmap               ← PLANNED
 
 ## Tests
 
-**7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. System at true zero-state. Phase 831+: intake proof sequence.**
+**7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. System at true zero-state. Phase 832 closed. Next: Phase 833 intake proof.**

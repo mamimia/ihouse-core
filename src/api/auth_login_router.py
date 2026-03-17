@@ -144,7 +144,7 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
         tenant_info = None
 
     if not tenant_info:
-        # Phase 839: No fallback to hardcoded tenant — if tenant_permissions
+        # Phase 831: No fallback to hardcoded tenant — if tenant_permissions
         # doesn't exist, the invite acceptance failed or never ran.
         # The user must be re-invited or manually provisioned.
         logger.warning(

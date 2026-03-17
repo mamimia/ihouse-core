@@ -91,7 +91,7 @@ def resolve_role(
             )
         return db_role
 
-    # No DB record — Phase 836: prefer requested_role, fall back to default
+    # No DB record — Phase 831: prefer requested_role, fall back to default
     resolved = (requested_role.strip().lower() if requested_role else DEFAULT_ROLE_IF_MISSING)
     logger.info(
         "role_authority: no tenant_permissions record for tenant=%s user=%s, "

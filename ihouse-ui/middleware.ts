@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Routes that do NOT require auth — prefix-matched
 const PUBLIC_PREFIXES = [
     '/login',
-    '/dev-login',   // Phase 836: worker-family roles need a production login path
+    '/dev-login',   // Phase 831: worker-family roles need a production login path
     '/register',
     '/auth',
     '/favicon.ico',
@@ -50,7 +50,7 @@ function isPublicRoute(pathname: string): boolean {
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
     owner:       ['/owner', '/dashboard'],
     worker:      ['/worker', '/ops', '/tasks', '/maintenance', '/checkin', '/checkout'],
-    cleaner:     ['/worker', '/ops'],  // Phase 836: restrict cleaner to worker + ops surfaces only
+    cleaner:     ['/worker', '/ops'],  // Phase 831: restrict cleaner to worker + ops surfaces only
     ops:         ['/ops', '/dashboard', '/bookings', '/tasks', '/calendar', '/guests'],
     checkin:     ['/checkin'],
     checkout:    ['/checkout'],

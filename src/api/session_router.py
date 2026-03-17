@@ -70,7 +70,7 @@ def _extract_token_from_request(request: Request) -> str | None:
 # Request models
 # ---------------------------------------------------------------------------
 
-# Phase 397/836: Valid roles — must match auth_router.py VALID_ROLES
+# Phase 397/831: Valid roles — must match auth_router.py VALID_ROLES
 _VALID_ROLES = {"admin", "manager", "ops", "worker", "cleaner", "owner", "checkin", "checkout", "maintenance"}
 
 

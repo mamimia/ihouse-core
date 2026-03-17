@@ -5029,3 +5029,23 @@ Modified: `src/api/auth_login_router.py`, `.env`
 - Modified: `docs/core/current-snapshot.md`, `docs/core/work-context.md`, `docs/core/phase-timeline.md`, `docs/core/construction-log.md`
 - New: `src/scripts/seed_demo.py`, `docs/archive/phases/phase-830-spec.md`
 
+## Phase Numbering Reconciliation — 2026-03-17
+
+Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–820). Phases 821–829 reserved/unused. See `phase-813-820-spec.md`.
+
+## Phase 831 — Cleaner Role + Auth Hardening — 2026-03-17
+
+- `cleaner` added to `_VALID_ROLES` (auth_login_router, session_router)
+- Hardcoded `tenant_e2e_amended` fallback removed from login
+- `role_authority.py`: prefer requested_role over default
+- Frontend middleware: `/dev-login` public, `cleaner` access rules
+- `roleRoute.ts`: cleaner → `/ops/cleaner`
+- Spec: `phase-831-spec.md`
+
+## Phase 832 — Worker Task Start + Guest Name Enrichment — 2026-03-17
+
+- `PATCH /worker/tasks/{id}/start` endpoint (ACKNOWLEDGED → IN_PROGRESS)
+- `guest_name` added to booking list + detail responses
+- Minor dev-login update
+- Spec: `phase-832-spec.md`
+

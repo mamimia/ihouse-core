@@ -7958,3 +7958,45 @@ Additional:
 - 6 schema mismatches discovered and fixed during seeding
 - New file: `src/scripts/seed_demo.py`
 
+
+## Phase Numbering Reconciliation — 2026-03-17
+
+Retroactive assignment of numeric phase IDs to 8 work items completed between Phase 812 and Phase 830. These items were originally recorded with letter labels (Operational Core A/B/C/D) or without formal phase numbers.
+
+| Phase | Title | Original Label | Date |
+|-------|-------|----------------|------|
+| 813 | Checkpoint XXV-C | Git commit `4bb4d3f` | 2026-03-16 |
+| 814 | Documentation Sync | Git commit `f0a0110` — roadmap/snapshot/context updated | 2026-03-16 |
+| 815 | Property Detail (6-Tab View) | Operational Core Phase A | 2026-03-15 |
+| 816 | Staff Management (Manage Users) | Operational Core Phase B | 2026-03-15 |
+| 817 | Dashboard Flight Cards | Operational Core Phase C | 2026-03-15 |
+| 818 | Mobile Check-in Flow | Operational Core Phase D | 2026-03-15 |
+| 819 | Auth Flow Redesign | Cross-cutting auth/register UI | 2026-03-16 |
+| 820 | Login Path Fix | 3-bug fix: Supabase singleton, CORS, passwords | 2026-03-16 |
+
+Phases 821–829 remain reserved/unused.
+
+Spec: `docs/archive/phases/phase-813-820-spec.md`
+
+---
+
+## Phase 831 — Cleaner Role + Auth Hardening — Closed 2026-03-17
+
+- Added `cleaner` to `_VALID_ROLES` in `auth_login_router.py` and `session_router.py`
+- Removed hardcoded `tenant_e2e_amended` fallback — missing `tenant_permissions` → 403
+- `role_authority.py`: prefer `requested_role` when no DB record
+- Frontend: `/dev-login` as public prefix, cleaner role access rules in middleware
+- `roleRoute.ts`: cleaner → `/ops/cleaner` landing
+
+Spec: `docs/archive/phases/phase-831-spec.md`
+
+---
+
+## Phase 832 — Worker Task Start + Guest Name Enrichment — Closed 2026-03-17
+
+- Added `PATCH /worker/tasks/{task_id}/start` endpoint (ACKNOWLEDGED → IN_PROGRESS)
+- Added `guest_name` to booking list + detail responses in `bookings_router.py`
+- Minor dev-login page update
+
+Spec: `docs/archive/phases/phase-832-spec.md`
+
