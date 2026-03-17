@@ -163,6 +163,7 @@ export default function DevLoginPage() {
                                     <option value="owner">Owner</option>
                                     <option value="ops">Operations</option>
                                     <option value="worker">Worker</option>
+                                    <option value="cleaner">Cleaner</option>
                                     <option value="checkin">Check-in Staff</option>
                                     <option value="checkout">Check-out Staff</option>
                                     <option value="maintenance">Maintenance</option>

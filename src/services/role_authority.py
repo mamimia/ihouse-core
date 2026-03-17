@@ -91,10 +91,13 @@ def resolve_role(
             )
         return db_role
 
-    # No DB record — use default
+    # No DB record — Phase 836: prefer requested_role, fall back to default
+    resolved = (requested_role.strip().lower() if requested_role else DEFAULT_ROLE_IF_MISSING)
     logger.info(
         "role_authority: no tenant_permissions record for tenant=%s user=%s, "
-        "using default role '%s'",
-        tenant_id, user_id, DEFAULT_ROLE_IF_MISSING,
+        "using %s role '%s'",
+        tenant_id, user_id,
+        "requested" if requested_role else "default",
+        resolved,
     )
-    return DEFAULT_ROLE_IF_MISSING
+    return resolved

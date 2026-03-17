@@ -5,7 +5,8 @@ Phase 166 — Worker Role Scoping
 Endpoints:
     GET  /worker/tasks                         — role-scoped task list
     PATCH /worker/tasks/{task_id}/acknowledge  — PENDING → ACKNOWLEDGED
-    PATCH /worker/tasks/{task_id}/complete     — ACKNOWLEDGED|IN_PROGRESS → COMPLETED
+    PATCH /worker/tasks/{task_id}/start        — ACKNOWLEDGED → IN_PROGRESS
+    PATCH /worker/tasks/{task_id}/complete     — IN_PROGRESS → COMPLETED
 
 Rules:
     - JWT auth required on all endpoints.
@@ -241,6 +242,45 @@ async def acknowledge_task(
         task_id=task_id,
         tenant_id=tenant_id,
         target_status=TaskStatus.ACKNOWLEDGED,
+        client=client,
+    )
+
+
+# ---------------------------------------------------------------------------
+# PATCH /worker/tasks/{task_id}/start
+# ---------------------------------------------------------------------------
+
+@router.patch(
+    "/worker/tasks/{task_id}/start",
+    tags=["worker"],
+    summary="Start a task (ACKNOWLEDGED → IN_PROGRESS)",
+    responses={
+        200: {"description": "Task started"},
+        400: {"description": "Invalid request"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Task not found for this tenant"},
+        422: {"description": "Invalid transition — task is not in ACKNOWLEDGED state"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def start_task(
+    task_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Start a task. Valid only from ACKNOWLEDGED state → IN_PROGRESS.
+
+    **No request body required.**
+
+    Uses VALID_TASK_TRANSITIONS from task_model.py.
+    Terminal tasks (COMPLETED/CANCELED) return 422 INVALID_TRANSITION.
+    """
+    return await _transition_task(
+        task_id=task_id,
+        tenant_id=tenant_id,
+        target_status=TaskStatus.IN_PROGRESS,
         client=client,
     )
 

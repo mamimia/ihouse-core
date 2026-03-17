@@ -1,6 +1,7 @@
 /**
  * Phase 179 — Next.js Route Guard Middleware
  * Phase 397 — JWT Role Enforcement
+ * Phase 836 — Access Hardening (cleaner restriction + dev-login public)
  *
  * Runs on every request (Edge Runtime).
  * 1. Public routes — no auth required.
@@ -11,6 +12,7 @@
  *   admin / manager → full access
  *   owner           → /owner, /dashboard
  *   worker          → /worker, /ops, /tasks, /maintenance, /checkin, /checkout
+ *   cleaner         → /worker, /ops
  *   ops             → /ops, /dashboard, /bookings, /tasks, /calendar
  *   checkin         → /checkin only
  *   checkout        → /checkout only
@@ -22,6 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Routes that do NOT require auth — prefix-matched
 const PUBLIC_PREFIXES = [
     '/login',
+    '/dev-login',   // Phase 836: worker-family roles need a production login path
     '/register',
     '/auth',
     '/favicon.ico',
@@ -47,6 +50,7 @@ function isPublicRoute(pathname: string): boolean {
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
     owner:       ['/owner', '/dashboard'],
     worker:      ['/worker', '/ops', '/tasks', '/maintenance', '/checkin', '/checkout'],
+    cleaner:     ['/worker', '/ops'],  // Phase 836: restrict cleaner to worker + ops surfaces only
     ops:         ['/ops', '/dashboard', '/bookings', '/tasks', '/calendar', '/guests'],
     checkin:     ['/checkin'],
     checkout:    ['/checkout'],

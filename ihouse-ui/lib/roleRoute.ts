@@ -26,7 +26,7 @@ const ROLE_ROUTES: Record<string, string> = {
     ops: '/ops',
     operations: '/ops',
     worker: '/worker',
-    cleaner: '/worker',
+    cleaner: '/ops/cleaner',   // Phase 836: cleaner lands on dedicated cleaning surface
     maintenance: '/maintenance',
     checkin: '/checkin',
     checkout: '/checkout',

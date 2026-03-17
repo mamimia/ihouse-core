@@ -38,7 +38,7 @@ router = APIRouter(tags=["auth"])
 _ALGORITHM = "HS256"
 _TOKEN_TTL_SECONDS = 86_400  # 24 hours
 
-_VALID_ROLES = {"admin", "manager", "ops", "worker", "owner", "checkin", "checkout", "maintenance"}
+_VALID_ROLES = {"admin", "manager", "ops", "worker", "cleaner", "owner", "checkin", "checkout", "maintenance"}
 
 
 # ---------------------------------------------------------------------------
@@ -144,18 +144,19 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
         tenant_info = None
 
     if not tenant_info:
-        # Fallback: check user_metadata for invited_role (from invite flow)
-        invited_role = user_metadata.get("invited_role", "")
-        if invited_role:
-            tenant_id = "tenant_e2e_amended"  # V1: single tenant
-            role = invited_role
-            logger.info("auth/login: using invited_role=%s from metadata for user=%s", role, user_id)
-        else:
-            return err(
-                "NO_TENANT_BINDING",
-                "Your account exists but is not assigned to any organization. Contact your administrator.",
-                status=403,
-            )
+        # Phase 839: No fallback to hardcoded tenant — if tenant_permissions
+        # doesn't exist, the invite acceptance failed or never ran.
+        # The user must be re-invited or manually provisioned.
+        logger.warning(
+            "auth/login: no tenant_permissions for user=%s (%s). "
+            "invited_role=%s in metadata but no DB binding.",
+            user_id, user_email, user_metadata.get("invited_role", "none"),
+        )
+        return err(
+            "NO_TENANT_BINDING",
+            "Your account exists but is not assigned to any organization. Contact your administrator.",
+            status=403,
+        )
     else:
         tenant_id = tenant_info["tenant_id"]
         role = tenant_info.get("role", "manager")
