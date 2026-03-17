@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 813 — Git Commit + Push complete. Phases 813–842 execution plan active. **Targeting Checkpoint: One Property, End-to-End.**
+Phase 831+ — Intake Proof Sequence. System at true zero-state. Next: create first property, prove manual booking + iCal intake E2E.
 
 ## Last Closed Phase
-Phase 813 — Git Commit + Push: 7 logical commits (29 files), test fixes (8 tests fixed, 7765 passing), auth flow cache fix, cleaner WIP committed, pushed to GitHub.
+Phase 830 — System Re-Baseline + Data Seed + Zero-State Reset: reality audit, seed script (7 tables), full env reset (~15,543 rows deleted), auth E2E proven, task lifecycle policy locked, true zero-state achieved.
 
 ## System Status
 
@@ -401,7 +401,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phases 813–842: Closing gaps D-1→D-7, B-1→B-5, A-1→A-4. Building Phase E (Cleaner Flow) + Phase F (Problem Reporting). Targeting One Property End-to-End checkpoint.**
+**Backend: 7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. System at true zero-state post Phase 830 reset. Next: intake proof sequence (Phase 831+).**
 
 ## Environment Variables (continued)
 

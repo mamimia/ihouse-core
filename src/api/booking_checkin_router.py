@@ -188,12 +188,22 @@ async def checkin_booking(
             "property_id": booking.get("property_id"),
         })
 
+        # D-5: Transition property operational_status → 'occupied'
+        property_id = booking.get("property_id")
+        if property_id:
+            try:
+                db.table("properties").update({
+                    "operational_status": "occupied",
+                }).eq("property_id", property_id).eq("tenant_id", tenant_id).execute()
+            except Exception:
+                logger.warning("checkin: failed to set property %s to occupied", property_id)
+
         logger.info("checkin: booking_id=%s tenant=%s → checked_in", booking_id, tenant_id)
 
         return ok({
             "status": "checked_in",
             "booking_id": booking_id,
-            "property_id": booking.get("property_id"),
+            "property_id": property_id,
             "checked_in_at": now,
             "noop": False,
         })

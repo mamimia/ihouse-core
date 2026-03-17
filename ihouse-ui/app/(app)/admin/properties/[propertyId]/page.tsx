@@ -118,6 +118,7 @@ export default function PropertyDetailPage() {
     const [photos, setPhotos] = useState<any[]>([]);
     const [tasks, setTasks] = useState<any[]>([]);
     const [auditEntries, setAuditEntries] = useState<any[]>([]);
+    const [issues, setIssues] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
@@ -127,11 +128,12 @@ export default function PropertyDetailPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [propRes, photosRes, tasksRes, auditRes] = await Promise.allSettled([
+            const [propRes, photosRes, tasksRes, auditRes, issuesRes] = await Promise.allSettled([
                 apiFetch(`/properties/${propertyId}`),
                 apiFetch(`/properties/${propertyId}/reference-photos`),
-                apiFetch(`/tasks?limit=50`),
+                apiFetch(`/tasks?property_id=${propertyId}&limit=50`),
                 apiFetch(`/admin/audit?entity_id=${propertyId}&limit=100`),
+                apiFetch(`/problem-reports?property_id=${propertyId}&limit=50`),
             ]);
             if (propRes.status === 'fulfilled') setProperty(propRes.value);
             if (photosRes.status === 'fulfilled') setPhotos(photosRes.value?.photos || []);
@@ -140,6 +142,7 @@ export default function PropertyDetailPage() {
                 setTasks(all.filter((t: any) => t.property_id === propertyId));
             }
             if (auditRes.status === 'fulfilled') setAuditEntries(auditRes.value?.entries || auditRes.value?.events || []);
+            if (issuesRes.status === 'fulfilled') setIssues(issuesRes.value?.reports || issuesRes.value?.data || []);
         } catch { /* graceful */ }
         setLoading(false);
     }, [propertyId]);
@@ -310,6 +313,38 @@ export default function PropertyDetailPage() {
             {/* ============ TAB 2: Reference Photos ============ */}
             {tab === 'photos' && !loading && (
                 <div>
+                    {/* Upload button */}
+                    <div style={{ marginBottom: 'var(--space-4)' }}>
+                        <label style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            padding: 'var(--space-2) var(--space-4)', borderRadius: 'var(--radius-md)',
+                            background: 'var(--color-primary)', color: '#fff',
+                            fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                            📷 Upload Photo
+                            <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                                onChange={async (e) => {
+                                    const files = e.target.files;
+                                    if (!files || files.length === 0) return;
+                                    for (const file of Array.from(files)) {
+                                        try {
+                                            const formData = new FormData();
+                                            formData.append('file', file);
+                                            formData.append('room_label', 'general');
+                                            const token = getToken();
+                                            await fetch(`${BASE}/properties/${propertyId}/reference-photos`, {
+                                                method: 'POST',
+                                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                                                body: formData,
+                                            });
+                                        } catch { /* best-effort */ }
+                                    }
+                                    showNotice(`📷 ${files.length} photo(s) uploaded`);
+                                    load();
+                                }}
+                            />
+                        </label>
+                    </div>
                     {photos.length === 0 ? (
                         <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--space-8)' }}>
                             <div style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>No Reference Photos</div>
@@ -337,11 +372,24 @@ export default function PropertyDetailPage() {
                                             <div key={photo.id} style={{
                                                 borderRadius: 'var(--radius-md)', overflow: 'hidden',
                                                 border: '1px solid var(--color-border)', aspectRatio: '4/3',
-                                                background: 'var(--color-surface-2)',
+                                                background: 'var(--color-surface-2)', position: 'relative',
                                             }}>
                                                 <img src={photo.photo_url} alt={room}
                                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                     onError={e => (e.currentTarget.style.display = 'none')} />
+                                                <button onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    try {
+                                                        await apiFetch(`/properties/${propertyId}/reference-photos/${photo.id}`, { method: 'DELETE' });
+                                                        showNotice('Photo deleted');
+                                                        load();
+                                                    } catch { showNotice('Delete failed'); }
+                                                }} style={{
+                                                    position: 'absolute', top: 4, right: 4,
+                                                    background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none',
+                                                    borderRadius: '50%', width: 24, height: 24, cursor: 'pointer',
+                                                    fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                }}>×</button>
                                             </div>
                                         ))}
                                     </div>
@@ -434,6 +482,34 @@ export default function PropertyDetailPage() {
                                             {t.status} · {t.priority} · {t.deadline || '—'}
                                         </div>
                                     </div>
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                        {t.status === 'PENDING' && (
+                                            <button onClick={async () => {
+                                                try {
+                                                    await apiFetch(`/worker/tasks/${t.task_id}/acknowledge`, { method: 'PATCH' });
+                                                    showNotice('Task acknowledged');
+                                                    load();
+                                                } catch { showNotice('Acknowledge failed'); }
+                                            }} style={{
+                                                padding: '4px 10px', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                background: 'rgba(88,166,255,0.1)', color: '#58a6ff',
+                                                border: '1px solid rgba(88,166,255,0.3)', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                            }}>Ack</button>
+                                        )}
+                                        {(t.status === 'ACKNOWLEDGED' || t.status === 'IN_PROGRESS') && (
+                                            <button onClick={async () => {
+                                                try {
+                                                    await apiFetch(`/worker/tasks/${t.task_id}/complete`, { method: 'PATCH' });
+                                                    showNotice('Task completed');
+                                                    load();
+                                                } catch { showNotice('Complete failed'); }
+                                            }} style={{
+                                                padding: '4px 10px', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                background: 'rgba(63,185,80,0.1)', color: '#3fb950',
+                                                border: '1px solid rgba(63,185,80,0.3)', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                            }}>Complete</button>
+                                        )}
+                                    </div>
                                     <StatusBadge status={t.status} />
                                 </div>
                             ))}
@@ -467,12 +543,45 @@ export default function PropertyDetailPage() {
             {/* ============ TAB 5: Issues ============ */}
             {tab === 'issues' && !loading && (
                 <div>
-                    <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--space-6)' }}>
-                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>No open issues for this property</p>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-2)' }}>
-                            Issues will appear here when reported by cleaning staff or maintenance teams
-                        </p>
-                    </div>
+                    {issues.length === 0 ? (
+                        <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--space-6)' }}>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>No open issues for this property</p>
+                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-2)' }}>
+                                Issues will appear here when reported by cleaning staff or maintenance teams
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {issues.map((issue: any) => (
+                                <div key={issue.id || issue.report_id} style={{
+                                    ...cardStyle, marginBottom: 'var(--space-2)',
+                                    borderLeft: `3px solid ${issue.severity === 'CRITICAL' ? '#f85149' : issue.severity === 'HIGH' ? '#d29922' : 'var(--color-border)'}`,
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                                                {issue.title || issue.description?.substring(0, 60) || 'Issue'}
+                                            </div>
+                                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
+                                                {issue.category || '—'} · {issue.severity || '—'} · {issue.status || '—'}
+                                            </div>
+                                            {issue.description && (
+                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4, maxWidth: 500 }}>
+                                                    {issue.description.substring(0, 120)}{issue.description.length > 120 ? '…' : ''}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <StatusBadge status={issue.status} />
+                                    </div>
+                                    {issue.created_at && (
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-2)', fontFamily: 'var(--font-mono)' }}>
+                                            {new Date(issue.created_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </>
+                    )}
                 </div>
             )}
 

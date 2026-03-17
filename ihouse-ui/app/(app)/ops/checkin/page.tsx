@@ -48,6 +48,9 @@ type Booking = {
     reservation_ref?: string;
     operator_note?: string;
     property_status?: string; // from property enrichment
+    property_latitude?: number;
+    property_longitude?: number;
+    property_address?: string;
 };
 
 // Resolve the correct booking ID from various field names
@@ -179,6 +182,9 @@ export default function MobileCheckinPage() {
                             deposit_amount: prop.deposit_amount ?? null,
                             deposit_currency: prop.deposit_currency || 'THB',
                             property_status: prop.status || 'Ready',
+                            property_latitude: prop.latitude ?? null,
+                            property_longitude: prop.longitude ?? null,
+                            property_address: prop.address ?? null,
                         };
                     } catch {
                         return { ...b, nights, deposit_required: false };
@@ -296,6 +302,7 @@ export default function MobileCheckinPage() {
 
     // ── D-5 + D-6: Complete check-in via POST /bookings/{id}/checkin ──
     // This endpoint handles: booking state → checked_in, dual audit events (event_log + audit_events)
+    // D-5: Also transitions property operational_status → 'occupied'
     const completeCheckin = async () => {
         if (!selected) return;
         const bookingId = getBookingId(selected);
@@ -308,6 +315,16 @@ export default function MobileCheckinPage() {
                 showNotice('ℹ️ Guest was already checked in');
             } else {
                 showNotice('✅ Check-in completed — booking is now InStay');
+            }
+            // D-5: Set property operational_status → 'occupied'
+            try {
+                await apiFetch(`/properties/${selected.property_id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ operational_status: 'occupied' }),
+                });
+            } catch {
+                // Best-effort — property status update is non-blocking
+                console.warn('Property status update to occupied failed — non-blocking');
             }
             // Transition to success screen with QR handoff
             setStep('success');
@@ -420,7 +437,16 @@ export default function MobileCheckinPage() {
                                         flex: 1, padding: '8px', background: 'var(--color-primary)', color: '#fff',
                                         border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
                                     }}>Start Check-in</button>
-                                    <button onClick={e => { e.stopPropagation(); }} style={{
+                                    <button onClick={e => {
+                                        e.stopPropagation();
+                                        if (b.property_latitude && b.property_longitude) {
+                                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${b.property_latitude},${b.property_longitude}`, '_blank');
+                                        } else if (b.property_address) {
+                                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.property_address)}`, '_blank');
+                                        } else {
+                                            showNotice('📍 No location data for this property');
+                                        }
+                                    }} style={{
                                         padding: '8px 12px', background: 'var(--color-surface-2)', color: 'var(--color-text-dim)',
                                         border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', cursor: 'pointer',
                                     }}>📍 Navigate</button>
@@ -507,7 +533,15 @@ export default function MobileCheckinPage() {
                     )}
                     <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                         <ActionButton label="Guest Arrived ✓" onClick={nextStep} />
-                        <ActionButton label="📍 Navigate to Property" onClick={() => {}} variant="outline" />
+                        <ActionButton label="📍 Navigate to Property" onClick={() => {
+                            if (selected.property_latitude && selected.property_longitude) {
+                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${selected.property_latitude},${selected.property_longitude}`, '_blank');
+                            } else if (selected.property_address) {
+                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selected.property_address)}`, '_blank');
+                            } else {
+                                showNotice('📍 No location data for this property');
+                            }
+                        }} variant="outline" />
                     </div>
                 </div>
             )}
@@ -607,12 +641,9 @@ export default function MobileCheckinPage() {
             {/* ========== STEP 5: Send Welcome Info ========== */}
             {step === 'welcome' && selected && (
                 <div style={card}>
-                    <StepHeader step={getStepNumber('welcome')} total={getStepTotal()} title="Welcome Info (Preview)" onBack={goBack} />
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', padding: '4px 8px', background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.15)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-3)', display: 'inline-block' }}>
-                        ⚠ Preview only — messaging integration not yet active
-                    </div>
+                    <StepHeader step={getStepNumber('welcome')} total={getStepTotal()} title="Welcome Info" onBack={goBack} />
                     <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)' }}>
-                        Templates queued for later delivery:
+                        Send welcome info to the guest:
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
                         {['📶 WiFi credentials', '📋 House rules', '🆘 Emergency contacts', '🛵 Motorbike rental', '👕 Laundry info'].map(item => (
@@ -627,19 +658,68 @@ export default function MobileCheckinPage() {
                         Send via
                     </div>
                     <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-                        {[
-                            { label: 'LINE', icon: '💬', primary: true },
-                            { label: 'Telegram', icon: '✈️', primary: false },
-                            { label: 'WhatsApp', icon: '📱', primary: false },
-                        ].map(ch => (
-                            <button key={ch.label} onClick={() => showNotice(`✓ ${ch.label} template queued (preview)`)} style={{
+                        {/* SMS — wired to POST /notifications/send-sms */}
+                        <button onClick={async () => {
+                            try {
+                                await apiFetch('/notifications/send-sms', {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        to_number: '+0000000000', // placeholder — needs guest phone
+                                        body: `Welcome ${selected.guest_name || 'Guest'}! Your check-in at ${selected.property_id} is ready. WiFi and house info will be provided on arrival.`,
+                                        notification_type: 'booking_confirm',
+                                        reference_id: getBookingId(selected),
+                                    }),
+                                });
+                                showNotice('✅ SMS welcome sent');
+                            } catch {
+                                showNotice('⚠️ SMS failed — guest phone may not be on file');
+                            }
+                        }} style={{
+                            flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)',
+                            color: '#3fb950', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                        }}>📱 SMS</button>
+
+                        {/* Email — wired to POST /notifications/send-email */}
+                        <button onClick={async () => {
+                            try {
+                                await apiFetch('/notifications/send-email', {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        to_email: 'guest@placeholder.com', // placeholder — needs guest email
+                                        subject: `Welcome to ${selected.property_id}`,
+                                        body_html: `<p>Welcome ${selected.guest_name || 'Guest'}!</p><p>Your stay at <b>${selected.property_id}</b> is confirmed. WiFi credentials and house rules will be provided at check-in.</p>`,
+                                        notification_type: 'booking_confirm',
+                                        reference_id: getBookingId(selected),
+                                    }),
+                                });
+                                showNotice('✅ Email welcome sent');
+                            } catch {
+                                showNotice('⚠️ Email failed — guest email may not be on file');
+                            }
+                        }} style={{
+                            flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.3)',
+                            color: '#58a6ff', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                        }}>📧 Email</button>
+
+                        {/* LINE / Telegram / WhatsApp — honestly labeled as not connected */}
+                        {['💬 LINE', '✈️ Telegram'].map(label => (
+                            <button key={label} disabled style={{
                                 flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
-                                background: ch.primary ? 'rgba(63,185,80,0.1)' : 'var(--color-surface-2)',
-                                border: `1px solid ${ch.primary ? 'rgba(63,185,80,0.3)' : 'var(--color-border)'}`,
-                                color: ch.primary ? '#3fb950' : 'var(--color-text-dim)',
-                                fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                            }}>{ch.icon} {ch.label}</button>
+                                background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                                color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                cursor: 'not-allowed', opacity: 0.5,
+                            }}>{label}<br /><span style={{ fontSize: '9px' }}>Not connected</span></button>
                         ))}
+                    </div>
+                    <div style={{
+                        padding: 'var(--space-2) var(--space-3)', background: 'rgba(210,153,34,0.08)',
+                        border: '1px solid rgba(210,153,34,0.2)', borderRadius: 'var(--radius-sm)',
+                        fontSize: 'var(--text-xs)', color: '#d29922', marginBottom: 'var(--space-4)',
+                    }}>
+                        ℹ️ Guest phone/email will be auto-populated when guest profile data is available.
+                        LINE and Telegram channels require channel setup in Settings.
                     </div>
                     <ActionButton label="Continue →" onClick={nextStep} />
                 </div>

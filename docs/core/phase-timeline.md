@@ -7945,3 +7945,16 @@ Additional:
 
 ---
 
+
+## Phase 830 — System Re-Baseline + Data Seed + Zero-State Reset — Closed 2026-03-17
+
+- System re-baseline: reality audit of all surfaces, wiring, and proofs
+- Built `scripts/seed_demo.py`: seeds 7 tables (19 rows), supports --dry-run, --clean, --reset-all-test
+- Full environment reset: ~15,543 test rows deleted across 24+ tables (FK-safe leaf→root)
+- 5 guardrails: env guard, tenant allowlist, dry-run, FK-safe order, post-verification
+- Auth login proven E2E: dev-login → JWT → /auth/me → /bookings → /properties → /worker/tasks (all 200 OK)
+- Task lifecycle policy: no production delete → CANCELLED + canceled_reason
+- System at true zero-state: 0 rows in all data tables
+- 6 schema mismatches discovered and fixed during seeding
+- New file: `src/scripts/seed_demo.py`
+

@@ -5016,3 +5016,16 @@ Auth status matrix:
 - ⬜ Remember me: UI implemented, persistence not fully verified
 
 Modified: `src/api/auth_login_router.py`, `.env`
+
+## Phase 830 — System Re-Baseline + Data Seed + Zero-State Reset — 2026-03-17
+
+- Reality audit: classified all items (proven / surface-only / code-only / disconnected / missing)
+- Closure reporting standard established: distinguish built vs surfaced vs wired vs proven
+- Built `src/scripts/seed_demo.py` (seed + reset, 5 guardrails, 24+ table coverage)
+- Auth login E2E: dev-login → JWT → me → bookings → properties → tasks (all 200)
+- Task lifecycle policy locked: no production delete, CANCELLED + canceled_reason
+- Full test data purge: ~15,543 rows deleted, system at true zero-state
+- 6 schema discoveries: display_name not name, reservation_ref not booking_ref, ack_sla_minutes NOT NULL, guest_deposit_records not cash_deposits, reported_by not reporter_id, check_in/check_out date column names
+- Modified: `docs/core/current-snapshot.md`, `docs/core/work-context.md`, `docs/core/phase-timeline.md`, `docs/core/construction-log.md`
+- New: `src/scripts/seed_demo.py`, `docs/archive/phases/phase-830-spec.md`
+

@@ -644,3 +644,112 @@ async def list_worker_notifications(
         return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to list notifications")
 
 
+# ---------------------------------------------------------------------------
+# Phase 823 — Worker-Property Assignments
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/worker/assignments",
+    tags=["worker"],
+    summary="List property assignments for a worker",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def list_worker_assignments(
+    user_id_filter: Optional[str] = None,
+    property_id: Optional[str] = None,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+    user_id: Optional[str] = None,
+) -> JSONResponse:
+    """Return property assignments, filtered by user_id or property_id."""
+    effective_user = user_id_filter or user_id or tenant_id
+    try:
+        db = client or _get_supabase_client()
+        query = (
+            db.table("worker_property_assignments")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+        )
+        if user_id_filter:
+            query = query.eq("user_id", user_id_filter)
+        if property_id:
+            query = query.eq("property_id", property_id)
+        result = query.execute()
+        return JSONResponse(status_code=200, content={
+            "assignments": result.data or [],
+            "count": len(result.data or []),
+        })
+    except Exception as exc:
+        logger.exception("list_worker_assignments error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to list assignments")
+
+
+@router.post(
+    "/worker/assignments",
+    tags=["worker"],
+    summary="Assign a worker to a property",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def create_worker_assignment(
+    body: Optional[dict] = None,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Assign a worker to a property.
+
+    **Request body:**
+    ```json
+    { "user_id": "...", "property_id": "...", "worker_role": "CLEANER", "is_primary": true }
+    ```
+    """
+    if not isinstance(body, dict):
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR, "Request body required")
+
+    target_user_id = body.get("user_id", "").strip()
+    target_property_id = body.get("property_id", "").strip()
+    worker_role = body.get("worker_role", "GENERAL_STAFF").strip().upper()
+    is_primary = body.get("is_primary", False)
+
+    if not target_user_id or not target_property_id:
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR, "user_id and property_id required")
+
+    try:
+        db = client or _get_supabase_client()
+        result = db.table("worker_property_assignments").upsert({
+            "tenant_id": tenant_id,
+            "user_id": target_user_id,
+            "property_id": target_property_id,
+            "worker_role": worker_role,
+            "is_primary": is_primary,
+            "updated_at": datetime.now(tz=timezone.utc).isoformat(),
+        }, on_conflict="tenant_id,user_id,property_id,worker_role").execute()
+
+        assignment = result.data[0] if result.data else {}
+        return JSONResponse(status_code=201, content={"assignment": assignment})
+    except Exception as exc:
+        logger.exception("create_worker_assignment error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to create assignment")
+
+
+@router.delete(
+    "/worker/assignments/{assignment_id}",
+    tags=["worker"],
+    summary="Remove a worker-property assignment",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def delete_worker_assignment(
+    assignment_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """Delete a worker-property assignment by ID."""
+    try:
+        db = client or _get_supabase_client()
+        db.table("worker_property_assignments").delete().eq(
+            "id", assignment_id
+        ).eq("tenant_id", tenant_id).execute()
+        return JSONResponse(status_code=200, content={"status": "deleted", "id": assignment_id})
+    except Exception as exc:
+        logger.exception("delete_worker_assignment error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to delete assignment")

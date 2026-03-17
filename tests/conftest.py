@@ -21,7 +21,17 @@ Solution:
 from __future__ import annotations
 
 import os
+import warnings
 import pytest
+
+# Phase 816 — Suppress InsecureKeyLengthWarning in test output.
+# Tests use intentionally short HMAC keys; the warning is noise, not a real concern.
+warnings.filterwarnings("ignore", message=".*HMAC key.*below the minimum recommended length.*", category=DeprecationWarning)
+try:
+    from jwt.exceptions import InsecureKeyLengthWarning  # type: ignore[attr-defined]
+    warnings.filterwarnings("ignore", category=InsecureKeyLengthWarning)
+except ImportError:
+    pass  # older PyJWT versions don't have this category
 
 # Session-start defaults: these env vars must be set before any test imports
 # router modules (which read env at import time via FastAPI dependency injection).

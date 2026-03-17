@@ -1,34 +1,26 @@
 ## Current Active Phase
 
-Phase 814 — Documentation Sync. Phases 813–842 execution plan active.
+Phase 831+ — Intake Proof Sequence. System at true zero-state.
 
 ## Last Closed Phase
 
-Phase 813 — Git Commit + Push: 7 commits (29 files), test fixes (7765/0/12), pushed to GitHub.
+Phase 830 — System Re-Baseline + Data Seed + Zero-State Reset: reality audit, seed script, full env reset (~15,543 rows), auth E2E proven, task lifecycle policy locked.
 
 ## Current Objective
 
-🏗️ **Operational Core Wave** — Building product-facing operational surfaces.
-- Wave 1 Foundation (Phases 586–605): Schema complete — 21 tables, 37 columns, all RLS-enabled
-- Previous: PMS Pipeline Proof complete (Phase 812, Checkpoint XXV-C)
-- PMS / Channel Manager layer: **DEFERRED** (not discarded) behind Operational Core
-- Auth Flow Redesign: complete (7 screens, 3 flows proven, Google blocked externally)
-- Next: Operational Core Phase E — Mobile Cleaner Flow
+🧪 **Intake Proof Sequence** — Proving the system works from true zero-state like a new customer.
+- System reset to zero-state (Phase 830)
+- Auth E2E proven: dev-login → JWT → API access
+- Task lifecycle policy: no production delete, CANCELLED + canceled_reason
+- Next: Create first property → Connect iCal → Pull first booking → Verify task generation
 
-### Operational Core Sequence
+### Next Phase Sequence
 ```
-Phase A — Property Detail (6-tab view)         ✅ DONE (gaps A-1 to A-4 tracked)
-Phase B — Staff Management (Manage Users)      ✅ DONE (gaps B-1 to B-5 tracked)
-Phase C — Dashboard Flight Cards (Admin + Ops) ✅ DONE
-──── Checkpoint: Operational Awareness ──── ✅ PASSED
-Phase D — Mobile Check-in Flow                 ✅ DONE (gaps D-1 to D-7 tracked)
-  ⚠ SCOPE RULE: Tenant-wide check-in list (today's arrivals for the tenant).
-    NOT assignment-aware. No "my properties" / "my check-ins" UX.
-    Worker-to-property assignment (B-1) layered on later.
-Phase E — Mobile Cleaner Flow                  ← IN PROGRESS (page + tests committed)
-Phase F — Problem Reporting                    ← NEXT
-──── Checkpoint: One Property, End-to-End ──── ← TARGET (Phase 842)
-Then: PMS resumes
+Phase 831 — Prove Manual Booking Intake E2E     ← NEXT
+Phase 832 — Prove iCal Intake E2E               ← NEXT
+Phase 833 — Prove Task Generation from Booking  ← NEXT
+Phase 834+ — Continue per roadmap               ← PLANNED
+──── Checkpoint: One Property, End-to-End ────  ← TARGET
 ```
 
 ## Deferred Items — Open Items Registry
@@ -290,4 +282,4 @@ Then: PMS resumes
 
 ## Tests
 
-**7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phases 813–842: closing gaps, building Phase E+F. (Phase 813+)**
+**7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. System at true zero-state. Phase 831+: intake proof sequence.**

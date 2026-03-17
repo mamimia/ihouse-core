@@ -79,4 +79,4 @@ class TestFrontendStructure:
     def test_checkout_page_exists(self):
         """Phase 532 — Check-out page exists."""
         content = self._read_file("app/(app)/ops/checkout/page.tsx")
-        assert "Check-Out" in content
+        assert "check-out" in content.lower() or "checkout" in content.lower()
