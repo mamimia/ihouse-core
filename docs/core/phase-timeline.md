@@ -8000,3 +8000,103 @@ Spec: `docs/archive/phases/phase-831-spec.md`
 
 Spec: `docs/archive/phases/phase-832-spec.md`
 
+---
+
+## Phase 833 — Intake Proof: First Property + Manual Booking E2E — Full Closure 2026-03-17
+
+- Zero-state → property creation → manual booking → task cascade → overlap blocking
+- Dashboard, bookings, tasks, admin properties — all UI surfaces proven
+- Adjacent booking acceptance (non-overlapping dates) proven
+- Backend fully action-proven, UI fully proven across all surfaces
+
+---
+
+## Phase 834 — iCal Intake E2E — Full Closure 2026-03-17
+
+- Locally-served `.ics` file (valid VEVENT entries) used to exercise real code path
+- `POST /integrations/ical/connect` → booking_state writes with source=ical
+- Dedup proven: re-sync → upsert (v1→v2), no duplicates
+- Overlap blocking: manual booking overlapping iCal dates → 409 CONFLICT
+- UI: iCal bookings with `ical` badge visible on bookings page
+- Initially Readiness-Closed (task cascade gap), retroactively upgraded after Phase 835
+
+---
+
+## Phase 835 — iCal Task Cascade Fix — Closed 2026-03-17
+
+- Root cause: `task_automator.py` had `if source == "ical": return []` guard
+- Guard was outdated policy (iCal = "low-confidence signal"), but iCal is now main intake path
+- Fix: removed guard, iCal bookings now create CHECKIN_PREP + CLEANING tasks
+- Proof: new iCal booking → 2 tasks created → visible in UI → same behavior as manual
+
+
+
+---
+
+## Phase 836 — Guest Access Model + Token/QR Proof — Readiness-Closed 2026-03-18
+
+- Investigated full guest access model: two token systems (HMAC portal + QR short token)
+- Proved token issuance, verification, invalid rejection, booking_ref mismatch rejection
+- Proved QR short token generation (URL + DB storage)
+- Proved guest portal frontend loads with valid token, rejects invalid/expired
+- Proved guest scope isolation (PII-safe, no names/financials leaked)
+- Identified 3 gaps: portal DB lookup wrong table, no auto-issuance, no QR image
+
+---
+
+## Phase 837 — Guest Portal Data Binding + Auto-Issuance + QR Image — Closed 2026-03-18
+
+- Fixed portal DB lookup: `bookings` → `booking_state` in `guest_portal_router.py`
+- Added auto guest token issuance (30-day TTL) in `manual_booking_router.py` on booking creation
+- Added auto guest token issuance in `bulk_import_router.py` for iCal bookings
+- Added `GET /bookings/{booking_id}/qr-image` — real scannable QR code PNG via `qrcode` library
+- Proven: booking → auto-token → portal loads real property data → QR image scannable
+- Caveat: rich portal data (wifi, rules, welcome) depends on configured property fields
+
+
+---
+
+## Phase 838 — Mobile-Accessible Language Control — Closed 2026-03-18
+
+- Created `CompactLangSwitcher` component — compact pill (flag + code + arrow), expands to dropdown with flag + native name + English name
+- Closes on outside click/tap, Escape key, 44px minimum tap target
+- Dark/light/auto theme variants
+- Wired into: `AdaptiveShell` mobile + tablet (fixed top-right, above bottom nav), `PublicNav` (between nav links and CTA), `guest/[token]/page.tsx` (fixed top-right)
+- Worker page: embedded in header top-right alongside critical/overdue badges
+- Desktop: sidebar LanguageSwitcher remains as secondary control
+- Zero TypeScript errors, proof: `🇬🇧 EN ▼` pill visible top-right on guest portal + login page
+
+
+---
+
+## Phase 839 — Wave 1: Login/Auth + Worker Full Localization — Closed 2026-03-18
+
+### RTL Guard Fix
+- Removed global `dir="rtl"` write from LanguageContext — RTL no longer applied to `<html>` automatically
+- `isRTL` remains on context for opt-in use by fully localized surfaces only
+- Rule: RTL must only be applied when a surface actually has translated content
+
+### Login/Auth Localization
+- `login/page.tsx` — full localization via `useLanguage().t()`: Welcome/ยินดีต้อนรับ/ברוך הבא, subtitle, EMAIL/อีเมล/אימייל, Remember me/จำฉันไว้/זכור אותי, Continue/ดำเนินการต่อ/המשך, host link, register link, all error messages
+- `AuthCard.tsx` — "Operations Platform" and footer wired to t(); accepts `titleKey`/`subtitleKey` props
+- `translations.ts` — 14 new `auth.*` keys added (EN/TH/HE)
+
+### Worker Surface Localization
+- `DetailSheet` — Property/Due/Priority/Status/Role/Booking labels wired to t(); overdue alert text wired; Mark as Complete, Confirm Complete, Saving, Cancel, Processing wired; `statusLabelEn()` fallback replaced with `t('status.*')`
+- `TaskCard` — OVERDUE badge wired to t('worker.overdue'); status badge uses t()
+- Both components now call `useLanguage()` directly
+
+### Proof
+- Login page in Thai: ยินดีต้อนรับ, แพลตฟอร์มปฏิบัติการ, อีเมล, จำฉันไว้, ดำเนินการต่อ — ALL text changed
+- Login page in Hebrew: ברוך הבא, פלטפורמת תפעול, אימייל, זכור אותי, המשך — ALL text changed
+- No RTL layout breakage — dir=ltr preserved on auth form
+- Language persists across navigation
+
+
+## Phase 840 — Property Settings Surface + OTA Management — Closed 2026-03-18
+
+- Bridged the gap between the existing property-scoped channel/iCal backend and the Admin UI.
+- Created a dedicated OTA Settings tab inside the property detail view (split into iCal and API sub-tabs, dynamically filtered by provider registry capabilities).
+- Redesigned the Map (Location) card to be correctly sized and operational.
+- Adjusted the Reference Photos grid layout and added an Add Booking property-locked manual booking entrypoint.
+- Addressed tenant_id isolation in owner routing.

@@ -157,6 +157,26 @@ async def create_manual_booking(
         # Phase 707 — Trigger outbound sync to block dates on connected OTAs (best-effort)
         ota_block_result = _trigger_ota_date_block(db, property_id, check_in, check_out, booking_id, tenant_id)
 
+        # Phase 837 — Auto-issue guest portal token (best-effort)
+        guest_token_raw = None
+        guest_portal_url = None
+        try:
+            from services.guest_token import issue_guest_token, record_guest_token
+            raw_token, exp = issue_guest_token(
+                booking_ref=booking_id,
+                guest_email="",
+                ttl_seconds=30 * 86_400,  # 30 days
+            )
+            record_guest_token(
+                db=db, booking_ref=booking_id, tenant_id=tenant_id,
+                raw_token=raw_token, exp=exp,
+            )
+            guest_token_raw = raw_token
+            guest_portal_url = f"/guest/{raw_token}"
+            logger.info("Auto-issued guest token for %s", booking_id)
+        except Exception as t_exc:
+            logger.warning("Auto guest token failed for %s: %s", booking_id, t_exc)
+
         # Audit
         try:
             from services.audit_writer import write_audit_event
@@ -178,6 +198,8 @@ async def create_manual_booking(
             "tasks_opt_out": tasks_opt_out,
             "tasks_created": tasks_created,
             "ota_blocked": ota_block_result,
+            "guest_token": guest_token_raw,
+            "guest_portal_url": guest_portal_url,
         })
     except Exception as exc:
         logger.exception("create_manual_booking error: %s", exc)

@@ -95,9 +95,9 @@ function ToggleBtn({ active, onToggle, label }: { active: boolean; onToggle: () 
             onClick={onToggle}
             title={label}
             style={{
-                width: 36,
-                height: 20,
-                borderRadius: 10,
+                width: 28,
+                height: 16,
+                borderRadius: 8,
                 border: 'none',
                 background: active ? 'var(--color-primary)' : 'var(--color-surface-3)',
                 position: 'relative',
@@ -109,9 +109,9 @@ function ToggleBtn({ active, onToggle, label }: { active: boolean; onToggle: () 
             <span style={{
                 position: 'absolute',
                 top: 2,
-                left: active ? 18 : 2,
-                width: 16,
-                height: 16,
+                left: active ? 14 : 2,
+                width: 12,
+                height: 12,
                 borderRadius: '50%',
                 background: '#fff',
                 transition: 'left var(--transition-fast)',
@@ -129,6 +129,12 @@ function ProviderRow({ p, onPatch }: {
     p: Provider;
     onPatch: (provider: string, updates: Record<string, unknown>) => Promise<void>;
 }) {
+    const tierLabels: Record<string, string> = {
+        A: 'Full API',
+        B: 'Partial API',
+        C: 'iCal Only',
+        D: 'Manual',
+    };
     const tierColors: Record<string, string> = {
         A: 'var(--color-primary)',
         B: 'var(--color-accent)',
@@ -150,7 +156,7 @@ function ProviderRow({ p, onPatch }: {
             <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', minWidth: 110 }}>
                 {p.provider}
             </span>
-            <Chip label={`T${p.tier}`} color={tierColors[p.tier] || 'var(--color-text-dim)'} />
+            <Chip label={tierLabels[p.tier] ?? `T${p.tier}`} color={tierColors[p.tier] || 'var(--color-text-dim)'} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ToggleBtn
                     active={p.supports_api_write}

@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import PasswordInput from '@/components/auth/PasswordInput';
 import AuthCard from '../../../../components/auth/AuthCard';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -174,29 +175,25 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
                 <div>
                     <label style={labelStyle}>New Password</label>
-                    <input
-                        className="auth-input"
-                        type="password"
+                    <PasswordInput
+                        id="input-new-password"
                         value={password}
                         onChange={e => { setPassword(e.target.value); setError(null); }}
                         placeholder="At least 6 characters"
                         autoComplete="new-password"
                         autoFocus
                         disabled={loading}
-                        style={inputStyle}
                     />
                 </div>
                 <div>
                     <label style={labelStyle}>Confirm Password</label>
-                    <input
-                        className="auth-input"
-                        type="password"
+                    <PasswordInput
+                        id="input-confirm-password"
                         value={confirmPassword}
                         onChange={e => { setConfirmPassword(e.target.value); setError(null); }}
                         placeholder="Re-enter password"
                         autoComplete="new-password"
                         disabled={loading}
-                        style={inputStyle}
                     />
                 </div>
 

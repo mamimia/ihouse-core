@@ -2,12 +2,8 @@
 
 /**
  * Login Screen 1 — Email First
+ * Phase 839 — Full localization (EN / TH / HE)
  * Route: /login
- *
- * Clean, minimal email-first auth screen.
- * Email field → Continue → Screen 2 (password)
- * Google sign-in option
- * Links: Host login, Register
  */
 
 import { useState, useEffect } from 'react';
@@ -15,11 +11,13 @@ import { useRouter } from 'next/navigation';
 import AuthCard from '../../../components/auth/AuthCard';
 import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
 import AuthDivider from '../../../components/auth/AuthDivider';
-import { supabase, isSupabaseConfigured } from '../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabaseClient';
 import { getRoleRoute } from '../../../lib/roleRoute';
+import { useLanguage } from '../../../lib/LanguageContext';
 
 export default function LoginPage() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [email, setEmail] = useState('');
     const [remember, setRemember] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -28,11 +26,9 @@ export default function LoginPage() {
 
     useEffect(() => {
         setMounted(true);
-        // If already logged in, redirect to role-appropriate page
         if (typeof window !== 'undefined' && localStorage.getItem('ihouse_token')) {
             window.location.href = getRoleRoute(localStorage.getItem('ihouse_token') ?? undefined);
         }
-        // Restore remembered email
         const stored = localStorage.getItem('domaniqo_remember_email');
         if (stored) {
             setEmail(stored);
@@ -43,26 +39,23 @@ export default function LoginPage() {
     const handleContinue = (e: React.FormEvent) => {
         e.preventDefault();
         if (!email.trim()) {
-            setError('Please enter your email address');
+            setError(t('auth.err_email_required'));
             return;
         }
-        // Basic email validation
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            setError('Please enter a valid email address');
+            setError(t('auth.err_email_invalid'));
             return;
         }
-        // Persist remember choice
         if (remember) {
             localStorage.setItem('domaniqo_remember_email', email.trim());
         } else {
             localStorage.removeItem('domaniqo_remember_email');
         }
-        // Pass email to password screen via query param
         router.push(`/login/password?email=${encodeURIComponent(email.trim())}${remember ? '&remember=1' : ''}`);
     };
 
     const handleGoogleSignIn = async () => {
-        if (!supabase) { setError('Google sign-in is not configured yet.'); return; }
+        if (!supabase) { setError(t('auth.err_google_fail')); return; }
         setLoading(true);
         setError(null);
         try {
@@ -74,12 +67,11 @@ export default function LoginPage() {
                 options: { redirectTo },
             });
             if (oauthError) {
-                setError('Google sign-in failed. Please try again.');
+                setError(t('auth.err_google_fail'));
                 setLoading(false);
             }
-            // Supabase will redirect to Google → then to /auth/callback
         } catch {
-            setError('Google sign-in failed. Please try again.');
+            setError(t('auth.err_google_fail'));
             setLoading(false);
         }
     };
@@ -100,7 +92,7 @@ export default function LoginPage() {
     };
 
     return (
-        <AuthCard title="Welcome" subtitle="Please enter your details to sign in">
+        <AuthCard titleKey="auth.welcome" subtitleKey="auth.subtitle">
             <form onSubmit={handleContinue} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
                 {/* Email */}
                 <div>
@@ -113,7 +105,7 @@ export default function LoginPage() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.06em',
                     }}>
-                        Email
+                        {t('auth.email')}
                     </label>
                     <input
                         id="input-email"
@@ -121,7 +113,7 @@ export default function LoginPage() {
                         type="email"
                         value={email}
                         onChange={e => { setEmail(e.target.value); setError(null); }}
-                        placeholder="you@example.com"
+                        placeholder={t('auth.email_placeholder')}
                         autoComplete="email"
                         autoFocus
                         disabled={loading}
@@ -144,7 +136,7 @@ export default function LoginPage() {
                         onChange={e => setRemember(e.target.checked)}
                         style={{ accentColor: 'var(--color-copper, #B56E45)', width: 16, height: 16 }}
                     />
-                    Remember me
+                    {t('auth.remember_me')}
                 </label>
 
                 {/* Error */}
@@ -184,7 +176,7 @@ export default function LoginPage() {
                         minHeight: 48,
                     }}
                 >
-                    Continue
+                    {t('auth.continue')}
                 </button>
             </form>
 
@@ -204,10 +196,10 @@ export default function LoginPage() {
                 textAlign: 'center',
             }}>
                 <a href="/login?role=host" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
-                    Domaniqo for Host users? <span style={{ textDecoration: 'underline' }}>Log in here</span>
+                    {t('auth.host_link')} <span style={{ textDecoration: 'underline' }}>{t('auth.host_link_cta')}</span>
                 </a>
                 <a href="/register" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
-                    New to Domaniqo? <span style={{ textDecoration: 'underline' }}>Register a new account</span>
+                    {t('auth.register_link')} <span style={{ textDecoration: 'underline' }}>{t('auth.register_link_cta')}</span>
                 </a>
             </div>
         </AuthCard>

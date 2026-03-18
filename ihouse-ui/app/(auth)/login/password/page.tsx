@@ -14,6 +14,7 @@ import { Suspense } from 'react';
 import AuthCard from '../../../../components/auth/AuthCard';
 import GoogleSignInButton from '../../../../components/auth/GoogleSignInButton';
 import AuthDivider from '../../../../components/auth/AuthDivider';
+import PasswordInput from '../../../../components/auth/PasswordInput';
 import { supabase } from '@/lib/supabaseClient';
 import { api, setToken } from '../../../../lib/api';
 import { getRoleRoute } from '../../../../lib/roleRoute';
@@ -134,7 +135,6 @@ function PasswordForm() {
                     </a>
                 </div>
 
-                {/* Password */}
                 <div>
                     <label style={{
                         display: 'block',
@@ -147,17 +147,13 @@ function PasswordForm() {
                     }}>
                         Password
                     </label>
-                    <input
+                    <PasswordInput
                         id="input-password"
-                        className="auth-input"
-                        type="password"
                         value={password}
                         onChange={e => { setPassword(e.target.value); setError(null); }}
-                        placeholder="••••••••"
-                        autoComplete="current-password"
                         autoFocus
                         disabled={loading}
-                        style={inputStyle}
+                        autoComplete="current-password"
                     />
                 </div>
 

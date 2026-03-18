@@ -518,6 +518,82 @@ async def generate_qr(
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
 
 
+@router.get(
+    "/bookings/{booking_id}/qr-image",
+    summary="Get QR code image as PNG (Phase 837)",
+    responses={200: {"content": {"image/png": {}}}, 404: {}, 500: {}},
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_qr_image(
+    booking_id: str,
+    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+):
+    """
+    GET /bookings/{booking_id}/qr-image
+
+    Returns a real, scannable QR code PNG image for the guest portal URL.
+    Looks up the portal URL from guest_qr_tokens (short QR token) OR
+    falls back to generating a URL from guest_tokens (HMAC portal token).
+    """
+    import io
+    try:
+        import qrcode
+    except ImportError:
+        return make_error_response(status_code=503, code="QR_NOT_AVAILABLE",
+                                   extra={"detail": "qrcode library not installed."})
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+        portal_url = None
+
+        # Try QR short token first
+        qr_res = (
+            db.table("guest_qr_tokens").select("portal_url")
+            .eq("tenant_id", tenant_id).eq("booking_id", booking_id)
+            .limit(1).execute()
+        )
+        if qr_res.data:
+            portal_url = qr_res.data[0].get("portal_url")
+
+        # Fall back to HMAC guest token
+        if not portal_url:
+            token_res = (
+                db.table("guest_tokens").select("booking_ref")
+                .eq("tenant_id", tenant_id).eq("booking_ref", booking_id)
+                .is_("revoked_at", "null")
+                .order("created_at", desc=True)
+                .limit(1).execute()
+            )
+            if token_res.data:
+                # Re-issue a fresh token for the QR
+                from services.guest_token import issue_guest_token
+                raw_token, _exp = issue_guest_token(booking_ref=booking_id, ttl_seconds=30 * 86_400)
+                portal_url = f"https://app.domaniqo.com/guest/{raw_token}"
+
+        if not portal_url:
+            return make_error_response(status_code=404, code="NOT_FOUND",
+                                       extra={"detail": f"No guest token found for booking '{booking_id}'. Generate one first via POST /bookings/{booking_id}/generate-qr."})
+
+        # Generate QR image
+        qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=4)
+        qr.add_data(portal_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+
+        from fastapi.responses import StreamingResponse
+        return StreamingResponse(buf, media_type="image/png", headers={
+            "Content-Disposition": f'inline; filename="qr-{booking_id}.png"',
+            "Cache-Control": "no-store",
+        })
+    except Exception as exc:
+        logger.exception("get_qr_image error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
 # ---------------------------------------------------------------------------
 # Phase 615 — Pre-arrival guest self-service
 # ---------------------------------------------------------------------------

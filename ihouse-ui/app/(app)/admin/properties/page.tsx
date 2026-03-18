@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -386,17 +387,23 @@ function AddPropertyModal({ onClose, onCreated }: { onClose: () => void; onCreat
 /* ------------------------------------------------------------------ */
 
 export default function AdminPropertiesPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [properties, setProperties] = useState<Property[]>([]);
     const [summary, setSummary] = useState<StatusSummary>({ pending: 0, approved: 0, rejected: 0, archived: 0 });
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [notice, setNotice] = useState<string | null>(null);
-    const [showCreate, setShowCreate] = useState(false);
 
     const showNotice = (msg: string) => {
         setNotice(msg);
         setTimeout(() => setNotice(null), 3000);
     };
+
+    // Toast from redirect after create
+    useEffect(() => {
+        if (searchParams?.get('created') === '1') showNotice('✓ Property created successfully');
+    }, [searchParams]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -425,12 +432,14 @@ export default function AdminPropertiesPage() {
     };
 
     const filters = [
-        { key: null, label: 'All', count: summary.pending + summary.approved + summary.rejected + summary.archived },
+        { key: null, label: 'All', count: summary.pending + summary.approved + summary.rejected },
         { key: 'pending', label: 'Pending', count: summary.pending },
         { key: 'approved', label: 'Approved', count: summary.approved },
         { key: 'rejected', label: 'Rejected', count: summary.rejected },
-        { key: 'archived', label: 'Archived', count: summary.archived },
     ];
+
+    // Exclude archived from the main list — archived properties live at /admin/properties/archived
+    const visibleProperties = properties.filter(p => p.status !== 'archived');
 
     return (
         <div style={{ maxWidth: 1100 }}>
@@ -451,7 +460,7 @@ export default function AdminPropertiesPage() {
                     </h1>
                     <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
                         <button
-                            onClick={() => setShowCreate(true)}
+                            onClick={() => router.push('/admin/properties/new')}
                             style={{
                                 background: 'var(--color-primary)',
                                 color: '#fff',
@@ -465,6 +474,21 @@ export default function AdminPropertiesPage() {
                             }}
                         >
                             + Add Property
+                        </button>
+                        <button
+                            onClick={() => router.push('/admin/properties/archived')}
+                            style={{
+                                background: 'none',
+                                color: 'var(--color-warn)',
+                                border: '1px solid rgba(181,110,69,0.35)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--space-2) var(--space-5)',
+                                fontSize: 'var(--text-sm)',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                            }}
+                        >
+                            🗄 Archived{summary.archived > 0 ? ` (${summary.archived})` : ''}
                         </button>
                         <button
                             onClick={load}
@@ -516,7 +540,7 @@ export default function AdminPropertiesPage() {
             </div>
 
             {/* Property rows */}
-            {loading && properties.length === 0 ? (
+            {loading && visibleProperties.length === 0 ? (
                 <div style={{
                     padding: 'var(--space-8)',
                     textAlign: 'center',
@@ -525,7 +549,7 @@ export default function AdminPropertiesPage() {
                 }}>
                     Loading properties…
                 </div>
-            ) : properties.length === 0 ? (
+            ) : visibleProperties.length === 0 ? (
                 <div style={{
                     padding: 'var(--space-8)',
                     textAlign: 'center',
@@ -541,7 +565,7 @@ export default function AdminPropertiesPage() {
                     </div>
                 </div>
             ) : (
-                properties.map(p => (
+                visibleProperties.map(p => (
                     <PropertyRow key={p.property_id} p={p} onAction={handleAction} />
                 ))
             )}
@@ -563,8 +587,7 @@ export default function AdminPropertiesPage() {
                 }}>{notice}</div>
             )}
 
-            {/* Add Property Modal */}
-            {showCreate && <AddPropertyModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); showNotice('✓ Property created'); }} />}
+            {/* Add Property Modal removed — Phase 844: navigate to /admin/properties/new */}
 
             {/* Footer */}
             <div style={{

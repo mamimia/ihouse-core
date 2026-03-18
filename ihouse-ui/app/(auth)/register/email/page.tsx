@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import PasswordInput from '@/components/auth/PasswordInput';
 import AuthCard from '../../../../components/auth/AuthCard';
 import ProgressBar from '../../../../components/auth/ProgressBar';
 import GoogleSignInButton from '../../../../components/auth/GoogleSignInButton';
@@ -116,15 +117,13 @@ function RegisterEmailForm() {
                         color: 'rgba(234,229,222,0.5)', marginBottom: 'var(--space-2, 8px)',
                         textTransform: 'uppercase', letterSpacing: '0.06em',
                     }}>Password</label>
-                    <input
-                        className="auth-input"
-                        type="password"
+                    <PasswordInput
+                        id="input-reg-password"
                         value={password}
                         onChange={e => { setPassword(e.target.value); setError(null); }}
                         placeholder="At least 6 characters"
                         autoComplete="new-password"
                         disabled={loading}
-                        style={inputStyle}
                     />
                 </div>
 

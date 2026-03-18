@@ -593,8 +593,15 @@ app.include_router(notification_health_router)
 from api.system_status_router import router as system_status_router  # noqa: E402  # Phase 774
 app.include_router(system_status_router)
 
+# --- Phase 844 v3: Owners Admin + Listing Fetch ---
 
-# ---------------------------------------------------------------------------
+from api.admin_owners_router import router as admin_owners_router  # noqa: E402  # Phase 844
+app.include_router(admin_owners_router)
+
+from api.listing_fetch_router import router as listing_fetch_router  # noqa: E402  # Phase 844
+app.include_router(listing_fetch_router)
+
+
 # Phase 221 — Scheduler status endpoint
 # ---------------------------------------------------------------------------
 

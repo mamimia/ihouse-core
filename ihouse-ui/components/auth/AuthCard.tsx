@@ -2,18 +2,41 @@
 
 /**
  * AuthCard — Shared wrapper for all auth screens.
- * Dark theme, centered, with Domaniqo monogram branding.
+ * Phase 839 — Full localization (EN / TH / HE)
+ *
+ * Auth layout rule (permanent):
+ *   Form elements always direction: ltr, text-align: left.
+ *   RTL is NOT applied here — auth is not yet fully RTL-aware.
+ *   title/subtitle content will be translated per language via t().
  */
 
 import DMonogram from '../DMonogram';
+import { useLanguage } from '../../lib/LanguageContext';
+import { TranslationKey } from '../../lib/translations';
 
 interface AuthCardProps {
     children: React.ReactNode;
+    /** Translation key for the card heading (e.g. 'auth.welcome') */
+    titleKey?: TranslationKey;
+    /** Translation key for the subtitle (e.g. 'auth.subtitle') */
+    subtitleKey?: TranslationKey;
+    /** Raw string override — used by non-login screens that haven't been localized yet */
     title?: string;
     subtitle?: string;
 }
 
-export default function AuthCard({ children, title = 'Welcome', subtitle }: AuthCardProps) {
+export default function AuthCard({
+    children,
+    titleKey,
+    subtitleKey,
+    title,
+    subtitle,
+}: AuthCardProps) {
+    const { t } = useLanguage();
+
+    const resolvedTitle = titleKey ? t(titleKey) : (title ?? 'Welcome');
+    const resolvedSubtitle = subtitleKey ? t(subtitleKey) : subtitle;
+
     return (
         <>
             <style>{`
@@ -40,13 +63,7 @@ export default function AuthCard({ children, title = 'Welcome', subtitle }: Auth
                     fontFamily: 'var(--font-sans, system-ui, sans-serif)',
                 }}
             >
-                {/*
-              * AUTH LAYOUT RULE (permanent):
-              * English auth screens = LTR, left-aligned form layout.
-              * Title/subtitle may be centered. All form elements must be left-aligned.
-              * No RTL drift. No right-alignment on labels, inputs, checkboxes, or links.
-              */}
-            <div className="auth-card" style={{ width: '100%', maxWidth: 420, direction: 'ltr', textAlign: 'left' }}>
+                <div className="auth-card" style={{ width: '100%', maxWidth: 420, direction: 'ltr', textAlign: 'left' }}>
                     {/* Monogram + Brand */}
                     <div style={{ textAlign: 'center', marginBottom: 'var(--space-10, 40px)' }}>
                         <div style={{
@@ -74,7 +91,7 @@ export default function AuthCard({ children, title = 'Welcome', subtitle }: Auth
                             letterSpacing: '0.04em',
                             textTransform: 'uppercase',
                         }}>
-                            Operations Platform
+                            {t('auth.ops_platform')}
                         </div>
                     </div>
 
@@ -94,15 +111,15 @@ export default function AuthCard({ children, title = 'Welcome', subtitle }: Auth
                             margin: '0 0 var(--space-1, 4px)',
                             letterSpacing: '-0.02em',
                         }}>
-                            {title}
+                            {resolvedTitle}
                         </h1>
-                        {subtitle && (
+                        {resolvedSubtitle && (
                             <p style={{
                                 fontSize: 'var(--text-sm, 14px)',
                                 color: 'rgba(234,229,222,0.4)',
                                 margin: '0 0 var(--space-6, 24px)',
                             }}>
-                                {subtitle}
+                                {resolvedSubtitle}
                             </p>
                         )}
                         {children}
@@ -115,7 +132,7 @@ export default function AuthCard({ children, title = 'Welcome', subtitle }: Auth
                         color: 'rgba(234,229,222,0.2)',
                         marginTop: 'var(--space-6, 24px)',
                     }}>
-                        Domaniqo · See every stay.
+                        {t('auth.footer')}
                     </p>
                 </div>
             </div>

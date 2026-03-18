@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import DMonogram from '../../../../components/DMonogram';
+import CompactLangSwitcher from '../../../../components/CompactLangSwitcher';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -164,8 +165,13 @@ export default function GuestPortalPage() {
                 minHeight: '100vh',
                 animation: 'fadeIn 400ms ease',
             }}>
+                {/* Phase 838 — language switcher fixed top-right for guest */}
+                <div style={{ position: 'fixed', top: 12, right: 14, zIndex: 200 }}>
+                    <CompactLangSwitcher theme="auto" position="inline" />
+                </div>
+
                 {/* Header */}
-                <div style={{ textAlign: 'center', marginBottom: 'var(--space-6, 24px)' }}>
+                <div style={{ textAlign: 'center', marginBottom: 'var(--space-6, 24px)', paddingTop: 'var(--space-8, 32px)' }}>
                     <DMonogram size={36} />
                     <h1 style={{
                         fontSize: 'var(--text-xl, 22px)', fontWeight: 800,

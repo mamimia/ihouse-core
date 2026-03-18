@@ -21,6 +21,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, WorkerTask, WorkerChannel, NotificationDelivery } from '../../../lib/api';
 import { useLanguage } from '../../../lib/LanguageContext';
+import CompactLangSwitcher from '../../../components/CompactLangSwitcher';
 
 // ---------------------------------------------------------------------------
 // Colour helpers
@@ -124,6 +125,7 @@ function SlaCountdown({ task }: { task: WorkerTask }) {
 interface CardProps { task: WorkerTask; onTap: () => void; }
 
 function TaskCard({ task, onTap }: CardProps) {
+    const { t } = useLanguage();
     const overdue = isOverdue(task);
     const isCrit = task.priority === 'CRITICAL';
 
@@ -175,7 +177,7 @@ function TaskCard({ task, onTap }: CardProps) {
                         fontSize: 11, color: task.status === 'completed' ? '#22c55e' : '#9ca3af',
                         background: task.status === 'completed' ? '#22c55e18' : '#ffffff0a',
                         borderRadius: 99, padding: '2px 9px',
-                    }}>{statusLabelEn(task.status)}</span>
+                    }}>{t(`status.${task.status}` as Parameters<typeof t>[0]) || statusLabelEn(task.status)}</span>
                 </div>
             </div>
 
@@ -183,7 +185,7 @@ function TaskCard({ task, onTap }: CardProps) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: '#9ca3af' }}>
                 <span>🏡 <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{task.property_id}</span></span>
                 <span style={{ color: overdue ? '#ef4444' : '#9ca3af', fontFamily: 'monospace', fontSize: 12 }}>
-                    {overdue && <span style={{ fontWeight: 700, marginRight: 6 }}>⚠ OVERDUE</span>}
+                    {overdue && <span style={{ fontWeight: 700, marginRight: 6 }}>⚠ {t('worker.overdue')}</span>}
                     {task.due_time ? fmtTime(`${task.due_date}T${task.due_time}`) : fmtDate(task.due_date)}
                 </span>
             </div>
@@ -211,6 +213,7 @@ interface SheetProps {
 }
 
 function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) {
+    const { t } = useLanguage();
     const [notes, setNotes] = useState('');
     const [view, setView] = useState<'detail' | 'complete'>('detail');
     const overdue = isOverdue(task);
@@ -270,12 +273,12 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
                         gap: 10, marginBottom: 20,
                     }}>
                         {[
-                            ['Property', task.property_id],
-                            ['Due', task.due_time ? fmtTime(`${task.due_date}T${task.due_time}`) : fmtDate(task.due_date)],
-                            ['Priority', task.priority],
-                            ['Status', statusLabelEn(task.status)],
-                            ['Role', task.worker_role?.replace(/_/g, ' ')],
-                            ['Booking', task.booking_id ?? '—'],
+                            [t('worker.property'), task.property_id],
+                            [t('worker.due'), task.due_time ? fmtTime(`${task.due_date}T${task.due_time}`) : fmtDate(task.due_date)],
+                            [t('worker.priority'), task.priority],
+                            [t('worker.status'), t(`status.${task.status}` as Parameters<typeof t>[0]) || statusLabelEn(task.status)],
+                            [t('worker.role'), task.worker_role?.replace(/_/g, ' ')],
+                            [t('worker.booking'), task.booking_id ?? '—'],
                         ].map(([label, value]) => (
                             <div key={label} style={{
                                 background: '#1a1f2e', borderRadius: 12,
@@ -294,7 +297,7 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
                             background: '#1a1f2e', borderRadius: 12, padding: '12px 14px',
                             marginBottom: 20, border: '1px solid #ffffff0d',
                         }}>
-                            <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Notes</div>
+                            <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{t('worker.notes')}</div>
                             <div style={{ fontSize: 14, color: '#d1d5db', lineHeight: 1.5 }}>{task.description}</div>
                         </div>
                     )}
@@ -306,7 +309,7 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
                             fontSize: 13, color: '#ef4444', fontWeight: 600,
                             animation: 'pulse 2s infinite',
                         }}>
-                            ⚠ This task is overdue — action required immediately
+                            {t('worker.overdue_alert')}
                         </div>
                     )}
 
@@ -338,7 +341,7 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
                                             : '0 0 16px rgba(59,130,246,0.3)',
                                     }}
                                 >
-                                    {loading ? 'Processing…' : task.priority === 'CRITICAL' ? '⚡ Acknowledge Now' : '✓ Acknowledge'}
+                                    {loading ? t('worker.processing') : task.priority === 'CRITICAL' ? t('worker.acknowledge_crit') : t('worker.acknowledge')}
                                 </button>
                             )}
 
@@ -371,7 +374,7 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
                                 id={`notes-${task.task_id}`}
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
-                                placeholder="E.g. All rooms cleaned, keys returned, gate locked…"
+                                placeholder={t("worker.notes_placeholder")}
                                 rows={4}
                                 style={{
                                     width: '100%', background: '#1a1f2e',
@@ -394,7 +397,7 @@ function DetailSheet({ task, onClose, onAck, onComplete, loading }: SheetProps) 
                                     boxShadow: '0 0 16px rgba(34,197,94,0.3)',
                                 }}
                             >
-                                {loading ? 'Saving…' : '✅ Confirm Complete'}
+                                {loading ? t('worker.saving') : t('worker.confirm_complete')}
                             </button>
                             <button
                                 onClick={() => setView('detail')}
@@ -983,7 +986,7 @@ export default function WorkerPage() {
                                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                             </p>
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             {criticalCount > 0 && (
                                 <div style={{
                                     background: '#ef4444', color: '#fff',
@@ -1005,6 +1008,8 @@ export default function WorkerPage() {
                                     {overdueCount} overdue
                                 </div>
                             )}
+                            {/* Phase 838 — language switcher in worker header */}
+                            <CompactLangSwitcher theme="dark" position="inline" />
                         </div>
                     </div>
                 </div>

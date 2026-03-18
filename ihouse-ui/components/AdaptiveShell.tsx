@@ -16,6 +16,7 @@ import { useState, useCallback } from 'react';
 import { useIsMobile, useIsDesktop } from '../hooks/useMediaQuery';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import CompactLangSwitcher from './CompactLangSwitcher';
 
 interface AdaptiveShellProps {
     children: React.ReactNode;
@@ -33,9 +34,14 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     if (isMobile) {
         return (
             <>
+                {/* Phase 838 — language always reachable on mobile */}
+                <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 200 }}>
+                    <CompactLangSwitcher theme="auto" position="inline" />
+                </div>
                 <main style={{
                     flex: 1,
                     padding: 'var(--space-4)',
+                    paddingTop: 'calc(var(--space-4) + 44px)',
                     paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 8px))',
                     maxWidth: '100%',
                 }}>
@@ -50,6 +56,11 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     if (isTablet) {
         return (
             <>
+                {/* Phase 838 — language accessible on tablet (top-right, opposite hamburger) */}
+                <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 200 }}>
+                    <CompactLangSwitcher theme="auto" position="inline" />
+                </div>
+
                 {/* Hamburger toggle */}
                 <button
                     id="sidebar-toggle"

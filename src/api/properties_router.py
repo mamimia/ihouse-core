@@ -23,9 +23,10 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timezone as tz
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
@@ -56,8 +57,11 @@ def _get_supabase_client() -> Any:
 # Row formatting
 # ---------------------------------------------------------------------------
 
-# All updatable property fields (Phases 587-590)
+# All updatable property fields (Phases 587-590, 844)
 _PROPERTY_DETAIL_FIELDS = [
+    "property_type", "city", "country", "address",  # Phase 844 — core fields
+    "bedrooms", "beds", "bathrooms", "max_guests",  # Phase 844 — capacity
+    "description", "source_url",  # Phase 844 — operation
     "checkin_time", "checkout_time",  # Phase 587
     "deposit_required", "deposit_amount", "deposit_currency", "deposit_method",  # Phase 588
     "door_code", "key_location", "wifi_name", "wifi_password",  # Phase 590
@@ -66,7 +70,25 @@ _PROPERTY_DETAIL_FIELDS = [
     "pool_instructions", "laundry_info", "tv_info", "safe_code",
     "emergency_contact", "extra_notes",
     "maintenance_mode",  # Phase 603
+    "owner_phone", "owner_email",  # Phase 844 — contact snapshot
+    "amenities",  # Phase 844 — property features checklist
+    "house_rules",  # Phase 589 — JSONB array of rule strings
+    "cover_photo_url",  # Phase 844 — explicit hero/cover image selection
+    # GPS / Location — Phase 844
+    "gps_source",  # string — how GPS was obtained
+    # Note: latitude and longitude are handled separately as floats below
 ]
+
+# Numeric fields that require type conversion in PATCH
+_PROPERTY_NUMERIC_FIELDS: Dict[str, type] = {
+    "latitude": float,
+    "longitude": float,
+    "bedrooms": int,
+    "beds": int,
+    "bathrooms": float,
+    "max_guests": int,
+    "deposit_amount": float,
+}
 
 
 def _format_property(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -77,12 +99,31 @@ def _format_property(row: Dict[str, Any]) -> Dict[str, Any]:
         "display_name":  row.get("display_name"),
         "timezone":      row.get("timezone", "UTC"),
         "base_currency": row.get("base_currency", "USD"),
+        # Property type + location
+        "property_type": row.get("property_type"),
+        "city":          row.get("city"),
+        "country":       row.get("country"),
+        "address":       row.get("address"),
+        # Capacity
+        "bedrooms":      row.get("bedrooms"),
+        "beds":          row.get("beds"),
+        "bathrooms":     row.get("bathrooms"),
+        "max_guests":    row.get("max_guests"),
+        # Operation
+        "description":   row.get("description"),
+        "source_url":    row.get("source_url"),
         # Phase 586 — GPS
         "latitude":      row.get("latitude"),
         "longitude":     row.get("longitude"),
         "gps_source":    row.get("gps_source"),
         # Phase 589 — House Rules
         "house_rules":   row.get("house_rules", []),
+        # Phase 844 — Owner contact snapshot + amenities
+        "owner_phone":   row.get("owner_phone"),
+        "owner_email":   row.get("owner_email"),
+        "amenities":     row.get("amenities", []),
+        # Status
+        "status":        row.get("status"),
         "created_at":    row.get("created_at"),
         "updated_at":    row.get("updated_at"),
     }
@@ -115,18 +156,21 @@ def _format_property(row: Dict[str, Any]) -> Dict[str, Any]:
 )
 async def list_properties(
     tenant_id: str = Depends(jwt_auth),
+    status: Optional[str] = Query(None, description="Filter by status: 'active', 'archived', or 'all'. Default excludes archived."),
     client: Optional[Any] = None,
 ) -> JSONResponse:
-    """GET /properties — list all properties for this tenant."""
+    """GET /properties — list properties. Excludes archived by default. Use ?status=archived or ?status=all."""
     try:
         db = client if client is not None else _get_supabase_client()
-        result = (
-            db.table("properties")
-            .select("*")
-            .eq("tenant_id", tenant_id)
-            .order("property_id", desc=False)
-            .execute()
-        )
+        q = db.table("properties").select("*").eq("tenant_id", tenant_id)
+        if status == "archived":
+            q = q.eq("status", "archived")
+        elif status == "all":
+            pass  # no filter
+        else:
+            # Default: exclude archived
+            q = q.neq("status", "archived")
+        result = q.order("property_id", desc=False).execute()
         rows: List[Dict[str, Any]] = result.data or []
         return JSONResponse(
             status_code=200,
@@ -142,6 +186,62 @@ async def list_properties(
 
 
 # ---------------------------------------------------------------------------
+# Auto-ID: configurable prefix + sequence (e.g. KPG-500, KPG-501...)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_PREFIX = "KPG"
+_DEFAULT_START = 500
+
+
+def _next_property_id(db: Any, tenant_id: str) -> str:
+    """Calculate the next sequential property ID from DB settings."""
+    # Read settings (will use defaults if admin_settings table doesn't exist yet)
+    try:
+        config = _get_property_id_config(db, tenant_id)
+    except Exception:
+        config = {}
+    prefix = config.get("prefix", _DEFAULT_PREFIX)
+    start = config.get("start_number", _DEFAULT_START)
+
+    result = (
+        db.table("properties")
+        .select("property_id")
+        .eq("tenant_id", tenant_id)
+        .like("property_id", f"{prefix}-%")
+        .order("property_id", desc=True)
+        .limit(50)
+        .execute()
+    )
+    max_num = start - 1
+    for row in (result.data or []):
+        pid = row.get("property_id", "")
+        parts = pid.split("-", 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            num = int(parts[1])
+            if num > max_num:
+                max_num = num
+    return f"{prefix}-{max_num + 1}"
+
+
+@router.get(
+    "/properties/next-id",
+    tags=["properties"],
+    summary="Get the next auto-generated property ID (KPG-XXX)",
+    responses={200: {}},
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_next_property_id(tenant_id: str = Depends(jwt_auth)) -> JSONResponse:
+    """Returns the next available sequential property ID."""
+    try:
+        db = _get_supabase_client()
+        next_id = _next_property_id(db, tenant_id)
+        return JSONResponse(status_code=200, content={"next_id": next_id})
+    except Exception as exc:
+        logger.exception("GET /properties/next-id error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
 # POST /properties
 # ---------------------------------------------------------------------------
 
@@ -151,7 +251,7 @@ async def list_properties(
     summary="Create a new property record (Phase 156)",
     description=(
         "Create a canonical property metadata record.\\n\\n"
-        "**`property_id`** must be unique within the tenant.\\n\\n"
+        "**`property_id`** is auto-generated (KPG-500, KPG-501, ...) if not provided.\\n\\n"
         "**409** returned if a property with this `property_id` already exists for the tenant.\\n\\n"
         "**Invariant:** Writes only to `properties`. Never touches booking state."
     ),
@@ -172,9 +272,8 @@ async def create_property(
     """
     POST /properties
 
-    Required body fields:
-        property_id     TEXT — unique identifier for this property in the tenant
     Optional body fields:
+        property_id     TEXT — auto-generated if not provided (KPG-500, KPG-501, ...)
         display_name    TEXT — human-readable name (e.g. 'Villa Sunset 3BR')
         timezone        TEXT — IANA timezone (default: UTC)
         base_currency   CHAR(3) — ISO 4217 currency code (default: USD)
@@ -186,13 +285,12 @@ async def create_property(
             extra={"detail": "Request body must be a JSON object."},
         )
 
+    db = client if client is not None else _get_supabase_client()
+
+    # Auto-generate property_id if not provided
     property_id = body.get("property_id")
     if not property_id or not str(property_id).strip():
-        return make_error_response(
-            status_code=400,
-            code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": "'property_id' is required and must be a non-empty string."},
-        )
+        property_id = _next_property_id(db, tenant_id)
 
     display_name  = body.get("display_name")
     timezone      = body.get("timezone", "UTC")
@@ -206,7 +304,6 @@ async def create_property(
         )
 
     try:
-        db = client if client is not None else _get_supabase_client()
         insert_data: Dict[str, Any] = {
             "tenant_id":    tenant_id,
             "property_id":  str(property_id).strip(),
@@ -215,6 +312,33 @@ async def create_property(
         }
         if display_name is not None:
             insert_data["display_name"] = str(display_name).strip() or None
+
+        # Include extra fields from body
+        optional_str_fields = ["city", "country", "address", "description", "source_url",
+                               "property_type", "checkin_time", "checkout_time"]
+        for f in optional_str_fields:
+            if f in body and body[f] is not None:
+                insert_data[f] = str(body[f]).strip()
+
+        optional_num_fields = {"latitude": float, "longitude": float,
+                               "bedrooms": int, "beds": int, "bathrooms": float, "max_guests": int}
+        for f, conv in optional_num_fields.items():
+            if f in body and body[f] is not None:
+                try:
+                    insert_data[f] = conv(body[f])
+                except (ValueError, TypeError):
+                    pass
+
+        # Deposit fields
+        if "deposit_required" in body:
+            insert_data["deposit_required"] = bool(body["deposit_required"])
+        if "deposit_amount" in body and body["deposit_amount"] is not None:
+            try:
+                insert_data["deposit_amount"] = float(body["deposit_amount"])
+            except (ValueError, TypeError):
+                pass
+        if "deposit_currency" in body:
+            insert_data["deposit_currency"] = str(body["deposit_currency"]).upper()
 
         result = db.table("properties").insert(insert_data).execute()
         rows = result.data or []
@@ -359,10 +483,21 @@ async def update_property(
             )
         update_data["base_currency"] = val
 
-    # Phase 587-590: Accept all new property detail fields
+    # Phase 587-590 + 844: Accept all property detail fields
+    # String/JSON fields: pass through directly
     for field in _PROPERTY_DETAIL_FIELDS:
         if field in body:
             update_data[field] = body[field]
+
+    # Numeric fields: require explicit type conversion
+    for field, conv in _PROPERTY_NUMERIC_FIELDS.items():
+        if field in body and body[field] is not None:
+            try:
+                update_data[field] = conv(body[field])
+            except (ValueError, TypeError):
+                pass  # silently skip malformed numerics
+        elif field in body and body[field] is None:
+            update_data[field] = None  # allow explicit clear
 
     if not update_data:
         return make_error_response(
@@ -393,4 +528,191 @@ async def update_property(
         logger.exception(
             "PATCH /properties/%s error for tenant=%s: %s", property_id, tenant_id, exc
         )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# POST /properties/{property_id}/archive
+# POST /properties/{property_id}/unarchive
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/properties/{property_id}/archive",
+    tags=["properties"],
+    summary="Archive a property",
+    responses={200: {}, 404: {}, 500: {}},
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def archive_property(
+    property_id: str,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """Move a property to archived status. Hidden from main list but recoverable."""
+    try:
+        db = _get_supabase_client()
+        result = (
+            db.table("properties")
+            .update({
+                "status": "archived",
+                "archived_at": datetime.now(tz.utc).isoformat(),
+                "archived_by": "admin",
+            })
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .execute()
+        )
+        rows = result.data or []
+        if not rows:
+            return make_error_response(status_code=404, code="NOT_FOUND",
+                                       extra={"detail": f"Property '{property_id}' not found."})
+        return JSONResponse(status_code=200, content=_format_property(rows[0]))
+    except Exception as exc:
+        logger.exception("archive error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+@router.post(
+    "/properties/{property_id}/unarchive",
+    tags=["properties"],
+    summary="Unarchive a property — restore to active status",
+    responses={200: {}, 404: {}, 500: {}},
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def unarchive_property(
+    property_id: str,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """Restore an archived property to active status. Returns to the main property list."""
+    try:
+        db = _get_supabase_client()
+        result = (
+            db.table("properties")
+            .update({
+                "status": "approved",
+                "archived_at": None,
+                "archived_by": None,
+            })
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .execute()
+        )
+        rows = result.data or []
+        if not rows:
+            return make_error_response(status_code=404, code="NOT_FOUND",
+                                       extra={"detail": f"Property '{property_id}' not found."})
+        return JSONResponse(status_code=200, content=_format_property(rows[0]))
+    except Exception as exc:
+        logger.exception("unarchive error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Property ID Settings (Admin-configurable prefix/sequence)
+# ---------------------------------------------------------------------------
+
+_SETTINGS_TABLE = "admin_settings"
+_PROP_ID_SETTING_KEY = "property_id_config"
+
+
+def _get_property_id_config(db: Any, tenant_id: str) -> Dict[str, Any]:
+    """Get or create the property ID configuration for this tenant."""
+    result = (
+        db.table(_SETTINGS_TABLE)
+        .select("*")
+        .eq("tenant_id", tenant_id)
+        .eq("setting_key", _PROP_ID_SETTING_KEY)
+        .limit(1)
+        .execute()
+    )
+    rows = result.data or []
+    if rows:
+        import json as _json
+        val = rows[0].get("setting_value", "{}")
+        if isinstance(val, str):
+            return _json.loads(val)
+        return val
+    return {"prefix": "KPG", "start_number": 500}
+
+
+@router.get(
+    "/admin/property-id-settings",
+    tags=["admin"],
+    summary="Get property ID auto-generation settings",
+    responses={200: {}},
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_property_id_settings(
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    try:
+        db = _get_supabase_client()
+        config = _get_property_id_config(db, tenant_id)
+        # Also calculate what the next ID would be
+        next_id = _next_property_id(db, tenant_id)
+        return JSONResponse(status_code=200, content={
+            "prefix": config.get("prefix", "KPG"),
+            "start_number": config.get("start_number", 500),
+            "next_id": next_id,
+            "note": "Property IDs are immutable once created and are never reused.",
+        })
+    except Exception as exc:
+        logger.exception("get property-id-settings error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+@router.put(
+    "/admin/property-id-settings",
+    tags=["admin"],
+    summary="Update property ID auto-generation settings",
+    responses={200: {}, 400: {}},
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def update_property_id_settings(
+    body: Dict[str, Any],
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """Set the prefix and start_number for auto-generated property IDs."""
+    import json as _json
+    prefix = str(body.get("prefix", "KPG")).upper().strip()
+    start_number = body.get("start_number", 500)
+
+    if not prefix or len(prefix) > 10:
+        return make_error_response(status_code=400, code=ErrorCode.VALIDATION_ERROR,
+                                   extra={"detail": "prefix must be 1-10 characters."})
+    if not isinstance(start_number, int) or start_number < 1:
+        return make_error_response(status_code=400, code=ErrorCode.VALIDATION_ERROR,
+                                   extra={"detail": "start_number must be a positive integer."})
+
+    try:
+        db = _get_supabase_client()
+        config_json = _json.dumps({"prefix": prefix, "start_number": start_number})
+        # Upsert
+        existing = (
+            db.table(_SETTINGS_TABLE)
+            .select("id")
+            .eq("tenant_id", tenant_id)
+            .eq("setting_key", _PROP_ID_SETTING_KEY)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            db.table(_SETTINGS_TABLE).update({
+                "setting_value": config_json,
+            }).eq("id", existing.data[0]["id"]).execute()
+        else:
+            db.table(_SETTINGS_TABLE).insert({
+                "tenant_id": tenant_id,
+                "setting_key": _PROP_ID_SETTING_KEY,
+                "setting_value": config_json,
+            }).execute()
+
+        next_id = _next_property_id(db, tenant_id)
+        return JSONResponse(status_code=200, content={
+            "prefix": prefix,
+            "start_number": start_number,
+            "next_id": next_id,
+            "note": "Property IDs are immutable once created and are never reused.",
+        })
+    except Exception as exc:
+        logger.exception("update property-id-settings error: %s", exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

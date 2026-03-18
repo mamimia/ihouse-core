@@ -1,30 +1,40 @@
 ## Current Active Phase
 
-Phase 833 — Intake Proof: First Property + Manual Booking E2E. System at true zero-state.
+Phase 841 — Wave 1: Guest Portal + Owner Localization. Phases 833–840 closed.
 
 ## Last Closed Phase
 
-Phase 832 — Worker Task Start + Guest Name Enrichment: PATCH /worker/tasks/{id}/start, guest_name in booking responses.
+Phase 840 — Property Settings Surface + OTA Management: Bridged backend OTA mappings to property detail UI. Redesigned Map card and photo layout. Addressed tenant_id isolation.
 
 ## Current Objective
 
-🧪 **Intake Proof Sequence** — Proving the system works from true zero-state like a new customer.
+✅ **Intake Proof Sequence — COMPLETE** — System proven from true zero-state.
 - System reset to zero-state (Phase 830)
 - Auth E2E proven: dev-login → JWT → API access
 - Task lifecycle policy: no production delete, CANCELLED + canceled_reason
 - Cleaner role added across auth + routing stack (Phase 831)
 - Worker task start endpoint + guest_name enrichment (Phase 832)
-- Next: Create first property → Connect iCal → Pull first booking → Verify task generation
+- First property + manual booking E2E proven (Phase 833)
+- iCal intake E2E proven incl. dedup + overlap blocking (Phase 834)
+- iCal task cascade fix — same operational behavior as manual (Phase 835)
+- Guest access model investigated, token/QR proven (Phase 836 — Readiness-Closed)
+- Guest portal data binding fixed, auto-issuance added, real QR image (Phase 837)
+- Mobile-accessible language control on all critical surfaces (Phase 838)
+- RTL guard fix + login/auth + worker surface fully localized EN/TH/HE (Phase 839)
+- Property Settings Surface + OTA Management (Phase 840)
 
 ### Next Phase Sequence
 ```
-Phase 833 — Intake Proof: First Property + Manual Booking E2E  ← NEXT
-Phase 834 — Intake Proof: iCal Intake E2E                     ← PLANNED
-Phase 835 — Intake Proof: Task Generation from Booking         ← PLANNED
-──── Checkpoint: One Property, End-to-End ────                 ← TARGET
-Phase 836 — Critical Surface Localization + Language Selector   ← PLANNED
-Phase 837 — Guest Portal Enhancement                           ← PLANNED
-Phase 838 — Owner Mobile Optimization                          ← PLANNED
+──── Checkpoint: One Property, End-to-End ────                 ← REACHED
+──── Checkpoint: Guest Access E2E Proven ────                  ← REACHED
+──── Checkpoint: Language Control Accessible ────              ← REACHED
+──── Wave 1: Operational/Public Surface Localization ────      ← ACTIVE
+Phase 839 — Wave 1: Login/Auth + Worker Full Localization      ← CLOSED
+Phase 840 — Property Settings Surface + OTA Management         ← CLOSED
+Phase 841 — Wave 1: Guest Portal + Owner Localization          ← NEXT
+Phase 842 — Translation Completeness Audit                    ← PLANNED
+Phase 843 — Guest Portal Mobile Polish                        ← PLANNED
+Phase 844 — Operational Language E2E Proof                    ← PLANNED
 ```
 
 ## Deferred Items — Open Items Registry

@@ -12,6 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { getToken } from '@/lib/api';
+import { useSearchParams } from 'next/navigation';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -35,7 +36,7 @@ async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
 type IntakePath = 'select' | 'manual' | 'ical' | 'csv';
 
 // ========== Property selector ==========
-function PropertySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function PropertySelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
     const [properties, setProperties] = useState<any[]>([]);
     useEffect(() => {
         apiFetch('/properties?limit=100').then(res => {
@@ -43,7 +44,7 @@ function PropertySelect({ value, onChange }: { value: string; onChange: (v: stri
         }).catch(() => {});
     }, []);
     return (
-        <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
+        <select value={value} onChange={e => onChange(e.target.value)} style={{ ...inputStyle, opacity: disabled ? 0.6 : 1 }} disabled={disabled}>
             <option value="">— Select Property —</option>
             {properties.map((p: any) => (
                 <option key={p.property_id} value={p.property_id}>
@@ -67,12 +68,14 @@ const cardStyle: React.CSSProperties = {
 
 // ========== Main Component ==========
 export default function BookingIntakePage() {
-    const [path, setPath] = useState<IntakePath>('select');
+    const searchParams = useSearchParams();
+    const prefilledProperty = searchParams?.get('property') || '';
+    const [path, setPath] = useState<IntakePath>(prefilledProperty ? 'manual' : 'select');
     const [notice, setNotice] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Manual booking form state
-    const [mPropertyId, setMPropertyId] = useState('');
+    const [mPropertyId, setMPropertyId] = useState(prefilledProperty);
     const [mGuestName, setMGuestName] = useState('');
     const [mCheckIn, setMCheckIn] = useState('');
     const [mCheckOut, setMCheckOut] = useState('');
@@ -292,7 +295,7 @@ export default function BookingIntakePage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                         <div>
                             <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Property *</label>
-                            <PropertySelect value={mPropertyId} onChange={setMPropertyId} />
+                            <PropertySelect value={mPropertyId} onChange={setMPropertyId} disabled={!!prefilledProperty} />
                         </div>
                         <div>
                             <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Guest Name *</label>

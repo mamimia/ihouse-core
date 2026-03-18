@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 833 — Intake Proof: First Property + Manual Booking E2E. System at true zero-state. Next: create first property from zero, prove manual booking intake E2E.
+Phase 839 — Next phase TBD.
 
 ## Last Closed Phase
-Phase 832 — Worker Task Start + Guest Name Enrichment: PATCH /worker/tasks/{id}/start, guest_name in booking responses.
+Phase 838 — Property Settings Surface + OTA Management: Added OTA Settings tab to property detail, Map/Location card redesign, Grid photo layout, "Add Booking" action, addressed tenant_id in owner routing.
 
 ## System Status
 
@@ -401,7 +401,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. System at true zero-state post Phase 830 reset. Phase 832 closed. Next: Phase 833 intake proof sequence.**
+**Backend: 7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phase 838 closed. Next: Phase 839.**
 
 ## Environment Variables (continued)
 

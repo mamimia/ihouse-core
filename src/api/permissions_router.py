@@ -2,6 +2,10 @@
 Phase 165 — Permissions Router
 Phase 167 — Manager Delegated Permissions
 Phase 171 — Admin Audit Log (write_audit_event wired into grant/revoke)
+Phase 842 — Staff Schema Extension
+  - Extended GET endpoints to return new profile columns
+  - Added PATCH /permissions/{user_id} partial profile update
+  - Added GET/POST/DELETE /staff/assignments for property assignment management
 
 Admin-managed CRUD for tenant_permissions.
 
@@ -9,9 +13,13 @@ Endpoints:
   GET    /permissions                           — list all permissions for the tenant
   GET    /permissions/{user_id}                 — get permission record for a user
   POST   /permissions                           — create or upsert a permission record
+  PATCH  /permissions/{user_id}                 — Phase 842: partial profile field update
   DELETE /permissions/{user_id}                 — delete a permission record
   PATCH  /permissions/{user_id}/grant           — Phase 167: grant capability flags
   PATCH  /permissions/{user_id}/revoke          — Phase 167: revoke capability flags
+  GET    /staff/assignments/{user_id}           — Phase 842: list property assignments
+  POST   /staff/assignments                     — Phase 842: add property assignment
+  DELETE /staff/assignments/{user_id}/{prop_id} — Phase 842: remove property assignment
 
 Rules:
   - JWT auth required (tenant_id from sub claim).
@@ -147,7 +155,13 @@ async def list_permissions(
         db = client if client is not None else _get_supabase_client()
         result = (
             db.table("tenant_permissions")
-            .select("id, user_id, role, permissions, created_at, updated_at")
+            .select(
+                "id, user_id, role, permissions, display_name, phone, language,"
+                " worker_id, worker_role,"
+                " photo_url, address, emergency_contact, comm_preference,"
+                " worker_roles, maintenance_specializations, notes, is_active,"
+                " created_at, updated_at"
+            )
             .eq("tenant_id", tenant_id)
             .order("created_at", desc=False)
             .execute()
@@ -188,7 +202,13 @@ async def get_permission(
         db = client if client is not None else _get_supabase_client()
         result = (
             db.table("tenant_permissions")
-            .select("id, user_id, role, permissions, created_at, updated_at")
+            .select(
+                "id, user_id, role, permissions, display_name, phone, language,"
+                " worker_id, worker_role,"
+                " photo_url, address, emergency_contact, comm_preference,"
+                " worker_roles, maintenance_specializations, notes, is_active,"
+                " created_at, updated_at"
+            )
             .eq("tenant_id", tenant_id)
             .eq("user_id", user_id)
             .limit(1)
@@ -262,13 +282,24 @@ async def upsert_permission(
 
     now = datetime.now(tz=timezone.utc).isoformat()
 
-    row = {
+    row: dict = {
         "tenant_id":   tenant_id,
         "user_id":     user_id,
         "role":        role,
         "permissions": permissions if permissions is not None else {},
         "updated_at":  now,
     }
+
+    # Phase 842: include optional profile fields when provided
+    _PROFILE_FIELDS = (
+        "display_name", "phone", "language",
+        "photo_url", "address", "emergency_contact",
+        "comm_preference", "worker_roles", "maintenance_specializations",
+        "notes", "is_active",
+    )
+    for field in _PROFILE_FIELDS:
+        if field in body:
+            row[field] = body[field]
 
     try:
         db = client if client is not None else _get_supabase_client()
@@ -605,4 +636,270 @@ async def revoke_permission(
         })
     except Exception as exc:
         logger.exception("PATCH /permissions/%s/revoke error: %s", user_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# PATCH /permissions/{user_id} — Phase 842: partial profile field update
+# ---------------------------------------------------------------------------
+
+# Profile fields that can be partially updated (PATCH semantics)
+_PATCHABLE_PROFILE_FIELDS = frozenset({
+    "display_name", "phone", "language",
+    "photo_url", "address", "emergency_contact",
+    "comm_preference", "worker_roles", "maintenance_specializations",
+    "notes", "is_active", "role",
+})
+
+@router.patch(
+    "/permissions/{user_id}",
+    tags=["permissions"],
+    summary="Partially update a staff profile record (Phase 842)",
+    description=(
+        "Updates only the supplied fields on an existing tenant_permissions row. "
+        "Unlike POST /permissions (which upserts the whole record), this PATCH applies "
+        "only the fields present in the request body. "
+        "Updateable fields: display_name, phone, language, photo_url, address, "
+        "emergency_contact, comm_preference, worker_roles, maintenance_specializations, "
+        "notes, is_active, role. "
+        "The permissions JSONB flags use /grant and /revoke instead."
+    ),
+    responses={
+        200: {"description": "Profile fields updated"},
+        400: {"description": "Validation error — no valid fields, or invalid role"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Permission record not found"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def patch_permission_profile(
+    user_id: str,
+    body: dict,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    if not isinstance(body, dict):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "Request body must be a JSON object."},
+        )
+
+    # Extract only recognised, patchable fields from the body
+    updates: dict = {k: v for k, v in body.items() if k in _PATCHABLE_PROFILE_FIELDS}
+    if not updates:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"No patchable fields found. Allowed: {sorted(_PATCHABLE_PROFILE_FIELDS)}"},
+        )
+
+    # Validate role if being changed
+    if "role" in updates:
+        err = _validate_role(updates["role"])
+        if err:
+            return err
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # Verify record exists
+        check = (
+            db.table("tenant_permissions")
+            .select("user_id")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if not (check.data or []):
+            return make_error_response(
+                status_code=404,
+                code=ErrorCode.PERMISSION_NOT_FOUND,
+                extra={"user_id": user_id},
+            )
+
+        now = datetime.now(tz=timezone.utc).isoformat()
+        updates["updated_at"] = now
+
+        result = (
+            db.table("tenant_permissions")
+            .update(updates)
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        saved = (result.data or [{}])[0]
+        return JSONResponse(status_code=200, content={
+            "status":     "updated",
+            "tenant_id":  tenant_id,
+            "user_id":    user_id,
+            "updated":    list(updates.keys()),
+            "updated_at": now,
+        })
+    except Exception as exc:
+        logger.exception("PATCH /permissions/%s error: %s", user_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 842 — Staff Property Assignment Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/staff/assignments/{user_id}",
+    tags=["staff"],
+    summary="List property assignments for a staff member (Phase 842)",
+    responses={
+        200: {"description": "List of assigned property IDs"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def list_staff_assignments(
+    user_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    try:
+        db = client if client is not None else _get_supabase_client()
+        result = (
+            db.table("staff_property_assignments")
+            .select("id, property_id, assigned_at, assigned_by")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", user_id)
+            .order("assigned_at", desc=False)
+            .execute()
+        )
+        rows = result.data or []
+        return JSONResponse(status_code=200, content={
+            "tenant_id":    tenant_id,
+            "user_id":      user_id,
+            "count":        len(rows),
+            "assignments":  rows,
+            "property_ids": [r["property_id"] for r in rows],
+        })
+    except Exception as exc:
+        logger.exception("GET /staff/assignments/%s error: %s", user_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+@router.post(
+    "/staff/assignments",
+    tags=["staff"],
+    summary="Assign a property to a staff member (Phase 842)",
+    description="Body: {user_id, property_id}. Idempotent — duplicate assignments are silently ignored.",
+    responses={
+        201: {"description": "Assignment created"},
+        400: {"description": "Validation error"},
+        401: {"description": "Missing or invalid JWT"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def create_staff_assignment(
+    body: dict,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    if not isinstance(body, dict):
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "Request body must be a JSON object."},
+        )
+
+    user_id = str(body.get("user_id", "")).strip()
+    property_id = str(body.get("property_id", "")).strip()
+
+    if not user_id or not property_id:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "'user_id' and 'property_id' are required."},
+        )
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+        actor_id = body.get("assigned_by", tenant_id)
+        row = {
+            "tenant_id":   tenant_id,
+            "user_id":     user_id,
+            "property_id": property_id,
+            "assigned_by": actor_id,
+        }
+        # Upsert — UNIQUE(tenant_id, user_id, property_id) handles duplicates
+        result = (
+            db.table("staff_property_assignments")
+            .upsert(row, on_conflict="tenant_id,user_id,property_id")
+            .execute()
+        )
+        saved = (result.data or [{}])[0]
+        return JSONResponse(status_code=201, content={
+            "status":      "assigned",
+            "tenant_id":   tenant_id,
+            "user_id":     user_id,
+            "property_id": property_id,
+            "id":          saved.get("id"),
+        })
+    except Exception as exc:
+        logger.exception("POST /staff/assignments error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+@router.delete(
+    "/staff/assignments/{user_id}/{property_id}",
+    tags=["staff"],
+    summary="Remove a property assignment from a staff member (Phase 842)",
+    responses={
+        200: {"description": "Assignment removed"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Assignment not found"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def delete_staff_assignment(
+    user_id: str,
+    property_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # Check existence
+        check = (
+            db.table("staff_property_assignments")
+            .select("id")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", user_id)
+            .eq("property_id", property_id)
+            .limit(1)
+            .execute()
+        )
+        if not (check.data or []):
+            return make_error_response(
+                status_code=404,
+                code=ErrorCode.PERMISSION_NOT_FOUND,
+                extra={"user_id": user_id, "property_id": property_id},
+            )
+
+        db.table("staff_property_assignments") \
+            .delete() \
+            .eq("tenant_id", tenant_id) \
+            .eq("user_id", user_id) \
+            .eq("property_id", property_id) \
+            .execute()
+
+        return JSONResponse(status_code=200, content={
+            "status":      "unassigned",
+            "tenant_id":   tenant_id,
+            "user_id":     user_id,
+            "property_id": property_id,
+        })
+    except Exception as exc:
+        logger.exception("DELETE /staff/assignments/%s/%s error: %s", user_id, property_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

@@ -250,9 +250,9 @@ async def guest_portal_by_token(token: str) -> JSONResponse:
     # 3. Look up booking + property from Supabase
     if db:
         try:
-            # Get booking by booking_id (booking_ref)
+            # Get booking by booking_id (booking_ref) — Phase 837: use booking_state
             booking_res = (
-                db.table("bookings")
+                db.table("booking_state")
                 .select("booking_id, property_id, check_in, check_out, status, source")
                 .eq("booking_id", booking_ref)
                 .limit(1)

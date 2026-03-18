@@ -2,11 +2,19 @@
 
 /**
  * Phase 260 — Language Context
+ * Phase 838/839 — RTL guard
  * ==============================
- * Global language state. Stored in localStorage. RTL auto-applied for Hebrew.
+ * Global language state. Stored in localStorage.
+ *
+ * RTL rule (Phase 839):
+ *   isRTL is exposed on the context but NOT automatically applied to <html>.
+ *   A surface must opt-in to RTL by wrapping its own container with:
+ *     style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+ *   This must only be done AFTER the surface is fully localized.
+ *   Applying dir=rtl to English text breaks the layout with zero benefit.
  *
  * Usage:
- *   const { lang, setLang, t } = useLanguage();
+ *   const { lang, setLang, t, isRTL } = useLanguage();
  *   t('worker.my_tasks')  // → "งานของฉัน" if lang === 'th'
  */
 
@@ -45,12 +53,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Apply dir="rtl" / dir="ltr" to <html>
+  // Only update the html lang attribute (for accessibility / screen readers).
+  // dir="rtl" is NOT applied globally — see RTL rule in docblock above.
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const isRTL = RTL_LANGS.has(lang);
-    document.documentElement.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
     document.documentElement.setAttribute('lang', lang);
+    // Explicitly reset to ltr to prevent any leftover state from old code.
+    document.documentElement.setAttribute('dir', 'ltr');
   }, [lang]);
 
   const setLang = useCallback((l: SupportedLang) => {

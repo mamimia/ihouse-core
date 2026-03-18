@@ -15,11 +15,24 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends
+import uuid
+import time
+
+from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
 from api.error_models import ErrorCode, make_error_response
+
+import io
+from PIL import Image as PilImage
+
+_ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+_ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+_MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB hard limit (locked policy)
+_TARGET_BYTES = 2 * 1024 * 1024        # ~2 MB optimized asset target
+_MAX_DIMENSION = 2048                  # longest side for full image
+_THUMB_DIMENSION = 400                 # thumbnail longest side
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/properties", tags=["properties"])
@@ -28,6 +41,142 @@ router = APIRouter(prefix="/properties", tags=["properties"])
 def _get_supabase_client() -> Any:
     from supabase import create_client
     return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+
+
+def _get_storage_public_url(path: str) -> str:
+    """Return public CDN URL for a storage path."""
+    base = os.environ["SUPABASE_URL"].rstrip("/")
+    return f"{base}/storage/v1/object/public/property-photos/{path}"
+
+
+def _process_image(data: bytes, max_dim: int, target_bytes: int) -> tuple[bytes, str]:
+    """Resize + compress image using Pillow. Returns (processed_bytes, format_ext)."""
+    img = PilImage.open(io.BytesIO(data))
+
+    # Convert RGBA/P to RGB for JPEG output
+    if img.mode in ("RGBA", "P", "LA"):
+        background = PilImage.new("RGB", img.size, (255, 255, 255))
+        if img.mode == "P":
+            img = img.convert("RGBA")
+        background.paste(img, mask=img.split()[-1] if "A" in img.mode else None)
+        img = background
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+
+    # Resize if larger than max_dim
+    w, h = img.size
+    if max(w, h) > max_dim:
+        ratio = max_dim / max(w, h)
+        new_w, new_h = int(w * ratio), int(h * ratio)
+        img = img.resize((new_w, new_h), PilImage.LANCZOS)
+
+    # Compress: start at quality 85, reduce until under target or quality 30
+    buf = io.BytesIO()
+    quality = 85
+    while quality >= 30:
+        buf.seek(0)
+        buf.truncate()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        if buf.tell() <= target_bytes:
+            break
+        quality -= 5
+
+    return buf.getvalue(), "jpg"
+
+
+# ---------------------------------------------------------------------------
+# Phase 844 v3 — Server-side upload proxy (bypasses client RLS)
+# Image policy: jpg/jpeg/png/webp only, 15 MB max, auto-compress to ~2 MB,
+# generate 400px thumbnail, upload both to Supabase Storage.
+# ---------------------------------------------------------------------------
+
+@router.post("/{property_id}/upload-photo",
+             summary="Upload photo via server proxy (Phase 844 — bypasses browser RLS)",
+             responses={200: {}, 400: {}, 500: {}},
+             openapi_extra={"security": [{"BearerAuth": []}]})
+async def upload_photo_proxy(
+    property_id: str,
+    file: UploadFile = File(...),
+    photo_type: str = Form("reference"),  # "reference" | "gallery"
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Accept a raw file from the browser, validate format/size, process with Pillow
+    (resize + compress + thumbnail), upload both versions to Supabase Storage
+    using the service-role key, and return the public CDN URLs.
+    """
+    content_type = getattr(file, "content_type", "") or ""
+    if content_type == "image/jpg":
+        content_type = "image/jpeg"
+
+    if content_type not in _ALLOWED_CONTENT_TYPES:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"Unsupported file type: {content_type}. Allowed: jpg, png, webp only."},
+        )
+
+    data = await file.read()
+    size_bytes = len(data)
+
+    if size_bytes > _MAX_UPLOAD_BYTES:
+        mb = round(size_bytes / (1024 * 1024), 1)
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"Image is too large ({mb} MB). Maximum allowed is 15 MB."},
+        )
+
+    # --- Process image with Pillow ---
+    try:
+        full_data, ext = _process_image(data, _MAX_DIMENSION, _TARGET_BYTES)
+        thumb_data, _ = _process_image(data, _THUMB_DIMENSION, 200 * 1024)  # ~200 KB thumb
+    except Exception as exc:
+        logger.exception("image processing error: %s", exc)
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"Could not process image: {exc}"},
+        )
+
+    ts = int(time.time())
+    uid = uuid.uuid4().hex[:8]
+    full_path = f"{property_id}/{photo_type}/{ts}_{uid}.{ext}"
+    thumb_path = f"{property_id}/{photo_type}/thumb_{ts}_{uid}.{ext}"
+
+    try:
+        db = _get_supabase_client()
+        # Upload full image
+        db.storage.from_("property-photos").upload(
+            path=full_path, file=full_data,
+            file_options={"content-type": "image/jpeg", "upsert": "true"},
+        )
+        # Upload thumbnail
+        db.storage.from_("property-photos").upload(
+            path=thumb_path, file=thumb_data,
+            file_options={"content-type": "image/jpeg", "upsert": "true"},
+        )
+
+        full_url = _get_storage_public_url(full_path)
+        thumb_url = _get_storage_public_url(thumb_path)
+
+        return JSONResponse(status_code=200, content={
+            "url": full_url,
+            "thumb_url": thumb_url,
+            "path": full_path,
+            "thumb_path": thumb_path,
+            "original_size_bytes": size_bytes,
+            "optimized_size_bytes": len(full_data),
+            "thumb_size_bytes": len(thumb_data),
+        })
+    except Exception as exc:
+        logger.exception("photo proxy upload error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR,
+                                   extra={"detail": str(exc)})
+
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -47,15 +196,30 @@ async def _add_photo(
         return make_error_response(status_code=400, code=ErrorCode.VALIDATION_ERROR,
                                    extra={"detail": "'photo_url' is required."})
 
-    row: Dict[str, Any] = {
-        "tenant_id": tenant_id, "property_id": property_id,
-        "photo_url": photo_url, "display_order": body.get("display_order", 0),
-    }
-    if extra_fields:
-        row.update(extra_fields)
-
     try:
         db = client if client is not None else _get_supabase_client()
+
+        # Duplicate prevention: check if same photo_url already exists for this property
+        existing = (
+            db.table(table)
+            .select("*")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .eq("photo_url", photo_url)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            # Already exists — return existing row, no duplicate created
+            return JSONResponse(status_code=200, content=existing.data[0])
+
+        row: Dict[str, Any] = {
+            "tenant_id": tenant_id, "property_id": property_id,
+            "photo_url": photo_url, "display_order": body.get("display_order", 0),
+        }
+        if extra_fields:
+            row.update(extra_fields)
+
         result = db.table(table).insert(row).execute()
         rows = result.data or []
         if not rows:

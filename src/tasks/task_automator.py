@@ -115,10 +115,10 @@ def tasks_for_booking_created(
         List of Tasks: [CHECKIN_PREP, CLEANING, CHECKOUT_VERIFY*], in this order.
         *CHECKOUT_VERIFY only if check_out is provided.
     """
-    # Guard: iCal-sourced bookings are low-confidence signals (observed/blocked).
-    # Do not auto-create tasks — they may not be real confirmed bookings.
-    if source == "ical":
-        return []
+    # NOTE: iCal guard removed (Phase 835). iCal is now the main intake path
+    # (strategic pivot). All iCal bookings create operational tasks like any
+    # other source. "Not available" / blocked entries are still ingested but
+    # filtered upstream if needed.
 
     if created_at is None:
         created_at = datetime.now(tz=timezone.utc).isoformat()

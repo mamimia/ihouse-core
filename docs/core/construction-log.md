@@ -5049,3 +5049,11 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Minor dev-login update
 - Spec: `phase-832-spec.md`
 
+
+## Phase 840 — Property Settings Surface + OTA Management — 2026-03-18
+
+- Bridged backend OTA mappings to property detail UI.
+- Redesigned Map card and photo layout.
+- Addressed tenant_id isolation in property owner routing.
+- Spec: `phase-840-spec.md`
+

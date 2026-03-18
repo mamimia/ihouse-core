@@ -330,6 +330,7 @@ async def connect_ical(
 ) -> JSONResponse:
     property_id = str(body.get("property_id") or "").strip()
     ical_url = str(body.get("ical_url") or "").strip()
+    provider = str(body.get("provider") or "unknown").strip().lower()
 
     if not property_id or not ical_url:
         return make_error_response(400, ErrorCode.VALIDATION_ERROR,
@@ -351,6 +352,7 @@ async def connect_ical(
             "id": conn_id,
             "property_id": property_id,
             "ical_url": ical_url,
+            "provider": provider,
             "tenant_id": tenant_id,
             "sync_interval_minutes": 15,
             "status": "active",
@@ -364,6 +366,7 @@ async def connect_ical(
         return JSONResponse(status_code=200, content={
             "connection_id": conn_id,
             "property_id": property_id,
+            "provider": provider,
             "ical_url": ical_url,
             "sync_interval_minutes": 15,
             "bookings_created": bookings_created,
@@ -371,6 +374,65 @@ async def connect_ical(
         })
     except Exception as exc:
         logger.exception("connect_ical error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
+# Property-scoped iCal connections: List + Disconnect
+# ===========================================================================
+
+@router.get("/properties/{property_id}/ical-connections", summary="List iCal connections for a property")
+async def list_ical_connections(
+    property_id: str,
+    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+) -> JSONResponse:
+    """GET /properties/{property_id}/ical-connections — all iCal feeds for this property."""
+    try:
+        db = client if client is not None else _get_db()
+        result = (
+            db.table("ical_connections")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .order("created_at", desc=False)
+            .execute()
+        )
+        rows = result.data or []
+        return JSONResponse(status_code=200, content={
+            "property_id": property_id,
+            "count": len(rows),
+            "connections": rows,
+        })
+    except Exception as exc:
+        logger.exception("list_ical_connections error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+@router.delete("/integrations/ical/{connection_id}", summary="Disconnect iCal feed")
+async def disconnect_ical(
+    connection_id: str,
+    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+) -> JSONResponse:
+    """DELETE /integrations/ical/{connection_id} — remove an iCal connection."""
+    try:
+        db = client if client is not None else _get_db()
+        result = (
+            db.table("ical_connections")
+            .delete()
+            .eq("id", connection_id)
+            .eq("tenant_id", tenant_id)
+            .execute()
+        )
+        rows = result.data or []
+        if not rows:
+            return make_error_response(404, "NOT_FOUND",
+                                       extra={"detail": f"iCal connection '{connection_id}' not found."})
+        return JSONResponse(status_code=200, content={
+            "deleted": True,
+            "connection_id": connection_id,
+        })
+    except Exception as exc:
+        logger.exception("disconnect_ical error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR)
 
 
@@ -528,6 +590,14 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
                         )
                     except Exception as t_exc:
                         logger.warning("_parse_ical_bookings: task creation failed %s: %s", booking_id, t_exc)
+
+                    # Phase 837 — Auto-issue guest portal token (best-effort)
+                    try:
+                        from services.guest_token import issue_guest_token, record_guest_token
+                        raw_token, exp = issue_guest_token(booking_ref=booking_id, ttl_seconds=30 * 86_400)
+                        record_guest_token(db=db, booking_ref=booking_id, tenant_id=tenant_id, raw_token=raw_token, exp=exp)
+                    except Exception:
+                        pass
 
                 created += 1
             except Exception as exc:
