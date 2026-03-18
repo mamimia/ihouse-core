@@ -12,9 +12,10 @@
  * No modal fallback.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/api';
+import { uploadPropertyPhoto, ACCEPTED_IMAGE_TYPES } from '@/lib/uploadPhoto';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -147,25 +148,48 @@ function CheckGroup({
 }
 
 // ── Avatar initials ─────────────────────────────────────────────────────────
-function AvatarPreview({ name, photoUrl }: { name: string; photoUrl: string }) {
+function AvatarPreview({ name, photoUrl, uploading, onAddClick, fileRef, onFileChange }: { name: string; photoUrl: string; uploading: boolean; onAddClick: () => void; fileRef: React.RefObject<HTMLInputElement | null>; onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) {
   const initials = name.trim()
     ? name.trim().split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
     : '?';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 'var(--space-4)' }}>
-      <div style={{
-        width: 72, height: 72, borderRadius: '50%',
-        background: photoUrl ? 'transparent' : 'var(--color-primary)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 24, fontWeight: 700, color: '#fff', flexShrink: 0,
-        overflow: 'hidden', border: '2px solid var(--color-border)',
-      }}>
-        {photoUrl
-          ? <img src={photoUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : initials}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: '50%',
+          background: photoUrl ? 'transparent' : 'var(--color-primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 24, fontWeight: 700, color: '#fff', flexShrink: 0,
+          overflow: 'hidden', border: '2px solid var(--color-border)',
+        }}>
+          {photoUrl
+            ? <img src={photoUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : initials}
+        </div>
+        
+        <input
+          type="file"
+          accept={ACCEPTED_IMAGE_TYPES}
+          ref={fileRef}
+          style={{ display: 'none' }}
+          onChange={onFileChange}
+        />
+        
+        <button 
+          type="button"
+          onClick={onAddClick}
+          disabled={uploading}
+          style={{
+            background: 'none', border: 'none', color: 'var(--color-primary)',
+            fontSize: '11px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer',
+            opacity: uploading ? 0.5 : 1, padding: 0, marginTop: -2,
+          }}
+        >
+          {uploading ? 'Uploading…' : 'Add photo'}
+        </button>
       </div>
       <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-xs)' }}>
-        Photo preview. Enter a URL below or leave blank for initials.
+        Photo preview. Upload an image or leave blank for initials.
       </div>
     </div>
   );
@@ -208,6 +232,9 @@ export default function NewStaffPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Load properties for the assignment multi-select
   useEffect(() => {
     apiFetch<any>('/admin/properties')
@@ -224,6 +251,27 @@ export default function NewStaffPage() {
     setAssignedProperties((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const tok = getToken();
+      if (!tok) throw new Error('Not authenticated');
+      
+      const { url } = await uploadPropertyPhoto(file, 'staff-avatars', 'reference', tok);
+      setPhotoUrl(url);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+      // Reset input so the same file can be selected again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleSave = async () => {
     if (!userId.trim()) { setError('Email / User ID is required.'); setActiveTab(0); return; }
@@ -343,7 +391,14 @@ export default function NewStaffPage() {
         {/* ── Tab 1: Profile ────────────────────────────────────────────── */}
         {activeTab === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            <AvatarPreview name={displayName || fullName} photoUrl={photoUrl} />
+            <AvatarPreview 
+              name={displayName || fullName} 
+              photoUrl={photoUrl} 
+              uploading={uploadingPhoto}
+              onAddClick={() => fileInputRef.current?.click()}
+              fileRef={fileInputRef}
+              onFileChange={handlePhotoSelect}
+            />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Field label="Full Name">

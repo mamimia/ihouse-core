@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
+# iHouse Core — Backend Dev Start
+# ================================
+# Canonical startup script. See docs/ops/runtime-truth.md for full context.
+# Entrypoint: src/main.py (NOT src/app/main.py)
+# Port: 8000 (canonical dev port)
 set -euo pipefail
+
 cd "$(dirname "$0")/../.."
 
 source .venv/bin/activate
@@ -9,11 +15,9 @@ source .env
 set +a
 
 export PYTHONPATH="src"
-export DB_ADAPTER="${DB_ADAPTER:-supabase}"
 export PORT="${PORT:-8000}"
 export HOST="${HOST:-127.0.0.1}"
 
-# Phase 14 stabilization: routed/agent sidecars must not write event_log/state implicitly
-export AGENT_SIDECAR_APPLY="0"
+echo "[ihouse] Starting backend on ${HOST}:${PORT} — entrypoint: src/main.py"
 
-exec python3 -m uvicorn app.main:app --reload --host "$HOST" --port "$PORT" --log-level info
+exec python3 -m uvicorn main:app --reload --host "${HOST}" --port "${PORT}" --log-level info

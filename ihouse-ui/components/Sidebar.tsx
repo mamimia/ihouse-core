@@ -31,6 +31,7 @@ const NAV_ITEMS: { key: TranslationKey; href: string; icon: string; roles: Role[
   { key: 'nav.properties',  href: '/admin/properties', icon: '🏘', roles: ['admin', 'manager'] },
   { key: 'nav.staff',       href: '/admin/staff',      icon: '👥', roles: ['admin', 'manager'] },
   { key: 'nav.admin',       href: '/admin',            icon: '⚙', roles: ['admin'] },
+  { key: 'nav.more',        href: '/admin/more',       icon: '⋮', roles: ['admin', 'manager'] },
 ];
 
 function getUserRole(): Role {

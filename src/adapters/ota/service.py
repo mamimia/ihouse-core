@@ -193,6 +193,7 @@ def ingest_provider_event_with_dlq(
             from tasks.task_writer import write_tasks_for_booking_created
             booking_id = (emitted[0]["payload"].get("booking_id", "") if emitted else "")
             check_in = payload.get("check_in") or payload.get("arrival_date") or ""
+            check_out = payload.get("check_out") or payload.get("departure_date") or ""
             property_id = (emitted[0]["payload"].get("property_id", "") if emitted else "")
             if booking_id and check_in and property_id:
                 write_tasks_for_booking_created(
@@ -200,6 +201,7 @@ def ingest_provider_event_with_dlq(
                     booking_id=booking_id,
                     property_id=property_id,
                     check_in=check_in,
+                    check_out=check_out,
                     provider=provider,
                 )
         except Exception:

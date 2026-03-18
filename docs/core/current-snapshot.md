@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 839 — Next phase TBD.
+Phase 840 — Tenant-Level Notification Integrations (Supabase schema `tenant_integrations` + API bindings for LINE, WhatsApp, Telegram, SMS configuration).
 
 ## Last Closed Phase
-Phase 838 — Property Settings Surface + OTA Management: Added OTA Settings tab to property detail, Map/Location card redesign, Grid photo layout, "Add Booking" action, addressed tenant_id in owner routing.
+Phase 839 — Task Ordering Logic Fix (KPG-502 back-to-back testing), Provider Registry Grid Redesign (Crisp UI with no-wrap Chips and tooltips), and Notification Integrations UI foundation.
 
 ## System Status
 

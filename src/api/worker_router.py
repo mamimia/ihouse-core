@@ -184,6 +184,10 @@ async def list_worker_tasks(
             query = query.eq("worker_role", effective_worker_role)
         if status is not None:
             query = query.eq("status", status)
+        else:
+            # Phase E-4: Hide canceled tasks from default "All" view to keep dashboard clean
+            query = query.neq("status", "CANCELED")
+            
         if date is not None:
             query = query.eq("due_date", date)
         # Phase E-3 — assigned_to filter for personal task lists

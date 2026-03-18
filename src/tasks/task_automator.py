@@ -134,13 +134,16 @@ def tasks_for_booking_created(
         priority=TaskPriority.HIGH,
     )
 
+    cleaning_due_date = check_out if check_out else check_in
+    cleaning_title = f"Checkout cleaning for {booking_id}" if check_out else f"Pre-arrival cleaning for {booking_id}"
+
     cleaning = Task.build(
         kind=TaskKind.CLEANING,
         tenant_id=tenant_id,
         booking_id=booking_id,
         property_id=property_id,
-        due_date=check_in,
-        title=f"Pre-arrival cleaning for {booking_id}",
+        due_date=cleaning_due_date,
+        title=cleaning_title,
         created_at=created_at,
         priority=TaskPriority.MEDIUM,
     )

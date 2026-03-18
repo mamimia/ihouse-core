@@ -11,21 +11,29 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useParams } from 'next/navigation';
 
+function fmtDate(d: string | null): string {
+    if (!d) return '—';
+    try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+    catch { return d; }
+}
+
 export default function BookingDetailPage() {
     const params = useParams();
     const bookingId = params?.id as string;
     const [booking, setBooking] = useState<any>(null);
     const [financial, setFinancial] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
+    const [propertyMap, setPropertyMap] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [bRes, fRes, hRes] = await Promise.allSettled([
+            const [bRes, fRes, hRes, pRes] = await Promise.allSettled([
                 api.getBookings?.({ limit: 100 }),
                 api.getBookingFinancial?.(bookingId),
                 api.getBookingHistory?.(bookingId),
+                api.listProperties?.(),
             ]);
             if (bRes.status === 'fulfilled') {
                 const b = bRes.value?.bookings?.find((b: any) => b.booking_id === bookingId);
@@ -33,6 +41,13 @@ export default function BookingDetailPage() {
             }
             if (fRes.status === 'fulfilled') setFinancial(fRes.value);
             if (hRes.status === 'fulfilled') setHistory(hRes.value?.events || []);
+            if (pRes.status === 'fulfilled') {
+                const map: Record<string, string> = {};
+                for (const p of pRes.value?.properties || []) {
+                    map[p.property_id] = p.display_name || p.property_id;
+                }
+                setPropertyMap(map);
+            }
         } catch { /* graceful */ }
         setLoading(false);
     }, [bookingId]);
@@ -56,12 +71,81 @@ export default function BookingDetailPage() {
                     <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)', textTransform: 'uppercase' }}>Booking Info</h2>
                     {booking ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                            {[['Property', booking.property_id], ['Guest', booking.guest_name], ['Check-in', booking.check_in_date], ['Check-out', booking.check_out_date], ['Status', booking.status], ['Source', booking.source]].map(([k, v]) => (
-                                <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
-                                    <span style={{ color: 'var(--color-text-dim)' }}>{k}</span>
-                                    <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{v || '—'}</span>
-                                </div>
-                            ))}
+                            {[
+                                ['Property', booking.property_id ? (propertyMap[booking.property_id] || booking.property_id) : '—'], 
+                                ['Guest', booking.guest_name], 
+                                ['Guests count', booking.number_of_guests],
+                                ['Confirmation #', booking.reservation_ref],
+                                ['Check-in', fmtDate(booking.check_in)], 
+                                ['Check-out', fmtDate(booking.check_out)], 
+                                ['Status', booking.status], 
+                                ['Source', booking.source],
+                                ['Notes', booking.notes]
+                            ]
+                            .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+                            .map(([k, v]) => {
+                                if (k === 'Confirmation #') {
+                                    const ref = String(v || '');
+                                    const firstDash = ref.indexOf('-');
+                                    let displayContent = <span style={{ wordBreak: 'break-all' }}>{ref}</span>;
+                                    
+                                    if (firstDash !== -1) {
+                                        const p1 = ref.slice(0, firstDash + 1);
+                                        const p2 = ref.slice(firstDash + 1);
+                                        displayContent = (
+                                            <div style={{ wordBreak: 'break-all', textAlign: 'right' }}>
+                                                <div>{p1}</div>
+                                                <div style={{ color: 'var(--color-text-dim)', fontSize: '0.9em' }}>{p2}</div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', gap: 'var(--space-4)' }}>
+                                            <span style={{ color: 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>{k}</span>
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', maxWidth: '65%', justifyContent: 'flex-end' }}>
+                                                <div style={{ fontWeight: 500, color: 'var(--color-text)' }}>
+                                                    {displayContent}
+                                                </div>
+                                                <button 
+                                                    onClick={(e) => { 
+                                                        e.preventDefault(); 
+                                                        navigator.clipboard.writeText(ref);
+                                                        const btn = e.currentTarget;
+                                                        const old = btn.innerHTML;
+                                                        btn.innerHTML = '✓';
+                                                        setTimeout(() => btn.innerHTML = old, 1500);
+                                                    }}
+                                                    title="Copy Confirmation #"
+                                                    style={{ 
+                                                        background: 'var(--color-surface-2)', 
+                                                        border: '1px solid var(--color-border)', 
+                                                        borderRadius: '4px', 
+                                                        cursor: 'pointer', 
+                                                        padding: '2px 6px',
+                                                        fontSize: '11px',
+                                                        color: 'var(--color-text-dim)',
+                                                        marginTop: '2px',
+                                                        flexShrink: 0,
+                                                        transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-hover)'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--color-surface-2)'}
+                                                >
+                                                    Copy
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                
+                                return (
+                                    <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
+                                        <span style={{ color: 'var(--color-text-dim)' }}>{k}</span>
+                                        <span style={{ fontWeight: 500, fontSize: typeof v === 'string' && v !== '—' && (k === 'Check-in' || k === 'Check-out') ? 'var(--text-md)' : undefined, color: (k === 'Check-in' || k === 'Check-out') ? 'var(--color-primary)' : 'var(--color-text)', textAlign: 'right', maxWidth: '60%' }}>{v || '—'}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)' }}>Booking not found</p>}
                 </div>
@@ -78,22 +162,36 @@ export default function BookingDetailPage() {
                                 </div>
                             ))}
                         </div>
-                    ) : <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)' }}>No financial data</p>}
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                            {['Gross Revenue', 'OTA Commission', 'Net to Property', 'Management Fee', 'Currency'].map((k) => (
+                                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
+                                    <span style={{ color: 'var(--color-text-dim)' }}>{k}</span>
+                                    <span style={{ color: 'var(--color-text-faint)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>—</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Timeline */}
             <div style={{ marginTop: 'var(--space-8)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
                 <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)', textTransform: 'uppercase' }}>Event Timeline</h2>
-                {history.length === 0 && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)' }}>No events recorded</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                    {history.map((e: any, i: number) => (
+                    {history.length > 0 ? history.map((e: any, i: number) => (
                         <div key={i} style={{ display: 'flex', gap: 'var(--space-3)', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border)', fontSize: 'var(--text-xs)' }}>
                             <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-dim)', minWidth: 140 }}>{e.timestamp ? new Date(e.timestamp).toLocaleString() : '—'}</span>
                             <span style={{ color: 'var(--color-primary)', fontWeight: 600, minWidth: 140 }}>{e.event_type}</span>
                             <span style={{ color: 'var(--color-text-dim)' }}>{e.source || '—'}</span>
                         </div>
-                    ))}
+                    )) : (
+                        <div style={{ display: 'flex', gap: 'var(--space-3)', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border)', fontSize: 'var(--text-xs)' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-faint)', minWidth: 140 }}>—</span>
+                            <span style={{ color: 'var(--color-text-faint)', fontWeight: 600, minWidth: 140 }}>No events</span>
+                            <span style={{ color: 'var(--color-text-faint)' }}>—</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

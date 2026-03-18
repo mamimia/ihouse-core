@@ -152,6 +152,11 @@ class WorkerRole(str, Enum):
     GENERAL_STAFF = "GENERAL_STAFF"
     """General operations staff for miscellaneous tasks."""
 
+    # UI-aligned aliases
+    CHECKIN = "CHECKIN"
+    CHECKOUT = "CHECKOUT"
+    MAINTENANCE = "MAINTENANCE"
+
 
 # ---------------------------------------------------------------------------
 # Priority → urgency label map (locked)
@@ -178,11 +183,11 @@ PRIORITY_ACK_SLA_MINUTES: dict[TaskPriority, int] = {
 #: Default worker role for each task kind.
 KIND_DEFAULT_WORKER_ROLE: dict[TaskKind, WorkerRole] = {
     TaskKind.CLEANING: WorkerRole.CLEANER,
-    TaskKind.CHECKIN_PREP: WorkerRole.PROPERTY_MANAGER,
-    TaskKind.CHECKOUT_VERIFY: WorkerRole.INSPECTOR,
-    TaskKind.MAINTENANCE: WorkerRole.MAINTENANCE_TECH,
+    TaskKind.CHECKIN_PREP: WorkerRole.CHECKIN,
+    TaskKind.CHECKOUT_VERIFY: WorkerRole.CHECKOUT,
+    TaskKind.MAINTENANCE: WorkerRole.MAINTENANCE,
     TaskKind.GENERAL: WorkerRole.GENERAL_STAFF,
-    TaskKind.GUEST_WELCOME: WorkerRole.PROPERTY_MANAGER,
+    TaskKind.GUEST_WELCOME: WorkerRole.CHECKIN,
 }
 
 #: Default priority for each task kind.

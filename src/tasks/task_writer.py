@@ -95,6 +95,7 @@ def write_tasks_for_booking_created(
     check_in: str,
     provider: str = "unknown",
     client: Optional[Any] = None,
+    check_out: Optional[str] = None,
 ) -> int:
     """
     Generate and persist tasks for a BOOKING_CREATED event.
@@ -120,7 +121,45 @@ def write_tasks_for_booking_created(
             check_in=check_in,
             source=provider,
             created_at=created_at,
+            check_out=check_out,
         )
+
+        try:
+            # Phase 842: Auto-assign tasks to staff members assigned to the property
+            # who possess the matching worker role for the task.
+            result_assign = (
+                db.table("staff_property_assignments")
+                .select("user_id")
+                .eq("tenant_id", tenant_id)
+                .eq("property_id", property_id)
+                .execute()
+            )
+            assigned_user_ids = [r["user_id"] for r in (result_assign.data or [])]
+
+            assignment_map = {}
+            if assigned_user_ids:
+                result_perms = (
+                    db.table("tenant_permissions")
+                    .select("user_id, worker_roles")
+                    .eq("tenant_id", tenant_id)
+                    .in_("user_id", assigned_user_ids)
+                    .execute()
+                )
+                user_roles_map = {r["user_id"]: (r.get("worker_roles") or []) for r in (result_perms.data or [])}
+
+                # Create assignment pool: for each needed role (lower-case), pick the first user_id that has it
+                roles_needed = {t.worker_role.value for t in tasks}
+                for role_val in roles_needed:
+                    role_normalized = role_val.lower()
+                    for uid in assigned_user_ids:
+                        if role_normalized in user_roles_map.get(uid, []):
+                            assignment_map[role_val] = uid
+                            break
+
+            for t in tasks:
+                t.assigned_to = assignment_map.get(t.worker_role.value)
+        except Exception as _exc:
+            logger.warning("task_writer: Failed to auto-assign tasks booking_id=%s: %s", booking_id, _exc)
 
         rows = [_task_to_row(t) for t in tasks]
         result = db.table("tasks").upsert(rows, on_conflict="task_id").execute()

@@ -760,7 +760,13 @@ export default function BookingsPage() {
                 check_in_from: filters.check_in_from || undefined,
                 check_in_to: filters.check_in_to || undefined,
             });
-            setBookings(res.bookings ?? []);
+            const list = res.bookings ?? [];
+            list.sort((a: Booking, b: Booking) => {
+                if (!a.check_in) return 1;
+                if (!b.check_in) return -1;
+                return new Date(a.check_in).getTime() - new Date(b.check_in).getTime();
+            });
+            setBookings(list);
             setLastRefresh(new Date());
         } catch (err: unknown) {
             if (err instanceof ApiError) {

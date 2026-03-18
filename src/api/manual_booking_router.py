@@ -152,7 +152,9 @@ async def create_manual_booking(
         booking = rows[0]
 
         # Auto-create tasks based on source and opt-outs (best-effort)
-        tasks_created = _create_tasks_for_manual_booking(db, booking_id, property_id, check_in, booking_source, tasks_opt_out, tenant_id)
+        tasks_created = _create_tasks_for_manual_booking(
+            db, booking_id, property_id, check_in, check_out, booking_source, tasks_opt_out, tenant_id
+        )
 
         # Phase 707 — Trigger outbound sync to block dates on connected OTAs (best-effort)
         ota_block_result = _trigger_ota_date_block(db, property_id, check_in, check_out, booking_id, tenant_id)
@@ -250,12 +252,12 @@ def _trigger_ota_date_block(db: Any, property_id: str, check_in: str, check_out:
 
 def _create_tasks_for_manual_booking(
     db: Any, booking_id: str, property_id: str,
-    check_in: str, source: str, opt_out: List[str], tenant_id: str,
+    check_in: str, check_out: str, source: str, opt_out: List[str], tenant_id: str,
 ) -> List[str]:
     """Create operational tasks for a manual booking using the canonical task_writer.
 
     Uses write_tasks_for_booking_created (same function as OTA webhook path)
-    which generates CHECKIN_PREP + CLEANING tasks via task_automator.
+    which generates CHECKIN_PREP + CLEANING + CHECKOUT_VERIFY tasks via task_automator.
 
     Returns list of created task kinds.
     """
@@ -269,11 +271,12 @@ def _create_tasks_for_manual_booking(
             booking_id=booking_id,
             property_id=property_id,
             check_in=check_in,
+            check_out=check_out,
             provider=f"manual:{source}",
             client=db,
         )
         if count > 0:
-            return ["CHECKIN_PREP", "CLEANING"][:count]
+            return ["CHECKIN_PREP", "CLEANING", "CHECKOUT_VERIFY"][:count]
         return []
     except Exception:
         logger.warning("Failed to create tasks for manual booking %s", booking_id)

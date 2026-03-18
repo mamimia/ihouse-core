@@ -8100,3 +8100,11 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 - Redesigned the Map (Location) card to be correctly sized and operational.
 - Adjusted the Reference Photos grid layout and added an Add Booking property-locked manual booking entrypoint.
 - Addressed tenant_id isolation in owner routing.
+
+## Phase 841 — Task Ordering Logic Fix & Admin Settings Redesign — Closed 2026-03-18
+
+- Addressed ghost task generation logic by clearing and reconstructing `tasks_for_booking_created` for back-to-back overlaps (KPG-502).
+- Perfected task ordering logic where Checkin Prep, Cleaning, and Checkout Verify fall cleanly into the same row visually and chronologically in `DayPropertyCard`.
+- Redesigned `ProviderRow` and `ToggleBtn` in `/admin/page.tsx` — dropped blocky OS-level button models in favor of custom flex/grid `div` toggles, transforming it into a strict, spreadsheet-precision grid.
+- Replaced overflowing labels with concise abbreviations (F-API, P-API, iCAL, MANUAL) paired with tooltip hovers.
+- Appended the "Notification Integrations" UI foundation in Admin Settings with hardcoded state, preparing the baseline for tenant-level API key persistence for LINE, WhatsApp, Telegram, and SMS.

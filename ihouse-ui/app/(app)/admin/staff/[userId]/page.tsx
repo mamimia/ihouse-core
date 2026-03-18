@@ -14,9 +14,10 @@
  * Layout: back=top-left, save=sticky bottom-right footer
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getToken } from '@/lib/api';
+import { uploadPropertyPhoto, ACCEPTED_IMAGE_TYPES } from '@/lib/uploadPhoto';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -223,6 +224,9 @@ export default function EditStaffPage() {
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | undefined>();
   const [updatedAt, setUpdatedAt] = useState<string | undefined>();
+  
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -361,6 +365,30 @@ export default function EditStaffPage() {
     }
   };
 
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const tok = getToken();
+      if (!tok) throw new Error('Not authenticated');
+      
+      // Use the existing proxy. 'staff' acts as the folder in property-photos bucket.
+      const { url } = await uploadPropertyPhoto(file, 'staff-avatars', 'reference', tok);
+      setPhotoUrl(url);
+      setSuccess('Photo uploaded successfully. Click Save Changes to keep.');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+      // Reset input so the same file can be selected again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const TABS = ['Profile', 'Role & Assignment', 'Access & Comms'];
 
   if (loading) {
@@ -400,7 +428,30 @@ export default function EditStaffPage() {
         >
           ← Back
         </button>
-        <Avatar name={displayName || fullName} photoUrl={photoUrl} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <Avatar name={displayName || fullName} photoUrl={photoUrl} />
+          
+          <input
+            type="file"
+            accept={ACCEPTED_IMAGE_TYPES}
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handlePhotoSelect}
+          />
+          
+          <button 
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingPhoto}
+            style={{
+              background: 'none', border: 'none', color: 'var(--color-primary)',
+              fontSize: '11px', fontWeight: 600, cursor: uploadingPhoto ? 'not-allowed' : 'pointer',
+              opacity: uploadingPhoto ? 0.5 : 1, padding: 0, marginTop: -2,
+            }}
+          >
+            {uploadingPhoto ? 'Uploading…' : 'Add photo'}
+          </button>
+        </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Staff Member

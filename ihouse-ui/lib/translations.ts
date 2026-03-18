@@ -26,6 +26,7 @@ const en = {
   'nav.admin':        'Admin',
   'nav.properties':   'Properties',
   'nav.staff':        'Manage Staff',
+  'nav.more':         'More',
   'nav.logout':       'Sign out',
 
   // ── Auth / Login ─────────────────────────────────────
@@ -128,6 +129,7 @@ const th: TranslationPack = {
   'nav.admin':        'แอดมิน',
   'nav.properties':   'อสังหาริมทรัพย์',
   'nav.staff':        'จัดการพนักงาน',
+  'nav.more':         'เพิ่มเติม',
   'nav.logout':       'ออกจากระบบ',
 
   'auth.tagline':          'ควบคุมที่พักอย่างมืออาชีพ',
@@ -220,6 +222,7 @@ const he: TranslationPack = {
   'nav.admin':        'ניהול',
   'nav.properties':   'נכסים',
   'nav.staff':        'ניהול צוות',
+  'nav.more':         'עוד',
   'nav.logout':       'התנתקות',
 
   'auth.tagline':          'פיקוד רגוע לאירוח מודרני.',

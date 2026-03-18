@@ -879,6 +879,7 @@ export interface WorkerTask {
     title: string;
     description?: string;
     notes?: string;
+    assigned_to?: string;
     created_at: string;
     updated_at: string;
 }
