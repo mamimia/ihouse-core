@@ -4,7 +4,7 @@ Phase 846 — Admin Preview As Context Scaffolding. Phases 841–845 closed.
 
 ## Last Closed Phase
 
-Phase 845 — Worker App Functionality Polish & Date Formatting.
+Phase 845 closed successfully.
 
 ## Current Objective
 
@@ -35,7 +35,7 @@ Phase 845 — Worker App Functionality Polish & Date Formatting.
 Phase 843 — Worker Role Scoping JSONB Array Evolution          ← CLOSED
 Phase 844 — Worker App UI Overhaul & Brand Alignment           ← CLOSED
 Phase 845 — Worker App Functionality Polish & Date Formatting  ← CLOSED
-Phase 846 — Admin Preview As Context Scaffolding               ← NEXT
+Phase 846 — Admin Preview As Context Scaffolding               ← ACTIVE
 Phase 847 — Admin Preview As Role & Org JWT Simulation        ← PLANNED
 Phase 848 — Admin Dashboard Flight Cards (Ops Awareness)      ← PLANNED
 Phase 849 — Staff Management Profiles & Avatar Upload         ← PLANNED

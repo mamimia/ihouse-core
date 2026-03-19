@@ -12,6 +12,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '../lib/LanguageContext';
+import { usePreview } from '../lib/PreviewContext';
 import LogoutButton from './LogoutButton';
 import LanguageSwitcher from './LanguageSwitcher';
 import { TranslationKey } from '../lib/translations';
@@ -75,8 +76,9 @@ function getGreetingName(role: Role): string {
 export default function Sidebar() {
   const { t } = useLanguage();
   const pathname = usePathname();
+  const { getEffectiveRole } = usePreview();
 
-  const role = getUserRole();
+  const role = getEffectiveRole(getUserRole()) as Role;
   const name = getGreetingName(role);
   const hour = typeof window !== 'undefined' ? new Date().getHours() : 9;
   const salutation = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -132,8 +134,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Nav links — filtered by role (Phase 553) */}
-      {NAV_ITEMS.filter(item => item.roles.includes(getUserRole())).map(({ key, href, icon }) => {
+      {/* Nav links — filtered by role (Phase 553, updated in 846 for preview) */}
+      {NAV_ITEMS.filter(item => item.roles.includes(role)).map(({ key, href, icon }) => {
         const active = isActive(href);
         return (
           <Link key={href} href={href} style={{

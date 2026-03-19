@@ -8137,3 +8137,9 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 - Introduced Waze Navigation direct app bridging button, binding to the exact property context string.
 - Injected strict Locale formatting overrides via `getLocale(language)` to adjust `fmtDate` and `fmtTime` representations dynamically into correct TH/HE/EN styles.
 
+
+## Phase 846: Admin Preview As Context Scaffolding
+**Date:** 2026-03-19
+
+**Goal:** Added Context Provider and Selector UI to allow admins to preview the interface as a different role.
+

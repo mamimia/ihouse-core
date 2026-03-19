@@ -8,12 +8,17 @@
 
 import ErrorBoundary from './ErrorBoundary';
 import OfflineBanner from './OfflineBanner';
+import { PreviewProvider } from '../lib/PreviewContext';
+import PreviewAsSelector from './PreviewAsSelector';
 
 export default function ClientProviders({ children }: { children: React.ReactNode }) {
     return (
         <ErrorBoundary>
-            <OfflineBanner />
-            {children}
+            <PreviewProvider>
+                <OfflineBanner />
+                <PreviewAsSelector />
+                {children}
+            </PreviewProvider>
         </ErrorBoundary>
     );
 }
