@@ -42,7 +42,65 @@ interface Integration {
     icon: string;
     configured: boolean;
     active: boolean;
+    credentials?: Record<string, string>; // Cached credentials
 }
+
+// Map integration IDs to the fields they require for configuration
+const INTEGRATION_FIELDS: Record<string, { key: string; label: string; placeholder: string; type?: string }[]> = {
+    line: [
+        { key: 'channel_access_token', label: 'Channel Access Token', placeholder: 'Enter LINE Messaging API token' }
+    ],
+    whatsapp: [
+        { key: 'access_token', label: 'Access Token', placeholder: 'Enter Meta Cloud API bearer token' },
+        { key: 'phone_number_id', label: 'Phone Number ID', placeholder: 'WhatsApp Business Number ID' },
+        { key: 'app_secret', label: 'App Secret', placeholder: 'HMAC-SHA256 signature secret' },
+        { key: 'verify_token', label: 'Verify Token', placeholder: 'Webhook challenge verification token' }
+    ],
+    telegram: [
+        { key: 'bot_token', label: 'Bot Token', placeholder: 'Enter Telegram Bot Token (e.g. 123456:ABC-DEF1234ghIkl-zyx5cM)' }
+    ],
+    sms: [
+        { key: 'twilio_sid', label: 'Twilio Account SID', placeholder: 'AC...' },
+        { key: 'twilio_token', label: 'Twilio Auth Token', placeholder: 'Enter token' },
+        { key: 'twilio_from', label: 'Twilio Number', placeholder: '+1234567890' }
+    ]
+};
+
+const INTEGRATION_INSTRUCTIONS: Record<string, { title: string; steps: React.ReactNode[] }> = {
+    telegram: {
+        title: 'How to connect Telegram',
+        steps: [
+            <span key="1">Search for <strong>@BotFather</strong> in Telegram and send <code>/newbot</code>.</span>,
+            <span key="2">Choose a name and username for your agent.</span>,
+            <span key="3">Copy the HTTP API Token he replies with and paste it above.</span>
+        ]
+    },
+    whatsapp: {
+        title: 'How to connect WhatsApp API',
+        steps: [
+            <span key="1">Log into <strong>Meta for Developers</strong> and create a Business App.</span>,
+            <span key="2">Add the WhatsApp product to your app.</span>,
+            <span key="3">Copy the <strong>Access Token</strong> and <strong>Phone Number ID</strong>.</span>,
+            <span key="4">Create your own Verify Token and copy the App Secret.</span>
+        ]
+    },
+    line: {
+        title: 'How to connect LINE Notify',
+        steps: [
+            <span key="1">Log into the <strong>LINE Developers Console</strong> and create a Provider.</span>,
+            <span key="2">Create a new <strong>Messaging API</strong> channel.</span>,
+            <span key="3">Scroll down to issue a long-lived <strong>Channel Access Token</strong>.</span>
+        ]
+    },
+    sms: {
+        title: 'How to connect Twilio SMS',
+        steps: [
+            <span key="1">Create a <strong>Twilio</strong> account and configure billing.</span>,
+            <span key="2">Purchase a Twilio Phone Number capable of sending SMS.</span>,
+            <span key="3">Copy your <strong>Account SID</strong> and <strong>Auth Token</strong>.</span>
+        ]
+    }
+};
 
 // ---------------------------------------------------------------------------
 // Reusable components
@@ -356,13 +414,20 @@ export default function AdminPage() {
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [dlq, setDlq] = useState<DlqEntry[]>([]);
     const [integrations, setIntegrations] = useState<Integration[]>([
-        { id: 'line', name: 'LINE Notify', description: 'Send task alerts and notifications via LINE', icon: '💬', configured: false, active: true },
-        { id: 'whatsapp', name: 'WhatsApp', description: 'Send alerts via WhatsApp Business (Twilio)', icon: '📞', configured: false, active: false },
-        { id: 'telegram', name: 'Telegram', description: 'Send alerts via Telegram bot', icon: '✈️', configured: false, active: false },
-        { id: 'sms', name: 'SMS', description: 'Send alerts via standard SMS (Twilio)', icon: '📱', configured: false, active: false },
+        { id: 'line', name: 'LINE Notify', description: 'Send task alerts and notifications via LINE', icon: '💬', configured: false, active: false, credentials: {} },
+        { id: 'whatsapp', name: 'WhatsApp', description: 'Send alerts via WhatsApp Business (Twilio/Meta)', icon: '📞', configured: false, active: false, credentials: {} },
+        { id: 'telegram', name: 'Telegram', description: 'Send alerts via Telegram bot', icon: '✈️', configured: false, active: false, credentials: {} },
+        { id: 'sms', name: 'SMS', description: 'Send alerts via standard SMS', icon: '📱', configured: false, active: false, credentials: {} },
     ]);
     const [loading, setLoading] = useState(true);
     const [notice, setNotice] = useState<string | null>(null);
+
+    // Modal state for configuration
+    const [configModal, setConfigModal] = useState<{ isOpen: boolean; integrationId: string | null; credentials: Record<string, string> }>({
+        isOpen: false,
+        integrationId: null,
+        credentials: {}
+    });
 
     const showNotice = (msg: string) => {
         setNotice(msg);
@@ -372,15 +437,26 @@ export default function AdminPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [provRes, permRes, dlqRes] = await Promise.allSettled([
+            const [provRes, permRes, dlqRes, intgRes] = await Promise.allSettled([
                 api.getProviders(),
                 api.getPermissions(),
                 api.getDlq({ status: 'pending', limit: 20 }),
+                api.getTenantIntegrations(),
             ]);
 
             if (provRes.status === 'fulfilled') setProviders(provRes.value.providers || []);
             if (permRes.status === 'fulfilled') setPermissions(permRes.value.permissions || []);
             if (dlqRes.status === 'fulfilled') setDlq(dlqRes.value.entries || []);
+            if (intgRes.status === 'fulfilled' && intgRes.value.integrations) {
+                setIntegrations(prev => prev.map(base => {
+                    const row = intgRes.value.integrations.find((r: any) => r.provider === base.id);
+                    if (row) {
+                        const hasCreds = row.credentials && Object.keys(row.credentials).length > 0;
+                        return { ...base, active: row.is_active, configured: hasCreds, credentials: row.credentials || {} };
+                    }
+                    return base;
+                }));
+            }
         } finally {
             setLoading(false);
         }
@@ -398,13 +474,56 @@ export default function AdminPage() {
         }
     };
 
-    const handleToggleIntegration = (id: string, active: boolean) => {
+    const handleToggleIntegration = async (id: string, active: boolean) => {
+        // Optimistic UI update
+        const prevIntegrations = [...integrations];
         setIntegrations(prev => prev.map(i => i.id === id ? { ...i, active } : i));
-        showNotice(`✓ Integration ${active ? 'enabled' : 'disabled'}`);
+        
+        try {
+            await api.updateTenantIntegration(id, { is_active: active });
+            showNotice(`✓ Integration ${active ? 'enabled' : 'disabled'}`);
+            await load(); // Reload to sync exact state just in case
+        } catch (err) {
+            console.error('Toggle integration failed:', err);
+            setIntegrations(prevIntegrations); // Revert
+            showNotice(`✗ Failed to update integration`);
+        }
     };
 
     const handleConfigureIntegration = (id: string) => {
-        showNotice(`Configuration modal for ${id} not yet implemented.`);
+        const intg = integrations.find(i => i.id === id);
+        if (!intg) return;
+        setConfigModal({
+            isOpen: true,
+            integrationId: id,
+            credentials: intg.credentials || {}
+        });
+    };
+
+    const handleSaveConfiguration = async () => {
+        const { integrationId, credentials } = configModal;
+        if (!integrationId) return;
+
+        const intg = integrations.find(i => i.id === integrationId);
+        // Optimistic UI update
+        const prevIntegrations = [...integrations];
+        const newHasCreds = Object.keys(credentials).some(k => !!credentials[k]);
+        
+        setIntegrations(prev => prev.map(i => i.id === integrationId ? { ...i, configured: newHasCreds, credentials } : i));
+        
+        try {
+            await api.updateTenantIntegration(integrationId, { 
+                is_active: intg?.active ?? false, 
+                credentials 
+            });
+            showNotice(`✓ Integration configuration saved`);
+            setConfigModal({ isOpen: false, integrationId: null, credentials: {} });
+            await load(); // Reload to sync exact state just in case
+        } catch (err) {
+            console.error('Save configuration failed:', err);
+            setIntegrations(prevIntegrations); // Revert
+            showNotice(`✗ Failed to save configuration`);
+        }
     };
 
     return (
@@ -537,6 +656,85 @@ export default function AdminPage() {
                     </div>
                 )}
             </SectionCard>
+
+            {/* Modal for Configuration */}
+            {configModal.isOpen && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 10000
+                }}>
+                    <div style={{
+                        background: 'var(--color-surface)', width: '420px',
+                        borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                        display: 'flex', flexDirection: 'column', overflow: 'hidden'
+                    }}>
+                        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>
+                                Configure {integrations.find(i => i.id === configModal.integrationId)?.name}
+                            </h2>
+                            <button onClick={() => setConfigModal({ isOpen: false, integrationId: null, credentials: {} })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--color-text-dim)' }}>✕</button>
+                        </div>
+                        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {configModal.integrationId && INTEGRATION_FIELDS[configModal.integrationId]?.map(field => (
+                                <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>{field.label}</label>
+                                    <input 
+                                        type={field.type || 'text'}
+                                        placeholder={field.placeholder}
+                                        value={configModal.credentials[field.key] || ''}
+                                        onChange={(e) => setConfigModal(prev => ({ 
+                                            ...prev, 
+                                            credentials: { ...prev.credentials, [field.key]: e.target.value } 
+                                        }))}
+                                        style={{
+                                            padding: '8px 12px', fontSize: '13px', borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid var(--color-border)', background: 'var(--color-background)',
+                                            color: 'var(--color-text)', outline: 'none'
+                                        }}
+                                        onFocus={(e) => e.target.style.borderColor = 'var(--color-brand)'}
+                                        onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
+                                    />
+                                </div>
+                            ))}
+                            {configModal.integrationId && INTEGRATION_INSTRUCTIONS[configModal.integrationId] && (
+                                <div style={{ 
+                                    marginTop: '8px', 
+                                    padding: '16px', 
+                                    borderRadius: '8px', 
+                                    background: 'var(--color-surface-2)', 
+                                    border: '1px dashed var(--color-border)',
+                                    fontSize: '13px',
+                                }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{color: 'var(--color-primary)'}}>ℹ</span> {INTEGRATION_INSTRUCTIONS[configModal.integrationId].title}
+                                    </div>
+                                    <ol style={{ margin: 0, paddingLeft: '20px', color: 'var(--color-text-dim)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {INTEGRATION_INSTRUCTIONS[configModal.integrationId].steps.map((step, idx) => (
+                                            <li key={idx} style={{ paddingLeft: '4px' }}>{step}</li>
+                                        ))}
+                                    </ol>
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ padding: '16px 24px', background: 'var(--color-surface-2)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                            <button 
+                                onClick={() => setConfigModal({ isOpen: false, integrationId: null, credentials: {} })}
+                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600, background: 'transparent', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--color-text)' }}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleSaveConfiguration}
+                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600, background: 'var(--color-text)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--color-background)' }}
+                            >
+                                Save Credentials
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Footer */}
             <div style={{

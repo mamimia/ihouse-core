@@ -614,6 +614,7 @@ _VALID_AUDIT_ACTIONS = frozenset({
     "upsert_provider", "patch_provider",
     "replay_dlq",
     "create_booking", "cancel_booking", "amend_booking",
+    "update_integration",
 })
 
 
@@ -718,3 +719,99 @@ async def get_audit_log(
             "entries": entries,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 842 — Tenant Notification Integrations
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/admin/integrations",
+    tags=["admin"],
+    summary="List tenant notification integrations",
+    responses={
+        200: {"description": "List of configured integrations"},
+        401: {"description": "Missing or invalid JWT token"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_tenant_integrations(
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    try:
+        db = client if client is not None else _get_supabase_client()
+        result = (
+            db.table("tenant_integrations")
+            .select("id, provider, credentials, is_active, updated_at")
+            .eq("tenant_id", tenant_id)
+            .execute()
+        )
+        return JSONResponse(status_code=200, content={"integrations": result.data or []})
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("GET /admin/integrations error for tenant=%s: %s", tenant_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+from pydantic import BaseModel
+class IntegrationUpdateBody(BaseModel):
+    is_active: bool
+    credentials: Optional[dict[str, Any]] = None
+
+@router.put(
+    "/admin/integrations/{provider}",
+    tags=["admin"],
+    summary="Update or toggle a notification integration",
+    responses={
+        200: {"description": "Integration updated successfully"},
+        400: {"description": "Validation error"},
+        401: {"description": "Missing or invalid JWT token"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def update_tenant_integration(
+    provider: str,
+    payload: IntegrationUpdateBody,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    if provider not in {"line", "whatsapp", "telegram", "sms"}:
+        return make_error_response(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "Invalid provider"},
+        )
+    try:
+        db = client if client is not None else _get_supabase_client()
+        row: dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "provider": provider,
+            "is_active": payload.is_active,
+        }
+        if payload.credentials is not None:
+            row["credentials"] = payload.credentials
+
+        result = (
+            db.table("tenant_integrations")
+            .upsert(row, on_conflict="tenant_id,provider")
+            .execute()
+        )
+        data = result.data[0] if result.data else {}
+        
+        write_audit_event(
+            db=db,
+            tenant_id=tenant_id,
+            actor_user_id=tenant_id,
+            action="update_integration",
+            target_type="integration",
+            target_id=provider,
+            after_state={"is_active": payload.is_active, "has_credentials": payload.credentials is not None},
+        )
+        
+        return JSONResponse(status_code=200, content=data)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("PUT /admin/integrations/%s error for tenant=%s: %s", provider, tenant_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+

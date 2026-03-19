@@ -8108,3 +8108,12 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 - Redesigned `ProviderRow` and `ToggleBtn` in `/admin/page.tsx` — dropped blocky OS-level button models in favor of custom flex/grid `div` toggles, transforming it into a strict, spreadsheet-precision grid.
 - Replaced overflowing labels with concise abbreviations (F-API, P-API, iCAL, MANUAL) paired with tooltip hovers.
 - Appended the "Notification Integrations" UI foundation in Admin Settings with hardcoded state, preparing the baseline for tenant-level API key persistence for LINE, WhatsApp, Telegram, and SMS.
+
+## Phase 842 — Staff Management UX & Telegram Dispatch Verification — Closed 2026-03-19
+
+- Refactored `ihouse-ui/app/(app)/admin/staff/[userId]/page.tsx` and `new/page.tsx` to handle structured phone numbers (country code + number) for both primary and emergency contacts.
+- Implemented smart auto-sync logic: typing in the primary phone field automatically updates WhatsApp and SMS fields if they are blank or match the old number.
+- Expanded Country Codes (16 countries around Thailand + global) and Supported Languages (12 global languages).
+- Built the real HTTP `_default_telegram_adapter` in `src/channels/notification_dispatcher.py` to fetch `bot_token` dynamically from `tenant_integrations`.
+- Successfully verified E2E Telegram dispatch: manual chat ID entry in Staff UI -> Python trigger script -> Live Telegram message on mobile phone.
+- Confirmed "Domaniqo" external branding rule for all outbound UI and messaging.

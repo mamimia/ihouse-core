@@ -64,6 +64,34 @@ const LANGUAGES = [
   { value: 'en', label: 'English (EN)' },
   { value: 'th', label: 'Thai (TH)' },
   { value: 'he', label: 'Hebrew (HE)' },
+  { value: 'zh', label: 'Mandarin (ZH)' },
+  { value: 'es', label: 'Spanish (ES)' },
+  { value: 'fr', label: 'French (FR)' },
+  { value: 'ru', label: 'Russian (RU)' },
+  { value: 'ar', label: 'Arabic (AR)' },
+  { value: 'ja', label: 'Japanese (JA)' },
+  { value: 'pt', label: 'Portuguese (PT)' },
+  { value: 'hi', label: 'Hindi (HI)' },
+  { value: 'de', label: 'German (DE)' },
+];
+
+const COUNTRY_CODES_OPTS = [
+  { code: '+66', label: '🇹🇭 +66' },
+  { code: '+1', label: '🇺🇸 +1' },
+  { code: '+44', label: '🇬🇧 +44' },
+  { code: '+972', label: '🇮🇱 +972' },
+  { code: '+95', label: '🇲🇲 +95' },
+  { code: '+856', label: '🇱🇦 +856' },
+  { code: '+855', label: '🇰🇭 +855' },
+  { code: '+60', label: '🇲🇾 +60' },
+  { code: '+65', label: '🇸🇬 +65' },
+  { code: '+81', label: '🇯🇵 +81' },
+  { code: '+7', label: '🇷🇺 +7' },
+  { code: '+86', label: '🇨🇳 +86' },
+  { code: '+91', label: '🇮🇳 +91' },
+  { code: '+49', label: '🇩🇪 +49' },
+  { code: '+33', label: '🇫🇷 +33' },
+  { code: '+34', label: '🇪🇸 +34' },
 ];
 
 // ── Styles ──────────────────────────────────────────────────────────────────
@@ -208,9 +236,12 @@ export default function NewStaffPage() {
   const [displayName, setDisplayName] = useState('');
   const [userId, setUserId] = useState('');  // email / user_id
   const [photoUrl, setPhotoUrl] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phoneCode, setPhoneCode] = useState('+66');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
-  const [emergency, setEmergency] = useState('');
+  const [emergencyName, setEmergencyName] = useState('');
+  const [emergencyCode, setEmergencyCode] = useState('+66');
+  const [emergencyNumber, setEmergencyNumber] = useState('');
   const [language, setLanguage] = useState('en');
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState('');
@@ -287,9 +318,9 @@ export default function NewStaffPage() {
         user_id: userId.trim(),
         role,
         display_name: (displayName || fullName).trim() || undefined,
-        phone: phone.trim() || undefined,
+        phone: phoneNumber.trim() ? `${phoneCode}${phoneNumber.trim()}` : undefined,
         address: address.trim() || undefined,
-        emergency_contact: emergency.trim() || undefined,
+        emergency_contact: emergencyName.trim() || emergencyNumber.trim() ? `${emergencyName.trim()} | ${emergencyCode}${emergencyNumber.trim()}` : undefined,
         photo_url: photoUrl.trim() || undefined,
         language,
         is_active: isActive,
@@ -427,12 +458,44 @@ export default function NewStaffPage() {
             </Field>
 
             <div style={sectionHeadStyle}>Contact</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr)', gap: 'var(--space-4)' }}>
               <Field label="Phone">
-                <input style={inputStyle} value={phone} onChange={e => setPhone(e.target.value)} placeholder="+66 81 234 5678" />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select 
+                    style={{ ...inputStyle, width: '70px', cursor: 'pointer', padding: '9px 2px', textAlign: 'center' }} 
+                    value={phoneCode} 
+                    onChange={e => {
+                      const code = e.target.value;
+                      const oldFull = `${phoneCode}${phoneNumber}`.trim();
+                      const newFull = `${code}${phoneNumber}`.trim();
+                      setPhoneCode(code);
+                      if (!whatsapp || whatsapp === oldFull) setWhatsapp(newFull);
+                      if (!sms || sms === oldFull) setSms(newFull);
+                    }}
+                  >
+                    {COUNTRY_CODES_OPTS.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                  </select>
+                  <input style={{ ...inputStyle, flex: 1 }} value={phoneNumber} 
+                    onChange={e => {
+                      const num = e.target.value;
+                      const oldFull = `${phoneCode}${phoneNumber}`.trim();
+                      const newFull = `${phoneCode}${num}`.trim();
+                      setPhoneNumber(num);
+                      if (!whatsapp || whatsapp === oldFull) setWhatsapp(newFull);
+                      if (!sms || sms === oldFull) setSms(newFull);
+                    }} 
+                    placeholder="81 234 5678" 
+                  />
+                </div>
               </Field>
               <Field label="Emergency Contact">
-                <input style={inputStyle} value={emergency} onChange={e => setEmergency(e.target.value)} placeholder="Name + phone" />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input style={{ ...inputStyle, flex: 1 }} value={emergencyName} onChange={e => setEmergencyName(e.target.value)} placeholder="Name" />
+                  <select style={{ ...inputStyle, width: '70px', cursor: 'pointer', padding: '9px 2px', textAlign: 'center' }} value={emergencyCode} onChange={e => setEmergencyCode(e.target.value)}>
+                    {COUNTRY_CODES_OPTS.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                  </select>
+                  <input style={{ ...inputStyle, flex: 1 }} value={emergencyNumber} onChange={e => setEmergencyNumber(e.target.value)} placeholder="Phone" />
+                </div>
               </Field>
             </div>
 
@@ -577,10 +640,20 @@ export default function NewStaffPage() {
                 <input style={inputStyle} value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="+66 81 234 5678" />
               </Field>
               <Field label="Telegram">
-                <input style={inputStyle} value={telegram} onChange={e => setTelegram(e.target.value)} placeholder="@username" />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input style={{ ...inputStyle, flex: 1 }} value={telegram} onChange={e => setTelegram(e.target.value)} placeholder="Chat ID or @username" />
+                  <button onClick={() => alert('Approval Request flow will dispatch an SMS deep-link via Twilio here in Phase 845.')} style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '0 12px', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', cursor: 'pointer', flexShrink: 0 }}>
+                    Request ID
+                  </button>
+                </div>
               </Field>
               <Field label="LINE">
-                <input style={inputStyle} value={line} onChange={e => setLine(e.target.value)} placeholder="LINE ID" />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input style={{ ...inputStyle, flex: 1 }} value={line} onChange={e => setLine(e.target.value)} placeholder="LINE ID" />
+                  <button onClick={() => alert('Approval Request flow will dispatch an SMS deep-link via Twilio here in Phase 845.')} style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '0 12px', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', cursor: 'pointer', flexShrink: 0 }}>
+                    Request ID
+                  </button>
+                </div>
               </Field>
               <Field label="SMS / Phone">
                 <input style={inputStyle} value={sms} onChange={e => setSms(e.target.value)} placeholder="+66 81 234 5678" />

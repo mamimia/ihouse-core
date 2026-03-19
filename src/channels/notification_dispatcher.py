@@ -131,7 +131,12 @@ class DispatchResult:
 # Channel adapters (injectable for testing)
 # ---------------------------------------------------------------------------
 
-def _default_line_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+def _default_line_adapter(
+    channel_id: str,
+    message: NotificationMessage,
+    db: Any = None,
+    tenant_id: str = "",
+) -> ChannelAttempt:
     """
     Production LINE adapter stub.
 
@@ -154,7 +159,12 @@ def _default_line_adapter(channel_id: str, message: NotificationMessage) -> Chan
     )
 
 
-def _default_fcm_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+def _default_fcm_adapter(
+    channel_id: str,
+    message: NotificationMessage,
+    db: Any = None,
+    tenant_id: str = "",
+) -> ChannelAttempt:
     """FCM stub — reserved for Phase 168+ wiring."""
     logger.info("FCM dispatch to token=%s (stub)", channel_id)
     return ChannelAttempt(
@@ -164,7 +174,12 @@ def _default_fcm_adapter(channel_id: str, message: NotificationMessage) -> Chann
     )
 
 
-def _default_email_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+def _default_email_adapter(
+    channel_id: str,
+    message: NotificationMessage,
+    db: Any = None,
+    tenant_id: str = "",
+) -> ChannelAttempt:
     """Email stub — reserved for Phase 168+ wiring."""
     logger.info("Email dispatch to=%s (stub)", channel_id)
     return ChannelAttempt(
@@ -174,7 +189,12 @@ def _default_email_adapter(channel_id: str, message: NotificationMessage) -> Cha
     )
 
 
-def _default_whatsapp_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+def _default_whatsapp_adapter(
+    channel_id: str,
+    message: NotificationMessage,
+    db: Any = None,
+    tenant_id: str = "",
+) -> ChannelAttempt:
     """
     WhatsApp Cloud API adapter stub (Phase 196).
 
@@ -191,36 +211,64 @@ def _default_whatsapp_adapter(channel_id: str, message: NotificationMessage) -> 
     )
 
 
-def _default_telegram_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+def _default_telegram_adapter(
+    channel_id: str,
+    message: NotificationMessage,
+    db: Any = None,
+    tenant_id: str = "",
+) -> ChannelAttempt:
     """
-    Telegram Bot API adapter stub (Phase 203).
+    Telegram Bot API adapter (Phase 842).
 
     Constructs the full Telegram Bot API payload using Markdown formatting.
-    In production: POST to api.telegram.org/bot{TOKEN}/sendMessage with:
-        {"chat_id": channel_id, "text": text, "parse_mode": "Markdown"}
-
-    channel_id is the Telegram chat_id registered in notification_channels.
-    Stub — returns success=True; tests inject mocks via `adapters` parameter.
+    Fetches the `bot_token` from `tenant_integrations`. If active and present,
+    dispatches the message to Telegram immediately via HTTP POST.
     """
-    from channels.telegram_escalation import TELEGRAM_PARSE_MODE  # lazy import
-    # Build the Telegram Bot API payload structure (production would POST this)
+    from channels.telegram_escalation import TELEGRAM_PARSE_MODE
+    import httpx
+
     payload = {
         "chat_id": channel_id,
         "text": f"*{message.title}*\n{message.body}",
         "parse_mode": TELEGRAM_PARSE_MODE,
     }
-    logger.debug(
-        "Telegram dispatch to chat_id=%s text_len=%d parse_mode=%s",
-        channel_id, len(payload["text"]), TELEGRAM_PARSE_MODE,
-    )
-    return ChannelAttempt(
-        channel_type=CHANNEL_TELEGRAM,
-        channel_id=channel_id,
-        success=True,
-    )
+    
+    if db is None or not tenant_id:
+        logger.warning("Telegram dispatch dry-run for chat_id=%s (no db)", channel_id)
+        return ChannelAttempt(channel_type=CHANNEL_TELEGRAM, channel_id=channel_id, success=True)
+        
+    try:
+        res = db.table("tenant_integrations").select("credentials, is_active").eq("tenant_id", tenant_id).eq("provider", "telegram").execute()
+        rows = res.data or []
+        if not rows or not rows[0].get("is_active"):
+            return ChannelAttempt(channel_type=CHANNEL_TELEGRAM, channel_id=channel_id, success=False, error="Telegram integration not active")
+            
+        bot_token = rows[0].get("credentials", {}).get("bot_token")
+        if not bot_token:
+            return ChannelAttempt(channel_type=CHANNEL_TELEGRAM, channel_id=channel_id, success=False, error="Missing bot_token")
+            
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        resp = httpx.post(url, json=payload, timeout=5.0)
+        
+        if resp.status_code == 200:
+            logger.info("Telegram dispatch OK to chat_id=%s text_len=%d", channel_id, len(payload["text"]))
+            return ChannelAttempt(channel_type=CHANNEL_TELEGRAM, channel_id=channel_id, success=True)
+        else:
+            err = f"HTTP {resp.status_code}: {resp.text}"
+            logger.error("Telegram dispatch failed: %s", err)
+            return ChannelAttempt(channel_type=CHANNEL_TELEGRAM, channel_id=channel_id, success=False, error=err)
+
+    except Exception as exc:
+        logger.exception("Telegram generic error for chat_id=%s: %s", channel_id, exc)
+        return ChannelAttempt(channel_type=CHANNEL_TELEGRAM, channel_id=channel_id, success=False, error=str(exc))
 
 
-def _default_sms_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+def _default_sms_adapter(
+    channel_id: str,
+    message: NotificationMessage,
+    db: Any = None,
+    tenant_id: str = "",
+) -> ChannelAttempt:
     """
     SMS adapter stub — tier-2 last-resort escalation (future phase).
 
@@ -235,7 +283,7 @@ def _default_sms_adapter(channel_id: str, message: NotificationMessage) -> Chann
     )
 
 
-_DEFAULT_ADAPTERS: dict[str, Callable[[str, NotificationMessage], ChannelAttempt]] = {
+_DEFAULT_ADAPTERS: dict[str, Callable[[str, NotificationMessage, Any, str], ChannelAttempt]] = {
     CHANNEL_LINE:     _default_line_adapter,
     CHANNEL_WHATSAPP: _default_whatsapp_adapter,
     CHANNEL_TELEGRAM: _default_telegram_adapter,
@@ -355,7 +403,7 @@ def dispatch_notification(
     tenant_id: str,
     user_id: str,
     message: NotificationMessage,
-    adapters: Optional[dict[str, Callable[[str, NotificationMessage], ChannelAttempt]]] = None,
+    adapters: Optional[dict[str, Callable[[str, NotificationMessage, Any, str], ChannelAttempt]]] = None,
 ) -> DispatchResult:
     """
     Dispatch a notification to all active channels registered for the user.
@@ -416,7 +464,7 @@ def dispatch_notification(
             continue
 
         try:
-            attempt = adapter(ch_id, message)
+            attempt = adapter(ch_id, message, db, tenant_id)
             attempts.append(attempt)
         except Exception as exc:  # noqa: BLE001
             logger.exception(

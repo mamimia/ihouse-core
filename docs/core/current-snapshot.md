@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 840 — Tenant-Level Notification Integrations (Supabase schema `tenant_integrations` + API bindings for LINE, WhatsApp, Telegram, SMS configuration).
+Phase 842 — Staff Management UX & Telegram Dispatch Verification
 
 ## Last Closed Phase
-Phase 839 — Task Ordering Logic Fix (KPG-502 back-to-back testing), Provider Registry Grid Redesign (Crisp UI with no-wrap Chips and tooltips), and Notification Integrations UI foundation.
+Phase 841 — Task Ordering Logic Fix (KPG-502) & Admin Settings Integration Pre-work.
 
 ## System Status
 

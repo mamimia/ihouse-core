@@ -5057,3 +5057,13 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Addressed tenant_id isolation in property owner routing.
 - Spec: `phase-840-spec.md`
 
+
+## Phase 842 — Staff Management UX & Telegram Dispatch Verification — 2026-03-19
+
+- Refactored primary and emergency phone inputs to include country codes.
+- Implemented auto-sync logic for WhatsApp and SMS fields in the UI.
+- Expanded Country Codes and Languages options.
+- Wired `_default_telegram_adapter` to fetch auth from `tenant_integrations`.
+- Proven E2E physical dispatch to Telegram Chat ID.
+- Enforced `Domaniqo` external branding rule.
+- Spec: `phase-842-spec.md`

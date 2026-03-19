@@ -530,6 +530,19 @@ export const api = {
             body: JSON.stringify(updates),
         }),
 
+    // Phase 842 — Tenant Integrations
+    getTenantIntegrations: (): Promise<{ integrations: any[] }> =>
+        apiFetch("/admin/integrations"),
+
+    updateTenantIntegration: (
+        provider: string,
+        updates: Record<string, unknown>
+    ): Promise<any> =>
+        apiFetch(`/admin/integrations/${encodeURIComponent(provider)}`, {
+            method: "PUT",
+            body: JSON.stringify(updates),
+        }),
+
     // Phase 190 — Audit Events (Manager UI)
     getAuditEvents: (params?: {
         entity_type?: string;
