@@ -148,6 +148,16 @@ async def line_webhook(
     if not isinstance(body, dict):
         return make_error_response(400, ErrorCode.VALIDATION_ERROR, "Body must be a JSON object")
 
+    # --- Catch standard LINE Messaging API events for User ID discovery ---
+    if "events" in body and isinstance(body["events"], list):
+        for ev in body["events"]:
+            source = ev.get("source", {})
+            user_id = source.get("userId")
+            if user_id:
+                logger.info("=== LINE USER ID IDENTIFIED: %s ===", user_id)
+                # In the future, this is where SMS deep-link verification maps the user_id to a tenant worker
+        return JSONResponse(status_code=200, content={"status": "ok"})
+
     task_id = body.get("task_id")
     if not task_id or not isinstance(task_id, str):
         return make_error_response(

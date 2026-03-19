@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 847 — Admin Preview As Role & Org JWT Simulation. Phases 841–846 closed.
+Phase 856 — Next Phase. Phases 841–855 closed.
 
 ## Last Closed Phase
 
-Phase 846 closed successfully.
+Phase 855 closed successfully.
 
 ## Current Objective
 
@@ -36,7 +36,16 @@ Phase 843 — Worker Role Scoping JSONB Array Evolution          ← CLOSED
 Phase 844 — Worker App UI Overhaul & Brand Alignment           ← CLOSED
 Phase 845 — Worker App Functionality Polish & Date Formatting  ← CLOSED
 Phase 846 — [CLOSED] ← CLOSED
-Phase 847 — Admin Preview As Role & Org JWT Simulation ← ACTIVE
+Phase 847 — [CLOSED] ← CLOSED
+Phase 848 — [CLOSED] ← CLOSED
+Phase 849 — [CLOSED] ← CLOSED
+Phase 850 — [CLOSED] ← CLOSED
+Phase 851 — [CLOSED] ← CLOSED
+Phase 852 — [CLOSED] ← CLOSED
+Phase 853 — [CLOSED] ← CLOSED
+Phase 854 — [CLOSED] ← CLOSED
+Phase 855 — LINE Integration E2E Proof ← CLOSED
+Phase 856 — Next Phase ← ACTIVE
 Phase 847 — Admin Preview As Role & Org JWT Simulation        ← PLANNED
 Phase 848 — Admin Dashboard Flight Cards (Ops Awareness)      ← PLANNED
 Phase 849 — Staff Management Profiles & Avatar Upload         ← PLANNED

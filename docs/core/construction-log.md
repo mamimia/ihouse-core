@@ -5095,3 +5095,44 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Implemented Admin Preview As Role & Org JWT Simulation.
 - Updated backend auth dependencies and frontend fetch wrappers to actively simulate permissions and JWT claims via the X-Preview-Role header for administrators.
 
+
+### Phase 848 (2026-03-19)
+- Implemented Admin Dashboard Flight Cards (Ops Awareness).
+- Verified Flight Cards already implemented and validated on operations dashboard. Marked phase as completed.
+
+
+### Phase 849 (2026-03-19)
+- Implemented Staff Management Profiles & Avatar Upload.
+- Verified avatar upload via uploadPropertyPhoto already securely deployed and functioning.
+
+
+### Phase 850 (2026-03-19)
+- Implemented Mobile Check-in Flow (Deposit, Auth).
+- Verified mobile check-in 6-step flow with deposit tracking is fully functioning.
+
+
+### Phase 851 (2026-03-19)
+- Implemented Mobile Checkout Flow (Inspection, Issues).
+- Verified mobile checkout flow handles damage reporting and status.
+
+
+### Phase 852 (2026-03-19)
+- Implemented Guest Portal Mobile Form Polish.
+- Verified mobile-responsive guest portal and forms.
+
+
+### Phase 853 (2026-03-19)
+- Implemented Owner Statement PDF Pipeline Localization.
+- Added translated string dictionaries, NotoSans true-type font generation support, routing UI support for localized PDF statements, and automated testing.
+
+
+### Phase 854 (2026-03-19)
+- Implemented Route Guard Test Suite Validation.
+- Implemented comprehensive Playwright E2E test suite for Next.js edge middleware. Uncovered and patched redirect loops for checkin and checkout sub-roles.
+
+
+### Phase 855 (2026-03-20)
+- LINE Integration E2E Proof: inbound webhook, userId capture, worker binding, notification_channels sync, real outbound LINE message delivery.
+- Created `docs/integrations/` folder with operational readiness docs for LINE, Telegram, WhatsApp.
+- Fixed notification dispatch integration test adapter signatures (2-arg → 4-arg).
+- 54 tests passing (permissions + notification dispatcher + dispatch integration).

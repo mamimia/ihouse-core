@@ -8149,3 +8149,50 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 
 **Goal:** Updated backend auth dependencies and frontend fetch wrappers to actively simulate permissions and JWT claims via the X-Preview-Role header for administrators.
 
+
+## Phase 848: Admin Dashboard Flight Cards (Ops Awareness)
+**Date:** 2026-03-19
+
+**Goal:** Verified Flight Cards already implemented and validated on operations dashboard. Marked phase as completed.
+
+
+## Phase 849: Staff Management Profiles & Avatar Upload
+**Date:** 2026-03-19
+
+**Goal:** Verified avatar upload via uploadPropertyPhoto already securely deployed and functioning.
+
+
+## Phase 850: Mobile Check-in Flow (Deposit, Auth)
+**Date:** 2026-03-19
+
+**Goal:** Verified mobile check-in 6-step flow with deposit tracking is fully functioning.
+
+
+## Phase 851: Mobile Checkout Flow (Inspection, Issues)
+**Date:** 2026-03-19
+
+**Goal:** Verified mobile checkout flow handles damage reporting and status.
+
+
+## Phase 852: Guest Portal Mobile Form Polish
+**Date:** 2026-03-19
+
+**Goal:** Verified mobile-responsive guest portal and forms.
+
+
+## Phase 853: Owner Statement PDF Pipeline Localization
+**Date:** 2026-03-19
+
+**Goal:** Added translated string dictionaries, NotoSans true-type font generation support, routing UI support for localized PDF statements, and automated testing.
+
+
+## Phase 854: Route Guard Test Suite Validation
+**Date:** 2026-03-19
+
+**Goal:** Implemented comprehensive Playwright E2E test suite for Next.js edge middleware. Uncovered and patched redirect loops for checkin and checkout sub-roles.
+
+
+## Phase 855: LINE Integration E2E Proof
+**Date:** 2026-03-20
+
+**Goal:** Proved LINE Messaging API integration end-to-end: inbound webhook receipt with real userId capture, worker routing sync via `_sync_channels()`, and real outbound message delivery. Created `docs/integrations/` as the durable operational readiness structure for all messaging integrations. Fixed notification dispatch test adapter signatures (2-arg → 4-arg).

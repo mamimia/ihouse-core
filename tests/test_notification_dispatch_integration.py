@@ -74,7 +74,7 @@ def mock_db():
 @pytest.fixture
 def line_adapter():
     """Injectable LINE adapter that always succeeds."""
-    def adapter(channel_id, message):
+    def adapter(channel_id, message, db=None, tenant_id=""):
         return ChannelAttempt(
             channel_type=CHANNEL_LINE,
             channel_id=channel_id,
@@ -86,7 +86,7 @@ def line_adapter():
 @pytest.fixture
 def whatsapp_adapter():
     """Injectable WhatsApp adapter that always succeeds."""
-    def adapter(channel_id, message):
+    def adapter(channel_id, message, db=None, tenant_id=""):
         return ChannelAttempt(
             channel_type=CHANNEL_WHATSAPP,
             channel_id=channel_id,
@@ -98,7 +98,7 @@ def whatsapp_adapter():
 @pytest.fixture
 def failing_adapter():
     """Injectable adapter that always raises."""
-    def adapter(channel_id, message):
+    def adapter(channel_id, message, db=None, tenant_id=""):
         raise ConnectionError("Channel unreachable")
     return adapter
 

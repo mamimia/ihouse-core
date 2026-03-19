@@ -108,6 +108,26 @@ def get_permission_record(db: Any, tenant_id: str, user_id: str) -> Optional[dic
         return None
 
 
+def _sync_channels(db: Any, tenant_id: str, user_id: str, comm_preference: dict) -> None:
+    """
+    Sync a worker's comm_preference dictionary to the notification_channels table.
+    Ensures that the dispatcher (which reads from notification_channels) is always
+    kept in sync when the Admin UI updates the worker profile.
+    """
+    if not isinstance(comm_preference, dict):
+        return
+    try:
+        from channels.notification_dispatcher import register_channel, deregister_channel
+        for ch_type in {"line", "whatsapp", "telegram", "sms", "email"}:
+            val = comm_preference.get(ch_type)
+            val_str = str(val).strip() if val else ""
+            if val_str:
+                register_channel(db, tenant_id, user_id, ch_type, val_str)
+            else:
+                deregister_channel(db, tenant_id, user_id, ch_type)
+    except Exception as exc:
+        logger.exception("Failed to sync comm_preference to notification_channels: %s", exc)
+
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
@@ -309,6 +329,11 @@ async def upsert_permission(
             .execute()
         )
         saved = (result.data or [{}])[0]
+        
+        # Sync notification_channels if comm_preference was modified
+        if "comm_preference" in body:
+            _sync_channels(db, tenant_id, user_id, body["comm_preference"])
+
         return JSONResponse(status_code=201, content={
             "status":      "upserted",
             "tenant_id":   tenant_id,
@@ -731,6 +756,11 @@ async def patch_permission_profile(
             .execute()
         )
         saved = (result.data or [{}])[0]
+        
+        # Sync notification_channels if comm_preference was modified
+        if "comm_preference" in updates:
+            _sync_channels(db, tenant_id, user_id, updates["comm_preference"])
+
         return JSONResponse(status_code=200, content={
             "status":     "updated",
             "tenant_id":  tenant_id,

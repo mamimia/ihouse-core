@@ -138,25 +138,56 @@ def _default_line_adapter(
     tenant_id: str = "",
 ) -> ChannelAttempt:
     """
-    Production LINE adapter stub.
+    LINE Messaging API adapter (Phase 845).
 
-    In production this would call the LINE Messaging API (pushMessage).
-    Here it builds the payload using line_escalation.format_line_text-style
-    logic and returns a success stub so the infrastructure wiring is
-    confirmed without requiring live credentials.
-
-    Tests inject a mock adapter via the `adapters` parameter.
+    Fetches the `channel_access_token` from `tenant_integrations` table.
+    If active and present, dispatches the message to LINE via HTTP POST.
     """
-    # Build a text payload using the message fields
+    import httpx
+
     text = f"{message.title}\n{message.body}"
-    logger.info("LINE dispatch to channel_id=%s text_len=%d", channel_id, len(text))
-    # Stub: always succeeds in the absence of a real HTTP client.
-    # Production would call httpx.post(LINE_PUSH_URL, json={...}).
-    return ChannelAttempt(
-        channel_type=CHANNEL_LINE,
-        channel_id=channel_id,
-        success=True,
-    )
+    
+    if db is None or not tenant_id:
+        logger.warning("LINE dispatch dry-run for channel_id=%s (no db)", channel_id)
+        return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=channel_id, success=True)
+        
+    try:
+        res = db.table("tenant_integrations").select("credentials, is_active").eq("tenant_id", tenant_id).eq("provider", "line").execute()
+        rows = res.data or []
+        if not rows or not rows[0].get("is_active"):
+            return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=channel_id, success=False, error="LINE integration not active")
+            
+        channel_access_token = rows[0].get("credentials", {}).get("channel_access_token")
+        if not channel_access_token:
+            return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=channel_id, success=False, error="Missing channel_access_token")
+            
+        url = "https://api.line.me/v2/bot/message/push"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {channel_access_token}"
+        }
+        payload = {
+            "to": channel_id,
+            "messages": [
+                {
+                    "type": "text",
+                    "text": text
+                }
+            ]
+        }
+        resp = httpx.post(url, headers=headers, json=payload, timeout=5.0)
+        
+        if resp.status_code == 200:
+            logger.info("LINE dispatch OK to channel_id=%s text_len=%d", channel_id, len(text))
+            return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=channel_id, success=True)
+        else:
+            err = f"HTTP {resp.status_code}: {resp.text}"
+            logger.error("LINE dispatch failed: %s", err)
+            return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=channel_id, success=False, error=err)
+            
+    except Exception as exc:
+        logger.exception("LINE generic error for channel_id=%s: %s", channel_id, exc)
+        return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=channel_id, success=False, error=str(exc))
 
 
 def _default_fcm_adapter(
