@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 842 — Staff Management UX & Telegram Dispatch Verification
+Phase 846 — Admin Preview As Context Scaffolding
 
 ## Last Closed Phase
-Phase 841 — Task Ordering Logic Fix (KPG-502) & Admin Settings Integration Pre-work.
+Phase 845 — Worker App Functionality Polish & Date Formatting
 
 ## System Status
 

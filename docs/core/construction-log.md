@@ -5067,3 +5067,21 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Proven E2E physical dispatch to Telegram Chat ID.
 - Enforced `Domaniqo` external branding rule.
 - Spec: `phase-842-spec.md`
+
+## Phase 843 — Worker Role Scoping JSONB Array Evolution (Closed)
+
+- Endpoints isolated via plural `worker_roles` JSONB properties.
+- Dummy array isolation loop applied to protect UI rendering `API 500` error blocks.
+- Spec: `phase-843-spec.md`
+
+## Phase 844 — Worker App UI Overhaul & Brand Alignment (Closed)
+
+- Domaniqo brand aesthetics completely unified inside the mobile `/worker` interface.
+- Desktop wrapper `AdaptiveShell` restricted structurally to `480px` layout consistency for operational normalization.
+- Spec: `phase-844-spec.md`
+
+## Phase 845 — Worker App Functionality Polish & Date Formatting (Closed)
+
+- Deep translation bug regarding task statuses (`CHECKIN`, `Check-in Prep`, cases) normalized and fixed.
+- External application bridging injected specifically for navigating addresses automatically in `Waze`.
+- Spec: `phase-845-spec.md`

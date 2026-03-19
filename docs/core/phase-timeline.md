@@ -8117,3 +8117,23 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 - Built the real HTTP `_default_telegram_adapter` in `src/channels/notification_dispatcher.py` to fetch `bot_token` dynamically from `tenant_integrations`.
 - Successfully verified E2E Telegram dispatch: manual chat ID entry in Staff UI -> Python trigger script -> Live Telegram message on mobile phone.
 - Confirmed "Domaniqo" external branding rule for all outbound UI and messaging.
+
+## Phase 843 — Worker Role Scoping JSONB Array Evolution — Closed 2026-03-19
+
+- Modernized the backend `/worker/tasks` endpoint to support plural JSONB properties for assigned `worker_roles`, replacing the singular string array field `worker_role` and solving scoping isolation bugs where workers could see tasks not assigned to their exact capabilities. Admin views are preserved.
+- Implemented robust fallback isolate: `__NO_ROLES_ASSIGNED__` dummy query enforcement to secure unprivileged `[]` workers natively over `is_worker=True`. 
+- Resolved consequential `NameError` crash (`API 500: UNKNOWN_ERROR`) to fix all role isolation loops.
+
+## Phase 844 — Worker App UI Overhaul & Brand Alignment — Closed 2026-03-19
+
+- Reached full `Domaniqo` structural compliance across the `ihouse-ui/app/(app)/worker/` suite. 
+- Integrated and replaced generic Tailwind palettes with CSS custom properties anchoring the required aesthetic: Midnight Graphite, Deep Moss, and Cloud White.
+- Upgraded the foundational wrapper into an `AdaptiveShell` `max-width: 480px` constraint for desktop field-worker emulation, securing 1:1 mobile similarity across all resolutions.
+- Organized bottom tabs systematically: Home (Dashboard), Tasks, Done, and Profile.
+
+## Phase 845 — Worker App Functionality Polish & Date Formatting — Closed 2026-03-19
+
+- Addressed task localization and case sensitivity: successfully translating `CHECKIN` to `Check-in Prep`.
+- Introduced Waze Navigation direct app bridging button, binding to the exact property context string.
+- Injected strict Locale formatting overrides via `getLocale(language)` to adjust `fmtDate` and `fmtTime` representations dynamically into correct TH/HE/EN styles.
+

@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 841 — Wave 1: Guest Portal + Owner Localization. Phases 833–840 closed.
+Phase 846 — Admin Preview As Context Scaffolding. Phases 841–845 closed.
 
 ## Last Closed Phase
 
-Phase 840 — Property Settings Surface + OTA Management: Bridged backend OTA mappings to property detail UI. Redesigned Map card and photo layout. Addressed tenant_id isolation.
+Phase 845 — Worker App Functionality Polish & Date Formatting.
 
 ## Current Objective
 
@@ -22,19 +22,29 @@ Phase 840 — Property Settings Surface + OTA Management: Bridged backend OTA ma
 - Mobile-accessible language control on all critical surfaces (Phase 838)
 - RTL guard fix + login/auth + worker surface fully localized EN/TH/HE (Phase 839)
 - Property Settings Surface + OTA Management (Phase 840)
+- Worker Role Scoping JSONB Array Evolution (Phase 843)
+- Worker App UI Overhaul & Brand Alignment (Phase 844)
+- Worker App Functionality Polish & Date Formatting (Phase 845)
 
 ### Next Phase Sequence
 ```
 ──── Checkpoint: One Property, End-to-End ────                 ← REACHED
 ──── Checkpoint: Guest Access E2E Proven ────                  ← REACHED
 ──── Checkpoint: Language Control Accessible ────              ← REACHED
-──── Wave 1: Operational/Public Surface Localization ────      ← ACTIVE
-Phase 839 — Wave 1: Login/Auth + Worker Full Localization      ← CLOSED
-Phase 840 — Property Settings Surface + OTA Management         ← CLOSED
-Phase 841 — Wave 1: Guest Portal + Owner Localization          ← NEXT
-Phase 842 — Translation Completeness Audit                    ← PLANNED
-Phase 843 — Guest Portal Mobile Polish                        ← PLANNED
-Phase 844 — Operational Language E2E Proof                    ← PLANNED
+──── Wave 2: Mobile/Worker Surface & Admin Preview As ────     ← ACTIVE
+Phase 843 — Worker Role Scoping JSONB Array Evolution          ← CLOSED
+Phase 844 — Worker App UI Overhaul & Brand Alignment           ← CLOSED
+Phase 845 — Worker App Functionality Polish & Date Formatting  ← CLOSED
+Phase 846 — Admin Preview As Context Scaffolding               ← NEXT
+Phase 847 — Admin Preview As Role & Org JWT Simulation        ← PLANNED
+Phase 848 — Admin Dashboard Flight Cards (Ops Awareness)      ← PLANNED
+Phase 849 — Staff Management Profiles & Avatar Upload         ← PLANNED
+Phase 850 — Mobile Check-in Flow (Deposit, Auth)              ← PLANNED
+Phase 851 — Mobile Checkout Flow (Inspection, Issues)         ← PLANNED
+Phase 852 — Guest Portal Mobile Form Polish                   ← PLANNED
+Phase 853 — Owner Statement PDF Pipeline Localization         ← PLANNED
+Phase 854 — Route Guard Test Suite Validation                 ← PLANNED
+Phase 855 — End-To-End Operations Day Simulation              ← PLANNED
 ```
 
 ## Deferred Items — Open Items Registry
