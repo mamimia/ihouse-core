@@ -8143,3 +8143,9 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 
 **Goal:** Added Context Provider and Selector UI to allow admins to preview the interface as a different role.
 
+
+## Phase 847: Admin Preview As Role & Org JWT Simulation
+**Date:** 2026-03-19
+
+**Goal:** Updated backend auth dependencies and frontend fetch wrappers to actively simulate permissions and JWT claims via the X-Preview-Role header for administrators.
+

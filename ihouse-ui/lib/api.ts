@@ -59,6 +59,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _retryCount 
         ...(init?.headers as Record<string, string>),
     };
     if (_token) headers["Authorization"] = `Bearer ${_token}`;
+    
+    // Phase 847 — JWT Simulation (Preview As)
+    if (typeof window !== 'undefined') {
+        const previewRole = sessionStorage.getItem('ihouse_preview_role');
+        if (previewRole) {
+            headers["X-Preview-Role"] = previewRole;
+        }
+    }
 
     let resp: Response;
     try {

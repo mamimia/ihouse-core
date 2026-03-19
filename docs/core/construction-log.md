@@ -5090,3 +5090,8 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Implemented Admin Preview As Context Scaffolding.
 - Added Context Provider and Selector UI to allow admins to preview the interface as a different role.
 
+
+### Phase 847 (2026-03-19)
+- Implemented Admin Preview As Role & Org JWT Simulation.
+- Updated backend auth dependencies and frontend fetch wrappers to actively simulate permissions and JWT claims via the X-Preview-Role header for administrators.
+

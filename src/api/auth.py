@@ -261,12 +261,21 @@ def get_identity(
 
 def _make_identity_dependency():
     """Returns a Depends-compatible callable that returns full identity dict."""
-    from fastapi import Depends
+    from fastapi import Depends, Request
 
     async def _dep(
+        request: Request,
         credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     ) -> dict:
-        return get_identity(credentials)
+        identity = get_identity(credentials)
+        
+        # Phase 847 — Admin Preview As JWT Simulation
+        if identity.get("role") == "admin":
+            preview_role = request.headers.get("x-preview-role")
+            if preview_role:
+                identity["role"] = preview_role
+                
+        return identity
 
     return _dep
 
