@@ -53,7 +53,7 @@ export function performClientLogout(redirectPath = '/login'): void {
 // Core fetch helper
 // ---------------------------------------------------------------------------
 
-async function apiFetch<T>(path: string, init?: RequestInit, _retryCount = 0): Promise<T> {
+export async function apiFetch<T>(path: string, init?: RequestInit, _retryCount = 0): Promise<T> {
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
         ...(init?.headers as Record<string, string>),
@@ -317,6 +317,7 @@ export interface LoginResponse {
     email?: string;         // Pre-801: user email
     full_name?: string;     // Pre-801: user full name
     auth_method?: string;   // Pre-801: 'supabase' for production login
+    language?: string;      // Phase 839: Localization preference
 }
 
 // Phase 191 — Multi-Currency Overview types

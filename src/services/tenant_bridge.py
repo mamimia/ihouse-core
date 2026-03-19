@@ -110,7 +110,7 @@ def lookup_user_tenant(db: Any, user_id: str) -> Optional[dict]:
     try:
         result = (
             db.table("tenant_permissions")
-            .select("tenant_id, role, permissions")
+            .select("tenant_id, role, permissions, is_active, language")
             .eq("user_id", user_id)
             .limit(1)
             .execute()

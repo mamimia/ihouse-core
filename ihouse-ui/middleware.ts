@@ -38,6 +38,7 @@ const PUBLIC_PREFIXES = [
     '/onboard',
     '/guest',
     '/invite',
+    '/staff',
 ];
 
 function isPublicRoute(pathname: string): boolean {
@@ -49,7 +50,7 @@ function isPublicRoute(pathname: string): boolean {
 // admin/manager have full access (not listed — they bypass checks)
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
     owner:       ['/owner', '/dashboard'],
-    worker:      ['/worker', '/ops', '/tasks', '/maintenance', '/checkin', '/checkout'],
+    worker:      ['/worker', '/ops', '/maintenance', '/checkin', '/checkout'],
     cleaner:     ['/worker', '/ops'],  // Phase 831: restrict cleaner to worker + ops surfaces only
     ops:         ['/ops', '/dashboard', '/bookings', '/tasks', '/calendar', '/guests'],
     checkin:     ['/checkin'],
@@ -97,6 +98,31 @@ export function middleware(request: NextRequest) {
 
     // Phase 397: Role enforcement
     const payload = decodeJwtPayload(token);
+    
+    // Check if the user is deactivated
+    if (payload?.is_active === false) {
+        if (pathname !== '/deactivated') {
+            return NextResponse.redirect(new URL('/deactivated', request.url));
+        }
+        return NextResponse.next();
+    }
+    
+    // If they are on deactivated but are active, redirect to dashboard
+    if (pathname === '/deactivated' && payload?.is_active !== false) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Check if they need a forced password reset
+    if (payload?.force_reset === true) {
+        if (pathname !== '/update-password') {
+            return NextResponse.redirect(new URL('/update-password', request.url));
+        }
+        return NextResponse.next();
+    }
+    if (pathname === '/update-password' && payload?.force_reset !== true) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
     const role = (typeof payload?.role === 'string' ? payload.role : '').toLowerCase();
 
     // If role is admin/manager or empty (legacy token), allow everything

@@ -13,10 +13,14 @@
  */
 
 import { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { usePathname } from 'next/navigation';
 import { useIsMobile, useIsDesktop } from '../hooks/useMediaQuery';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import CompactLangSwitcher from './CompactLangSwitcher';
+
+const WorkerTutorial = dynamic(() => import('./WorkerTutorial'), { ssr: false });
 
 interface AdaptiveShellProps {
     children: React.ReactNode;
@@ -26,9 +30,37 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     const isMobile = useIsMobile();
     const isDesktop = useIsDesktop();
     const isTablet = !isMobile && !isDesktop;
+    const pathname = usePathname() || '';
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
+
+    // Full-screen native mobile routes where the shell shouldn't render its own navigation
+    if (pathname.startsWith('/worker') || pathname.startsWith('/ops/cleaner')) {
+        return (
+            <div style={{ 
+                flex: 1, display: 'flex', justifyContent: 'center', 
+                background: isDesktop ? 'var(--color-bg, #0d1117)' : 'transparent',
+                minHeight: '100vh', width: '100%' 
+            }}>
+                <main style={{ 
+                    flex: 1, 
+                    width: '100%', 
+                    maxWidth: isDesktop ? '480px' : '100%', 
+                    minHeight: '100vh', 
+                    padding: 0, 
+                    margin: 0,
+                    position: 'relative',
+                    overflowX: 'hidden',
+                    boxShadow: isDesktop ? '0 0 50px rgba(0,0,0,0.4), 0 0 10px rgba(0,0,0,0.5)' : 'none',
+                    borderLeft: isDesktop ? '1px solid #1f2937' : 'none',
+                    borderRight: isDesktop ? '1px solid #1f2937' : 'none',
+                }}>
+                    {children}
+                </main>
+            </div>
+        );
+    }
 
     // Mobile: no sidebar, bottom nav, full-width content
     if (isMobile) {
@@ -48,6 +80,7 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
                     {children}
                 </main>
                 <BottomNav />
+                <WorkerTutorial />
             </>
         );
     }
@@ -124,6 +157,7 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
                 }}>
                     {children}
                 </main>
+                <WorkerTutorial />
             </>
         );
     }
@@ -140,6 +174,7 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
             }}>
                 {children}
             </main>
+            <WorkerTutorial />
         </>
     );
 }

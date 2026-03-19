@@ -225,17 +225,29 @@ export default function ManageStaffPage() {
             Manage Staff
           </h1>
         </div>
-        {/* Phase 843: full-page create instead of modal */}
-        <button
-          onClick={() => router.push('/admin/staff/new')}
-          style={{
-            padding: '10px 20px', borderRadius: 'var(--radius-md)',
-            background: 'var(--color-primary)', color: '#fff', border: 'none',
-            cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)',
-          }}
-        >
-          + Add Staff
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <button
+            onClick={() => router.push('/admin/staff/requests')}
+            style={{
+              padding: '10px 20px', borderRadius: 'var(--radius-md)',
+              background: 'var(--color-surface-2)', color: 'var(--color-text)', border: '1px solid var(--color-border)',
+              cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)', transition: 'all 0.1s'
+            }}
+          >
+            Pending Requests
+          </button>
+          {/* Phase 843: full-page create instead of modal */}
+          <button
+            onClick={() => router.push('/admin/staff/new')}
+            style={{
+              padding: '10px 20px', borderRadius: 'var(--radius-md)',
+              background: 'var(--color-primary)', color: '#fff', border: 'none',
+              cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)',
+            }}
+          >
+            + Add Staff
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}

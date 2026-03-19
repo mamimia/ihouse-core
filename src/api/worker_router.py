@@ -160,18 +160,37 @@ async def list_worker_tasks(
         # derive their assigned worker_role from the permissions JSONB and
         # enforce it as the filter — ignoring any caller-supplied worker_role.
         # ------------------------------------------------------------------
-        effective_worker_role = worker_role
+        effective_worker_roles = set()
+        if worker_role:
+            effective_worker_roles.add(worker_role.upper())
+
         caller_id = user_id or tenant_id  # fallback keeps existing tests green
+        is_worker = False
         try:
             from api.permissions_router import get_permission_record  # lazy import
             perm = get_permission_record(db, tenant_id, caller_id)
             if perm and perm.get("role") == "worker":
-                # Extract the worker's specific role from the permissions JSONB.
+                is_worker = True
+                # Legacy fallback: extract from permissions JSONB
                 assigned_role = (perm.get("permissions") or {}).get("worker_role")
                 if assigned_role and assigned_role in _VALID_WORKER_ROLES:
-                    effective_worker_role = assigned_role
+                    effective_worker_roles.add(assigned_role)
+                
+                # Phase 850: correctly extract from modern top-level worker_roles array
+                assigned_array = perm.get("worker_roles") or []
+                for r in assigned_array:
+                    r_u = r.upper()
+                    if r_u in _VALID_WORKER_ROLES:
+                        effective_worker_roles.add(r_u)
+
         except Exception:  # noqa: BLE001
             pass  # best-effort — never block the request
+
+        # Phase 850 — assignment isolation
+        # If the caller is a worker, they should ONLY see tasks assigned to them 
+        # or tasks for properties they are assigned to. So we FORCE assigned_to = caller_id.
+        if is_worker:
+            assigned_to = caller_id
 
         query = (
             db.table("tasks")
@@ -180,8 +199,14 @@ async def list_worker_tasks(
             .limit(limit)
             .order("due_date", desc=False)
         )
-        if effective_worker_role is not None:
-            query = query.eq("worker_role", effective_worker_role)
+        if effective_worker_roles:
+            query = query.in_("worker_role", list(effective_worker_roles))
+        elif is_worker:
+            # If the worker has no valid roles assigned, they should see NO tasks.
+            # PostgREST doesn't support 'in ()' for empty lists directly gracefully.
+            # Enforcing a dummy block keeps them isolated.
+            query = query.in_("worker_role", ["__NO_ROLES_ASSIGNED__"])
+            
         if status is not None:
             query = query.eq("status", status)
         else:
@@ -190,9 +215,25 @@ async def list_worker_tasks(
             
         if date is not None:
             query = query.eq("due_date", date)
+
         # Phase E-3 — assigned_to filter for personal task lists
+        # Phase 847 — ALSO factor in property assignments
         if assigned_to is not None:
-            query = query.eq("assigned_to", assigned_to)
+            # 1. Fetch properties assigned to this worker
+            try:
+                asgn_res = db.table("worker_property_assignments").select("property_id").eq("tenant_id", tenant_id).eq("user_id", assigned_to).execute()
+                assigned_prop_ids = [r["property_id"] for r in (asgn_res.data or [])]
+            except Exception:
+                assigned_prop_ids = []
+
+            if assigned_prop_ids:
+                # Task matches if it is specifically assigned_to the worker, or if it belongs to an assigned property
+                # In postgrest syntax: or=(assigned_to.eq.worker_id,property_id.in.(id1,id2))
+                props_csv = ",".join(assigned_prop_ids)
+                query = query.or_(f"assigned_to.eq.{assigned_to},property_id.in.({props_csv})")
+            else:
+                # No property assignments, strict filter by assigned_to
+                query = query.eq("assigned_to", assigned_to)
 
         result = query.execute()
         tasks = result.data if result.data else []
@@ -201,8 +242,9 @@ async def list_worker_tasks(
             content={
                 "tasks": tasks,
                 "count": len(tasks),
-                "role_scoped": effective_worker_role is not None,
+                "role_scoped": len(effective_worker_roles) > 0,
                 "assignment_filtered": assigned_to is not None,
+                "has_assignments": len(assigned_prop_ids) > 0 if assigned_to is not None else False,
             },
         )
 

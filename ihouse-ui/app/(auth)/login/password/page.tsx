@@ -43,6 +43,10 @@ function PasswordForm() {
             // Set cookie with appropriate maxAge
             const maxAge = remember ? 30 * 24 * 3600 : resp.expires_in; // 30 days if remember, else default
             document.cookie = `ihouse_token=${resp.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+            // Persist language on successful login
+            if (resp.language) {
+                localStorage.setItem('domaniqo_lang', resp.language);
+            }
             // Persist email if remember
             if (remember) {
                 localStorage.setItem('domaniqo_remember_email', emailParam);

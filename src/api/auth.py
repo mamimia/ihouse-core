@@ -138,13 +138,16 @@ def verify_jwt(
             options={"verify_aud": False},  # aud varies: "authenticated" vs absent
         )
     except jwt.ExpiredSignatureError:
+        logger.error("JWT Error: Token has expired")
         raise HTTPException(status_code=403, detail="Token has expired")
     except jwt.InvalidTokenError as exc:
+        logger.error(f"JWT Verification Failed: {exc} | Secret starts with: {secret[:4] if secret else 'NONE'}")
         raise HTTPException(status_code=403, detail=f"Invalid token: {exc}")
 
     # Extract tenant_id from sub claim
     sub: str | None = payload.get("sub")
     if not sub or not str(sub).strip():
+        logger.error("JWT Error: Token missing sub claim")
         raise HTTPException(
             status_code=403,
             detail="Token missing 'sub' claim",
@@ -231,6 +234,7 @@ def get_identity(
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=403, detail="Token has expired")
     except jwt.InvalidTokenError as exc:
+        logger.error(f"Identity Verification Failed: {exc} | Secret starts with: {secret[:4] if secret else 'NONE'}")
         raise HTTPException(status_code=403, detail=f"Invalid token: {exc}")
 
     sub = str(payload.get("sub", "")).strip()

@@ -217,16 +217,18 @@ export default function MobileCleanerPage() {
             let rawTasks: CleaningTask[] = [];
 
             // Pass 1: Try personal assignment filter
+            let hasExplicitAssignments = false;
             if (workerId) {
                 const assignedRes = await apiFetch<any>(
                     `/worker/tasks?worker_role=CLEANER&date=${today}&limit=50&assigned_to=${encodeURIComponent(workerId)}`
                 );
                 const assignedList = assignedRes.tasks || assignedRes.data?.tasks || assignedRes.data || [];
                 rawTasks = Array.isArray(assignedList) ? assignedList : [];
+                hasExplicitAssignments = !!assignedRes.has_assignments;
             }
 
-            // Pass 2: Fallback — show all CLEANER tasks if no personal assignments
-            if (rawTasks.length === 0) {
+            // Pass 2: Fallback — show all CLEANER tasks ONLY if worker has no explicit assignments
+            if (rawTasks.length === 0 && !hasExplicitAssignments) {
                 const allRes = await apiFetch<any>(
                     `/worker/tasks?worker_role=CLEANER&date=${today}&limit=50`
                 );

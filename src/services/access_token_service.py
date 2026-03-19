@@ -44,6 +44,7 @@ _DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 class TokenType(str, Enum):
     INVITE = "invite"
     ONBOARD = "onboard"
+    STAFF_ONBOARD = "staff_onboard"
 
 
 # ---------------------------------------------------------------------------

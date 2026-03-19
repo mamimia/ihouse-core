@@ -70,6 +70,9 @@ export default function AuthCallbackPage() {
 
             // Store token and redirect
             setToken(result.token);
+            if (result.language) {
+                localStorage.setItem('domaniqo_lang', result.language);
+            }
             document.cookie = `ihouse_token=${result.token}; path=/; max-age=${result.expires_in || 86400}; SameSite=Lax`;
             window.location.href = getRoleRoute(result.token);
         } catch (err) {

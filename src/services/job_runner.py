@@ -127,10 +127,10 @@ def _run_job(job_name: str, db: Any) -> Dict[str, Any]:
 
         elif job_name == "sla_escalation":
             try:
-                from services.sla_engine import check_escalations
+                from tasks.sla_trigger import check_escalations
                 return check_escalations(db)
-            except ImportError:
-                return {"status": "skipped", "reason": "sla_engine not available"}
+            except ImportError as e:
+                return {"status": "skipped", "reason": f"sla_engine not available: {e}"}
 
         elif job_name == "token_cleanup":
             return _cleanup_expired_tokens(db)

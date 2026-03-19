@@ -17,6 +17,17 @@ import BottomNav from '@/components/BottomNav';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
+// Phase E-4: Extract real worker identity from JWT
+function getWorkerId(): string {
+    if (typeof window === 'undefined') return '';
+    try {
+        const token = localStorage.getItem('ihouse_token');
+        if (!token) return '';
+        const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+        return payload.user_id || payload.sub || payload.tenant_id || '';
+    } catch { return ''; }
+}
+
 async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
     const token = getToken();
     const res = await fetch(`${BASE}${path}`, {
@@ -71,12 +82,28 @@ export default function MobileMaintenancePage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [tasksRes, issuesRes] = await Promise.allSettled([
-                apiFetch<any>('/worker/tasks?worker_role=MAINTENANCE&limit=50'),
-                apiFetch<any>('/problem-reports?limit=50'),
-            ]);
-            if (tasksRes.status === 'fulfilled') setTasks(tasksRes.value?.tasks || []);
-            if (issuesRes.status === 'fulfilled') setIssues(issuesRes.value?.reports || issuesRes.value?.data || []);
+            const workerId = getWorkerId();
+            let rawTasks: Task[] = [];
+            let hasExplicitAssignments = false;
+
+            if (workerId) {
+                const tasksRes = await apiFetch<any>(`/worker/tasks?worker_role=MAINTENANCE&limit=50&assigned_to=${encodeURIComponent(workerId)}`);
+                const assignedList = tasksRes.tasks || tasksRes.data?.tasks || tasksRes.data || [];
+                rawTasks = Array.isArray(assignedList) ? assignedList : [];
+                hasExplicitAssignments = !!tasksRes.has_assignments;
+            }
+
+            if (rawTasks.length === 0 && !hasExplicitAssignments) {
+                const allRes = await apiFetch<any>('/worker/tasks?worker_role=MAINTENANCE&limit=50');
+                const allList = allRes.tasks || allRes.data?.tasks || allRes.data || [];
+                rawTasks = Array.isArray(allList) ? allList : [];
+            }
+
+            setTasks(rawTasks);
+
+            // Fetch issues
+            const issuesRes = await apiFetch<any>('/problem-reports?limit=50').catch(() => ({}));
+            setIssues(issuesRes.reports || issuesRes.data || []);
         } catch { /* graceful */ }
         setLoading(false);
     }, []);
@@ -423,7 +450,7 @@ export default function MobileMaintenancePage() {
                 </div>
             )}
 
-            <BottomNav active="maintenance" items={[
+            <BottomNav items={[
                 { href: '/dashboard', label: 'Home', icon: '🏠' },
                 { href: '/ops/checkin', label: 'Check-in', icon: '📋' },
                 { href: '/ops/checkout', label: 'Check-out', icon: '🚪' },

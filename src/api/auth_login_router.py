@@ -157,9 +157,11 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
             "Your account exists but is not assigned to any organization. Contact your administrator.",
             status=403,
         )
-    else:
-        tenant_id = tenant_info["tenant_id"]
-        role = tenant_info.get("role", "manager")
+        
+    tenant_id = tenant_info["tenant_id"]
+    role = tenant_info.get("role", "manager")
+    is_active = tenant_info.get("is_active", True)
+    force_reset = user_metadata.get("force_reset", False)
 
     if role not in _VALID_ROLES:
         role = "manager"  # safe fallback
@@ -171,6 +173,8 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
         "tenant_id": tenant_id,   # Resolved from tenant_permissions
         "role": role,             # Resolved from tenant_permissions
         "email": user_email,
+        "is_active": is_active,
+        "force_reset": force_reset,
         "iat": now,
         "exp": now + _TOKEN_TTL_SECONDS,
         "token_type": "session",
@@ -208,6 +212,7 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
         "email": user_email,
         "tenant_id": tenant_id,
         "role": role,
+        "language": tenant_info.get("language", "en"),
         "full_name": user_metadata.get("full_name", ""),
         "expires_in": _TOKEN_TTL_SECONDS,
         "session": session,
@@ -268,16 +273,30 @@ async def google_callback(body: GoogleCallbackRequest, request: Request) -> JSON
 
     tenant_id = tenant_info["tenant_id"]
     role = tenant_info.get("role", "manager")
+    is_active = tenant_info.get("is_active", True)
     if role not in _VALID_ROLES:
         role = "manager"
 
     # Issue iHouse JWT
+    # Fetch the user's metadata from Supabase Auth to retrieve force_reset
+    # google_callback is a server-to-server call using the user_id, so we can use admin API
+    try:
+        user_obj = supa_service.auth.admin.get_user_by_id(user_id)
+        user_metadata = user_obj.user.user_metadata or {}
+    except Exception as exc:
+        logger.warning("auth/google-callback: failed to fetch user %s metadata: %s", user_id, exc)
+        user_metadata = {}
+    
+    force_reset = user_metadata.get("force_reset", False)
+
     now = int(time.time())
     payload = {
         "sub": user_id,
         "tenant_id": tenant_id,
         "role": role,
         "email": user_email,
+        "is_active": is_active,
+        "force_reset": force_reset,
         "iat": now,
         "exp": now + _TOKEN_TTL_SECONDS,
         "token_type": "session",
@@ -315,6 +334,7 @@ async def google_callback(body: GoogleCallbackRequest, request: Request) -> JSON
         "email": user_email,
         "tenant_id": tenant_id,
         "role": role,
+        "language": tenant_info.get("language", "en"),
         "full_name": body.full_name,
         "expires_in": _TOKEN_TTL_SECONDS,
         "session": session,
@@ -448,3 +468,60 @@ async def register_profile(body: RegisterProfileRequest, request: Request) -> JS
         "expires_in": _TOKEN_TTL_SECONDS,
         "session": session,
     })
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/change-password — User updates their own password over API
+# ---------------------------------------------------------------------------
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=6)
+
+@router.post(
+    "/auth/change-password",
+    tags=["auth"],
+    summary="Change own password (clears force_reset)",
+    responses={
+        200: {"description": "Password updated"},
+        401: {"description": "Unauthorized"},
+    },
+)
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request
+) -> JSONResponse:
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return err("UNAUTHORIZED", "Missing token", status=401)
+        
+    token = auth_header.split(" ")[1]
+    jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
+    try:
+        payload = jwt.decode(token, jwt_secret, algorithms=[_ALGORITHM], options={"verify_aud": False})
+        user_id = payload.get("sub")
+    except Exception as e:
+        return err("UNAUTHORIZED", f"Invalid token: {e}", status=401)
+
+    if not user_id:
+        return err("UNAUTHORIZED", "Missing sub", status=401)
+
+    db = _get_service_db()
+    if not db:
+        return err("SUPABASE_NOT_CONFIGURED", "Supabase not configured", status=503)
+
+    try:
+        user_res = db.auth.admin.get_user_by_id(user_id)
+        current_meta = user_res.user.user_metadata or {}
+        current_meta["force_reset"] = False
+        
+        db.auth.admin.update_user_by_id(
+            user_id,
+            {
+                "password": body.new_password,
+                "user_metadata": current_meta
+            }
+        )
+        return ok({"message": "Password updated successfully"})
+    except Exception as exc:
+        logger.warning("auth/change-password: failed for user %s — %s", user_id, exc)
+        return err("UPDATE_FAILED", str(exc), status=400)

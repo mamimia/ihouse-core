@@ -196,10 +196,9 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl: string }) {
       background: photoUrl ? 'transparent' : 'var(--color-primary)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: 28, fontWeight: 700, color: '#fff', overflow: 'hidden',
-      border: '2px solid var(--color-border)',
     }}>
       {photoUrl
-        ? <img src={photoUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ? <img src={photoUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', imageOrientation: 'from-image' as any }} />
         : initials}
     </div>
   );
@@ -252,7 +251,8 @@ export default function EditStaffPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const [confirmToggleActive, setConfirmToggleActive] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | undefined>();
   const [updatedAt, setUpdatedAt] = useState<string | undefined>();
   
@@ -330,7 +330,7 @@ export default function EditStaffPage() {
       setWhatsapp(record.comm_preference?.whatsapp || '');
       setTelegram(record.comm_preference?.telegram || '');
       setLine(record.comm_preference?.line || '');
-      setSms(record.comm_preference?.sms || record.comm_preference?.phone || '');
+      setSms(record.comm_preference?.sms || record.comm_preference?.phone || record.phone || '');
 
     } catch (e) {
       setLoadError('Failed to load staff record.');
@@ -408,16 +408,28 @@ export default function EditStaffPage() {
     }
   };
 
-  const handleDeactivate = async () => {
+  const handleToggleActive = async () => {
     try {
       await apiFetch(`/permissions/${encodeURIComponent(rawUserId)}`, {
         method: 'PATCH',
-        body: JSON.stringify({ is_active: false }),
+        body: JSON.stringify({ is_active: !isActive }),
       });
-      router.push('/admin/staff?deactivated=1');
+      router.push('/admin/staff?updated=1');
     } catch {
-      setError('Failed to deactivate staff member.');
-      setConfirmDeactivate(false);
+      setError(`Failed to ${isActive ? 'deactivate' : 'activate'} staff member.`);
+      setConfirmToggleActive(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await apiFetch(`/permissions/${encodeURIComponent(rawUserId)}`, {
+        method: 'DELETE',
+      });
+      router.push('/admin/staff?deleted=1');
+    } catch {
+      setError('Failed to delete staff member (usually because they are tied to existing tasks/bookings). Archiving is safer.');
+      setConfirmDelete(false);
     }
   };
 
@@ -673,24 +685,61 @@ export default function EditStaffPage() {
               <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: '#f85149', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>
                 Danger Zone
               </div>
-              {!confirmDeactivate ? (
-                <button onClick={() => setConfirmDeactivate(true)} style={{
-                  padding: '8px 20px', background: 'transparent', border: '1px solid rgba(248,81,73,0.5)',
-                  color: '#f85149', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600,
-                }}>
-                  Deactivate Staff Member
-                </button>
-              ) : (
-                <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-                  <span style={{ fontSize: 'var(--text-sm)', color: '#f85149' }}>Are you sure?</span>
-                  <button onClick={handleDeactivate} style={{ padding: '8px 16px', background: '#f85149', border: 'none', color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
-                    Confirm Deactivate
-                  </button>
-                  <button onClick={() => setConfirmDeactivate(false)} style={{ padding: '8px 16px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
-                    Cancel
-                  </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                {/* Toggle Active / Archive */}
+                <div>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 8, marginTop: 0 }}>
+                    {isActive ? 
+                      'Archiving (Deactivating) disables login access while keeping historical records.' : 
+                      'Activating restores login access for this worker.'}
+                  </p>
+                  {!confirmToggleActive ? (
+                    <button onClick={() => setConfirmToggleActive(true)} style={{
+                      padding: '8px 20px', background: 'transparent', border: '1px solid rgba(248,81,73,0.5)',
+                      color: '#f85149', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600,
+                    }}>
+                      {isActive ? 'Deactivate (Archive) Staff Member' : 'Activate Staff Member'}
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+                      <span style={{ fontSize: 'var(--text-sm)', color: '#f85149' }}>Are you sure?</span>
+                      <button onClick={handleToggleActive} style={{ padding: '8px 16px', background: '#f85149', border: 'none', color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
+                        Confirm {isActive ? 'Archive' : 'Activate'}
+                      </button>
+                      <button onClick={() => setConfirmToggleActive(false)} style={{ padding: '8px 16px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+
+                <hr style={{ border: 'none', borderTop: '1px solid rgba(248,81,73,0.2)', margin: '4px 0' }} />
+
+                {/* Hard Delete */}
+                <div>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 8, marginTop: 0 }}>
+                    Permanently delete this worker from your system. (Will fail if they have tasks assigned).
+                  </p>
+                  {!confirmDelete ? (
+                    <button onClick={() => setConfirmDelete(true)} style={{
+                      padding: '8px 20px', background: '#f85149', border: 'none',
+                      color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600,
+                    }}>
+                      Delete Staff Member
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+                      <span style={{ fontSize: 'var(--text-sm)', color: '#f85149', fontWeight: 600 }}>WARNING: This is permanent!</span>
+                      <button onClick={handleDelete} style={{ padding: '8px 16px', background: '#f85149', border: '2px solid #b31d28', color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
+                        Yes, Hard Delete
+                      </button>
+                      <button onClick={() => setConfirmDelete(false)} style={{ padding: '8px 16px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
