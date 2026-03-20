@@ -164,6 +164,15 @@ Any side-effects or non-changes explicitly noted.
 - List all available alternatives (CLI, MCP, REST, Python, browser) and pick the next best one.
 - `supabase CLI` is always checked before browser automation for any DB operation.
 
+### Staging-environment verification rule
+- The system truth is now in staging (Vercel + Railway + Supabase live).
+- Before running any verification, state explicitly: does this method assume local execution?
+- If it does — and the system lives in staging — do not run it. Pivot immediately to a staging-native method:
+  - `curl` with `--max-time 10` against the deployed endpoint
+  - Supabase REST API via `urllib` with `timeout=10` (not supabase-py)
+  - Supabase Dashboard SQL Editor for DDL
+- If any verification hangs for more than 60 seconds, kill it. Diagnose the environment mismatch. Do not retry the same method.
+
 ### Context limit — handoff protocol
 - When approaching ~80% of context window capacity, STOP all work immediately.
 - Write a handoff file into `releases/handoffs/` with name: `handoff_to_new_chat Phase-<N>.md`
