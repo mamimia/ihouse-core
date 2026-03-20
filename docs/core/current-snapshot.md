@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 856 — Next Phase
+Phase 858 — Next Phase
 
 ## Last Closed Phase
-Phase 855E — Onboarding Pipeline Audit
+Phase 857 — Onboarding Remediation Wave (7 critical fixes, runtime-proven)
 
 ## System Status
 
@@ -19,6 +19,9 @@ Phase 855E — Onboarding Pipeline Audit
 | 617 | Wire Form → Checkin Router | 🟡 Deferred | Requires live booking flow | Real check-in data flowing through `booking_checkin_router.py` | TBD — when live check-in activated |
 | 618 | Wire QR → Checkin Response | 🟡 Deferred | Requires live booking flow (same as 617) | Same as Phase 617 | TBD — together with Phase 617 |
 | — | Supabase Storage Buckets (5) | ✅ Resolved (Phase 764) | 4 buckets created: pii-documents, property-photos, guest-uploads, exports | N/A | Resolved |
+| 857-F1 | Staff photo bucket migration | 🟡 Follow-up | Staff photos still in `property-photos` bucket | Create dedicated `staff-documents` private bucket in Supabase Dashboard | TBD |
+| 857-F2 | Full email click-through activation proof | 🟡 Follow-up | Requires real email inbox to receive Supabase invite email | Human inbox verification of full activation flow | TBD |
+| 857-F3 | Pipeline A runtime proof (role validation, generate_link lookup, is_active) | 🟡 Follow-up | Code is in place, not tested at runtime | E2E Pipeline A invite-accept on staging | TBD |
 
 
 apply_envelope is the only authority for canonical state mutations.
@@ -234,6 +237,16 @@ apply_envelope is the only authority for canonical state mutations.
 | 402 | Onboard Token Flow — validate + submit, pending_review, 6 tests | ✅ |
 | 403 | E2E + Shared Component Adoption — 6 E2E tests, DataCard in dashboard | ✅ |
 | 404 | Property Onboarding Pipeline — approve → channel_map bridge, 4 tests | ✅ |
+| 855E | Onboarding Pipeline Audit — full current-state audit of Pipeline A/B, cross-pipeline conflict analysis | ✅ |
+| 857 | Onboarding Remediation Wave — 7 critical fixes (runtime-proven on staging) | ✅ |
+| 857.1 | `tenant_bridge.py` — explicit `is_active=True` on provision (audit D8) | ✅ |
+| 857.2 | `invite_router.py` — role validation via `_VALID_ROLES` at accept time (audit B6) | ✅ |
+| 857.3 | `invite_router.py` — replaced O(N) `list_users()` with `generate_link` lookup (audit B2) | ✅ |
+| 857.4 | `staff_onboarding_router.py` — auto-delivery via `invite_user_by_email` (audit C1/C2/C6) | ✅ Runtime-proven |
+| 857.5 | `staff_onboarding_router.py` — removed legacy `invite` type from Pipeline B (audit C3) | ✅ Runtime-proven |
+| 857.6 | DDL migration — `date_of_birth` + `id_photo_url` columns on `tenant_permissions` (audit C8) | ✅ Runtime-proven |
+| 857.7 | `staff_onboarding_router.py` — clear `410 APPLICATION_REJECTED` for rejected candidates (audit C9) | ✅ Runtime-proven |
+| 857.8 | DB constraint fix — `access_tokens_token_type_check` updated to include `staff_onboard` (bug found during runtime verification) | ✅ Applied + committed |
 
 ## Request Flow (POST /webhooks/{provider})
 
