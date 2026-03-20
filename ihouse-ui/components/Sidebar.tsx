@@ -159,10 +159,12 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
           /* Expanded: full logo + greeting */
           <div style={{ padding: '0 var(--space-6)', marginBottom: 'var(--space-8)', flexShrink: 0 }}>
             <div style={{
-              display: 'flex',
+              position: 'relative',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: '10px',
               marginLeft: '-4px',
+              marginBottom: 16,
               fontSize: 'var(--text-base)',
               fontWeight: 700,
               fontFamily: "'Manrope', sans-serif",
@@ -177,9 +179,19 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
                 style={{ display: 'block', flexShrink: 0 }}
               />
               Domaniqo
-            </div>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 2, paddingLeft: '28px' }}>
-              Operations Platform
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                top: '100%',
+                marginTop: 2,
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-faint)',
+                fontWeight: 400,
+                letterSpacing: 'normal',
+                whiteSpace: 'nowrap',
+              }}>
+                Operations Platform
+              </div>
             </div>
             <div style={{
               marginTop: 'var(--space-4)',
