@@ -59,8 +59,14 @@ export default function AuthCallbackPage() {
 
             if (!resp.ok || !result.token) {
                 if (resp.status === 403) {
-                    // No tenant binding — new user, redirect to registration profile step
-                    window.location.href = `/register/profile?email=${encodeURIComponent(userEmail)}&google=1`;
+                    // Phase 856A: No tenant binding — do NOT redirect to auto-provision.
+                    // Show clear "no access" message instead.
+                    setStatus('error');
+                    setErrorMsg(
+                        'Your Google account is not yet linked to an organization. ' +
+                        'Please contact your administrator for an invitation, ' +
+                        'or request access through the Get Started page.'
+                    );
                     return;
                 }
                 setStatus('error');

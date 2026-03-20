@@ -25,6 +25,11 @@ export default function InvitePage() {
     const [error, setError] = useState(false);
     const [loading, setLoading] = useState(true);
     const [accepted, setAccepted] = useState(false);
+    const [accepting, setAccepting] = useState(false);
+    const [acceptError, setAcceptError] = useState<string | null>(null);
+    // Phase 856A: actual input fields for account creation
+    const [password, setPassword] = useState('');
+    const [fullName, setFullName] = useState('');
 
     useEffect(() => {
         if (!token) { setError(true); setLoading(false); return; }
@@ -102,6 +107,8 @@ export default function InvitePage() {
         );
     }
 
+    const canSubmit = password.length >= 8 && fullName.trim().length > 0 && !accepting;
+
     return (
         <>
             <style>{`@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }`}</style>
@@ -139,33 +146,109 @@ export default function InvitePage() {
                     </div>
                 )}
 
+                {/* Phase 856A: Account creation form */}
+                <div style={{ width: '100%', textAlign: 'left', marginBottom: 'var(--space-4, 16px)' }}>
+                    <label style={{
+                        display: 'block', fontSize: 12, fontWeight: 600,
+                        color: 'var(--color-text-faint, #6b7280)',
+                        marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em',
+                    }}>Full Name</label>
+                    <input
+                        type="text"
+                        value={fullName}
+                        onChange={e => setFullName(e.target.value)}
+                        placeholder="Your full name"
+                        disabled={accepting}
+                        style={{
+                            width: '100%', padding: '12px 14px',
+                            background: 'var(--color-midnight, #171A1F)',
+                            border: '1px solid rgba(234,229,222,0.1)',
+                            borderRadius: 'var(--radius-md, 12px)',
+                            color: 'var(--color-stone, #EAE5DE)',
+                            fontSize: 14, boxSizing: 'border-box',
+                        }}
+                    />
+                </div>
+
+                <div style={{ width: '100%', textAlign: 'left', marginBottom: 'var(--space-5, 20px)' }}>
+                    <label style={{
+                        display: 'block', fontSize: 12, fontWeight: 600,
+                        color: 'var(--color-text-faint, #6b7280)',
+                        marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em',
+                    }}>Password (min. 8 characters)</label>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="Choose a secure password"
+                        disabled={accepting}
+                        style={{
+                            width: '100%', padding: '12px 14px',
+                            background: 'var(--color-midnight, #171A1F)',
+                            border: '1px solid rgba(234,229,222,0.1)',
+                            borderRadius: 'var(--radius-md, 12px)',
+                            color: 'var(--color-stone, #EAE5DE)',
+                            fontSize: 14, boxSizing: 'border-box',
+                        }}
+                    />
+                </div>
+
+                {acceptError && (
+                    <div style={{
+                        width: '100%',
+                        background: 'rgba(155,58,58,0.1)',
+                        border: '1px solid rgba(155,58,58,0.25)',
+                        borderRadius: 'var(--radius-md, 12px)',
+                        padding: '10px 14px', marginBottom: 'var(--space-4, 16px)',
+                        fontSize: 14, color: '#EF4444', textAlign: 'left',
+                    }}>
+                        ⚠ {acceptError}
+                    </div>
+                )}
+
                 <button
                     id="accept-invite"
+                    disabled={!canSubmit}
                     onClick={async () => {
                         const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+                        setAccepting(true);
+                        setAcceptError(null);
                         try {
-                            const r = await fetch(`${API_BASE}/invite/accept/${encodeURIComponent(token)}`, { method: 'POST' });
+                            const r = await fetch(`${API_BASE}/invite/accept/${encodeURIComponent(token)}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    password,
+                                    full_name: fullName.trim(),
+                                }),
+                            });
                             if (!r.ok) {
                                 const body = await r.json().catch(() => ({}));
-                                alert(body.message || 'Failed to accept invitation');
+                                setAcceptError(body.message || body.detail?.[0]?.msg || 'Failed to accept invitation');
                                 return;
                             }
                             setAccepted(true);
                         } catch {
-                            alert('Network error. Please try again.');
+                            setAcceptError('Network error. Please try again.');
+                        } finally {
+                            setAccepting(false);
                         }
                     }}
                     style={{
                         padding: 'var(--space-4, 18px) var(--space-8, 48px)',
                         borderRadius: 'var(--radius-md, 14px)', border: 'none',
-                        background: 'linear-gradient(135deg, var(--color-primary, #3b82f6), #2563eb)',
+                        background: canSubmit
+                            ? 'linear-gradient(135deg, var(--color-primary, #3b82f6), #2563eb)'
+                            : 'rgba(59,130,246,0.3)',
                         color: '#fff', fontWeight: 700, fontSize: 18,
-                        cursor: 'pointer',
-                        boxShadow: '0 0 24px rgba(59,130,246,0.3)',
-                        transition: 'transform 0.15s',
+                        cursor: canSubmit ? 'pointer' : 'not-allowed',
+                        boxShadow: canSubmit ? '0 0 24px rgba(59,130,246,0.3)' : 'none',
+                        transition: 'all 0.15s',
+                        opacity: canSubmit ? 1 : 0.5,
+                        width: '100%',
                     }}
                 >
-                    Accept Invitation
+                    {accepting ? 'Creating account…' : 'Accept Invitation'}
                 </button>
 
                 <div style={{

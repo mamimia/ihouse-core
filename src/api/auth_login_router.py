@@ -358,7 +358,7 @@ class RegisterProfileRequest(BaseModel):
 
 @router.post(
     "/auth/register/profile",
-    summary="Complete registration — save profile and provision tenant",
+    summary="Save registration profile (no auto-provisioning — Phase 856A containment)",
     status_code=200,
     tags=["auth"],
 )
@@ -366,15 +366,19 @@ async def register_profile(body: RegisterProfileRequest, request: Request) -> JS
     """
     POST /auth/register/profile
 
-    Called after Supabase signUp or Google OAuth for new users.
-    1. Finds the Supabase Auth user by email
-    2. Provisions tenant_permissions row
-    3. Issues iHouse JWT so user can log in immediately
-    """
-    jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
-    if not jwt_secret:
-        return err("AUTH_NOT_CONFIGURED", "IHOUSE_JWT_SECRET not set", status=503)
+    Phase 856A: AUTO-PROVISIONING DISABLED.
 
+    Previously this endpoint auto-provisioned any signup as 'manager' on the
+    default tenant — a critical privilege escalation hole.
+
+    Now it:
+    1. Finds the Supabase Auth user by email
+    2. Saves profile data to user_metadata (for future lead processing)
+    3. Returns 403 — user must be invited/approved through Pipeline A or B
+
+    The user's metadata is preserved so that when an admin later invites or
+    approves them, their profile info is already available.
+    """
     email = body.email.strip()
     full_name = f"{body.first_name.strip()} {body.last_name.strip()}".strip()
 
@@ -396,16 +400,8 @@ async def register_profile(body: RegisterProfileRequest, request: Request) -> JS
 
     user_id = str(user.id)
 
-    # Provision tenant_permissions
-    from services.tenant_bridge import provision_user_tenant
-    try:
-        if not supa_service:
-            supa_service = _get_service_db()
-        provision_user_tenant(supa_service, user_id)
-    except Exception as exc:
-        logger.warning("auth/register/profile: tenant provision failed: %s", exc)
-
-    # Update user metadata with profile info
+    # Phase 856A: NO auto-provisioning of tenant_permissions.
+    # Only save profile metadata so it's available for future admin review.
     try:
         supa_service.auth.admin.update_user_by_id(user_id, {
             "user_metadata": {
@@ -416,58 +412,26 @@ async def register_profile(body: RegisterProfileRequest, request: Request) -> JS
                 "phone": body.phone.strip(),
                 "listings_count": body.listings_count,
                 "avg_nightly_rate": body.avg_nightly_rate,
+                "registration_source": "google" if body.from_google else "email",
             },
         })
     except Exception as exc:
         logger.warning("auth/register/profile: metadata update failed: %s", exc)
 
-    # Issue JWT
-    from services.tenant_bridge import DEFAULT_TENANT_ID, DEFAULT_SIGNUP_ROLE
-    now = int(time.time())
-    payload = {
-        "sub": user_id,
-        "tenant_id": DEFAULT_TENANT_ID,
-        "role": DEFAULT_SIGNUP_ROLE,
-        "email": email,
-        "iat": now,
-        "exp": now + _TOKEN_TTL_SECONDS,
-        "token_type": "session",
-        "auth_method": "google" if body.from_google else "supabase",
-    }
-    token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
-
-    # Create session
-    user_agent = request.headers.get("User-Agent")
-    ip_address = request.client.host if request.client else None
-    try:
-        session = create_session(
-            supa_service,
-            tenant_id=DEFAULT_TENANT_ID,
-            token=token,
-            expires_in_seconds=_TOKEN_TTL_SECONDS,
-            user_agent=user_agent,
-            ip_address=ip_address,
-        )
-    except Exception as exc:
-        logger.warning("auth/register/profile: session creation failed: %s", exc)
-        session = {}
-
     logger.info(
-        "auth/register/profile: user=%s email=%s name=%s (registration complete)",
+        "auth/register/profile: profile saved for user=%s email=%s name=%s "
+        "(NO auto-provision — Phase 856A containment)",
         user_id, email, full_name,
     )
 
-    return ok({
-        "token": token,
-        "token_type": "session",
-        "user_id": user_id,
-        "email": email,
-        "tenant_id": DEFAULT_TENANT_ID,
-        "role": DEFAULT_SIGNUP_ROLE,
-        "full_name": full_name,
-        "expires_in": _TOKEN_TTL_SECONDS,
-        "session": session,
-    })
+    # Return 403: profile saved but no access granted
+    return err(
+        "REGISTRATION_PENDING",
+        "Thank you! Your profile has been saved. "
+        "An administrator will review your request and grant access. "
+        "You will be notified when your account is activated.",
+        status=403,
+    )
 
 
 # ---------------------------------------------------------------------------

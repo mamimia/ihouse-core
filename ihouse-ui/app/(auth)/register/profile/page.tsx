@@ -38,6 +38,7 @@ function RegisterProfileForm() {
     const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pending, setPending] = useState(false);
 
     const update = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
@@ -84,15 +85,20 @@ function RegisterProfileForm() {
             const result = body?.data || body;
 
             if (resp.ok && result.token) {
-                // Got JWT — store and redirect
+                // Got JWT — store and redirect (existing invited/approved users)
                 localStorage.setItem('ihouse_token', result.token);
                 document.cookie = `ihouse_token=${result.token}; path=/; max-age=${result.expires_in || 86400}; SameSite=Lax`;
                 window.location.href = '/dashboard';
+            } else if (resp.status === 403 && result?.error === 'REGISTRATION_PENDING') {
+                // Phase 856A: Profile saved, but no auto-provisioning.
+                // Show friendly "pending review" message.
+                setError(null);
+                setPending(true);
             } else if (resp.ok) {
                 // Profile saved but no token yet — redirect to login
                 window.location.href = '/login';
             } else {
-                setError(result?.error || 'Registration failed. Please try again.');
+                setError(result?.message || result?.error || 'Registration failed. Please try again.');
             }
         } catch {
             setError('Network error. Please try again.');
@@ -124,6 +130,52 @@ function RegisterProfileForm() {
     const currencyLabel = selectedCountry
         ? `${selectedCountry.currencySymbol} ${selectedCountry.currency}`
         : 'USD';
+
+    // Phase 856A: Show "pending review" screen after successful profile submission
+    if (pending) {
+        return (
+            <AuthCard title="Profile Saved" subtitle="Your request is being reviewed">
+                <div style={{
+                    textAlign: 'center',
+                    padding: 'var(--space-6, 24px) 0',
+                }}>
+                    <div style={{ fontSize: 48, marginBottom: 'var(--space-4, 16px)' }}>✅</div>
+                    <p style={{
+                        fontSize: 'var(--text-base, 16px)',
+                        color: 'var(--color-stone, #EAE5DE)',
+                        lineHeight: 1.6,
+                        marginBottom: 'var(--space-4, 16px)',
+                    }}>
+                        Thank you! Your profile has been saved.
+                    </p>
+                    <p style={{
+                        fontSize: 'var(--text-sm, 14px)',
+                        color: 'rgba(234,229,222,0.5)',
+                        lineHeight: 1.6,
+                        marginBottom: 'var(--space-6, 24px)',
+                    }}>
+                        An administrator will review your request and grant access.
+                        You will be notified when your account is activated.
+                    </p>
+                    <a
+                        href="/"
+                        style={{
+                            display: 'inline-block',
+                            padding: '12px 24px',
+                            background: 'var(--color-moss, #334036)',
+                            borderRadius: 'var(--radius-md, 12px)',
+                            color: 'var(--color-white, #F8F6F2)',
+                            fontSize: 'var(--text-sm, 14px)',
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                        }}
+                    >
+                        Back to Domaniqo
+                    </a>
+                </div>
+            </AuthCard>
+        );
+    }
 
     return (
         <AuthCard title="Complete your profile" subtitle="Tell us a bit about yourself and your properties">
