@@ -147,22 +147,13 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
             marginBottom: 'var(--space-4)',
             flexShrink: 0,
           }}>
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              background: 'var(--color-midnight, #171A1F)',
-              color: 'var(--color-white, #F8F6F2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 16,
-              fontWeight: 700,
-              fontFamily: "'Manrope', sans-serif",
-              letterSpacing: '-0.02em',
-            }}>
-              D
-            </div>
+            <img
+              src="/domaniqo-monogram-midnight.svg"
+              alt="Domaniqo"
+              width={34}
+              height={34}
+              style={{ display: 'block' }}
+            />
           </div>
         ) : (
           /* Expanded: full logo + greeting */

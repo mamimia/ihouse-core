@@ -1,0 +1,7 @@
+<svg width="256" height="256" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Domaniqo Architectural D Monogram — E. Wide Arc — Midnight Graphite -->
+  <path d="M16 6H28C46 6 58 18 58 32C58 46 46 58 28 58H16Z" stroke="#171A1F" stroke-width="2.2" stroke-linejoin="round"/>
+  <line x1="28" y1="6" x2="28" y2="58" stroke="#171A1F" stroke-width="1.2"/>
+  <line x1="16" y1="32" x2="52" y2="32" stroke="#171A1F" stroke-width="1.2"/>
+  <path d="M28 13C40 13 51 22 51 32C51 42 40 51 28 51" stroke="#171A1F" stroke-width="1.08" fill="none"/>
+</svg>
