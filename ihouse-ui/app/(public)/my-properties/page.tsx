@@ -1,0 +1,296 @@
+'use client';
+
+/**
+ * Phase 858 — My Properties (Draft Management)
+ *
+ * Authenticated user area showing their properties with status badges.
+ * Entry point after completing the Get Started wizard.
+ * Also accessible from the main navigation for returning users.
+ *
+ * Status model:
+ *   draft          → saved, not yet submitted
+ *   pending_review → submitted, awaiting admin review
+ *   approved       → admin approved, live in system
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import DMonogram from '@/components/DMonogram';
+
+interface Property {
+    id: string;
+    name: string;
+    property_type: string;
+    city: string;
+    country: string;
+    status: string;
+    created_at: string;
+    max_guests?: number;
+    bedrooms?: number;
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+    draft:          { label: 'Draft',           color: 'rgba(234,229,222,0.5)', bg: 'rgba(234,229,222,0.06)', icon: '📝' },
+    pending_review: { label: 'Pending Review',  color: '#B56E45',               bg: 'rgba(181,110,69,0.08)',  icon: '⏳' },
+    pending:        { label: 'Pending Review',  color: '#B56E45',               bg: 'rgba(181,110,69,0.08)',  icon: '⏳' },
+    approved:       { label: 'Approved',        color: '#4A7C59',               bg: 'rgba(74,124,89,0.08)',   icon: '✅' },
+    active:         { label: 'Active',          color: '#4A7C59',               bg: 'rgba(74,124,89,0.08)',   icon: '✅' },
+};
+
+const card: React.CSSProperties = {
+    background: 'var(--color-elevated, #1E2127)',
+    border: '1px solid rgba(234,229,222,0.06)',
+    borderRadius: 'var(--radius-lg, 16px)',
+    padding: 'var(--space-6, 24px)',
+};
+
+const primaryBtn: React.CSSProperties = {
+    padding: '12px 24px',
+    background: 'var(--color-moss, #334036)', border: 'none',
+    borderRadius: 'var(--radius-md, 12px)',
+    color: 'var(--color-white, #F8F6F2)',
+    fontSize: 'var(--text-sm, 14px)', fontWeight: 600,
+    fontFamily: 'var(--font-brand, inherit)',
+    cursor: 'pointer', textDecoration: 'none',
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+};
+
+export default function MyPropertiesPage() {
+    const [properties, setProperties] = useState<Property[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState<string | null>(null);
+    const [justSubmitted, setJustSubmitted] = useState<string | null>(null);
+
+    const fetchProperties = useCallback(async () => {
+        try {
+            const res = await fetch('/api/properties/mine', { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                setProperties(data.properties || []);
+            }
+        } catch { /* ignore */ }
+        finally { setLoading(false); }
+    }, []);
+
+    useEffect(() => { fetchProperties(); }, [fetchProperties]);
+
+    const handleSubmitForReview = async (propertyId: string) => {
+        setSubmitting(propertyId);
+        try {
+            const res = await fetch(`/api/properties/${propertyId}/submit`, {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (res.ok) {
+                setJustSubmitted(propertyId);
+                setProperties(prev => prev.map(p =>
+                    p.id === propertyId ? { ...p, status: 'pending_review' } : p
+                ));
+            }
+        } catch { /* ignore */ }
+        finally { setSubmitting(null); }
+    };
+
+    const drafts = properties.filter(p => p.status === 'draft');
+    const submitted = properties.filter(p => ['pending_review', 'pending'].includes(p.status));
+    const approved = properties.filter(p => ['approved', 'active'].includes(p.status));
+
+    return (
+        <>
+            <style>{`
+                @keyframes fadeSlideIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+                .mp-fade { animation: fadeSlideIn 400ms ease both; }
+                .mp-card { transition: border-color 0.2s; }
+                .mp-card:hover { border-color: rgba(234,229,222,0.12) !important; }
+            `}</style>
+
+            <div style={{
+                minHeight: '100vh',
+                background: 'var(--color-midnight, #171A1F)',
+                paddingTop: 'var(--header-height, 72px)',
+            }}>
+                <div style={{
+                    maxWidth: 640, margin: '0 auto',
+                    padding: 'var(--space-8, 32px) var(--space-4, 16px)',
+                }}>
+                    {/* Header */}
+                    <div className="mp-fade" style={{ marginBottom: 'var(--space-6, 24px)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                            <DMonogram size={28} color="var(--color-stone, #EAE5DE)" strokeWidth={1.2} />
+                            <h1 style={{
+                                fontFamily: 'var(--font-display, serif)',
+                                fontSize: 'var(--text-2xl, 28px)',
+                                color: 'var(--color-stone, #EAE5DE)',
+                                margin: 0, fontWeight: 400,
+                            }}>
+                                My Properties
+                            </h1>
+                        </div>
+                        <p style={{ fontSize: 14, color: 'rgba(234,229,222,0.35)', margin: '8px 0 0' }}>
+                            Manage your property listings and track review status.
+                        </p>
+                    </div>
+
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: 'var(--space-8) 0', color: 'rgba(234,229,222,0.3)' }}>
+                            Loading your properties…
+                        </div>
+                    ) : properties.length === 0 ? (
+                        /* Empty state */
+                        <div className="mp-fade" style={{ ...card, textAlign: 'center', padding: 'var(--space-8, 32px)' }}>
+                            <div style={{ fontSize: 48, marginBottom: 12 }}>🏠</div>
+                            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-stone)', margin: '0 0 8px' }}>
+                                No properties yet
+                            </h2>
+                            <p style={{ fontSize: 14, color: 'rgba(234,229,222,0.4)', margin: '0 0 20px', lineHeight: 1.6 }}>
+                                Add your first property to get started with Domaniqo.
+                            </p>
+                            <Link href="/get-started" style={primaryBtn}>
+                                + Add Your First Property
+                            </Link>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                            {/* Just submitted banner */}
+                            {justSubmitted && (
+                                <div className="mp-fade" style={{
+                                    ...card,
+                                    padding: '16px 20px',
+                                    background: 'rgba(74,124,89,0.06)',
+                                    border: '1px solid rgba(74,124,89,0.15)',
+                                }}>
+                                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-ok, #4A7C59)', marginBottom: 4 }}>
+                                        ✅ Submitted for Review
+                                    </div>
+                                    <div style={{ fontSize: 13, color: 'rgba(234,229,222,0.4)', lineHeight: 1.5 }}>
+                                        Your property has been submitted. We&apos;ll review it and get back to you soon.
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Drafts section */}
+                            {drafts.length > 0 && (
+                                <div>
+                                    <h2 style={{
+                                        fontSize: 13, fontWeight: 700, color: 'rgba(234,229,222,0.3)',
+                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px',
+                                    }}>
+                                        Drafts ({drafts.length})
+                                    </h2>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {drafts.map(prop => (
+                                            <PropertyCard key={prop.id} property={prop}
+                                                onSubmit={() => handleSubmitForReview(prop.id)}
+                                                submitting={submitting === prop.id} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Submitted section */}
+                            {submitted.length > 0 && (
+                                <div>
+                                    <h2 style={{
+                                        fontSize: 13, fontWeight: 700, color: 'rgba(234,229,222,0.3)',
+                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px',
+                                    }}>
+                                        Submitted ({submitted.length})
+                                    </h2>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {submitted.map(prop => (
+                                            <PropertyCard key={prop.id} property={prop} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Approved section */}
+                            {approved.length > 0 && (
+                                <div>
+                                    <h2 style={{
+                                        fontSize: 13, fontWeight: 700, color: 'rgba(234,229,222,0.3)',
+                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px',
+                                    }}>
+                                        Approved ({approved.length})
+                                    </h2>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {approved.map(prop => (
+                                            <PropertyCard key={prop.id} property={prop} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Add another */}
+                            <div style={{ textAlign: 'center', paddingTop: 8 }}>
+                                <Link href="/get-started" style={primaryBtn}>
+                                    + Add Another Property
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+    );
+}
+
+/* ─── Property Card Component ─── */
+
+function PropertyCard({ property, onSubmit, submitting }: {
+    property: Property;
+    onSubmit?: () => void;
+    submitting?: boolean;
+}) {
+    const statusConf = STATUS_CONFIG[property.status] || STATUS_CONFIG.draft;
+
+    return (
+        <div className="mp-card" style={{ ...card, padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 16 }}>🏠</span>
+                        <h3 style={{
+                            fontSize: 16, fontWeight: 600,
+                            color: 'var(--color-stone, #EAE5DE)',
+                            margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                            {property.name || 'Untitled Property'}
+                        </h3>
+                    </div>
+
+                    <div style={{ fontSize: 13, color: 'rgba(234,229,222,0.35)', marginBottom: 8 }}>
+                        {[property.city, property.country].filter(Boolean).join(', ') || 'Location not set'}
+                        {property.property_type && ` · ${property.property_type}`}
+                    </div>
+
+                    {/* Status badge */}
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 11, fontWeight: 700,
+                        color: statusConf.color, background: statusConf.bg,
+                        padding: '3px 10px', borderRadius: 99,
+                        textTransform: 'uppercase', letterSpacing: '0.04em',
+                    }}>
+                        {statusConf.icon} {statusConf.label}
+                    </span>
+                </div>
+
+                {/* Action */}
+                {property.status === 'draft' && onSubmit && (
+                    <button
+                        onClick={onSubmit}
+                        disabled={submitting}
+                        style={{
+                            ...primaryBtn, padding: '8px 16px', fontSize: 13, flexShrink: 0,
+                            opacity: submitting ? 0.5 : 1,
+                        }}
+                    >
+                        {submitting ? '…' : 'Submit →'}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}

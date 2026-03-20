@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import DMonogram from './DMonogram';
 
 const NAV_LINKS = [
@@ -21,6 +22,8 @@ const NAV_LINKS = [
 
 export default function PublicNav() {
     const [scrolled, setScrolled] = useState(false);
+    const pathname = usePathname();
+    const hideGetStartedCTA = pathname === '/get-started';
 
     useEffect(() => {
         const handler = () => setScrolled(window.scrollY > 40);
@@ -102,8 +105,8 @@ export default function PublicNav() {
                 ))}
             </div>
 
-            {/* CTA */}
-            <Link
+            {/* CTA — hidden when already in the wizard */}
+            {!hideGetStartedCTA && <Link
                 href="/get-started"
                 id="nav-cta-get-started"
                 style={{
@@ -123,7 +126,7 @@ export default function PublicNav() {
                 }}
             >
                 Get Started
-            </Link>
+            </Link>}
         </nav>
     );
 }
