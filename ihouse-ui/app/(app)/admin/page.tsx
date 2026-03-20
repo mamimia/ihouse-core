@@ -106,39 +106,143 @@ const INTEGRATION_INSTRUCTIONS: Record<string, { title: string; steps: React.Rea
 // Reusable components
 // ---------------------------------------------------------------------------
 
-function SectionCard({ title, icon, children }: {
+function CollapsibleSection({ title, subtitle, icon, badge, badgeColor, defaultOpen = false, children }: {
     title: string;
+    subtitle?: string;
     icon: string;
+    badge?: string;
+    badgeColor?: string;
+    defaultOpen?: boolean;
     children: React.ReactNode;
 }) {
+    const [open, setOpen] = useState(defaultOpen);
+    const contentRef = useCallback((node: HTMLDivElement | null) => {
+        if (node) {
+            // Set max-height for animation
+            if (open) {
+                node.style.maxHeight = node.scrollHeight + 'px';
+                // After transition, set to 'none' so content can grow dynamically
+                const handler = () => { node.style.maxHeight = 'none'; };
+                node.addEventListener('transitionend', handler, { once: true });
+            } else {
+                // Collapse: first set explicit height, then on next frame set to 0
+                if (node.style.maxHeight === 'none') {
+                    node.style.maxHeight = node.scrollHeight + 'px';
+                }
+                requestAnimationFrame(() => {
+                    node.style.maxHeight = '0px';
+                });
+            }
+        }
+    }, [open]);
+
     return (
         <div style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)',
-            marginBottom: 'var(--space-6)',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+            borderRadius: 'var(--radius-lg, 12px)',
+            marginBottom: 'var(--space-5, 20px)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
             overflow: 'hidden',
+            transition: 'box-shadow 200ms ease',
         }}>
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                padding: 'var(--space-4) var(--space-5)',
-                borderBottom: '1px solid var(--color-border)',
-                background: 'var(--color-surface-2)',
-            }}>
-                <span style={{ fontSize: '1.2em' }}>{icon}</span>
-                <h2 style={{
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    color: 'var(--color-text)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                }}>{title}</h2>
-            </div>
-            <div style={{ padding: '0 var(--space-2)' }}>
-                {children}
+            {/* Clickable header */}
+            <button
+                onClick={() => setOpen(prev => !prev)}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    padding: '16px 20px',
+                    background: open ? 'var(--color-surface-2, #fafaf8)' : 'transparent',
+                    border: 'none',
+                    borderBottom: open ? '1px solid var(--color-border)' : '1px solid transparent',
+                    cursor: 'pointer',
+                    gap: '14px',
+                    transition: 'background 200ms ease, border-color 200ms ease',
+                    textAlign: 'left',
+                }}
+            >
+                {/* Icon */}
+                <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '8px',
+                    background: 'var(--color-surface-2, #f5f3ef)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '16px',
+                    flexShrink: 0,
+                }}>
+                    {icon}
+                </div>
+
+                {/* Title + subtitle */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: 'var(--color-text)',
+                        letterSpacing: '0.01em',
+                        lineHeight: 1.3,
+                    }}>
+                        {title}
+                    </div>
+                    {subtitle && (
+                        <div style={{
+                            fontSize: '11px',
+                            color: 'var(--color-text-faint)',
+                            marginTop: '2px',
+                            lineHeight: 1.3,
+                        }}>
+                            {subtitle}
+                        </div>
+                    )}
+                </div>
+
+                {/* Badge (right side summary) */}
+                {badge && (
+                    <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-full, 999px)',
+                        background: `${badgeColor || 'var(--color-text-dim)'}14`,
+                        color: badgeColor || 'var(--color-text-dim)',
+                        border: `1px solid ${badgeColor || 'var(--color-text-dim)'}33`,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                    }}>
+                        {badge}
+                    </span>
+                )}
+
+                {/* Chevron indicator */}
+                <span style={{
+                    fontSize: '14px',
+                    color: 'var(--color-text-faint)',
+                    transition: 'transform 250ms ease',
+                    transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                    flexShrink: 0,
+                    lineHeight: 1,
+                }}>
+                    ▾
+                </span>
+            </button>
+
+            {/* Collapsible content */}
+            <div
+                ref={contentRef}
+                style={{
+                    maxHeight: defaultOpen ? undefined : '0px',
+                    overflow: 'hidden',
+                    transition: 'max-height 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+            >
+                <div style={{ padding: '0 var(--space-2, 8px)' }}>
+                    {children}
+                </div>
             </div>
         </div>
     );
@@ -581,10 +685,17 @@ export default function AdminPage() {
                 }}>{notice}</div>
             )}
 
-            {/* Section 1 — Provider Registry */}
-            <SectionCard title="Provider Registry" icon="🔌">
+            {/* Section 1 — Provider Registry (open by default — primary admin surface) */}
+            <CollapsibleSection
+                title="Provider Registry"
+                subtitle="OTA channel connections and sync capabilities"
+                icon="🔌"
+                badge={providers.length > 0 ? `${providers.length} providers` : undefined}
+                badgeColor="var(--color-primary)"
+                defaultOpen
+            >
                 {providers.length === 0 ? (
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', padding: '12px 8px' }}>
                         {loading ? 'Loading…' : 'No providers registered yet.'}
                     </p>
                 ) : (
@@ -594,14 +705,23 @@ export default function AdminPage() {
                         ))}
                     </>
                 )}
-            </SectionCard>
+            </CollapsibleSection>
 
-            {/* Section 1.5 — Notification Integrations */}
-            <SectionCard title="Notification Integrations" icon="🔔">
-                <p style={{ fontSize: '12px', color: 'var(--color-text-dim)', marginBottom: '16px' }}>
+            {/* Section 2 — Notification Integrations (collapsed — config, not daily) */}
+            <CollapsibleSection
+                title="Notification Integrations"
+                subtitle="Messaging channels for task alerts and worker notifications"
+                icon="🔔"
+                badge={(() => {
+                    const active = integrations.filter(i => i.active).length;
+                    return active > 0 ? `${active} active` : 'none active';
+                })()}
+                badgeColor={integrations.some(i => i.active) ? 'var(--color-ok)' : 'var(--color-text-faint)'}
+            >
+                <p style={{ fontSize: '12px', color: 'var(--color-text-dim)', padding: '12px 8px 4px', margin: 0 }}>
                     Integration tokens are encrypted at rest and scoped per organization.
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', padding: '8px 0' }}>
                     {integrations.map(intg => (
                         <IntegrationRow 
                             key={intg.id} 
@@ -611,27 +731,42 @@ export default function AdminPage() {
                         />
                     ))}
                 </div>
-            </SectionCard>
+            </CollapsibleSection>
 
-            {/* Section 2 — Permissions */}
-            <SectionCard title="User Permissions" icon="🔑">
+            {/* Section 3 — User Permissions (collapsed — stable, reference-only) */}
+            <CollapsibleSection
+                title="User Permissions"
+                subtitle="Role assignments and capability grants"
+                icon="🔑"
+                badge={permissions.length > 0 ? `${permissions.length} users` : undefined}
+                badgeColor="var(--color-primary)"
+            >
                 {permissions.length === 0 ? (
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', padding: '12px 8px' }}>
                         {loading ? 'Loading…' : 'No permission records found.'}
                     </p>
                 ) : (
-                    permissions.map(p => <PermissionRow key={p.user_id} perm={p} />)
+                    <div style={{ padding: '8px 0' }}>
+                        {permissions.map(p => <PermissionRow key={p.user_id} perm={p} />)}
+                    </div>
                 )}
-            </SectionCard>
+            </CollapsibleSection>
 
-            {/* Section 3 — DLQ */}
-            <SectionCard title={`Integration Alerts${dlq.length ? ` (${dlq.length})` : ''}`} icon="⚠️">
+            {/* Section 4 — Integration Alerts (open if alerts exist, collapsed if clear) */}
+            <CollapsibleSection
+                title="Integration Alerts"
+                subtitle="Dead letter queue — failed or rejected inbound events"
+                icon="⚠️"
+                badge={dlq.length > 0 ? `${dlq.length} pending` : '✓ clear'}
+                badgeColor={dlq.length > 0 ? 'var(--color-warn)' : 'var(--color-ok)'}
+                defaultOpen={dlq.length > 0}
+            >
                 {dlq.length === 0 ? (
-                    <p style={{ color: 'var(--color-ok)', fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <p style={{ color: 'var(--color-ok)', fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '12px 8px' }}>
                         <span>✓</span> DLQ clear — no pending events
                     </p>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: '8px 0' }}>
                         {dlq.map(e => (
                             <div key={e.id} style={{
                                 display: 'flex',
@@ -655,7 +790,7 @@ export default function AdminPage() {
                         ))}
                     </div>
                 )}
-            </SectionCard>
+            </CollapsibleSection>
 
             {/* Modal for Configuration */}
             {configModal.isOpen && (
