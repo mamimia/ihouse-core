@@ -182,7 +182,7 @@ export default function LandingPage() {
                             alignItems: 'center',
                         }}
                     >
-                        Get Started
+                        List Your Property
                     </Link>
                     <Link
                         href="/login"
@@ -406,7 +406,7 @@ export default function LandingPage() {
                         minHeight: 52,
                     }}
                 >
-                    Get Started →
+                    Start Free →
                 </Link>
                 <div style={{
                     fontSize: 'var(--text-xs)',

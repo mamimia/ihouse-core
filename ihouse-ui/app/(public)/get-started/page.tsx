@@ -775,9 +775,9 @@ export default function GetStartedWizard() {
                                             <label style={label}>Verification Code</label>
                                             <input
                                                 ref={otpInputRef} className="gs-input"
-                                                value={authOtp} onChange={e => setAuthOtp(e.target.value)}
+                                                value={authOtp} onChange={e => setAuthOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                                 onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
-                                                placeholder="123456" style={{ ...inputStyle, textAlign: 'center', fontSize: 20, letterSpacing: '0.3em' }}
+                                                placeholder="· · · · · ·" style={{ ...inputStyle, textAlign: 'center', fontSize: 24, letterSpacing: '0.4em', fontWeight: 300, color: 'var(--color-stone)' }}
                                                 maxLength={6} inputMode="numeric" autoComplete="one-time-code"
                                             />
                                         </div>
