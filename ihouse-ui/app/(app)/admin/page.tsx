@@ -48,7 +48,8 @@ interface Integration {
 // Map integration IDs to the fields they require for configuration
 const INTEGRATION_FIELDS: Record<string, { key: string; label: string; placeholder: string; type?: string }[]> = {
     line: [
-        { key: 'channel_access_token', label: 'Channel Access Token', placeholder: 'Enter LINE Messaging API token' }
+        { key: 'channel_secret', label: 'Channel Secret', placeholder: 'Webhook verification secret from LINE Basic Settings' },
+        { key: 'channel_access_token', label: 'Channel Access Token (long-lived)', placeholder: 'Issue from LINE Developers Console → Messaging API' },
     ],
     whatsapp: [
         { key: 'access_token', label: 'Access Token', placeholder: 'Enter Meta Cloud API bearer token' },
@@ -85,11 +86,22 @@ const INTEGRATION_INSTRUCTIONS: Record<string, { title: string; steps: React.Rea
         ]
     },
     line: {
-        title: 'How to connect LINE Notify',
+        title: 'Connect LINE Messaging API',
         steps: [
-            <span key="1">Log into the <strong>LINE Developers Console</strong> and create a Provider.</span>,
-            <span key="2">Create a new <strong>Messaging API</strong> channel.</span>,
-            <span key="3">Scroll down to issue a long-lived <strong>Channel Access Token</strong>.</span>
+            <span key="1"><strong>1. Open your LINE Official Account</strong><br/>Go to <strong>LINE Official Account Manager</strong>. Create a LINE Official Account if you do not have one, or open an existing account.</span>,
+            <span key="2"><strong>2. Enable Messaging API</strong><br/>In LINE Official Account Manager go to <em>Settings → Messaging API → Enable Messaging API</em>. If prompted to choose a provider, select your existing one — do not create a second provider.</span>,
+            <span key="3"><strong>3. Open LINE Developers Console</strong><br/>After enabling, open <em>LINE Developers Console → Provider → Your channel → Messaging API</em>.</span>,
+            <span key="4"><strong>4. Copy required values</strong><br/>Collect: <strong>Channel Secret</strong> (Basic settings) and <strong>Channel Access Token (long-lived)</strong> (Messaging API tab → Issue).</span>,
+            <span key="5"><strong>5. Set your webhook URL</strong><br/>In LINE Official Account Manager → Settings → Messaging API, paste your Domaniqo webhook URL:<br/><code style={{fontFamily:'monospace', fontSize:'11px', background:'var(--color-surface-3)', padding:'1px 4px', borderRadius:3}}>/line/webhook</code><br/>LINE requires a public HTTPS URL — localhost and plain HTTP will not work. Enable webhook usage after saving.</span>,
+            <span key="6"><strong>6. Paste values here</strong><br/><em>Channel Secret</em> → webhook verification secret field above.<br/><em>Channel Access Token</em> → outbound messaging token field above.</span>,
+            <span key="7"><strong>7. Configure worker delivery</strong><br/>Each worker who should receive LINE messages must have a valid LINE recipient ID linked in their staff profile. Without this, the integration connects but notifications do not reach workers.</span>,
+            <span key="8"><strong>8. Test the connection</strong><br/>After saving, verify webhook is enabled and publicly reachable, then send a test notification and confirm a real LINE message is delivered.</span>,
+            <span key="warn" style={{display:'block', marginTop:'8px', padding:'10px 12px', background:'#f59e0b0f', border:'1px solid #f59e0b33', borderRadius:'6px', color:'var(--color-text)', fontSize:'12px'}}>
+                <strong>⚠ Important</strong><br/>
+                Channel Secret and Channel Access Token are <em>different values</em> — do not paste the wrong one into the wrong field.<br/>
+                LINE requires a public HTTPS webhook URL. Localhost and plain HTTP will not work.<br/>
+                Worker routing must be configured separately for delivery to succeed.
+            </span>
         ]
     },
     sms: {

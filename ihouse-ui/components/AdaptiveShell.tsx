@@ -84,8 +84,6 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
                         appearance: 'none',
                         WebkitAppearance: 'none',
                         background: 'rgba(255, 255, 255, 0.08)',
-                        backdropFilter: 'blur(8px)',
-                        WebkitBackdropFilter: 'blur(8px)',
                         border: '1px solid rgba(0, 0, 0, 0.1)',
                         borderRadius: 'var(--radius-md, 8px)',
                         width: 40,
