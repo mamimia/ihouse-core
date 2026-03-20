@@ -26,8 +26,18 @@ export default function LoginPage() {
 
     useEffect(() => {
         setMounted(true);
-        if (typeof window !== 'undefined' && localStorage.getItem('ihouse_token')) {
-            window.location.href = getRoleRoute(localStorage.getItem('ihouse_token') ?? undefined);
+        if (typeof window !== 'undefined') {
+            const token = localStorage.getItem('ihouse_token');
+            // Only redirect if token exists in BOTH localStorage AND cookie.
+            // If token is in localStorage but missing from cookies, the middleware
+            // will redirect back to /login, creating an infinite loop.
+            const hasCookie = document.cookie.includes('ihouse_token');
+            if (token && hasCookie) {
+                window.location.href = getRoleRoute(token);
+            } else if (token && !hasCookie) {
+                // Stale localStorage token — clear it to prevent future loops
+                localStorage.removeItem('ihouse_token');
+            }
         }
         const stored = localStorage.getItem('domaniqo_remember_email');
         if (stored) {

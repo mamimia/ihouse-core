@@ -10,16 +10,32 @@ export const metadata: Metadata = {
 
 /**
  * Phase 377 — Root Layout (shared shell)
+ * Phase 859 — Anti-flicker inline script (eliminates FOUC from ThemeProvider race)
  *
  * Provides: HTML shell, fonts, ThemeProvider, and LanguageProvider.
  * No sidebar, no auth wrapper — those live in route-group layouts:
  *   (public)/layout.tsx  — public pages (landing, login, early-access)
  *   (app)/layout.tsx     — protected pages (dashboard, bookings, admin, etc.)
  */
+
+// Runs SYNCHRONOUSLY before hydration — no flicker, no FOUC.
+// Sets data-theme from localStorage (or dark as default) before any CSS paints.
+const themeScript = `
+(function() {
+  try {
+    var stored = localStorage.getItem('domaniqo-theme');
+    var theme = (stored === 'light' || stored === 'dark') ? stored : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch(e) {}
+})();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <head>
+        {/* Anti-flicker: sets correct theme BEFORE first paint */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -27,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
         />
       </head>
-      <body style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <body suppressHydrationWarning style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
         <ThemeProvider>
           <LanguageProvider>
             {children}
