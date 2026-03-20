@@ -117,8 +117,9 @@ async def validate_onboarding(token: str) -> JSONResponse:
     secret = os.environ.get("IHOUSE_ACCESS_TOKEN_SECRET", "dev-secret")
     try:
         claims = jwt.decode(token, secret, algorithms=["HS256"], audience="ihouse-tenant")
-        # Phase 856B: accept both 'staff_onboard' (new) and 'invite' (legacy tokens)
-        if claims.get("typ") not in ("staff_onboard", "invite"):
+        # Phase 857 (audit C3): only accept staff_onboard tokens — legacy invite
+        # tokens must go through Pipeline A, not the staff onboarding form.
+        if claims.get("typ") != "staff_onboard":
             return JSONResponse(status_code=401, content={"valid": False, "error": "INVALID_TYPE"})
     except Exception:
         return JSONResponse(status_code=401, content={"valid": False, "error": "INVALID_TOKEN"})
@@ -130,8 +131,18 @@ async def validate_onboarding(token: str) -> JSONResponse:
         return JSONResponse(status_code=404, content={"valid": False, "error": "NOT_FOUND"})
     
     row = data[0]
-    if row.get("used_at") or row.get("revoked_at"):
-        return JSONResponse(status_code=400, content={"valid": False, "error": "ALREADY_USED_OR_REVOKED"})
+    # Phase 857 (audit C9): distinguish rejection from generic revoke/use
+    if row.get("revoked_at"):
+        row_meta = row.get("metadata") or {}
+        if row_meta.get("status") == "rejected":
+            return JSONResponse(status_code=410, content={
+                "valid": False,
+                "error": "APPLICATION_REJECTED",
+                "message": "Your application was reviewed and was not approved at this time."
+            })
+        return JSONResponse(status_code=400, content={"valid": False, "error": "TOKEN_REVOKED"})
+    if row.get("used_at"):
+        return JSONResponse(status_code=400, content={"valid": False, "error": "ALREADY_USED"})
         
     meta = row.get("metadata") or {}
     if meta.get("status") != "pending_submission":
@@ -275,13 +286,13 @@ async def submit_onboarding(token: str, body: OnboardingSubmitRequest) -> JSONRe
 async def list_pending_onboarding(tenant_id: str = Depends(jwt_auth)) -> JSONResponse:
     db = _get_db()
     try:
-        # Phase 856B: query for STAFF_ONBOARD tokens; also include legacy INVITE type
-        # during transition period so old tokens still appear in the queue.
+        # Phase 857 (audit C3): only query STAFF_ONBOARD tokens.
+        # Legacy invite tokens are Pipeline A — they never appear in this queue.
         res = (
             db.table("access_tokens")
             .select("id, email, created_at, metadata")
             .eq("entity_id", tenant_id)
-            .in_("token_type", ["staff_onboard", "invite"])
+            .eq("token_type", "staff_onboard")
             .is_("used_at", "null")
             .is_("revoked_at", "null")
             .execute()
@@ -334,26 +345,52 @@ async def approve_onboarding(
             return make_error_response(status_code=400, code="VALIDATION_ERROR", extra={"detail": "Missing email for invited user. Worker must provide an email."})
 
         try:
-            # Generate a magic link. This creates the user if they don't exist.
+            # Phase 857 (audit C1): auto-delivery via invite_user_by_email.
+            # This creates the Supabase Auth user (if new) AND sends the branded
+            # invite email directly to the worker's inbox — no admin courier.
             frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
-            auth_res = admin_client.auth.admin.generate_link(
-                {"type": "magiclink", "email": email, "data": {"full_name": wdata.get("full_name", ""), "phone": wdata.get("phone", "")},
-                 "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
-            )
-            user_id = auth_res.user.id
-            magic_link = auth_res.properties.action_link
-            
-            # If the user was just created, force them to set a password on next login
-            import datetime
-            now = datetime.datetime.now(datetime.timezone.utc)
-            is_new = (now - auth_res.user.created_at).total_seconds() < 60
+            try:
+                auth_res = admin_client.auth.admin.invite_user_by_email(
+                    email,
+                    options={
+                        "data": {
+                            "full_name": wdata.get("full_name", ""),
+                            "phone": wdata.get("phone", ""),
+                            "force_reset": True,
+                        },
+                        "redirect_to": f"{frontend_url}/auth/callback"
+                    }
+                )
+                user_id = auth_res.user.id
+                delivery_method = "email_auto"  # Supabase sent the invitation email
+            except Exception as invite_exc:
+                # User may already exist — fall back to generate_link
+                if "already" in str(invite_exc).lower() or "exists" in str(invite_exc).lower():
+                    logger.info(
+                        "staff-onboarding/approve: user %s already exists — "
+                        "falling back to generate_link (Phase 857)", email
+                    )
+                    auth_res = admin_client.auth.admin.generate_link(
+                        {"type": "magiclink", "email": email,
+                         "data": {"full_name": wdata.get("full_name", "")},
+                         "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
+                    )
+                    user_id = auth_res.user.id
+                    delivery_method = "magic_link_generated"  # Supabase generated link but user already exists
+                else:
+                    raise invite_exc
+
+            # For new users, ensure force_reset is set
+            import datetime as dt_mod
+            now_dt = dt_mod.datetime.now(dt_mod.timezone.utc)
+            is_new = (now_dt - auth_res.user.created_at).total_seconds() < 60
             if is_new:
                 existing_meta = auth_res.user.user_metadata or {}
                 existing_meta["force_reset"] = True
                 admin_client.auth.admin.update_user_by_id(user_id, {
                     "user_metadata": existing_meta
                 })
-            
+
         except Exception as e:
             if "rate limit" in str(e).lower():
                 return make_error_response(
@@ -367,7 +404,12 @@ async def approve_onboarding(
         role = body.role or meta.get("intended_role", "worker")
         wroles = body.worker_roles or wdata.get("worker_roles", [])
         
-        admin_client.table("tenant_permissions").upsert({
+        # Phase 857 (audit C8): extract PII from comm_preference into dedicated fields
+        comm_pref = wdata.get("comm_preference", {})
+        date_of_birth = comm_pref.pop("date_of_birth", None)
+        id_photo_url = comm_pref.pop("id_photo_url", None)
+
+        perm_row = {
             "tenant_id": tenant_id,
             "user_id": user_id,
             "role": role,
@@ -379,10 +421,19 @@ async def approve_onboarding(
             "photo_url": wdata.get("photo_url", ""),
             "emergency_contact": wdata.get("emergency_contact", ""),
             "address": "",
-            "comm_preference": wdata.get("comm_preference", {}),
+            "comm_preference": comm_pref,  # cleaned — PII removed
             "created_at": "now()",
             "updated_at": "now()"
-        }, on_conflict="tenant_id,user_id").execute()
+        }
+        # Phase 857 (audit C8): add dedicated PII columns if migration has been applied
+        if date_of_birth:
+            perm_row["date_of_birth"] = date_of_birth
+        if id_photo_url:
+            perm_row["id_photo_url"] = id_photo_url
+
+        admin_client.table("tenant_permissions").upsert(
+            perm_row, on_conflict="tenant_id,user_id"
+        ).execute()
         
         # 3. Mark token as used
         from datetime import datetime, timezone
@@ -390,7 +441,14 @@ async def approve_onboarding(
         meta["status"] = "approved"
         db.table("access_tokens").update({"used_at": now, "metadata": meta}).eq("id", request_id).execute()
         
-        return JSONResponse(status_code=200, content={"status": "approved", "user_id": user_id, "magic_link": locals().get("magic_link")})
+        # Phase 857 (audit C1): no raw magic_link in response — link was auto-delivered
+        return JSONResponse(status_code=200, content={
+            "status": "approved",
+            "user_id": user_id,
+            "delivery_method": delivery_method,
+            "delivery_status": "sent",
+            "email": email,
+        })
     except Exception as exc:
         logger.exception("Failed to approve onboarding: %s", exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

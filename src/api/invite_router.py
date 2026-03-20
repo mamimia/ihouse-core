@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Phase 857 (audit B6): valid roles — must match auth_login_router._VALID_ROLES
+_VALID_ROLES = {"admin", "manager", "ops", "worker", "cleaner", "owner", "checkin", "checkout", "maintenance"}
+
 
 def _get_db() -> Any:  # pragma: no cover
     from supabase import create_client
@@ -227,7 +230,13 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
 
     metadata = claims.get("metadata") or {}
     email = claims.get("email", "")
-    role = metadata.get("role", "staff")
+    raw_role = metadata.get("role", "worker")
+    # Phase 857 (audit B6): validate role at accept time — never trust metadata blindly
+    if raw_role not in _VALID_ROLES:
+        logger.warning("invite/accept: invalid role '%s' in metadata — defaulting to 'worker'", raw_role)
+        role = "worker"
+    else:
+        role = raw_role
     tenant_id = claims.get("entity_id", "")
 
     # Phase 767 + Fix 800b: Create Supabase Auth user + sign in for tokens
@@ -259,23 +268,22 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
         except Exception as exc:
             error_msg = str(exc).lower()
             if "already" in error_msg or "exists" in error_msg:
-                # Phase 856B fix: user already exists in Supabase Auth.
-                # Previously we swallowed this silently — consuming the token
-                # but never creating tenant_permissions, locking the user out.
-                # Now we look up the existing user by email and still provision them.
+                # Phase 857 (audit B2): user already exists in Supabase Auth.
+                # Use generate_link (proven pattern from Pipeline B) instead of
+                # the old O(N) list_users() scan that broke at scale.
                 logger.info(
-                    "invite/accept: user %s already exists — fetching existing user_id "
-                    "to provision tenant_permissions (Phase 856B fix)", email,
+                    "invite/accept: user %s already exists — using generate_link "
+                    "to resolve user_id (Phase 857 fix)", email,
                 )
                 try:
-                    users_page = supa_admin.auth.admin.list_users()
-                    existing = next(
-                        (u for u in (users_page or []) if getattr(u, "email", None) == email),
-                        None,
+                    frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
+                    link_res = supa_admin.auth.admin.generate_link(
+                        {"type": "magiclink", "email": email,
+                         "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
                     )
-                    user_id = str(existing.id) if existing else None
+                    user_id = str(link_res.user.id) if link_res and link_res.user else None
                 except Exception as lookup_exc:
-                    logger.warning("invite/accept: lookup of existing user failed: %s", lookup_exc)
+                    logger.warning("invite/accept: generate_link lookup failed: %s", lookup_exc)
             else:
                 return JSONResponse(status_code=400, content={
                     "error": "USER_CREATION_FAILED",

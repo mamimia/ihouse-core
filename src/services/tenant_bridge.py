@@ -70,6 +70,7 @@ def provision_user_tenant(
         "tenant_id":   resolved_tenant,
         "user_id":     user_id,
         "role":        resolved_role,
+        "is_active":   True,  # Phase 857: always reactivate on provision (audit D8)
         "permissions": permissions or {},
         "created_at":  now,
         "updated_at":  now,
