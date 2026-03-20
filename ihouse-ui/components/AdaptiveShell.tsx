@@ -81,6 +81,8 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
                         top: 10,
                         insetInlineStart: 12,
                         zIndex: 60,
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
                         background: 'rgba(255, 255, 255, 0.08)',
                         backdropFilter: 'blur(8px)',
                         WebkitBackdropFilter: 'blur(8px)',
@@ -94,7 +96,7 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
                         cursor: 'pointer',
                         fontSize: 18,
                         color: 'var(--color-text, #171A1F)',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                        boxShadow: 'none',
                     }}
                 >
                     {drawerOpen ? '✕' : '☰'}
