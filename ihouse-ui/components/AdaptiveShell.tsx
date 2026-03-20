@@ -2,11 +2,10 @@
 
 /**
  * Phase 376 — AdaptiveShell Component
- *
- * Context-appropriate navigation shell for authenticated surfaces.
- * - Desktop (≥1024px): full sidebar on left + content with marginInlineStart
- * - Tablet (768–1023px): collapsible sidebar (toggle via hamburger)
- * - Mobile (<768px): no sidebar, bottom navigation bar
+ * Phase 860 — 3-mode responsive navigation:
+ *   Desktop (≥1024px): full sidebar (220px) — always visible, pushes content
+ *   Tablet  (768–1023px): compact rail (64px) — icon-only, persistent, pushes content
+ *   Mobile  (<768px): hamburger + slide-in drawer + bottom nav
  *
  * RTL-aware via CSS logical properties.
  * Uses Domaniqo design tokens.
@@ -32,8 +31,9 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     const isTablet = !isMobile && !isDesktop;
     const pathname = usePathname() || '';
 
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const toggleDrawer = useCallback(() => setDrawerOpen(prev => !prev), []);
+    const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
     // Full-screen native mobile routes where the shell shouldn't render its own navigation
     if (pathname.startsWith('/worker') || pathname.startsWith('/ops/cleaner')) {
@@ -62,14 +62,70 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
         );
     }
 
-    // Mobile: no sidebar, bottom nav, full-width content
+    // ── Mobile (<768px): hamburger drawer + bottom nav ──
     if (isMobile) {
         return (
             <>
-                {/* Phase 838 — language always reachable on mobile */}
+                {/* Language switcher */}
                 <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 200 }}>
                     <CompactLangSwitcher theme="auto" position="inline" />
                 </div>
+
+                {/* Hamburger button */}
+                <button
+                    id="sidebar-toggle"
+                    onClick={toggleDrawer}
+                    aria-label="Toggle navigation"
+                    style={{
+                        position: 'fixed',
+                        top: 10,
+                        insetInlineStart: 12,
+                        zIndex: 60,
+                        background: 'var(--color-surface, #fff)',
+                        border: '1px solid var(--color-border, #DDD8D0)',
+                        borderRadius: 'var(--radius-md, 8px)',
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        fontSize: 18,
+                        color: 'var(--color-text, #171A1F)',
+                        boxShadow: 'var(--shadow-sm)',
+                    }}
+                >
+                    {drawerOpen ? '✕' : '☰'}
+                </button>
+
+                {/* Overlay backdrop */}
+                {drawerOpen && (
+                    <div
+                        onClick={closeDrawer}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.4)',
+                            zIndex: 38,
+                            backdropFilter: 'blur(2px)',
+                        }}
+                    />
+                )}
+
+                {/* Slide-in drawer (full sidebar) */}
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    insetInlineStart: 0,
+                    height: '100vh',
+                    zIndex: 40,
+                    transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
+                    transition: 'transform 220ms ease',
+                }}>
+                    <Sidebar mode="drawer" onClose={closeDrawer} />
+                </div>
+
+                {/* Content */}
                 <main style={{
                     flex: 1,
                     padding: 'var(--space-4)',
@@ -85,74 +141,23 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
         );
     }
 
-    // Tablet: collapsible sidebar + overlay
+    // ── Tablet (768–1023px): persistent compact rail ──
     if (isTablet) {
         return (
             <>
-                {/* Phase 838 — language accessible on tablet (top-right, opposite hamburger) */}
+                {/* Language switcher — top right */}
                 <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 200 }}>
                     <CompactLangSwitcher theme="auto" position="inline" />
                 </div>
 
-                {/* Hamburger toggle */}
-                <button
-                    id="sidebar-toggle"
-                    onClick={toggleSidebar}
-                    aria-label="Toggle navigation"
-                    style={{
-                        position: 'fixed',
-                        top: 12,
-                        insetInlineStart: 12,
-                        zIndex: 60,
-                        background: 'var(--color-surface, #fff)',
-                        border: '1px solid var(--color-border, #DDD8D0)',
-                        borderRadius: 'var(--radius-md, 8px)',
-                        width: 44,
-                        height: 44,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        fontSize: 20,
-                        color: 'var(--color-text, #171A1F)',
-                        boxShadow: 'var(--shadow-sm)',
-                    }}
-                >
-                    {sidebarOpen ? '✕' : '☰'}
-                </button>
+                {/* Compact rail sidebar — always visible, never overlays */}
+                <Sidebar collapsed />
 
-                {/* Overlay */}
-                {sidebarOpen && (
-                    <div
-                        onClick={() => setSidebarOpen(false)}
-                        style={{
-                            position: 'fixed',
-                            inset: 0,
-                            background: 'rgba(0,0,0,0.3)',
-                            zIndex: 38,
-                            backdropFilter: 'blur(2px)',
-                        }}
-                    />
-                )}
-
-                {/* Sidebar (slides in) */}
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    insetInlineStart: 0,
-                    height: '100vh',
-                    zIndex: 40,
-                    transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-                    transition: 'transform var(--transition-base, 220ms)',
-                }}>
-                    <Sidebar />
-                </div>
-
-                {/* Content */}
+                {/* Content pushed by rail width */}
                 <main style={{
+                    marginInlineStart: '64px',
                     flex: 1,
-                    padding: 'var(--space-8)',
-                    paddingInlineStart: 'calc(var(--space-8) + 56px)',
+                    padding: 'var(--space-6)',
                     maxWidth: 'var(--content-max)',
                 }}>
                     {children}
@@ -162,7 +167,7 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
         );
     }
 
-    // Desktop: full sidebar + content with margin
+    // ── Desktop (≥1024px): full sidebar, always visible ──
     return (
         <>
             <Sidebar />
