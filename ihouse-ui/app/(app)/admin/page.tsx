@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
@@ -306,6 +306,143 @@ function ToggleBtn({ active, onToggle, label }: { active: boolean; onToggle: () 
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
             }} />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Draggable floating config panel
+// ---------------------------------------------------------------------------
+
+function DraggableConfigPanel({ title, onClose, children }: {
+    title: string;
+    onClose: () => void;
+    children: React.ReactNode;
+}) {
+    const [pos, setPos] = useState(() => ({
+        x: Math.max(0, (window.innerWidth - 480) / 2),
+        y: Math.max(0, (window.innerHeight - 580) / 2),
+    }));
+    const [size, setSize] = useState({ w: 480, h: 580 });
+    const dragging = useRef(false);
+    const dragOffset = useRef({ x: 0, y: 0 });
+    const resizing = useRef(false);
+    const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
+
+    // Drag
+    const onDragStart = (e: React.MouseEvent) => {
+        dragging.current = true;
+        dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+        e.preventDefault();
+    };
+    useEffect(() => {
+        const onMove = (e: MouseEvent) => {
+            if (dragging.current) {
+                setPos({
+                    x: Math.max(0, Math.min(window.innerWidth - size.w, e.clientX - dragOffset.current.x)),
+                    y: Math.max(0, Math.min(window.innerHeight - 60, e.clientY - dragOffset.current.y)),
+                });
+            }
+            if (resizing.current) {
+                const dw = e.clientX - resizeStart.current.x;
+                const dh = e.clientY - resizeStart.current.y;
+                setSize({
+                    w: Math.max(360, resizeStart.current.w + dw),
+                    h: Math.max(300, resizeStart.current.h + dh),
+                });
+            }
+        };
+        const onUp = () => { dragging.current = false; resizing.current = false; };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    }, [size.w]);
+
+    // Resize
+    const onResizeStart = (e: React.MouseEvent) => {
+        resizing.current = true;
+        resizeStart.current = { x: e.clientX, y: e.clientY, w: size.w, h: size.h };
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    return (
+        <div style={{
+            position: 'fixed',
+            left: pos.x,
+            top: pos.y,
+            width: size.w,
+            height: size.h,
+            zIndex: 10000,
+            display: 'flex',
+            flexDirection: 'column',
+            background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-lg, 12px)',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12)',
+            border: '1px solid var(--color-border)',
+            overflow: 'hidden',
+            minWidth: 360,
+            minHeight: 300,
+        }}>
+            {/* Drag handle header */}
+            <div
+                onMouseDown={onDragStart}
+                style={{
+                    padding: '16px 20px',
+                    borderBottom: '1px solid var(--color-border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    cursor: 'grab',
+                    background: 'var(--color-surface-2, #fafaf8)',
+                    userSelect: 'none',
+                    flexShrink: 0,
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-faint)', letterSpacing: '0.06em' }}>⋮⋮</span>
+                    <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>
+                        {title}
+                    </h2>
+                </div>
+                <button
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={onClose}
+                    style={{
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        fontSize: '18px', color: 'var(--color-text-dim)', lineHeight: 1,
+                        padding: '2px 4px', borderRadius: 4,
+                    }}
+                >✕</button>
+            </div>
+
+            {/* Scrollable content */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {children}
+            </div>
+
+            {/* Resize grip */}
+            <div
+                onMouseDown={onResizeStart}
+                style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: 20,
+                    height: 20,
+                    cursor: 'nwse-resize',
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'flex-end',
+                    padding: '3px',
+                    opacity: 0.4,
+                    userSelect: 'none',
+                }}
+            >
+                <svg width="10" height="10" viewBox="0 0 10 10">
+                    <path d="M9 1L1 9M5 1L1 5M9 5L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+            </div>
         </div>
     );
 }
@@ -803,83 +940,68 @@ export default function AdminPage() {
                 )}
             </CollapsibleSection>
 
-            {/* Modal for Configuration */}
+            {/* Floating draggable config panel */}
             {configModal.isOpen && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 10000
-                }}>
-                    <div style={{
-                        background: 'var(--color-surface)', width: '420px',
-                        borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                        display: 'flex', flexDirection: 'column', overflow: 'hidden'
-                    }}>
-                        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>
-                                Configure {integrations.find(i => i.id === configModal.integrationId)?.name}
-                            </h2>
-                            <button onClick={() => setConfigModal({ isOpen: false, integrationId: null, credentials: {} })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--color-text-dim)' }}>✕</button>
+                <DraggableConfigPanel
+                    title={`Configure ${integrations.find(i => i.id === configModal.integrationId)?.name ?? ''}`}
+                    onClose={() => setConfigModal({ isOpen: false, integrationId: null, credentials: {} })}
+                >
+                    {configModal.integrationId && INTEGRATION_FIELDS[configModal.integrationId]?.map(field => (
+                        <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>{field.label}</label>
+                            <input
+                                type={field.type || 'text'}
+                                placeholder={field.placeholder}
+                                value={configModal.credentials[field.key] || ''}
+                                onChange={(e) => setConfigModal(prev => ({
+                                    ...prev,
+                                    credentials: { ...prev.credentials, [field.key]: e.target.value }
+                                }))}
+                                style={{
+                                    padding: '8px 12px', fontSize: '13px', borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--color-border)', background: 'var(--color-background)',
+                                    color: 'var(--color-text)', outline: 'none'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = 'var(--color-brand)'}
+                                onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
+                            />
                         </div>
-                        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {configModal.integrationId && INTEGRATION_FIELDS[configModal.integrationId]?.map(field => (
-                                <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>{field.label}</label>
-                                    <input 
-                                        type={field.type || 'text'}
-                                        placeholder={field.placeholder}
-                                        value={configModal.credentials[field.key] || ''}
-                                        onChange={(e) => setConfigModal(prev => ({ 
-                                            ...prev, 
-                                            credentials: { ...prev.credentials, [field.key]: e.target.value } 
-                                        }))}
-                                        style={{
-                                            padding: '8px 12px', fontSize: '13px', borderRadius: 'var(--radius-sm)',
-                                            border: '1px solid var(--color-border)', background: 'var(--color-background)',
-                                            color: 'var(--color-text)', outline: 'none'
-                                        }}
-                                        onFocus={(e) => e.target.style.borderColor = 'var(--color-brand)'}
-                                        onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
-                                    />
-                                </div>
-                            ))}
-                            {configModal.integrationId && INTEGRATION_INSTRUCTIONS[configModal.integrationId] && (
-                                <div style={{ 
-                                    marginTop: '8px', 
-                                    padding: '16px', 
-                                    borderRadius: '8px', 
-                                    background: 'var(--color-surface-2)', 
-                                    border: '1px dashed var(--color-border)',
-                                    fontSize: '13px',
-                                }}>
-                                    <div style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span style={{color: 'var(--color-primary)'}}>ℹ</span> {INTEGRATION_INSTRUCTIONS[configModal.integrationId].title}
-                                    </div>
-                                    <ol style={{ margin: 0, paddingLeft: '20px', color: 'var(--color-text-dim)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        {INTEGRATION_INSTRUCTIONS[configModal.integrationId].steps.map((step, idx) => (
-                                            <li key={idx} style={{ paddingLeft: '4px' }}>{step}</li>
-                                        ))}
-                                    </ol>
-                                </div>
-                            )}
+                    ))}
+                    {configModal.integrationId && INTEGRATION_INSTRUCTIONS[configModal.integrationId] && (
+                        <div style={{
+                            padding: '16px',
+                            borderRadius: '8px',
+                            background: 'var(--color-surface-2)',
+                            border: '1px dashed var(--color-border)',
+                            fontSize: '13px',
+                        }}>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{color: 'var(--color-primary)'}}>ℹ</span>
+                                {INTEGRATION_INSTRUCTIONS[configModal.integrationId].title}
+                            </div>
+                            <ol style={{ margin: 0, paddingLeft: '20px', color: 'var(--color-text-dim)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {INTEGRATION_INSTRUCTIONS[configModal.integrationId].steps.map((step, idx) => (
+                                    <li key={idx} style={{ paddingLeft: '4px', lineHeight: 1.55 }}>{step}</li>
+                                ))}
+                            </ol>
                         </div>
-                        <div style={{ padding: '16px 24px', background: 'var(--color-surface-2)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                            <button 
-                                onClick={() => setConfigModal({ isOpen: false, integrationId: null, credentials: {} })}
-                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600, background: 'transparent', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--color-text)' }}
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={handleSaveConfiguration}
-                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600, background: 'var(--color-text)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--color-background)' }}
-                            >
-                                Save Credentials
-                            </button>
-                        </div>
+                    )}
+                    {/* Save / Cancel footer — inside scroll area at bottom */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '8px', borderTop: '1px solid var(--color-border)', marginTop: 'auto' }}>
+                        <button
+                            onClick={() => setConfigModal({ isOpen: false, integrationId: null, credentials: {} })}
+                            style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600, background: 'transparent', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--color-text)' }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleSaveConfiguration}
+                            style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600, background: 'var(--color-text)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--color-background)' }}
+                        >
+                            Save Credentials
+                        </button>
                     </div>
-                </div>
+                </DraggableConfigPanel>
             )}
 
             {/* Footer */}
