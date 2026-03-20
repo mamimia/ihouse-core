@@ -19,9 +19,9 @@ Phase 857 — Onboarding Remediation Wave (7 critical fixes, runtime-proven)
 | 617 | Wire Form → Checkin Router | 🟡 Deferred | Requires live booking flow | Real check-in data flowing through `booking_checkin_router.py` | TBD — when live check-in activated |
 | 618 | Wire QR → Checkin Response | 🟡 Deferred | Requires live booking flow (same as 617) | Same as Phase 617 | TBD — together with Phase 617 |
 | — | Supabase Storage Buckets (5) | ✅ Resolved (Phase 764) | 4 buckets created: pii-documents, property-photos, guest-uploads, exports | N/A | Resolved |
-| 857-F1 | Staff photo bucket migration | 🟡 Follow-up | Staff photos still in `property-photos` bucket | Create dedicated `staff-documents` private bucket in Supabase Dashboard | TBD |
-| 857-F2 | Full email click-through activation proof | 🟡 Follow-up | Requires real email inbox to receive Supabase invite email | Human inbox verification of full activation flow | TBD |
-| 857-F3 | Pipeline A runtime proof (role validation, generate_link lookup, is_active) | 🟡 Follow-up | Code is in place, not tested at runtime | E2E Pipeline A invite-accept on staging | TBD |
+| 857-F1 | Staff photo bucket migration | 🟡 Partially done | `staff-documents` private bucket created. Upload code + signed URL generation + existing file migration + frontend display changes remain. | Switch upload to `staff-documents`, implement signed URLs, migrate 8 existing files, update frontend | TBD |
+| 857-F2 | Full email click-through activation proof | 🟡 Pending | Supabase sent invite email to `phase857-test@domaniqo.com`. No real inbox available to verify click-through. | Human inbox verification of full activation flow | TBD |
+| 857-F3 | Pipeline A runtime proof (role validation, generate_link lookup, is_active) | ✅ Closed | All three items runtime-proven on staging: invalid role defaulted to worker, existing user resolved via generate_link (same user_id), is_active=True confirmed in DB | N/A | Resolved |
 
 
 apply_envelope is the only authority for canonical state mutations.
