@@ -42,6 +42,10 @@ const TRANSLATIONS = {
     rBoth: 'Check-in & Check-out',
     rMaint: 'Maintenance',
     rOp: 'Op Manager',
+    fDob: 'Date of Birth *',
+    fIdPhoto: 'ID / Passport Photo *',
+    idPhotoReq: 'Upload ID / Passport to continue',
+    idPhotoUpld: 'Uploading ID document...',
     fTg: 'Telegram ID (Numeric)',
     btnTg: 'Get My ID →',
     pTg: 'e.g. 123456789',
@@ -90,6 +94,10 @@ const TRANSLATIONS = {
     rBoth: 'เช็คอิน & เช็คเอาท์',
     rMaint: 'ช่างซ่อมบำรุง',
     rOp: 'ผู้จัดการฝ่ายปฏิบัติการ',
+    fDob: 'วันเดือนปีเกิด *',
+    fIdPhoto: 'รูปถ่ายบัตรประชาชน / พาสปอร์ต *',
+    idPhotoReq: 'อัปโหลดบัตรประชาชนเพื่อดำเนินการต่อ',
+    idPhotoUpld: 'กำลังอัปโหลดเอกสาร...',
     fTg: 'Telegram ID (ตัวเลข)',
     btnTg: 'รับ ID ของฉัน →',
     pTg: 'เช่น 123456789',
@@ -138,6 +146,10 @@ const TRANSLATIONS = {
     rBoth: 'צ\'ק-אין ואאוט (משולב)',
     rMaint: 'תחזוקה',
     rOp: 'מנהל תפעול',
+    fDob: 'תאריך לידה *',
+    fIdPhoto: 'צילום תעודת זהות / דרכון *',
+    idPhotoReq: 'העלה/י תעודה כדי להמשיך',
+    idPhotoUpld: 'מעלה מסמך מזהה...',
     fTg: 'מזהה טלגרם (מספר)',
     btnTg: 'קבל את ה-ID שלי ←',
     pTg: 'למשל 123456789',
@@ -182,6 +194,8 @@ function ApplyForm() {
   const [ecName, setEcName] = useState('');
   const [ecPhone, setEcPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [idPhotoUrl, setIdPhotoUrl] = useState('');
   const [workerRoles, setWorkerRoles] = useState<string[]>([]);
   const [telegram, setTelegram] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -189,6 +203,7 @@ function ApplyForm() {
   
   const [rolesLocked, setRolesLocked] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [idPhotoUploading, setIdPhotoUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -237,6 +252,14 @@ function ApplyForm() {
       setError('errAppMissing');
       return;
     }
+    if (!dateOfBirth) {
+      setError('Date of birth is required');
+      return;
+    }
+    if (!idPhotoUrl) {
+      setError('ID / Passport Photo is required');
+      return;
+    }
     
     setSubmitting(true);
     setError(null);
@@ -249,7 +272,14 @@ function ApplyForm() {
       emergency_contact: `${ecName} | ${ecPhone}`.trim(),
       photo_url: photoUrl,
       worker_roles: workerRoles,
-      comm_preference: { telegram, whatsapp, line }
+      comm_preference: { 
+        telegram, 
+        whatsapp, 
+        line, 
+        email: email.trim(), 
+        date_of_birth: dateOfBirth, 
+        id_photo_url: idPhotoUrl 
+      }
     };
 
     try {
@@ -307,6 +337,42 @@ function ApplyForm() {
       alert(err.message || 'Network error during upload');
     } finally {
       setPhotoUploading(false);
+    }
+  };
+
+  const handleIdPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    
+    const mime = file.type || '';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mime)) {
+      alert('Only JPG, PNG, and WebP images are allowed.');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Image exceeds 15MB limit. Please choose a smaller file.');
+      return;
+    }
+
+    try {
+      setIdPhotoUploading(true);
+      setError(null);
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(`${BASE}/staff-onboarding/upload-photo/${token}`, {
+        method: 'POST',
+        body: form
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Upload failed');
+      }
+      const data = await res.json();
+      setIdPhotoUrl(data.url);
+    } catch (err: any) {
+      alert(err.message || 'Network error during upload');
+    } finally {
+      setIdPhotoUploading(false);
     }
   };
 
@@ -377,13 +443,33 @@ function ApplyForm() {
             <input required style={{ ...inputStyle, direction: 'ltr', textAlign: isRTL ? 'right' : 'left' }} value={phone} onChange={e => setPhone(e.target.value)} placeholder={t.pPhone} />
           </div>
           <div>
-            <label style={labelStyle}>{t.fLang}</label>
-            <select style={{ ...inputStyle, appearance: 'auto' }} value={language} onChange={e => setLanguage(e.target.value)}>
-              <option value="th">ภาษาไทย (Thai)</option>
-              <option value="en">English</option>
-              <option value="he">עברית (Hebrew)</option>
-            </select>
+            <label style={labelStyle}>{t.fDob}</label>
+            <input required type="date" style={inputStyle} value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
           </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>{t.fIdPhoto}</label>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            {idPhotoUrl ? (
+              <img src={idPhotoUrl} alt="ID Preview" style={{ width: 64, height: 64, objectFit: 'contain', imageOrientation: 'from-image' as any, borderRadius: '8px', border: '1px solid #e1e4e8' }} />
+            ) : (
+              <div style={{ width: 64, height: 64, borderRadius: '8px', background: '#f6f8fa', border: '1px dashed #d1d5da', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#d1d5da' }}>🪪</div>
+            )}
+            <div style={{ flex: 1, textAlign: isRTL ? 'right' : 'left' }}>
+              <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleIdPhotoUpload} disabled={idPhotoUploading} style={{ fontSize: 13, display: 'block', maxWidth: '100%' }} />
+              {idPhotoUploading && <span style={{ fontSize: 12, color: '#b08800', display: 'block', marginTop: 4 }}>{(t as any).idPhotoUpld}</span>}
+            </div>
+          </div>
+        </div>
+
+        <div>
+           <label style={labelStyle}>{t.fLang}</label>
+           <select style={{ ...inputStyle, appearance: 'auto' }} value={language} onChange={e => setLanguage(e.target.value)}>
+             <option value="th">ภาษาไทย (Thai)</option>
+             <option value="en">English</option>
+             <option value="he">עברית (Hebrew)</option>
+           </select>
         </div>
 
         <div style={{ padding: 16, background: '#f6f8fa', borderRadius: 8, border: '1px solid #e1e4e8' }}>
@@ -451,14 +537,14 @@ function ApplyForm() {
 
         <button 
           type="submit" 
-          disabled={submitting || photoUploading || !photoUrl}
+          disabled={submitting || photoUploading || idPhotoUploading || !photoUrl || !idPhotoUrl}
           style={{ 
             marginTop: 16, padding: '14px 0', width: '100%', 
             background: '#2ea44f', color: '#fff', border: 'none', borderRadius: 6, 
-            fontSize: 16, fontWeight: 600, cursor: (submitting || photoUploading || !photoUrl) ? 'not-allowed' : 'pointer', opacity: (submitting || photoUploading || !photoUrl) ? 0.7 : 1 
+            fontSize: 16, fontWeight: 600, cursor: (submitting || photoUploading || idPhotoUploading || !photoUrl || !idPhotoUrl) ? 'not-allowed' : 'pointer', opacity: (submitting || photoUploading || idPhotoUploading || !photoUrl || !idPhotoUrl) ? 0.7 : 1 
           }}
         >
-          {submitting ? t.btnSubmitting : (!photoUrl ? t.photoReq : t.btnSubmit)}
+          {submitting ? t.btnSubmitting : (!photoUrl ? t.photoReq : (!idPhotoUrl ? (t as any).idPhotoReq : t.btnSubmit))}
         </button>
       </form>
     </div>

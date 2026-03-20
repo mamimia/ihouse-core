@@ -53,8 +53,8 @@ const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
     worker:      ['/worker', '/ops', '/maintenance', '/checkin', '/checkout'],
     cleaner:     ['/worker', '/ops'],  // Phase 831: restrict cleaner to worker + ops surfaces only
     ops:         ['/ops', '/dashboard', '/bookings', '/tasks', '/calendar', '/guests'],
-    checkin:     ['/checkin'],
-    checkout:    ['/checkout'],
+    checkin:     ['/checkin', '/ops/checkin'],
+    checkout:    ['/checkout', '/ops/checkout'],
     maintenance: ['/maintenance', '/worker'],
 };
 

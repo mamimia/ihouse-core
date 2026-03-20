@@ -34,3 +34,12 @@ PR_METADATA.txt
 
 # Local agent skills
 releases/phase-zips/
+
+# Runtime logs
+*.log
+backend.log
+frontend.log
+localhost_run.log
+ngrok.log
+ngrok_test.log
+serveo.log

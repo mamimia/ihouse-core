@@ -161,7 +161,8 @@ function StatementDrawer({ propertyId, month, onClose }: {
     const [emailSent, setEmailSent] = useState(false);
     const [emailSending, setEmailSending] = useState(false);
 
-    const pdfUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/owner-statement/${encodeURIComponent(propertyId)}?month=${month}&format=pdf`;
+    const lang = typeof window !== 'undefined' ? localStorage.getItem('domaniqo_lang') || 'en' : 'en';
+    const pdfUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/owner-statement/${encodeURIComponent(propertyId)}?month=${month}&format=pdf&lang=${lang}`;
 
     useEffect(() => {
         setLoading(true);

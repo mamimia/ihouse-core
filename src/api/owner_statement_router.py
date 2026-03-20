@@ -310,6 +310,10 @@ async def get_owner_statement(
         default=None,
         description="Response format. Set to 'pdf' for plain-text statement export.",
     ),
+    lang: str = Query(
+        default="en",
+        description="Language code for the statement PDF export (e.g., 'en', 'th', 'he')",
+    ),
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
     user_id: Optional[str] = None,
@@ -429,6 +433,7 @@ async def get_owner_statement(
                 line_items=line_items,
                 generated_at=generated_at,
                 platform_name=platform_name,
+                lang=lang,
             )
             return Response(
                 content=pdf_bytes,

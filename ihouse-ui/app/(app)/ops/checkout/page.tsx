@@ -243,6 +243,24 @@ export default function MobileCheckoutPage() {
         load();
     };
 
+    const navigateToProperty = async (propertyId: string) => {
+        try {
+            const res = await apiFetch<any>(`/properties/${propertyId}/location`);
+            const lat = res.latitude;
+            const lng = res.longitude;
+            if (lat != null && lng != null) {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                const wazeUrl = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+                const googleUrl = `https://maps.google.com/maps?daddr=${lat},${lng}`;
+                window.open(isMobile ? wazeUrl : googleUrl, '_blank');
+            } else {
+                showNotice('📍 No GPS coordinates set for this property');
+            }
+        } catch {
+            showNotice('⚠️ Navigation unavailable — GPS not configured');
+        }
+    };
+
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -359,10 +377,11 @@ export default function MobileCheckoutPage() {
                         ))}
                     </div>
 
-                    <div style={{ marginTop: 'var(--space-5)' }}>
+                    <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                         <ActionButton label={inspectionOk ? 'Continue → Deposit' : 'Continue → Report Issues'} onClick={() => {
                             setStep(inspectionOk ? 'deposit' : 'issues');
                         }} />
+                        <ActionButton label="📍 Navigate to Property" onClick={() => navigateToProperty(selected.property_id)} variant="outline" />
                     </div>
                 </div>
             )}

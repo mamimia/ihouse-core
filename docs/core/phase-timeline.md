@@ -8196,3 +8196,33 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 **Date:** 2026-03-20
 
 **Goal:** Proved LINE Messaging API integration end-to-end: inbound webhook receipt with real userId capture, worker routing sync via `_sync_channels()`, and real outbound message delivery. Created `docs/integrations/` as the durable operational readiness structure for all messaging integrations. Fixed notification dispatch test adapter signatures (2-arg → 4-arg).
+
+
+## Phase 855A: Staging Runtime Verification
+**Date:** 2026-03-20
+
+**Goal:** Verified staging environment end-to-end: frontend (Vercel), backend (Railway), Supabase connectivity, password auth E2E, dashboard with real data, `/admin/properties` authenticated — no auth loop, no hydration crash. Verification-only, no code changes.
+
+
+## Phase 855B: Google OAuth Staging Setup
+**Date:** 2026-03-20
+
+**Goal:** Configured Google OAuth provider in Supabase for staging. Set Site URL and Redirect URL for staging origin (`domaniqo-staging.vercel.app`). User created Google OAuth credentials in Google Cloud Console. Enabled Google provider in Supabase. Verified redirect flow: staging frontend → Supabase → Google consent → Supabase callback → staging frontend.
+
+
+## Phase 855C: Google OAuth E2E Proof
+**Date:** 2026-03-20
+
+**Goal:** Full Google sign-in proven end-to-end on staging. Callback handling, backend `/auth/google-callback` tenant resolution, JWT issuance, session creation, authenticated dashboard landing. Required manual `tenant_permissions` insert for test Google account — confirming that Google OAuth does not auto-provision access. Key finding: different email = different identity, explicit binding required.
+
+
+## Phase 855D: Auth Identity Model Design
+**Date:** 2026-03-20
+
+**Goal:** Designed comprehensive identity architecture: `internal_users`, `linked_identities`, `leads` tables, post-login routing matrix, UI requirements, 5-phase implementation plan. Document produced: `auth_identity_architecture.md`. Subsequently superseded by Phase 855E findings — deferred as over-engineered for current scope.
+
+
+## Phase 855E: Onboarding Pipeline Audit
+**Date:** 2026-03-20
+
+**Goal:** Full audit of existing invite/onboarding/approval system. Documented two live pipelines: Pipeline A (simple invite, Phase 401) and Pipeline B (staff self-onboarding, Phase 844). Identified 6 conflict points with Google OAuth. Found real vulnerability: `/auth/register/profile` auto-provisions any Google user as manager. Recommended minimal path: change admin email to Gmail, keep existing pipelines, defer linked identities.

@@ -5136,3 +5136,38 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Created `docs/integrations/` folder with operational readiness docs for LINE, Telegram, WhatsApp.
 - Fixed notification dispatch integration test adapter signatures (2-arg → 4-arg).
 - 54 tests passing (permissions + notification dispatcher + dispatch integration).
+
+
+### Phase 855A — Staging Runtime Verification (2026-03-20)
+- Verified staging frontend (Vercel) + backend (Railway) + Supabase connectivity.
+- Password auth proven E2E: login → JWT → dashboard with real data.
+- `/admin/properties` proven authenticated with live backend data.
+- No auth redirect loop, no hydration crash, no runtime error.
+- Verification-only phase — no code changes.
+
+### Phase 855B — Google OAuth Staging Setup (2026-03-20)
+- Configured Supabase: Site URL = `https://domaniqo-staging.vercel.app`, Redirect = `https://domaniqo-staging.vercel.app/auth/callback`.
+- Google Cloud Console: OAuth 2.0 client created with staging origin and Supabase callback URI.
+- Google provider enabled in Supabase Auth with client ID + secret.
+- Redirect flow proven: staging → Supabase → Google → staging callback.
+
+### Phase 855C — Google OAuth E2E Proof (2026-03-20)
+- Full Google sign-in proven on staging.
+- Backend `/auth/google-callback` correctly resolved tenant and issued JWT.
+- Manual `tenant_permissions` row inserted for test Google account to bind tenant + role.
+- Authenticated dashboard loaded with real data after Google sign-in.
+- Key finding: Google OAuth does not auto-provision — explicit binding required per user.
+
+### Phase 855D — Auth Identity Model Design (2026-03-20)
+- Produced `auth_identity_architecture.md`: decision map, routing matrix, data model, UI list, implementation plan.
+- Proposed `internal_users`, `linked_identities`, `leads` tables.
+- Subsequently determined to be over-engineered for current scope (see Phase 855E).
+- Document retained as future reference.
+
+### Phase 855E — Onboarding Pipeline Audit (2026-03-20)
+- Audited two existing live onboarding pipelines: Pipeline A (`invite_router.py`, Phase 401) and Pipeline B (`staff_onboarding_router.py`, Phase 844).
+- Documented rich form fields collected by Pipeline B (email, name, phone, DOB, selfie, ID photo, Telegram/LINE/WhatsApp, emergency contact, worker roles).
+- Identified 6 conflict points between Google OAuth and existing pipelines.
+- Found vulnerability: `/auth/register/profile` auto-provisions any Google user as `manager` on default tenant.
+- Recommended: change admin email to Gmail, keep existing pipelines, close auto-provision hole, defer linked identities.
+- Produced `onboarding_pipeline_audit.md`.

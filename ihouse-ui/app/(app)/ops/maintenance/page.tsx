@@ -127,6 +127,24 @@ export default function MobileMaintenancePage() {
         setView('work');
     };
 
+    const navigateToProperty = async (propertyId: string) => {
+        try {
+            const res = await apiFetch<any>(`/properties/${propertyId}/location`);
+            const lat = res.latitude;
+            const lng = res.longitude;
+            if (lat != null && lng != null) {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                const wazeUrl = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+                const googleUrl = `https://maps.google.com/maps?daddr=${lat},${lng}`;
+                window.open(isMobile ? wazeUrl : googleUrl, '_blank');
+            } else {
+                showNotice('📍 No GPS coordinates set for this property');
+            }
+        } catch {
+            showNotice('⚠️ Navigation unavailable — GPS not configured');
+        }
+    };
+
     const acknowledgeTask = async () => {
         if (!selectedTask) return;
         try {
@@ -347,6 +365,14 @@ export default function MobileMaintenancePage() {
                                 background: 'var(--color-primary)', color: '#fff', border: 'none',
                                 fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer',
                             }}>🔧 Start Work</button>
+
+                            {/* Navigate to property */}
+                            <button onClick={() => navigateToProperty(selectedIssue.property_id)} style={{
+                                width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
+                                background: 'transparent', color: 'var(--color-text-dim)',
+                                border: '1px solid var(--color-border)',
+                                fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer',
+                            }}>📍 Navigate to Property</button>
 
                             {/* Call property manager */}
                             <a href="tel:+66000000000" style={{

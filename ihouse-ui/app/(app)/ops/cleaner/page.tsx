@@ -562,16 +562,23 @@ export default function MobileCleanerPage() {
     };
 
     // ── Navigate to property ──
-    const navigateToProperty = async (taskId: string) => {
+    const navigateToProperty = async (_taskId: string) => {
+        if (!selected) { showNotice('⚠️ No task selected'); return; }
         try {
-            const res = await apiFetch<any>(`/tasks/${taskId}/navigate`);
-            if (res.has_gps && res.map_url) {
-                window.open(res.map_url, '_blank');
+            const res = await apiFetch<any>(`/properties/${selected.property_id}/location`);
+            const lat = res.latitude;
+            const lng = res.longitude;
+            if (lat != null && lng != null) {
+                // Waze deep-link (preferred on mobile), Google Maps fallback
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                const wazeUrl = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+                const googleUrl = `https://maps.google.com/maps?daddr=${lat},${lng}`;
+                window.open(isMobile ? wazeUrl : googleUrl, '_blank');
             } else {
                 showNotice('📍 No GPS coordinates set for this property');
             }
         } catch {
-            showNotice('⚠️ Navigation unavailable');
+            showNotice('⚠️ Navigation unavailable — GPS not configured');
         }
     };
 

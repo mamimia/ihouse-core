@@ -264,7 +264,8 @@ export default function OwnerStatementPage() {
 
     const handlePdfExport = () => {
         if (!propertyId.trim()) return;
-        const q = new URLSearchParams({ month, format: 'pdf' });
+        const lang = typeof window !== 'undefined' ? localStorage.getItem('domaniqo_lang') || 'en' : 'en';
+        const q = new URLSearchParams({ month, format: 'pdf', lang });
         if (mgmtFee !== '0') q.set('management_fee_pct', mgmtFee);
         const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
         const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';

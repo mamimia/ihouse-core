@@ -40,6 +40,31 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+from i18n.i18n_catalog import translate_key
+
+# ---------------------------------------------------------------------------
+# Font Registration
+# ---------------------------------------------------------------------------
+_FONTS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "fonts")
+try:
+    pdfmetrics.registerFont(TTFont('NotoSans', os.path.join(_FONTS_DIR, "NotoSans-Regular.ttf")))
+    pdfmetrics.registerFont(TTFont('NotoSansThai', os.path.join(_FONTS_DIR, "NotoSansThai-Regular.ttf")))
+    pdfmetrics.registerFont(TTFont('NotoSansHebrew', os.path.join(_FONTS_DIR, "NotoSansHebrew-Regular.ttf")))
+    _HAS_NOTO = True
+except Exception as e:
+    _HAS_NOTO = False
+
+def _get_font_names(lang: str) -> tuple[str, str, str]:
+    if not _HAS_NOTO:
+        return ("Helvetica", "Helvetica-Bold", "Courier")
+    if lang == "th":
+        return ("NotoSansThai", "NotoSansThai", "Courier")
+    if lang == "he":
+        return ("NotoSansHebrew", "NotoSansHebrew", "Courier")
+    return ("NotoSans", "NotoSans", "Courier")
 
 # ---------------------------------------------------------------------------
 # Palette — professional, neutral, no brand colour locked in
@@ -73,14 +98,9 @@ def _platform_name(override: Optional[str] = None) -> str:
 # Paragraph style factory
 # ---------------------------------------------------------------------------
 
-_BASE = "Helvetica"
-_BOLD = "Helvetica-Bold"
-_MONO = "Courier"
-
-
 def _s(
     name: str,
-    font: str = _BASE,
+    font: str,
     size: float = 9,
     color: Any = _MID,
     align: int = TA_LEFT,
@@ -99,28 +119,31 @@ def _s(
         spaceAfter=sa,
     )
 
-
-_S_TITLE     = _s("title",    font=_BOLD, size=18, color=_DARK, sb=0, sa=1 * mm)
-_S_SUBTITLE  = _s("subtitle", size=9,     color=_DIM, sa=0)
-_S_META_LBL  = _s("mlbl",     size=7.5,   color=_FAINT)
-_S_META_VAL  = _s("mval",     font=_BOLD, size=8, color=_MID)
-_S_SECTION   = _s("section",  font=_BOLD, size=7.5, color=_DIM, sb=4 * mm, sa=2 * mm)
-_S_LABEL     = _s("label",    size=8.5,   color=_DIM)
-_S_VALUE     = _s("value",    font=_BOLD, size=8.5, color=_DARK)
-_S_VALUE_R   = _s("valr",     font=_BOLD, size=8.5, color=_DARK, align=TA_RIGHT)
-_S_NET_LBL   = _s("netlbl",   font=_BOLD, size=11, color=_ACCENT)
-_S_NET_VAL   = _s("netval",   font=_BOLD, size=13, color=_ACCENT, align=TA_RIGHT)
-_S_TH        = _s("th",       font=_BOLD, size=7.5, color=_MID)
-_S_TH_R      = _s("thr",      font=_BOLD, size=7.5, color=_MID, align=TA_RIGHT)
-_S_TD        = _s("td",       size=7.5,   color=_MID)
-_S_TD_MONO   = _s("tdm",      font=_MONO, size=6.5, color=_MID)
-_S_TD_R      = _s("tdr",      size=7.5,   color=_MID,  align=TA_RIGHT)
-_S_NOTE      = _s("note",     size=7,     color=_FAINT, sb=1 * mm)
-_S_FOOTER    = _s("footer",   size=6.5,   color=_FAINT, align=TA_CENTER)
-_S_TIER_A    = _s("ta",       font=_BOLD, size=7.5, color=colors.HexColor("#059669"))
-_S_TIER_B    = _s("tb",       font=_BOLD, size=7.5, color=colors.HexColor("#D97706"))
-_S_TIER_C    = _s("tc",       font=_BOLD, size=7.5, color=colors.HexColor("#DC2626"))
-
+def _get_styles(lang: str) -> dict[str, ParagraphStyle]:
+    _BASE, _BOLD, _MONO = _get_font_names(lang)
+    return {
+        "title":    _s("title",    font=_BOLD, size=18, color=_DARK, sb=0, sa=1 * mm),
+        "subtitle": _s("subtitle", font=_BASE, size=9,  color=_DIM, sa=0),
+        "mlbl":     _s("mlbl",     font=_BASE, size=7.5,color=_FAINT),
+        "mval":     _s("mval",     font=_BOLD, size=8,  color=_MID),
+        "section":  _s("section",  font=_BOLD, size=7.5,color=_DIM, sb=4 * mm, sa=2 * mm),
+        "label":    _s("label",    font=_BASE, size=8.5,color=_DIM),
+        "value":    _s("value",    font=_BOLD, size=8.5,color=_DARK),
+        "valr":     _s("valr",     font=_BOLD, size=8.5,color=_DARK, align=TA_RIGHT),
+        "netlbl":   _s("netlbl",   font=_BOLD, size=11, color=_ACCENT),
+        "netval":   _s("netval",   font=_BOLD, size=13, color=_ACCENT, align=TA_RIGHT),
+        "th":       _s("th",       font=_BOLD, size=7.5,color=_MID),
+        "thr":      _s("thr",      font=_BOLD, size=7.5,color=_MID, align=TA_RIGHT),
+        "td":       _s("td",       font=_BASE, size=7.5,color=_MID),
+        "tdm":      _s("tdm",      font=_MONO, size=6.5,color=_MID),
+        "tdr":      _s("tdr",      font=_BASE, size=7.5,color=_MID,  align=TA_RIGHT),
+        "note":     _s("note",     font=_BASE, size=7,  color=_FAINT, sb=1 * mm),
+        "footer":   _s("footer",   font=_BASE, size=6.5,color=_FAINT, align=TA_CENTER),
+        "ta":       _s("ta",       font=_BOLD, size=7.5,color=colors.HexColor("#059669")),
+        "tb":       _s("tb",       font=_BOLD, size=7.5,color=colors.HexColor("#D97706")),
+        "tc":       _s("tc",       font=_BOLD, size=7.5,color=colors.HexColor("#DC2626")),
+        "genmeta":  _s("genmeta",  font=_BASE, size=7.5, color=_FAINT),
+    }
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -129,10 +152,8 @@ _S_TIER_C    = _s("tc",       font=_BOLD, size=7.5, color=colors.HexColor("#DC26
 def _p(text: str, style: ParagraphStyle) -> Paragraph:
     return Paragraph(text, style)
 
-
 def _rule(w: int = 480, t: float = 0.5) -> HRFlowable:
     return HRFlowable(width=w, thickness=t, color=_RULE, spaceAfter=2 * mm, spaceBefore=2 * mm)
-
 
 def _fmt(val: Optional[str], currency: str = "") -> str:
     if not val:
@@ -158,12 +179,12 @@ def _nights(check_in: Optional[str], check_out: Optional[str]) -> str:
         return "—"
 
 
-def _tier_style(tier: str) -> ParagraphStyle:
+def _tier_style(tier: str, styles: dict[str, ParagraphStyle]) -> ParagraphStyle:
     t = (tier or "").upper()
     return {
-        "A": _S_TIER_A,
-        "B": _S_TIER_B,
-    }.get(t, _S_TIER_C)
+        "A": styles["ta"],
+        "B": styles["tb"],
+    }.get(t, styles["tc"])
 
 
 def _tier_label(tier: str) -> str:
@@ -200,6 +221,7 @@ def generate_owner_statement_pdf(
     line_items: List[Dict[str, Any]],
     generated_at: str,
     platform_name: Optional[str] = None,
+    lang: str = "en",
 ) -> bytes:
     """
     Generate a professional owner statement PDF.
@@ -212,12 +234,12 @@ def generate_owner_statement_pdf(
         line_items:     Per-booking line item dicts.
         generated_at:   ISO timestamp string.
         platform_name:  Optional platform name for footer.
-                        Falls back to STATEMENT_PLATFORM_NAME env var,
-                        then "Property Management Platform".
-
-    Returns:
-        Raw PDF bytes (starts with b'%PDF').
     """
+    styles = _get_styles(lang)
+
+    def _t(k: str) -> str:
+        return translate_key("owner_statement", k, lang)
+
     buf = io.BytesIO()
     pname = _platform_name(platform_name)
     stmt_id = _statement_id(property_id, month, tenant_id)
@@ -230,9 +252,9 @@ def generate_owner_statement_pdf(
         rightMargin=18 * mm,
         topMargin=16 * mm,
         bottomMargin=16 * mm,
-        title=f"Owner Statement — {property_id} — {month}",
+        title=f"{_t('title')} — {property_id} — {month}",
         author=pname,
-        subject="Monthly Owner Financial Statement",
+        subject=_t("subtitle"),
     )
 
     story: list = []
@@ -240,20 +262,20 @@ def generate_owner_statement_pdf(
     # -----------------------------------------------------------------------
     # 1. Header
     # -----------------------------------------------------------------------
-    story.append(_p("OWNER STATEMENT", _S_TITLE))
-    story.append(_p("Monthly Financial Statement", _S_SUBTITLE))
+    story.append(_p(_t("title"), styles["title"]))
+    story.append(_p(_t("subtitle"), styles["subtitle"]))
     story.append(Spacer(1, 4 * mm))
 
     # Metadata grid — 3 columns: Property | Period | Reference
     meta_data = [[
-        [_p("PROPERTY", _S_META_LBL), _p(property_id, _S_META_VAL)],
-        [_p("PERIOD", _S_META_LBL),   _p(month, _S_META_VAL)],
-        [_p("STATEMENT REF", _S_META_LBL), _p(stmt_id, _S_META_VAL)],
+        [_p(_t("property"), styles["mlbl"]), _p(property_id, styles["mval"])],
+        [_p(_t("period"), styles["mlbl"]),   _p(month, styles["mval"])],
+        [_p(_t("statement_ref"), styles["mlbl"]), _p(stmt_id, styles["mval"])],
     ]]
     # Flatten to single-row table with sub-tables in each cell
     meta_row = []
     for cell_items in meta_data[0]:
-        sub = Table([[_p(cell_items[0].text, _S_META_LBL)], [_p(cell_items[1].text, _S_META_VAL)]])
+        sub = Table([[_p(cell_items[0].text, styles["mlbl"])], [_p(cell_items[1].text, styles["mval"])]])
         sub.setStyle(TableStyle([
             ("TOPPADDING", (0, 0), (-1, -1), 0),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
@@ -275,8 +297,8 @@ def generate_owner_statement_pdf(
 
     # Generated at + currency line
     story.append(_p(
-        f"Generated: {generated_at}   ·   Currency: {currency}",
-        _s("genmeta", size=7.5, color=_FAINT),
+        f"{_t('generated')}: {generated_at}   ·   {_t('currency')}: {currency}",
+        styles["genmeta"],
     ))
     story.append(Spacer(1, 4 * mm))
     story.append(_rule())
@@ -284,16 +306,16 @@ def generate_owner_statement_pdf(
     # -----------------------------------------------------------------------
     # 2. Summary block
     # -----------------------------------------------------------------------
-    story.append(_p("FINANCIAL SUMMARY", _S_SECTION))
+    story.append(_p(_t("financial_summary"), styles["section"]))
 
     def _sum_row(label: str, value: Optional[str]) -> list:
-        return [_p(label, _S_LABEL), _p(_fmt(value, currency), _S_VALUE_R)]
+        return [_p(label, styles["label"]), _p(_fmt(value, currency), styles["valr"])]
 
     summary_data = [
-        _sum_row("Gross Revenue", summary.get("gross_total")),
-        _sum_row("OTA Commission", summary.get("ota_commission_total")),
-        _sum_row("Net to Property", summary.get("net_to_property_total")),
-        _sum_row(f"Management Fee  ({summary.get('management_fee_pct', '0.00')}%)",
+        _sum_row(_t("gross_revenue"), summary.get("gross_total")),
+        _sum_row(_t("ota_commission"), summary.get("ota_commission_total")),
+        _sum_row(_t("net_to_property"), summary.get("net_to_property_total")),
+        _sum_row(f"{_t('management_fee')}  ({summary.get('management_fee_pct', '0.00')}%)",
                  summary.get("management_fee_amount")),
     ]
 
@@ -312,8 +334,8 @@ def generate_owner_statement_pdf(
     # Owner Net — highlighted block
     story.append(Spacer(1, 2 * mm))
     net_row = [[
-        _p("OWNER NET TOTAL", _S_NET_LBL),
-        _p(_fmt(summary.get("owner_net_total"), currency), _S_NET_VAL),
+        _p(_t("owner_net_total"), styles["netlbl"]),
+        _p(_fmt(summary.get("owner_net_total"), currency), styles["netval"]),
     ]]
     net_table = Table(net_row, colWidths=[95 * mm, 75 * mm])
     net_table.setStyle(TableStyle([
@@ -334,14 +356,11 @@ def generate_owner_statement_pdf(
     excluded = summary.get("ota_collecting_excluded_from_net", 0)
     story.append(Spacer(1, 2 * mm))
     tier_note = (
-        "Data confidence — Tier A: amounts confirmed directly by the channel · "
-        "Tier B: estimated from available fields · "
-        "Tier C: incomplete data, treat with caution. "
-        f"This statement: <b>Tier {tier}</b>."
+        f"{_t('tier_explanation')} <b>{_t('tier')} {tier}</b>."
     )
     if excluded:
-        tier_note += f"  {excluded} booking(s) marked OTA-collecting are excluded from net (payout not yet received)."
-    story.append(_p(tier_note, _S_NOTE))
+        tier_note += f"  {excluded} {_t('excluded_note')}"
+    story.append(_p(tier_note, styles["note"]))
 
     story.append(Spacer(1, 3 * mm))
     story.append(_rule())
@@ -350,23 +369,24 @@ def generate_owner_statement_pdf(
     # 3. Line items table
     # -----------------------------------------------------------------------
     booking_count = len(line_items)
+    booking_lbl = _t("booking") if booking_count == 1 else _t("bookings")
     story.append(_p(
-        f"BOOKING DETAILS  —  {booking_count} booking{'s' if booking_count != 1 else ''}",
-        _S_SECTION,
+        f"{_t('booking_details')}  —  {booking_count} {booking_lbl}",
+        styles["section"],
     ))
 
     # Columns: Booking ID | Channel | Check-in | Check-out | Nights | Gross | Net | Tier
     # Total usable width ≈ 174mm
     COL_W = [42 * mm, 20 * mm, 17 * mm, 17 * mm, 12 * mm, 22 * mm, 22 * mm, 14 * mm]
     HEADERS = [
-        _p("Booking ID", _S_TH),
-        _p("Channel", _S_TH),
-        _p("Check-in", _S_TH),
-        _p("Check-out", _S_TH),
-        _p("Nights", _S_TH_R),
-        _p("Gross", _S_TH_R),
-        _p("Net", _S_TH_R),
-        _p("Tier", _S_TH),
+        _p(_t("booking_id"), styles["th"]),
+        _p(_t("channel"), styles["th"]),
+        _p(_t("check_in"), styles["th"]),
+        _p(_t("check_out"), styles["th"]),
+        _p(_t("nights"), styles["thr"]),
+        _p(_t("gross"), styles["thr"]),
+        _p(_t("net"), styles["thr"]),
+        _p(_t("tier"), styles["th"]),
     ]
 
     table_data = [HEADERS]
@@ -375,14 +395,14 @@ def generate_owner_statement_pdf(
         ci = item.get("check_in") or "—"
         co = item.get("check_out") or "—"
         row = [
-            _p(item.get("booking_id") or "—", _S_TD_MONO),
-            _p(item.get("provider") or "—", _S_TD),
-            _p(ci, _S_TD),
-            _p(co, _S_TD),
-            _p(_nights(item.get("check_in"), item.get("check_out")), _S_TD_R),
-            _p(_fmt(item.get("gross"), cur), _S_TD_R),
-            _p(_fmt(item.get("net_to_property"), cur), _S_TD_R),
-            _p(_tier_label(item.get("epistemic_tier", "")), _tier_style(item.get("epistemic_tier", ""))),
+            _p(item.get("booking_id") or "—", styles["tdm"]),
+            _p(item.get("provider") or "—", styles["td"]),
+            _p(ci, styles["td"]),
+            _p(co, styles["td"]),
+            _p(_nights(item.get("check_in"), item.get("check_out")), styles["tdr"]),
+            _p(_fmt(item.get("gross"), cur), styles["tdr"]),
+            _p(_fmt(item.get("net_to_property"), cur), styles["tdr"]),
+            _p(_tier_label(item.get("epistemic_tier", "")), _tier_style(item.get("epistemic_tier", ""), styles)),
         ]
         table_data.append(row)
 
@@ -410,8 +430,8 @@ def generate_owner_statement_pdf(
     story.append(Spacer(1, 6 * mm))
     story.append(_rule(t=0.3))
     story.append(_p(
-        f"{pname}   ·   Ref: {stmt_id}   ·   Generated: {generated_at}   ·   Confidential — for recipient only",
-        _S_FOOTER,
+        f"{pname}   ·   {_t('ref')}: {stmt_id}   ·   {_t('generated')}: {generated_at}   ·   {_t('footer_confidential')}",
+        styles["footer"],
     ))
 
     doc.build(story)

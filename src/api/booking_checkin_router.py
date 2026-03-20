@@ -307,6 +307,16 @@ async def checkout_booking(
             "cleaning_tasks_created": cleaning_task_count,
         })
 
+        # D-5b: Transition property operational_status → 'needs_cleaning' on checkout
+        property_id = booking.get("property_id")
+        if property_id:
+            try:
+                db.table("properties").update({
+                    "operational_status": "needs_cleaning",
+                }).eq("property_id", property_id).eq("tenant_id", tenant_id).execute()
+            except Exception:
+                logger.warning("checkout: failed to set property %s to needs_cleaning", property_id)
+
         logger.info(
             "checkout: booking_id=%s tenant=%s → checked_out, cleaning_tasks=%d",
             booking_id, tenant_id, cleaning_task_count,

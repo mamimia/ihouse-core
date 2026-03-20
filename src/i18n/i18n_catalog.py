@@ -114,6 +114,47 @@ CATEGORY_PACK: Dict[str, Dict[str, Dict[str, str]]] = {
         "report_issue": {"en": "Report Issue", "th": "รายงานปัญหา", "he": "דיווח על בעיה"},
     },
     # ==================================================================
+    # Phase 853 — Owner Statement Localization
+    # ==================================================================
+    "owner_statement": {
+        "title": {"en": "OWNER STATEMENT", "th": "ใบแจ้งยอดสำหรับเจ้าของ", "he": "דוח בעלים"},
+        "subtitle": {"en": "Monthly Financial Statement", "th": "ใบแจ้งยอดทางการเงินรายเดือน", "he": "דוח פיננסי חודשי"},
+        "property": {"en": "PROPERTY", "th": "ที่พัก", "he": "נכס"},
+        "period": {"en": "PERIOD", "th": "รอบเวลา", "he": "תקופה"},
+        "statement_ref": {"en": "STATEMENT REF", "th": "รหัสอ้างอิง", "he": "אסמכתא"},
+        "generated": {"en": "Generated", "th": "สร้างเมื่อ", "he": "הופק ב"},
+        "currency": {"en": "Currency", "th": "สกุลเงิน", "he": "מטבע"},
+        "financial_summary": {"en": "FINANCIAL SUMMARY", "th": "สรุปข้อมูลทางการเงิน", "he": "סיכום פיננסי"},
+        "gross_revenue": {"en": "Gross Revenue", "th": "รายได้รวม", "he": "הכנסה ברוטו"},
+        "ota_commission": {"en": "OTA Commission", "th": "ค่าคอมมิชชั่น OTA", "he": "עמלת OTA"},
+        "net_to_property": {"en": "Net to Property", "th": "รายได้สุทธิของที่พัก", "he": "נטו לנכס"},
+        "management_fee": {"en": "Management Fee", "th": "ค่าธรรมเนียมการจัดการ", "he": "דמי ניהול"},
+        "owner_net_total": {"en": "OWNER NET TOTAL", "th": "รายได้สุทธิส่วนของเจ้าของ", "he": "סה\"כ נטו לבעלים"},
+        "booking_details": {"en": "BOOKING DETAILS", "th": "รายละเอียดการจอง", "he": "פרטי הזמנה"},
+        "booking": {"en": "booking", "th": "รายการจอง", "he": "הזמנה"},
+        "bookings": {"en": "bookings", "th": "รายการจอง", "he": "הזמנות"},
+        "booking_id": {"en": "Booking ID", "th": "รหัสการจอง", "he": "מזהה הזמנה"},
+        "channel": {"en": "Channel", "th": "ช่องทาง", "he": "ערוץ"},
+        "check_in": {"en": "Check-in", "th": "เช็คอิน", "he": "צ'ק-אין"},
+        "check_out": {"en": "Check-out", "th": "เช็คเอาท์", "he": "צ'ק-אאוט"},
+        "nights": {"en": "Nights", "th": "จำนวนคืน", "he": "לילות"},
+        "gross": {"en": "Gross", "th": "ยอดรวม", "he": "ברוטו"},
+        "net": {"en": "Net", "th": "ยอดสุทธิ", "he": "נטו"},
+        "tier": {"en": "Tier", "th": "ระดับ", "he": "רמת נתונים"},
+        "tier_explanation": {
+            "en": "Data confidence — Tier A: amounts confirmed directly by the channel · Tier B: estimated from available fields · Tier C: incomplete data. This statement:",
+            "th": "ความเชื่อมั่นของข้อมูล — ระดับ A: ยืนยันโดยตรงจากช่องทาง · ระดับ B: ประเมินจากข้อมูลที่มี · ระดับ C: ข้อมูลไม่สมบูรณ์. ใบแจ้งยอดนี้:",
+            "he": "ביטחון נתונים — דרג A: אומת ישירות מול הערוץ · דרג B: הוערך מהשדות הקיימים · דרג C: מידע חלקי. דוח זה בדרג:"
+        },
+        "excluded_note": {
+             "en": "booking(s) marked OTA-collecting are excluded from net (payout not yet received).",
+             "th": "รายการระบุว่า OTA เป็นผู้รับเงิน จะถูกตัดออกจากยอดสุทธิ (ยังไม่ได้รับเงิน).",
+             "he": "הזמנות המסומנות כגביית OTA מוחרגות מהנטו (התשלום טרם התקבל)."
+        },
+        "footer_confidential": {"en": "Confidential — for recipient only", "th": "ข้อมูลลับ — สำหรับผู้รับเท่านั้น", "he": "סודי — לנמען בלבד"},
+        "ref": {"en": "Ref", "th": "อ้างอิง", "he": "סימוכין"},
+    },
+    # ==================================================================
     # Common labels
     # ==================================================================
     "common": {

@@ -38,10 +38,10 @@ async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
 // ── Legacy Role Normalization ────────────────────────────────────────────────
 
 const LEGACY_ROLE_MAP: Record<string, { role: string; worker_roles: string[] }> = {
-  cleaner:        { role: 'worker', worker_roles: ['cleaner'] },
-  checkin_staff:  { role: 'worker', worker_roles: ['checkin'] },
+  cleaner: { role: 'worker', worker_roles: ['cleaner'] },
+  checkin_staff: { role: 'worker', worker_roles: ['checkin'] },
   checkout_staff: { role: 'worker', worker_roles: ['checkout'] },
-  maintenance:    { role: 'worker', worker_roles: ['maintenance'] },
+  maintenance: { role: 'worker', worker_roles: ['maintenance'] },
 };
 
 type RawRecord = {
@@ -57,7 +57,7 @@ type RawRecord = {
   notes?: string;
   worker_roles?: string[];
   maintenance_specializations?: string[];
-  comm_preference?: Record<string, string>;
+  comm_preference?: Record<string, any>;
   permissions?: Record<string, any>;
   created_at?: string;
   updated_at?: string;
@@ -82,26 +82,26 @@ function normalizeLegacyRole(raw: RawRecord): NormalizedRecord {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const CANONICAL_ROLES = [
-  { value: 'admin',   label: 'Admin' },
+  { value: 'admin', label: 'Admin' },
   { value: 'manager', label: 'Operational Manager' },
-  { value: 'worker',  label: 'Worker' },
-  { value: 'owner',   label: 'Owner' },
+  { value: 'worker', label: 'Worker' },
+  { value: 'owner', label: 'Owner' },
 ];
 const WORKER_ROLES = [
-  { value: 'cleaner',     label: 'Cleaner' },
-  { value: 'checkin',     label: 'Check-in' },
-  { value: 'checkout',    label: 'Check-out' },
+  { value: 'cleaner', label: 'Cleaner' },
+  { value: 'checkin', label: 'Check-in' },
+  { value: 'checkout', label: 'Check-out' },
   { value: 'maintenance', label: 'Maintenance' },
 ];
 const MAINTENANCE_SPECS = [
-  { value: 'general',      label: 'General' },
-  { value: 'gardener',     label: 'Gardener' },
-  { value: 'pool',         label: 'Pool' },
-  { value: 'plumber',      label: 'Plumber' },
-  { value: 'painter',      label: 'Painter' },
-  { value: 'electrician',  label: 'Electrician' },
-  { value: 'ac',           label: 'AC' },
-  { value: 'other',        label: 'Other' },
+  { value: 'general', label: 'General' },
+  { value: 'gardener', label: 'Gardener' },
+  { value: 'pool', label: 'Pool' },
+  { value: 'plumber', label: 'Plumber' },
+  { value: 'painter', label: 'Painter' },
+  { value: 'electrician', label: 'Electrician' },
+  { value: 'ac', label: 'AC' },
+  { value: 'other', label: 'Other' },
 ];
 const LANGUAGES = [
   { value: 'en', label: 'English (EN)' },
@@ -222,7 +222,10 @@ export default function EditStaffPage() {
   // Tab 1 — Profile
   const [fullName, setFullName] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [idPhotoUrl, setIdPhotoUrl] = useState('');
   const [phoneCode, setPhoneCode] = useState('+66');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
@@ -255,9 +258,12 @@ export default function EditStaffPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | undefined>();
   const [updatedAt, setUpdatedAt] = useState<string | undefined>();
-  
+
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [uploadingIdPhoto, setUploadingIdPhoto] = useState(false);
+  const idFileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -276,6 +282,9 @@ export default function EditStaffPage() {
       setDisplayName(record.display_name || '');
       setFullName(record.display_name || '');
       setPhotoUrl(record.photo_url || '');
+      setEmail(record.comm_preference?.email || '');
+      setDateOfBirth(record.comm_preference?.date_of_birth || '');
+      setIdPhotoUrl(record.comm_preference?.id_photo_url || '');
 
       const pMatch = (record.phone || '').match(/^(\+\d{1,3})\s*(.*)$/);
       if (pMatch) {
@@ -375,6 +384,9 @@ export default function EditStaffPage() {
             telegram: telegram.trim() || undefined,
             line: line.trim() || undefined,
             sms: sms.trim() || undefined,
+            email: email.trim() || undefined,
+            date_of_birth: dateOfBirth || undefined,
+            id_photo_url: idPhotoUrl.trim() || undefined,
           },
         }),
       });
@@ -442,7 +454,7 @@ export default function EditStaffPage() {
     try {
       const tok = getToken();
       if (!tok) throw new Error('Not authenticated');
-      
+
       // Use the existing proxy. 'staff' acts as the folder in property-photos bucket.
       const { url } = await uploadPropertyPhoto(file, 'staff-avatars', 'reference', tok);
       setPhotoUrl(url);
@@ -454,6 +466,28 @@ export default function EditStaffPage() {
       setUploadingPhoto(false);
       // Reset input so the same file can be selected again if needed
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleIdPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingIdPhoto(true);
+    setError(null);
+    try {
+      const tok = getToken();
+      if (!tok) throw new Error('Not authenticated');
+
+      const { url } = await uploadPropertyPhoto(file, 'staff-pii', 'reference', tok);
+      setIdPhotoUrl(url);
+      setSuccess('ID Document uploaded successfully. Click Save Changes to keep.');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload document');
+    } finally {
+      setUploadingIdPhoto(false);
+      if (idFileInputRef.current) idFileInputRef.current.value = '';
     }
   };
 
@@ -498,7 +532,7 @@ export default function EditStaffPage() {
         </button>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <Avatar name={displayName || fullName} photoUrl={photoUrl} />
-          
+
           <input
             type="file"
             accept={ACCEPTED_IMAGE_TYPES}
@@ -506,8 +540,8 @@ export default function EditStaffPage() {
             style={{ display: 'none' }}
             onChange={handlePhotoSelect}
           />
-          
-          <button 
+
+          <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingPhoto}
@@ -592,7 +626,16 @@ export default function EditStaffPage() {
               <Field label="Display Name">
                 <input style={inputStyle} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Name" />
               </Field>
-              <Field label="Photo URL">
+              <Field label="Email">
+                <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="worker@example.com" />
+              </Field>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <Field label="Date of Birth">
+                <input type="date" style={inputStyle} value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+              </Field>
+              <Field label="Photo URL / Avatar">
                 <input style={inputStyle} value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="https://..." />
               </Field>
             </div>
@@ -605,9 +648,9 @@ export default function EditStaffPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr)', gap: 'var(--space-4)' }}>
               <Field label="Phone">
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <select 
-                    style={{ ...inputStyle, width: '70px', cursor: 'pointer', padding: '9px 2px', textAlign: 'center' }} 
-                    value={phoneCode} 
+                  <select
+                    style={{ ...inputStyle, width: '70px', cursor: 'pointer', padding: '9px 2px', textAlign: 'center' }}
+                    value={phoneCode}
                     onChange={e => {
                       const code = e.target.value;
                       const oldFull = `${phoneCode}${phoneNumber}`.trim();
@@ -619,7 +662,7 @@ export default function EditStaffPage() {
                   >
                     {COUNTRY_CODES_OPTS.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
                   </select>
-                  <input style={{ ...inputStyle, flex: 1 }} value={phoneNumber} 
+                  <input style={{ ...inputStyle, flex: 1 }} value={phoneNumber}
                     onChange={e => {
                       const num = e.target.value;
                       const oldFull = `${phoneCode}${phoneNumber}`.trim();
@@ -627,8 +670,8 @@ export default function EditStaffPage() {
                       setPhoneNumber(num);
                       if (!whatsapp || whatsapp === oldFull) setWhatsapp(newFull);
                       if (!sms || sms === oldFull) setSms(newFull);
-                    }} 
-                    placeholder="81 234 5678" 
+                    }}
+                    placeholder="81 234 5678"
                   />
                 </div>
               </Field>
@@ -646,6 +689,38 @@ export default function EditStaffPage() {
             <Field label="Address">
               <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 72 }} value={address} onChange={e => setAddress(e.target.value)} />
             </Field>
+
+            <div style={sectionHeadStyle}>PII & Identity Verification</div>
+            <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <Field label="ID / Passport Photo">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                  {idPhotoUrl ? (
+                    <div>
+                      <a href={idPhotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', position: 'relative' }}>
+                        <img src={idPhotoUrl} alt="ID Document" style={{ maxWidth: 200, maxHeight: 120, objectFit: 'contain', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }} />
+                      </a>
+                      <div style={{ marginTop: 8 }}>
+                         <button type="button" onClick={() => setIdPhotoUrl('')} style={{ fontSize: 'var(--text-xs)', color: '#f85149', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Remove ID Photo</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                      No ID uploaded securely.
+                    </div>
+                  )}
+                  
+                  <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={idFileInputRef} style={{ display: 'none' }} onChange={handleIdPhotoSelect} />
+                  
+                  <button type="button" onClick={() => idFileInputRef.current?.click()} disabled={uploadingIdPhoto} style={{
+                    padding: '8px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)', color: 'var(--color-text)', cursor: uploadingIdPhoto ? 'not-allowed' : 'pointer',
+                    fontSize: 'var(--text-xs)', fontWeight: 600, width: 'fit-content',
+                  }}>
+                    {uploadingIdPhoto ? 'Uploading securely...' : 'Upload ID / Passport'}
+                  </button>
+                </div>
+              </Field>
+            </div>
 
             <div style={sectionHeadStyle}>Preferences</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
@@ -689,8 +764,8 @@ export default function EditStaffPage() {
                 {/* Toggle Active / Archive */}
                 <div>
                   <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 8, marginTop: 0 }}>
-                    {isActive ? 
-                      'Archiving (Deactivating) disables login access while keeping historical records.' : 
+                    {isActive ?
+                      'Archiving (Deactivating) disables login access while keeping historical records.' :
                       'Activating restores login access for this worker.'}
                   </p>
                   {!confirmToggleActive ? (

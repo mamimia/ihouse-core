@@ -10,7 +10,7 @@
  *   3. CSV Import   — POST /import/csv (bulk_import_router.py)
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { getToken } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 
@@ -67,7 +67,7 @@ const cardStyle: React.CSSProperties = {
 };
 
 // ========== Main Component ==========
-export default function BookingIntakePage() {
+function BookingIntakeContent() {
     const searchParams = useSearchParams();
     const prefilledProperty = searchParams?.get('property') || '';
     const [path, setPath] = useState<IntakePath>(prefilledProperty ? 'manual' : 'select');
@@ -491,5 +491,13 @@ export default function BookingIntakePage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function BookingIntakePage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <BookingIntakeContent />
+        </Suspense>
     );
 }

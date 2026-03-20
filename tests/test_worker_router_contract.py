@@ -64,14 +64,48 @@ def _task_row(
 
 
 def _mock_db_list(rows: list) -> MagicMock:
-    """Mock for GET /worker/tasks — simple list query."""
-    chain = MagicMock()
-    chain.execute.return_value = MagicMock(data=rows)
-    chain.eq.return_value = chain
-    chain.limit.return_value = chain
-    chain.order.return_value = chain
+    """Mock for GET /worker/tasks — handles tasks, tenant_permissions, and
+    worker_property_assignments tables as the router now queries all three."""
+    # Tasks chain — supports .eq, .neq, .in_, .or_, .limit, .order
+    task_chain = MagicMock()
+    task_chain.execute.return_value = MagicMock(data=rows)
+    task_chain.eq.return_value = task_chain
+    task_chain.neq.return_value = task_chain
+    task_chain.in_.return_value = task_chain
+    task_chain.or_.return_value = task_chain
+    task_chain.limit.return_value = task_chain
+    task_chain.order.return_value = task_chain
+
+    # Permissions chain — returns empty (no perm record = unrestricted)
+    perm_chain = MagicMock()
+    perm_chain.execute.return_value = MagicMock(data=[])
+    perm_chain.eq.return_value = perm_chain
+    perm_chain.limit.return_value = perm_chain
+
+    # Worker property assignments chain — returns empty
+    asgn_chain = MagicMock()
+    asgn_chain.execute.return_value = MagicMock(data=[])
+    asgn_chain.eq.return_value = asgn_chain
+
+    # Route db.table(name) to the correct chain
+    task_table = MagicMock()
+    task_table.select.return_value = task_chain
+
+    perm_table = MagicMock()
+    perm_table.select.return_value = perm_chain
+
+    asgn_table = MagicMock()
+    asgn_table.select.return_value = asgn_chain
+
+    def _table_router(name: str):
+        if name == "tenant_permissions":
+            return perm_table
+        if name == "worker_property_assignments":
+            return asgn_table
+        return task_table  # "tasks" and anything else
+
     db = MagicMock()
-    db.table.return_value.select.return_value = chain
+    db.table.side_effect = _table_router
     return db
 
 

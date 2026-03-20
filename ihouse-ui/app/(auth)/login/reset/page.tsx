@@ -17,9 +17,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import PasswordInput from '@/components/auth/PasswordInput';
+import PasswordInput from '../../../../components/auth/PasswordInput';
 import AuthCard from '../../../../components/auth/AuthCard';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '../../../../lib/supabaseClient';
 
 export default function ResetPasswordPage() {
     const [password, setPassword] = useState('');

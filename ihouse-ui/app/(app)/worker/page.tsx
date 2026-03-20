@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api, WorkerTask, WorkerChannel } from '../../../lib/api';
+import { api, apiFetch, WorkerTask, WorkerChannel } from '../../../lib/api';
 import { useLanguage } from '../../../lib/LanguageContext';
 import CompactLangSwitcher from '../../../components/CompactLangSwitcher';
 import { useRouter } from 'next/navigation';
@@ -201,9 +201,26 @@ function TaskCard({ task, propName, onTap }: CardProps) {
                 </div>
                 
                 <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                         e.stopPropagation();
-                        window.open(`https://www.waze.com/ul?q=${encodeURIComponent(displayName)}`, '_blank');
+                        try {
+                            const res = await apiFetch<any>(`/properties/${task.property_id}/location`);
+                            const lat = res.latitude;
+                            const lng = res.longitude;
+                            if (lat != null && lng != null) {
+                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                const url = isMobile
+                                    ? `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
+                                    : `https://maps.google.com/maps?daddr=${lat},${lng}`;
+                                window.open(url, '_blank');
+                            } else {
+                                // Fallback: search by name
+                                window.open(`https://www.waze.com/ul?q=${encodeURIComponent(displayName)}`, '_blank');
+                            }
+                        } catch {
+                            // GPS API unavailable — fallback to name search
+                            window.open(`https://www.waze.com/ul?q=${encodeURIComponent(displayName)}`, '_blank');
+                        }
                     }}
                     style={{
                         background: '#334036',

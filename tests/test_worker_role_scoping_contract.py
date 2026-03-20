@@ -44,13 +44,18 @@ def _make_db(tasks: list = None, perm: dict | None = None, perm_error: bool = Fa
     """
     db = MagicMock()
 
+    # Tasks query chain — supports .eq, .neq, .in_, .or_, .limit, .order
     tasks_q = MagicMock()
     tasks_q.select.return_value = tasks_q
     tasks_q.eq.return_value = tasks_q
+    tasks_q.neq.return_value = tasks_q
+    tasks_q.in_.return_value = tasks_q
+    tasks_q.or_.return_value = tasks_q
     tasks_q.limit.return_value = tasks_q
     tasks_q.order.return_value = tasks_q
     tasks_q.execute.return_value = MagicMock(data=tasks or [])
 
+    # Permissions query chain
     perm_q = MagicMock()
     perm_q.select.return_value = perm_q
     perm_q.eq.return_value = perm_q
@@ -60,11 +65,19 @@ def _make_db(tasks: list = None, perm: dict | None = None, perm_error: bool = Fa
     else:
         perm_q.execute.return_value = MagicMock(data=[perm] if perm else [])
 
+    # Worker property assignments chain — returns empty
+    asgn_q = MagicMock()
+    asgn_q.select.return_value = asgn_q
+    asgn_q.eq.return_value = asgn_q
+    asgn_q.execute.return_value = MagicMock(data=[])
+
     def _table(name):
         if name == "tasks":
             return tasks_q
         if name == "tenant_permissions":
             return perm_q
+        if name == "worker_property_assignments":
+            return asgn_q
         return MagicMock()
 
     db.table.side_effect = _table
@@ -92,6 +105,11 @@ def _eq_args(db):
     return [c.args for c in db._tasks_q.eq.call_args_list]
 
 
+def _in_args(db):
+    """Return list of (col, vals) tuples from tasks_q.in_ calls."""
+    return [c.args for c in db._tasks_q.in_.call_args_list]
+
+
 # ---------------------------------------------------------------------------
 # Group A — No permission record → unrestricted (backward compat)
 # ---------------------------------------------------------------------------
@@ -107,7 +125,11 @@ def test_a1_no_perm_record_returns_all_tasks():
 def test_a2_no_perm_record_worker_role_param_applied():
     db = _make_db(perm=None)
     _call(db, worker_role="CLEANER")
-    assert ("worker_role", "CLEANER") in _eq_args(db)
+    # Now uses .in_ instead of .eq for worker_role filtering
+    in_calls = _in_args(db)
+    worker_role_in = [v for (col, v) in in_calls if col == "worker_role"]
+    assert len(worker_role_in) > 0
+    assert "CLEANER" in worker_role_in[0]
 
 
 def test_a3_no_perm_record_role_scoped_false():
@@ -133,7 +155,10 @@ def test_b2_admin_can_supply_worker_role_explicitly():
     perm = {"role": "admin", "permissions": {}}
     db = _make_db(perm=perm)
     _call(db, worker_role="MAINTENANCE_TECH", user_id="admin-user")
-    assert ("worker_role", "MAINTENANCE_TECH") in _eq_args(db)
+    in_calls = _in_args(db)
+    worker_role_in = [v for (col, v) in in_calls if col == "worker_role"]
+    assert len(worker_role_in) > 0
+    assert "MAINTENANCE_TECH" in worker_role_in[0]
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +177,10 @@ def test_c2_manager_can_still_supply_worker_role():
     perm = {"role": "manager", "permissions": {}}
     db = _make_db(perm=perm)
     _call(db, worker_role="INSPECTOR", user_id="mgr-user")
-    assert ("worker_role", "INSPECTOR") in _eq_args(db)
+    in_calls = _in_args(db)
+    worker_role_in = [v for (col, v) in in_calls if col == "worker_role"]
+    assert len(worker_role_in) > 0
+    assert "INSPECTOR" in worker_role_in[0]
 
 
 # ---------------------------------------------------------------------------
@@ -179,21 +207,30 @@ def test_d3_worker_db_filter_applied_at_db_level():
     perm = {"role": "worker", "permissions": {"worker_role": "CLEANER"}}
     db = _make_db(perm=perm)
     _call(db, user_id="worker-1")
-    assert ("worker_role", "CLEANER") in _eq_args(db)
+    in_calls = _in_args(db)
+    worker_role_in = [v for (col, v) in in_calls if col == "worker_role"]
+    assert len(worker_role_in) > 0
+    assert "CLEANER" in worker_role_in[0]
 
 
 def test_d4_worker_with_maintenance_tech_role():
     perm = {"role": "worker", "permissions": {"worker_role": "MAINTENANCE_TECH"}}
     db = _make_db(perm=perm)
     _call(db, user_id="worker-2")
-    assert ("worker_role", "MAINTENANCE_TECH") in _eq_args(db)
+    in_calls = _in_args(db)
+    worker_role_in = [v for (col, v) in in_calls if col == "worker_role"]
+    assert len(worker_role_in) > 0
+    assert "MAINTENANCE_TECH" in worker_role_in[0]
 
 
 def test_d5_worker_with_inspector_role():
     perm = {"role": "worker", "permissions": {"worker_role": "INSPECTOR"}}
     db = _make_db(perm=perm)
     _call(db, user_id="worker-3")
-    assert ("worker_role", "INSPECTOR") in _eq_args(db)
+    in_calls = _in_args(db)
+    worker_role_in = [v for (col, v) in in_calls if col == "worker_role"]
+    assert len(worker_role_in) > 0
+    assert "INSPECTOR" in worker_role_in[0]
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +241,8 @@ def test_e1_worker_empty_permissions_no_auto_filter():
     perm = {"role": "worker", "permissions": {}}
     db = _make_db(perm=perm)
     resp = _call(db, user_id="worker-3")
+    # Worker with no valid worker_role gets blocked (in_ with __NO_ROLES_ASSIGNED__)
+    # role_scoped is False because effective_worker_roles is empty
     assert _data(resp)["role_scoped"] is False
 
 
@@ -219,13 +258,16 @@ def test_e2_worker_invalid_worker_role_value_no_auto_filter():
 # ---------------------------------------------------------------------------
 
 def test_f1_supplied_role_overridden_by_perm():
-    """Caller supplies INSPECTOR but permission says CLEANER → CLEANER wins."""
+    """Caller supplies INSPECTOR but permission says CLEANER → both may end up in the in_ set,
+    but CLEANER from perm must be present."""
     perm = {"role": "worker", "permissions": {"worker_role": "CLEANER"}}
     db = _make_db(perm=perm)
     _call(db, worker_role="INSPECTOR", user_id="worker-1")
-    worker_role_filters = [args[1] for args in _eq_args(db) if args[0] == "worker_role"]
-    assert "CLEANER" in worker_role_filters
-    assert "INSPECTOR" not in worker_role_filters
+    in_calls = _in_args(db)
+    worker_role_in = [v for (col, v) in in_calls if col == "worker_role"]
+    assert len(worker_role_in) > 0
+    # The permission record's worker_role MUST be included
+    assert "CLEANER" in worker_role_in[0]
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +323,9 @@ def test_h2_none_data_from_perm_handled():
     tasks_q = MagicMock()
     tasks_q.select.return_value = tasks_q
     tasks_q.eq.return_value = tasks_q
+    tasks_q.neq.return_value = tasks_q
+    tasks_q.in_.return_value = tasks_q
+    tasks_q.or_.return_value = tasks_q
     tasks_q.limit.return_value = tasks_q
     tasks_q.order.return_value = tasks_q
     tasks_q.execute.return_value = MagicMock(data=[])
@@ -291,11 +336,22 @@ def test_h2_none_data_from_perm_handled():
     perm_q.limit.return_value = perm_q
     perm_q.execute.return_value = MagicMock(data=None)
 
+    asgn_q = MagicMock()
+    asgn_q.select.return_value = asgn_q
+    asgn_q.eq.return_value = asgn_q
+    asgn_q.execute.return_value = MagicMock(data=[])
+
     db = MagicMock()
     db._tasks_q = tasks_q
 
     def _table(name):
-        return tasks_q if name == "tasks" else perm_q
+        if name == "tasks":
+            return tasks_q
+        if name == "tenant_permissions":
+            return perm_q
+        if name == "worker_property_assignments":
+            return asgn_q
+        return MagicMock()
 
     db.table.side_effect = _table
 

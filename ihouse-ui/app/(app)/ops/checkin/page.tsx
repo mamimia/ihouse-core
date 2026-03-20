@@ -440,7 +440,11 @@ export default function MobileCheckinPage() {
                                     <button onClick={e => {
                                         e.stopPropagation();
                                         if (b.property_latitude && b.property_longitude) {
-                                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${b.property_latitude},${b.property_longitude}`, '_blank');
+                                            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                            const url = isMobile
+                                                ? `https://waze.com/ul?ll=${b.property_latitude},${b.property_longitude}&navigate=yes`
+                                                : `https://maps.google.com/maps?daddr=${b.property_latitude},${b.property_longitude}`;
+                                            window.open(url, '_blank');
                                         } else if (b.property_address) {
                                             window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.property_address)}`, '_blank');
                                         } else {
@@ -535,7 +539,11 @@ export default function MobileCheckinPage() {
                         <ActionButton label="Guest Arrived ✓" onClick={nextStep} />
                         <ActionButton label="📍 Navigate to Property" onClick={() => {
                             if (selected.property_latitude && selected.property_longitude) {
-                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${selected.property_latitude},${selected.property_longitude}`, '_blank');
+                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                const url = isMobile
+                                    ? `https://waze.com/ul?ll=${selected.property_latitude},${selected.property_longitude}&navigate=yes`
+                                    : `https://maps.google.com/maps?daddr=${selected.property_latitude},${selected.property_longitude}`;
+                                window.open(url, '_blank');
                             } else if (selected.property_address) {
                                 window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selected.property_address)}`, '_blank');
                             } else {

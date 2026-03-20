@@ -4,7 +4,7 @@ Phase 856 — Next Phase. Phases 841–855 closed.
 
 ## Last Closed Phase
 
-Phase 855 closed successfully.
+Phase 855E — Onboarding Pipeline Audit closed successfully.
 
 ## Current Objective
 
@@ -26,36 +26,58 @@ Phase 855 closed successfully.
 - Worker App UI Overhaul & Brand Alignment (Phase 844)
 - Worker App Functionality Polish & Date Formatting (Phase 845)
 
+✅ **Staging & Auth Readiness — COMPLETE** (Phases 855A–855E)
+- Staging frontend (Vercel) + backend (Railway) + Supabase connectivity proven (855A)
+- Password auth E2E proven on staging (855A)
+- Google OAuth setup + redirect flow proven (855B)
+- Google OAuth full E2E sign-in proven (855C)
+- Auth identity model designed — deferred as over-engineered (855D)
+- Existing onboarding pipelines audited, 6 Google OAuth conflicts identified (855E)
+- Auto-provision vulnerability identified in `/auth/register/profile` (855E)
+
 ### Next Phase Sequence
 ```
 ──── Checkpoint: One Property, End-to-End ────                 ← REACHED
 ──── Checkpoint: Guest Access E2E Proven ────                  ← REACHED
 ──── Checkpoint: Language Control Accessible ────              ← REACHED
-──── Wave 2: Mobile/Worker Surface & Admin Preview As ────     ← ACTIVE
+──── Wave 2: Mobile/Worker Surface & Admin Preview As ────     ← CLOSED
+──── Staging & Auth Readiness ────                             ← CLOSED
 Phase 843 — Worker Role Scoping JSONB Array Evolution          ← CLOSED
 Phase 844 — Worker App UI Overhaul & Brand Alignment           ← CLOSED
 Phase 845 — Worker App Functionality Polish & Date Formatting  ← CLOSED
-Phase 846 — [CLOSED] ← CLOSED
-Phase 847 — [CLOSED] ← CLOSED
-Phase 848 — [CLOSED] ← CLOSED
-Phase 849 — [CLOSED] ← CLOSED
-Phase 850 — [CLOSED] ← CLOSED
-Phase 851 — [CLOSED] ← CLOSED
-Phase 852 — [CLOSED] ← CLOSED
-Phase 853 — [CLOSED] ← CLOSED
-Phase 854 — [CLOSED] ← CLOSED
-Phase 855 — LINE Integration E2E Proof ← CLOSED
-Phase 856 — Next Phase ← ACTIVE
-Phase 847 — Admin Preview As Role & Org JWT Simulation        ← PLANNED
-Phase 848 — Admin Dashboard Flight Cards (Ops Awareness)      ← PLANNED
-Phase 849 — Staff Management Profiles & Avatar Upload         ← PLANNED
-Phase 850 — Mobile Check-in Flow (Deposit, Auth)              ← PLANNED
-Phase 851 — Mobile Checkout Flow (Inspection, Issues)         ← PLANNED
-Phase 852 — Guest Portal Mobile Form Polish                   ← PLANNED
-Phase 853 — Owner Statement PDF Pipeline Localization         ← PLANNED
-Phase 854 — Route Guard Test Suite Validation                 ← PLANNED
-Phase 855 — End-To-End Operations Day Simulation              ← PLANNED
+Phase 846–854 — Various verification + features               ← CLOSED
+Phase 855 — LINE Integration E2E Proof                        ← CLOSED
+Phase 855A — Staging Runtime Verification                     ← CLOSED
+Phase 855B — Google OAuth Staging Setup                       ← CLOSED
+Phase 855C — Google OAuth E2E Proof                           ← CLOSED
+Phase 855D — Auth Identity Model Design (deferred)            ← CLOSED
+Phase 855E — Onboarding Pipeline Audit                        ← CLOSED
+Phase 856 — Next Phase                                        ← ACTIVE
 ```
+
+### Staging Deployment Truth (Proven 855A)
+
+| Component | URL / Platform | Status |
+|-----------|---------------|--------|
+| Frontend | `https://domaniqo-staging.vercel.app` (Vercel) | ✅ Live |
+| Backend | Railway | ✅ Live |
+| Database | Supabase (`reykggmlcehswrxjviup`) | ✅ Connected |
+| CORS | Railway `IHOUSE_CORS_ORIGINS` | ✅ Configured |
+| Password Auth | `admin@domaniqo.com` | ✅ E2E Proven |
+| Google OAuth | Supabase Google provider | ✅ E2E Proven |
+
+### Auth & Identity Status (Proven 855B–855E)
+
+| Item | State |
+|------|-------|
+| Google OAuth provider | ✅ Enabled in Supabase |
+| Site URL | `https://domaniqo-staging.vercel.app` |
+| Redirect URL | `https://domaniqo-staging.vercel.app/auth/callback` |
+| Google E2E sign-in | ✅ Proven |
+| Admin email strategy | Recommended: change Supabase email to Gmail |
+| Auto-provision vulnerability | 🔴 Open — `/auth/register/profile` auto-provisions any Google user as manager |
+| Linked identity tables | ⏸ Deferred — not needed for current scope |
+| Existing invite pipelines | ✅ Audited, no changes needed |
 
 ## Deferred Items — Open Items Registry
 

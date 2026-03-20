@@ -235,7 +235,10 @@ export default function NewStaffPage() {
   const [fullName, setFullName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [userId, setUserId] = useState('');  // email / user_id
+  const [email, setEmail] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [idPhotoUrl, setIdPhotoUrl] = useState('');
   const [phoneCode, setPhoneCode] = useState('+66');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
@@ -265,6 +268,9 @@ export default function NewStaffPage() {
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [uploadingIdPhoto, setUploadingIdPhoto] = useState(false);
+  const idFileInputRef = useRef<HTMLInputElement>(null);
 
   // Load properties for the assignment multi-select
   useEffect(() => {
@@ -304,6 +310,26 @@ export default function NewStaffPage() {
     }
   };
 
+  const handleIdPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingIdPhoto(true);
+    setError(null);
+    try {
+      const tok = getToken();
+      if (!tok) throw new Error('Not authenticated');
+      
+      const { url } = await uploadPropertyPhoto(file, 'staff-id-photos', 'reference', tok);
+      setIdPhotoUrl(url);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload ID photo');
+    } finally {
+      setUploadingIdPhoto(false);
+      if (idFileInputRef.current) idFileInputRef.current.value = '';
+    }
+  };
+
   const handleSave = async () => {
     if (!userId.trim()) { setError('Email / User ID is required.'); setActiveTab(0); return; }
     if (!role) { setError('Role is required.'); setActiveTab(1); return; }
@@ -332,6 +358,9 @@ export default function NewStaffPage() {
           telegram: telegram.trim() || undefined,
           line: line.trim() || undefined,
           sms: sms.trim() || undefined,
+          email: email.trim() || undefined,
+          date_of_birth: dateOfBirth || undefined,
+          id_photo_url: idPhotoUrl.trim() || undefined,
         },
       };
       await apiFetch('/permissions', { method: 'POST', body: JSON.stringify(body) });
@@ -455,6 +484,41 @@ export default function NewStaffPage() {
 
             <Field label="Photo URL">
               <input style={inputStyle} value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="https://..." />
+            </Field>
+
+            <div style={sectionHeadStyle}>Personally Identifiable Information (PII) 🔒</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 'var(--space-4)' }}>
+              <Field label="Personal Email">
+                <input style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="worker@gmail.com" type="email" />
+              </Field>
+              <Field label="Date of Birth">
+                <input style={inputStyle} type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+              </Field>
+            </div>
+            
+            <Field label="ID / Passport Photo">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                {idPhotoUrl ? (
+                  <div style={{ position: 'relative', width: 140, height: 90, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                    <img src={idPhotoUrl} alt="ID Document" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  <div style={{ width: 140, height: 90, background: 'var(--color-surface-2)', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--color-text-dim)' }}>🪪</div>
+                )}
+                <div>
+                  <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={idFileInputRef} style={{ display: 'none' }} onChange={handleIdPhotoSelect} />
+                  <button 
+                    type="button" 
+                    onClick={() => idFileInputRef.current?.click()} 
+                    disabled={uploadingIdPhoto}
+                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', cursor: uploadingIdPhoto ? 'not-allowed' : 'pointer', fontSize: 'var(--text-ms)', color: 'var(--color-text)', opacity: uploadingIdPhoto ? 0.6 : 1 }}
+                  >
+                    {uploadingIdPhoto ? 'Uploading...' : 'Upload ID Photo'}
+                  </button>
+                  {idPhotoUrl && <button type="button" onClick={() => setIdPhotoUrl('')} style={{ background: 'none', border: 'none', color: '#f85149', fontSize: 'var(--text-xs)', cursor: 'pointer', marginLeft: 12 }}>Remove</button>}
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 8 }}>Securely stored for background checks.</div>
+                </div>
+              </div>
             </Field>
 
             <div style={sectionHeadStyle}>Contact</div>

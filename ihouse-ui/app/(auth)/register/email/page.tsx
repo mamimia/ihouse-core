@@ -11,12 +11,12 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import PasswordInput from '@/components/auth/PasswordInput';
+import PasswordInput from '../../../../components/auth/PasswordInput';
 import AuthCard from '../../../../components/auth/AuthCard';
 import ProgressBar from '../../../../components/auth/ProgressBar';
 import GoogleSignInButton from '../../../../components/auth/GoogleSignInButton';
 import AuthDivider from '../../../../components/auth/AuthDivider';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '../../../../lib/supabaseClient';
 
 function RegisterEmailForm() {
     const router = useRouter();

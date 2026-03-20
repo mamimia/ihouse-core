@@ -2,10 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch, performClientLogout } from '@/lib/api';
-import AuthCard from '@/components/AuthCard';
-import Button from '@/components/Button';
-import ErrorDisplay from '@/components/ErrorDisplay';
+import { apiFetch, performClientLogout } from '../../../lib/api';
+import AuthCard from '../../../components/auth/AuthCard';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
@@ -43,68 +41,107 @@ export default function UpdatePasswordPage() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '12px',
-    borderRadius: 'var(--radius-sm)',
-    border: '1px solid var(--color-border)',
-    background: 'var(--color-surface-2)',
-    color: 'var(--color-text)',
-    fontSize: 'var(--text-base)',
-    outline: 'none',
-    boxSizing: 'border-box'
+    padding: '12px 14px',
+    background: 'var(--color-midnight, #171A1F)',
+    border: '1px solid rgba(234,229,222,0.1)',
+    borderRadius: 'var(--radius-md, 12px)',
+    color: 'var(--color-stone, #EAE5DE)',
+    fontSize: 'var(--text-sm, 14px)',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+    fontFamily: 'var(--font-sans, inherit)',
+    boxSizing: 'border-box',
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 'var(--space-4)',
-      background: 'var(--color-surface, #fff)',
-    }}>
-      <AuthCard title="Set Your Password">
-        <p style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-5)', textAlign: 'center' }}>
-          Please set a new password for your account to continue.
-        </p>
+    <AuthCard title="Set Your Password" subtitle="Please set a new password for your account to continue.">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
+        
+        {error && (
+            <div style={{
+                background: 'rgba(155,58,58,0.1)',
+                border: '1px solid rgba(155,58,58,0.25)',
+                borderRadius: 'var(--radius-md, 12px)',
+                padding: '10px 14px',
+                fontSize: 'var(--text-sm, 14px)',
+                color: '#EF4444',
+            }}>
+                ⚠ {error}
+            </div>
+        )}
 
-        {error && <ErrorDisplay error={error} style={{ marginBottom: 'var(--space-4)' }} />}
+        <div>
+          <label style={{
+              display: 'block',
+              fontSize: 'var(--text-xs, 12px)',
+              fontWeight: 600,
+              color: 'rgba(234,229,222,0.5)',
+              marginBottom: 'var(--space-2, 8px)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+          }}>
+            New Password
+          </label>
+          <input
+            className="auth-input"
+            type="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(null); }}
+            style={inputStyle}
+            placeholder="Enter new password"
+            required
+            minLength={6}
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 6, textTransform: 'uppercase' }}>
-              New Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={inputStyle}
-              placeholder="Enter new password"
-              required
-              minLength={6}
-            />
-          </div>
+        <div>
+          <label style={{
+              display: 'block',
+              fontSize: 'var(--text-xs, 12px)',
+              fontWeight: 600,
+              color: 'rgba(234,229,222,0.5)',
+              marginBottom: 'var(--space-2, 8px)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+          }}>
+            Confirm Password
+          </label>
+          <input
+            className="auth-input"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => { setConfirmPassword(e.target.value); setError(null); }}
+            style={inputStyle}
+            placeholder="Confirm new password"
+            required
+            minLength={6}
+          />
+        </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 6, textTransform: 'uppercase' }}>
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              style={inputStyle}
-              placeholder="Confirm new password"
-              required
-              minLength={6}
-            />
-          </div>
-
-          <Button type="submit" variant="primary" loading={loading} style={{ width: '100%', marginTop: 'var(--space-2)' }}>
-            Update Password
-          </Button>
-        </form>
-      </AuthCard>
-    </div>
+        <button
+            type="submit"
+            className="auth-btn"
+            disabled={loading || !password || !confirmPassword}
+            style={{
+                width: '100%',
+                padding: '14px',
+                background: 'var(--color-moss, #334036)',
+                border: 'none',
+                borderRadius: 'var(--radius-md, 12px)',
+                color: 'var(--color-white, #F8F6F2)',
+                fontSize: 'var(--text-base, 16px)',
+                fontWeight: 600,
+                fontFamily: 'var(--font-brand, "Inter", sans-serif)',
+                letterSpacing: '-0.01em',
+                cursor: loading || !password || !confirmPassword ? 'not-allowed' : 'pointer',
+                opacity: loading || !password || !confirmPassword ? 0.4 : 1,
+                transition: 'all 0.2s',
+                marginTop: 'var(--space-1, 4px)',
+                minHeight: 48,
+            }}
+        >
+          {loading ? 'Updating...' : 'Update Password'}
+        </button>
+      </form>
+    </AuthCard>
   );
 }
