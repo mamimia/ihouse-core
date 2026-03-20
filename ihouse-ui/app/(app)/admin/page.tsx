@@ -692,7 +692,6 @@ export default function AdminPage() {
                 icon="🔌"
                 badge={providers.length > 0 ? `${providers.length} providers` : undefined}
                 badgeColor="var(--color-primary)"
-                defaultOpen
             >
                 {providers.length === 0 ? (
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', padding: '12px 8px' }}>
