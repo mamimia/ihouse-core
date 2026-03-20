@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 /* ------------------------------------------------------------------ */
@@ -386,7 +386,7 @@ function AddPropertyModal({ onClose, onCreated }: { onClose: () => void; onCreat
 /* Main page                                                           */
 /* ------------------------------------------------------------------ */
 
-export default function AdminPropertiesPage() {
+function AdminPropertiesContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [properties, setProperties] = useState<Property[]>([]);
@@ -603,5 +603,17 @@ export default function AdminPropertiesPage() {
                 <span>Onboarding: Phase 395 · Admin API: Phase 396</span>
             </div>
         </div>
+    );
+}
+
+export default function AdminPropertiesPage() {
+    return (
+        <Suspense fallback={
+            <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
+                Loading properties…
+            </div>
+        }>
+            <AdminPropertiesContent />
+        </Suspense>
     );
 }

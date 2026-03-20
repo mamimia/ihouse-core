@@ -13,7 +13,7 @@
  * - Success/notice toasts from ?created=1 / ?deactivated=1 query params
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getToken } from '@/lib/api';
 
@@ -142,7 +142,7 @@ function Avatar({ name, photoUrl, size = 36 }: { name?: string; photoUrl?: strin
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function ManageStaffPage() {
+function ManageStaffContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -380,5 +380,17 @@ export default function ManageStaffPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function ManageStaffPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
+        Loading staff…
+      </div>
+    }>
+      <ManageStaffContent />
+    </Suspense>
   );
 }
