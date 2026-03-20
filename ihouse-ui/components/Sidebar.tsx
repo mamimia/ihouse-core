@@ -159,15 +159,26 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
           /* Expanded: full logo + greeting */
           <div style={{ padding: '0 var(--space-6)', marginBottom: 'var(--space-8)', flexShrink: 0 }}>
             <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginLeft: '-4px',
               fontSize: 'var(--text-base)',
               fontWeight: 700,
               fontFamily: "'Manrope', sans-serif",
               color: 'var(--color-midnight)',
               letterSpacing: '-0.01em',
             }}>
+              <img
+                src="/domaniqo-monogram-midnight.svg"
+                alt=""
+                width={22}
+                height={22}
+                style={{ display: 'block', flexShrink: 0 }}
+              />
               Domaniqo
             </div>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 2 }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 2, paddingLeft: '28px' }}>
               Operations Platform
             </div>
             <div style={{
