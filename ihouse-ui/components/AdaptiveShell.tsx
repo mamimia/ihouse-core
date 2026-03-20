@@ -81,8 +81,10 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
                         top: 10,
                         insetInlineStart: 12,
                         zIndex: 60,
-                        background: 'var(--color-surface, #fff)',
-                        border: '1px solid var(--color-border, #DDD8D0)',
+                        background: 'rgba(248, 246, 242, 0.65)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(221, 216, 208, 0.5)',
                         borderRadius: 'var(--radius-md, 8px)',
                         width: 40,
                         height: 40,
@@ -92,7 +94,7 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
                         cursor: 'pointer',
                         fontSize: 18,
                         color: 'var(--color-text, #171A1F)',
-                        boxShadow: 'var(--shadow-sm)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                     }}
                 >
                     {drawerOpen ? '✕' : '☰'}
