@@ -81,7 +81,7 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
                         top: 10,
                         insetInlineStart: 12,
                         zIndex: 60,
-                        background: 'rgba(248, 246, 242, 0.65)',
+                        background: 'rgba(248, 246, 242, 0.35)',
                         backdropFilter: 'blur(12px)',
                         WebkitBackdropFilter: 'blur(12px)',
                         border: '1px solid rgba(221, 216, 208, 0.5)',
