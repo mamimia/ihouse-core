@@ -1,3 +1,5 @@
+> ⚠️ FIRST: Read `docs/core/BOOT.md` before doing anything else.
+
 # Handoff Document — Phase 855E → Phase 856
 
 **Date:** 2026-03-20
