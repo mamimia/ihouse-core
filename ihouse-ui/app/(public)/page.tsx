@@ -406,7 +406,7 @@ export default function LandingPage() {
                         minHeight: 52,
                     }}
                 >
-                    Request Early Access →
+                    Get Started →
                 </Link>
                 <div style={{
                     fontSize: 'var(--text-xs)',

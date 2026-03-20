@@ -205,10 +205,10 @@ export default function LoginPage() {
                 gap: 'var(--space-3, 12px)',
                 textAlign: 'center',
             }}>
-                <a href="/login?role=host" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
+                <a href="/get-started" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
                     {t('auth.host_link')} <span style={{ textDecoration: 'underline' }}>{t('auth.host_link_cta')}</span>
                 </a>
-                <a href="/register" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
+                <a href="/get-started" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
                     {t('auth.register_link')} <span style={{ textDecoration: 'underline' }}>{t('auth.register_link_cta')}</span>
                 </a>
             </div>

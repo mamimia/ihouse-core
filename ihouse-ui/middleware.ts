@@ -24,20 +24,20 @@ import { NextRequest, NextResponse } from 'next/server';
 // Routes that do NOT require auth — prefix-matched
 const PUBLIC_PREFIXES = [
     '/login',
-    '/dev-login',   // Phase 831: worker-family roles need a production login path
-    '/register',
+    '/dev-login',     // Phase 831: worker-family roles need a production login path
+    '/register',      // Phase 858: redirects to /get-started (kept public for redirect to work)
     '/auth',
     '/favicon.ico',
     '/about',
     '/channels',
-    '/early-access',
-    '/get-started',  // Phase 856B: unified intake funnel
-    '/no-access',    // Phase 856B: authenticated-but-unbound landing
+    '/early-access',  // Phase 858: redirects to /get-started (kept public for redirect to work)
+    '/get-started',   // Phase 858: canonical public intake wizard
+    '/no-access',     // Phase 856B: authenticated-but-unbound landing
     '/inbox',
     '/platform',
     '/pricing',
     '/reviews',
-    '/onboard',
+    '/onboard',       // Phase 858: /onboard/connect property wizard (future: auth-gate inside)
     '/guest',
     '/invite',
     '/staff',

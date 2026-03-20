@@ -104,7 +104,7 @@ export default function PublicNav() {
 
             {/* CTA */}
             <Link
-                href="/onboard/connect"
+                href="/get-started"
                 id="nav-cta-get-started"
                 style={{
                     background: 'var(--color-moss)',
