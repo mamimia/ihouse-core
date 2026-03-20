@@ -31,6 +31,8 @@ const PUBLIC_PREFIXES = [
     '/about',
     '/channels',
     '/early-access',
+    '/get-started',  // Phase 856B: unified intake funnel
+    '/no-access',    // Phase 856B: authenticated-but-unbound landing
     '/inbox',
     '/platform',
     '/pricing',

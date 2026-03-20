@@ -164,8 +164,8 @@ export default function LandingPage() {
                     justifyContent: 'center',
                 }}>
                     <Link
-                        href="/early-access"
-                        id="hero-cta-early-access"
+                        href="/get-started"
+                        id="hero-cta-get-started"
                         style={{
                             background: 'var(--color-moss)',
                             color: 'var(--color-white)',
@@ -182,7 +182,7 @@ export default function LandingPage() {
                             alignItems: 'center',
                         }}
                     >
-                        Request Early Access
+                        Get Started
                     </Link>
                     <Link
                         href="/login"
@@ -389,8 +389,8 @@ export default function LandingPage() {
                     Ready to see every stay?
                 </div>
                 <Link
-                    href="/early-access"
-                    id="cta-early-access"
+                    href="/get-started"
+                    id="cta-get-started"
                     style={{
                         background: 'var(--color-moss)',
                         color: 'var(--color-white)',

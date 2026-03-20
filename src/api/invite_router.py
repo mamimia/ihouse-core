@@ -241,9 +241,9 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
     refresh_token = ""
 
     if supa_url and supa_service_key:
+        supa_admin = create_client(supa_url, supa_service_key)
         try:
-            # Client 1: service_role — for admin operations (create user, provision perms)
-            supa_admin = create_client(supa_url, supa_service_key)
+            # Client 1: service_role — create user
             result = supa_admin.auth.admin.create_user({
                 "email": email,
                 "password": body.password,
@@ -254,36 +254,59 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
                 },
             })
             user_id = str(result.user.id) if result.user else None
+            logger.info("invite/accept: created new user %s (%s) role=%s", user_id, email, role)
 
-            # Sign in to get tokens — uses a SEPARATE client so service_role is not tainted
-            if user_id:
-                supa_login = create_client(supa_url, supa_anon_key)
-                signin = supa_login.auth.sign_in_with_password({
-                    "email": email,
-                    "password": body.password,
-                })
-                if signin.session:
-                    access_token = signin.session.access_token
-                    refresh_token = signin.session.refresh_token
-
-                # Provision tenant_permissions — uses service_role client (not tainted)
-                from services.tenant_bridge import provision_user_tenant
-                provision_user_tenant(
-                    supa_admin, user_id,
-                    tenant_id=tenant_id if tenant_id else None,
-                    role=role,
-                )
-
-            logger.info("invite/accept: created user %s (%s) role=%s", user_id, email, role)
         except Exception as exc:
-            logger.warning("invite/accept: user creation failed for %s: %s", email, exc)
-            # If user already exists, the invite was consumed — that's fine
             error_msg = str(exc).lower()
-            if "already" not in error_msg and "exists" not in error_msg:
+            if "already" in error_msg or "exists" in error_msg:
+                # Phase 856B fix: user already exists in Supabase Auth.
+                # Previously we swallowed this silently — consuming the token
+                # but never creating tenant_permissions, locking the user out.
+                # Now we look up the existing user by email and still provision them.
+                logger.info(
+                    "invite/accept: user %s already exists — fetching existing user_id "
+                    "to provision tenant_permissions (Phase 856B fix)", email,
+                )
+                try:
+                    users_page = supa_admin.auth.admin.list_users()
+                    existing = next(
+                        (u for u in (users_page or []) if getattr(u, "email", None) == email),
+                        None,
+                    )
+                    user_id = str(existing.id) if existing else None
+                except Exception as lookup_exc:
+                    logger.warning("invite/accept: lookup of existing user failed: %s", lookup_exc)
+            else:
                 return JSONResponse(status_code=400, content={
                     "error": "USER_CREATION_FAILED",
                     "message": str(exc),
                 })
+
+        # Sign in (only possible for fresh users — skip silently for existing ones
+        # since we don't know their current password, they can log in normally)
+        if user_id:
+            if not access_token:
+                try:
+                    supa_login = create_client(supa_url, supa_anon_key)
+                    signin = supa_login.auth.sign_in_with_password({
+                        "email": email,
+                        "password": body.password,
+                    })
+                    if signin.session:
+                        access_token = signin.session.access_token
+                        refresh_token = signin.session.refresh_token
+                except Exception as signin_exc:
+                    # Best-effort — existing users with a different password won't sign in here
+                    logger.info("invite/accept: sign-in skipped (likely existing user): %s", signin_exc)
+
+            # Provision / re-provision tenant_permissions with the invited role
+            from services.tenant_bridge import provision_user_tenant
+            provision_user_tenant(
+                supa_admin, user_id,
+                tenant_id=tenant_id if tenant_id else None,
+                role=role,
+            )
+            logger.info("invite/accept: provisioned user=%s email=%s role=%s", user_id, email, role)
 
     # Log audit event
     try:

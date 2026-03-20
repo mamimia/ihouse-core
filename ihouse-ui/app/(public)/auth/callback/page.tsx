@@ -59,14 +59,9 @@ export default function AuthCallbackPage() {
 
             if (!resp.ok || !result.token) {
                 if (resp.status === 403) {
-                    // Phase 856A: No tenant binding — do NOT redirect to auto-provision.
-                    // Show clear "no access" message instead.
-                    setStatus('error');
-                    setErrorMsg(
-                        'Your Google account is not yet linked to an organization. ' +
-                        'Please contact your administrator for an invitation, ' +
-                        'or request access through the Get Started page.'
-                    );
+                    // Phase 856B: redirect to dedicated no-access page.
+                    // Email passed as param so /get-started can pre-fill it.
+                    window.location.href = `/no-access?email=${encodeURIComponent(userEmail)}`;
                     return;
                 }
                 setStatus('error');

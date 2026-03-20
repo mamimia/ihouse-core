@@ -288,9 +288,20 @@ function ApplyForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      
+
       if (!res.ok) {
-        throw new Error('errSubmit');
+        // Phase 856B: try to read a structured backend error first
+        try {
+          const errBody = await res.json();
+          if (errBody?.error === 'EMAIL_REQUIRED') {
+            setError(errBody.message || 'An email address is required to complete your application.');
+          } else {
+            setError(errBody?.message || errBody?.error || 'errSubmit');
+          }
+        } catch {
+          setError('errSubmit');
+        }
+        return;
       }
       setSuccess(true);
     } catch (err: any) {

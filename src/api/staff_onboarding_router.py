@@ -58,14 +58,10 @@ async def create_onboarding_invite(
     tenant_id: str = Depends(jwt_auth),
 ) -> JSONResponse:
     db = _get_db()
-    
-    # We define a custom string for token_type, or re-use INVITE. 
-    # For separation, we use "staff_onboard" literal string, even if TokenType enum doesn't strictly have it,
-    # but verify_access_token checks against the enum or string.
+
+    # Phase 856B: token_type is now STAFF_ONBOARD (not INVITE) so Pipeline B
+    # tokens are distinct from Pipeline A tokens at the DB level.
     try:
-        # We will use "staff_onboard" as token type. 
-        # issue_access_token usually takes an Enum but we can pass string if we bypass type checks or we just use a string.
-        # Let's just use the string literal 'staff_onboard'
         import time
         import jwt
         secret = os.environ.get("IHOUSE_ACCESS_TOKEN_SECRET", "dev-secret")
@@ -74,7 +70,7 @@ async def create_onboarding_invite(
         claims = {
             "iss": "ihouse-core",
             "aud": "ihouse-tenant",
-            "typ": "invite",
+            "typ": "staff_onboard",   # Phase 856B: was 'invite' — now separated
             "sub": tenant_id,
             "ent": tenant_id,
             "iat": now,
@@ -82,12 +78,12 @@ async def create_onboarding_invite(
         }
         if body.email:
             claims["eml"] = body.email
-            
+
         token = jwt.encode(claims, secret, algorithm="HS256")
-        
+
         record = record_token(
             tenant_id=tenant_id,
-            token_type=TokenType.INVITE,
+            token_type=TokenType.STAFF_ONBOARD,   # Phase 856B: was INVITE
             entity_id=tenant_id,
             raw_token=token,
             exp=exp,
@@ -100,7 +96,7 @@ async def create_onboarding_invite(
             },
             db=db,
         )
-        
+
         return JSONResponse(status_code=201, content={
             "token": token,
             "invite_url": f"/staff/apply?token={token}"
@@ -121,7 +117,8 @@ async def validate_onboarding(token: str) -> JSONResponse:
     secret = os.environ.get("IHOUSE_ACCESS_TOKEN_SECRET", "dev-secret")
     try:
         claims = jwt.decode(token, secret, algorithms=["HS256"], audience="ihouse-tenant")
-        if claims.get("typ") != "invite":
+        # Phase 856B: accept both 'staff_onboard' (new) and 'invite' (legacy tokens)
+        if claims.get("typ") not in ("staff_onboard", "invite"):
             return JSONResponse(status_code=401, content={"valid": False, "error": "INVALID_TYPE"})
     except Exception:
         return JSONResponse(status_code=401, content={"valid": False, "error": "INVALID_TOKEN"})
@@ -230,6 +227,15 @@ async def submit_onboarding(token: str, body: OnboardingSubmitRequest) -> JSONRe
     meta = row.get("metadata") or {}
     if meta.get("status") != "pending_submission":
         return JSONResponse(status_code=400, content={"error": "ALREADY_SUBMITTED"})
+
+    # Phase 856B: validate email is resolvable before accepting submission.
+    # Fail fast here — not at admin approval time (which was a bad UX surprise).
+    resolved_email = (body.email or "").strip() or (row.get("email") or "").strip()
+    if not resolved_email:
+        return JSONResponse(status_code=400, content={
+            "error": "EMAIL_REQUIRED",
+            "message": "An email address is required to complete your application.",
+        })
         
     try:
         from datetime import datetime, timezone
@@ -269,7 +275,17 @@ async def submit_onboarding(token: str, body: OnboardingSubmitRequest) -> JSONRe
 async def list_pending_onboarding(tenant_id: str = Depends(jwt_auth)) -> JSONResponse:
     db = _get_db()
     try:
-        res = db.table("access_tokens").select("id, email, created_at, metadata").eq("entity_id", tenant_id).eq("token_type", "invite").is_("used_at", "null").is_("revoked_at", "null").execute()
+        # Phase 856B: query for STAFF_ONBOARD tokens; also include legacy INVITE type
+        # during transition period so old tokens still appear in the queue.
+        res = (
+            db.table("access_tokens")
+            .select("id, email, created_at, metadata")
+            .eq("entity_id", tenant_id)
+            .in_("token_type", ["staff_onboard", "invite"])
+            .is_("used_at", "null")
+            .is_("revoked_at", "null")
+            .execute()
+        )
         rows = res.data or []
         pending = [r for r in rows if r.get("metadata", {}).get("status") == "pending_confirm"]
         
