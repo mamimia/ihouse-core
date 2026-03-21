@@ -131,7 +131,7 @@ function StepCard({ number, title, desc }: { number: string; title: string; desc
 }
 
 /* ── Feature card ── */
-function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function FeatureCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
     return (
         <div style={{
             background: 'var(--color-elevated)',
@@ -140,7 +140,7 @@ function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc:
             padding: 'var(--space-6)',
             transition: 'border-color var(--transition-base)',
         }}>
-            <div style={{ fontSize: 28, marginBottom: 'var(--space-3)' }}>{icon}</div>
+            <div className="brand-ico">{icon}</div>
             <div style={{
                 fontFamily: 'var(--font-brand)',
                 fontSize: 'var(--text-lg)',
@@ -356,32 +356,32 @@ export default function ChannelsPage() {
                     gap: 'var(--space-4)',
                 }}>
                     <FeatureCard
-                        icon="🔍"
+                        icon={<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>}
                         title="Auditable Sync Log"
                         desc="Every push, every response, every retry — logged and queryable. Full history of what was sent, when, and what came back."
                     />
                     <FeatureCard
-                        icon="🛡️"
+                        icon={<svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>}
                         title="Conflict Detection"
                         desc="When two OTAs disagree on the same booking, Domaniqo catches it immediately. Automatic resolution or escalation — never silent drift."
                     />
                     <FeatureCard
-                        icon="📊"
+                        icon={<svg viewBox="0 0 24 24"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>}
                         title="Channel Health Dashboard"
                         desc="Real-time health indicators for every integration. Last successful sync, error rate, latency — visible at a glance on your operations dashboard."
                     />
                     <FeatureCard
-                        icon="🔄"
+                        icon={<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>}
                         title="DLQ Inspection"
                         desc="Failed events don't disappear. The dead-letter queue captures every failure with full context for replay, debug, and resolution."
                     />
                     <FeatureCard
-                        icon="⚡"
+                        icon={<svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
                         title="Source Health Monitoring"
                         desc="Each booking source has different data patterns. Domaniqo monitors them all — connection health, data freshness, zero missed bookings."
                     />
                     <FeatureCard
-                        icon="🗓️"
+                        icon={<svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
                         title="iCal Fallback"
                         desc="For platforms without direct data feeds, iCal calendar sync provides reliable booking visibility as a lightweight connection layer."
                     />

@@ -349,15 +349,15 @@ export default function PricingPage() {
                     textAlign: 'center',
                 }}>
                     {[
-                        { icon: '🔗', label: 'All booking sources included' },
-                        { icon: '🏠', label: 'Unlimited properties' },
-                        { icon: '📱', label: 'Mobile-optimized' },
-                        { icon: '🌍', label: 'Multi-language (EN/TH/HE)' },
-                        { icon: '🔒', label: 'Role-based access' },
-                        { icon: '📊', label: 'Core analytics' },
+                        { icon: <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>, label: 'All booking sources included' },
+                        { icon: <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>, label: 'Unlimited properties' },
+                        { icon: <svg viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>, label: 'Mobile-optimized' },
+                        { icon: <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>, label: 'Multi-language (EN/TH/HE)' },
+                        { icon: <svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, label: 'Role-based access' },
+                        { icon: <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, label: 'Core analytics' },
                     ].map(item => (
                         <div key={item.label}>
-                            <div style={{ fontSize: 28, marginBottom: 'var(--space-2)' }}>{item.icon}</div>
+                            <div className="brand-ico" style={{ marginInline: 'auto' }}>{item.icon}</div>
                             <div style={{
                                 fontSize: 'var(--text-sm)',
                                 color: 'rgba(234,229,222,0.5)',

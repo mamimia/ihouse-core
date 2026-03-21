@@ -105,3 +105,27 @@ input[type="button"] {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3Cf eTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
   opacity: 0.35;
 }
+
+/* --- Brand SVG Icons --- */
+.brand-ico {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  background: var(--color-elevated, rgba(234, 229, 222, 0.04));
+  border: 1px solid rgba(234, 229, 222, 0.06);
+  transition: background 0.35s;
+}
+
+.brand-ico svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--color-copper, #B56E45);
+  stroke-width: 1.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

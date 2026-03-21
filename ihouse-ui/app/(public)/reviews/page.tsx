@@ -50,7 +50,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 /* ── Insight card ── */
-function InsightCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function InsightCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
     return (
         <div style={{
             background: 'var(--color-elevated)',
@@ -58,7 +58,7 @@ function InsightCard({ icon, title, desc }: { icon: string; title: string; desc:
             borderRadius: 'var(--radius-xl)',
             padding: 'var(--space-6)',
         }}>
-            <div style={{ fontSize: 28, marginBottom: 'var(--space-3)' }}>{icon}</div>
+            <div className="brand-ico">{icon}</div>
             <div style={{
                 fontFamily: 'var(--font-brand)',
                 fontSize: 'var(--text-lg)',
@@ -237,32 +237,32 @@ export default function ReviewsPage() {
                     gap: 'var(--space-4)',
                 }}>
                     <InsightCard
-                        icon="⭐"
+                        icon={<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
                         title="Unified Review Dashboard"
                         desc="Every review from every OTA in one view. Filter by property, channel, rating, or date. Spot trends across your entire portfolio."
                     />
                     <InsightCard
-                        icon="📈"
+                        icon={<svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
                         title="NPS & Satisfaction Tracking"
                         desc="Net Promoter Score calculated per property and across your portfolio. Track guest satisfaction over time with clear trend indicators."
                     />
                     <InsightCard
-                        icon="💬"
+                        icon={<svg viewBox="0 0 24 24"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg>}
                         title="Response Management"
                         desc="Reply to reviews across all channels from one place. AI-assisted response suggestions that match your brand voice and address specific guest concerns."
                     />
                     <InsightCard
-                        icon="🔎"
+                        icon={<svg viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>}
                         title="Sentiment Analysis"
                         desc="Automated categorization of feedback themes: cleanliness, location, check-in experience, amenities. Know exactly what guests praise and what needs attention."
                     />
                     <InsightCard
-                        icon="🔗"
+                        icon={<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>}
                         title="Linked to Operations"
                         desc="Reviews linked to specific bookings and tasks. A cleaning complaint triggers a task template review. A connectivity issue creates a maintenance ticket."
                     />
                     <InsightCard
-                        icon="📊"
+                        icon={<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><rect width="4" height="7" x="7" y="10" rx="1"/><rect width="4" height="12" x="15" y="5" rx="1"/></svg>}
                         title="Property Benchmarking"
                         desc="Compare guest satisfaction across your properties. Identify top performers and underperformers. Set improvement targets with data-backed clarity."
                     />
