@@ -39,7 +39,7 @@ interface Integration {
     id: string;
     name: string;
     description: string;
-    icon: string;
+    icon: React.ReactNode;
     configured: boolean;
     active: boolean;
     credentials?: Record<string, string>; // Cached credentials
@@ -121,7 +121,7 @@ const INTEGRATION_INSTRUCTIONS: Record<string, { title: string; steps: React.Rea
 function CollapsibleSection({ title, subtitle, icon, badge, badgeColor, defaultOpen = false, children }: {
     title: string;
     subtitle?: string;
-    icon: string;
+    icon: React.ReactNode;
     badge?: string;
     badgeColor?: string;
     defaultOpen?: boolean;
@@ -667,10 +667,10 @@ export default function AdminPage() {
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [dlq, setDlq] = useState<DlqEntry[]>([]);
     const [integrations, setIntegrations] = useState<Integration[]>([
-        { id: 'line', name: 'LINE Notify', description: 'Send task alerts and notifications via LINE', icon: '💬', configured: false, active: false, credentials: {} },
-        { id: 'whatsapp', name: 'WhatsApp', description: 'Send alerts via WhatsApp Business (Twilio/Meta)', icon: '📞', configured: false, active: false, credentials: {} },
-        { id: 'telegram', name: 'Telegram', description: 'Send alerts via Telegram bot', icon: '✈️', configured: false, active: false, credentials: {} },
-        { id: 'sms', name: 'SMS', description: 'Send alerts via standard SMS', icon: '📱', configured: false, active: false, credentials: {} },
+        { id: 'line', name: 'LINE Notify', description: 'Send task alerts and notifications via LINE', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>, configured: false, active: false, credentials: {} },
+        { id: 'whatsapp', name: 'WhatsApp', description: 'Send alerts via WhatsApp Business (Twilio/Meta)', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, configured: false, active: false, credentials: {} },
+        { id: 'telegram', name: 'Telegram', description: 'Send alerts via Telegram bot', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>, configured: false, active: false, credentials: {} },
+        { id: 'sms', name: 'SMS', description: 'Send alerts via standard SMS', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>, configured: false, active: false, credentials: {} },
     ]);
     const [loading, setLoading] = useState(true);
     const [notice, setNotice] = useState<string | null>(null);
@@ -838,7 +838,7 @@ export default function AdminPage() {
             <CollapsibleSection
                 title="Provider Registry"
                 subtitle="OTA channel connections and sync capabilities"
-                icon="🔌"
+                icon={<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>}
                 badge={providers.length > 0 ? `${providers.length} providers` : undefined}
                 badgeColor="var(--color-primary)"
             >
@@ -859,7 +859,7 @@ export default function AdminPage() {
             <CollapsibleSection
                 title="Notification Integrations"
                 subtitle="Messaging channels for task alerts and worker notifications"
-                icon="🔔"
+                icon={<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>}
                 badge={(() => {
                     const active = integrations.filter(i => i.active).length;
                     return active > 0 ? `${active} active` : 'none active';
@@ -885,7 +885,7 @@ export default function AdminPage() {
             <CollapsibleSection
                 title="User Permissions"
                 subtitle="Role assignments and capability grants"
-                icon="🔑"
+                icon={<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>}
                 badge={permissions.length > 0 ? `${permissions.length} users` : undefined}
                 badgeColor="var(--color-primary)"
             >
@@ -904,7 +904,7 @@ export default function AdminPage() {
             <CollapsibleSection
                 title="Integration Alerts"
                 subtitle="Dead letter queue — failed or rejected inbound events"
-                icon="⚠️"
+                icon={<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>}
                 badge={dlq.length > 0 ? `${dlq.length} pending` : '✓ clear'}
                 badgeColor={dlq.length > 0 ? 'var(--color-warn)' : 'var(--color-ok)'}
                 defaultOpen={dlq.length > 0}
