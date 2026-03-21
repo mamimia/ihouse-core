@@ -326,7 +326,7 @@ export default function PropertyDetailPage() {
             )}
 
             {/* Header */}
-            <div style={{ marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+            <div style={{ marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
                 <button onClick={() => router.push('/admin/properties')} style={{
                     background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer',
                     fontSize: 'var(--text-lg)', padding: 0,
@@ -345,7 +345,7 @@ export default function PropertyDetailPage() {
                     )}
                 </div>
 
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
                         Property Detail
                     </p>
