@@ -152,7 +152,7 @@ export default function LandingPage() {
                     animation: 'fadeUp 800ms 600ms ease forwards',
                 }}>
                     The deep operations platform for modern hospitality.
-                    Calm command across booking, tasks, finance, and guest experience.
+                    Calm command across operations, teams, finance, and guest experience.
                 </p>
 
                 <div style={{
@@ -182,7 +182,7 @@ export default function LandingPage() {
                             alignItems: 'center',
                         }}
                     >
-                        List Your Property
+                        Onboard Your Property
                     </Link>
                     <Link
                         href="/login"
@@ -274,12 +274,12 @@ export default function LandingPage() {
                     gap: 'var(--space-4)',
                 }}>
                     {[
-                        { icon: '📅', title: 'Unified Bookings', desc: 'Multi-OTA sync, conflict resolution, and chronological event history — one timeline for every stay.' },
+                        { icon: '📅', title: 'Booking Intelligence', desc: 'Booking records from every source — normalized, conflict-checked, and audit-trailed in one timeline.' },
                         { icon: '✓', title: 'Task Engine', desc: 'Auto-generated tasks from bookings, SLA tracking, escalation, and field-team mobile surfaces.' },
                         { icon: '💰', title: 'Financial Clarity', desc: 'Revenue aggregation, owner statements, cashflow projection, and multi-currency reconciliation.' },
                         { icon: '👤', title: 'Guest Experience', desc: 'Stay history, preference tracking, QR-based access portals, and connected communication channels.' },
                         { icon: '🏗', title: 'Operational Shell', desc: 'Adaptive layout — desktop command center, tablet review, mobile field action. One platform, every device.' },
-                        { icon: '🔔', title: 'Connected Channels', desc: 'LINE, WhatsApp, Telegram notifications. Instant task alerts to the right person at the right time.' },
+                        { icon: '🔔', title: 'Connected Notifications', desc: 'LINE, WhatsApp, Telegram notifications. Instant task alerts to the right person at the right time.' },
                     ].map(cap => (
                         <CapCard key={cap.title} {...cap} />
                     ))}
@@ -314,12 +314,12 @@ export default function LandingPage() {
                     gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                     gap: 'var(--space-6)',
                 }}>
-                    <PillarCard number="01" title="Multi-OTA Normalizer" desc="Booking.com, Airbnb, Agoda, Rakuten, Hotels.com — one canonical format." />
+                    <PillarCard number="01" title="Booking Normalizer" desc="Bookings from any source — Airbnb, Booking.com, Agoda, iCal — normalized into one canonical format." />
                     <PillarCard number="02" title="Event-Sourced Booking Core" desc="Append-only events, idempotent ingestion, conflict detection, full audit trail." />
                     <PillarCard number="03" title="SLA Escalation Engine" desc="5-minute critical ack window, timer-based escalation, deterministic state guards." />
                     <PillarCard number="04" title="Owner Financial Layer" desc="Per-property revenue, management fees, payout timelines, PDF statements." />
                     <PillarCard number="05" title="Portfolio Intelligence" desc="Cross-property dashboards, anomaly detection, morning briefings, AI copilot." />
-                    <PillarCard number="06" title="Outbound Sync Pipeline" desc="Rate-limited channel push, retry with backoff, DLQ inspection, health monitoring." />
+                    <PillarCard number="06" title="Calendar Sync Layer" desc="Calendar feed ingestion, conflict detection, sync health monitoring, and audit logging." />
                 </div>
             </Section>
 
@@ -354,7 +354,7 @@ export default function LandingPage() {
                 }}>
                     {[
                         { label: 'Contract Tests', value: '6,400+' },
-                        { label: 'OTA Adapters', value: '10' },
+                        { label: 'Booking Sources', value: '10' },
                         { label: 'Development Phases', value: '374' },
                         { label: 'Languages', value: '3' },
                     ].map(stat => (

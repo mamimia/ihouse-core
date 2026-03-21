@@ -640,7 +640,7 @@ export default function GetStartedWizard() {
                     {state.step === 2 && (
                         <div className="gs-fade" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <p style={{ fontSize: 'var(--text-base, 16px)', color: 'var(--color-stone)', fontWeight: 600, margin: '0 0 4px', textAlign: 'center' }}>
-                                Where are your properties listed?
+                                Where are your properties currently listed?
                             </p>
 
                             {PLATFORMS.map(p => {
@@ -715,8 +715,8 @@ export default function GetStartedWizard() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     <span style={{ fontSize: 20 }}>🔗</span>
                                     <div>
-                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-stone)' }}>Paste listing link</div>
-                                        <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.35)', marginTop: 2 }}>We'll import what we can from your listing page</div>
+                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-stone)' }}>Import from existing listing</div>
+                                        <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.35)', marginTop: 2 }}>We'll pull details from your existing listing</div>
                                     </div>
                                 </div>
                             </div>
@@ -767,7 +767,7 @@ export default function GetStartedWizard() {
                                     fontSize: 12, color: 'rgba(234,229,222,0.35)', marginBottom: 16, lineHeight: 1.6, padding: '10px 14px',
                                     background: 'rgba(181,110,69,0.06)', borderRadius: 'var(--radius-md, 12px)', border: '1px solid rgba(181,110,69,0.1)',
                                 }}>
-                                    <strong style={{ color: 'var(--color-copper)' }}>How it works:</strong> Paste the full URL of your listing page. We'll pull publicly available data to speed up your setup.
+                                    <strong style={{ color: 'var(--color-copper)' }}>How it works:</strong> Paste the URL of your existing listing. We'll pull publicly available details to speed up your setup.
                                 </div>
                                 {state.selectedPlatforms.map(platformId => {
                                     const platform = PLATFORMS.find(p => p.id === platformId);
@@ -792,7 +792,7 @@ export default function GetStartedWizard() {
                                     }}
                                     disabled={state.extracting}
                                     style={{ ...primaryBtn, flex: 2, opacity: state.extracting ? 0.7 : 1 }}>
-                                    {state.extracting ? '⏳ Extracting listing data...' : Object.values(state.urls).some(u => u.trim()) ? 'Import & Review →' : 'Skip — Set Up Manually →'}
+                                    {state.extracting ? '⏳ Importing property details...' : Object.values(state.urls).some(u => u.trim()) ? 'Import & Review →' : 'Skip — Set Up Manually →'}
                                 </button>
                             </div>
                         </div>
@@ -803,7 +803,7 @@ export default function GetStartedWizard() {
                         <div className="gs-fade" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             {state.extractedCount > 0 && (
                                 <div style={{ ...card, padding: '14px 18px', background: 'rgba(74,124,89,0.06)', border: '1px solid rgba(74,124,89,0.15)' }}>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-ok, #4A7C59)' }}>✅ {state.extractedCount} fields extracted from your listing</div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-ok, #4A7C59)' }}>✅ {state.extractedCount} details imported from your listing</div>
                                     <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.35)', marginTop: 4 }}>Review and edit anything below before continuing.</div>
                                 </div>
                             )}

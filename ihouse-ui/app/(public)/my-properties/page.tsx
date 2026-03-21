@@ -173,7 +173,7 @@ export default function MyPropertiesPage() {
                             </button>
                         </div>
                         <p style={{ fontSize: 14, color: 'rgba(234,229,222,0.35)', margin: '8px 0 0' }}>
-                            {userName ? `Welcome back, ${userName}.` : userEmail ? `Signed in as ${userEmail}` : 'Manage your property listings.'}
+                            {userName ? `Welcome back, ${userName}.` : userEmail ? `Signed in as ${userEmail}` : 'Manage your properties.'}
                         </p>
                     </div>
 

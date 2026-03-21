@@ -270,15 +270,15 @@ export default function PlatformPage() {
                 }}>
                     <ModuleCard
                         name="Core" moduleName="Core"
-                        desc="The foundation. Property data, configuration, booking records, availability, and the canonical truth layer."
+                        desc="The foundation. Property data, configuration, booking records, and the canonical truth layer."
                         color="var(--color-moss)"
-                        features={['Property management', 'Booking records', 'Availability engine', 'Configuration & settings']}
+                        features={['Property management', 'Booking records', 'Data integrity engine', 'Configuration & settings']}
                     />
                     <ModuleCard
                         name="Stays" moduleName="Stays"
-                        desc="Reservation lifecycle. Booking sync, channel management, rate integrity, conflict detection, and guest-stay continuity."
+                        desc="Reservation lifecycle. Booking imports, record normalization, conflict detection, and guest-stay continuity."
                         color="var(--color-moss)"
-                        features={['Multi-OTA sync', 'Conflict detection', 'Rate management', 'Booking timeline']}
+                        features={['Multi-source import', 'Conflict detection', 'Record normalization', 'Booking timeline']}
                     />
                     <ModuleCard
                         name="Ops" moduleName="Ops"
@@ -330,8 +330,8 @@ export default function PlatformPage() {
                 <div style={{ maxWidth: 640, marginInline: 'auto' }}>
                     <FlowStep
                         number="01"
-                        title="Connect your channels"
-                        desc="Link your OTA accounts. Domaniqo begins syncing bookings, availability, and rates across all connected platforms."
+                        title="Connect your booking sources"
+                        desc="Connect your booking sources — Airbnb, Booking.com, iCal feeds. Domaniqo begins importing your booking data into one unified timeline."
                     />
                     <FlowStep
                         number="02"
@@ -363,7 +363,7 @@ export default function PlatformPage() {
                     borderTop: '1px solid rgba(234,229,222,0.06)',
                     borderBottom: '1px solid rgba(234,229,222,0.06)',
                 }}>
-                    <ValueStat value="14+" label="OTA Integrations" />
+                    <ValueStat value="14+" label="Booking Sources" />
                     <ValueStat value="7" label="Product Modules" />
                     <ValueStat value="5" label="Notification Channels" />
                     <ValueStat value="3" label="Languages" />
@@ -423,7 +423,7 @@ export default function PlatformPage() {
                             color: 'var(--color-stone)',
                             marginBottom: 'var(--space-3)',
                         }}>
-                            Maximize your revenue.
+                            Trust your numbers.
                         </h3>
                         <p style={{
                             fontSize: 'var(--text-sm)',

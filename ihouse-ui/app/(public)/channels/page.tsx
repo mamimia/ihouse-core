@@ -201,7 +201,7 @@ export default function ChannelsPage() {
                     opacity: 0,
                     animation: 'fadeUp 800ms 400ms ease forwards',
                 }}>
-                    Every channel. One truth.
+                    Every booking source. One truth.
                 </h1>
 
                 <p style={{
@@ -213,8 +213,8 @@ export default function ChannelsPage() {
                     opacity: 0,
                     animation: 'fadeUp 800ms 600ms ease forwards',
                 }}>
-                    Domaniqo syncs with the booking platforms your operations depend on. 
-                    Every sync is auditable. Every failure is surfaced. No silent drift.
+                    Domaniqo brings in booking data from the platforms you already use. 
+                    Every import is auditable. Every discrepancy is surfaced. No silent drift.
                 </p>
 
                 <Link
@@ -255,7 +255,7 @@ export default function ChannelsPage() {
                 }}>
                     Not just connected.
                     <br />
-                    Transparently synchronized.
+                    Transparently imported.
                 </div>
                 <p style={{
                     fontSize: 'var(--text-base)',
@@ -264,9 +264,9 @@ export default function ChannelsPage() {
                     marginInline: 'auto',
                     lineHeight: 1.7,
                 }}>
-                    Most channel managers push data outward and hope it arrives. 
-                    Domaniqo tracks every sync, logs every response, and surfaces 
-                    failures the moment they happen — not when a double booking appears.
+                    Most tools leave you guessing about your booking data. 
+                    Domaniqo tracks every import, logs every source, and surfaces 
+                    discrepancies the moment they appear — not when a double booking shows up.
                 </p>
             </Section>
 
@@ -274,7 +274,7 @@ export default function ChannelsPage() {
             <Section id="channel-grid">
                 <div style={{ textAlign: 'center', marginBottom: 'var(--space-10)' }}>
                     <SectionLabel>Connected platforms</SectionLabel>
-                    <SectionHeading>14+ OTA integrations and growing.</SectionHeading>
+                    <SectionHeading>Booking data from 14+ platforms.</SectionHeading>
                 </div>
 
                 <div style={{
@@ -323,7 +323,7 @@ export default function ChannelsPage() {
                     <StepCard
                         number="01"
                         title="Ingest & Normalize"
-                        desc="Bookings arrive from each OTA in their native format. Domaniqo normalizes every payload into one canonical schema — dates, currencies, guest data, status."
+                        desc="Booking data arrives from each platform in its native format. Domaniqo normalizes every record into one canonical schema — dates, currencies, guest data, status."
                     />
                     <StepCard
                         number="02"
@@ -332,8 +332,8 @@ export default function ChannelsPage() {
                     />
                     <StepCard
                         number="03"
-                        title="Push & Track"
-                        desc="Availability and rates pushed outward to every connected channel. Rate-limited with exponential backoff. Every response logged. Every failure surfaced."
+                        title="Connect & Monitor"
+                        desc="Calendar feeds and booking sources connected to your properties. Each connection is monitored for health, latency, and completeness."
                     />
                     <StepCard
                         number="04"
@@ -347,7 +347,7 @@ export default function ChannelsPage() {
             <Section id="channel-difference">
                 <div style={{ textAlign: 'center', marginBottom: 'var(--space-10)' }}>
                     <SectionLabel>Why Domaniqo is different</SectionLabel>
-                    <SectionHeading>Channel management with engineering depth.</SectionHeading>
+                    <SectionHeading>Booking visibility with engineering depth.</SectionHeading>
                 </div>
 
                 <div style={{
@@ -377,13 +377,13 @@ export default function ChannelsPage() {
                     />
                     <FeatureCard
                         icon="⚡"
-                        title="Rate-Limited Push"
-                        desc="Each OTA has different rate limits. Domaniqo respects them all — exponential backoff, per-provider throttling, zero banned connections."
+                        title="Source Health Monitoring"
+                        desc="Each booking source has different data patterns. Domaniqo monitors them all — connection health, data freshness, zero missed bookings."
                     />
                     <FeatureCard
                         icon="🗓️"
                         title="iCal Fallback"
-                        desc="For channels without API access, iCal sync provides reliable calendar synchronization as a transparent fallback layer."
+                        desc="For platforms without direct data feeds, iCal calendar sync provides reliable booking visibility as a lightweight connection layer."
                     />
                 </div>
             </Section>
@@ -398,7 +398,7 @@ export default function ChannelsPage() {
                     color: 'var(--color-stone)',
                     marginBottom: 'var(--space-6)',
                 }}>
-                    Ready to sync with confidence?
+                    Ready for full booking visibility?
                 </div>
                 <Link
                     href="/early-access"

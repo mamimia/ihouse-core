@@ -273,9 +273,9 @@ export default function PricingPage() {
                         price="Contact us"
                         period=""
                         features={[
-                            'Multi-OTA sync (all 14+ channels)',
-                            'Unified booking management',
-                            'Calendar & availability control',
+                            'Booking import from 14+ sources',
+                            'Unified booking records',
+                            'Calendar sync & visibility',
                             'Task management with SLA tracking',
                             'Guest portal & check-in flows',
                             'Financial overview & reporting',
@@ -314,7 +314,7 @@ export default function PricingPage() {
                         features={[
                             'Everything in Portfolio',
                             'Dedicated integration support',
-                            'Custom OTA adapter development',
+                            'Custom source integration',
                             'On-premise deployment option',
                             'SLA guarantees',
                             'Custom reporting & dashboards',
@@ -337,7 +337,7 @@ export default function PricingPage() {
                     color: 'var(--color-stone)',
                     marginBottom: 'var(--space-10)',
                 }}>
-                    No per-channel fees. No booking commissions.
+                    No per-source fees. No booking commissions.
                 </h2>
 
                 <div style={{
@@ -349,7 +349,7 @@ export default function PricingPage() {
                     textAlign: 'center',
                 }}>
                     {[
-                        { icon: '🔗', label: 'All channels included' },
+                        { icon: '🔗', label: 'All booking sources included' },
                         { icon: '🏠', label: 'Unlimited properties' },
                         { icon: '📱', label: 'Mobile-optimized' },
                         { icon: '🌍', label: 'Multi-language (EN/TH/HE)' },
@@ -394,7 +394,7 @@ export default function PricingPage() {
                     />
                     <FaqItem
                         q="What if I need channels you don't support yet?"
-                        a="Our outbound sync pipeline is designed for extensibility. We actively build new OTA adapters based on operator demand. Enterprise plans include custom adapter development."
+                        a="Our import pipeline is designed for extensibility. We actively add new booking sources based on operator demand. Enterprise plans include custom integrations."
                     />
                     <FaqItem
                         q="Can I switch plans later?"
