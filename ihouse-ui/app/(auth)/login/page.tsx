@@ -103,6 +103,20 @@ export default function LoginPage() {
 
     return (
         <AuthCard titleKey="auth.welcome" subtitleKey="auth.subtitle">
+            {/* Google Sign-In — primary quick-return path */}
+            <GoogleSignInButton
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+            />
+            <p style={{
+                textAlign: 'center', fontSize: 'var(--text-xs, 11px)',
+                color: 'rgba(234,229,222,0.25)', margin: '6px 0 0', lineHeight: 1.4,
+            }}>
+                Signed up with Google? Use this to sign back in.
+            </p>
+
+            <AuthDivider text="OR SIGN IN WITH EMAIL" />
+
             <form onSubmit={handleContinue} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
                 {/* Email */}
                 <div>
@@ -189,13 +203,6 @@ export default function LoginPage() {
                     {t('auth.continue')}
                 </button>
             </form>
-
-            <AuthDivider />
-
-            <GoogleSignInButton
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-            />
 
             {/* Bottom links */}
             <div style={{

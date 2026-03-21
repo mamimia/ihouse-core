@@ -71,6 +71,40 @@ export async function GET(request: NextRequest) {
 
         const rows = await res.json();
 
+        // ── Lazy 90-day draft expiration ──
+        // Drafts older than 90 days from creation are auto-expired.
+        const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        const expiredIds: string[] = [];
+        for (const r of rows) {
+            if (r.status === 'draft' && r.created_at) {
+                const age = now - new Date(r.created_at).getTime();
+                if (age > NINETY_DAYS_MS) {
+                    expiredIds.push(r.property_id);
+                    r.status = 'expired'; // Update local copy immediately
+                }
+            }
+        }
+
+        // Batch-expire old drafts in DB (fire-and-forget)
+        if (expiredIds.length > 0) {
+            for (const pid of expiredIds) {
+                fetch(`${SUPABASE_URL}/rest/v1/properties?property_id=eq.${encodeURIComponent(pid)}&status=eq.draft`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        apikey: SUPABASE_SERVICE_ROLE_KEY,
+                        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        status: 'expired',
+                        archived_at: new Date().toISOString(),
+                        archived_by: 'system:90-day-expiration',
+                    }),
+                }).catch(() => { /* non-critical */ });
+            }
+        }
+
         // Map to frontend shape
         const properties = rows.map((r: Record<string, unknown>) => ({
             id: r.property_id,
@@ -94,3 +128,4 @@ export async function GET(request: NextRequest) {
         );
     }
 }
+
