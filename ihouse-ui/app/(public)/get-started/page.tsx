@@ -772,20 +772,20 @@ export default function GetStartedWizard() {
                                             ✉️ We sent a verification code to <strong style={{ color: 'var(--color-stone)' }}>{authEmail}</strong>
                                         </div>
                                         <div style={{ marginBottom: 14 }}>
-                                            <label style={label}>Verification Code</label>
+                                            <label style={label}>8-Digit Verification Code</label>
                                             <input
                                                 ref={otpInputRef} className="gs-input"
                                                 value={authOtp} onChange={e => setAuthOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                                                onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
+                                                onKeyDown={e => e.key === 'Enter' && authOtp.length === 8 && handleVerifyOtp()}
                                                 placeholder="· · · · · · · ·" style={{ ...inputStyle, textAlign: 'center', fontSize: 22, letterSpacing: '0.3em', fontWeight: 300, color: 'var(--color-stone)' }}
                                                 maxLength={8} inputMode="numeric" autoComplete="one-time-code"
                                             />
                                             <div style={{ fontSize: 11, color: 'rgba(234,229,222,0.2)', marginTop: 6, textAlign: 'center' }}>
-                                                Enter the code from your email
+                                                Enter the 8-digit code from your email
                                             </div>
                                         </div>
-                                        <button onClick={handleVerifyOtp} disabled={authLoading || authOtp.length < 6}
-                                            style={{ ...primaryBtn, ...disabledStyle(authLoading || authOtp.length < 6) }}>
+                                        <button onClick={handleVerifyOtp} disabled={authLoading || authOtp.length !== 8}
+                                            style={{ ...primaryBtn, ...disabledStyle(authLoading || authOtp.length !== 8) }}>
                                             {authLoading ? 'Verifying…' : 'Verify & Continue →'}
                                         </button>
                                         <button onClick={() => { setAuthOtp(''); setAuthOtpSent(false); setAuthError(''); }}
