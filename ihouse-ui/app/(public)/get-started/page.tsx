@@ -196,6 +196,7 @@ export default function GetStartedWizard() {
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');
     const [authedUser, setAuthedUser] = useState<{ id: string; email: string } | null>(null);
+    const [authProvider, setAuthProvider] = useState<'email' | 'google'>('email');
 
     // Profile state
     const [profile, setProfile] = useState({ firstName: '', lastName: '', phone: '', countryCode: '+66', userType: '' });
@@ -204,13 +205,17 @@ export default function GetStartedWizard() {
     // Draft save state
     const [draftSaving, setDraftSaving] = useState(false);
 
-    // Password state (merged into step 7)
+    // Password state (OTP path only — Google users skip password)
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
+    const [passwordFocused, setPasswordFocused] = useState(false);
 
     // Photo lightbox
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+    // Whether the current auth is via Google (skip password section)
+    const isGoogleAuth = authProvider === 'google';
 
     const otpInputRef = useRef<HTMLInputElement>(null);
 
@@ -228,6 +233,8 @@ export default function GetStartedWizard() {
             supabase.auth.getSession().then(({ data }) => {
                 if (data.session?.user) {
                     setAuthedUser({ id: data.session.user.id, email: data.session.user.email || '' });
+                    const provider = data.session.user.app_metadata?.provider;
+                    if (provider === 'google') setAuthProvider('google');
                 }
             });
         }
@@ -239,6 +246,20 @@ export default function GetStartedWizard() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
                 setAuthedUser({ id: session.user.id, email: session.user.email || '' });
+                const provider = session.user.app_metadata?.provider;
+                if (provider === 'google') {
+                    setAuthProvider('google');
+                    // Pre-fill name from Google profile if available
+                    const meta = session.user.user_metadata;
+                    if (meta?.full_name) {
+                        const parts = (meta.full_name as string).split(' ');
+                        setProfile(p => ({
+                            ...p,
+                            firstName: p.firstName || parts[0] || '',
+                            lastName: p.lastName || parts.slice(1).join(' ') || '',
+                        }));
+                    }
+                }
                 // If returning from OAuth, advance past auth step
                 const saved = sessionStorage.getItem(STORAGE_KEY);
                 if (saved) {
@@ -372,6 +393,7 @@ export default function GetStartedWizard() {
                 setAuthError(result.error.message);
             } else if (result.data.user) {
                 setAuthedUser({ id: result.data.user.id, email: result.data.user.email || authEmail });
+                setAuthProvider('email');
                 setStep(7);
             }
         } catch (e: unknown) {
@@ -400,12 +422,60 @@ export default function GetStartedWizard() {
         }
     };
 
-    /* ─── Set Password ─── */
+    /* ─── Password validation helpers ─── */
+    const pwRules = [
+        { key: 'length', label: '8+ characters', pass: newPassword.length >= 8 },
+        { key: 'upper', label: '1 uppercase letter', pass: /[A-Z]/.test(newPassword) },
+        { key: 'number', label: '1 number', pass: /[0-9]/.test(newPassword) },
+        { key: 'special', label: '1 special character', pass: /[^A-Za-z0-9]/.test(newPassword) },
+    ];
+    const allPwRulesPass = pwRules.every(r => r.pass);
+
+    /* ─── Save property draft (shared between both paths) ─── */
+    const saveDraft = async () => {
+        if (!authedUser) return false;
+        const res = await fetch('/api/onboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                propertyName: state.property.name.trim(),
+                propertyType: state.property.type,
+                city: state.property.city,
+                country: state.property.country,
+                maxGuests: state.property.guests,
+                bedrooms: state.property.bedrooms,
+                beds: state.property.beds,
+                bathrooms: state.property.bathrooms,
+                address: state.property.address,
+                description: state.property.description,
+                sourceUrl: state.property.source_url,
+                sourcePlatform: state.property.source_platform,
+                submitterUserId: authedUser.id,
+                submitterEmail: authedUser.email,
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                phone: profile.countryCode + ' ' + profile.phone,
+                userType: profile.userType,
+                channels: state.selectedPlatforms
+                    .filter(id => state.urls[id]?.trim())
+                    .map(id => ({ provider: id, url: state.urls[id] })),
+            }),
+        });
+        const data = await res.json();
+        if (data.success || data.property_id) {
+            sessionStorage.removeItem(STORAGE_KEY);
+            router.push('/my-properties');
+            return true;
+        }
+        return false;
+    };
+
+    /* ─── Set Password + Save (OTP path) ─── */
     const handleSetPassword = async () => {
         if (!supabase || !authedUser) return;
         setPasswordError('');
-        if (newPassword.length < 8) {
-            setPasswordError('Password must be at least 8 characters');
+        if (!allPwRulesPass) {
+            setPasswordError('Password does not meet all requirements');
             return;
         }
         if (newPassword !== confirmPassword) {
@@ -414,49 +484,29 @@ export default function GetStartedWizard() {
         }
         setDraftSaving(true);
         try {
-            // 1. Set the password on the Supabase auth user
             const { error: pwError } = await supabase.auth.updateUser({ password: newPassword });
             if (pwError) {
                 setPasswordError(pwError.message);
                 setDraftSaving(false);
                 return;
             }
+            const ok = await saveDraft();
+            if (!ok) setPasswordError('Failed to save property. Please try again.');
+        } catch {
+            setPasswordError('Network error. Please try again.');
+        } finally {
+            setDraftSaving(false);
+        }
+    };
 
-            // 2. Save the property draft bound to the user
-            const res = await fetch('/api/onboard', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    propertyName: state.property.name.trim(),
-                    propertyType: state.property.type,
-                    city: state.property.city,
-                    country: state.property.country,
-                    maxGuests: state.property.guests,
-                    bedrooms: state.property.bedrooms,
-                    beds: state.property.beds,
-                    bathrooms: state.property.bathrooms,
-                    address: state.property.address,
-                    description: state.property.description,
-                    sourceUrl: state.property.source_url,
-                    sourcePlatform: state.property.source_platform,
-                    submitterUserId: authedUser.id,
-                    submitterEmail: authedUser.email,
-                    firstName: profile.firstName,
-                    lastName: profile.lastName,
-                    phone: profile.countryCode + ' ' + profile.phone,
-                    userType: profile.userType,
-                    channels: state.selectedPlatforms
-                        .filter(id => state.urls[id]?.trim())
-                        .map(id => ({ provider: id, url: state.urls[id] })),
-                }),
-            });
-            const data = await res.json();
-            if (data.success || data.property_id) {
-                sessionStorage.removeItem(STORAGE_KEY);
-                router.push('/my-properties');
-            } else {
-                setPasswordError(data.error || 'Failed to save property. Please try again.');
-            }
+    /* ─── Save without password (Google path) ─── */
+    const handleGoogleSave = async () => {
+        if (!authedUser) return;
+        setPasswordError('');
+        setDraftSaving(true);
+        try {
+            const ok = await saveDraft();
+            if (!ok) setPasswordError('Failed to save property. Please try again.');
         } catch {
             setPasswordError('Network error. Please try again.');
         } finally {
@@ -973,31 +1023,34 @@ export default function GetStartedWizard() {
                                     <div>
                                         <label style={label}>Phone</label>
                                         <div style={{
-                                            display: 'flex',
+                                            display: 'flex', alignItems: 'center',
                                             background: 'var(--color-midnight, #171A1F)',
                                             border: '1px solid rgba(234,229,222,0.1)',
                                             borderRadius: 'var(--radius-md, 12px)',
-                                            overflow: 'hidden',
                                             transition: 'border-color 0.2s',
                                         }}>
                                             <select
                                                 value={profile.countryCode}
                                                 onChange={e => setProfile(p => ({ ...p, countryCode: e.target.value }))}
                                                 style={{
-                                                    background: 'rgba(234,229,222,0.03)',
-                                                    border: 'none', borderRight: '1px solid rgba(234,229,222,0.08)',
-                                                    color: 'var(--color-stone, #EAE5DE)',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    color: 'rgba(234,229,222,0.5)',
                                                     fontSize: 'var(--text-sm, 14px)',
                                                     fontFamily: 'var(--font-sans, inherit)',
-                                                    padding: '12px 8px 12px 12px',
+                                                    padding: '12px 4px 12px 14px',
                                                     outline: 'none', cursor: 'pointer',
-                                                    width: 82, flexShrink: 0,
+                                                    WebkitAppearance: 'none' as const,
+                                                    MozAppearance: 'none' as const,
+                                                    appearance: 'none' as const,
+                                                    width: 56, flexShrink: 0,
                                                 }}
                                             >
                                                 {COUNTRY_CODES.map(cc => (
                                                     <option key={cc.code} value={cc.code}>{cc.code} {cc.country}</option>
                                                 ))}
                                             </select>
+                                            <span style={{ color: 'rgba(234,229,222,0.15)', fontSize: 14, userSelect: 'none' }}>▾</span>
                                             <input
                                                 className="gs-input" type="tel"
                                                 value={profile.phone}
@@ -1006,7 +1059,9 @@ export default function GetStartedWizard() {
                                                 style={{
                                                     ...inputStyle,
                                                     border: 'none', borderRadius: 0,
+                                                    background: 'transparent',
                                                     flex: 1, minWidth: 0,
+                                                    paddingLeft: 6,
                                                 }}
                                             />
                                         </div>
@@ -1031,33 +1086,49 @@ export default function GetStartedWizard() {
                                         </div>
                                     </div>
 
-                                    {/* ── Divider: secure your account ── */}
-                                    <div className="gs-divider" style={{ margin: '6px 0' }}>Secure your account</div>
-
-                                    {/* Password */}
-                                    <div>
-                                        <label style={label}>Password *</label>
-                                        <input className="gs-input" type="password" value={newPassword}
-                                            onChange={e => { setNewPassword(e.target.value); setPasswordError(''); }}
-                                            placeholder="Minimum 8 characters" style={inputStyle}
-                                            autoComplete="new-password" />
-                                    </div>
-                                    <div>
-                                        <label style={label}>Confirm Password *</label>
-                                        <input className="gs-input" type="password" value={confirmPassword}
-                                            onChange={e => { setConfirmPassword(e.target.value); setPasswordError(''); }}
-                                            onKeyDown={e => e.key === 'Enter' && newPassword.length >= 8 && confirmPassword === newPassword && profile.firstName.trim() && profile.lastName.trim() && profile.userType && handleSetPassword()}
-                                            placeholder="Re-enter your password" style={inputStyle}
-                                            autoComplete="new-password" />
-                                    </div>
-                                    {newPassword.length > 0 && newPassword.length < 8 && (
-                                        <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.3)' }}>⚠ At least 8 characters required</div>
-                                    )}
-                                    {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-                                        <div style={{ fontSize: 12, color: '#D64545' }}>✗ Passwords do not match</div>
-                                    )}
-                                    {confirmPassword.length > 0 && newPassword === confirmPassword && newPassword.length >= 8 && (
-                                        <div style={{ fontSize: 12, color: '#4A7C59' }}>✓ Passwords match</div>
+                                    {/* ── Password section (OTP path only) ── */}
+                                    {!isGoogleAuth && (
+                                        <>
+                                            <div className="gs-divider" style={{ margin: '6px 0' }}>Secure your account</div>
+                                            <div>
+                                                <label style={label}>Password *</label>
+                                                <input className="gs-input" type="password" value={newPassword}
+                                                    onChange={e => { setNewPassword(e.target.value); setPasswordError(''); }}
+                                                    onFocus={() => setPasswordFocused(true)}
+                                                    onBlur={() => setPasswordFocused(false)}
+                                                    placeholder="Create a password" style={inputStyle}
+                                                    autoComplete="new-password" />
+                                            </div>
+                                            {/* Live password rules checklist */}
+                                            {(passwordFocused || newPassword.length > 0) && (
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 11, lineHeight: 1.8 }}>
+                                                    {pwRules.map(r => (
+                                                        <span key={r.key} style={{
+                                                            color: newPassword.length === 0
+                                                                ? 'rgba(234,229,222,0.25)'
+                                                                : r.pass ? '#4A7C59' : 'rgba(234,229,222,0.3)',
+                                                            transition: 'color 0.2s',
+                                                        }}>
+                                                            {newPassword.length > 0 && r.pass ? '✓' : '○'} {r.label}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div>
+                                                <label style={label}>Confirm Password *</label>
+                                                <input className="gs-input" type="password" value={confirmPassword}
+                                                    onChange={e => { setConfirmPassword(e.target.value); setPasswordError(''); }}
+                                                    onKeyDown={e => e.key === 'Enter' && allPwRulesPass && confirmPassword === newPassword && profile.firstName.trim() && profile.lastName.trim() && profile.userType && handleSetPassword()}
+                                                    placeholder="Re-enter your password" style={inputStyle}
+                                                    autoComplete="new-password" />
+                                            </div>
+                                            {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+                                                <div style={{ fontSize: 12, color: '#D64545' }}>✗ Passwords do not match</div>
+                                            )}
+                                            {confirmPassword.length > 0 && newPassword === confirmPassword && allPwRulesPass && (
+                                                <div style={{ fontSize: 12, color: '#4A7C59' }}>✓ Passwords match</div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
 
@@ -1068,12 +1139,21 @@ export default function GetStartedWizard() {
                                 )}
                             </div>
 
-                            <button
-                                onClick={handleSetPassword}
-                                disabled={draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType || newPassword.length < 8 || newPassword !== confirmPassword}
-                                style={{ ...primaryBtn, ...disabledStyle(draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType || newPassword.length < 8 || newPassword !== confirmPassword) }}>
-                                {draftSaving ? 'Creating your account…' : 'Create Account & Save Property →'}
-                            </button>
+                            {isGoogleAuth ? (
+                                <button
+                                    onClick={handleGoogleSave}
+                                    disabled={draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType}
+                                    style={{ ...primaryBtn, ...disabledStyle(draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType) }}>
+                                    {draftSaving ? 'Saving…' : 'Save Property →'}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSetPassword}
+                                    disabled={draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType || !allPwRulesPass || newPassword !== confirmPassword}
+                                    style={{ ...primaryBtn, ...disabledStyle(draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType || !allPwRulesPass || newPassword !== confirmPassword) }}>
+                                    {draftSaving ? 'Creating your account…' : 'Create Account & Save Property →'}
+                                </button>
+                            )}
                         </div>
                     )}
 
