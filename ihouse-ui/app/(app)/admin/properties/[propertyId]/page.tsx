@@ -276,6 +276,7 @@ export default function PropertyDetailPage() {
         border: 'none',
         cursor: 'pointer',
         whiteSpace: 'nowrap' as const,
+        flexShrink: 0,
     });
 
     const cardStyle = {
