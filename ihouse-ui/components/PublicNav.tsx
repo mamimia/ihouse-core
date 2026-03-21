@@ -50,8 +50,8 @@ export default function PublicNav() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '0 var(--space-6)',
-                height: 'var(--header-height)',
+                padding: '16px var(--space-6)',
+                height: 'auto',
                 background: scrolled
                     ? 'rgba(23,26,31,0.85)'
                     : 'transparent',
@@ -68,6 +68,8 @@ export default function PublicNav() {
                     alignItems: 'center',
                     gap: 'var(--space-3)',
                     textDecoration: 'none',
+                    minHeight: 'auto',
+                    minWidth: 'auto',
                 }}
             >
                 <DMonogram size={26} color="var(--color-stone)" strokeWidth={1.6} />
@@ -98,6 +100,8 @@ export default function PublicNav() {
                             letterSpacing: '0.03em',
                             fontWeight: 500,
                             transition: 'color var(--transition-fast)',
+                            minHeight: 'auto',
+                            minWidth: 'auto',
                         }}
                     >
                         {link.label}
@@ -120,7 +124,8 @@ export default function PublicNav() {
                     textDecoration: 'none',
                     transition: 'opacity var(--transition-fast), box-shadow var(--transition-fast)',
                     boxShadow: 'var(--shadow-glow-moss)',
-                    minHeight: 36,
+                    minHeight: 'auto',
+                    minWidth: 'auto',
                     display: 'inline-flex',
                     alignItems: 'center',
                 }}
