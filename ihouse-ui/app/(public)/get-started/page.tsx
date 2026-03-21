@@ -1029,28 +1029,31 @@ export default function GetStartedWizard() {
                                             borderRadius: 'var(--radius-md, 12px)',
                                             transition: 'border-color 0.2s',
                                         }}>
-                                            <select
-                                                value={profile.countryCode}
-                                                onChange={e => setProfile(p => ({ ...p, countryCode: e.target.value }))}
-                                                style={{
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    color: 'rgba(234,229,222,0.5)',
+                                            {/* Country code: invisible <select> overlaying visible code text */}
+                                            <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                                <span style={{
+                                                    padding: '12px 2px 12px 14px',
                                                     fontSize: 'var(--text-sm, 14px)',
-                                                    fontFamily: 'var(--font-sans, inherit)',
-                                                    padding: '12px 4px 12px 14px',
-                                                    outline: 'none', cursor: 'pointer',
-                                                    WebkitAppearance: 'none' as const,
-                                                    MozAppearance: 'none' as const,
-                                                    appearance: 'none' as const,
-                                                    width: 56, flexShrink: 0,
-                                                }}
-                                            >
-                                                {COUNTRY_CODES.map(cc => (
-                                                    <option key={cc.code} value={cc.code}>{cc.code} {cc.country}</option>
-                                                ))}
-                                            </select>
-                                            <span style={{ color: 'rgba(234,229,222,0.15)', fontSize: 14, userSelect: 'none' }}>▾</span>
+                                                    color: 'rgba(234,229,222,0.5)',
+                                                    pointerEvents: 'none', whiteSpace: 'nowrap',
+                                                }}>
+                                                    {profile.countryCode}
+                                                </span>
+                                                <span style={{ color: 'rgba(234,229,222,0.15)', fontSize: 10, pointerEvents: 'none', marginRight: 2 }}>▾</span>
+                                                <select
+                                                    value={profile.countryCode}
+                                                    onChange={e => setProfile(p => ({ ...p, countryCode: e.target.value }))}
+                                                    style={{
+                                                        position: 'absolute', inset: 0,
+                                                        opacity: 0, cursor: 'pointer',
+                                                        width: '100%', height: '100%',
+                                                    }}
+                                                >
+                                                    {COUNTRY_CODES.map(cc => (
+                                                        <option key={cc.code} value={cc.code}>{cc.code} {cc.country}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                             <input
                                                 className="gs-input" type="tel"
                                                 value={profile.phone}
