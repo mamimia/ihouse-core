@@ -4,7 +4,7 @@
  * Phase 858 — Progressive Get Started Wizard (Corrected Flow)
  * Route: /get-started
  *
- * 8-step progressive wizard optimized for mobile-first.
+ * 7-step progressive wizard optimized for mobile-first.
  * Auth gate at step 6 (after first value moment at step 5).
  * Operational details REMOVED — deferred to post-auth draft editing.
  *
@@ -13,11 +13,10 @@
  *   2. Platform selection (Airbnb, Booking, etc.)
  *   3. Import mode (link / manual / connect-coming-soon)
  *   4. Paste listing URLs
- *   5. Property preview / review (first value moment)
+ *   5. Property preview / review (first value moment) + photo strip
  *   6. AUTH GATE (email verification code or Google OAuth)
- *   7. Profile collection (name, phone, user type)
- *   8. SET PASSWORD (create durable account)
- *   9. Draft saved → redirect to /my-properties
+ *   7. ACCOUNT COMPLETION (profile + set password — merged)
+ *   → Draft saved → redirect to /my-properties
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -54,8 +53,28 @@ const PORTFOLIO_OPTIONS = [
     { id: '20+', label: '20+ properties', desc: 'Established manager' },
 ];
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type ImportMode = 'link' | 'manual' | 'connect';
+
+/* Top country codes — text only, no flags */
+const COUNTRY_CODES = [
+    { code: '+66', country: 'TH' }, { code: '+1', country: 'US' },
+    { code: '+44', country: 'UK' }, { code: '+61', country: 'AU' },
+    { code: '+81', country: 'JP' }, { code: '+82', country: 'KR' },
+    { code: '+49', country: 'DE' }, { code: '+33', country: 'FR' },
+    { code: '+39', country: 'IT' }, { code: '+34', country: 'ES' },
+    { code: '+7', country: 'RU' }, { code: '+86', country: 'CN' },
+    { code: '+91', country: 'IN' }, { code: '+65', country: 'SG' },
+    { code: '+60', country: 'MY' }, { code: '+62', country: 'ID' },
+    { code: '+63', country: 'PH' }, { code: '+84', country: 'VN' },
+    { code: '+852', country: 'HK' }, { code: '+971', country: 'AE' },
+    { code: '+55', country: 'BR' }, { code: '+52', country: 'MX' },
+    { code: '+27', country: 'ZA' }, { code: '+64', country: 'NZ' },
+    { code: '+46', country: 'SE' }, { code: '+47', country: 'NO' },
+    { code: '+45', country: 'DK' }, { code: '+31', country: 'NL' },
+    { code: '+41', country: 'CH' }, { code: '+48', country: 'PL' },
+    { code: '+90', country: 'TR' }, { code: '+20', country: 'EG' },
+];
 
 interface PropertyDraft {
     name: string;
@@ -70,6 +89,7 @@ interface PropertyDraft {
     address: string;
     source_url: string;
     source_platform: string;
+    photos: string[];
 }
 
 const EMPTY_DRAFT: PropertyDraft = {
@@ -77,6 +97,7 @@ const EMPTY_DRAFT: PropertyDraft = {
     guests: '', bedrooms: '', beds: '', bathrooms: '',
     description: '', address: '',
     source_url: '', source_platform: '',
+    photos: [],
 };
 
 interface WizardState {
@@ -177,16 +198,19 @@ export default function GetStartedWizard() {
     const [authedUser, setAuthedUser] = useState<{ id: string; email: string } | null>(null);
 
     // Profile state
-    const [profile, setProfile] = useState({ firstName: '', lastName: '', phone: '', userType: '' });
+    const [profile, setProfile] = useState({ firstName: '', lastName: '', phone: '', countryCode: '+66', userType: '' });
     const [profileSaving, setProfileSaving] = useState(false);
 
     // Draft save state
     const [draftSaving, setDraftSaving] = useState(false);
 
-    // Password state (step 8)
+    // Password state (merged into step 7)
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
+
+    // Photo lightbox
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
     const otpInputRef = useRef<HTMLInputElement>(null);
 
@@ -233,7 +257,7 @@ export default function GetStartedWizard() {
     // Persist wizard state
     useEffect(() => {
         if (state.step <= 7) {
-            const toSave = { ...state, extracting: false };
+            const toSave = { ...state, extracting: false, property: { ...state.property, photos: state.property.photos.slice(0, 10) } };
             sessionStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         }
     }, [state]);
@@ -292,6 +316,7 @@ export default function GetStartedWizard() {
                         address: ext.address || prev.property.address,
                         source_url: firstUrl,
                         source_platform: data.source_platform || '',
+                        photos: Array.isArray(ext.photos) ? ext.photos : prev.property.photos,
                     },
                 }));
             } else {
@@ -365,7 +390,7 @@ export default function GetStartedWizard() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/get-started?step=7`,
+                    redirectTo: `${window.location.origin}/get-started?step=7`, // account completion
                 },
             });
             if (error) setAuthError(error.message);
@@ -418,7 +443,7 @@ export default function GetStartedWizard() {
                     submitterEmail: authedUser.email,
                     firstName: profile.firstName,
                     lastName: profile.lastName,
-                    phone: profile.phone,
+                    phone: profile.countryCode + ' ' + profile.phone,
                     userType: profile.userType,
                     channels: state.selectedPlatforms
                         .filter(id => state.urls[id]?.trim())
@@ -440,8 +465,8 @@ export default function GetStartedWizard() {
     };
 
     /* ─── Progress ─── */
-    // Steps visible: 1-5 pre-auth, 6 auth, 7 profile, 8 set password, 9 redirect
-    const totalVisibleSteps = 8;
+    // Steps visible: 1-5 pre-auth, 6 auth, 7 account completion (profile + password)
+    const totalVisibleSteps = 7;
     const displayStep = Math.min(state.step, totalVisibleSteps);
 
     /* ─── Step 5: proceed to auth or skip ─── */
@@ -490,7 +515,7 @@ export default function GetStartedWizard() {
                                 color: 'var(--color-stone, #EAE5DE)',
                                 margin: '16px 0 6px', fontWeight: 400,
                             }}>
-                                {state.step <= 5 ? 'Get Started' : state.step === 6 ? 'Save Your Property' : 'Complete Your Profile'}
+                                {state.step <= 5 ? 'Get Started' : state.step === 6 ? 'Save Your Property' : 'Complete Your Account'}
                             </h1>
 
                             {/* Progress bar */}
@@ -737,6 +762,55 @@ export default function GetStartedWizard() {
                                 <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-stone)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <span style={{ fontSize: 16 }}>🏠</span> Property Details
                                 </h3>
+
+                                {/* ── Photo Strip ── */}
+                                <div style={{ display: 'flex', gap: 8, marginBottom: 18, overflowX: 'auto' }}>
+                                    {state.property.photos.length > 0 ? (
+                                        <>
+                                            {state.property.photos.slice(0, 4).map((url, i) => (
+                                                <div key={i} onClick={() => setLightboxIndex(i)} style={{
+                                                    width: 80, height: 56, borderRadius: 8, overflow: 'hidden',
+                                                    cursor: 'pointer', flexShrink: 0, position: 'relative',
+                                                    border: '1px solid rgba(234,229,222,0.08)',
+                                                }}>
+                                                    <img src={url} alt={`Photo ${i + 1}`} style={{
+                                                        width: '100%', height: '100%', objectFit: 'cover',
+                                                    }} />
+                                                </div>
+                                            ))}
+                                            {state.property.photos.length > 4 && (
+                                                <div onClick={() => setLightboxIndex(4)} style={{
+                                                    width: 80, height: 56, borderRadius: 8, flexShrink: 0,
+                                                    background: 'rgba(234,229,222,0.04)', border: '1px solid rgba(234,229,222,0.08)',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                                                    color: 'rgba(234,229,222,0.4)',
+                                                }}>
+                                                    +{state.property.photos.length - 4}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        /* Empty photo state */
+                                        <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                                            {[0, 1, 2, 3, 4].map(i => (
+                                                <div key={i} style={{
+                                                    width: 80, height: 56, borderRadius: 8, flexShrink: 0,
+                                                    border: '1px dashed rgba(234,229,222,0.1)',
+                                                    background: 'rgba(234,229,222,0.015)',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                }}>
+                                                    {i === 2 && <span style={{ fontSize: 11, color: 'rgba(234,229,222,0.15)' }}>📷</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                {state.property.photos.length === 0 && (
+                                    <div style={{ fontSize: 11, color: 'rgba(234,229,222,0.2)', marginBottom: 14, marginTop: -10 }}>
+                                        No photos yet — you can add them later
+                                    </div>
+                                )}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                     <div>
                                         <label style={label}>Property Name *</label>
@@ -871,7 +945,7 @@ export default function GetStartedWizard() {
                         </div>
                     )}
 
-                    {/* ═══════ Step 7: Profile Collection ═══════ */}
+                    {/* ═══════ Step 7: Account Completion (Profile + Password) ═══════ */}
                     {state.step === 7 && authedUser && (
                         <div className="gs-fade" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <div style={card}>
@@ -883,6 +957,7 @@ export default function GetStartedWizard() {
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {/* Name */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                                         <div>
                                             <label style={label}>First Name *</label>
@@ -893,10 +968,51 @@ export default function GetStartedWizard() {
                                             <input className="gs-input" value={profile.lastName} onChange={e => setProfile(p => ({ ...p, lastName: e.target.value }))} placeholder="Chen" style={inputStyle} />
                                         </div>
                                     </div>
+
+                                    {/* Phone with inline country code */}
                                     <div>
                                         <label style={label}>Phone</label>
-                                        <input className="gs-input" type="tel" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} placeholder="+66 81 xxx xxxx" style={inputStyle} />
+                                        <div style={{
+                                            display: 'flex',
+                                            background: 'var(--color-midnight, #171A1F)',
+                                            border: '1px solid rgba(234,229,222,0.1)',
+                                            borderRadius: 'var(--radius-md, 12px)',
+                                            overflow: 'hidden',
+                                            transition: 'border-color 0.2s',
+                                        }}>
+                                            <select
+                                                value={profile.countryCode}
+                                                onChange={e => setProfile(p => ({ ...p, countryCode: e.target.value }))}
+                                                style={{
+                                                    background: 'rgba(234,229,222,0.03)',
+                                                    border: 'none', borderRight: '1px solid rgba(234,229,222,0.08)',
+                                                    color: 'var(--color-stone, #EAE5DE)',
+                                                    fontSize: 'var(--text-sm, 14px)',
+                                                    fontFamily: 'var(--font-sans, inherit)',
+                                                    padding: '12px 8px 12px 12px',
+                                                    outline: 'none', cursor: 'pointer',
+                                                    width: 82, flexShrink: 0,
+                                                }}
+                                            >
+                                                {COUNTRY_CODES.map(cc => (
+                                                    <option key={cc.code} value={cc.code}>{cc.code} {cc.country}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                className="gs-input" type="tel"
+                                                value={profile.phone}
+                                                onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))}
+                                                placeholder="81 xxx xxxx"
+                                                style={{
+                                                    ...inputStyle,
+                                                    border: 'none', borderRadius: 0,
+                                                    flex: 1, minWidth: 0,
+                                                }}
+                                            />
+                                        </div>
                                     </div>
+
+                                    {/* Role selection */}
                                     <div>
                                         <label style={label}>I am a *</label>
                                         <div style={{ display: 'flex', gap: 10 }}>
@@ -914,45 +1030,23 @@ export default function GetStartedWizard() {
                                             ))}
                                         </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            <button
-                                onClick={() => setStep(8)}
-                                disabled={!profile.firstName.trim() || !profile.lastName.trim() || !profile.userType}
-                                style={{ ...primaryBtn, ...disabledStyle(!profile.firstName.trim() || !profile.lastName.trim() || !profile.userType) }}>
-                                Continue →
-                            </button>
-                        </div>
-                    )}
+                                    {/* ── Divider: secure your account ── */}
+                                    <div className="gs-divider" style={{ margin: '6px 0' }}>Secure your account</div>
 
-                    {/* ─── Step 8: Set Password ─── */}
-                    {state.step === 8 && authedUser && (
-                        <div className="gs-fade">
-                            <div style={{ ...card, marginBottom: 16 }}>
-                                <h2 style={stepTitle}>Create Your Password</h2>
-                                <p style={stepSubtitle}>Secure your account so you can sign in later and manage your properties.</p>
-
-                                <div style={{
-                                    fontSize: 13, color: 'rgba(234,229,222,0.4)', marginBottom: 16,
-                                    padding: '10px 14px', background: 'rgba(234,229,222,0.03)', borderRadius: 'var(--radius-md, 12px)', border: '1px solid rgba(234,229,222,0.06)',
-                                }}>
-                                    Account: <strong style={{ color: 'var(--color-stone)' }}>{authedUser.email}</strong>
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {/* Password */}
                                     <div>
                                         <label style={label}>Password *</label>
                                         <input className="gs-input" type="password" value={newPassword}
                                             onChange={e => { setNewPassword(e.target.value); setPasswordError(''); }}
                                             placeholder="Minimum 8 characters" style={inputStyle}
-                                            autoComplete="new-password" autoFocus />
+                                            autoComplete="new-password" />
                                     </div>
                                     <div>
                                         <label style={label}>Confirm Password *</label>
                                         <input className="gs-input" type="password" value={confirmPassword}
                                             onChange={e => { setConfirmPassword(e.target.value); setPasswordError(''); }}
-                                            onKeyDown={e => e.key === 'Enter' && newPassword.length >= 8 && confirmPassword === newPassword && handleSetPassword()}
+                                            onKeyDown={e => e.key === 'Enter' && newPassword.length >= 8 && confirmPassword === newPassword && profile.firstName.trim() && profile.lastName.trim() && profile.userType && handleSetPassword()}
                                             placeholder="Re-enter your password" style={inputStyle}
                                             autoComplete="new-password" />
                                     </div>
@@ -976,15 +1070,52 @@ export default function GetStartedWizard() {
 
                             <button
                                 onClick={handleSetPassword}
-                                disabled={draftSaving || newPassword.length < 8 || newPassword !== confirmPassword}
-                                style={{ ...primaryBtn, ...disabledStyle(draftSaving || newPassword.length < 8 || newPassword !== confirmPassword) }}>
+                                disabled={draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType || newPassword.length < 8 || newPassword !== confirmPassword}
+                                style={{ ...primaryBtn, ...disabledStyle(draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType || newPassword.length < 8 || newPassword !== confirmPassword) }}>
                                 {draftSaving ? 'Creating your account…' : 'Create Account & Save Property →'}
                             </button>
                         </div>
                     )}
 
-                    {/* Step 7/8 without auth — safety redirect */}
-                    {(state.step === 7 || state.step === 8) && !authedUser && (
+                    {/* ── Photo Lightbox ── */}
+                    {lightboxIndex !== null && state.property.photos.length > 0 && (
+                        <div onClick={() => setLightboxIndex(null)} style={{
+                            position: 'fixed', inset: 0, zIndex: 9999,
+                            background: 'rgba(0,0,0,0.85)', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer',
+                        }}>
+                            <img
+                                src={state.property.photos[lightboxIndex]}
+                                alt={`Photo ${lightboxIndex + 1}`}
+                                style={{ maxWidth: '90vw', maxHeight: '80vh', borderRadius: 12, objectFit: 'contain' }}
+                            />
+                            {/* Nav arrows */}
+                            {lightboxIndex > 0 && (
+                                <button onClick={e => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }} style={{
+                                    position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+                                    background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 99,
+                                    width: 40, height: 40, color: '#fff', fontSize: 20, cursor: 'pointer',
+                                }}>‹</button>
+                            )}
+                            {lightboxIndex < state.property.photos.length - 1 && (
+                                <button onClick={e => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }} style={{
+                                    position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+                                    background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 99,
+                                    width: 40, height: 40, color: '#fff', fontSize: 20, cursor: 'pointer',
+                                }}>›</button>
+                            )}
+                            <div style={{
+                                position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+                                fontSize: 13, color: 'rgba(255,255,255,0.5)',
+                            }}>
+                                {lightboxIndex + 1} / {state.property.photos.length}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 7 without auth — safety redirect */}
+                    {state.step === 7 && !authedUser && (
                         <div className="gs-fade" style={{ textAlign: 'center', padding: 'var(--space-8) 0' }}>
                             <p style={{ color: 'rgba(234,229,222,0.5)', marginBottom: 16 }}>Please sign in to continue.</p>
                             <button onClick={() => setStep(6)} style={primaryBtn}>← Back to Sign In</button>
