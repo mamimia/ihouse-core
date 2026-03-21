@@ -310,15 +310,26 @@ export default function GetStartedWizard() {
         setAuthLoading(true);
         setAuthError('');
         try {
-            const { data, error } = await supabase.auth.verifyOtp({
+            // signInWithOtp creates new users via 'signup' flow, existing users via 'email' flow.
+            // We don't know which one was triggered, so try 'signup' first (most common
+            // for Get Started wizard), then fall back to 'email' for returning users.
+            let result = await supabase.auth.verifyOtp({
                 email: authEmail.trim(),
                 token: authOtp.trim(),
-                type: 'email',
+                type: 'signup',
             });
-            if (error) {
-                setAuthError(error.message);
-            } else if (data.user) {
-                setAuthedUser({ id: data.user.id, email: data.user.email || authEmail });
+            if (result.error) {
+                // Try 'email' type (for existing confirmed users doing magic-link login)
+                result = await supabase.auth.verifyOtp({
+                    email: authEmail.trim(),
+                    token: authOtp.trim(),
+                    type: 'email',
+                });
+            }
+            if (result.error) {
+                setAuthError(result.error.message);
+            } else if (result.data.user) {
+                setAuthedUser({ id: result.data.user.id, email: result.data.user.email || authEmail });
                 setStep(7);
             }
         } catch (e: unknown) {
