@@ -6,15 +6,18 @@
  * Complete redesign with splash animation, dark/light toggle,
  * SVG icons, 8 modules, channels, pricing, FAQ.
  * Self-contained nav and footer (PublicNav/PublicFooter hidden via layout).
+ *
+ * All CSS is scoped under .domaniqo-landing to prevent style leakage
+ * into other pages during Next.js client-side navigation.
  */
 
 import { useEffect, useRef } from 'react';
 
 const CSS_CONTENT = `@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=Manrope:wght@400;500;600;700&display=swap');
 
-:root{--bg:#F8F6F2;--bg2:#EAE5DE;--fg:#171A1F;--fg2:rgba(23,26,31,.55);--card:#FFFFFF;--card-b:rgba(23,26,31,.06);--card-h:rgba(23,26,31,.03);--mg:#171A1F;--sm:#EAE5DE;--ss:#D6C8B7;--qo:#6B7258;--dm:#334036;--cw:#F8F6F2;--sc:#B56E45;--sage:#8FA39B;--alert:#C45B4A;--glow:#D4956A;--glowb:#DBA57A;--tl:#B5AFA6;--nav-bg:rgba(248,246,242,.92);--nav-b:rgba(23,26,31,.05);--fb:'Manrope',sans-serif;--fi:'Inter',sans-serif;--fe:'Instrument Serif',Georgia,serif;--r:10px;--rl:14px}
-[data-theme="dark"]{--bg:#171A1F;--bg2:#1E2127;--fg:#EAE5DE;--fg2:rgba(234,229,222,.45);--card:rgba(234,229,222,.04);--card-b:rgba(234,229,222,.07);--card-h:rgba(234,229,222,.08);--nav-bg:rgba(23,26,31,.92);--nav-b:rgba(234,229,222,.05)}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}body{font-family:var(--fi);color:var(--fg);background:var(--bg);overflow-x:hidden;transition:background .35s ease,color .35s ease}a{text-decoration:none;color:inherit}button{font-family:var(--fb);cursor:pointer;border:none;background:none}
+.domaniqo-landing{--bg:#F8F6F2;--bg2:#EAE5DE;--fg:#171A1F;--fg2:rgba(23,26,31,.55);--card:#FFFFFF;--card-b:rgba(23,26,31,.06);--card-h:rgba(23,26,31,.03);--mg:#171A1F;--sm:#EAE5DE;--ss:#D6C8B7;--qo:#6B7258;--dm:#334036;--cw:#F8F6F2;--sc:#B56E45;--sage:#8FA39B;--alert:#C45B4A;--glow:#D4956A;--glowb:#DBA57A;--tl:#B5AFA6;--nav-bg:rgba(248,246,242,.92);--nav-b:rgba(23,26,31,.05);--fb:'Manrope',sans-serif;--fi:'Inter',sans-serif;--fe:'Instrument Serif',Georgia,serif;--r:10px;--rl:14px}
+.domaniqo-landing[data-theme="dark"]{--bg:#171A1F;--bg2:#1E2127;--fg:#EAE5DE;--fg2:rgba(234,229,222,.45);--card:rgba(234,229,222,.04);--card-b:rgba(234,229,222,.07);--card-h:rgba(234,229,222,.08);--nav-bg:rgba(23,26,31,.92);--nav-b:rgba(234,229,222,.05)}
+.domaniqo-landing *,.domaniqo-landing *::before,.domaniqo-landing *::after{box-sizing:border-box;margin:0;padding:0}.domaniqo-landing{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}.domaniqo-landing{font-family:var(--fi);color:var(--fg);background:var(--bg);overflow-x:hidden;transition:background .35s ease,color .35s ease}.domaniqo-landing a{text-decoration:none;color:inherit}.domaniqo-landing button{font-family:var(--fb);cursor:pointer;border:none;background:none}
 
 /* SPLASH */
 #sp{position:fixed;inset:0;z-index:10000;background:linear-gradient(165deg,#0C0E11,#171A1F 40%,#1A1D22);display:flex;align-items:center;justify-content:center;flex-direction:column}#sp.m{background:transparent;pointer-events:none}#sp.g{display:none}
@@ -24,10 +27,10 @@ const CSS_CONTENT = `@import url('https://fonts.googleapis.com/css2?family=Instr
 /* NAV */
 .nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;background:var(--nav-bg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--nav-b);opacity:0;transform:translateY(-8px);transition:opacity .5s ease,transform .5s ease,background .35s,border-color .35s}.nav.v{opacity:1;transform:translateY(0)}
 .nl{display:flex;align-items:center;gap:10px}.nl svg{width:24px;height:24px}.nl span{font-family:var(--fe);font-size:18px;letter-spacing:.4px}
-.nm{display:flex;gap:24px}.nm a{font-family:var(--fb);font-size:12px;font-weight:500;letter-spacing:.3px;opacity:.45;transition:opacity .2s}.nm a:hover{opacity:1}
+.nm{display:flex;gap:24px;align-items:center}.nm a{font-family:var(--fb);font-size:12px;font-weight:500;letter-spacing:.3px;opacity:.45;transition:opacity .2s}.nm a:hover{opacity:1}
 .nr{display:flex;align-items:center;gap:14px}
 .ns{font-family:var(--fb);font-size:12px;font-weight:500;opacity:.45;transition:opacity .2s}.ns:hover{opacity:1}
-.nc{font-family:var(--fb);font-size:12px;font-weight:600;padding:9px 20px;border-radius:var(--r);background:var(--dm);color:var(--cw);letter-spacing:.3px;transition:all .28s ease-out;display:inline-block}.nc:hover{background:#3d4d42;transform:translateY(-1px)}
+.nc{font-family:var(--fb);font-size:12px;font-weight:600;padding:9px 20px;border-radius:var(--r);background:var(--dm);color:var(--cw);letter-spacing:.3px;transition:all .28s ease-out;display:inline-flex;align-items:center}.nc:hover{background:#3d4d42;transform:translateY(-1px)}
 .tt{width:36px;height:20px;border-radius:10px;background:var(--card-b);position:relative;cursor:pointer;transition:background .3s;flex-shrink:0}.tt::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--sc);transition:transform .3s ease}[data-theme="dark"] .tt::after{transform:translateX(16px)}
 .nt{display:none;flex-direction:column;gap:5px;width:22px;height:22px;justify-content:center;cursor:pointer}.nt span{display:block;height:1.5px;background:var(--fg);border-radius:1px;transition:.3s}
 @media(max-width:768px){.nav{padding:0 16px;height:56px}.nm{display:none;position:absolute;top:56px;left:0;right:0;flex-direction:column;background:var(--bg);border-bottom:1px solid var(--card-b);padding:8px 0;gap:0}.nm.o{display:flex}.nm a{padding:12px 20px;font-size:13px}.nt{display:flex}.ns{display:none}}
@@ -141,9 +144,9 @@ const CSS_CONTENT = `@import url('https://fonts.googleapis.com/css2?family=Instr
 .fq p{font-size:14px;line-height:1.7;color:var(--fg2);font-weight:300;max-height:0;overflow:hidden;transition:max-height .35s ease,opacity .35s ease;opacity:0}
 .fq.open p{max-height:200px;opacity:1}
 
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}.mt{animation:none}}`;
+@media(prefers-reduced-motion:reduce){.domaniqo-landing *,.domaniqo-landing *::before,.domaniqo-landing *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}.mt{animation:none}}`;
 
-const HTML_CONTENT = `<!-- SPLASH -->
+const HTML_CONTENT = `<div class="domaniqo-landing" data-theme="dark"><!-- SPLASH -->
 <div id="sp"><div class="gr" id="sgr"></div>
 <div id="sw" style="display:flex;flex-direction:column;align-items:center;position:relative">
 <div id="smw" style="opacity:0;transition:opacity .7s ease"><div id="smr" style="transform:rotate(-90deg);transition:none;transform-origin:center center">
@@ -334,11 +337,11 @@ const HTML_CONTENT = `<!-- SPLASH -->
 <div class="fco"><h4>Product</h4><a href="/platform">Platform</a><a href="/channels">Channels</a><a href="/inbox">Inbox</a><a href="/reviews">Reviews</a></div>
 <div class="fco"><h4>Company</h4><a href="/about">About</a><a href="/pricing">Pricing</a><a href="/early-access">Early Access</a></div>
 <div class="fco"><h4>Legal</h4><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Use</a><a href="mailto:info@domaniqo.com">Contact</a></div>
-</div><div class="fbt"><div class="fcp">© 2026 Domaniqo. All rights reserved.</div><div class="fen">Calm command for modern hospitality.</div></div></footer>`;
+</div><div class="fbt"><div class="fcp">© 2026 Domaniqo. All rights reserved.</div><div class="fen">Calm command for modern hospitality.</div></div></footer></div>`;
 
 const SCRIPT_CONTENT = `(function(){
 var $=function(s){return document.getElementById(s)};
-var tt=$('themeToggle'),h=document.documentElement;
+var tt=$('themeToggle'),h=document.querySelector('.domaniqo-landing');
 var sv=localStorage.getItem('domaniqo-theme');
 if(sv)h.setAttribute('data-theme',sv);
 tt.addEventListener('click',function(){var c=h.getAttribute('data-theme'),n=c==='dark'?'light':'dark';h.setAttribute('data-theme',n);localStorage.setItem('domaniqo-theme',n);document.querySelector('meta[name="theme-color"]').content=n==='dark'?'#171A1F':'#F8F6F2'});
@@ -363,9 +366,10 @@ export default function LandingPage() {
     if (initialized.current) return;
     initialized.current = true;
 
-    // Restore theme from localStorage
+    // Restore theme on the scoped container (not document root)
+    const wrapper = document.querySelector('.domaniqo-landing');
     const sv = localStorage.getItem('domaniqo-theme');
-    if (sv) document.documentElement.setAttribute('data-theme', sv);
+    if (sv && wrapper) wrapper.setAttribute('data-theme', sv);
 
     // Run the landing page interactive logic via string execution
     // (bypasses TypeScript checking on vanilla JS animation code)
