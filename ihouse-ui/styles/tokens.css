@@ -5,6 +5,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
 :root {
+  color-scheme: light;
   /* ---------- Domaniqo Colour Palette ---------- */
 
   /* Core Neutrals */
@@ -120,6 +121,7 @@
 
 [data-theme="dark"],
 .theme-dark {
+  color-scheme: dark;
   --color-bg:           var(--color-midnight);
   --color-surface:      var(--color-elevated);
   --color-surface-2:    #252830;
@@ -149,6 +151,7 @@
 /* Auto dark for users who prefer dark at OS level */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --color-bg:           var(--color-midnight);
     --color-surface:      var(--color-elevated);
     --color-surface-2:    #252830;

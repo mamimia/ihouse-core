@@ -347,13 +347,13 @@ function AddBookingModal({ open, onClose, onSuccess, properties }: {
                     <label style={labelStyle}>Check-in *</label>
                     <input id="booking-checkin" type="date" value={form.check_in}
                         onChange={e => setForm(f => ({ ...f, check_in: e.target.value }))}
-                        style={{ ...inputStyle, colorScheme: 'dark' }} />
+                        style={{ ...inputStyle }} />
                 </div>
                 <div>
                     <label style={labelStyle}>Check-out *</label>
                     <input id="booking-checkout" type="date" value={form.check_out}
                         onChange={e => setForm(f => ({ ...f, check_out: e.target.value }))}
-                        style={{ ...inputStyle, colorScheme: 'dark' }} />
+                        style={{ ...inputStyle }} />
                 </div>
             </div>
             {dateError && (
@@ -987,11 +987,11 @@ export default function BookingsPage() {
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Check-in</span>
                     <input id="filter-checkin-from" type="date" value={filters.check_in_from}
                         onChange={e => setFilters(f => ({ ...f, check_in_from: e.target.value }))}
-                        style={{ ...inputStyle, colorScheme: 'dark', width: 'auto' }} />
+                        style={{ ...inputStyle, width: 'auto' }} />
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>–</span>
                     <input id="filter-checkin-to" type="date" value={filters.check_in_to}
                         onChange={e => setFilters(f => ({ ...f, check_in_to: e.target.value }))}
-                        style={{ ...inputStyle, colorScheme: 'dark', width: 'auto' }} />
+                        style={{ ...inputStyle, width: 'auto' }} />
                 </div>
                 <button
                     id="filter-reset"
