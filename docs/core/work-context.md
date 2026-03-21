@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 860 — Next Phase. Phases 841–859 closed.
+Phase 861 — Next Phase. Phases 841–860 closed.
 
 ## Last Closed Phase
 
-Phase 859 — Admin Intake Queue + Property Submit API + Login UX + Draft Expiration.
+Phase 860 — Landing Page UI Fixes & Tab Responsive Scrolling.
 
 ## Current Objective
 
@@ -55,7 +55,8 @@ Phase 855E — Onboarding Pipeline Audit                        ← CLOSED
 Phase 857 — Onboarding Remediation Wave (7 fixes)             ← CLOSED
 Phase 858 — Product Language Correction + Google Path          ← CLOSED
 Phase 859 — Admin Intake + Login UX + Draft Expiration         ← CLOSED
-Phase 860 — Next Phase                                        ← ACTIVE
+Phase 860 — Landing Page UI Fixes & Mobile Scrolling          ← CLOSED
+Phase 861 — Next Phase                                        ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)

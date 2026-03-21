@@ -5214,3 +5214,12 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Added "📋 Intake Queue" button to Properties page header row.
 - Deployed to Vercel staging, screenshots verified.
 
+## Phase 860 — Landing Page UI Fixes & Tab Responsive Scrolling — 2026-03-22
+
+- Added `flexWrap: 'wrap'` to the property header and `flexShrink: 0` to tabs to fix layout overflow and enable native horizontal scrolling for tabs on mobile devices.
+- Stripped invalid SVG replacement for `::-webkit-calendar-picker-indicator` and replaced with native dark mode `filter: invert(1)` to ensure calendar icons are visible in native date pickers.
+- Injected `color-scheme: light` and `color-scheme: dark` into the theme specifiers to ensure system inputs conform to theme natively.
+- Scoped theme toggler logic specifically to `.domaniqo-landing` to prevent global DOM bleed.
+- Injected `!important` to CTA button colors to win the inheritance hierarchy against default `a` tags in light mode, ensuring brand colors remain prominent.
+
+

@@ -1,12 +1,12 @@
 ## Current Phase
-Phase 860 — Next Phase
+Phase 861 — Next Phase
 
 ## Last Closed Phase
-Phase 859 — Admin Intake Queue, Property Submit API, Login UX, Draft Expiration
+Phase 860 — Landing Page UI Fixes & Tab Responsive Scrolling
 
 ## System Status
 
-**[...System status through Phase 855E unchanged...] Phase 857 Onboarding Remediation Wave (7 fixes runtime-proven). Phase 858 Product Language Correction + Google Path Separation. Phase 859 Admin Intake Queue + Property Submit API + Login UX + Draft Expiration.**
+**[...System status through Phase 855E unchanged...] Phase 857 Onboarding Remediation Wave (7 fixes runtime-proven). Phase 858 Product Language Correction + Google Path Separation. Phase 859 Admin Intake Queue + Property Submit API + Login UX + Draft Expiration. Phase 860 Landing Page UI Fixes + Mobile Menu Tab Overflow Fix.**
 
 ## Deferred Items — Managed Open Items Registry
 

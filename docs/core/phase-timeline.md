@@ -8324,3 +8324,8 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 
 ### Files Modified
 - `ihouse-ui/app/(app)/admin/properties/page.tsx` — Intake Queue button added to header
+
+## Phase 860 — Landing Page UI Fixes & Tab Responsive Scrolling (Closed)
+
+Resolved severe layout and styling bugs in the frontend application on narrow screens and in light mode. This included preventing text overlap in the property menu tabs by enforcing valid horizontal scrolling, rectifying main layout breakouts caused by flex containers without wrap properties, fixing the global styling of date inputs so native calendar icons respond to dark/light themes correctly, and correcting landing page CSS specificity issues that rendered CTAs unreadable in light mode.
+
