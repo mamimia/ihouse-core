@@ -36,6 +36,8 @@ const PUBLIC_PREFIXES = [
     '/inbox',
     '/platform',
     '/pricing',
+    '/privacy',       // Phase 860: public legal page
+    '/terms',         // Phase 860: public legal page
     '/reviews',
     '/onboard',       // Phase 858: /onboard/connect property wizard (future: auth-gate inside)
     '/my-properties',  // Phase 858: post-auth draft management (client-side auth check)
