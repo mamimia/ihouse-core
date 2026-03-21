@@ -78,7 +78,7 @@ Phase 860 — Next Phase                                        ← ACTIVE
 | Redirect URL | `https://domaniqo-staging.vercel.app/auth/callback` |
 | Google E2E sign-in | ✅ Proven |
 | Admin email strategy | Recommended: change Supabase email to Gmail |
-| Auto-provision vulnerability | 🔴 Open — `/auth/register/profile` auto-provisions any Google user as manager |
+| Auto-provision vulnerability | ✅ Fixed (Phase 856A) — `/auth/register/profile` returns 403, no provisioning |
 | Linked identity tables | ⏸ Deferred — not needed for current scope |
 | Existing invite pipelines | ✅ Audited, no changes needed |
 

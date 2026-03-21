@@ -8288,3 +8288,39 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 ### Files Modified
 - `ihouse-ui/app/(auth)/login/page.tsx` — Google-first login layout
 - `ihouse-ui/app/api/properties/mine/route.ts` — 90-day lazy expiration logic
+
+---
+
+## Session 2026-03-21 (Post Phase 859) — Auth Audit + Intake Layout Fix
+
+**Date:** 2026-03-21
+**Phase:** Inter-phase work (no phase number assigned)
+
+### Work Completed
+
+1. **Auth Path Audit (Google Sign-In → Admin Access)**
+   - Audited full auth chain: Google OAuth → Supabase → `/auth/google-callback` → `lookup_user_tenant()` → JWT with role → middleware
+   - Confirmed auth is correctly gated: new users without `tenant_permissions` row get 403 → `/no-access`
+   - Identified middleware vulnerability: empty `role` claim grants full access (line 132 in `middleware.ts`)
+   - Documented in artifact: complete audit findings
+
+2. **Intake Page Layout Fix**
+   - Moved `app/(public)/admin/intake/page.tsx` → `app/(app)/admin/intake/page.tsx`
+   - Page now inherits admin sidebar (AdaptiveShell) + white theme (ForceLight)
+   - Replaced all dark-mode hardcoded colors with admin design system CSS variables
+   - Added "Back to Properties" navigation button
+   - Verified on staging with screenshot proof
+
+3. **Intake Queue Button on Properties Page**
+   - Added amber-accented "📋 Intake Queue" button to Properties page header
+   - Positioned between "+ Add Property" and "🗄 Archived"
+   - Navigates directly to `/admin/intake`
+
+### Files Created
+- `ihouse-ui/app/(app)/admin/intake/page.tsx` (new location, rewritten for admin shell)
+
+### Files Deleted
+- `ihouse-ui/app/(public)/admin/intake/page.tsx` (moved to `(app)`)
+
+### Files Modified
+- `ihouse-ui/app/(app)/admin/properties/page.tsx` — Intake Queue button added to header

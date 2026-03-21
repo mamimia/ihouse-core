@@ -5202,3 +5202,15 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Modified `app/api/properties/mine/route.ts` — 90-day lazy draft expiration on fetch.
 - DB: `submitted_at`, `rejected_at`, `rejected_by`, `rejection_reason` columns on `properties`; `pending_review` and `rejected` added to status constraint.
 - Verified on staging: auth enforcement on intake/submit APIs, login page layout, admin route protection.
+
+
+## Session 2026-03-21 (Post Phase 859) — Auth Audit + Intake Layout Fix
+
+- Full auth path audit: Google OAuth → Supabase → `/auth/google-callback` → `lookup_user_tenant()` → JWT → middleware role check.
+- Confirmed no accidental admin access for new users — `tenant_permissions` row required, 403 returned if missing.
+- Identified middleware vulnerability: empty role claim = full access (line 132 `middleware.ts`) — flagged for immediate fix.
+- Moved intake page from `(public)` to `(app)` layout group — now inherits admin sidebar + white theme.
+- Replaced all dark-mode hardcoded colors with admin design system CSS variables.
+- Added "📋 Intake Queue" button to Properties page header row.
+- Deployed to Vercel staging, screenshots verified.
+
