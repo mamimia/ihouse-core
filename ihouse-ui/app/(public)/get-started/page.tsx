@@ -14,7 +14,7 @@
  *   3. Import mode (link / manual / connect-coming-soon)
  *   4. Paste listing URLs
  *   5. Property preview / review (first value moment)
- *   6. AUTH GATE (email OTP or Google OAuth)
+ *   6. AUTH GATE (email verification code or Google OAuth)
  *   7. Profile collection (name, phone, user type)
  *   8. Draft saved → redirect to /my-properties
  */
@@ -775,11 +775,14 @@ export default function GetStartedWizard() {
                                             <label style={label}>Verification Code</label>
                                             <input
                                                 ref={otpInputRef} className="gs-input"
-                                                value={authOtp} onChange={e => setAuthOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                value={authOtp} onChange={e => setAuthOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
                                                 onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
-                                                placeholder="· · · · · ·" style={{ ...inputStyle, textAlign: 'center', fontSize: 24, letterSpacing: '0.4em', fontWeight: 300, color: 'var(--color-stone)' }}
-                                                maxLength={6} inputMode="numeric" autoComplete="one-time-code"
+                                                placeholder="· · · · · · · ·" style={{ ...inputStyle, textAlign: 'center', fontSize: 22, letterSpacing: '0.3em', fontWeight: 300, color: 'var(--color-stone)' }}
+                                                maxLength={8} inputMode="numeric" autoComplete="one-time-code"
                                             />
+                                            <div style={{ fontSize: 11, color: 'rgba(234,229,222,0.2)', marginTop: 6, textAlign: 'center' }}>
+                                                Enter the code from your email
+                                            </div>
                                         </div>
                                         <button onClick={handleVerifyOtp} disabled={authLoading || authOtp.length < 6}
                                             style={{ ...primaryBtn, ...disabledStyle(authLoading || authOtp.length < 6) }}>
