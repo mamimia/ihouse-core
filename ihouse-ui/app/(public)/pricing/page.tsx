@@ -255,7 +255,7 @@ export default function PricingPage() {
                     animation: 'fadeUp 800ms 600ms ease forwards',
                 }}>
                     Transparent, straightforward plans. 
-                    No hidden fees. No per-channel charges. No surprises.
+                    No hidden fees. No per-source charges. No surprises.
                 </p>
             </section>
 
