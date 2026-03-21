@@ -17,6 +17,7 @@ import LogoutButton from './LogoutButton';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
 import PreviewAsSelector from './PreviewAsSelector';
+import DMonogram from './DMonogram';
 import { TranslationKey } from '../lib/translations';
 
 type Role = 'admin' | 'manager' | 'owner' | 'worker' | 'cleaner' | 'checkin_staff' | 'maintenance';
@@ -162,13 +163,7 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
             marginBottom: 'var(--space-4)',
             flexShrink: 0,
           }}>
-            <img
-              src="/domaniqo-monogram-midnight.svg"
-              alt="Domaniqo"
-              width={34}
-              height={34}
-              style={{ display: 'block' }}
-            />
+            <DMonogram size={34} color="var(--color-text)" />
           </div>
         ) : (
           /* Expanded: full logo + greeting */
@@ -183,16 +178,10 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
               fontSize: 'var(--text-base)',
               fontWeight: 700,
               fontFamily: "'Manrope', sans-serif",
-              color: 'var(--color-midnight)',
+              color: 'var(--color-text)',
               letterSpacing: '-0.01em',
             }}>
-              <img
-                src="/domaniqo-monogram-midnight.svg"
-                alt=""
-                width={22}
-                height={22}
-                style={{ display: 'block', flexShrink: 0 }}
-              />
+              <DMonogram size={22} color="var(--color-text)" />
               Domaniqo
               <div style={{
                 position: 'absolute',
