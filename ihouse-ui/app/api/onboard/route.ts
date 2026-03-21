@@ -95,12 +95,12 @@ export async function POST(request: NextRequest) {
         // ── Generate clean ID ──
         const propertyId = await generateCleanId();
 
-        // ── Insert property as PENDING ──
-        const propertyData = {
+        // ── Insert property as DRAFT (bound to user) ──
+        const propertyData: Record<string, unknown> = {
             tenant_id: PUBLIC_ONBOARD_TENANT,
             property_id: propertyId,
             display_name: propertyName,
-            status: 'pending',
+            status: 'draft',
             property_type: body.propertyType || null,
             city: body.city || null,
             country: body.country || null,
@@ -113,6 +113,14 @@ export async function POST(request: NextRequest) {
             source_url: sourceUrl,
             source_platform: body.sourcePlatform || null,
         };
+
+        // Bind property to authenticated user if provided
+        if (body.submitterUserId) {
+            propertyData.submitter_user_id = body.submitterUserId;
+        }
+        if (body.submitterEmail) {
+            propertyData.submitter_email = body.submitterEmail;
+        }
 
         const propertyRes = await supaFetch('properties', {
             method: 'POST',
@@ -179,10 +187,10 @@ export async function POST(request: NextRequest) {
             success: true,
             persisted: true,
             property_id: propertyId,
-            status: 'pending',
+            status: 'draft',
             property: createdProperty,
             channels: channelResults,
-            message: `Property "${propertyName}" submitted for review.`,
+            message: `Property "${propertyName}" saved as draft.`,
         });
 
     } catch (err) {

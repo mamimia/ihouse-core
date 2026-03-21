@@ -23,7 +23,7 @@ const NAV_LINKS = [
 export default function PublicNav() {
     const [scrolled, setScrolled] = useState(false);
     const pathname = usePathname();
-    const hideGetStartedCTA = pathname === '/get-started';
+    const hideGetStartedCTA = pathname === '/get-started' || pathname?.startsWith('/my-');
 
     useEffect(() => {
         const handler = () => setScrolled(window.scrollY > 40);

@@ -16,7 +16,8 @@
  *   5. Property preview / review (first value moment)
  *   6. AUTH GATE (email verification code or Google OAuth)
  *   7. Profile collection (name, phone, user type)
- *   8. Draft saved → redirect to /my-properties
+ *   8. SET PASSWORD (create durable account)
+ *   9. Draft saved → redirect to /my-properties
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -139,6 +140,17 @@ const disabledStyle = (disabled: boolean): React.CSSProperties => ({
     cursor: disabled ? 'not-allowed' : 'pointer',
 });
 
+const stepTitle: React.CSSProperties = {
+    fontSize: 'var(--text-lg, 18px)', fontWeight: 600,
+    color: 'var(--color-stone, #EAE5DE)', margin: '0 0 4px',
+    fontFamily: 'var(--font-brand, inherit)',
+};
+
+const stepSubtitle: React.CSSProperties = {
+    fontSize: 'var(--text-sm, 14px)', color: 'rgba(234,229,222,0.4)',
+    margin: '0 0 16px', lineHeight: 1.5,
+};
+
 /* ─────────── Page ─────────── */
 
 export default function GetStartedWizard() {
@@ -170,6 +182,11 @@ export default function GetStartedWizard() {
 
     // Draft save state
     const [draftSaving, setDraftSaving] = useState(false);
+
+    // Password state (step 8)
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordError, setPasswordError] = useState('');
 
     const otpInputRef = useRef<HTMLInputElement>(null);
 
@@ -358,11 +375,29 @@ export default function GetStartedWizard() {
         }
     };
 
-    /* ─── Save Draft + Redirect ─── */
-    const handleSaveDraftAndRedirect = async () => {
-        if (!authedUser) return;
+    /* ─── Set Password ─── */
+    const handleSetPassword = async () => {
+        if (!supabase || !authedUser) return;
+        setPasswordError('');
+        if (newPassword.length < 8) {
+            setPasswordError('Password must be at least 8 characters');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError('Passwords do not match');
+            return;
+        }
         setDraftSaving(true);
         try {
+            // 1. Set the password on the Supabase auth user
+            const { error: pwError } = await supabase.auth.updateUser({ password: newPassword });
+            if (pwError) {
+                setPasswordError(pwError.message);
+                setDraftSaving(false);
+                return;
+            }
+
+            // 2. Save the property draft bound to the user
             const res = await fetch('/api/onboard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -381,7 +416,6 @@ export default function GetStartedWizard() {
                     sourcePlatform: state.property.source_platform,
                     submitterUserId: authedUser.id,
                     submitterEmail: authedUser.email,
-                    // Profile info
                     firstName: profile.firstName,
                     lastName: profile.lastName,
                     phone: profile.phone,
@@ -396,18 +430,18 @@ export default function GetStartedWizard() {
                 sessionStorage.removeItem(STORAGE_KEY);
                 router.push('/my-properties');
             } else {
-                alert(data.error || 'Failed to save. Please try again.');
+                setPasswordError(data.error || 'Failed to save property. Please try again.');
             }
         } catch {
-            alert('Network error. Please try again.');
+            setPasswordError('Network error. Please try again.');
         } finally {
             setDraftSaving(false);
         }
     };
 
     /* ─── Progress ─── */
-    // Steps visible: 1-5 pre-auth, 6 auth, 7 profile, 8 saving/redirect
-    const totalVisibleSteps = state.notListed || state.importMode === 'manual' ? 7 : 7;
+    // Steps visible: 1-5 pre-auth, 6 auth, 7 profile, 8 set password, 9 redirect
+    const totalVisibleSteps = 8;
     const displayStep = Math.min(state.step, totalVisibleSteps);
 
     /* ─── Step 5: proceed to auth or skip ─── */
@@ -884,16 +918,73 @@ export default function GetStartedWizard() {
                             </div>
 
                             <button
-                                onClick={handleSaveDraftAndRedirect}
-                                disabled={draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType}
-                                style={{ ...primaryBtn, ...disabledStyle(draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType) }}>
-                                {draftSaving ? 'Saving your property…' : 'Save Property & Continue →'}
+                                onClick={() => setStep(8)}
+                                disabled={!profile.firstName.trim() || !profile.lastName.trim() || !profile.userType}
+                                style={{ ...primaryBtn, ...disabledStyle(!profile.firstName.trim() || !profile.lastName.trim() || !profile.userType) }}>
+                                Continue →
                             </button>
                         </div>
                     )}
 
-                    {/* Step 7 without auth — shouldn't happen, but safety redirect */}
-                    {state.step === 7 && !authedUser && (
+                    {/* ─── Step 8: Set Password ─── */}
+                    {state.step === 8 && authedUser && (
+                        <div className="gs-fade">
+                            <div style={{ ...card, marginBottom: 16 }}>
+                                <h2 style={stepTitle}>Create Your Password</h2>
+                                <p style={stepSubtitle}>Secure your account so you can sign in later and manage your properties.</p>
+
+                                <div style={{
+                                    fontSize: 13, color: 'rgba(234,229,222,0.4)', marginBottom: 16,
+                                    padding: '10px 14px', background: 'rgba(234,229,222,0.03)', borderRadius: 'var(--radius-md, 12px)', border: '1px solid rgba(234,229,222,0.06)',
+                                }}>
+                                    Account: <strong style={{ color: 'var(--color-stone)' }}>{authedUser.email}</strong>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    <div>
+                                        <label style={label}>Password *</label>
+                                        <input className="gs-input" type="password" value={newPassword}
+                                            onChange={e => { setNewPassword(e.target.value); setPasswordError(''); }}
+                                            placeholder="Minimum 8 characters" style={inputStyle}
+                                            autoComplete="new-password" autoFocus />
+                                    </div>
+                                    <div>
+                                        <label style={label}>Confirm Password *</label>
+                                        <input className="gs-input" type="password" value={confirmPassword}
+                                            onChange={e => { setConfirmPassword(e.target.value); setPasswordError(''); }}
+                                            onKeyDown={e => e.key === 'Enter' && newPassword.length >= 8 && confirmPassword === newPassword && handleSetPassword()}
+                                            placeholder="Re-enter your password" style={inputStyle}
+                                            autoComplete="new-password" />
+                                    </div>
+                                    {newPassword.length > 0 && newPassword.length < 8 && (
+                                        <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.3)' }}>⚠ At least 8 characters required</div>
+                                    )}
+                                    {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+                                        <div style={{ fontSize: 12, color: '#D64545' }}>✗ Passwords do not match</div>
+                                    )}
+                                    {confirmPassword.length > 0 && newPassword === confirmPassword && newPassword.length >= 8 && (
+                                        <div style={{ fontSize: 12, color: '#4A7C59' }}>✓ Passwords match</div>
+                                    )}
+                                </div>
+
+                                {passwordError && (
+                                    <div style={{ fontSize: 13, color: '#D64545', marginTop: 12, padding: '8px 12px', background: 'rgba(214,69,69,0.08)', borderRadius: 8 }}>
+                                        {passwordError}
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={handleSetPassword}
+                                disabled={draftSaving || newPassword.length < 8 || newPassword !== confirmPassword}
+                                style={{ ...primaryBtn, ...disabledStyle(draftSaving || newPassword.length < 8 || newPassword !== confirmPassword) }}>
+                                {draftSaving ? 'Creating your account…' : 'Create Account & Save Property →'}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Step 7/8 without auth — safety redirect */}
+                    {(state.step === 7 || state.step === 8) && !authedUser && (
                         <div className="gs-fade" style={{ textAlign: 'center', padding: 'var(--space-8) 0' }}>
                             <p style={{ color: 'rgba(234,229,222,0.5)', marginBottom: 16 }}>Please sign in to continue.</p>
                             <button onClick={() => setStep(6)} style={primaryBtn}>← Back to Sign In</button>
