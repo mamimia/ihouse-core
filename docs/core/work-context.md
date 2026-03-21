@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 856 — Next Phase. Phases 841–855 closed.
+Phase 860 — Next Phase. Phases 841–859 closed.
 
 ## Last Closed Phase
 
-Phase 855E — Onboarding Pipeline Audit closed successfully.
+Phase 859 — Admin Intake Queue + Property Submit API + Login UX + Draft Expiration.
 
 ## Current Objective
 
@@ -52,7 +52,10 @@ Phase 855B — Google OAuth Staging Setup                       ← CLOSED
 Phase 855C — Google OAuth E2E Proof                           ← CLOSED
 Phase 855D — Auth Identity Model Design (deferred)            ← CLOSED
 Phase 855E — Onboarding Pipeline Audit                        ← CLOSED
-Phase 856 — Next Phase                                        ← ACTIVE
+Phase 857 — Onboarding Remediation Wave (7 fixes)             ← CLOSED
+Phase 858 — Product Language Correction + Google Path          ← CLOSED
+Phase 859 — Admin Intake + Login UX + Draft Expiration         ← CLOSED
+Phase 860 — Next Phase                                        ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)

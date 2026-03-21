@@ -8226,3 +8226,65 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 **Date:** 2026-03-20
 
 **Goal:** Full audit of existing invite/onboarding/approval system. Documented two live pipelines: Pipeline A (simple invite, Phase 401) and Pipeline B (staff self-onboarding, Phase 844). Identified 6 conflict points with Google OAuth. Found real vulnerability: `/auth/register/profile` auto-provisions any Google user as manager. Recommended minimal path: change admin email to Gmail, keep existing pipelines, defer linked identities.
+
+
+## Phase 857 — Onboarding Remediation Wave — Closed 2026-03-21
+
+**Goal:** Applied 7 critical fixes from the Phase 855E onboarding pipeline audit, all runtime-proven on staging.
+
+| Fix | Description |
+|-----|-------------|
+| 857.1 | `tenant_bridge.py` — explicit `is_active=True` on provision |
+| 857.2 | `invite_router.py` — role validation via `_VALID_ROLES` at accept time |
+| 857.3 | `invite_router.py` — replaced O(N) `list_users()` with `generate_link` lookup |
+| 857.4 | `staff_onboarding_router.py` — auto-delivery via `invite_user_by_email` |
+| 857.5 | `staff_onboarding_router.py` — removed legacy `invite` type from Pipeline B |
+| 857.6 | DDL migration — `date_of_birth` + `id_photo_url` columns on `tenant_permissions` |
+| 857.7 | `staff_onboarding_router.py` — clear `410 APPLICATION_REJECTED` for rejected candidates |
+| 857.8 | DB constraint fix — `access_tokens_token_type_check` updated to include `staff_onboard` |
+
+**Deferred:** Staff photo bucket migration (partial), email click-through proof (manual).
+
+
+## Phase 858 — Product Language Correction + Google Auth Path Separation — Closed 2026-03-21
+
+**Goal:**
+1. Audit and correct all misleading product language. Replaced "listing" with "property" throughout; removed implications of OTA publication, booking distribution, or channel management from user-facing text. Domaniqo is positioned as an **operations platform**, not a listing or booking engine.
+2. Separated Google auth path from OTP path: Google-authenticated users skip Set Password on first completion, get profile-only completion screen (name, phone, role). OTP path retains Set Password step. Login surface clearly supports Google re-entry.
+
+
+## Phase 859 — Admin Intake Queue + Property Submit API + Login UX + Draft Expiration — Closed 2026-03-21
+
+**Goal:** Priority A items from Phase 858 follow-up — operational surfaces that were missing.
+
+### New Features
+
+| Item | Implementation |
+|------|---------------|
+| Admin Intake Queue UI | `app/(public)/admin/intake/page.tsx` — filterable table of submitted properties, approve/reject with rejection reason |
+| Admin Intake API | `app/api/admin/intake/route.ts` — GET (list pending) + POST (approve/reject), admin role enforcement |
+| Property Submit API | `app/api/properties/[propertyId]/submit/route.ts` — PATCH, transitions draft→pending_review, ownership check |
+| Login UX Redesign | Google Sign-In prioritized above email form, helper text for Google returners, "OR SIGN IN WITH EMAIL" divider |
+| 90-Day Draft Expiration | Lazy check in `GET /api/properties/mine` — drafts older than 90 days auto-expire on fetch |
+
+### DB Schema Changes
+
+- `properties` table: added `submitted_at`, `rejected_at`, `rejected_by`, `rejection_reason` columns
+- `properties_status_check` constraint: added `pending_review` and `rejected` to allowed statuses
+
+### Verification
+
+- Admin intake API: auth enforcement proven (curl → "Unauthorized")
+- Login page: Google-first layout confirmed on staging via screenshot  
+- Property submit API: auth enforcement proven (curl → "Not authenticated")
+- Admin intake route: auth-protected (redirects to login)
+- Draft expiration: code verified in route handler
+
+### Files Created
+- `ihouse-ui/app/(public)/admin/intake/page.tsx` (694 lines)
+- `ihouse-ui/app/api/admin/intake/route.ts` (204 lines)
+- `ihouse-ui/app/api/properties/[propertyId]/submit/route.ts` (97 lines)
+
+### Files Modified
+- `ihouse-ui/app/(auth)/login/page.tsx` — Google-first login layout
+- `ihouse-ui/app/api/properties/mine/route.ts` — 90-day lazy expiration logic

@@ -5171,3 +5171,34 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Found vulnerability: `/auth/register/profile` auto-provisions any Google user as `manager` on default tenant.
 - Recommended: change admin email to Gmail, keep existing pipelines, close auto-provision hole, defer linked identities.
 - Produced `onboarding_pipeline_audit.md`.
+
+
+## Phase 857 — Onboarding Remediation Wave — 2026-03-21
+
+- Applied 7 critical fixes from Phase 855E audit, all runtime-proven on staging.
+- `tenant_bridge.py`: explicit `is_active=True` on provision.
+- `invite_router.py`: role validation via `_VALID_ROLES` at accept time; replaced O(N) `list_users()` with `generate_link` lookup.
+- `staff_onboarding_router.py`: auto-delivery via `invite_user_by_email`; removed legacy `invite` type; clear `410 APPLICATION_REJECTED` for rejected candidates.
+- DDL migration: `date_of_birth` + `id_photo_url` columns on `tenant_permissions`.
+- DB constraint fix: `access_tokens_token_type_check` updated to include `staff_onboard`.
+- Deferred: staff photo bucket migration (partial), email click-through proof (manual).
+
+
+## Phase 858 — Product Language Correction + Google Auth Path Separation — 2026-03-21
+
+- Replaced "listing" with "property" throughout user-facing text.
+- Removed implications of OTA publication, booking distribution, or channel management.
+- Separated Google auth path: Google users skip Set Password, get profile-only completion.
+- OTP path retains Set Password step.
+- Login surface explicitly supports Google re-entry with helper text.
+
+
+## Phase 859 — Admin Intake Queue + Property Submit API + Login UX + Draft Expiration — 2026-03-21
+
+- Created `app/(public)/admin/intake/page.tsx` — Admin Intake Queue with filterable table, approve/reject UI with rejection reason.
+- Created `app/api/admin/intake/route.ts` — GET (list pending) + POST (approve/reject), admin role enforcement.
+- Created `app/api/properties/[propertyId]/submit/route.ts` — PATCH, transitions draft→pending_review, ownership verification.
+- Modified `app/(auth)/login/page.tsx` — Google Sign-In prioritized above email form, helper text for Google returners, "OR SIGN IN WITH EMAIL" divider.
+- Modified `app/api/properties/mine/route.ts` — 90-day lazy draft expiration on fetch.
+- DB: `submitted_at`, `rejected_at`, `rejected_by`, `rejection_reason` columns on `properties`; `pending_review` and `rejected` added to status constraint.
+- Verified on staging: auth enforcement on intake/submit APIs, login page layout, admin route protection.
