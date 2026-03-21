@@ -715,7 +715,7 @@ function EmptyState({ onAddBooking, onAddIcal }: { onAddBooking: () => void; onA
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', marginTop: 'var(--space-4)' }}>
                 <button onClick={onAddBooking} style={btnPrimary}>+ Add Booking</button>
-                <button onClick={onAddIcal} style={{ ...btnPrimary, background: '#10b981' }}>📡 iCal Feed</button>
+                <button onClick={onAddIcal} style={{ ...btnPrimary, background: 'var(--color-olive)' }}>📡 iCal Feed</button>
             </div>
         </td></tr>
     );
@@ -857,7 +857,7 @@ export default function BookingsPage() {
                         onClick={() => setShowIcalFeed(true)}
                         style={{
                             ...btnPrimary,
-                            background: '#10b981',
+                            background: 'var(--color-olive)',
                             display: 'flex', alignItems: 'center', gap: 6,
                         }}
                     >
@@ -868,8 +868,9 @@ export default function BookingsPage() {
                             id="btn-integrations"
                             onClick={() => setShowIntegrations(!showIntegrations)}
                             style={{
-                                ...btnPrimary,
-                                background: '#6366f1',
+                                ...btnSecondary,
+                                background: 'var(--color-surface-2)',
+                                color: 'var(--color-text)',
                                 display: 'flex', alignItems: 'center', gap: 6,
                             }}
                         >

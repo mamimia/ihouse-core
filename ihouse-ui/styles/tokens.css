@@ -127,8 +127,8 @@
   --color-border:       rgba(234,229,222,0.08);
   --color-border-light: rgba(234,229,222,0.05);
 
-  --color-primary:      var(--color-stone);
-  --color-primary-dim:  var(--color-sand);
+  --color-primary:      var(--color-moss);
+  --color-primary-dim:  var(--color-olive);
   --color-accent:       var(--color-copper);
 
   --color-text:         var(--color-stone);
@@ -156,8 +156,8 @@
     --color-border:       rgba(234,229,222,0.08);
     --color-border-light: rgba(234,229,222,0.05);
 
-    --color-primary:      var(--color-stone);
-    --color-primary-dim:  var(--color-sand);
+    --color-primary:      var(--color-moss);
+    --color-primary-dim:  var(--color-olive);
     --color-accent:       var(--color-copper);
 
     --color-text:         var(--color-stone);
