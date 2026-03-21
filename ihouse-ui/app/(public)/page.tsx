@@ -26,10 +26,10 @@ const CSS_CONTENT = `@import url('https://fonts.googleapis.com/css2?family=Instr
 
 /* NAV */
 .nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;background:var(--nav-bg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--nav-b);opacity:0;transform:translateY(-8px);transition:opacity .5s ease,transform .5s ease,background .35s,border-color .35s}.nav.v{opacity:1;transform:translateY(0)}
-.nl{display:flex;align-items:center;gap:10px}.nl svg{width:24px;height:24px}.nl span{font-family:var(--fe);font-size:18px;letter-spacing:.4px}
-.nm{display:flex;gap:24px;align-items:center}.nm a{font-family:var(--fb);font-size:12px;font-weight:500;letter-spacing:.3px;opacity:.45;transition:opacity .2s}.nm a:hover{opacity:1}
-.nr{display:flex;align-items:center;gap:14px}
-.ns{font-family:var(--fb);font-size:12px;font-weight:500;opacity:.45;transition:opacity .2s}.ns:hover{opacity:1}
+.nl{display:flex;align-items:center;gap:10px;height:64px}.nl svg{width:24px;height:24px}.nl span{font-family:var(--fe);font-size:18px;letter-spacing:.4px;line-height:1}
+.nm{display:flex;gap:24px;align-items:center;height:64px}.nm a{font-family:var(--fb);font-size:12px;font-weight:500;letter-spacing:.3px;opacity:.45;transition:opacity .2s;line-height:1}.nm a:hover{opacity:1}
+.nr{display:flex;align-items:center;gap:14px;height:64px}
+.ns{font-family:var(--fb);font-size:12px;font-weight:500;opacity:.45;transition:opacity .2s;line-height:1}.ns:hover{opacity:1}
 .nc{font-family:var(--fb);font-size:12px;font-weight:600;padding:9px 20px;border-radius:var(--r);background:var(--dm);color:var(--cw);letter-spacing:.3px;transition:all .28s ease-out;display:inline-flex;align-items:center}.nc:hover{background:#3d4d42;transform:translateY(-1px)}
 .tt{width:36px;height:20px;border-radius:10px;background:var(--card-b);position:relative;cursor:pointer;transition:background .3s;flex-shrink:0}.tt::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--sc);transition:transform .3s ease}[data-theme="dark"] .tt::after{transform:translateX(16px)}
 .nt{display:none;flex-direction:column;gap:5px;width:22px;height:22px;justify-content:center;cursor:pointer}.nt span{display:block;height:1.5px;background:var(--fg);border-radius:1px;transition:.3s}
