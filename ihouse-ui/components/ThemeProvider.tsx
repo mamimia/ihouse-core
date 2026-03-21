@@ -47,11 +47,21 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     // Initialize from localStorage on mount
     useEffect(() => {
         const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-        const initial = stored || 'system';
-        setThemeState(initial);
-        const resolved = resolveTheme(initial);
-        setResolvedTheme(resolved);
-        document.documentElement.setAttribute('data-theme', resolved);
+        const docTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark' | null;
+        
+        if (stored) {
+            setThemeState(stored);
+            setResolvedTheme(stored === 'light' || stored === 'dark' ? stored : 'dark');
+        } else if (docTheme) {
+            setThemeState('system'); // 'system' in this context means 'not explicitly set'
+            setResolvedTheme(docTheme);
+        } else {
+            const initial = 'system';
+            setThemeState(initial);
+            const resolved = resolveTheme(initial);
+            setResolvedTheme(resolved);
+            document.documentElement.setAttribute('data-theme', resolved);
+        }
     }, []);
 
     // Listen for OS preference changes when in system mode

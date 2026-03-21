@@ -18,6 +18,7 @@ import { useIsMobile, useIsDesktop } from '../hooks/useMediaQuery';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import CompactLangSwitcher from './CompactLangSwitcher';
+import ThemeToggle from './ThemeToggle';
 
 const WorkerTutorial = dynamic(() => import('./WorkerTutorial'), { ssr: false });
 
@@ -66,8 +67,9 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     if (isMobile) {
         return (
             <>
-                {/* Language switcher */}
-                <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 200 }}>
+                {/* Language switcher and theme toggle */}
+                <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 200, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ThemeToggle />
                     <CompactLangSwitcher theme="auto" position="inline" />
                 </div>
 
@@ -147,8 +149,9 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     if (isTablet) {
         return (
             <>
-                {/* Language switcher — top right */}
-                <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 200 }}>
+                {/* Language switcher and theme toggle — top right */}
+                <div style={{ position: 'fixed', top: 10, right: 12, zIndex: 200, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ThemeToggle />
                     <CompactLangSwitcher theme="auto" position="inline" />
                 </div>
 

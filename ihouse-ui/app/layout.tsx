@@ -24,7 +24,9 @@ const themeScript = `
 (function() {
   try {
     var stored = localStorage.getItem('domaniqo-theme');
-    var theme = (stored === 'light' || stored === 'dark') ? stored : 'dark';
+    var isPublic = window.location.pathname === '/' || window.location.pathname === '/login' || window.location.pathname.startsWith('/get-started') || window.location.pathname.startsWith('/platform') || window.location.pathname.startsWith('/channels') || window.location.pathname.startsWith('/pricing') || window.location.pathname.startsWith('/about');
+    var defaultTheme = isPublic ? 'dark' : 'light';
+    var theme = (stored === 'light' || stored === 'dark') ? stored : defaultTheme;
     document.documentElement.setAttribute('data-theme', theme);
   } catch(e) {}
 })();

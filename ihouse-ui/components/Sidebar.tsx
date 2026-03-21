@@ -15,6 +15,7 @@ import { useLanguage } from '../lib/LanguageContext';
 import { usePreview } from '../lib/PreviewContext';
 import LogoutButton from './LogoutButton';
 import LanguageSwitcher from './LanguageSwitcher';
+import ThemeToggle from './ThemeToggle';
 import PreviewAsSelector from './PreviewAsSelector';
 import { TranslationKey } from '../lib/translations';
 
@@ -332,6 +333,10 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
           /* Expanded bottom: full controls */
           <>
             <PreviewAsSelector />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 var(--space-4)', marginTop: 8 }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Theme</span>
+              <ThemeToggle />
+            </div>
             <LanguageSwitcher />
             <div style={{ height: 1, background: 'var(--color-border)', margin: '8px 0' }} />
             <LogoutButton />
