@@ -139,24 +139,22 @@ export async function POST(request: NextRequest) {
 
         const [createdProperty] = await propertyRes.json();
 
-        // ── Insert photos ──
+        // ── Insert photos into the new canonical table ──
         const photos = body.photos || [];
         for (let i = 0; i < photos.length; i++) {
             try {
-                await supaFetch('property_photos', {
+                await supaFetch('property_marketing_photos', {
                     method: 'POST',
                     headers: { Prefer: 'return=minimal' },
                     body: JSON.stringify({
                         tenant_id: PUBLIC_ONBOARD_TENANT,
                         property_id: propertyId,
                         photo_url: photos[i],
-                        room_type: 'general',
                         sort_order: i,
-                        is_hero: i === 0
                     }),
                 });
             } catch (err) {
-                console.warn('[onboard] Failed to save photo:', err);
+                console.warn('[onboard] Failed to save marketing photo:', err);
             }
         }
 

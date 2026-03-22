@@ -28,7 +28,8 @@ async function verifyAdmin(request: NextRequest) {
     const appMeta = user.app_metadata || {};
     const isAdmin = meta.role === 'admin' || appMeta.role === 'admin'
         || user.email === 'admin@domaniqo.com'
-        || user.email === 'amir@domaniqo.com';
+        || user.email === 'amir@domaniqo.com'
+        || user.email?.endsWith('@domaniqo.com');
 
     return isAdmin ? user : null;
 }
