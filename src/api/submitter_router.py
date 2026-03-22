@@ -110,7 +110,7 @@ async def list_my_properties(
     try:
         prop_result = (
             db.table("properties")
-            .select("property_id, display_name, property_type, city, country, status, created_at, max_guests, bedrooms, submitter_user_id, submitter_email")
+            .select("property_id, display_name, property_type, city, country, status, created_at, max_guests, bedrooms, submitter_user_id, submitter_email, cover_photo_url")
             .eq("submitter_user_id", user_id)
             .order("created_at", desc=True)
             .execute()
@@ -130,6 +130,7 @@ async def list_my_properties(
                 "country": row.get("country", ""),
                 "max_guests": row.get("max_guests"),
                 "bedrooms": row.get("bedrooms"),
+                "cover_photo_url": row.get("cover_photo_url", ""),
                 "type": "property",
                 "status": row.get("status", "draft"),
                 "submitted_at": row.get("created_at"),
@@ -161,7 +162,7 @@ async def get_draft_property(
         return err("NOT_FOUND", "Draft not found or unauthorized", 404)
     # fetch photos
     try:
-        photos_res = db.table("property_photos").select("photo_url").eq("property_id", property_id).order("sort_order").execute()
+        photos_res = db.table("property_marketing_photos").select("photo_url").eq("property_id", property_id).order("display_order").execute()
         result.data[0]["photos"] = [p["photo_url"] for p in photos_res.data]
     except Exception as exc:
         result.data[0]["photos"] = []
@@ -187,8 +188,12 @@ async def update_draft_property(
     
     body = await request.json()
     
-    # Extract photos to save to property_photos
+    # Extract photos to save to property_marketing_photos
     photos = body.pop("photos", None)
+    
+    # Set the cover photo to the first photo
+    if photos and isinstance(photos, list) and len(photos) > 0:
+        body["cover_photo_url"] = photos[0]
     
     try:
         db.table("properties").update(body).eq("property_id", property_id).eq("submitter_user_id", user_id).execute()
@@ -197,15 +202,14 @@ async def update_draft_property(
     
     if photos is not None and isinstance(photos, list):
         try:
-            db.table("property_photos").delete().eq("property_id", property_id).execute()
+            db.table("property_marketing_photos").delete().eq("property_id", property_id).execute()
             for i, phot_url in enumerate(photos):
-                db.table("property_photos").insert({
+                db.table("property_marketing_photos").insert({
                     "tenant_id": "DOM-ONB-000",
                     "property_id": property_id,
                     "photo_url": phot_url,
-                    "room_type": "general",
-                    "sort_order": i,
-                    "is_hero": i == 0
+                    "display_order": i,
+                    "source": "submitter"
                 }).execute()
         except Exception as e:
             logger.error("Failed to update photos: %s", e)

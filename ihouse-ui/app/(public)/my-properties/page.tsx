@@ -32,14 +32,18 @@ interface Property {
     created_at: string;
     max_guests?: number;
     bedrooms?: number;
+    cover_photo_url?: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-    draft:          { label: 'Draft',           color: 'rgba(234,229,222,0.5)', bg: 'rgba(234,229,222,0.06)', icon: '📝' },
-    pending_review: { label: 'Pending Review',  color: '#B56E45',               bg: 'rgba(181,110,69,0.08)',  icon: '⏳' },
-    pending:        { label: 'Pending Review',  color: '#B56E45',               bg: 'rgba(181,110,69,0.08)',  icon: '⏳' },
-    approved:       { label: 'Approved',        color: '#4A7C59',               bg: 'rgba(74,124,89,0.08)',   icon: '✅' },
-    active:         { label: 'Active',          color: '#4A7C59',               bg: 'rgba(74,124,89,0.08)',   icon: '✅' },
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+
+const STATUS_CONFIG: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+    draft: { label: 'Draft', icon: '📝', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' },
+    pending_review: { label: 'Pending Review', icon: '⏳', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+    pending: { label: 'Pending Review', icon: '⏳', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+    active: { label: 'Active', icon: '✅', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
+    approved: { label: 'Approved', icon: '✅', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
+    rejected: { label: 'Needs Updates', icon: '⛔', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
     expired:        { label: 'Expired',         color: 'rgba(234,229,222,0.25)', bg: 'rgba(234,229,222,0.03)', icon: '📦' },
 };
 
@@ -324,34 +328,52 @@ function PropertyCard({ property, onSubmit, submitting }: {
             padding: '14px 16px',
             opacity: isExpired ? 0.5 : 1,
         }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                        <span style={{ fontSize: 14 }}>🏠</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                {/* Left side: photo + info */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+                    {property.cover_photo_url ? (
+                        <div style={{
+                            width: 64, height: 64, borderRadius: 8, overflow: 'hidden', flexShrink: 0,
+                            background: 'var(--color-surface, #1E2127)', border: '1px solid rgba(234,229,222,0.1)'
+                        }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={property.cover_photo_url} alt={property.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                    ) : (
+                        <div style={{
+                            width: 64, height: 64, borderRadius: 8, flexShrink: 0,
+                            background: 'rgba(234,229,222,0.03)', border: '1px dashed rgba(234,229,222,0.15)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24
+                        }}>
+                            🏠
+                        </div>
+                    )}
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{
                             fontSize: 15, fontWeight: 600,
                             color: 'var(--color-stone, #EAE5DE)',
-                            margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            margin: '0 0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
                             {property.name || 'Untitled Property'}
                         </h3>
-                    </div>
 
-                    <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.35)', marginBottom: 6 }}>
-                        {[property.city, property.country].filter(Boolean).join(', ') || 'Location not set'}
-                        {property.property_type && ` · ${property.property_type}`}
-                    </div>
+                        <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.35)', marginBottom: 6 }}>
+                            {[property.city, property.country].filter(Boolean).join(', ') || 'Location not set'}
+                            {property.property_type && ` · ${property.property_type}`}
+                        </div>
 
-                    {/* Status badge */}
-                    <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        fontSize: 10, fontWeight: 700,
-                        color: statusConf.color, background: statusConf.bg,
-                        padding: '2px 8px', borderRadius: 99,
-                        textTransform: 'uppercase', letterSpacing: '0.04em',
-                    }}>
-                        {statusConf.icon} {statusConf.label}
-                    </span>
+                        {/* Status badge */}
+                        <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            fontSize: 10, fontWeight: 700,
+                            color: statusConf.color, background: statusConf.bg,
+                            padding: '2px 8px', borderRadius: 99,
+                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                        }}>
+                            {statusConf.icon} {statusConf.label}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Actions */}
