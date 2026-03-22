@@ -23,6 +23,7 @@ interface NavItem {
 const ITEMS: NavItem[] = [
     // Ops — admin-only tools not in main sidebar
     { href: '/admin',             label: 'Overview',        icon: '📊', group: 'ops' },
+    { href: '/admin/intake',      label: 'Intake Queue',    icon: '📥', group: 'ops' },
     { href: '/admin/owners',      label: 'Owners',          icon: '🏠', group: 'ops' },
     { href: '/admin/templates',   label: 'Task Templates',  icon: '📝', group: 'ops' },
     { href: '/admin/feedback',    label: 'Guest Feedback',  icon: '⭐', group: 'ops' },

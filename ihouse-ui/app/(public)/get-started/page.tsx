@@ -372,6 +372,7 @@ export default function GetStartedWizard() {
         const urlParams = new URLSearchParams(window.location.search);
         const isEditMode = !!urlParams.get('edit');
         const saved = sessionStorage.getItem(STORAGE_KEY);
+        const savedPortfolio = localStorage.getItem('domaniqo_portfolio_size');
 
         if (saved) {
             try {
@@ -384,7 +385,14 @@ export default function GetStartedWizard() {
                     sessionStorage.removeItem(STORAGE_KEY);
                 } else if (!parsed?.property?.id) {
                     // Safe to restore — it's a fresh in-progress form (no saved property yet)
-                    setState(prev => ({ ...prev, ...parsed, extracting: false }));
+                    // But apply portfolio skip in the same setState to avoid race
+                    const shouldSkipStep1 = savedPortfolio && !isEditMode && (parsed.step === 1 || !parsed.step);
+                    setState(prev => ({
+                        ...prev, ...parsed, extracting: false,
+                        ...(shouldSkipStep1 ? { portfolioSize: parsed.portfolioSize || savedPortfolio, step: 2 as Step } : {}),
+                    }));
+                    // Already applied portfolio skip — skip the block below
+                    if (shouldSkipStep1) return;
                 }
                 // If isEditMode + has id, the edit useEffect below will handle loading
             } catch {
@@ -393,7 +401,7 @@ export default function GetStartedWizard() {
         }
 
         // Portfolio skip: if returning user already answered the portfolio question, skip step 1
-        const savedPortfolio = localStorage.getItem('domaniqo_portfolio_size');
+        // This runs only when sessionStorage was empty or cleared (fresh wizard start)
         if (savedPortfolio && !isEditMode) {
             setState(prev => ({
                 ...prev,
@@ -674,42 +682,55 @@ export default function GetStartedWizard() {
             }
         } else {
             const url = '/api/onboard';
-            const res = await fetch(url, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    propertyName: state.property.name.trim(),
-                    propertyType: state.property.type,
-                    city: state.property.city,
-                    country: state.property.country,
-                    maxGuests: state.property.guests,
-                    bedrooms: state.property.bedrooms,
-                    beds: state.property.beds,
-                    bathrooms: state.property.bathrooms,
-                    address: state.property.address,
-                    description: state.property.description,
-                    sourceUrl: state.property.source_url,
-                    sourcePlatform: state.property.source_platform,
-                    submitterUserId: authedUser.id,
-                    submitterEmail: authedUser.email,
-                    firstName: profile.firstName,
-                    lastName: profile.lastName,
-                    phone: profile.countryCode + ' ' + profile.phone,
-                    userType: profile.userType,
-                    photos: state.property.photos,
-                    portfolioSize: state.portfolioSize,
-                    channels: state.selectedPlatforms
-                        .filter(id => state.urls[id]?.trim())
-                        .map(id => ({ provider: id, url: state.urls[id] })),
-                }),
-            });
-            const data = await res.json();
-            if (data.success || data.property_id) {
-                sessionStorage.removeItem(STORAGE_KEY);
-                router.push('/my-properties');
-                return true;
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        propertyName: state.property.name.trim(),
+                        propertyType: state.property.type,
+                        city: state.property.city,
+                        country: state.property.country,
+                        maxGuests: state.property.guests,
+                        bedrooms: state.property.bedrooms,
+                        beds: state.property.beds,
+                        bathrooms: state.property.bathrooms,
+                        address: state.property.address,
+                        description: state.property.description,
+                        sourceUrl: state.property.source_url,
+                        sourcePlatform: state.property.source_platform,
+                        submitterUserId: authedUser.id,
+                        submitterEmail: authedUser.email,
+                        firstName: profile.firstName,
+                        lastName: profile.lastName,
+                        phone: profile.countryCode + ' ' + profile.phone,
+                        userType: profile.userType,
+                        photos: state.property.photos,
+                        portfolioSize: state.portfolioSize,
+                        channels: state.selectedPlatforms
+                            .filter(id => state.urls[id]?.trim())
+                            .map(id => ({ provider: id, url: state.urls[id] })),
+                    }),
+                });
+                const data = await res.json();
+                if (data.success || data.property_id) {
+                    sessionStorage.removeItem(STORAGE_KEY);
+                    localStorage.removeItem('domaniqo_portfolio_size');
+                    localStorage.setItem('domaniqo_portfolio_size', state.portfolioSize);
+                    router.push('/my-properties');
+                    return true;
+                }
+                // Surface the actual API error
+                if (data.conflict) {
+                    setPasswordError(data.message || 'This listing is already connected to an existing property.');
+                } else {
+                    setPasswordError(data.error || data.detail || data.message || 'Failed to save property. Please check all fields and try again.');
+                }
+                return false;
+            } catch (err) {
+                setPasswordError(err instanceof Error ? err.message : 'Network error saving property.');
+                return false;
             }
-            return false;
         }
     };
 
