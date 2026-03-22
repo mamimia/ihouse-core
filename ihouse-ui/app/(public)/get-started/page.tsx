@@ -392,6 +392,16 @@ export default function GetStartedWizard() {
             }
         }
 
+        // Portfolio skip: if returning user already answered the portfolio question, skip step 1
+        const savedPortfolio = localStorage.getItem('domaniqo_portfolio_size');
+        if (savedPortfolio && !isEditMode) {
+            setState(prev => ({
+                ...prev,
+                portfolioSize: prev.portfolioSize || savedPortfolio,
+                step: prev.step === 1 ? 2 as Step : prev.step,
+            }));
+        }
+
         // Detect auth from ihouse_token cookie (canonical credential)
         const ihouseToken = document.cookie
             .split('; ')
@@ -503,10 +513,10 @@ export default function GetStartedWizard() {
 
         setState(prev => ({ ...prev, extracting: true }));
         try {
-            const res = await fetch('/api/listing/extract', {
+            const res = await fetch('/api/listing/fetch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: firstUrl }),
+                body: JSON.stringify({ listing_url: firstUrl }),
             });
             const data = await res.json();
 
@@ -687,6 +697,7 @@ export default function GetStartedWizard() {
                     phone: profile.countryCode + ' ' + profile.phone,
                     userType: profile.userType,
                     photos: state.property.photos,
+                    portfolioSize: state.portfolioSize,
                     channels: state.selectedPlatforms
                         .filter(id => state.urls[id]?.trim())
                         .map(id => ({ provider: id, url: state.urls[id] })),
@@ -855,7 +866,10 @@ export default function GetStartedWizard() {
                                 <div
                                     key={opt.id}
                                     className={`gs-option ${state.portfolioSize === opt.id ? 'active' : ''}`}
-                                    onClick={() => setState(prev => ({ ...prev, portfolioSize: opt.id }))}
+                                    onClick={() => {
+                                        setState(prev => ({ ...prev, portfolioSize: opt.id }));
+                                        localStorage.setItem('domaniqo_portfolio_size', opt.id);
+                                    }}
                                     style={{ ...card, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}
                                 >
                                     <div style={{

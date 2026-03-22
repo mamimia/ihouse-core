@@ -155,10 +155,10 @@ export async function GET(request: NextRequest) {
         }
 
         const { searchParams } = new URL(request.url);
-        const filter = searchParams.get('status') || 'pending_review,draft';
+        const filter = searchParams.get('status') || 'pending_review';
         const statuses = filter.split(',').map(s => `status.eq.${s.trim()}`).join(',');
 
-        const queryUrl = `properties?or=(${statuses})&select=property_id,display_name,property_type,city,country,status,created_at,submitted_at,submitter_email,submitter_user_id,max_guests,bedrooms,source_url,source_platform,description&order=created_at.desc`;
+        const queryUrl = `properties?or=(${statuses})&select=property_id,display_name,property_type,city,country,status,created_at,submitted_at,submitter_email,submitter_user_id,max_guests,bedrooms,beds,bathrooms,address,source_url,source_platform,description,submitter_first_name,submitter_last_name,submitter_phone,submitter_user_type,portfolio_size&order=created_at.desc`;
 
         const res = await supaFetch(queryUrl);
         if (!res.ok) {
@@ -168,7 +168,33 @@ export async function GET(request: NextRequest) {
         }
 
         const properties = await res.json();
-        return NextResponse.json({ properties, count: properties.length });
+
+        // Fetch marketing photos for each property
+        const propertyIds = properties.map((p: Record<string, unknown>) => p.property_id).filter(Boolean);
+        let photosMap: Record<string, string[]> = {};
+        if (propertyIds.length > 0) {
+            try {
+                const photoFilter = propertyIds.map((id: string) => `property_id.eq.${id}`).join(',');
+                const photoRes = await supaFetch(
+                    `property_marketing_photos?or=(${photoFilter})&select=property_id,photo_url,display_order&order=display_order.asc`
+                );
+                if (photoRes.ok) {
+                    const photos = await photoRes.json();
+                    for (const photo of photos) {
+                        if (!photosMap[photo.property_id]) photosMap[photo.property_id] = [];
+                        photosMap[photo.property_id].push(photo.photo_url);
+                    }
+                }
+            } catch { /* photos are non-critical */ }
+        }
+
+        // Attach photos to each property
+        const enriched = properties.map((p: Record<string, unknown>) => ({
+            ...p,
+            photos: photosMap[p.property_id as string] || [],
+        }));
+
+        return NextResponse.json({ properties: enriched, count: enriched.length });
     } catch (err) {
         console.error('[admin/intake] error:', err);
         return NextResponse.json({ error: 'Internal server error', properties: [] }, { status: 500 });

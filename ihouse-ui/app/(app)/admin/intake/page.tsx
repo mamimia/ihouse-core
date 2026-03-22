@@ -26,9 +26,18 @@ interface IntakeProperty {
     submitter_user_id: string | null;
     max_guests: number | null;
     bedrooms: number | null;
+    beds: number | null;
+    bathrooms: number | null;
+    address: string | null;
     source_url: string | null;
     source_platform: string | null;
     description: string | null;
+    submitter_first_name: string | null;
+    submitter_last_name: string | null;
+    submitter_phone: string | null;
+    submitter_user_type: string | null;
+    portfolio_size: string | null;
+    photos: string[];
 }
 
 const STATUS_COLORS: Record<string, { label: string; bg: string; color: string; border: string }> = {
@@ -62,9 +71,9 @@ export default function AdminIntakePage() {
             const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
             if (!token) { setLoading(false); return; }
 
-            const statusParam = filter === 'pending' ? 'pending_review,draft'
+            const statusParam = filter === 'pending' ? 'pending_review'
                 : filter === 'rejected' ? 'rejected'
-                : 'pending_review,draft,active,approved,rejected';
+                : 'pending_review,active,approved,rejected';
 
             const res = await fetch(`/api/admin/intake?status=${statusParam}`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -115,7 +124,7 @@ export default function AdminIntakePage() {
         setActionLoading(null);
     };
 
-    const pending = properties.filter(p => ['draft', 'pending_review', 'pending'].includes(p.status));
+    const pending = properties.filter(p => ['pending_review', 'pending'].includes(p.status));
 
     return (
         <div style={{ maxWidth: 900 }}>
@@ -344,18 +353,35 @@ export default function AdminIntakePage() {
                                         borderTop: '1px solid var(--color-border)',
                                         marginTop: 0,
                                     }}>
-                                        <div style={{
-                                            display: 'grid', gridTemplateColumns: '1fr 1fr',
-                                            gap: '8px 24px', fontSize: 'var(--text-sm)',
-                                            paddingTop: 'var(--space-4)',
-                                        }}>
-                                            <Detail label="Property ID" value={prop.property_id} />
-                                            <Detail label="Type" value={prop.property_type} />
-                                            <Detail label="Max Guests" value={prop.max_guests?.toString()} />
-                                            <Detail label="Bedrooms" value={prop.bedrooms?.toString()} />
-                                            <Detail label="Platform" value={prop.source_platform} />
+                                        {/* ── Property Details ── */}
+                                        <div style={{ paddingTop: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+                                            <div style={{
+                                                fontSize: 'var(--text-xs)', fontWeight: 700,
+                                                color: 'var(--color-text-faint)', textTransform: 'uppercase',
+                                                letterSpacing: '0.06em', marginBottom: 12,
+                                            }}>Property Details</div>
+                                            <div style={{
+                                                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                                                gap: '8px 24px', fontSize: 'var(--text-sm)',
+                                            }}>
+                                                <Detail label="Property ID" value={prop.property_id} />
+                                                <Detail label="Type" value={prop.property_type} />
+                                                <Detail label="Max Guests" value={prop.max_guests?.toString()} />
+                                                <Detail label="Bedrooms" value={prop.bedrooms?.toString()} />
+                                                <Detail label="Beds" value={prop.beds?.toString()} />
+                                                <Detail label="Bathrooms" value={prop.bathrooms?.toString()} />
+                                                <Detail label="City" value={prop.city} />
+                                                <Detail label="Country" value={prop.country} />
+                                                <Detail label="Platform" value={prop.source_platform} />
+                                            </div>
+                                            {prop.address && (
+                                                <div style={{ marginTop: 8, fontSize: 'var(--text-sm)' }}>
+                                                    <span style={{ color: 'var(--color-text-faint)' }}>Address: </span>
+                                                    <span style={{ color: 'var(--color-text)' }}>{prop.address}</span>
+                                                </div>
+                                            )}
                                             {prop.source_url && (
-                                                <div style={{ gridColumn: '1 / -1' }}>
+                                                <div style={{ marginTop: 8, fontSize: 'var(--text-sm)' }}>
                                                     <span style={{ color: 'var(--color-text-faint)' }}>Source: </span>
                                                     <a href={prop.source_url} target="_blank" rel="noreferrer"
                                                         style={{ color: 'var(--color-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}>
@@ -364,15 +390,81 @@ export default function AdminIntakePage() {
                                                 </div>
                                             )}
                                             {prop.description && (
-                                                <div style={{ gridColumn: '1 / -1' }}>
+                                                <div style={{ marginTop: 8, fontSize: 'var(--text-sm)' }}>
                                                     <span style={{ color: 'var(--color-text-faint)' }}>Description: </span>
-                                                    <span style={{ color: 'var(--color-text)' }}>{prop.description}</span>
+                                                    <span style={{ color: 'var(--color-text)', lineHeight: 1.6 }}>{prop.description}</span>
                                                 </div>
                                             )}
                                         </div>
 
+                                        {/* ── Photos ── */}
+                                        {prop.photos && prop.photos.length > 0 && (
+                                            <div style={{ marginBottom: 'var(--space-4)' }}>
+                                                <div style={{
+                                                    fontSize: 'var(--text-xs)', fontWeight: 700,
+                                                    color: 'var(--color-text-faint)', textTransform: 'uppercase',
+                                                    letterSpacing: '0.06em', marginBottom: 10,
+                                                }}>Property Photos ({prop.photos.length})</div>
+                                                <div style={{
+                                                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                                                    gap: 8,
+                                                }}>
+                                                    {prop.photos.map((url, i) => (
+                                                        <a key={i} href={url} target="_blank" rel="noreferrer" style={{
+                                                            display: 'block', aspectRatio: '4/3',
+                                                            borderRadius: 'var(--radius-sm)', overflow: 'hidden',
+                                                            border: '1px solid var(--color-border)',
+                                                        }}>
+                                                            <img src={url} alt={`Photo ${i + 1}`} style={{
+                                                                width: '100%', height: '100%',
+                                                                objectFit: 'cover',
+                                                            }} />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* ── Submitter Profile ── */}
+                                        {(prop.submitter_email || prop.submitter_first_name) && (
+                                            <div style={{ marginBottom: 'var(--space-4)' }}>
+                                                <div style={{
+                                                    fontSize: 'var(--text-xs)', fontWeight: 700,
+                                                    color: 'var(--color-text-faint)', textTransform: 'uppercase',
+                                                    letterSpacing: '0.06em', marginBottom: 12,
+                                                }}>Submitter Profile</div>
+                                                <div style={{
+                                                    display: 'grid', gridTemplateColumns: '1fr 1fr',
+                                                    gap: '8px 24px', fontSize: 'var(--text-sm)',
+                                                }}>
+                                                    <Detail label="Name" value={[prop.submitter_first_name, prop.submitter_last_name].filter(Boolean).join(' ') || null} />
+                                                    <Detail label="Email" value={prop.submitter_email} />
+                                                    <Detail label="Phone" value={prop.submitter_phone} />
+                                                    <Detail label="User Type" value={prop.submitter_user_type} />
+                                                    <Detail label="User ID" value={prop.submitter_user_id} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* ── Wizard Context ── */}
+                                        {prop.portfolio_size && (
+                                            <div style={{ marginBottom: 'var(--space-4)' }}>
+                                                <div style={{
+                                                    fontSize: 'var(--text-xs)', fontWeight: 700,
+                                                    color: 'var(--color-text-faint)', textTransform: 'uppercase',
+                                                    letterSpacing: '0.06em', marginBottom: 12,
+                                                }}>Onboarding Context</div>
+                                                <div style={{
+                                                    display: 'grid', gridTemplateColumns: '1fr 1fr',
+                                                    gap: '8px 24px', fontSize: 'var(--text-sm)',
+                                                }}>
+                                                    <Detail label="Portfolio Size" value={prop.portfolio_size} />
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Actions for pending */}
-                                        {['draft', 'pending_review', 'pending'].includes(prop.status) && (
+                                        {['pending_review', 'pending'].includes(prop.status) && (
                                             <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
                                                 <button
                                                     onClick={() => handleAction(prop.property_id, 'approve')}

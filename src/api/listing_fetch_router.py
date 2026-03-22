@@ -478,3 +478,80 @@ async def fetch_listing(
         "warning": warning,
         "listing_url": listing_url,
     })
+
+
+# ── Public preview endpoint (no auth, for onboarding wizard) ─────────
+
+preview_router = APIRouter(prefix="/listing", tags=["listing"])
+
+
+@preview_router.post(
+    "/preview-extract",
+    summary="Public listing URL preview extraction (no auth required)",
+    responses={200: {}, 400: {}},
+)
+async def preview_extract(body: Dict[str, Any]) -> JSONResponse:
+    """
+    Same extraction logic as fetch_listing but:
+    - No JWT auth required (public onboarding flow)
+    - No property_id required (property doesn't exist yet)
+    - Rate limited by caller (frontend proxy)
+    """
+    listing_url = str(body.get("listing_url") or "").strip()
+    if not listing_url or not listing_url.startswith("http"):
+        return make_error_response(
+            status_code=400, code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "A valid 'listing_url' starting with http(s):// is required."},
+        )
+
+    all_fields = ["name", "description", "city", "country", "address",
+                  "latitude", "longitude", "photos", "amenities",
+                  "capacity", "owner_contact"]
+
+    blocked_platform = _detect_blocked_platform(listing_url)
+
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=_TIMEOUT, headers=_HEADERS) as client:
+            resp = await client.get(listing_url)
+            resp.raise_for_status()
+            html = resp.text
+    except httpx.HTTPStatusError as e:
+        warn = f"HTTP {e.response.status_code} from server."
+        if blocked_platform:
+            warn = f"{blocked_platform} blocks server-side access. Restricted."
+        return JSONResponse(status_code=200, content={
+            "imported": {},
+            "could_not_import": all_fields,
+            "warning": warn,
+            "listing_url": listing_url,
+        })
+    except Exception as exc:
+        return JSONResponse(status_code=200, content={
+            "imported": {},
+            "could_not_import": all_fields,
+            "warning": f"Could not reach URL: {exc}",
+            "listing_url": listing_url,
+        })
+
+    parser = _MetaParser()
+    parser.feed(html)
+    extracted = _extract_from_parsed(parser, listing_url)
+
+    imported = {k: v for k, v in extracted.items() if v is not None and v != [] and v != ""}
+    could_not_import = [f for f in all_fields if f not in imported]
+
+    warning: Optional[str] = None
+    if blocked_platform:
+        warning = (
+            f"{blocked_platform} limits server-side access. "
+            f"Only Open Graph / JSON-LD data was captured — most fields may be missing."
+        )
+    elif not imported:
+        warning = "No structured data (Open Graph / JSON-LD) found on this page."
+
+    return JSONResponse(status_code=200, content={
+        "imported": imported,
+        "could_not_import": could_not_import,
+        "warning": warning,
+        "listing_url": listing_url,
+    })

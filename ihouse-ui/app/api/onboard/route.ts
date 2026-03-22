@@ -121,6 +121,22 @@ export async function POST(request: NextRequest) {
         if (body.submitterEmail) {
             propertyData.submitter_email = body.submitterEmail;
         }
+        // Submitter context — visible to admin in intake detail
+        if (body.firstName) {
+            propertyData.submitter_first_name = body.firstName;
+        }
+        if (body.lastName) {
+            propertyData.submitter_last_name = body.lastName;
+        }
+        if (body.phone) {
+            propertyData.submitter_phone = body.phone;
+        }
+        if (body.userType) {
+            propertyData.submitter_user_type = body.userType;
+        }
+        if (body.portfolioSize) {
+            propertyData.portfolio_size = body.portfolioSize;
+        }
 
         const propertyRes = await supaFetch('properties', {
             method: 'POST',
