@@ -182,8 +182,37 @@ function ForgotPasswordForm() {
             if (updateError) {
                 setError(updateError.message);
             } else {
-                // Sign out after password change so user logs in fresh
-                await supabase.auth.signOut();
+                // After successful password update, the Supabase session is still active.
+                // Exchange it for an ihouse_token so the user is fully signed in.
+                try {
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    const session = sessionData?.session;
+                    if (session) {
+                        const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+                        const resp = await fetch(`${BASE_URL}/auth/google-callback`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                user_id: session.user.id,
+                                email: session.user.email || email,
+                                access_token: session.access_token,
+                                full_name: session.user.user_metadata?.full_name || '',
+                            }),
+                        });
+                        const body = await resp.json();
+                        const result = body?.data || body;
+                        if (result.token) {
+                            document.cookie = `ihouse_token=${result.token}; path=/; max-age=${result.expires_in || 86400}; SameSite=Lax`;
+                            if (result.language) localStorage.setItem('domaniqo_lang', result.language);
+                            // Go directly to signed-in destination
+                            window.location.href = '/welcome';
+                            return;
+                        }
+                    }
+                } catch {
+                    // Token exchange failed — fall back to success screen
+                }
+                // Fallback: if token exchange didn't work, show success + link
                 setStep('success');
             }
         } catch {

@@ -70,19 +70,26 @@ export default function MyPropertiesPage() {
     const [userName, setUserName] = useState('');
     const [userEmail, setUserEmail] = useState('');
 
-    // Auth check
+    // Auth check — ihouse_token is the canonical credential
     useEffect(() => {
-        if (!supabase) return;
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            if (!user) {
-                router.replace('/login');
-                return;
-            }
-            setUserEmail(user.email || '');
-            // Try to get the display name from user metadata
-            const meta = user.user_metadata || {};
-            setUserName(meta.first_name || meta.full_name?.split(' ')[0] || '');
-        });
+        const token = document.cookie
+            .split('; ')
+            .find(c => c.startsWith('ihouse_token='))
+            ?.split('=')[1];
+        if (!token) {
+            router.replace('/login');
+            return;
+        }
+        // Try Supabase session for display name (optional — not required for auth)
+        if (supabase) {
+            supabase.auth.getUser().then(({ data: { user } }) => {
+                if (user) {
+                    setUserEmail(user.email || '');
+                    const meta = user.user_metadata || {};
+                    setUserName(meta.first_name || meta.full_name?.split(' ')[0] || '');
+                }
+            });
+        }
     }, [router]);
 
     const fetchProperties = useCallback(async () => {

@@ -85,16 +85,17 @@ export default function ProfilePage() {
 
     const fetchProfile = useCallback(async () => {
         try {
-            if (!supabase) { router.push('/login'); return; }
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) { router.push('/login'); return; }
-
+            // Check for ihouse_token first — that's the canonical auth credential
             const token = document.cookie
                 .split('; ')
                 .find(c => c.startsWith('ihouse_token='))
                 ?.split('=')[1];
 
-            if (!token) { router.push('/login'); return; }
+            if (!token) {
+                // No ihouse_token → definitely not logged in
+                router.push('/login');
+                return;
+            }
 
             const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
             const res = await fetch(`${apiBase}/auth/profile`, {
