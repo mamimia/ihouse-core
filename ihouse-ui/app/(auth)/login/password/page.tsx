@@ -59,6 +59,8 @@ function PasswordForm() {
                 setError('Your account is not assigned to any organization. Contact your administrator.');
             } else if (err instanceof Error && err.message.includes('503')) {
                 setError('Authentication not configured. Contact your administrator.');
+            } else if (err instanceof Error && (err.message.includes('500') || err.message.includes('[object Object]'))) {
+                setError('Login failed. Please try again.');
             } else {
                 setError(err instanceof Error ? err.message : 'Login failed');
             }

@@ -33,6 +33,11 @@ export default function RegisterPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
+    // OTP verification state
+    const [otpCode, setOtpCode] = useState('');
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpError, setOtpError] = useState<string | null>(null);
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     const pwRules = usePasswordRules(password);
     const allRulesPass = pwRules.every(r => r.pass);
@@ -126,6 +131,86 @@ export default function RegisterPage() {
         }
     };
 
+    // OTP verification handler
+    const handleVerifyOtp = async () => {
+        if (!supabase || !otpCode.trim()) return;
+        setOtpLoading(true);
+        setOtpError(null);
+        try {
+            // Try 'email' type first (Supabase uses this for sign-up confirmation codes)
+            let result = await supabase.auth.verifyOtp({
+                email: email.trim(),
+                token: otpCode.trim(),
+                type: 'email',
+            });
+            // Fallback to 'signup' type if 'email' didn't work
+            if (result.error) {
+                result = await supabase.auth.verifyOtp({
+                    email: email.trim(),
+                    token: otpCode.trim(),
+                    type: 'signup',
+                });
+            }
+            if (result.error) {
+                setOtpError(result.error.message || 'Invalid verification code. Please try again.');
+                setOtpLoading(false);
+                return;
+            }
+            if (result.data.session) {
+                // Exchange Supabase session for iHouse JWT
+                const session = result.data.session;
+                const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+                try {
+                    const resp = await fetch(`${BASE_URL}/auth/google-callback`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: session.user.id,
+                            email: session.user.email || email.trim(),
+                            access_token: session.access_token,
+                            full_name: fullName.trim(),
+                        }),
+                    });
+                    const body = await resp.json();
+                    const jwt = body?.data || body;
+                    if (resp.ok && jwt.token) {
+                        setToken(jwt.token);
+                        document.cookie = `ihouse_token=${jwt.token}; path=/; max-age=${jwt.expires_in || 86400}; SameSite=Lax`;
+                        if (jwt.language) localStorage.setItem('domaniqo_lang', jwt.language);
+                        window.location.href = getRoleRoute(jwt.token);
+                        return;
+                    }
+                } catch { /* fall through to /welcome */ }
+                // Fallback: redirect to /welcome
+                window.location.href = '/welcome';
+            } else {
+                setOtpError('Verification succeeded but no session was created. Please try logging in.');
+                setOtpLoading(false);
+            }
+        } catch {
+            setOtpError('Verification failed. Please try again.');
+            setOtpLoading(false);
+        }
+    };
+
+    // Resend OTP
+    const handleResendCode = async () => {
+        if (!supabase || resendCooldown > 0) return;
+        try {
+            await supabase.auth.resend({ type: 'signup', email: email.trim() });
+            setResendCooldown(60);
+            setOtpError(null);
+            const interval = setInterval(() => {
+                setResendCooldown(prev => {
+                    if (prev <= 1) { clearInterval(interval); return 0; }
+                    return prev - 1;
+                });
+            }, 1000);
+        } catch {
+            setOtpError('Failed to resend code. Please try again.');
+        }
+    };
+
     const handleGoogleSignUp = async () => {
         if (!supabase) { setError('Google sign-in is not configured yet.'); return; }
         setLoading(true);
@@ -167,36 +252,109 @@ export default function RegisterPage() {
         textTransform: 'uppercase', letterSpacing: '0.06em',
     };
 
-    // Success: email confirmation required
+    // Success: show OTP verification form
     if (success) {
         return (
-            <AuthCard title="Check your email" subtitle="We sent a confirmation link to complete your registration">
-                <div style={{ textAlign: 'center', padding: 'var(--space-6, 24px) 0' }}>
-                    <div style={{ fontSize: 48, marginBottom: 'var(--space-4, 16px)' }}>📧</div>
+            <AuthCard title="Verify your email" subtitle="Enter the code we sent to complete registration">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 48, marginBottom: 'var(--space-2, 8px)' }}>📧</div>
                     <p style={{
                         fontSize: 'var(--text-sm, 14px)',
                         color: 'rgba(234,229,222,0.5)',
                         lineHeight: 1.6,
-                        marginBottom: 'var(--space-4, 16px)',
                     }}>
-                        We sent a confirmation email to <strong style={{ color: 'var(--color-stone, #EAE5DE)' }}>{email}</strong>.
-                        Please check your inbox and click the link to activate your account.
+                        We sent a verification code to <strong style={{ color: 'var(--color-stone, #EAE5DE)' }}>{email}</strong>.
+                        Enter the code below to activate your account.
                     </p>
-                    <a
-                        href="/login"
+
+                    {/* OTP Input */}
+                    <input
+                        id="input-otp-code"
+                        className="auth-input"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={8}
+                        value={otpCode}
+                        onChange={e => { setOtpCode(e.target.value.replace(/\D/g, '')); setOtpError(null); }}
+                        placeholder="Enter 8-digit code"
+                        autoFocus
+                        disabled={otpLoading}
                         style={{
-                            display: 'inline-block',
-                            padding: '12px 24px',
+                            ...inputStyle,
+                            textAlign: 'center',
+                            fontSize: 'var(--text-lg, 20px)',
+                            fontWeight: 700,
+                            letterSpacing: '0.2em',
+                            fontFamily: 'monospace',
+                        }}
+                    />
+
+                    {/* OTP Error */}
+                    {otpError && (
+                        <div style={{
+                            background: 'rgba(155,58,58,0.1)', border: '1px solid rgba(155,58,58,0.25)',
+                            borderRadius: 'var(--radius-md, 12px)', padding: '10px 14px',
+                            fontSize: 'var(--text-sm, 14px)', color: '#EF4444',
+                        }}>
+                            ⚠ {otpError}
+                        </div>
+                    )}
+
+                    {/* Verify Button */}
+                    <button
+                        id="btn-verify-otp"
+                        type="button"
+                        className="auth-btn"
+                        disabled={otpLoading || otpCode.length < 6}
+                        onClick={handleVerifyOtp}
+                        style={{
+                            padding: '14px',
                             background: 'var(--color-moss, #334036)',
+                            border: 'none',
                             borderRadius: 'var(--radius-md, 12px)',
                             color: 'var(--color-white, #F8F6F2)',
-                            fontSize: 'var(--text-sm, 14px)',
+                            fontSize: 'var(--text-base, 16px)',
                             fontWeight: 600,
-                            textDecoration: 'none',
+                            fontFamily: 'var(--font-brand, "Inter", sans-serif)',
+                            cursor: otpLoading || otpCode.length < 6 ? 'not-allowed' : 'pointer',
+                            opacity: otpLoading || otpCode.length < 6 ? 0.4 : 1,
+                            transition: 'all 0.2s',
+                            minHeight: 48,
                         }}
                     >
-                        Go to login
-                    </a>
+                        {otpLoading ? 'Verifying…' : 'Verify & Continue'}
+                    </button>
+
+                    {/* Resend + Back */}
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-4, 16px)', fontSize: 'var(--text-sm, 14px)' }}>
+                        <button
+                            type="button"
+                            onClick={handleResendCode}
+                            disabled={resendCooldown > 0}
+                            style={{
+                                background: 'none', border: 'none',
+                                color: resendCooldown > 0 ? 'rgba(234,229,222,0.2)' : 'var(--color-copper, #B56E45)',
+                                cursor: resendCooldown > 0 ? 'default' : 'pointer',
+                                padding: 0, fontFamily: 'inherit', fontSize: 'inherit',
+                                textDecoration: 'underline',
+                            }}
+                        >
+                            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setSuccess(false); setOtpCode(''); setOtpError(null); }}
+                            style={{
+                                background: 'none', border: 'none',
+                                color: 'rgba(234,229,222,0.4)',
+                                cursor: 'pointer',
+                                padding: 0, fontFamily: 'inherit', fontSize: 'inherit',
+                            }}
+                        >
+                            ← Back
+                        </button>
+                    </div>
                 </div>
             </AuthCard>
         );

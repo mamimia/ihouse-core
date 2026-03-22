@@ -204,19 +204,24 @@ export default function LoginPage() {
                 </button>
             </form>
 
-            {/* Bottom links */}
+            {/* Bottom link */}
             <div style={{
                 marginTop: 'var(--space-6, 24px)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--space-3, 12px)',
                 textAlign: 'center',
             }}>
-                <a href="/get-started" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
-                    {t('auth.host_link')} <span style={{ textDecoration: 'underline' }}>{t('auth.host_link_cta')}</span>
-                </a>
-                <a href="/register" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
-                    {t('auth.register_link')} <span style={{ textDecoration: 'underline' }}>{t('auth.register_link_cta')}</span>
+                <a href="/register" style={{
+                    fontSize: 'var(--text-sm, 14px)',
+                    color: 'rgba(234,229,222,0.5)',
+                    textDecoration: 'none',
+                }}>
+                    {t('auth.register_link')}{' '}
+                    <span style={{
+                        color: 'var(--color-copper, #B56E45)',
+                        fontWeight: 600,
+                        textDecoration: 'underline',
+                    }}>
+                        {t('auth.register_link_cta')}
+                    </span>
                 </a>
             </div>
         </AuthCard>
