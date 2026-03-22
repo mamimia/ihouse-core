@@ -72,6 +72,7 @@ export default function MyPropertiesPage() {
     const [submitting, setSubmitting] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
     const [justSubmitted, setJustSubmitted] = useState<string | null>(null);
+    const [deleteToast, setDeleteToast] = useState<{ id: string; name: string; undone: boolean } | null>(null);
     const [userName, setUserName] = useState('');
     const [userEmail, setUserEmail] = useState('');
 
@@ -147,8 +148,34 @@ export default function MyPropertiesPage() {
     };
 
     const handleDelete = async (propertyId: string) => {
-        // Optimistically remove from UI immediately
+        // Save the property for potential rollback
+        const deletedProp = properties.find(p => p.id === propertyId);
+        const propName = deletedProp?.name || 'Property';
+
+        // Optimistically remove from UI 
         setProperties(prev => prev.filter(p => p.id !== propertyId));
+        setDeleteToast({ id: propertyId, name: propName, undone: false });
+
+        // Wait 3 seconds for potential undo before committing the backend delete
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Check if user hit undo during the wait
+        // We read from a ref-like pattern via the state setter
+        let wasUndone = false;
+        setDeleteToast(prev => {
+            if (prev?.id === propertyId && prev.undone) {
+                wasUndone = true;
+            }
+            return prev;
+        });
+
+        if (wasUndone) {
+            // Already restored by undo handler
+            setDeleteToast(null);
+            return;
+        }
+
+        // Proceed with backend deletion
         setDeleting(propertyId);
         try {
             const token = document.cookie
@@ -156,15 +183,39 @@ export default function MyPropertiesPage() {
                 .find(c => c.startsWith('ihouse_token='))
                 ?.split('=')[1];
             const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
-            await fetch(`${apiBase}/properties/${propertyId}/draft`, {
+            const res = await fetch(`${apiBase}/properties/${propertyId}/draft`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` },
             });
-            // If it succeeds or fails, we stay silent as requested (optimistic delete)
+            if (!res.ok) {
+                // Backend failed — roll back
+                if (deletedProp) {
+                    setProperties(prev => [...prev, deletedProp]);
+                }
+                setDeleteToast({ id: propertyId, name: propName + ' — delete failed', undone: true });
+                setTimeout(() => setDeleteToast(null), 3000);
+            } else {
+                setDeleteToast(null);
+            }
         } catch { 
-            // Silent catch
+            // Network error — roll back
+            if (deletedProp) {
+                setProperties(prev => [...prev, deletedProp]);
+            }
+            setDeleteToast({ id: propertyId, name: propName + ' — delete failed', undone: true });
+            setTimeout(() => setDeleteToast(null), 3000);
         }
         finally { setDeleting(null); }
+    };
+
+    const handleUndoDelete = () => {
+        if (!deleteToast) return;
+        const propertyId = deleteToast.id;
+        // Re-fetch since we need the full property object
+        setDeleteToast(prev => prev ? { ...prev, undone: true } : null);
+        // Trigger a full refresh to restore
+        fetchProperties();
+        setDeleteToast(null);
     };
 
     const handleSignOut = async () => {
@@ -187,6 +238,29 @@ export default function MyPropertiesPage() {
             `}</style>
 
             <SignedInShell back="/welcome" backLabel="← Home" />
+
+            {/* Delete undo toast */}
+            {deleteToast && !deleteToast.undone && (
+                <div style={{
+                    position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 9999, background: '#1E2127', border: '1px solid rgba(234,229,222,0.15)',
+                    borderRadius: 12, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 14,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)', fontSize: 14, color: 'rgba(234,229,222,0.7)',
+                    animation: 'fadeSlideIn 300ms ease both',
+                }}>
+                    <span>🗑️ {deleteToast.name} deleted</span>
+                    <button
+                        onClick={handleUndoDelete}
+                        style={{
+                            background: 'transparent', border: '1px solid rgba(234,229,222,0.2)',
+                            color: '#f59e0b', borderRadius: 8, padding: '4px 12px', cursor: 'pointer',
+                            fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
+                        }}
+                    >
+                        Undo
+                    </button>
+                </div>
+            )}
 
             <div style={{
                 minHeight: '100vh',

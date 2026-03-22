@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import * as jose from 'jose';
 
 /**
  * Admin Intake Queue API
@@ -7,7 +7,10 @@ import { createClient } from '@supabase/supabase-js';
  * GET  /api/admin/intake — List all properties awaiting review (draft + pending_review)
  * POST /api/admin/intake — Approve or reject a property
  *
- * Admin-only: requires authenticated user with admin role.
+ * Authorization: uses the canonical ihouse_token JWT (same source as the sidebar).
+ * The JWT contains role from tenant_permissions — no email-based shortcuts.
+ *
+ * Admin-only: requires role === 'admin' or role === 'manager' in ihouse_token.
  */
 
 export const dynamic = 'force-dynamic';
@@ -15,23 +18,62 @@ export const dynamic = 'force-dynamic';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-async function verifyAdmin(request: NextRequest) {
-    const accessToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!accessToken) return null;
+/** IHOUSE_JWT_SECRET — must match the backend that issues ihouse_token */
+const JWT_SECRET = process.env.IHOUSE_JWT_SECRET || '';
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
-    if (error || !user) return null;
+/** Roles that are allowed to access Admin Intake Queue */
+const ADMIN_ROLES = new Set(['admin', 'manager']);
 
-    // Check admin role in user metadata or permissions
-    const meta = user.user_metadata || {};
-    const appMeta = user.app_metadata || {};
-    const isAdmin = meta.role === 'admin' || appMeta.role === 'admin'
-        || user.email === 'admin@domaniqo.com'
-        || user.email === 'amir@domaniqo.com'
-        || user.email?.endsWith('@domaniqo.com');
+/**
+ * Verify admin access using the canonical ihouse_token JWT.
+ *
+ * The ihouse_token is issued by /auth/login and /auth/google-callback on the
+ * FastAPI backend. It contains:
+ *   - sub: Supabase Auth UUID
+ *   - role: from tenant_permissions table
+ *   - email: user email
+ *   - tenant_id: resolved tenant
+ *
+ * This is the SAME token the sidebar uses to decide what nav items to show.
+ * By verifying this token here, the admin intake API and sidebar agree on
+ * exactly the same role source of truth: tenant_permissions.
+ */
+async function verifyAdmin(request: NextRequest): Promise<{ userId: string; email: string; role: string } | null> {
+    // 1. Try ihouse_token from cookie first (set during login)
+    let token = request.cookies.get('ihouse_token')?.value;
 
-    return isAdmin ? user : null;
+    // 2. Fall back to Authorization header
+    if (!token) {
+        const authHeader = request.headers.get('authorization');
+        if (authHeader?.startsWith('Bearer ')) {
+            token = authHeader.slice(7);
+        }
+    }
+
+    if (!token) return null;
+    if (!JWT_SECRET) {
+        console.error('[admin/intake] IHOUSE_JWT_SECRET not configured');
+        return null;
+    }
+
+    try {
+        const secret = new TextEncoder().encode(JWT_SECRET);
+        const { payload } = await jose.jwtVerify(token, secret, { algorithms: ['HS256'] });
+
+        const role = (payload.role as string) || '';
+        const userId = (payload.sub as string) || '';
+        const email = (payload.email as string) || '';
+
+        if (!ADMIN_ROLES.has(role)) {
+            console.warn(`[admin/intake] Access denied: user=${userId} email=${email} role=${role} (need admin|manager)`);
+            return null;
+        }
+
+        return { userId, email, role };
+    } catch (err) {
+        console.warn('[admin/intake] JWT verification failed:', err);
+        return null;
+    }
 }
 
 function supaFetch(path: string, opts: RequestInit = {}) {

@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+
 
 interface IntakeProperty {
     property_id: string;
@@ -57,8 +57,9 @@ export default function AdminIntakePage() {
     const fetchProperties = useCallback(async () => {
         setLoading(true);
         try {
-            const session = await supabase?.auth.getSession();
-            const token = session?.data?.session?.access_token;
+            // Use the canonical ihouse_token — same source of truth as the sidebar.
+            // This JWT contains role from tenant_permissions (issued at login).
+            const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
             if (!token) { setLoading(false); return; }
 
             const statusParam = filter === 'pending' ? 'pending_review,draft'
@@ -83,8 +84,7 @@ export default function AdminIntakePage() {
     const handleAction = async (propertyId: string, action: 'approve' | 'reject') => {
         setActionLoading(propertyId);
         try {
-            const session = await supabase?.auth.getSession();
-            const token = session?.data?.session?.access_token;
+            const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
             if (!token) return;
 
             const res = await fetch('/api/admin/intake', {
