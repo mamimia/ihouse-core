@@ -147,7 +147,8 @@ export default function MyPropertiesPage() {
     };
 
     const handleDelete = async (propertyId: string) => {
-        if (!confirm('Are you sure you want to permanently delete this property? This cannot be undone.')) return;
+        // Optimistically remove from UI immediately
+        setProperties(prev => prev.filter(p => p.id !== propertyId));
         setDeleting(propertyId);
         try {
             const token = document.cookie
@@ -155,17 +156,13 @@ export default function MyPropertiesPage() {
                 .find(c => c.startsWith('ihouse_token='))
                 ?.split('=')[1];
             const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
-            const res = await fetch(`${apiBase}/properties/${propertyId}/draft`, {
+            await fetch(`${apiBase}/properties/${propertyId}/draft`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` },
             });
-            if (res.ok) {
-                setProperties(prev => prev.filter(p => p.id !== propertyId));
-            } else {
-                alert('Failed to delete property.');
-            }
+            // If it succeeds or fails, we stay silent as requested (optimistic delete)
         } catch { 
-            alert('Failed to delete property due to network error.');
+            // Silent catch
         }
         finally { setDeleting(null); }
     };
@@ -352,12 +349,35 @@ function PropertyCard({ property, onSubmit, onDelete, submitting }: {
     const isExpired = property.status === 'expired';
 
     return (
-        <div className="mp-card" style={{
-            ...card,
-            padding: '14px 16px',
-            opacity: isExpired ? 0.5 : 1,
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ position: 'relative' }}>
+            {onDelete && (
+                <button
+                    onClick={onDelete}
+                    disabled={submitting}
+                    style={{
+                        position: 'absolute', top: -12, right: -12, zIndex: 10,
+                        background: 'var(--color-surface, #1E2127)', color: 'rgba(234,229,222,0.4)', 
+                        border: '1px solid rgba(234,229,222,0.1)', cursor: submitting ? 'not-allowed' : 'pointer', 
+                        width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', opacity: submitting ? 0.5 : 1
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(234,229,222,0.4)'; e.currentTarget.style.borderColor = 'rgba(234,229,222,0.1)'; }}
+                    title="Delete permanently"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            )}
+            <div className="mp-card" style={{
+                ...card,
+                padding: '14px 16px',
+                opacity: (isExpired || submitting) ? 0.5 : 1,
+                pointerEvents: submitting ? 'none' : 'auto',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 {/* Left side: photo + info */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
                     {property.cover_photo_url ? (
@@ -437,23 +457,9 @@ function PropertyCard({ property, onSubmit, onDelete, submitting }: {
                     {(!onSubmit && property.status !== 'draft' && !['approved', 'active'].includes(property.status)) && (
                         <div style={{ width: 1, height: 1 }}>{/* Spacer basically if no edit/submit on submitted view... wait we don't need this */}</div>
                     )}
-                    
-                    {onDelete && (
-                        <button
-                            onClick={onDelete}
-                            disabled={submitting}
-                            style={{
-                                background: 'transparent', color: '#ff4444', border: 'none', 
-                                cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 12, 
-                                fontWeight: 600, padding: '6px 10px', opacity: submitting ? 0.5 : 1,
-                                marginLeft: 'auto'
-                            }}
-                        >
-                            {submitting ? '…' : 'Delete 🗑️'}
-                        </button>
-                    )}
                 </div>
             </div>
+        </div>
         </div>
     );
 }
