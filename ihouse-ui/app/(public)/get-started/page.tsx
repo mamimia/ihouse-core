@@ -203,11 +203,31 @@ export default function GetStartedWizard() {
         const files = e.target.files;
         if (!files || files.length === 0 || !supabase) return;
 
+        const currentCount = state.property.photos.length;
+        if (currentCount >= 10) return; // limit to 10
+
+        let filesToUpload = Array.from(files);
+        
+        // 1. Filesize limit (12MB)
+        const validFiles = filesToUpload.filter(f => f.size <= 12 * 1024 * 1024);
+        if (validFiles.length < filesToUpload.length) {
+            alert("Some files were skipped because they exceed the 12MB limit.");
+        }
+        
+        // 2. Count limits (up to 10)
+        const allowedNew = 10 - currentCount;
+        if (validFiles.length > allowedNew) {
+            alert(`You can only upload ${allowedNew} more photos (max 10).`);
+            validFiles.splice(allowedNew);
+        }
+        
+        if (validFiles.length === 0) return;
+
         setState(prev => ({ ...prev, uploadingPhotos: true }));
 
         const newUrls: string[] = [];
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+        for (let i = 0; i < validFiles.length; i++) {
+            const file = validFiles[i];
             const ext = file.name.split('.').pop() || 'jpg';
             const fileName = `pre-onboard-${Date.now()}-${i}.${ext}`;
             try {
@@ -274,7 +294,7 @@ export default function GetStartedWizard() {
                         property: {
                             ...prev.property,
                             id: draft.property_id || editId,
-                            name: draft.name || '',
+                            name: draft.display_name || draft.name || '',
                             type: draft.property_type || '',
                             guests: draft.max_guests?.toString() || '',
                             bedrooms: draft.bedrooms?.toString() || '',
@@ -570,7 +590,7 @@ export default function GetStartedWizard() {
             const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
             const url = `${apiBase}/properties/${state.property.id}/draft`;
             const payload = {
-                name: state.property.name.trim(),
+                display_name: state.property.name.trim(),
                 property_type: state.property.type,
                 city: state.property.city,
                 country: state.property.country,
@@ -585,8 +605,11 @@ export default function GetStartedWizard() {
                     router.push('/my-properties');
                     return true;
                 }
+                const errData = await res.json().catch(() => ({}));
+                setPasswordError(errData.error || errData.message || 'Failed to update property draft.');
                 return false;
-            } catch {
+            } catch (err) {
+                setPasswordError(err instanceof Error ? err.message : 'Network error.');
                 return false;
             }
         } else {
@@ -1003,58 +1026,63 @@ export default function GetStartedWizard() {
                                 />
 
                                 {/* ── Photo Strip ── */}
-                                <div style={{ display: 'flex', gap: 8, marginBottom: 18, overflowX: 'auto' }}>
-                                    {state.property.photos.length > 0 ? (
-                                        <>
-                                            {state.property.photos.slice(0, 4).map((url, i) => (
-                                                <div key={i} onClick={() => setLightboxIndex(i)} style={{
-                                                    flex: 1, minWidth: 0, height: 64, borderRadius: 8, overflow: 'hidden',
-                                                    cursor: 'pointer', position: 'relative',
-                                                    border: '1px solid rgba(234,229,222,0.08)',
-                                                }}>
-                                                    <img src={url} alt={`Photo ${i + 1}`} style={{
-                                                        width: '100%', height: '100%', objectFit: 'cover',
-                                                    }} />
-                                                </div>
-                                            ))}
-                                            {state.property.photos.length > 4 && (
-                                                <div onClick={() => setLightboxIndex(4)} style={{
-                                                    flex: 1, minWidth: 0, height: 64, borderRadius: 8,
-                                                    background: 'rgba(234,229,222,0.04)', border: '1px solid rgba(234,229,222,0.08)',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    cursor: 'pointer', fontSize: 14, fontWeight: 600,
-                                                    color: 'rgba(234,229,222,0.4)',
-                                                }}>
-                                                    +{state.property.photos.length - 4}
-                                                </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        /* Empty photo state */
-                                        <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-                                            {[0, 1, 2, 3, 4].map(i => (
-                                                <div key={i} style={{
-                                                    flex: 1, minWidth: 0, height: 64, borderRadius: 8,
-                                                    border: '1px dashed rgba(234,229,222,0.1)',
-                                                    background: 'rgba(234,229,222,0.015)',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    cursor: 'pointer', position: 'relative',
-                                                    transition: 'background 0.2s',
-                                                }}
-                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(234,229,222,0.04)'}
-                                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(234,229,222,0.015)'}
-                                                onClick={() => {
-                                                    const fi = document.getElementById('gs-upload-photo');
-                                                    if (fi) fi.click();
-                                                }}>
-                                                    {i === 2 && <span style={{ fontSize: 13, color: 'rgba(234,229,222,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                                        <span style={{ fontSize: 16 }}>📷</span>
-                                                        <span style={{ fontSize: 9, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Upload</span>
-                                                    </span>}
-                                                </div>
-                                            ))}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 18, width: '100%' }}>
+                                    {state.property.photos.map((url, i) => (
+                                        <div key={`photo-${i}`} style={{
+                                            aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden',
+                                            position: 'relative', border: '1px solid rgba(234,229,222,0.08)',
+                                            background: 'rgba(0,0,0,0.2)'
+                                        }}>
+                                            <img src={url} alt={`Photo ${i + 1}`} onClick={() => setLightboxIndex(i)} style={{
+                                                width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer'
+                                            }} />
+                                            {/* Delete X */}
+                                            <div onClick={(e) => {
+                                                e.stopPropagation();
+                                                setState(prev => ({
+                                                    ...prev,
+                                                    property: { ...prev.property, photos: prev.property.photos.filter((_, idx) => idx !== i) }
+                                                }));
+                                            }} style={{
+                                                position: 'absolute', top: 4, right: 4, width: 20, height: 20,
+                                                background: 'rgba(0,0,0,0.6)', color: '#fff', borderRadius: '50%',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 12, cursor: 'pointer', zIndex: 2
+                                            }}>✕</div>
+                                        </div>
+                                    ))}
+                                    
+                                    {/* Upload box */}
+                                    {state.property.photos.length < 10 && (
+                                        <div style={{
+                                            aspectRatio: '4/3', borderRadius: 8,
+                                            border: '1px dashed rgba(234,229,222,0.15)',
+                                            background: 'rgba(234,229,222,0.015)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', position: 'relative',
+                                            transition: 'background 0.2s',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(234,229,222,0.04)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(234,229,222,0.015)'}
+                                        onClick={() => {
+                                            const fi = document.getElementById('gs-upload-photo');
+                                            if (fi) fi.click();
+                                        }}>
+                                            <span style={{ fontSize: 13, color: 'rgba(234,229,222,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                                <span style={{ fontSize: 16 }}>📷</span>
+                                                <span style={{ fontSize: 9, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Upload</span>
+                                            </span>
                                         </div>
                                     )}
+
+                                    {/* Empty padding boxes so that grid doesn't collapse rows awkwardly if photos exist but less than 5 */}
+                                    {Array.from({ length: Math.max(0, 5 - state.property.photos.length - (state.property.photos.length < 10 ? 1 : 0)) }).map((_, i) => (
+                                        <div key={`empty-${i}`} style={{
+                                            aspectRatio: '4/3', borderRadius: 8,
+                                            border: '1px dashed rgba(234,229,222,0.05)',
+                                            background: 'rgba(234,229,222,0.005)',
+                                        }} />
+                                    ))}
                                 </div>
                                 {state.property.photos.length === 0 && (
                                     <div style={{ fontSize: 11, color: 'rgba(234,229,222,0.2)', marginBottom: 14, marginTop: -10 }}>
@@ -1099,6 +1127,11 @@ export default function GetStartedWizard() {
                                 </div>
                             </div>
 
+                            {passwordError && (
+                                <div style={{ fontSize: 13, color: 'var(--color-danger, #E57373)', background: 'rgba(229,115,115,0.1)', padding: '10px 14px', borderRadius: 8, marginBottom: 12 }}>
+                                    {passwordError}
+                                </div>
+                            )}
                             <div style={{ display: 'flex', gap: 10 }}>
                                 <button onClick={() => { if (state.importMode === 'link') setStep(4); else if (state.notListed) setStep(2); else setStep(3); }} style={{ ...ghostBtn, flex: 1 }}>← Back</button>
                                 <button onClick={handleStep5Continue} disabled={!state.property.name.trim() || draftSaving} style={{ ...primaryBtn, flex: 2, ...disabledStyle(!state.property.name.trim() || draftSaving) }}>
