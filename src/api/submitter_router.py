@@ -105,6 +105,41 @@ async def list_my_properties(
     except Exception as exc:
         logger.warning("properties/mine: intake lookup failed for user=%s: %s", user_id, exc)
 
+    # 2. Fetch properties submitted directly by this user via the onboard flow
+    # These are written to the properties table with submitter_user_id by /api/onboard.
+    try:
+        prop_result = (
+            db.table("properties")
+            .select("property_id, display_name, property_type, city, country, status, created_at, max_guests, bedrooms, submitter_user_id, submitter_email")
+            .eq("submitter_user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        seen_ids = {item.get("id") for item in items}
+        for row in (prop_result.data or []):
+            prop_id = row.get("property_id")
+            if prop_id in seen_ids:
+                continue
+            seen_ids.add(prop_id)
+            items.append({
+                "id": prop_id,
+                "reference_id": prop_id,
+                "name": row.get("display_name", ""),
+                "property_type": row.get("property_type", ""),
+                "city": row.get("city", ""),
+                "country": row.get("country", ""),
+                "max_guests": row.get("max_guests"),
+                "bedrooms": row.get("bedrooms"),
+                "type": "property",
+                "status": row.get("status", "draft"),
+                "submitted_at": row.get("created_at"),
+            })
+    except Exception as exc:
+        logger.warning("properties/mine: property lookup failed for user=%s: %s", user_id, exc)
+
+    # Sort all items by submitted_at descending
+    items.sort(key=lambda x: x.get("submitted_at") or "", reverse=True)
+
     return ok({"items": items, "count": len(items)})
 
 
@@ -134,7 +169,7 @@ async def submit_intake_for_review(
     if not db:
         return err("DB_NOT_CONFIGURED", "Database not available.", status=503)
 
-    # Look up the intake request
+    # First try intake_requests table (legacy path)
     try:
         result = (
             db.table("intake_requests")
@@ -144,30 +179,47 @@ async def submit_intake_for_review(
             .execute()
         )
         rows = result.data or []
-        if not rows:
-            return err("NOT_FOUND", f"Intake request {intake_id} not found.", status=404)
+        if rows:
+            row = rows[0]
+            if row.get("user_id") != user_id:
+                return err("FORBIDDEN", "You can only submit your own intake requests.", status=403)
+            current_status = row.get("status", "")
+            if current_status not in ("draft", "pending_review"):
+                return err("INVALID_STATE", f"Cannot submit: current status is '{current_status}'.", status=400)
+            db.table("intake_requests").update({"status": "pending_review"}).eq("id", intake_id).execute()
+            logger.info("properties/submit: intake %s submitted for review by user=%s", intake_id, user_id)
+            return ok({"intake_id": intake_id, "status": "pending_review"})
+    except Exception as exc:
+        logger.warning("properties/submit: intake lookup failed for %s: %s", intake_id, exc)
 
-        row = rows[0]
+    # Fall back to properties table (onboard path — property_id like DOM-018)
+    try:
+        prop_result = (
+            db.table("properties")
+            .select("property_id, submitter_user_id, status")
+            .eq("property_id", intake_id)
+            .limit(1)
+            .execute()
+        )
+        prop_rows = prop_result.data or []
+        if not prop_rows:
+            return err("NOT_FOUND", f"Property {intake_id} not found.", status=404)
 
-        # Verify submitter owns this request
-        if row.get("user_id") != user_id:
-            return err("FORBIDDEN", "You can only submit your own intake requests.", status=403)
+        prop = prop_rows[0]
+        submitter = str(prop.get("submitter_user_id") or "")
+        if submitter != user_id:
+            return err("FORBIDDEN", "You can only submit your own properties.", status=403)
 
-        # Verify status allows transition
-        current_status = row.get("status", "")
+        current_status = prop.get("status", "")
         if current_status not in ("draft", "pending_review"):
             return err("INVALID_STATE", f"Cannot submit: current status is '{current_status}'.", status=400)
 
-        # Update status
-        db.table("intake_requests").update({
-            "status": "pending_review",
-        }).eq("id", intake_id).execute()
-
-        logger.info("properties/submit: intake %s submitted for review by user=%s", intake_id, user_id)
-        return ok({"intake_id": intake_id, "status": "pending_review"})
+        db.table("properties").update({"status": "pending_review"}).eq("property_id", intake_id).execute()
+        logger.info("properties/submit: property %s submitted for review by user=%s", intake_id, user_id)
+        return ok({"intake_id": intake_id, "property_id": intake_id, "status": "pending_review"})
 
     except Exception as exc:
-        logger.warning("properties/submit: failed for intake=%s user=%s: %s", intake_id, user_id, exc)
+        logger.warning("properties/submit: property lookup failed for %s user=%s: %s", intake_id, user_id, exc)
         return err("SUBMIT_FAILED", str(exc), status=500)
 
 
