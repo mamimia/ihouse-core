@@ -58,7 +58,7 @@ export function useIdentity(): UseIdentityResult {
         }
 
         try {
-            const apiBase = process.env.NEXT_PUBLIC_API_BASE || '';
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
             const res = await fetch(`${apiBase}/auth/identity`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });

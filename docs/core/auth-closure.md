@@ -95,8 +95,8 @@ Enforced on all surfaces: `/register`, `/login/reset`, `/update-password`, `/inv
 
 | # | Flow | Status |
 |---|---|---|
-| 1 | Sign Up | ✅ Closed |
-| 2 | Sign In | ✅ Closed |
+| 1 | Sign Up | ✅ Closed (Phase 873 fix — inline OTP verification) |
+| 2 | Sign In | ✅ Closed (Phase 873 fix — removed property CTA, styled Sign up link) |
 | 3 | Remember-Me / session persistence | ✅ Closed (caveat: checkbox cosmetic) |
 | 4 | Forgot Password | ✅ Closed |
 | 5 | Password Reset | ✅ Closed (Phase 873 — rules unified) |
@@ -106,7 +106,7 @@ Enforced on all surfaces: `/register`, `/login/reset`, `/update-password`, `/inv
 | 9 | Callback / Redirect | ✅ Closed |
 | 10 | No-Access Handling | ✅ Closed (Phase 873 — CTA → /welcome) |
 | 11 | Profile / Account Basics | ✅ Closed (Phase 873 — API base fix) |
-| 12 | OTP / Verification | ✅ Closed |
+| 12 | OTP / Verification | ✅ Closed (Phase 873 fix — functional verifyOtp step in /register) |
 | 13 | Get Started Auth Interaction | ✅ Closed |
 
 ---

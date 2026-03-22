@@ -12,7 +12,7 @@
  * A user who wants a basic account should not be forced into property onboarding.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthCard from '../../../components/auth/AuthCard';
 import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
@@ -38,18 +38,21 @@ export default function RegisterPage() {
     const [otpLoading, setOtpLoading] = useState(false);
     const [otpError, setOtpError] = useState<string | null>(null);
     const [resendCooldown, setResendCooldown] = useState(0);
+    // Guard: prevents the mount-time Supabase session check from competing
+    // with the OTP verification handler's own navigation.
+    const navigating = useRef(false);
 
     const pwRules = usePasswordRules(password);
     const allRulesPass = pwRules.every(r => r.pass);
 
-    // If already authenticated, redirect to /welcome
+    // If already authenticated with a valid iHouse token, redirect to /welcome.
+    // Guard: skip if OTP handler is already driving navigation.
     useEffect(() => {
         if (!supabase) return;
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session?.user) {
-                router.replace('/welcome');
-            }
-        });
+        const token = document.cookie.split('; ').find(c => c.startsWith('ihouse_token='))?.split('=')[1];
+        if (token) {
+            router.replace('/welcome');
+        }
     }, [router]);
 
     const handleSignUp = async (e: React.FormEvent) => {
@@ -160,6 +163,7 @@ export default function RegisterPage() {
                 // Exchange Supabase session for iHouse JWT
                 const session = result.data.session;
                 const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+                navigating.current = true;
                 try {
                     const resp = await fetch(`${BASE_URL}/auth/google-callback`, {
                         method: 'POST',
@@ -175,13 +179,18 @@ export default function RegisterPage() {
                     const jwt = body?.data || body;
                     if (resp.ok && jwt.token) {
                         setToken(jwt.token);
+                        // Write cookie synchronously, then yield a tick before
+                        // navigating so the cookie is guaranteed committed to
+                        // document.cookie before the next page's useIdentity reads it.
                         document.cookie = `ihouse_token=${jwt.token}; path=/; max-age=${jwt.expires_in || 86400}; SameSite=Lax`;
                         if (jwt.language) localStorage.setItem('domaniqo_lang', jwt.language);
+                        await new Promise(r => setTimeout(r, 50));
                         window.location.href = getRoleRoute(jwt.token);
                         return;
                     }
                 } catch { /* fall through to /welcome */ }
-                // Fallback: redirect to /welcome
+                // Fallback: redirect to /welcome (identity-only, no JWT exchange)
+                await new Promise(r => setTimeout(r, 50));
                 window.location.href = '/welcome';
             } else {
                 setOtpError('Verification succeeded but no session was created. Please try logging in.');
