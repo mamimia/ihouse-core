@@ -48,7 +48,7 @@ import os
 from typing import Any
 
 import jwt
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 logger = logging.getLogger(__name__)
