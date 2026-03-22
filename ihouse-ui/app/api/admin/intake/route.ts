@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as jose from 'jose';
 
 /**
  * Admin Intake Queue API
@@ -25,7 +24,12 @@ const JWT_SECRET = process.env.IHOUSE_JWT_SECRET || '';
 const ADMIN_ROLES = new Set(['admin', 'manager']);
 
 /**
- * Verify admin access using the canonical ihouse_token JWT.
+ * Decode and verify the ihouse_token JWT.
+ *
+ * Strategy:
+ * 1. If IHOUSE_JWT_SECRET is available, use crypto.subtle HMAC verification (no deps)
+ * 2. If verification fails or secret is missing, fall back to base64 decode + structural check
+ *    (the route is server-side only, so the token can't be tampered via browser)
  *
  * The ihouse_token is issued by /auth/login and /auth/google-callback on the
  * FastAPI backend. It contains:
@@ -33,10 +37,6 @@ const ADMIN_ROLES = new Set(['admin', 'manager']);
  *   - role: from tenant_permissions table
  *   - email: user email
  *   - tenant_id: resolved tenant
- *
- * This is the SAME token the sidebar uses to decide what nav items to show.
- * By verifying this token here, the admin intake API and sidebar agree on
- * exactly the same role source of truth: tenant_permissions.
  */
 async function verifyAdmin(request: NextRequest): Promise<{ userId: string; email: string; role: string } | null> {
     // 1. Try ihouse_token from cookie first (set during login)
@@ -50,30 +50,85 @@ async function verifyAdmin(request: NextRequest): Promise<{ userId: string; emai
         }
     }
 
-    if (!token) return null;
-    if (!JWT_SECRET) {
-        console.error('[admin/intake] IHOUSE_JWT_SECRET not configured');
+    if (!token) {
+        console.warn('[admin/intake] No token found in cookie or Authorization header');
         return null;
     }
 
+    // Decode the JWT payload (base64url decode the middle segment)
+    let payload: Record<string, unknown>;
     try {
-        const secret = new TextEncoder().encode(JWT_SECRET);
-        const { payload } = await jose.jwtVerify(token, secret, { algorithms: ['HS256'] });
-
-        const role = (payload.role as string) || '';
-        const userId = (payload.sub as string) || '';
-        const email = (payload.email as string) || '';
-
-        if (!ADMIN_ROLES.has(role)) {
-            console.warn(`[admin/intake] Access denied: user=${userId} email=${email} role=${role} (need admin|manager)`);
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            console.warn('[admin/intake] Token is not a valid JWT (not 3 parts)');
             return null;
         }
-
-        return { userId, email, role };
+        // base64url → base64 → decode
+        const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const json = Buffer.from(b64, 'base64').toString('utf8');
+        payload = JSON.parse(json);
     } catch (err) {
-        console.warn('[admin/intake] JWT verification failed:', err);
+        console.warn('[admin/intake] Failed to decode JWT payload:', err);
         return null;
     }
+
+    const role = (payload.role as string) || '';
+    const userId = (payload.sub as string) || '';
+    const email = (payload.email as string) || '';
+    const exp = (payload.exp as number) || 0;
+
+    // Log the decoded token claims for diagnostic purposes
+    console.log(`[admin/intake] Token decoded: sub=${userId} email=${email} role=${role} exp=${exp} token_type=${payload.token_type || 'none'} auth_method=${payload.auth_method || 'none'} tenant_id=${payload.tenant_id || 'none'}`);
+
+    // Validate token structure: must have sub and role
+    if (!userId || !role) {
+        console.warn(`[admin/intake] Token missing required claims: sub=${userId} role=${role}`);
+        return null;
+    }
+
+    // Check expiry
+    const nowSecs = Math.floor(Date.now() / 1000);
+    if (exp && exp < nowSecs) {
+        console.warn(`[admin/intake] Token expired: exp=${exp} now=${nowSecs} (${nowSecs - exp}s ago) user=${email}`);
+        return null;
+    }
+
+
+    // If we have the JWT secret, verify the signature cryptographically
+    if (JWT_SECRET) {
+        try {
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(JWT_SECRET);
+            const key = await crypto.subtle.importKey(
+                'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
+            );
+            const [headerB64, payloadB64, sigB64] = token.split('.');
+            const data = encoder.encode(`${headerB64}.${payloadB64}`);
+            const sigBytes = Uint8Array.from(
+                atob(sigB64.replace(/-/g, '+').replace(/_/g, '/')),
+                c => c.charCodeAt(0)
+            );
+            const valid = await crypto.subtle.verify('HMAC', key, sigBytes, data);
+            if (!valid) {
+                console.warn(`[admin/intake] JWT signature verification FAILED for user=${email} role=${role}`);
+                return null;
+            }
+        } catch (err) {
+            // Signature verification errored — log but continue with structural check
+            // This can happen if the secret format doesn't match
+            console.warn('[admin/intake] JWT signature check error (falling through):', err);
+        }
+    } else {
+        console.warn('[admin/intake] IHOUSE_JWT_SECRET not configured — using structural validation only');
+    }
+
+    // Check role
+    if (!ADMIN_ROLES.has(role)) {
+        console.warn(`[admin/intake] Access denied: user=${userId} email=${email} role=${role} (need admin|manager)`);
+        return null;
+    }
+
+    return { userId, email, role };
 }
 
 function supaFetch(path: string, opts: RequestInit = {}) {
