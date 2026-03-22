@@ -70,6 +70,7 @@ export default function MyPropertiesPage() {
     const [properties, setProperties] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState<string | null>(null);
     const [justSubmitted, setJustSubmitted] = useState<string | null>(null);
     const [userName, setUserName] = useState('');
     const [userEmail, setUserEmail] = useState('');
@@ -143,6 +144,30 @@ export default function MyPropertiesPage() {
             }
         } catch { /* ignore */ }
         finally { setSubmitting(null); }
+    };
+
+    const handleDelete = async (propertyId: string) => {
+        if (!confirm('Are you sure you want to permanently delete this property? This cannot be undone.')) return;
+        setDeleting(propertyId);
+        try {
+            const token = document.cookie
+                .split('; ')
+                .find(c => c.startsWith('ihouse_token='))
+                ?.split('=')[1];
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+            const res = await fetch(`${apiBase}/properties/${propertyId}/draft`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (res.ok) {
+                setProperties(prev => prev.filter(p => p.id !== propertyId));
+            } else {
+                alert('Failed to delete property.');
+            }
+        } catch { 
+            alert('Failed to delete property due to network error.');
+        }
+        finally { setDeleting(null); }
     };
 
     const handleSignOut = async () => {
@@ -240,7 +265,8 @@ export default function MyPropertiesPage() {
                                         {drafts.map(prop => (
                                             <PropertyCard key={prop.id} property={prop}
                                                 onSubmit={() => handleSubmitForReview(prop.id)}
-                                                submitting={submitting === prop.id} />
+                                                onDelete={() => handleDelete(prop.id)}
+                                                submitting={submitting === prop.id || deleting === prop.id} />
                                         ))}
                                     </div>
                                 </div>
@@ -257,7 +283,9 @@ export default function MyPropertiesPage() {
                                     </h2>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         {submitted.map(prop => (
-                                            <PropertyCard key={prop.id} property={prop} />
+                                            <PropertyCard key={prop.id} property={prop}
+                                                onDelete={['draft', 'pending_review', 'rejected'].includes(prop.status) ? () => handleDelete(prop.id) : undefined}
+                                                submitting={deleting === prop.id} />
                                         ))}
                                     </div>
                                 </div>
@@ -313,9 +341,10 @@ export default function MyPropertiesPage() {
 
 /* ─── Property Card Component ─── */
 
-function PropertyCard({ property, onSubmit, submitting }: {
+function PropertyCard({ property, onSubmit, onDelete, submitting }: {
     property: Property;
     onSubmit?: () => void;
+    onDelete?: () => void;
     submitting?: boolean;
 }) {
     const router = useRouter();
@@ -377,33 +406,53 @@ function PropertyCard({ property, onSubmit, submitting }: {
                 </div>
 
                 {/* Actions */}
-                {property.status === 'draft' && onSubmit && (
-                    <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', minWidth: 100 }}>
+                    {property.status === 'draft' && onSubmit && (
+                        <>
+                            <button
+                                onClick={() => router.push(`/get-started?edit=${property.id}`)}
+                                disabled={submitting}
+                                style={{
+                                    ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
+                                    background: 'transparent',
+                                    border: '1px solid rgba(234,229,222,0.15)',
+                                    color: 'var(--color-stone)',
+                                    opacity: submitting ? 0.5 : 1,
+                                }}
+                            >
+                                Edit ✏️
+                            </button>
+                            <button
+                                onClick={onSubmit}
+                                disabled={submitting}
+                                style={{
+                                    ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
+                                    opacity: submitting ? 0.5 : 1,
+                                }}
+                            >
+                                {submitting ? '…' : 'Submit →'}
+                            </button>
+                        </>
+                    )}
+                    {(!onSubmit && property.status !== 'draft' && !['approved', 'active'].includes(property.status)) && (
+                        <div style={{ width: 1, height: 1 }}>{/* Spacer basically if no edit/submit on submitted view... wait we don't need this */}</div>
+                    )}
+                    
+                    {onDelete && (
                         <button
-                            onClick={() => router.push(`/get-started?edit=${property.id}`)}
+                            onClick={onDelete}
                             disabled={submitting}
                             style={{
-                                ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
-                                background: 'transparent',
-                                border: '1px solid rgba(234,229,222,0.15)',
-                                color: 'var(--color-stone)',
-                                opacity: submitting ? 0.5 : 1,
+                                background: 'transparent', color: '#ff4444', border: 'none', 
+                                cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 12, 
+                                fontWeight: 600, padding: '6px 10px', opacity: submitting ? 0.5 : 1,
+                                marginLeft: 'auto'
                             }}
                         >
-                            Edit ✏️
+                            {submitting ? '…' : 'Delete 🗑️'}
                         </button>
-                        <button
-                            onClick={onSubmit}
-                            disabled={submitting}
-                            style={{
-                                ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
-                                opacity: submitting ? 0.5 : 1,
-                            }}
-                        >
-                            {submitting ? '…' : 'Submit →'}
-                        </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );

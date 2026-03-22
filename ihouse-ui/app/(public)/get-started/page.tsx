@@ -299,16 +299,22 @@ export default function GetStartedWizard() {
     const [preExistingAuth, setPreExistingAuth] = useState(false);
 
     // Load Property Draft for Editing
+    const [editingInit, setEditingInit] = useState(false);
+
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const editId = urlParams.get('edit');
         if (editId) {
+            setEditingInit(true);
             const loadDraft = async () => {
                 const token = document.cookie
                     .split('; ')
                     .find(c => c.startsWith('ihouse_token='))
                     ?.split('=')[1];
-                if (!token) return;
+                if (!token) {
+                    setEditingInit(false);
+                    return;
+                }
                 const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
                 const res = await fetch(`${apiBase}/properties/${editId}/draft`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -332,6 +338,7 @@ export default function GetStartedWizard() {
                         }
                     }));
                 }
+                setEditingInit(false);
             };
             loadDraft();
         }
@@ -774,20 +781,26 @@ export default function GetStartedWizard() {
                     paddingTop: 'var(--header-height, 72px)',
                 }}
             >
-                <div style={{
-                    maxWidth: 560, margin: '0 auto',
-                    padding: 'var(--space-8, 32px) var(--space-4, 16px)',
-                }}>
-                    {/* Header */}
-                    {state.step <= 7 && (
-                        <div className="gs-fade" style={{ textAlign: 'center', marginBottom: 'var(--space-6, 24px)' }}>
-                            <DMonogram size={36} color="var(--color-stone, #EAE5DE)" strokeWidth={1.2} />
-                            <h1 style={{
-                                fontFamily: 'var(--font-display, serif)',
-                                fontSize: 'var(--text-2xl, 28px)',
-                                color: 'var(--color-stone, #EAE5DE)',
-                                margin: '16px 0 6px', fontWeight: 400,
-                            }}>
+                {editingInit ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
+                        <div style={{ width: 24, height: 24, border: '2px solid rgba(234,229,222,0.2)', borderTopColor: 'var(--color-copper)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                        <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                    </div>
+                ) : (
+                    <div style={{
+                        maxWidth: 560, margin: '0 auto',
+                        padding: 'var(--space-8, 32px) var(--space-4, 16px)',
+                    }}>
+                        {/* Header */}
+                        {state.step <= 7 && (
+                            <div className="gs-fade" style={{ textAlign: 'center', marginBottom: 'var(--space-6, 24px)' }}>
+                                <DMonogram size={36} color="var(--color-stone, #EAE5DE)" strokeWidth={1.2} />
+                                <h1 style={{
+                                    fontFamily: 'var(--font-display, serif)',
+                                    fontSize: 'var(--text-2xl, 28px)',
+                                    color: 'var(--color-stone, #EAE5DE)',
+                                    margin: '16px 0 6px', fontWeight: 400,
+                                }}>
                                 {isSignedIn
                                     ? 'Add Property'
                                     : state.step <= 5 ? 'Get Started' : state.step === 6 ? 'Save Your Property' : 'Complete Your Account'
@@ -1478,6 +1491,7 @@ export default function GetStartedWizard() {
                         </div>
                     )}
                 </div>
+                )}
             </div>
         </>
     );

@@ -216,6 +216,86 @@ async def update_draft_property(
             
     return ok({"property_id": property_id, "updated": True})
 
+@router.delete(
+    "/properties/{property_id}/draft",
+    tags=["submitter"],
+    summary="Permanently delete an unapproved property draft",
+)
+async def delete_draft_property(
+    property_id: str,
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Permanently deletes a property draft (and all associated sub-records + storage)
+    if it belongs to the submitter and has not yet been approved/activated.
+    """
+    user_id = _extract_user_id(request, tenant_id)
+    db = _get_db()
+    if not db:
+        return err("DB_NOT_CONFIGURED", "Database not available.", status=503)
+
+    # 1. Verify ownership and status
+    check = db.table("properties").select("status, submitter_user_id").eq("property_id", property_id).limit(1).execute()
+    
+    prop = None
+    if check.data:
+        prop = check.data[0]
+        if prop.get("submitter_user_id") != user_id:
+            return err("FORBIDDEN", "You can only delete your own properties.", 403)
+    else:
+        # Fallback to legacy intake_requests
+        check_intake = db.table("intake_requests").select("status, user_id").eq("id", property_id).limit(1).execute()
+        if check_intake.data:
+            prop = check_intake.data[0]
+            if prop.get("user_id") != user_id:
+                return err("FORBIDDEN", "You can only delete your own properties.", 403)
+                
+    if not prop:
+        return err("NOT_FOUND", "Property not found.", 404)
+        
+    if prop.get("status") not in ("draft", "pending_review", "rejected"):
+        return err("INVALID_STATE", "Only unapproved properties can be deleted.", 400)
+
+    try:
+        # 2. Find associated marketing photos to delete from Supabase Storage
+        photos = db.table("property_marketing_photos").select("photo_url").eq("property_id", property_id).execute()
+        urls_to_delete = [p["photo_url"] for p in (photos.data or []) if p.get("photo_url")]
+        
+        # We attempt to extract the storage path if it's from our property-photos bucket
+        # Example URL: https://.../storage/v1/object/public/property-photos/staging/pre-onboard-123.jpg
+        paths_to_delete = []
+        for url in urls_to_delete:
+            if "/storage/v1/object/public/property-photos/" in url:
+                path = url.split("/storage/v1/object/public/property-photos/")[1]
+                paths_to_delete.append(path)
+                
+        # Delete from DB first
+        # property_marketing_photos should cascade or be deleted explicitly
+        db.table("property_marketing_photos").delete().eq("property_id", property_id).execute()
+        db.table("properties").delete().eq("property_id", property_id).execute()
+        db.table("intake_requests").delete().eq("id", property_id).execute()
+        
+        # 3. Fire and forget storage deletion (using Supabase admin client or just internal storage api if configured)
+        # Note: In a production environment with proper service role, storage.from_("...").remove() works.
+        import os
+        from supabase import create_client
+        if paths_to_delete:
+            try:
+                supa_url = os.environ.get("SUPABASE_URL", "")
+                supa_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+                if supa_url and supa_key:
+                    admin_client = create_client(supa_url, supa_key)
+                    admin_client.storage.from_("property-photos").remove(paths_to_delete)
+            except Exception as store_err:
+                logger.warning(f"Failed to delete storage objects for {property_id}: {store_err}")
+
+        logger.info("properties/delete: property %s permanently deleted by user=%s", property_id, user_id)
+        return ok({"property_id": property_id, "deleted": True})
+
+    except Exception as exc:
+        logger.error("properties/delete failed for %s: %s", property_id, exc)
+        return err("DELETE_FAILED", str(exc), 500)
 @router.post(
     "/properties/{intake_id}/submit",
     tags=["submitter"],
