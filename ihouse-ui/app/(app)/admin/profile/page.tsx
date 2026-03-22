@@ -1,0 +1,495 @@
+'use client';
+
+/**
+ * Admin Profile & Account Settings — /admin/profile
+ *
+ * Dedicated admin-facing profile page accessible from the admin sidebar.
+ * Same identity/profile data as /profile but rendered in the admin layout (light theme, sidebar).
+ *
+ * Features:
+ * - View account details (email, name, role, tenant)
+ * - Edit profile (name, phone, language)
+ * - Identity linking: link/unlink Google, add email+password
+ * - Account status display
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { usePasswordRules } from '@/hooks/usePasswordRules';
+import PasswordInput from '@/components/auth/PasswordInput';
+
+interface Profile {
+    user_id: string;
+    email: string;
+    full_name: string;
+    phone: string;
+    avatar_url: string;
+    language: string;
+    providers: string[];
+    role: string;
+    tenant_id: string;
+    has_membership: boolean;
+}
+
+export default function AdminProfilePage() {
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState('');
+    const [editMode, setEditMode] = useState(false);
+    const [form, setForm] = useState({ full_name: '', phone: '', language: '' });
+    const [addPasswordMode, setAddPasswordMode] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [passwordFocused, setPasswordFocused] = useState(false);
+    const pwRules = usePasswordRules(newPassword);
+    const allPwRulesPass = pwRules.every(r => r.pass);
+    const [hasSupabaseSession, setHasSupabaseSession] = useState(false);
+
+    useEffect(() => {
+        if (!supabase) return;
+        supabase.auth.getSession().then(({ data }) => {
+            if (data.session) setHasSupabaseSession(true);
+        });
+    }, []);
+
+    const fetchProfile = useCallback(async () => {
+        try {
+            const token = typeof window !== 'undefined'
+                ? (localStorage.getItem('ihouse_token') ||
+                    document.cookie.split('; ').find(c => c.startsWith('ihouse_token='))?.split('=')[1])
+                : null;
+
+            if (!token) { setLoading(false); return; }
+
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+            const res = await fetch(`${apiBase}/auth/profile`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (!res.ok) { setMessage('Failed to load profile'); setLoading(false); return; }
+
+            const data = await res.json();
+            const p = data.data || data;
+            setProfile(p);
+            setForm({ full_name: p.full_name || '', phone: p.phone || '', language: p.language || '' });
+        } catch {
+            setMessage('Error loading profile');
+        }
+        setLoading(false);
+    }, []);
+
+    useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+    const handleSave = async () => {
+        setSaving(true);
+        setMessage('');
+        try {
+            const token = typeof window !== 'undefined'
+                ? (localStorage.getItem('ihouse_token') ||
+                    document.cookie.split('; ').find(c => c.startsWith('ihouse_token='))?.split('=')[1])
+                : null;
+
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+            const res = await fetch(`${apiBase}/auth/profile`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    full_name: form.full_name.trim() || undefined,
+                    phone: form.phone.trim() || undefined,
+                    language: form.language.trim() || undefined,
+                }),
+            });
+
+            if (res.ok) {
+                setMessage('Profile updated ✓');
+                setEditMode(false);
+                fetchProfile();
+            } else {
+                setMessage('Failed to save');
+            }
+        } catch {
+            setMessage('Error saving profile');
+        }
+        setSaving(false);
+    };
+
+    // --- Shared styles (admin light theme) ---
+    const sectionStyle: React.CSSProperties = {
+        background: 'var(--color-surface, #fff)',
+        border: '1px solid var(--color-border, #e5e7eb)',
+        borderRadius: 'var(--radius-lg, 16px)',
+        padding: 'var(--space-6, 24px)',
+        marginBottom: 'var(--space-5, 20px)',
+    };
+    const labelStyle: React.CSSProperties = {
+        fontSize: 'var(--text-xs, 12px)',
+        color: 'var(--color-text-faint, #9ca3af)',
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.06em',
+        marginBottom: 6,
+        display: 'block',
+    };
+    const inputStyle: React.CSSProperties = {
+        width: '100%',
+        boxSizing: 'border-box',
+        background: 'var(--color-surface-2, #f9fafb)',
+        border: '1px solid var(--color-border, #e5e7eb)',
+        borderRadius: 'var(--radius-sm, 8px)',
+        color: 'var(--color-text, #1f2937)',
+        fontSize: 'var(--text-sm, 14px)',
+        padding: '10px 14px',
+    };
+    const btnPrimary: React.CSSProperties = {
+        background: 'var(--color-primary, #334036)',
+        color: '#fff',
+        border: 'none',
+        borderRadius: 'var(--radius-md, 12px)',
+        padding: '10px 24px',
+        fontSize: 'var(--text-sm, 14px)',
+        fontWeight: 600,
+        cursor: 'pointer',
+    };
+    const btnSecondary: React.CSSProperties = {
+        ...btnPrimary,
+        background: 'var(--color-surface-2, #f3f4f6)',
+        color: 'var(--color-text, #1f2937)',
+    };
+
+    const sectionHeader = (title: string) => (
+        <div style={{
+            fontSize: 'var(--text-xs, 12px)',
+            fontWeight: 700,
+            color: 'var(--color-text-faint, #9ca3af)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.07em',
+            marginBottom: 'var(--space-5, 20px)',
+        }}>
+            {title}
+        </div>
+    );
+
+    if (loading) {
+        return (
+            <div style={{ maxWidth: 640, padding: 'var(--space-6, 24px)' }}>
+                <div style={{ color: 'var(--color-text-dim, #6b7280)' }}>Loading…</div>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ maxWidth: 640 }}>
+            {/* Page header */}
+            <div style={{ marginBottom: 'var(--space-8, 32px)' }}>
+                <p style={{ fontSize: 'var(--text-xs, 12px)', color: 'var(--color-text-faint, #9ca3af)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, marginTop: 0 }}>
+                    Admin
+                </p>
+                <h1 style={{ fontSize: 'var(--text-2xl, 24px)', fontWeight: 700, color: 'var(--color-text, #1f2937)', letterSpacing: '-0.03em', margin: 0 }}>
+                    My Profile
+                </h1>
+            </div>
+
+            {/* Notice */}
+            {message && (
+                <div style={{
+                    padding: '10px 16px',
+                    borderRadius: 'var(--radius-md, 12px)',
+                    background: message.includes('✓') ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                    border: `1px solid ${message.includes('✓') ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                    color: message.includes('✓') ? '#16a34a' : '#dc2626',
+                    fontSize: 'var(--text-sm, 14px)',
+                    marginBottom: 'var(--space-4, 16px)',
+                }}>
+                    {message}
+                </div>
+            )}
+
+            {/* Account Info */}
+            <div style={sectionStyle}>
+                {sectionHeader('Account Details')}
+
+                <div style={{ marginBottom: 16 }}>
+                    <label style={labelStyle}>Email</label>
+                    <div style={{ ...inputStyle, opacity: 0.7, cursor: 'not-allowed' }}>
+                        {profile?.email || '—'}
+                    </div>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                    <label style={labelStyle}>Full Name</label>
+                    {editMode ? (
+                        <input style={inputStyle} value={form.full_name}
+                            onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+                            placeholder="Your name" />
+                    ) : (
+                        <div style={inputStyle}>{profile?.full_name || '—'}</div>
+                    )}
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                    <label style={labelStyle}>Phone</label>
+                    {editMode ? (
+                        <input style={inputStyle} value={form.phone}
+                            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                            placeholder="+66 XXX XXX XXXX" />
+                    ) : (
+                        <div style={inputStyle}>{profile?.phone || '—'}</div>
+                    )}
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                    <label style={labelStyle}>Language</label>
+                    {editMode ? (
+                        <select style={{ ...inputStyle, appearance: 'auto' as unknown as undefined }} value={form.language}
+                            onChange={e => setForm(f => ({ ...f, language: e.target.value }))}>
+                            <option value="">Not set</option>
+                            <option value="en">English</option>
+                            <option value="th">ไทย</option>
+                            <option value="he">עברית</option>
+                        </select>
+                    ) : (
+                        <div style={inputStyle}>
+                            {profile?.language === 'th' ? 'ไทย' :
+                             profile?.language === 'he' ? 'עברית' :
+                             profile?.language === 'en' ? 'English' : '—'}
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    {editMode ? (
+                        <>
+                            <button style={btnPrimary} onClick={handleSave} disabled={saving}>
+                                {saving ? 'Saving…' : 'Save Changes'}
+                            </button>
+                            <button style={btnSecondary} onClick={() => {
+                                setEditMode(false);
+                                setForm({ full_name: profile?.full_name || '', phone: profile?.phone || '', language: profile?.language || '' });
+                            }}>Cancel</button>
+                        </>
+                    ) : (
+                        <button style={btnPrimary} onClick={() => setEditMode(true)}>Edit Profile</button>
+                    )}
+                </div>
+            </div>
+
+            {/* Role & Tenant */}
+            <div style={sectionStyle}>
+                {sectionHeader('Organization')}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                        <label style={labelStyle}>Role</label>
+                        <div style={{
+                            ...inputStyle,
+                            display: 'flex', alignItems: 'center', gap: 8,
+                        }}>
+                            <span style={{
+                                width: 8, height: 8, borderRadius: '50%',
+                                background: profile?.role === 'admin' ? '#16a34a' : '#f59e0b',
+                            }} />
+                            {(profile?.role || '—').charAt(0).toUpperCase() + (profile?.role || '—').slice(1)}
+                        </div>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Tenant</label>
+                        <div style={inputStyle}>{profile?.tenant_id || '—'}</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Linked Login Methods */}
+            <div style={sectionStyle}>
+                {sectionHeader('Linked Login Methods')}
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    {(profile?.providers || []).map(provider => (
+                        <span key={provider} style={{
+                            background: 'var(--color-surface-2, #f3f4f6)',
+                            border: '1px solid var(--color-border, #e5e7eb)',
+                            borderRadius: '8px',
+                            padding: '8px 14px',
+                            fontSize: '14px',
+                            color: 'var(--color-text, #1f2937)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontWeight: 500,
+                        }}>
+                            {provider === 'email' ? '📧 Email/Password' : provider === 'google' ? '🔵 Google' : provider}
+                            {(profile?.providers?.length || 0) > 1 && (
+                                <button
+                                    onClick={async () => {
+                                        if (!supabase) return;
+                                        if (!confirm(`Unlink ${provider} login? You'll still have other login methods.`)) return;
+                                        try {
+                                            const { data: { user } } = await supabase.auth.getUser();
+                                            const identity = user?.identities?.find(i => i.provider === provider);
+                                            if (identity) {
+                                                await supabase.auth.unlinkIdentity(identity);
+                                                setMessage(`${provider} unlinked ✓`);
+                                                fetchProfile();
+                                            }
+                                        } catch {
+                                            setMessage('Failed to unlink provider');
+                                        }
+                                    }}
+                                    style={{
+                                        background: 'none', border: 'none',
+                                        color: 'var(--color-text-faint, #9ca3af)',
+                                        fontSize: '11px', cursor: 'pointer',
+                                    }}
+                                    title={`Unlink ${provider}`}
+                                >✕</button>
+                            )}
+                        </span>
+                    ))}
+                    {(profile?.providers || []).length === 0 && (
+                        <span style={{ fontSize: 14, color: 'var(--color-text-faint, #9ca3af)' }}>
+                            No linked providers found
+                        </span>
+                    )}
+                </div>
+
+                {/* Link Google */}
+                {hasSupabaseSession && !(profile?.providers || []).includes('google') && (
+                    <button
+                        onClick={async () => {
+                            if (!supabase) return;
+                            try {
+                                sessionStorage.setItem('ihouse_linking_provider', 'google');
+                                await supabase.auth.linkIdentity({ provider: 'google' });
+                            } catch {
+                                sessionStorage.removeItem('ihouse_linking_provider');
+                                setMessage('Failed to link Google account');
+                            }
+                        }}
+                        style={{
+                            ...btnSecondary,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            width: '100%',
+                            justifyContent: 'center',
+                            marginBottom: '8px',
+                        }}
+                    >
+                        🔵 Link Google Account
+                    </button>
+                )}
+
+                {/* Add Email+Password */}
+                {!(profile?.providers || []).includes('email') && (
+                    addPasswordMode ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                            <PasswordInput
+                                id="admin-add-password"
+                                value={newPassword}
+                                onChange={e => setNewPassword(e.target.value)}
+                                onFocus={() => setPasswordFocused(true)}
+                                onBlur={() => setPasswordFocused(false)}
+                                placeholder="Create a password"
+                                autoComplete="new-password"
+                            />
+                            <PasswordInput
+                                id="admin-confirm-password"
+                                value={confirmNewPassword}
+                                onChange={e => setConfirmNewPassword(e.target.value)}
+                                placeholder="Confirm password"
+                                autoComplete="new-password"
+                            />
+                            {(passwordFocused || newPassword.length > 0) && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 11, lineHeight: 1.8 }}>
+                                    {pwRules.map(r => (
+                                        <span key={r.key} style={{
+                                            color: newPassword.length === 0
+                                                ? 'var(--color-text-faint, #9ca3af)'
+                                                : r.pass ? '#16a34a' : 'var(--color-text-faint, #9ca3af)',
+                                            transition: 'color 0.2s',
+                                        }}>
+                                            {newPassword.length > 0 && r.pass ? '✓' : '○'} {r.label}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            {confirmNewPassword.length > 0 && newPassword !== confirmNewPassword && (
+                                <div style={{ fontSize: 12, color: '#dc2626' }}>✗ Passwords do not match</div>
+                            )}
+                            {confirmNewPassword.length > 0 && newPassword === confirmNewPassword && newPassword.length > 0 && (
+                                <div style={{ fontSize: 12, color: '#16a34a' }}>✓ Passwords match</div>
+                            )}
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    onClick={async () => {
+                                        if (!supabase || !allPwRulesPass || newPassword !== confirmNewPassword) return;
+                                        try {
+                                            const { error } = await supabase.auth.updateUser({ password: newPassword });
+                                            if (error) throw error;
+                                            setMessage('Password added ✓ — you can now login with email + password');
+                                            setAddPasswordMode(false);
+                                            setNewPassword('');
+                                            setConfirmNewPassword('');
+                                            fetchProfile();
+                                        } catch {
+                                            setMessage('Failed to add password');
+                                        }
+                                    }}
+                                    disabled={!allPwRulesPass || newPassword !== confirmNewPassword}
+                                    style={{
+                                        ...btnPrimary,
+                                        opacity: allPwRulesPass && newPassword === confirmNewPassword ? 1 : 0.4,
+                                        flex: 1,
+                                    }}
+                                >
+                                    Save Password
+                                </button>
+                                <button
+                                    onClick={() => { setAddPasswordMode(false); setNewPassword(''); setConfirmNewPassword(''); }}
+                                    style={btnSecondary}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setAddPasswordMode(true)}
+                            style={{
+                                ...btnSecondary,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                width: '100%',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            📧 Add Email + Password Login
+                        </button>
+                    )
+                )}
+            </div>
+
+            {/* User ID (debug) */}
+            <div style={{
+                color: 'var(--color-text-faint, #9ca3af)',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                marginTop: 'var(--space-4, 16px)',
+            }}>
+                ID: {profile?.user_id || '—'}
+            </div>
+
+            <div style={{
+                marginTop: 'var(--space-8, 32px)',
+                paddingTop: 'var(--space-5, 20px)',
+                borderTop: '1px solid var(--color-border, #e5e7eb)',
+                fontSize: 'var(--text-xs, 12px)',
+                color: 'var(--color-text-faint, #9ca3af)',
+            }}>
+                iHouse Core · Admin Profile
+            </div>
+        </div>
+    );
+}

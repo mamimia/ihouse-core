@@ -41,6 +41,7 @@ const ITEMS: NavItem[] = [
     { href: '/admin/health',      label: 'System Health',   icon: '💚', group: 'system' },
     { href: '/admin/audit',       label: 'Audit Trail',     icon: '📋', group: 'system' },
     { href: '/admin/settings',    label: 'Settings',        icon: '⚙', group: 'system' },
+    { href: '/admin/profile',     label: 'My Profile',      icon: '👤', group: 'system' },
 ];
 
 const GROUP_SEPARATOR: Array<NavItem['group']> = ['finance', 'integration', 'system'];
