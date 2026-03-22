@@ -283,7 +283,11 @@ async def submit_intake_for_review(
         if current_status not in ("draft", "pending_review"):
             return err("INVALID_STATE", f"Cannot submit: current status is '{current_status}'.", status=400)
 
-        db.table("properties").update({"status": "pending_review"}).eq("property_id", intake_id).execute()
+        from datetime import datetime, timezone
+        db.table("properties").update({
+            "status": "pending_review",
+            "submitted_at": datetime.now(timezone.utc).isoformat()
+        }).eq("property_id", intake_id).execute()
         logger.info("properties/submit: property %s submitted for review by user=%s", intake_id, user_id)
         return ok({"intake_id": intake_id, "property_id": intake_id, "status": "pending_review"})
 
