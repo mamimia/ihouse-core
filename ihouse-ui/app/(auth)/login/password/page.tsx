@@ -237,7 +237,7 @@ function PasswordForm() {
                 gap: 'var(--space-3, 12px)',
                 textAlign: 'center',
             }}>
-                <a href="/login/forgot" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
+                <a href={`/login/forgot${emailParam ? `?email=${encodeURIComponent(emailParam)}` : ''}`} className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
                     Forgot password?
                 </a>
                 <div style={{ height: 1, background: 'rgba(234,229,222,0.04)', margin: '4px 0' }} />

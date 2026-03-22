@@ -57,7 +57,7 @@ function ForgotPasswordForm() {
 
     if (sent) {
         return (
-            <AuthCard title="Check your email" subtitle="We sent a password reset link to your inbox">
+            <AuthCard title="Check your email" subtitle="We sent you a password reset link">
                 <div style={{
                     textAlign: 'center',
                     padding: 'var(--space-6, 24px) 0',
@@ -67,13 +67,22 @@ function ForgotPasswordForm() {
                         fontSize: 'var(--text-sm, 14px)',
                         color: 'rgba(234,229,222,0.5)',
                         lineHeight: 1.6,
-                        marginBottom: 'var(--space-4, 16px)',
+                        marginBottom: 4,
                     }}>
-                        If an account exists for <strong style={{ color: 'var(--color-stone, #EAE5DE)' }}>{email}</strong>,
-                        you'll receive a password reset link shortly.
+                        If <strong style={{ color: 'var(--color-stone, #EAE5DE)' }}>{email}</strong> has an account,
+                        you&apos;ll receive an email shortly.
+                    </p>
+                    <p style={{
+                        fontSize: 12,
+                        color: 'rgba(234,229,222,0.3)',
+                        lineHeight: 1.6,
+                        marginBottom: 'var(--space-6, 24px)',
+                    }}>
+                        Click the link in the email to set a new password.
+                        Check your spam folder if it doesn&apos;t arrive within a few minutes.
                     </p>
                     <a
-                        href="/login"
+                        href={`/login/password?email=${encodeURIComponent(email)}`}
                         style={{
                             display: 'inline-block',
                             padding: '12px 24px',
@@ -85,7 +94,7 @@ function ForgotPasswordForm() {
                             textDecoration: 'none',
                         }}
                     >
-                        Back to login
+                        Back to sign in
                     </a>
                 </div>
             </AuthCard>
@@ -93,7 +102,7 @@ function ForgotPasswordForm() {
     }
 
     return (
-        <AuthCard title="Reset your password" subtitle="Enter your email and we'll send you a reset link">
+        <AuthCard title="Reset your password" subtitle="Enter your email and we'll send a reset link">
             <form onSubmit={handleSendReset} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
                 <div>
                     <label style={{

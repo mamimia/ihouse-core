@@ -18,7 +18,7 @@ import PublicNav from '../../components/PublicNav';
 import PublicFooter from '../../components/PublicFooter';
 
 // Routes that are signed-in surfaces: suppress marketing nav/footer entirely
-const SIGNED_IN_PREFIXES = ['/welcome', '/my-properties', '/no-access'];
+const SIGNED_IN_PREFIXES = ['/welcome', '/my-properties', '/profile', '/no-access'];
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

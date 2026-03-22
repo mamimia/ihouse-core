@@ -20,6 +20,7 @@ import Link from 'next/link';
 import DMonogram from '@/components/DMonogram';
 import { supabase } from '@/lib/supabaseClient';
 import { performClientLogout } from '@/lib/api';
+import SignedInShell, { SHELL_TOP_PADDING } from '@/components/SignedInShell';
 
 interface Property {
     id: string;
@@ -152,37 +153,28 @@ export default function MyPropertiesPage() {
                 .mp-card:hover { border-color: rgba(234,229,222,0.12) !important; }
             `}</style>
 
+            <SignedInShell back="/welcome" backLabel="← Home" />
+
             <div style={{
                 minHeight: '100vh',
                 background: 'var(--color-midnight, #171A1F)',
-                paddingTop: 'var(--header-height, 72px)',
+                paddingTop: SHELL_TOP_PADDING,
             }}>
                 <div style={{
                     maxWidth: 480, margin: '0 auto',
                     padding: 'var(--space-6, 24px) var(--space-4, 16px)',
                 }}>
-                    {/* Header */}
+                    {/* Page heading */}
                     <div className="mp-fade" style={{ marginBottom: 'var(--space-6, 24px)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <DMonogram size={28} color="var(--color-stone, #EAE5DE)" strokeWidth={1.2} />
-                                <h1 style={{
-                                    fontFamily: 'var(--font-display, serif)',
-                                    fontSize: 'var(--text-xl, 24px)',
-                                    color: 'var(--color-stone, #EAE5DE)',
-                                    margin: 0, fontWeight: 400,
-                                }}>
-                                    My Properties
-                                </h1>
-                            </div>
-                            <button onClick={handleSignOut} style={{
-                                background: 'none', border: 'none', color: 'rgba(234,229,222,0.3)',
-                                fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-sans, inherit)',
-                            }}>
-                                Sign out
-                            </button>
-                        </div>
-                        <p style={{ fontSize: 14, color: 'rgba(234,229,222,0.35)', margin: '8px 0 0' }}>
+                        <h1 style={{
+                            fontFamily: 'var(--font-display, serif)',
+                            fontSize: 'var(--text-xl, 24px)',
+                            color: 'var(--color-stone, #EAE5DE)',
+                            margin: '0 0 6px', fontWeight: 400,
+                        }}>
+                            My Properties
+                        </h1>
+                        <p style={{ fontSize: 14, color: 'rgba(234,229,222,0.35)', margin: 0 }}>
                             {userName ? `Welcome back, ${userName}.` : userEmail ? `Signed in as ${userEmail}` : 'Manage your properties.'}
                         </p>
                     </div>

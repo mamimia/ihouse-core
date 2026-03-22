@@ -14,6 +14,7 @@ import DMonogram from '@/components/DMonogram';
 import PasswordInput from '@/components/auth/PasswordInput';
 import { supabase } from '@/lib/supabaseClient';
 import { usePasswordRules } from '@/hooks/usePasswordRules';
+import SignedInShell, { SHELL_TOP_PADDING } from '@/components/SignedInShell';
 
 interface Profile {
     user_id: string;
@@ -159,21 +160,10 @@ export default function ProfilePage() {
     }
 
     return (
-        <div style={{ minHeight: '100vh', background: 'var(--color-background, #161719)', padding: 'var(--space-6, 24px)' }}>
-            {/* Header */}
-            <div style={{ maxWidth: 600, margin: '0 auto', paddingTop: 'var(--space-8, 32px)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: 'var(--space-6, 24px)' }}>
-                    <DMonogram size={28} />
-                    <h1 style={{
-                        fontSize: '22px',
-                        fontWeight: 700,
-                        color: 'var(--color-text-primary, #EAE5DE)',
-                        margin: 0,
-                        letterSpacing: '-0.3px',
-                    }}>
-                        My Profile
-                    </h1>
-                </div>
+        <>
+        <SignedInShell back="/welcome" backLabel="← Home" />
+        <div style={{ minHeight: '100vh', background: 'var(--color-background, #161719)', paddingTop: SHELL_TOP_PADDING, padding: `${SHELL_TOP_PADDING} var(--space-6, 24px) var(--space-10, 40px)` }}>
+            <div style={{ maxWidth: 600, margin: '0 auto' }}>
 
                 {message && (
                     <div style={{
@@ -515,5 +505,6 @@ export default function ProfilePage() {
                 </div>
             </div>
         </div>
+        </>
     );
 }

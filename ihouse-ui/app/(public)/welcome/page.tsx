@@ -22,7 +22,7 @@ import { useRouter } from 'next/navigation';
 import { useIdentity } from '@/hooks/useIdentity';
 import DMonogram from '@/components/DMonogram';
 import { useEffect, useState } from 'react';
-import { api, performClientLogout } from '@/lib/api';
+import SignedInShell, { SHELL_TOP_PADDING } from '@/components/SignedInShell';
 
 export default function WelcomePage() {
     const router = useRouter();
@@ -109,42 +109,7 @@ export default function WelcomePage() {
                 .welcome-card-hover:hover { border-color: rgba(234,229,222,0.15) !important; box-shadow: 0 4px 24px rgba(0,0,0,0.15) !important; }
             `}</style>
 
-            {/* Signed-in shell header */}
-            <div style={{
-                position: 'fixed', top: 0, left: 0, right: 0, zIndex: 90,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 24px',
-                background: 'rgba(13,15,20,0.92)', backdropFilter: 'blur(12px)',
-                borderBottom: '1px solid rgba(234,229,222,0.05)',
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <DMonogram size={22} color="var(--color-stone)" strokeWidth={1.6} />
-                    <span style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 'var(--text-base, 16px)',
-                        color: 'var(--color-stone)',
-                        letterSpacing: '-0.02em',
-                    }}>Domaniqo</span>
-                </div>
-                <button
-                    onClick={async () => {
-                        try { await api.logout(); } catch { /* ignore */ }
-                        performClientLogout('/');
-                        window.location.href = '/';
-                    }}
-                    style={{
-                        background: 'none', border: 'none',
-                        color: 'rgba(234,229,222,0.35)',
-                        fontSize: 'var(--text-sm, 14px)',
-                        cursor: 'pointer',
-                        fontFamily: 'var(--font-sans, inherit)',
-                        padding: '4px 0',
-                        transition: 'color 0.2s',
-                    }}
-                >
-                    Sign out
-                </button>
-            </div>
+            <SignedInShell />
 
             <div
                 className="grain-overlay"
@@ -154,7 +119,7 @@ export default function WelcomePage() {
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    padding: '80px var(--space-6, 24px) var(--space-10, 40px)',
+                    padding: `${SHELL_TOP_PADDING} var(--space-6, 24px) var(--space-10, 40px)`,
                 }}
             >
                 <div className="welcome-card" style={{ maxWidth: 560, width: '100%' }}>
