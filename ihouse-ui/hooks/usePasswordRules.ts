@@ -7,7 +7,7 @@
  *   - 1 number
  *   - 1 special character
  *
- * Used by: /register, /login/reset, /update-password, /invite/[token], /profile, /get-started
+ * Used by: /register, /login/forgot, /update-password, /invite/[token], /profile, /get-started
  */
 
 export interface PasswordRule {
