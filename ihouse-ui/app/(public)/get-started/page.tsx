@@ -225,11 +225,39 @@ export default function GetStartedWizard() {
 
         setState(prev => ({ ...prev, uploadingPhotos: true }));
 
+        const compressImage = async (file: File): Promise<File> => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target?.result as string;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let { width, height } = img;
+                        const MAX_SIZE = 1920;
+                        if (width > height && width > MAX_SIZE) {
+                            height = Math.round((height * MAX_SIZE) / width);
+                            width = MAX_SIZE;
+                        } else if (height > MAX_SIZE) {
+                            width = Math.round((width * MAX_SIZE) / height);
+                            height = MAX_SIZE;
+                        }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx?.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((b) => b ? resolve(new File([b], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' })) : resolve(file), 'image/jpeg', 0.85);
+                    };
+                    img.onerror = () => resolve(file);
+                };
+                reader.onerror = () => resolve(file);
+            });
+        };
+
         const newUrls: string[] = [];
         for (let i = 0; i < validFiles.length; i++) {
-            const file = validFiles[i];
-            const ext = file.name.split('.').pop() || 'jpg';
-            const fileName = `pre-onboard-${Date.now()}-${i}.${ext}`;
+            const file = await compressImage(validFiles[i]);
+            const fileName = `pre-onboard-${Date.now()}-${i}.jpg`;
             try {
                 const { data, error } = await supabase.storage
                     .from('property-photos')
