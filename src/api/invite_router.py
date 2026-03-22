@@ -33,8 +33,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Phase 857 (audit B6): valid roles — must match auth_login_router._VALID_ROLES
-_VALID_ROLES = {"admin", "manager", "ops", "worker", "cleaner", "owner", "checkin", "checkout", "maintenance"}
+# Phase 862 (Canonical Auth P7): single source of truth for roles
+from services.canonical_roles import CANONICAL_ROLES as _VALID_ROLES
+# Phase 867: use INVITABLE_ROLES at accept time to block admin via invite
+from services.canonical_roles import INVITABLE_ROLES as _INVITABLE_ROLES
 
 
 def _get_db() -> Any:  # pragma: no cover
@@ -231,9 +233,10 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
     metadata = claims.get("metadata") or {}
     email = claims.get("email", "")
     raw_role = metadata.get("role", "worker")
-    # Phase 857 (audit B6): validate role at accept time — never trust metadata blindly
-    if raw_role not in _VALID_ROLES:
-        logger.warning("invite/accept: invalid role '%s' in metadata — defaulting to 'worker'", raw_role)
+    # Phase 867: validate against INVITABLE_ROLES (excludes admin) — not CANONICAL_ROLES
+    # Phase 857 (audit B6): never trust metadata blindly
+    if raw_role not in _INVITABLE_ROLES:
+        logger.warning("invite/accept: role '%s' not in INVITABLE_ROLES — defaulting to 'worker'", raw_role)
         role = "worker"
     else:
         role = raw_role

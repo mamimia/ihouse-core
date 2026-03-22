@@ -29,6 +29,16 @@ export default function AuthCallbackPage() {
                 setErrorMsg('Authentication is not configured. Please contact your administrator.');
                 return;
             }
+
+            // Phase 865: Check if this is a return from identity linking (not login)
+            const linkingProvider = sessionStorage.getItem('ihouse_linking_provider');
+            if (linkingProvider) {
+                sessionStorage.removeItem('ihouse_linking_provider');
+                // Identity link completed — session is already active, just go to profile
+                window.location.href = '/profile';
+                return;
+            }
+
             // Supabase handles the code exchange automatically via the URL hash/params
             const { data, error } = await supabase.auth.getSession();
             if (error || !data.session) {
@@ -58,12 +68,6 @@ export default function AuthCallbackPage() {
             const result = body?.data || body;
 
             if (!resp.ok || !result.token) {
-                if (resp.status === 403) {
-                    // Phase 856B: redirect to dedicated no-access page.
-                    // Email passed as param so /get-started can pre-fill it.
-                    window.location.href = `/no-access?email=${encodeURIComponent(userEmail)}`;
-                    return;
-                }
                 setStatus('error');
                 setErrorMsg(result?.error || 'Failed to complete sign-in.');
                 return;

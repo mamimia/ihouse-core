@@ -9,14 +9,15 @@
  * 3. Role enforcement — JWT role claim restricts route access.
  *
  * Role hierarchy:
- *   admin / manager → full access
- *   owner           → /owner, /dashboard
- *   worker          → /worker, /ops, /tasks, /maintenance, /checkin, /checkout
- *   cleaner         → /worker, /ops
- *   ops             → /ops, /dashboard, /bookings, /tasks, /calendar
- *   checkin         → /checkin only
- *   checkout        → /checkout only
- *   maintenance     → /maintenance, /worker
+ *   admin / manager  → full access
+ *   owner            → /owner, /dashboard
+ *   worker           → /worker, /ops, /tasks, /maintenance, /checkin, /checkout
+ *   cleaner          → /worker, /ops
+ *   ops              → /ops, /dashboard, /bookings, /tasks, /calendar
+ *   checkin          → /checkin only
+ *   checkout         → /checkout only
+ *   maintenance      → /maintenance, /worker
+ *   identity_only    → /welcome, /profile, /get-started, /my-properties (Phase 862 P28)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -25,7 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const PUBLIC_PREFIXES = [
     '/login',
     '/dev-login',     // Phase 831: worker-family roles need a production login path
-    '/register',      // Phase 858: redirects to /get-started (kept public for redirect to work)
+    '/register',      // Phase 871: standalone sign-up (identity-only account creation)
     '/auth',
     '/favicon.ico',
     '/about',
@@ -40,7 +41,9 @@ const PUBLIC_PREFIXES = [
     '/terms',         // Phase 860: public legal page
     '/reviews',
     '/onboard',       // Phase 858: /onboard/connect property wizard (future: auth-gate inside)
+    '/profile',        // Phase 862 P19: shared profile page for all authenticated users
     '/my-properties',  // Phase 858: post-auth draft management (client-side auth check)
+    '/welcome',        // Phase 862 P28: identity-only user landing
     '/guest',
     '/invite',
     '/staff',
@@ -54,13 +57,14 @@ function isPublicRoute(pathname: string): boolean {
 // Phase 397: Role-to-allowed-route-prefix mapping
 // admin/manager have full access (not listed — they bypass checks)
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
-    owner:       ['/owner', '/dashboard'],
-    worker:      ['/worker', '/ops', '/maintenance', '/checkin', '/checkout'],
-    cleaner:     ['/worker', '/ops'],  // Phase 831: restrict cleaner to worker + ops surfaces only
-    ops:         ['/ops', '/dashboard', '/bookings', '/tasks', '/calendar', '/guests'],
-    checkin:     ['/checkin', '/ops/checkin'],
-    checkout:    ['/checkout', '/ops/checkout'],
-    maintenance: ['/maintenance', '/worker'],
+    owner:         ['/owner', '/dashboard'],
+    worker:        ['/worker', '/ops', '/maintenance', '/checkin', '/checkout'],
+    cleaner:       ['/worker', '/ops'],  // Phase 831: restrict cleaner to worker + ops surfaces only
+    ops:           ['/ops', '/dashboard', '/bookings', '/tasks', '/calendar', '/guests'],
+    checkin:       ['/checkin', '/ops/checkin'],
+    checkout:      ['/checkout', '/ops/checkout'],
+    maintenance:   ['/maintenance', '/worker'],
+    identity_only: ['/welcome', '/profile', '/get-started', '/my-properties'],  // Phase 862 P28
 };
 
 // Roles that have unrestricted access
@@ -130,8 +134,18 @@ export function middleware(request: NextRequest) {
 
     const role = (typeof payload?.role === 'string' ? payload.role : '').toLowerCase();
 
-    // If role is admin/manager or empty (legacy token), allow everything
-    if (!role || FULL_ACCESS_ROLES.has(role)) {
+    // Phase 862 (Canonical Auth P4): empty/missing role → /no-access
+    // Previously, legacy tokens with no role claim got unrestricted admin access.
+    // Now, only explicit admin/manager roles get full access.
+    if (!role) {
+        if (pathname !== '/no-access') {
+            return NextResponse.redirect(new URL('/no-access', request.url));
+        }
+        return NextResponse.next();
+    }
+
+    // If role is admin/manager, allow everything
+    if (FULL_ACCESS_ROLES.has(role)) {
         return NextResponse.next();
     }
 
@@ -146,7 +160,14 @@ export function middleware(request: NextRequest) {
         }
     }
 
-    return NextResponse.next();
+    // Phase 862 P23: Forward identity claims as headers for downstream pages
+    const response = NextResponse.next();
+    const tenantId = typeof payload?.tenant_id === 'string' ? payload.tenant_id : '';
+    if (tenantId) {
+        response.headers.set('x-tenant-id', tenantId);
+    }
+    response.headers.set('x-user-role', role);
+    return response;
 }
 
 export const config = {

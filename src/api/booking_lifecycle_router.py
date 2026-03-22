@@ -61,6 +61,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -214,6 +215,7 @@ def _rate_pct(numerator: int, denominator: int) -> Optional[float]:
 )
 async def get_lifecycle_states(
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("bookings")),
     _client: Optional[Any] = None,
 ) -> JSONResponse:
     """

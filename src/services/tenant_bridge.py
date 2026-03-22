@@ -1,10 +1,12 @@
 """
 Phase 760 — User↔Tenant Bridge Service
+Phase 862 (Canonical Auth P5) — Removed legacy defaults
 =========================================
 
 Bridges Supabase Auth users (UUID-based) to iHouse tenant_id scheme.
 
-On signup: auto-provisions tenant_permissions row for the new user.
+On signup: identity is created in Supabase Auth only (Phase 862 P1).
+           Tenant provisioning requires explicit admin invite or approval.
 On signin: looks up the user's tenant_id and role from tenant_permissions.
 
 This ensures that Supabase Auth UUIDs are transparently mapped to the
@@ -19,13 +21,13 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# The default tenant_id for new users when no specific mapping exists.
-# In a multi-tenant system this would be looked up from the org,
-# but for iHouse V1 there is a single primary tenant.
-DEFAULT_TENANT_ID = "tenant_e2e_amended"
-
-# Default role for newly created users (admin bootstrap is separate)
-DEFAULT_SIGNUP_ROLE = "manager"
+# Phase 862 (Canonical Auth P5): legacy defaults REMOVED.
+# Previously: DEFAULT_TENANT_ID = "tenant_e2e_amended"
+# Previously: DEFAULT_SIGNUP_ROLE = "manager"
+# All provisioning must now supply explicit tenant_id and role.
+# These sentinel values exist ONLY for backward-compatible imports.
+DEFAULT_TENANT_ID = None  # type: ignore[assignment]
+DEFAULT_SIGNUP_ROLE = None  # type: ignore[assignment]
 
 
 def _get_db() -> Any:
@@ -42,34 +44,41 @@ def provision_user_tenant(
     db: Any,
     user_id: str,
     *,
-    tenant_id: Optional[str] = None,
-    role: Optional[str] = None,
+    tenant_id: str,
+    role: str,
     permissions: Optional[dict] = None,
 ) -> Optional[dict]:
     """
-    Create a tenant_permissions row for a new Supabase Auth user.
+    Create a tenant_permissions row for a Supabase Auth user.
 
-    This bridges the Supabase Auth UUID → iHouse tenant_id scheme.
-    Called automatically on /auth/signup.
+    Phase 862 (Canonical Auth P5): tenant_id and role are now REQUIRED.
+    No defaults — callers must supply explicit values from the invite,
+    bootstrap, or approval flow.
 
     Args:
         db:           Supabase client.
         user_id:      Supabase Auth UUID.
-        tenant_id:    Target tenant (defaults to DEFAULT_TENANT_ID).
-        role:         User role (defaults to DEFAULT_SIGNUP_ROLE).
+        tenant_id:    Target tenant (REQUIRED).
+        role:         User role (REQUIRED).
         permissions:  Optional JSONB capabilities.
 
     Returns:
         The created row dict, or None on failure. Never raises.
+
+    Raises:
+        ValueError: if tenant_id or role is empty/None.
     """
-    resolved_tenant = tenant_id or DEFAULT_TENANT_ID
-    resolved_role = role or DEFAULT_SIGNUP_ROLE
+    if not tenant_id or not tenant_id.strip():
+        raise ValueError("tenant_id is required — no default tenant allowed (Phase 862 P5)")
+    if not role or not role.strip():
+        raise ValueError("role is required — no default role allowed (Phase 862 P5)")
+
     now = datetime.now(tz=timezone.utc).isoformat()
 
     row = {
-        "tenant_id":   resolved_tenant,
+        "tenant_id":   tenant_id.strip(),
         "user_id":     user_id,
-        "role":        resolved_role,
+        "role":        role.strip().lower(),
         "is_active":   True,  # Phase 857: always reactivate on provision (audit D8)
         "permissions": permissions or {},
         "created_at":  now,
@@ -85,13 +94,13 @@ def provision_user_tenant(
         saved = (result.data or [{}])[0]
         logger.info(
             "tenant_bridge: provisioned user=%s → tenant=%s role=%s",
-            user_id, resolved_tenant, resolved_role,
+            user_id, tenant_id, role,
         )
         return saved
     except Exception as exc:
         logger.warning(
             "tenant_bridge: failed to provision user=%s → tenant=%s: %s",
-            user_id, resolved_tenant, exc,
+            user_id, tenant_id, exc,
         )
         return None
 

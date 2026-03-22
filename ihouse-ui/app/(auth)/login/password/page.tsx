@@ -238,15 +238,12 @@ function PasswordForm() {
                 <a href="/login/forgot" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
                     Forgot password?
                 </a>
-                <a href="/login/help" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
-                    Need help?
-                </a>
                 <div style={{ height: 1, background: 'rgba(234,229,222,0.04)', margin: '4px 0' }} />
                 <a href="/login?role=host" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
                     Domaniqo for Host users? <span style={{ textDecoration: 'underline' }}>Log in here</span>
                 </a>
                 <a href="/register" className="auth-link" style={{ fontSize: 'var(--text-sm, 14px)' }}>
-                    New to Domaniqo? <span style={{ textDecoration: 'underline' }}>Register a new account</span>
+                    New to Domaniqo? <span style={{ textDecoration: 'underline' }}>Create an account</span>
                 </a>
             </div>
         </AuthCard>

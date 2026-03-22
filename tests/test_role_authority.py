@@ -95,15 +95,17 @@ class TestResolveRole:
         result = resolve_role(db, "t1", "u1")
         assert result == "owner"
 
-    def test_fallback_to_default_when_no_db_record(self):
+    def test_fallback_to_requested_role_when_no_db_record(self):
         db = FakeDB([])
         result = resolve_role(db, "t1", "u1", requested_role="admin")
-        assert result == DEFAULT_ROLE_IF_MISSING
+        # Phase 862: no DB record → requested_role is used (not default "manager")
+        assert result == "admin"
 
-    def test_default_role_when_no_record_and_no_request(self):
+    def test_returns_none_when_no_record_and_no_request(self):
         db = FakeDB([])
         result = resolve_role(db, "t1", "u1")
-        assert result == DEFAULT_ROLE_IF_MISSING
+        # Phase 862: DEFAULT_ROLE_IF_MISSING is None — unknown users get no role
+        assert result is None
 
     def test_db_role_takes_precedence_even_when_matching(self):
         """If DB and request agree, still returns DB role."""

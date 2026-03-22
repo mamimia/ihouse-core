@@ -43,6 +43,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 from api.financial_aggregation_router import (
     SUPPORTED_CURRENCIES,
@@ -114,6 +115,7 @@ def _monetary(v: Optional[str]) -> Optional[str]:
 async def get_financial_status(
     booking_id: str,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -286,6 +288,7 @@ async def get_revpar(
     property_id: Optional[str] = None,
     available_room_nights: Optional[int] = None,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -407,6 +410,7 @@ async def get_revpar(
 async def get_lifecycle_by_property(
     period: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """

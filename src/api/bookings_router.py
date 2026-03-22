@@ -39,6 +39,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.envelope import ok, err
 from services.audit_writer import write_audit_event
 
@@ -77,6 +78,7 @@ def _get_supabase_client() -> Any:
 async def get_booking(
     booking_id: str,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("bookings")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -207,6 +209,7 @@ async def list_bookings(
     sort_dir: str = "desc",
     limit: int = _DEFAULT_LIMIT,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("bookings")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -377,6 +380,7 @@ async def list_booking_amendments(
     booking_id: str,
     limit: int = 50,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("bookings")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """GET /bookings/{booking_id}/amendments — BOOKING_AMENDED event history."""
@@ -480,6 +484,7 @@ async def patch_booking_flags(
     booking_id: str,
     body: dict,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("bookings")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """

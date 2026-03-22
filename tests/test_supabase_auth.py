@@ -39,7 +39,7 @@ def test_signup_returns_503_when_supabase_not_configured(client):
 
 
 def test_signup_success_returns_user_and_token(client):
-    """Signup returns user_id, email, access_token on success."""
+    """Signup returns user_id, email, access_token on success (identity only — Phase 862)."""
     mock_user = MagicMock()
     mock_user.id = "user-uuid-123"
 
@@ -59,10 +59,7 @@ def test_signup_success_returns_user_and_token(client):
     mock_db.auth.admin.create_user.return_value = mock_create_result
     mock_db.auth.sign_in_with_password.return_value = mock_signin_result
 
-    with patch("api.auth_router._get_supabase_admin", return_value=mock_db), \
-         patch("services.tenant_bridge.provision_user_tenant", return_value={
-             "tenant_id": "tenant_e2e_amended", "role": "manager",
-         }):
+    with patch("api.auth_router._get_supabase_admin", return_value=mock_db):
         resp = client.post("/auth/signup", json={
             "email": "admin@domaniqo.com",
             "password": "SecurePass123!",
@@ -73,8 +70,9 @@ def test_signup_success_returns_user_and_token(client):
     data = resp.json()["data"]
     assert data["user_id"] == "user-uuid-123"
     assert data["email"] == "admin@domaniqo.com"
-    assert data["tenant_id"] == "tenant_e2e_amended"  # Phase 760
-    assert data["role"] == "manager"  # Phase 760
+    # Phase 862: signup no longer provisions tenant membership — identity only
+    assert "tenant_id" not in data
+    assert "role" not in data
     assert data["access_token"] == "eyJ_access_token"
     assert data["refresh_token"] == "refresh_token_abc"
     assert data["expires_in"] == 3600

@@ -30,6 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,7 @@ def _compute_today(
 async def get_operations_today(
     as_of:     Optional[str] = Query(None, description="Override date (YYYY-MM-DD). Defaults to today UTC."),
     tenant_id: str           = Depends(jwt_auth),
+    _cap: None               = Depends(require_capability("operations")),
     client:    Optional[Any] = None,
 ) -> JSONResponse:
     """

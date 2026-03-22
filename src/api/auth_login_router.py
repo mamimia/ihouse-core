@@ -38,7 +38,8 @@ router = APIRouter(tags=["auth"])
 _ALGORITHM = "HS256"
 _TOKEN_TTL_SECONDS = 86_400  # 24 hours
 
-_VALID_ROLES = {"admin", "manager", "ops", "worker", "cleaner", "owner", "checkin", "checkout", "maintenance"}
+# Phase 862 (Canonical Auth P7): single source of truth for roles
+from services.canonical_roles import CANONICAL_ROLES as _VALID_ROLES
 
 
 # ---------------------------------------------------------------------------
@@ -144,27 +145,63 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
         tenant_info = None
 
     if not tenant_info:
-        # Phase 831: No fallback to hardcoded tenant — if tenant_permissions
-        # doesn't exist, the invite acceptance failed or never ran.
-        # The user must be re-invited or manually provisioned.
-        logger.warning(
-            "auth/login: no tenant_permissions for user=%s (%s). "
-            "invited_role=%s in metadata but no DB binding.",
-            user_id, user_email, user_metadata.get("invited_role", "none"),
+        # Phase 862 P28: Identity-only user — authenticated but no tenant membership.
+        # Issue a limited JWT so they can access /welcome, /profile, /get-started.
+        from services.canonical_roles import IDENTITY_ONLY
+        logger.info(
+            "auth/login: identity-only login for user=%s (%s). No tenant binding.",
+            user_id, user_email,
         )
-        return err(
-            "NO_TENANT_BINDING",
-            "Your account exists but is not assigned to any organization. Contact your administrator.",
-            status=403,
-        )
+        user_metadata = signin.user.user_metadata or {}
+        now = int(time.time())
+        payload = {
+            "sub": user_id,
+            "tenant_id": "",           # No tenant — identity only
+            "role": IDENTITY_ONLY,
+            "email": user_email,
+            "is_active": True,
+            "force_reset": False,
+            "iat": now,
+            "exp": now + _TOKEN_TTL_SECONDS,
+            "token_type": "session",
+            "auth_method": "supabase",
+        }
+        token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
+
+        # Create server-side session
+        user_agent = request.headers.get("User-Agent")
+        ip_address = request.client.host if request.client else None
+        try:
+            supa_service = _get_service_db()
+            create_session(
+                supa_service,
+                tenant_id="identity_only",
+                token=token,
+                expires_in_seconds=_TOKEN_TTL_SECONDS,
+                user_agent=user_agent,
+                ip_address=ip_address,
+            )
+        except Exception as exc:
+            logger.warning("auth/login: session creation failed for identity-only user=%s: %s", user_id, exc)
+
+        return ok({
+            "token": token,
+            "tenant_id": "",
+            "role": IDENTITY_ONLY,
+            "email": user_email,
+            "name": user_metadata.get("full_name", ""),
+            "expires_in": _TOKEN_TTL_SECONDS,
+            "supabase_access_token": supa_access_token,
+            "supabase_refresh_token": supa_refresh_token,
+        })
         
     tenant_id = tenant_info["tenant_id"]
-    role = tenant_info.get("role", "manager")
+    role = tenant_info.get("role", "worker")
     is_active = tenant_info.get("is_active", True)
     force_reset = user_metadata.get("force_reset", False)
 
     if role not in _VALID_ROLES:
-        role = "manager"  # safe fallback
+        role = "worker"  # Phase 867: least-privilege fallback (unified with invite_router)
 
     # Step 3: Issue iHouse JWT with real identity
     now = int(time.time())
@@ -264,18 +301,57 @@ async def google_callback(body: GoogleCallbackRequest, request: Request) -> JSON
         tenant_info = None
 
     if not tenant_info:
-        # New Google user — no tenant binding yet
-        return err(
-            "NO_TENANT_BINDING",
-            "Account exists but is not assigned to any organization. Complete registration.",
-            status=403,
+        # Phase 862 P28: Identity-only user — authenticated via Google but no tenant membership.
+        from services.canonical_roles import IDENTITY_ONLY
+        logger.info(
+            "auth/google-callback: identity-only login for user=%s (%s). No tenant binding.",
+            user_id, user_email,
         )
+        now = int(time.time())
+        payload = {
+            "sub": user_id,
+            "tenant_id": "",
+            "role": IDENTITY_ONLY,
+            "email": user_email,
+            "is_active": True,
+            "force_reset": False,
+            "iat": now,
+            "exp": now + _TOKEN_TTL_SECONDS,
+            "token_type": "session",
+            "auth_method": "google",
+        }
+        token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
+
+        # Create server-side session
+        user_agent = request.headers.get("User-Agent")
+        ip_address = request.client.host if request.client else None
+        try:
+            supa_service = _get_service_db()
+            create_session(
+                supa_service,
+                tenant_id="identity_only",
+                token=token,
+                expires_in_seconds=_TOKEN_TTL_SECONDS,
+                user_agent=user_agent,
+                ip_address=ip_address,
+            )
+        except Exception as exc:
+            logger.warning("auth/google-callback: session creation failed: %s", exc)
+
+        return ok({
+            "token": token,
+            "tenant_id": "",
+            "role": IDENTITY_ONLY,
+            "email": user_email,
+            "name": body.full_name,
+            "expires_in": _TOKEN_TTL_SECONDS,
+        })
 
     tenant_id = tenant_info["tenant_id"]
-    role = tenant_info.get("role", "manager")
+    role = tenant_info.get("role", "worker")
     is_active = tenant_info.get("is_active", True)
     if role not in _VALID_ROLES:
-        role = "manager"
+        role = "worker"  # Phase 867: least-privilege fallback (unified with invite_router)
 
     # Issue iHouse JWT
     # Fetch the user's metadata from Supabase Auth to retrieve force_reset

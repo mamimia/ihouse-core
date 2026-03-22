@@ -33,6 +33,7 @@ from services.guest_portal import (
     GuestBookingView,
     GuestPortalError,
 )
+from services.guest_token import resolve_guest_token_context
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/guest", tags=["guest"])
@@ -79,17 +80,14 @@ def _resolve(booking_ref: str, guest_token: str) -> GuestBookingView:
     return result
 
 
-# --- Stub token resolver (for Phases 670+) ---
+# --- Token context resolver (delegates to canonical service) ---
 
-def _resolve_token_ctx(token: str) -> dict | None:
-    """Resolve a guest token → context dict. For CI: test- prefix accepted."""
-    if token.startswith("test-"):
-        return {
-            "booking_ref": f"BOOK-{token[5:13]}",
-            "property_id": f"PROP-{token[5:13]}",
-            "tenant_id": f"TENANT-{token[5:13]}",
-        }
-    return None  # Production: use guest_token service
+def _resolve_token_ctx(token: str, client: Any | None = None) -> dict | None:
+    """Resolve guest token → context dict via canonical service."""
+    ctx = resolve_guest_token_context(token, db=client)
+    if ctx is None:
+        return None
+    return ctx.to_dict()
 
 
 def _get_supabase_client() -> Any:
@@ -161,141 +159,127 @@ async def guest_rules(
 
 @router.get(
     "/portal/{token}",
-    summary="Guest portal via token URL (Phase 400)",
+    summary="Guest portal via token URL (Phase 400, enriched Phase 64)",
     tags=["guest"],
 )
-async def guest_portal_by_token(token: str) -> JSONResponse:
+async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSONResponse:
     """
     GET /guest/portal/{token}
 
     Public endpoint. Token is in the URL path (from QR code / link).
-    Verifies the guest token, extracts booking_ref, looks up property data,
+    Verifies the guest token via canonical resolver, looks up property data,
     and returns the GuestPortalData the frontend expects.
 
-    PII-scoped: only property info (wifi, rules, check-in/out times).
-    No guest names, financial data, or internal booking details.
+    Phase 64 enrichment: also returns booking context for the Current Stay
+    portal structure (guest_name, check_in, check_out, status,
+    number_of_guests, deposit_status, checkout_notes).
     """
-    import os
-    from services.guest_token import verify_guest_token, is_guest_token_revoked
-
-    # 1. Verify token (crypto + expiry)
-    #    We don't know the booking_ref yet — decode first to extract it
-    from services.guest_token import _decode_token, _sign, _get_secret
-    import hmac as hmac_mod
-    import time
-
-    decoded = _decode_token(token)
-    if not decoded:
-        return JSONResponse(status_code=401, content={
-            "error": "TOKEN_INVALID",
-            "message": "This link is invalid or malformed.",
-        })
-
-    message, provided_sig = decoded
-
-    # Validate HMAC
+    # Get DB client (injectable for testing)
     try:
-        secret = _get_secret()
-    except RuntimeError:
-        return JSONResponse(status_code=503, content={
-            "error": "TOKEN_SECRET_NOT_CONFIGURED",
-            "message": "Guest token verification is not configured.",
-        })
-
-    expected_sig = _sign(message, secret)
-    if not hmac_mod.compare_digest(provided_sig, expected_sig):
-        return JSONResponse(status_code=401, content={
-            "error": "TOKEN_INVALID",
-            "message": "This link is invalid.",
-        })
-
-    # Parse message: booking_ref:email:exp
-    parts = message.split(":", 2)
-    if len(parts) != 3:
-        return JSONResponse(status_code=401, content={
-            "error": "TOKEN_INVALID",
-            "message": "This link is invalid.",
-        })
-
-    booking_ref, _email, exp_str = parts
-    try:
-        exp = int(exp_str)
-    except ValueError:
-        return JSONResponse(status_code=401, content={
-            "error": "TOKEN_INVALID",
-            "message": "This link is invalid.",
-        })
-
-    if exp < int(time.time()):
-        return JSONResponse(status_code=401, content={
-            "error": "TOKEN_EXPIRED",
-            "message": "This link has expired. Please contact your host.",
-        })
-
-    # 2. Check DB revocation (best-effort)
-    try:
-        from supabase import create_client
-        url = os.environ["SUPABASE_URL"]
-        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SUPABASE_KEY"]
-        db = create_client(url, key)
-
-        if is_guest_token_revoked(db, token):
-            return JSONResponse(status_code=401, content={
-                "error": "TOKEN_REVOKED",
-                "message": "This link has been revoked.",
-            })
+        db = client if client is not None else _get_supabase_client()
     except Exception:
-        db = None  # If DB check fails, continue with HMAC-verified data
+        db = None
 
-    # 3. Look up booking + property from Supabase
+    # 1. Verify token via canonical resolver
+    ctx = resolve_guest_token_context(token, db=db)
+    if ctx is None:
+        return JSONResponse(status_code=401, content={
+            "error": "TOKEN_INVALID",
+            "message": "This link is invalid or has expired. Please contact your host.",
+        })
+
+    booking_ref = ctx.booking_ref
+    property_id = ctx.property_id
+
+    # 2. Look up property + booking data
     if db:
         try:
-            # Get booking by booking_id (booking_ref) — Phase 837: use booking_state
-            booking_res = (
-                db.table("booking_state")
-                .select("booking_id, property_id, check_in, check_out, status, source")
-                .eq("booking_id", booking_ref)
-                .limit(1)
-                .execute()
-            )
-            booking_rows = booking_res.data or []
+            # 2a. Resolve property_id if not in token context
+            if not property_id:
+                booking_res = (
+                    db.table("booking_state")
+                    .select("property_id")
+                    .eq("booking_id", booking_ref)
+                    .limit(1)
+                    .execute()
+                )
+                if booking_res.data:
+                    property_id = booking_res.data[0].get("property_id", "")
 
-            if booking_rows:
-                booking = booking_rows[0]
-                property_id = booking.get("property_id", "")
+            # 2b. Property info
+            prop_data: dict = {}
+            if property_id:
+                try:
+                    prop_res = (
+                        db.table("properties")
+                        .select("property_id, name, address, wifi_name, wifi_password, "
+                                "check_in_time, check_out_time, house_rules, "
+                                "emergency_contact, welcome_message, checkout_notes")
+                        .eq("property_id", property_id)
+                        .limit(1)
+                        .execute()
+                    )
+                    if prop_res.data:
+                        prop_data = prop_res.data[0]
+                except Exception:
+                    pass
 
-                # Get property info
-                prop_data: dict = {}
-                if property_id:
-                    try:
-                        prop_res = (
-                            db.table("properties")
-                            .select("property_id, name, address, wifi_name, wifi_password, check_in_time, check_out_time, house_rules, emergency_contact, welcome_message")
-                            .eq("property_id", property_id)
-                            .limit(1)
-                            .execute()
-                        )
-                        prop_rows = prop_res.data or []
-                        if prop_rows:
-                            prop_data = prop_rows[0]
-                    except Exception:
-                        pass
+            # 2c. Phase 64 — Booking context for Welcome/Stay Header + Your Stay
+            booking_data: dict = {}
+            try:
+                b_res = (
+                    db.table("bookings")
+                    .select("booking_id, guest_name, check_in, check_out, "
+                            "status, number_of_guests")
+                    .eq("booking_id", booking_ref)
+                    .limit(1)
+                    .execute()
+                )
+                if b_res.data:
+                    booking_data = b_res.data[0]
+            except Exception:
+                pass
 
-                return JSONResponse(status_code=200, content={
-                    "property_name": prop_data.get("name", property_id),
-                    "property_address": prop_data.get("address"),
-                    "wifi_name": prop_data.get("wifi_name"),
-                    "wifi_password": prop_data.get("wifi_password"),
-                    "check_in_time": prop_data.get("check_in_time", "15:00"),
-                    "check_out_time": prop_data.get("check_out_time", "11:00"),
-                    "house_rules": prop_data.get("house_rules") or [],
-                    "emergency_contact": prop_data.get("emergency_contact"),
-                    "welcome_message": prop_data.get("welcome_message"),
-                })
+            # 2d. Phase 64 — Deposit status for Your Stay section
+            deposit_status: Optional[str] = None
+            try:
+                dep_res = (
+                    db.table("cash_deposits")
+                    .select("status")
+                    .eq("booking_id", booking_ref)
+                    .limit(1)
+                    .execute()
+                )
+                if dep_res.data:
+                    deposit_status = dep_res.data[0].get("status")
+            except Exception:
+                pass
+
+            return JSONResponse(status_code=200, content={
+                # Section 1 — Welcome / Stay Header
+                "guest_name": booking_data.get("guest_name"),
+                "check_in": booking_data.get("check_in"),
+                "check_out": booking_data.get("check_out"),
+                "booking_status": booking_data.get("status"),
+                # Section 2 — Home Essentials
+                "property_name": prop_data.get("name", property_id or booking_ref),
+                "property_address": prop_data.get("address"),
+                "wifi_name": prop_data.get("wifi_name"),
+                "wifi_password": prop_data.get("wifi_password"),
+                "check_in_time": prop_data.get("check_in_time", "15:00"),
+                "check_out_time": prop_data.get("check_out_time", "11:00"),
+                "house_rules": prop_data.get("house_rules") or [],
+                "emergency_contact": prop_data.get("emergency_contact"),
+                "welcome_message": prop_data.get("welcome_message"),
+                # Section 6 — Your Stay
+                "number_of_guests": booking_data.get("number_of_guests"),
+                "deposit_status": deposit_status,
+                "checkout_notes": prop_data.get("checkout_notes"),
+            })
         except Exception:
-            pass  # Fall through to stub/fallback
+            pass  # Fall through to fallback
 
-    # 4. Fallback: token is valid but DB not available — return minimal data
+    # 3. Fallback: token is valid but DB not available — return minimal data
     return JSONResponse(status_code=200, content={
         "property_name": f"Property ({booking_ref})",
         "check_in_time": "15:00",
@@ -310,7 +294,7 @@ async def guest_portal_by_token(token: str) -> JSONResponse:
 
 @router.post("/{token}/messages", summary="Guest sends message (Phase 670)")
 async def guest_send_message(token: str, body: Dict[str, Any], client: Optional[Any] = None) -> JSONResponse:
-    ctx = _resolve_token_ctx(token)
+    ctx = _resolve_token_ctx(token, client=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 
@@ -355,7 +339,7 @@ async def guest_send_message(token: str, body: Dict[str, Any], client: Optional[
 
 @router.get("/{token}/messages", summary="Guest reads messages (Phase 670)")
 async def guest_get_messages(token: str, client: Optional[Any] = None) -> JSONResponse:
-    ctx = _resolve_token_ctx(token)
+    ctx = _resolve_token_ctx(token, client=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 
@@ -380,7 +364,7 @@ async def guest_get_messages(token: str, client: Optional[Any] = None) -> JSONRe
 
 @router.get("/{token}/contact", summary="Property manager contact info (Phase 672)")
 async def guest_contact(token: str, client: Optional[Any] = None) -> JSONResponse:
-    ctx = _resolve_token_ctx(token)
+    ctx = _resolve_token_ctx(token, client=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 
@@ -418,7 +402,7 @@ async def guest_contact(token: str, client: Optional[Any] = None) -> JSONRespons
 
 @router.get("/{token}/location", summary="Property location + map link (Phase 673)")
 async def guest_location(token: str, client: Optional[Any] = None) -> JSONResponse:
-    ctx = _resolve_token_ctx(token)
+    ctx = _resolve_token_ctx(token, client=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 
@@ -465,7 +449,7 @@ _HOUSE_INFO_FIELDS = [
 
 @router.get("/{token}/house-info", summary="All house info fields (Phase 674)")
 async def guest_house_info(token: str, client: Optional[Any] = None) -> JSONResponse:
-    ctx = _resolve_token_ctx(token)
+    ctx = _resolve_token_ctx(token, client=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 
@@ -499,7 +483,7 @@ async def guest_house_info(token: str, client: Optional[Any] = None) -> JSONResp
 async def guest_portal_i18n(
     token: str, lang: str = Query("en"), client: Optional[Any] = None,
 ) -> JSONResponse:
-    ctx = _resolve_token_ctx(token)
+    ctx = _resolve_token_ctx(token, client=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 

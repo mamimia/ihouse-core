@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ def _generate_booking_id(property_id: str, check_in: str) -> str:
 async def create_manual_booking(
     body: Dict[str, Any],
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("bookings")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     property_id = str(body.get("property_id") or "").strip()
@@ -291,6 +293,7 @@ def _create_tasks_for_manual_booking(
 async def cancel_manual_booking(
     booking_id: str,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("bookings")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     try:
@@ -396,6 +399,7 @@ async def edit_manual_booking(
     booking_id: str,
     body: Dict[str, Any],
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("bookings")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """

@@ -34,9 +34,10 @@ from __future__ import annotations
 import logging
 import os
 import time
+from typing import Optional
 
 import jwt
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -52,8 +53,8 @@ _ALGORITHM = "HS256"
 _TOKEN_TTL_SECONDS = 86_400  # 24 hours
 
 
-# Valid roles for JWT role claim — controls frontend route access
-VALID_ROLES = {"admin", "manager", "ops", "worker", "owner", "checkin", "checkout", "maintenance"}
+# Phase 862 (Canonical Auth P7): single source of truth for roles
+from services.canonical_roles import CANONICAL_ROLES as VALID_ROLES
 
 
 class TokenRequest(BaseModel):
@@ -91,6 +92,11 @@ async def issue_token(body: TokenRequest) -> JSONResponse:
 
     This is a development-only endpoint. Replace with Supabase Auth in production.
     """
+    # Phase 862 (Canonical Auth P8): production gate
+    # This endpoint issues arbitrary dev JWTs — must NEVER be available in production.
+    if os.environ.get("IHOUSE_DEV_MODE", "").lower() != "true":
+        return err("DEV_ONLY_ENDPOINT", "POST /auth/token is disabled in production.", status=403)
+
     jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
     if not jwt_secret:
         return err("AUTH_NOT_CONFIGURED", "IHOUSE_JWT_SECRET is not set. Auth endpoint unavailable.", status=503)
@@ -120,10 +126,13 @@ async def issue_token(body: TokenRequest) -> JSONResponse:
 
     now = int(time.time())
     payload = {
-        "sub": tenant_id,
+        "sub": tenant_id,         # Phase 862 P22: in dev mode, sub=tenant_id (no real UUID)
+        "tenant_id": tenant_id,   # Phase 862 P22: explicit claim for format unification
         "iat": now,
         "exp": now + _TOKEN_TTL_SECONDS,
         "role": role,  # Phase 759: DB-authoritative role
+        "token_type": "session",
+        "auth_method": "dev_token",  # Phase 862 P22: identifies token origin
     }
 
     token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
@@ -333,26 +342,24 @@ async def supabase_signup(body: SignUpRequest) -> JSONResponse:
         if not user:
             return err("SIGNUP_FAILED", "User creation returned no user object.", status=400)
 
-        # Phase 760: Auto-provision tenant_permissions row for the new user.
-        # This bridges Supabase Auth UUID → iHouse tenant_id.
-        from services.tenant_bridge import provision_user_tenant
-        tenant_record = provision_user_tenant(db, str(user.id))
-        tenant_id = tenant_record.get("tenant_id", "") if tenant_record else ""
-        role = tenant_record.get("role", "manager") if tenant_record else "manager"
+        # Phase 862 (Canonical Auth P1): signup creates IDENTITY ONLY.
+        # No tenant_permissions row is auto-provisioned.
+        # The user must be invited/approved through Pipeline A (invite) or
+        # Pipeline B (staff onboarding) to get tenant membership + role.
+        # This closes the privilege escalation hole where anyone who called
+        # /auth/signup was auto-provisioned as manager on DEFAULT_TENANT_ID.
 
-        # Sign in immediately to get tokens
+        # Sign in immediately to get Supabase tokens (identity-level only)
         signin_result = db.auth.sign_in_with_password({
             "email": body.email.strip(),
             "password": body.password,
         })
 
         session = signin_result.session
-        logger.info("auth/signup: created user %s (%s) → tenant=%s role=%s", user.id, body.email, tenant_id, role)
+        logger.info("auth/signup: created identity %s (%s) — no tenant provisioned", user.id, body.email)
         return ok({
             "user_id": str(user.id),
             "email": body.email.strip(),
-            "tenant_id": tenant_id,
-            "role": role,
             "access_token": session.access_token if session else "",
             "refresh_token": session.refresh_token if session else "",
             "expires_in": session.expires_in if session else 0,
@@ -493,16 +500,41 @@ async def password_reset_request(body: PasswordResetRequest) -> JSONResponse:
     responses={
         200: {"description": "Password updated"},
         400: {"description": "Update failed"},
+        403: {"description": "Not authorized — admin role required"},
         503: {"description": "Supabase not configured"},
     },
 )
-async def password_update(body: PasswordUpdateRequest) -> JSONResponse:
+async def password_update(
+    body: PasswordUpdateRequest,
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
     """
     Phase 768: Update a user's password via admin API.
+    Phase 862 P2: JWT-protected.
+    Phase 862 P11: Admin role enforced — non-admin callers get 403.
 
     This is for admin-initiated password resets (e.g. from support).
     Users who click the recovery link go through Supabase's built-in flow.
     """
+    # ── Phase 862 P11: Extract role from JWT and enforce admin ──
+    auth_header = request.headers.get("Authorization", "")
+    raw_token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
+    caller_role = None
+    if raw_token:
+        from api.auth import decode_jwt_claims
+        jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
+        if jwt_secret:
+            claims = decode_jwt_claims(raw_token, jwt_secret)
+            caller_role = claims.get("role", "")
+
+    if caller_role != "admin":
+        logger.warning(
+            "auth/password-update: rejected — caller role='%s' (admin required), tenant=%s",
+            caller_role, tenant_id,
+        )
+        return err("ADMIN_REQUIRED", "Only admin users can update other users' passwords.", status=403)
+
     db = _get_supabase_admin()
     if not db:
         return err("SUPABASE_NOT_CONFIGURED", "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set.", status=503)
@@ -512,9 +544,272 @@ async def password_update(body: PasswordUpdateRequest) -> JSONResponse:
             body.user_id,
             {"password": body.new_password},
         )
-        logger.info("auth/password-update: updated for user %s", body.user_id)
+        logger.info("auth/password-update: updated for user %s (by admin tenant=%s)", body.user_id, tenant_id)
         return ok({"message": "Password updated successfully.", "user_id": body.user_id})
     except Exception as exc:
         error_msg = str(exc)
         logger.warning("auth/password-update: failed for user %s — %s", body.user_id, error_msg)
         return err("UPDATE_FAILED", error_msg, status=400)
+
+
+# ---------------------------------------------------------------------------
+# Phase 862 P15: Identity surface — GET /auth/identity
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/auth/identity",
+    tags=["auth"],
+    summary="Get identity surface for the authenticated user (Phase 862 P15)",
+    responses={
+        200: {"description": "Identity surface returned"},
+        403: {"description": "Invalid or missing JWT"},
+        503: {"description": "JWT secret not configured"},
+    },
+)
+async def get_identity_surface(
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Phase 862 P15: Canonical identity surface.
+
+    Returns the authenticated user's identity, membership status, and intake status.
+    This is the single endpoint that all frontends use to decide what surface to show.
+
+    Response:
+        {
+            "user_id": "supabase-uuid",
+            "email": "...",           # from JWT claims or user_metadata
+            "full_name": "...",       # from JWT claims or user_metadata
+            "has_membership": true|false,
+            "tenant_id": "...",       # if has_membership
+            "role": "...",            # if has_membership
+            "is_active": true|false,  # if has_membership
+            "intake_status": "...",   # pending_review | approved | rejected | null
+        }
+    """
+    # Extract full claims from the JWT
+    auth_header = request.headers.get("Authorization", "")
+    raw_token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
+
+    claims = {}
+    user_id = tenant_id  # jwt_auth returns sub, which may be user_id or tenant_id
+    if raw_token:
+        from api.auth import decode_jwt_claims
+        jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
+        if jwt_secret:
+            claims = decode_jwt_claims(raw_token, jwt_secret)
+            # In new format, sub=user_id. In legacy format, sub=tenant_id.
+            user_id = claims.get("sub", tenant_id)
+
+    # Build response
+    result = {
+        "user_id": user_id,
+        "email": claims.get("email", ""),
+        "full_name": claims.get("full_name", ""),
+        "has_membership": False,
+        "tenant_id": None,
+        "role": None,
+        "is_active": None,
+        "intake_status": None,
+    }
+
+    # Lookup tenant_permissions (membership)
+    try:
+        from services.tenant_bridge import lookup_user_tenant
+        from api.db import get_db
+        db = get_db()
+        if db:
+            membership = lookup_user_tenant(db, user_id)
+            if membership:
+                result["has_membership"] = True
+                result["tenant_id"] = membership.get("tenant_id")
+                result["role"] = membership.get("role")
+                result["is_active"] = membership.get("is_active", True)
+    except Exception as exc:
+        logger.warning("auth/identity: tenant lookup failed for user=%s: %s", user_id, exc)
+
+    # Lookup intake_requests (submitter status)
+    try:
+        from api.db import get_db
+        db = get_db()
+        if db:
+            intake_result = (
+                db.table("intake_requests")
+                .select("status")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            rows = intake_result.data or []
+            if rows:
+                result["intake_status"] = rows[0].get("status")
+    except Exception as exc:
+        logger.warning("auth/identity: intake lookup failed for user=%s: %s", user_id, exc)
+
+    return ok(result)
+
+
+# ---------------------------------------------------------------------------
+# Phase 862 P18: Profile — GET/PATCH /auth/profile
+# ---------------------------------------------------------------------------
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    language: Optional[str] = None
+
+
+@router.get(
+    "/auth/profile",
+    tags=["auth"],
+    summary="Get profile for the authenticated user (Phase 862 P18)",
+    responses={
+        200: {"description": "Profile returned"},
+        403: {"description": "Not authenticated"},
+    },
+)
+async def get_profile(
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Phase 862 P29: Returns the authenticated user's canonical profile.
+    Includes Supabase Auth metadata, linked providers, and membership context.
+    Accessible to ALL authenticated users regardless of role.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    raw_token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
+
+    claims = {}
+    user_id = tenant_id
+    if raw_token:
+        from api.auth import decode_jwt_claims
+        jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
+        if jwt_secret:
+            claims = decode_jwt_claims(raw_token, jwt_secret)
+            user_id = claims.get("sub", tenant_id)
+
+    # Start with JWT claims as baseline
+    profile = {
+        "user_id": user_id,
+        "email": claims.get("email", ""),
+        "full_name": "",
+        "phone": "",
+        "avatar_url": "",
+        "language": "",
+        "providers": [],        # Phase 862 P29: linked login methods
+        "role": claims.get("role", ""),
+        "tenant_id": claims.get("tenant_id", ""),
+        "has_membership": bool(claims.get("tenant_id", "")),
+    }
+
+    # Enrich from Supabase Auth (real source of truth for user metadata)
+    try:
+        supa_admin = _get_supabase_admin()
+        if supa_admin:
+            user_obj = supa_admin.auth.admin.get_user_by_id(user_id)
+            if user_obj and user_obj.user:
+                user = user_obj.user
+                metadata = user.user_metadata or {}
+                profile["email"] = user.email or profile["email"]
+                profile["full_name"] = metadata.get("full_name", "") or metadata.get("name", "")
+                profile["phone"] = metadata.get("phone", "") or user.phone or ""
+                profile["avatar_url"] = metadata.get("avatar_url", "")
+                # Extract linked providers
+                identities = getattr(user, "identities", None) or []
+                providers = []
+                for identity in identities:
+                    provider = getattr(identity, "provider", None) or (identity.get("provider") if isinstance(identity, dict) else None)
+                    if provider and provider not in providers:
+                        providers.append(provider)
+                profile["providers"] = providers
+    except Exception as exc:
+        logger.warning("auth/profile: Supabase metadata fetch failed for user=%s: %s", user_id, exc)
+
+    # Enrich from tenant_permissions if available
+    try:
+        from services.tenant_bridge import lookup_user_tenant
+        from api.db import get_db
+        db = get_db()
+        if db:
+            membership = lookup_user_tenant(db, user_id)
+            if membership:
+                profile["language"] = membership.get("language", "") or ""
+                profile["has_membership"] = True
+                profile["role"] = membership.get("role", profile["role"])
+                profile["tenant_id"] = membership.get("tenant_id", profile["tenant_id"])
+    except Exception as exc:
+        logger.warning("auth/profile: tenant lookup failed for user=%s: %s", user_id, exc)
+
+    return ok(profile)
+
+
+@router.patch(
+    "/auth/profile",
+    tags=["auth"],
+    summary="Update profile for the authenticated user (Phase 862 P18)",
+    responses={
+        200: {"description": "Profile updated"},
+        403: {"description": "Not authenticated"},
+    },
+)
+async def update_profile(
+    body: ProfileUpdateRequest,
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Phase 862 P18: Update the authenticated user's profile.
+    Only the caller can update their own profile.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    raw_token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
+
+    user_id = tenant_id
+    if raw_token:
+        from api.auth import decode_jwt_claims
+        jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
+        if jwt_secret:
+            claims = decode_jwt_claims(raw_token, jwt_secret)
+            user_id = claims.get("sub", tenant_id)
+
+    updated_fields = {}
+
+    # Update language in tenant_permissions if applicable
+    if body.language is not None:
+        try:
+            from api.db import get_db
+            db = get_db()
+            if db:
+                db.table("tenant_permissions").update({
+                    "language": body.language.strip(),
+                }).eq("user_id", user_id).execute()
+                updated_fields["language"] = body.language.strip()
+        except Exception as exc:
+            logger.warning("auth/profile: language update failed for user=%s: %s", user_id, exc)
+
+    # Update Supabase Auth user_metadata (full_name, phone) if applicable
+    if body.full_name is not None or body.phone is not None:
+        try:
+            supa_admin = _get_supabase_admin()
+            if supa_admin:
+                metadata_update = {}
+                if body.full_name is not None:
+                    metadata_update["full_name"] = body.full_name.strip()
+                    updated_fields["full_name"] = body.full_name.strip()
+                if body.phone is not None:
+                    metadata_update["phone"] = body.phone.strip()
+                    updated_fields["phone"] = body.phone.strip()
+                if metadata_update:
+                    supa_admin.auth.admin.update_user_by_id(
+                        user_id,
+                        {"user_metadata": metadata_update},
+                    )
+        except Exception as exc:
+            logger.warning("auth/profile: metadata update failed for user=%s: %s", user_id, exc)
+
+    logger.info("auth/profile: updated %s for user=%s", list(updated_fields.keys()), user_id)
+    return ok({"updated": updated_fields, "user_id": user_id})
+

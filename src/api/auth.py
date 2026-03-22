@@ -243,19 +243,25 @@ def get_identity(
 
     # Detect format: new tokens have explicit tenant_id claim
     tenant_id_claim = payload.get("tenant_id")
+    auth_method = str(payload.get("auth_method", "unknown")).strip()
+
     if tenant_id_claim:
-        # New format: sub=user_id, tenant_id explicit
+        # New/unified format: sub=user_id, tenant_id explicit
         return {
             "user_id": sub,
             "tenant_id": str(tenant_id_claim).strip(),
             "role": str(payload.get("role", "manager")).strip(),
+            "auth_method": auth_method,
         }
     else:
-        # Legacy format: sub=tenant_id, user_id=tenant_id
+        # Legacy format (pre-P22): sub=tenant_id, user_id=tenant_id
+        # This branch handles tokens issued before Phase 862 P22.
+        logger.debug("get_identity: legacy JWT format (no tenant_id claim) for sub=%s", sub)
         return {
             "user_id": sub,
             "tenant_id": sub,
             "role": str(payload.get("role", "manager")).strip(),
+            "auth_method": "legacy",
         }
 
 
@@ -283,6 +289,28 @@ def _make_identity_dependency():
 # Depends-injectable that returns {user_id, tenant_id, role}
 jwt_identity = _make_identity_dependency()
 
+
+def _make_simple_identity_dependency():
+    """
+    Returns a Depends-compatible callable that returns full identity dict.
+
+    Identical to jwt_identity but WITHOUT the Request parameter.
+    Used in role guards where the admin preview-as feature is not relevant,
+    and where the Request parameter causes FastAPI/Pydantic v2 to misidentify
+    it as a query field in certain dependency chain configurations.
+    """
+    from fastapi import Depends
+
+    async def _dep(
+        credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    ) -> dict:
+        return get_identity(credentials)
+
+    return _dep
+
+
+# Simpler identity dep without Request — safe for role guards / sub-dependencies
+jwt_identity_simple = _make_simple_identity_dependency()
 
 
 def _make_bearer_dependency():

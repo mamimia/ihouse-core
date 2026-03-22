@@ -30,6 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -267,6 +268,7 @@ async def get_next_property_id(tenant_id: str = Depends(jwt_auth)) -> JSONRespon
 async def create_property(
     body: Dict[str, Any],
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -441,6 +443,7 @@ async def update_property(
     property_id: str,
     body: Dict[str, Any],
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -546,6 +549,7 @@ async def update_property(
 async def archive_property(
     property_id: str,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
 ) -> JSONResponse:
     """Move a property to archived status. Hidden from main list but recoverable."""
     try:
@@ -581,6 +585,7 @@ async def archive_property(
 async def unarchive_property(
     property_id: str,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
 ) -> JSONResponse:
     """Restore an archived property to active status. Returns to the main property list."""
     try:

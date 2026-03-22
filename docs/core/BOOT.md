@@ -24,6 +24,8 @@ This file is the only context you should need at the start of a new chat.
 - docs/core/live-system.md
 - docs/core/roadmap.md
 - docs/core/brand-handoff.md
+- docs/core/IDENTITY.md
+- docs/core/auth-closure.md — Login / Identity / Access full closure (Phases 863–873). Canonical reference for role policies, privilege fallback rules, password policy, identity linking model, invite provisioning chain, and 13-flow user-facing auth/account audit.
 
 ### Layer D — History (append only, never rewrite)
 - docs/core/phase-timeline.md

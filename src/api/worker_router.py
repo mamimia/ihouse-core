@@ -44,6 +44,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 from services.audit_writer import write_audit_event
 from tasks.task_model import TaskStatus, WorkerRole, VALID_TASK_TRANSITIONS
@@ -779,6 +780,7 @@ async def list_worker_assignments(
 async def create_worker_assignment(
     body: Optional[dict] = None,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("staffing")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -827,6 +829,7 @@ async def create_worker_assignment(
 async def delete_worker_assignment(
     assignment_id: str,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("staffing")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """Delete a worker-property assignment by ID."""

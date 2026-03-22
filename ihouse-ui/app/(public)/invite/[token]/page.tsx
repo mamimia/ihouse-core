@@ -10,6 +10,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import DMonogram from '../../../../components/DMonogram';
+import PasswordInput from '../../../../components/auth/PasswordInput';
+import { usePasswordRules } from '@/hooks/usePasswordRules';
 
 interface InviteData {
     role: string;
@@ -30,6 +32,10 @@ export default function InvitePage() {
     // Phase 856A: actual input fields for account creation
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
+    const [passwordFocused, setPasswordFocused] = useState(false);
+
+    const pwRules = usePasswordRules(password);
+    const allRulesPass = pwRules.every(r => r.pass);
 
     useEffect(() => {
         if (!token) { setError(true); setLoading(false); return; }
@@ -107,7 +113,7 @@ export default function InvitePage() {
         );
     }
 
-    const canSubmit = password.length >= 8 && fullName.trim().length > 0 && !accepting;
+    const canSubmit = allRulesPass && fullName.trim().length > 0 && !accepting;
 
     return (
         <>
@@ -170,28 +176,39 @@ export default function InvitePage() {
                     />
                 </div>
 
-                <div style={{ width: '100%', textAlign: 'left', marginBottom: 'var(--space-5, 20px)' }}>
+                <div style={{ width: '100%', textAlign: 'left', marginBottom: 'var(--space-3, 12px)' }}>
                     <label style={{
                         display: 'block', fontSize: 12, fontWeight: 600,
                         color: 'var(--color-text-faint, #6b7280)',
                         marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em',
-                    }}>Password (min. 8 characters)</label>
-                    <input
-                        type="password"
+                    }}>Password</label>
+                    <PasswordInput
+                        id="invite-password"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
+                        onFocus={() => setPasswordFocused(true)}
+                        onBlur={() => setPasswordFocused(false)}
                         placeholder="Choose a secure password"
+                        autoComplete="new-password"
                         disabled={accepting}
-                        style={{
-                            width: '100%', padding: '12px 14px',
-                            background: 'var(--color-midnight, #171A1F)',
-                            border: '1px solid rgba(234,229,222,0.1)',
-                            borderRadius: 'var(--radius-md, 12px)',
-                            color: 'var(--color-stone, #EAE5DE)',
-                            fontSize: 14, boxSizing: 'border-box',
-                        }}
                     />
                 </div>
+
+                {/* Phase 873: Live password rules checklist */}
+                {(passwordFocused || password.length > 0) && (
+                    <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 11, lineHeight: 1.8, marginBottom: 'var(--space-4, 16px)', textAlign: 'left' }}>
+                        {pwRules.map(r => (
+                            <span key={r.key} style={{
+                                color: password.length === 0
+                                    ? 'rgba(234,229,222,0.25)'
+                                    : r.pass ? '#4A7C59' : 'rgba(234,229,222,0.3)',
+                                transition: 'color 0.2s',
+                            }}>
+                                {password.length > 0 && r.pass ? '✓' : '○'} {r.label}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
                 {acceptError && (
                     <div style={{

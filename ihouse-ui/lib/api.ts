@@ -92,10 +92,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _retryCount 
 
     if (!resp.ok) {
         const body = await resp.json().catch(() => ({}));
-        // Phase 186: auto-logout on 401/403 (expired or invalid token)
+        const detail = body?.detail || '';
+
+        // Phase 862 P44: Distinguish auth failures from capability denials.
+        // CAPABILITY_DENIED means the user IS authenticated but lacks a specific
+        // delegated capability — do NOT logout, just throw the error.
+        // Only auto-logout on true auth failures (missing/expired/invalid token).
         if (resp.status === 401 || resp.status === 403) {
-            // Only auto-logout if we had a token (avoid redirect loop on /login calls)
-            if (_token) {
+            const isCapabilityDenial = typeof detail === 'string' && detail.startsWith('CAPABILITY_DENIED');
+            if (!isCapabilityDenial && _token) {
                 performClientLogout('/login');
             }
         }
@@ -420,10 +425,20 @@ export const api = {
         }),
 
     // Phase 186 — Logout
+    // Phase 870 P1-1: Also sign out from Supabase to invalidate the Supabase session
     logout: async (): Promise<void> => {
         try {
             // Best-effort: call server to clear cookie. Ignore errors.
             await fetch(`${BASE_URL}/auth/logout`, { method: 'POST' });
+        } catch (_) {
+            // swallow — client-side cleanup still runs
+        }
+        // Phase 870: Invalidate Supabase session so getSession() returns null
+        try {
+            const { supabase } = await import('./supabaseClient');
+            if (supabase) {
+                await supabase.auth.signOut();
+            }
         } catch (_) {
             // swallow — client-side cleanup still runs
         }

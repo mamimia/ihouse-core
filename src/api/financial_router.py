@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,7 @@ def _get_supabase_client() -> Any:
 async def get_financial_facts(
     booking_id: str,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -148,6 +150,7 @@ async def list_financial(
     month: Optional[str] = None,
     limit: int = _DEFAULT_LIMIT,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -255,6 +258,7 @@ async def enrich_financial_facts(
     provider: Optional[str] = None,
     limit: int = 50,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -362,6 +366,7 @@ def _get_suellen_client():
 )
 async def confidence_report(
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """

@@ -31,6 +31,7 @@ const ROLE_ROUTES: Record<string, string> = {
     checkin: '/checkin',
     checkout: '/checkout',
     owner: '/owner',
+    identity_only: '/welcome', // Phase 862 P28: identity-only users land on welcome page
 };
 
 /** Returns the best landing route for the authenticated user. */

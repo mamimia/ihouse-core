@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 import io
@@ -99,6 +100,7 @@ async def upload_photo_proxy(
     file: UploadFile = File(...),
     photo_type: str = Form("reference"),  # "reference" | "gallery"
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
 ) -> JSONResponse:
     """
     Accept a raw file from the browser, validate format/size, process with Pillow
@@ -279,7 +281,9 @@ async def _delete_photo(
 @router.post("/{property_id}/reference-photos", summary="Upload reference photo (Phase 591)",
              responses={201: {}, 400: {}, 500: {}}, openapi_extra={"security": [{"BearerAuth": []}]})
 async def add_reference_photo(property_id: str, body: Dict[str, Any],
-                              tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None) -> JSONResponse:
+                              tenant_id: str = Depends(jwt_auth),
+                              _cap: None = Depends(require_capability("properties")),
+                              client: Optional[Any] = None) -> JSONResponse:
     room_label = str(body.get("room_label", "")).strip() if isinstance(body, dict) else ""
     if not room_label:
         return make_error_response(status_code=400, code=ErrorCode.VALIDATION_ERROR,
@@ -298,6 +302,7 @@ async def list_reference_photos(property_id: str, tenant_id: str = Depends(jwt_a
 @router.delete("/{property_id}/reference-photos/{photo_id}", summary="Delete reference photo (Phase 591)",
                responses={200: {}, 404: {}, 500: {}}, openapi_extra={"security": [{"BearerAuth": []}]})
 async def delete_reference_photo(property_id: str, photo_id: str, tenant_id: str = Depends(jwt_auth),
+                                 _cap: None = Depends(require_capability("properties")),
                                  client: Optional[Any] = None) -> JSONResponse:
     return await _delete_photo("property_reference_photos", property_id, photo_id, tenant_id, client)
 
@@ -309,7 +314,9 @@ async def delete_reference_photo(property_id: str, photo_id: str, tenant_id: str
 @router.post("/{property_id}/marketing-photos", summary="Upload marketing photo (Phase 592)",
              responses={201: {}, 400: {}, 500: {}}, openapi_extra={"security": [{"BearerAuth": []}]})
 async def add_marketing_photo(property_id: str, body: Dict[str, Any],
-                              tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None) -> JSONResponse:
+                              tenant_id: str = Depends(jwt_auth),
+                              _cap: None = Depends(require_capability("properties")),
+                              client: Optional[Any] = None) -> JSONResponse:
     caption = body.get("caption") if isinstance(body, dict) else None
     source = str(body.get("source", "upload")).strip() if isinstance(body, dict) else "upload"
     return await _add_photo("property_marketing_photos", property_id, body, tenant_id, client,
@@ -326,5 +333,6 @@ async def list_marketing_photos(property_id: str, tenant_id: str = Depends(jwt_a
 @router.delete("/{property_id}/marketing-photos/{photo_id}", summary="Delete marketing photo (Phase 592)",
                responses={200: {}, 404: {}, 500: {}}, openapi_extra={"security": [{"BearerAuth": []}]})
 async def delete_marketing_photo(property_id: str, photo_id: str, tenant_id: str = Depends(jwt_auth),
+                                 _cap: None = Depends(require_capability("properties")),
                                  client: Optional[Any] = None) -> JSONResponse:
     return await _delete_photo("property_marketing_photos", property_id, photo_id, tenant_id, client)

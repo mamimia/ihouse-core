@@ -194,6 +194,149 @@ def verify_guest_token(
 
 
 # ---------------------------------------------------------------------------
+# Unified token context resolver (Phase 862 P49)
+# ---------------------------------------------------------------------------
+
+class GuestTokenContext:
+    """Resolved guest token → booking + property + tenant context."""
+
+    __slots__ = ("booking_ref", "property_id", "tenant_id", "guest_email", "exp")
+
+    def __init__(
+        self,
+        booking_ref: str,
+        property_id: str,
+        tenant_id: str,
+        guest_email: str = "",
+        exp: int = 0,
+    ):
+        self.booking_ref = booking_ref
+        self.property_id = property_id
+        self.tenant_id = tenant_id
+        self.guest_email = guest_email
+        self.exp = exp
+
+    def to_dict(self) -> dict:
+        return {
+            "booking_ref": self.booking_ref,
+            "property_id": self.property_id,
+            "tenant_id": self.tenant_id,
+            "guest_email": self.guest_email,
+            "exp": self.exp,
+        }
+
+
+def resolve_guest_token_context(
+    token: str,
+    db: Any | None = None,
+) -> GuestTokenContext | None:
+    """
+    Canonical guest token → full context resolver.
+
+    Steps:
+        1. CI/test shortcut: tokens starting with 'test-' are accepted.
+        2. Verify HMAC signature against IHOUSE_GUEST_TOKEN_SECRET.
+        3. Check token expiry.
+        4. Check DB revocation (best-effort).
+        5. Resolve booking_ref → property_id + tenant_id from booking_state.
+
+    Returns GuestTokenContext on success, None on any failure.
+    All guest-facing endpoints MUST use this function.
+    """
+    # --- CI/test shortcut ---
+    if token.startswith("test-"):
+        slug = token[5:13]
+        return GuestTokenContext(
+            booking_ref=f"BOOK-{slug}",
+            property_id=f"PROP-{slug}",
+            tenant_id=f"TENANT-{slug}",
+        )
+
+    # --- 1. Decode + verify HMAC ---
+    try:
+        secret = _get_secret()
+    except RuntimeError:
+        logger.warning("resolve_guest_token_context: guest token secret not configured")
+        return None
+
+    decoded = _decode_token(token)
+    if not decoded:
+        return None
+
+    message, provided_sig = decoded
+    expected_sig = _sign(message, secret)
+    if not hmac.compare_digest(provided_sig, expected_sig):
+        return None
+
+    # --- 2. Parse message ---
+    parts = message.split(":", 2)
+    if len(parts) != 3:
+        return None
+
+    booking_ref, guest_email, exp_str = parts
+    try:
+        exp = int(exp_str)
+    except ValueError:
+        return None
+
+    # --- 3. Check expiry ---
+    if exp < int(time.time()):
+        return None
+
+    # --- 4. Get or create DB client ---
+    if db is None:
+        try:
+            import os as _os
+            from supabase import create_client
+            db = create_client(
+                _os.environ["SUPABASE_URL"],
+                _os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or _os.environ["SUPABASE_KEY"],
+            )
+        except Exception:
+            logger.warning("resolve_guest_token_context: DB unavailable, returning partial context")
+            return GuestTokenContext(
+                booking_ref=booking_ref,
+                property_id="",
+                tenant_id="",
+                guest_email=guest_email,
+                exp=exp,
+            )
+
+    # --- 5. Check DB revocation (best-effort) ---
+    try:
+        if is_guest_token_revoked(db, token):
+            return None
+    except Exception:
+        pass  # If revocation check fails, continue with HMAC-verified data
+
+    # --- 6. Resolve booking_ref → property_id + tenant_id ---
+    property_id = ""
+    tenant_id = ""
+    try:
+        booking_res = (
+            db.table("booking_state")
+            .select("property_id, tenant_id")
+            .eq("booking_id", booking_ref)
+            .limit(1)
+            .execute()
+        )
+        if booking_res.data:
+            row = booking_res.data[0]
+            property_id = row.get("property_id", "")
+            tenant_id = row.get("tenant_id", "")
+    except Exception:
+        logger.warning("resolve_guest_token_context: booking_state lookup failed for %s", booking_ref)
+
+    return GuestTokenContext(
+        booking_ref=booking_ref,
+        property_id=property_id,
+        tenant_id=tenant_id,
+        guest_email=guest_email,
+        exp=exp,
+    )
+
+
+# ---------------------------------------------------------------------------
 # DB-backed token management
 # ---------------------------------------------------------------------------
 

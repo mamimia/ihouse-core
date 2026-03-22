@@ -43,3 +43,4 @@ localhost_run.log
 ngrok.log
 ngrok_test.log
 serveo.log
+.vercel

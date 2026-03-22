@@ -20,9 +20,10 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Default role for users with no tenant_permissions record
-# This is a safe fallback — "manager" grants operational access but not admin.
-DEFAULT_ROLE_IF_MISSING = "manager"
+# Phase 862 (Canonical Auth P3): no default role for unknown users.
+# When no tenant_permissions record exists and no explicit role is provided,
+# the caller must decide what to do (usually: reject the request).
+DEFAULT_ROLE_IF_MISSING = None
 
 
 def lookup_role(db: Any, tenant_id: str, user_id: str) -> Optional[str]:
@@ -66,19 +67,23 @@ def resolve_role(
     tenant_id: str,
     user_id: str,
     requested_role: Optional[str] = None,
-) -> str:
+) -> Optional[str]:
     """
     Resolve the authoritative role for a user.
 
     Priority:
         1. DB role from tenant_permissions (always wins)
-        2. If no DB record: use DEFAULT_ROLE_IF_MISSING
+        2. If no DB record and requested_role provided: use requested_role
+        3. If no DB record and no requested_role: return None
+
+    Phase 862 (Canonical Auth P3): returns None instead of defaulting to
+    "manager". Callers must handle None explicitly (usually: reject).
 
     If the caller supplied a requested_role and it differs from the DB role,
     a warning is logged (the DB role still wins).
 
     Returns:
-        The resolved role string.
+        The resolved role string, or None if no role could be determined.
     """
     db_role = lookup_role(db, tenant_id, user_id)
 
@@ -91,7 +96,7 @@ def resolve_role(
             )
         return db_role
 
-    # No DB record — Phase 831: prefer requested_role, fall back to default
+    # No DB record — Phase 862: prefer requested_role, fall back to None
     resolved = (requested_role.strip().lower() if requested_role else DEFAULT_ROLE_IF_MISSING)
     logger.info(
         "role_authority: no tenant_permissions record for tenant=%s user=%s, "

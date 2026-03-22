@@ -85,19 +85,21 @@ export default function MyPropertiesPage() {
 
     const fetchProperties = useCallback(async () => {
         try {
-            // Get the session token for authenticated request
-            const session = await supabase?.auth.getSession();
-            const token = session?.data?.session?.access_token;
-            const headers: Record<string, string> = {};
-            if (token) headers['Authorization'] = `Bearer ${token}`;
+            // Phase 862 P24: use ihouse_token cookie for auth
+            const token = document.cookie
+                .split('; ')
+                .find(c => c.startsWith('ihouse_token='))
+                ?.split('=')[1];
+            if (!token) { setLoading(false); return; }
 
-            const res = await fetch('/api/properties/mine', {
-                credentials: 'include',
-                headers,
+            const apiBase = process.env.NEXT_PUBLIC_API_BASE || '';
+            const res = await fetch(`${apiBase}/properties/mine`, {
+                headers: { 'Authorization': `Bearer ${token}` },
             });
             if (res.ok) {
                 const data = await res.json();
-                setProperties(data.properties || []);
+                const payload = data.data || data;
+                setProperties(payload.items || []);
             }
         } catch { /* ignore */ }
         finally { setLoading(false); }
@@ -108,10 +110,17 @@ export default function MyPropertiesPage() {
     const handleSubmitForReview = async (propertyId: string) => {
         setSubmitting(propertyId);
         try {
-            const res = await fetch(`/api/properties/${propertyId}/submit`, {
-                method: 'PATCH',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
+            const token = document.cookie
+                .split('; ')
+                .find(c => c.startsWith('ihouse_token='))
+                ?.split('=')[1];
+            const apiBase = process.env.NEXT_PUBLIC_API_BASE || '';
+            const res = await fetch(`${apiBase}/properties/${propertyId}/submit`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
             });
             if (res.ok) {
                 setJustSubmitted(propertyId);

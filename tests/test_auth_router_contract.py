@@ -27,9 +27,10 @@ _TENANT = "tenant-abc"
 
 @pytest.fixture(autouse=True)
 def _auth_env(monkeypatch):
-    """Set IHOUSE_JWT_SECRET and IHOUSE_DEV_PASSWORD for every test in this module."""
+    """Set IHOUSE_JWT_SECRET, IHOUSE_DEV_PASSWORD, and IHOUSE_DEV_MODE for every test in this module."""
     monkeypatch.setenv("IHOUSE_JWT_SECRET", _SECRET)
     monkeypatch.setenv("IHOUSE_DEV_PASSWORD", _PASSWORD)
+    monkeypatch.setenv("IHOUSE_DEV_MODE", "true")  # Phase 862 P8: required for dev token endpoint
 
 # ---------------------------------------------------------------------------
 # Group A — Happy path

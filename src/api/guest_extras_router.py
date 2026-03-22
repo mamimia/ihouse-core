@@ -24,6 +24,7 @@ from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
 from api.error_models import ErrorCode, make_error_response
+from services.guest_token import resolve_guest_token_context
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["extras"])
@@ -34,43 +35,14 @@ def _get_supabase_client() -> Any:
     return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
 
 
-# ----- Stub token resolver (shared with guest_portal_router) -----
+# ----- Token resolver (via canonical service) -----
 
-def _resolve_token(token: str) -> dict | None:
-    """
-    Resolve a guest token to booking/property info.
-    Returns dict with booking_ref, property_id, tenant_id — or None.
-    For CI/test: any token starting with 'test-' is accepted.
-    """
-    if token.startswith("test-"):
-        return {
-            "booking_ref": f"BOOK-{token[5:13]}",
-            "property_id": f"PROP-{token[5:13]}",
-            "tenant_id": f"TENANT-{token[5:13]}",
-        }
-    # Production: verify via guest_token service
-    try:
-        from services.guest_token import _decode_token, _sign, _get_secret
-        import hmac as hmac_mod
-        import time as time_mod
-
-        decoded = _decode_token(token)
-        if not decoded:
-            return None
-        message, provided_sig = decoded
-        secret = _get_secret()
-        expected_sig = _sign(message, secret)
-        if not hmac_mod.compare_digest(provided_sig, expected_sig):
-            return None
-        parts = message.split(":", 2)
-        if len(parts) != 3:
-            return None
-        booking_ref, _email, exp_str = parts
-        if int(exp_str) < int(time_mod.time()):
-            return None
-        return {"booking_ref": booking_ref, "property_id": None, "tenant_id": None}
-    except Exception:
+def _resolve_token(token: str, db: Any | None = None) -> dict | None:
+    """Resolve guest token to context via canonical service."""
+    ctx = resolve_guest_token_context(token, db=db)
+    if ctx is None:
         return None
+    return ctx.to_dict()
 
 
 _VALID_ORDER_STATUSES = frozenset({"requested", "confirmed", "delivered", "canceled"})
@@ -88,7 +60,7 @@ _VALID_ORDER_TRANSITIONS: dict[str, frozenset[str]] = {
 
 @router.get("/guest/{token}/extras", summary="List extras available for property (Phase 667)")
 async def guest_extras_listing(token: str, client: Optional[Any] = None) -> JSONResponse:
-    ctx = _resolve_token(token)
+    ctx = _resolve_token(token, db=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 
@@ -115,7 +87,7 @@ async def guest_extras_listing(token: str, client: Optional[Any] = None) -> JSON
 
 @router.post("/guest/{token}/extras/order", summary="Guest orders an extra (Phase 668)")
 async def guest_order_extra(token: str, body: Dict[str, Any], client: Optional[Any] = None) -> JSONResponse:
-    ctx = _resolve_token(token)
+    ctx = _resolve_token(token, db=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 

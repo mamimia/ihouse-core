@@ -20,6 +20,7 @@ import { useState, useEffect } from 'react';
 import PasswordInput from '../../../../components/auth/PasswordInput';
 import AuthCard from '../../../../components/auth/AuthCard';
 import { supabase } from '../../../../lib/supabaseClient';
+import { usePasswordRules } from '@/hooks/usePasswordRules';
 
 export default function ResetPasswordPage() {
     const [password, setPassword] = useState('');
@@ -29,6 +30,10 @@ export default function ResetPasswordPage() {
     const [success, setSuccess] = useState(false);
     const [hasToken, setHasToken] = useState(false);
     const [checking, setChecking] = useState(true);
+    const [passwordFocused, setPasswordFocused] = useState(false);
+
+    const pwRules = usePasswordRules(password);
+    const allRulesPass = pwRules.every(r => r.pass);
 
     // Check for access token in URL on mount
     useEffect(() => {
@@ -41,8 +46,8 @@ export default function ResetPasswordPage() {
 
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!password || password.length < 6) {
-            setError('Password must be at least 6 characters');
+        if (!allRulesPass) {
+            setError('Password does not meet all requirements');
             return;
         }
         if (password !== confirmPassword) {
@@ -179,7 +184,9 @@ export default function ResetPasswordPage() {
                         id="input-new-password"
                         value={password}
                         onChange={e => { setPassword(e.target.value); setError(null); }}
-                        placeholder="At least 6 characters"
+                        onFocus={() => setPasswordFocused(true)}
+                        onBlur={() => setPasswordFocused(false)}
+                        placeholder="Create a strong password"
                         autoComplete="new-password"
                         autoFocus
                         disabled={loading}
@@ -197,6 +204,28 @@ export default function ResetPasswordPage() {
                     />
                 </div>
 
+                {/* Phase 873: Live password rules checklist */}
+                {(passwordFocused || password.length > 0) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 11, lineHeight: 1.8 }}>
+                        {pwRules.map(r => (
+                            <span key={r.key} style={{
+                                color: password.length === 0
+                                    ? 'rgba(234,229,222,0.25)'
+                                    : r.pass ? '#4A7C59' : 'rgba(234,229,222,0.3)',
+                                transition: 'color 0.2s',
+                            }}>
+                                {password.length > 0 && r.pass ? '✓' : '○'} {r.label}
+                            </span>
+                        ))}
+                    </div>
+                )}
+                {confirmPassword.length > 0 && password !== confirmPassword && (
+                    <div style={{ fontSize: 12, color: '#D64545' }}>✗ Passwords do not match</div>
+                )}
+                {confirmPassword.length > 0 && password === confirmPassword && password.length > 0 && (
+                    <div style={{ fontSize: 12, color: '#4A7C59' }}>✓ Passwords match</div>
+                )}
+
                 {error && (
                     <div style={{
                         background: 'rgba(155,58,58,0.1)', border: '1px solid rgba(155,58,58,0.25)',
@@ -210,15 +239,15 @@ export default function ResetPasswordPage() {
                 <button
                     type="submit"
                     className="auth-btn"
-                    disabled={loading || !password || !confirmPassword}
+                    disabled={loading || !allRulesPass || password !== confirmPassword}
                     style={{
                         width: '100%', padding: '14px',
                         background: 'var(--color-moss, #334036)', border: 'none',
                         borderRadius: 'var(--radius-md, 12px)', color: 'var(--color-white, #F8F6F2)',
                         fontSize: 'var(--text-base, 16px)', fontWeight: 600,
                         fontFamily: 'var(--font-brand, "Inter", sans-serif)',
-                        cursor: loading || !password || !confirmPassword ? 'not-allowed' : 'pointer',
-                        opacity: loading || !password || !confirmPassword ? 0.4 : 1,
+                        cursor: loading || !allRulesPass || password !== confirmPassword ? 'not-allowed' : 'pointer',
+                        opacity: loading || !allRulesPass || password !== confirmPassword ? 0.4 : 1,
                         transition: 'all 0.2s', minHeight: 48,
                     }}
                 >

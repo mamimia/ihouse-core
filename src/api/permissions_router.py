@@ -69,7 +69,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_VALID_ROLES = frozenset({"admin", "manager", "worker", "owner"})
+# Phase 862 (Canonical Auth P7): single source of truth for roles
+from services.canonical_roles import CANONICAL_ROLES as _VALID_ROLES
 
 
 # ---------------------------------------------------------------------------

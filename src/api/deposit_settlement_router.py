@@ -30,6 +30,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ def _now_iso() -> str:
 async def collect_deposit(
     body: Dict[str, Any],
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     booking_id = str(body.get("booking_id") or "").strip()
@@ -107,7 +109,9 @@ async def collect_deposit(
 @router.post("/deposits/{deposit_id}/return", summary="Full deposit return (Phase 687)")
 async def return_deposit(
     deposit_id: str, body: Optional[Dict[str, Any]] = None,
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     body = body or {}
     returned_by = str(body.get("returned_by") or tenant_id).strip()
@@ -147,7 +151,9 @@ async def return_deposit(
 @router.get("/deposits", summary="Lookup deposits by booking (Phase 687)")
 async def list_deposits(
     booking_id: str = Query(...),
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     try:
         db = client if client is not None else _get_db()
@@ -171,7 +177,9 @@ async def list_deposits(
 @router.post("/deposits/{deposit_id}/deductions", summary="Add deduction (Phase 688)")
 async def add_deduction(
     deposit_id: str, body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     description = str(body.get("description") or "").strip()
     amount = body.get("amount")
@@ -227,7 +235,9 @@ async def add_deduction(
 @router.delete("/deposits/{deposit_id}/deductions/{deduction_id}", summary="Remove deduction (Phase 688)")
 async def remove_deduction(
     deposit_id: str, deduction_id: str,
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     try:
         db = client if client is not None else _get_db()
@@ -258,7 +268,9 @@ async def remove_deduction(
 @router.get("/deposits/{deposit_id}/settlement", summary="Deposit settlement breakdown (Phase 688)")
 async def get_settlement(
     deposit_id: str,
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     try:
         db = client if client is not None else _get_db()

@@ -64,7 +64,7 @@ export default function NoAccessPage() {
                 }}>
                     {/* Primary: request access */}
                     <a
-                        href="/get-started"
+                        href="/welcome"
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',

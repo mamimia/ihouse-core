@@ -479,6 +479,12 @@ app.include_router(staff_onboarding_router)
 from api.intake_router import router as intake_router  # noqa: E402  # Phase 856B
 app.include_router(intake_router)
 
+from api.submitter_router import router as submitter_router  # noqa: E402  # Phase 862 P16
+app.include_router(submitter_router)
+
+from api.admin_capabilities_router import router as admin_capabilities_router  # noqa: E402  # Phase 862 P32
+app.include_router(admin_capabilities_router)
+
 from api.onboard_token_router import router as onboard_token_router  # noqa: E402  # Phase 402
 app.include_router(onboard_token_router)
 

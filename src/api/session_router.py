@@ -70,8 +70,8 @@ def _extract_token_from_request(request: Request) -> str | None:
 # Request models
 # ---------------------------------------------------------------------------
 
-# Phase 397/831: Valid roles — must match auth_router.py VALID_ROLES
-_VALID_ROLES = {"admin", "manager", "ops", "worker", "cleaner", "owner", "checkin", "checkout", "maintenance"}
+# Phase 862 (Canonical Auth P7): single source of truth for roles
+from services.canonical_roles import CANONICAL_ROLES as _VALID_ROLES
 
 
 class LoginSessionRequest(BaseModel):
@@ -132,6 +132,10 @@ async def _dev_login_impl(body: LoginSessionRequest, request: Request) -> JSONRe
     The secret is validated against IHOUSE_DEV_PASSWORD (default: 'dev').
     In production, replace with Supabase Auth — this remains as the tracked login path.
     """
+    # Phase 862 P12: production gate — dev login must NEVER be available in production.
+    if os.environ.get("IHOUSE_DEV_MODE", "").lower() != "true":
+        return err("DEV_ONLY_ENDPOINT", "Dev login is disabled in production.", status=403)
+
     jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
     if not jwt_secret:
         return err("AUTH_NOT_CONFIGURED", "IHOUSE_JWT_SECRET not set", status=503)
@@ -160,11 +164,13 @@ async def _dev_login_impl(body: LoginSessionRequest, request: Request) -> JSONRe
     # Issue JWT
     now = int(time.time())
     payload = {
-        "sub": tenant_id,
+        "sub": tenant_id,         # Phase 862 P22: in dev mode, sub=tenant_id (no real UUID)
+        "tenant_id": tenant_id,   # Phase 862 P22: explicit claim for format unification
         "iat": now,
         "exp": now + _TOKEN_TTL_SECONDS,
         "token_type": "session",
         "role": role,  # Phase 759: DB-authoritative role
+        "auth_method": "dev_login",  # Phase 862 P22: identifies token origin
     }
     token = jwt.encode(payload, jwt_secret, algorithm=_ALGORITHM)
 

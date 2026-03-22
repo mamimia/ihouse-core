@@ -197,6 +197,9 @@ export default function GetStartedWizard() {
     const [authError, setAuthError] = useState('');
     const [authedUser, setAuthedUser] = useState<{ id: string; email: string } | null>(null);
     const [authProvider, setAuthProvider] = useState<'email' | 'google'>('email');
+    // Phase 872: Tracks whether user was already authenticated BEFORE entering Get Started.
+    // Pre-existing auth users skip password fields — they already have credentials.
+    const [preExistingAuth, setPreExistingAuth] = useState(false);
 
     // Profile state
     const [profile, setProfile] = useState({ firstName: '', lastName: '', phone: '', countryCode: '+66', userType: '' });
@@ -214,8 +217,10 @@ export default function GetStartedWizard() {
     // Photo lightbox
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-    // Whether the current auth is via Google (skip password section)
+    // Whether the current auth is via Google OR user was pre-authenticated (skip password section)
+    // Phase 872: pre-existing auth users already have credentials — don't ask them to set a password again
     const isGoogleAuth = authProvider === 'google';
+    const skipPasswordSection = isGoogleAuth || preExistingAuth;
 
     const otpInputRef = useRef<HTMLInputElement>(null);
 
@@ -228,13 +233,27 @@ export default function GetStartedWizard() {
                 setState(prev => ({ ...prev, ...parsed, extracting: false }));
             } catch { /* ignore corrupt state */ }
         }
-        // Check if user is already authenticated
+        // Phase 872: Check if user is already authenticated (signed-in mode)
         if (supabase) {
             supabase.auth.getSession().then(({ data }) => {
                 if (data.session?.user) {
                     setAuthedUser({ id: data.session.user.id, email: data.session.user.email || '' });
+                    setPreExistingAuth(true); // Phase 872: mark as pre-existing
                     const provider = data.session.user.app_metadata?.provider;
                     if (provider === 'google') setAuthProvider('google');
+                    // Phase 872: Pre-fill name from user metadata if available
+                    const meta = data.session.user.user_metadata;
+                    if (meta?.full_name) {
+                        const parts = (meta.full_name as string).split(' ');
+                        setProfile(p => ({
+                            ...p,
+                            firstName: p.firstName || parts[0] || '',
+                            lastName: p.lastName || parts.slice(1).join(' ') || '',
+                        }));
+                    }
+                    // Phase 872 fix: If stale sessionStorage had step=6, auto-advance past auth gate.
+                    // Without this, a signed-in user could briefly see the auth gate.
+                    setState(prev => prev.step === 6 ? { ...prev, step: 7 as Step } : prev);
                 }
             });
         }
@@ -1089,8 +1108,8 @@ export default function GetStartedWizard() {
                                         </div>
                                     </div>
 
-                                    {/* ── Password section (OTP path only) ── */}
-                                    {!isGoogleAuth && (
+                                    {/* ── Password section (OTP path only — skip for Google auth AND pre-existing auth) ── */}
+                                    {!skipPasswordSection && (
                                         <>
                                             <div className="gs-divider" style={{ margin: '6px 0' }}>Secure your account</div>
                                             <div>
@@ -1142,7 +1161,8 @@ export default function GetStartedWizard() {
                                 )}
                             </div>
 
-                            {isGoogleAuth ? (
+                            {/* Phase 872: Use no-password save for Google auth AND pre-existing auth */}
+                            {skipPasswordSection ? (
                                 <button
                                     onClick={handleGoogleSave}
                                     disabled={draftSaving || !profile.firstName.trim() || !profile.lastName.trim() || !profile.userType}

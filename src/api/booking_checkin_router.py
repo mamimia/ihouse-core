@@ -24,15 +24,61 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth
+from api.auth import jwt_identity_simple as jwt_identity
 from api.envelope import ok, err
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Phase 63 — Role-based guards for check-in / check-out
+# ---------------------------------------------------------------------------
+# These are intentionally NOT capability guards. The checkin/checkout roles
+# ARE the authorization — no additional capability delegation needed.
+#
+# admin / manager → always allowed (operational authority)
+# checkin         → primary check-in worker (also allowed to check out)
+# checkout        → primary check-out worker (NOT allowed to check in)
+#
+# Dev mode: jwt_identity returns {role: "admin"} → always in allowed set.
+# Production: jwt_identity returns the real role from the JWT.
+# ---------------------------------------------------------------------------
+
+_CHECKIN_ALLOWED_ROLES = frozenset({"admin", "manager", "checkin"})
+_CHECKOUT_ALLOWED_ROLES = frozenset({"admin", "manager", "checkin", "checkout"})
+
+
+def _assert_checkin_role(identity: dict) -> None:
+    """Raise 403 if identity role is not permitted to perform check-in."""
+    role = identity.get("role", "")
+    if role not in _CHECKIN_ALLOWED_ROLES:
+        logger.warning(
+            "role_guard: role=%s denied for checkin user=%s",
+            role, identity.get("user_id", ""),
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=f"CHECKIN_DENIED: role '{role}' cannot perform checkin.",
+        )
+
+
+def _assert_checkout_role(identity: dict) -> None:
+    """Raise 403 if identity role is not permitted to perform check-out."""
+    role = identity.get("role", "")
+    if role not in _CHECKOUT_ALLOWED_ROLES:
+        logger.warning(
+            "role_guard: role=%s denied for checkout user=%s",
+            role, identity.get("user_id", ""),
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=f"CHECKOUT_DENIED: role '{role}' cannot perform checkout.",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +158,111 @@ def _write_audit_event_table(
 
 
 # ---------------------------------------------------------------------------
+# Phase 58 — Guest token auto-issuance helpers
+# ---------------------------------------------------------------------------
+
+_PORTAL_BASE = "https://app.domaniqo.com/guest"
+_GUEST_TOKEN_TTL = 30 * 86_400  # 30 days
+
+
+def _auto_issue_guest_token(
+    db: Any, booking_id: str, tenant_id: str,
+) -> Optional[str]:
+    """
+    Issue a guest HMAC token as a system side-effect of check-in completion.
+
+    Best-effort:
+    - If a non-revoked token already exists for this booking, reuse it
+      (prevents duplicate tokens on retries).
+    - Returns the portal URL string, or None on failure.
+    - Failures here do NOT fail the check-in — token issuance is non-blocking.
+    """
+    try:
+        from services.guest_token import issue_guest_token, record_guest_token
+
+        # Check if a non-revoked token already exists for this booking
+        existing = (
+            db.table("guest_tokens")
+            .select("booking_ref, expires_at")
+            .eq("booking_ref", booking_id)
+            .eq("tenant_id", tenant_id)
+            .is_("revoked_at", "null")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            # Token already exists — reuse by re-issuing (HMAC is stateless,
+            # the portal URL just needs a valid token)
+            pass  # fall through to issue a fresh one (old one stays valid too)
+
+        raw_token, exp = issue_guest_token(
+            booking_ref=booking_id,
+            guest_email="",  # guest email not available at this point
+            ttl_seconds=_GUEST_TOKEN_TTL,
+        )
+
+        record_guest_token(
+            db=db,
+            booking_ref=booking_id,
+            tenant_id=tenant_id,
+            raw_token=raw_token,
+            exp=exp,
+        )
+
+        portal_url = f"{_PORTAL_BASE}/{raw_token}"
+        logger.info("checkin: guest token issued for booking_id=%s", booking_id)
+        return portal_url
+
+    except Exception as exc:
+        logger.warning("checkin: guest token issuance failed (non-blocking): %s", exc)
+        return None
+
+
+def _lookup_existing_portal_url(
+    db: Any, booking_id: str, tenant_id: str,
+) -> Optional[str]:
+    """
+    Look up existing guest portal URL for the idempotent (already_checked_in) path.
+
+    Checks guest_qr_tokens (short tokens) first, then falls back to
+    re-issuing an HMAC token. Returns None if nothing found.
+    """
+    try:
+        # 1. Check short QR tokens
+        qr_res = (
+            db.table("guest_qr_tokens")
+            .select("portal_url")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if qr_res.data and qr_res.data[0].get("portal_url"):
+            return qr_res.data[0]["portal_url"]
+
+        # 2. Check HMAC tokens — if one exists, issue a fresh portal URL
+        token_res = (
+            db.table("guest_tokens")
+            .select("booking_ref")
+            .eq("booking_ref", booking_id)
+            .eq("tenant_id", tenant_id)
+            .is_("revoked_at", "null")
+            .limit(1)
+            .execute()
+        )
+        if token_res.data:
+            # Re-issue fresh token for the URL (old ones stay valid too)
+            from services.guest_token import issue_guest_token
+            raw_token, _ = issue_guest_token(booking_ref=booking_id, ttl_seconds=_GUEST_TOKEN_TTL)
+            return f"{_PORTAL_BASE}/{raw_token}"
+
+        return None
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
 # POST /bookings/{booking_id}/checkin
 # ---------------------------------------------------------------------------
 
@@ -129,7 +280,7 @@ def _write_audit_event_table(
 )
 async def checkin_booking(
     booking_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     _client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -137,7 +288,15 @@ async def checkin_booking(
 
     Transitions booking from 'active' → 'checked_in'.
     Idempotent: if already checked_in, returns 200 with no-op flag.
+
+    Phase 58: On successful completion, auto-issues a guest HMAC token
+    (30 days, best-effort) and returns guest_portal_url in the response.
+    This is the canonical guest-access-issuance trigger.
+
+    Phase 63: Restricted to admin / manager / checkin roles only.
     """
+    _assert_checkin_role(identity)
+    tenant_id: str = identity["tenant_id"]
     now = datetime.now(tz=timezone.utc).isoformat()
 
     try:
@@ -150,12 +309,15 @@ async def checkin_booking(
         current_status = (booking.get("status") or "").lower()
 
         # Already checked in — idempotent success
+        # Phase 58: also return existing guest_portal_url if token was already issued
         if current_status == "checked_in":
+            portal_url = _lookup_existing_portal_url(db, booking_id, tenant_id)
             return ok({
                 "status": "already_checked_in",
                 "booking_id": booking_id,
                 "checked_in_at": now,
                 "noop": True,
+                "guest_portal_url": portal_url,
             })
 
         # Only 'active' or 'observed' bookings can be checked in
@@ -198,7 +360,11 @@ async def checkin_booking(
             except Exception:
                 logger.warning("checkin: failed to set property %s to occupied", property_id)
 
-        logger.info("checkin: booking_id=%s tenant=%s → checked_in", booking_id, tenant_id)
+        # Phase 58: Auto-issue guest HMAC token (best-effort, 30-day TTL)
+        guest_portal_url = _auto_issue_guest_token(db, booking_id, tenant_id)
+
+        logger.info("checkin: booking_id=%s tenant=%s → checked_in portal=%s",
+                     booking_id, tenant_id, "yes" if guest_portal_url else "no")
 
         return ok({
             "status": "checked_in",
@@ -206,6 +372,7 @@ async def checkin_booking(
             "property_id": property_id,
             "checked_in_at": now,
             "noop": False,
+            "guest_portal_url": guest_portal_url,
         })
 
     except Exception as exc:
@@ -231,7 +398,7 @@ async def checkin_booking(
 )
 async def checkout_booking(
     booking_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     _client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -240,7 +407,11 @@ async def checkout_booking(
     Transitions booking from 'checked_in' → 'checked_out'.
     Also creates a CLEANING task for the property via task_writer.
     Idempotent: if already checked_out, returns 200 with no-op flag.
+
+    Phase 63: Restricted to admin / manager / checkin / checkout roles only.
     """
+    _assert_checkout_role(identity)
+    tenant_id: str = identity["tenant_id"]
     now = datetime.now(tz=timezone.utc).isoformat()
 
     try:

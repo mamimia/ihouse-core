@@ -30,6 +30,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from services.guest_token import (
     issue_guest_token,
     verify_guest_token,
@@ -77,6 +78,7 @@ async def issue_token(
     booking_ref: str,
     body: IssueGuestTokenRequest,
     caller_id: Annotated[str, Depends(jwt_auth)],
+    _cap: None = Depends(require_capability("guest_access")),
 ) -> JSONResponse:
     """
     POST /admin/guest-token/{booking_ref}

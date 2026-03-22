@@ -1,9 +1,9 @@
 """
-Phase 760 — Tenant Bridge Tests
+Phase 760 / Phase 862 — Tenant Bridge Tests
 =================================
 
 Verifies that:
-- provision_user_tenant creates a tenant_permissions row
+- provision_user_tenant requires explicit tenant_id and role (Phase 862 P5)
 - lookup_user_tenant returns the correct mapping
 - Both handle DB errors gracefully (never raise)
 """
@@ -13,8 +13,6 @@ import pytest
 from services.tenant_bridge import (
     provision_user_tenant,
     lookup_user_tenant,
-    DEFAULT_TENANT_ID,
-    DEFAULT_SIGNUP_ROLE,
 )
 
 
@@ -64,15 +62,19 @@ class FakeDB:
 # ==========================================================================
 
 class TestProvisionUserTenant:
-    def test_creates_row_with_defaults(self):
+    def test_creates_row_with_explicit_params(self):
+        """Phase 862 P5: must supply explicit tenant_id and role."""
         db = FakeDB()
-        result = provision_user_tenant(db, "supabase-uuid-123")
+        result = provision_user_tenant(
+            db, "supabase-uuid-123",
+            tenant_id="my-tenant", role="worker",
+        )
         assert result is not None
         assert result["user_id"] == "supabase-uuid-123"
-        assert result["tenant_id"] == DEFAULT_TENANT_ID
-        assert result["role"] == DEFAULT_SIGNUP_ROLE
+        assert result["tenant_id"] == "my-tenant"
+        assert result["role"] == "worker"
 
-    def test_uses_explicit_tenant_and_role(self):
+    def test_uses_explicit_tenant_and_role_with_permissions(self):
         db = FakeDB()
         result = provision_user_tenant(
             db, "uuid-456",
@@ -84,12 +86,24 @@ class TestProvisionUserTenant:
         assert result["role"] == "admin"
         assert result["permissions"]["can_manage_workers"] is True
 
+    def test_raises_when_tenant_id_missing(self):
+        """Phase 862 P5: missing tenant_id must raise ValueError."""
+        db = FakeDB()
+        with pytest.raises(ValueError, match="tenant_id is required"):
+            provision_user_tenant(db, "uuid", tenant_id="", role="worker")
+
+    def test_raises_when_role_missing(self):
+        """Phase 862 P5: missing role must raise ValueError."""
+        db = FakeDB()
+        with pytest.raises(ValueError, match="role is required"):
+            provision_user_tenant(db, "uuid", tenant_id="t1", role="")
+
     def test_returns_none_on_db_error(self):
         class BrokenDB:
             def table(self, name):
                 raise RuntimeError("DB down")
 
-        assert provision_user_tenant(BrokenDB(), "uuid") is None
+        assert provision_user_tenant(BrokenDB(), "uuid", tenant_id="t1", role="worker") is None
 
 
 # ==========================================================================

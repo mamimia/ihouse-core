@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,9 @@ async def list_extras(
              responses={201: {}, 400: {}, 500: {}}, openapi_extra={"security": [{"BearerAuth": []}]})
 async def create_extra(
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     if not isinstance(body, dict):
         return make_error_response(status_code=400, code=ErrorCode.VALIDATION_ERROR,
@@ -121,7 +124,9 @@ async def get_extra(
               responses={200: {}, 400: {}, 404: {}, 500: {}}, openapi_extra={"security": [{"BearerAuth": []}]})
 async def update_extra(
     extra_id: str, body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     if not isinstance(body, dict) or not body:
         return make_error_response(status_code=400, code=ErrorCode.VALIDATION_ERROR,

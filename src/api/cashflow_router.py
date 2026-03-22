@@ -48,6 +48,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 from api.financial_aggregation_router import (
     _canonical_currency,
@@ -139,6 +140,7 @@ def _period_end_date(period: str) -> datetime:
 async def get_cashflow(
     period: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """

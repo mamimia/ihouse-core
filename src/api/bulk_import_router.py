@@ -26,6 +26,7 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,9 @@ def _now_iso() -> str:
 @router.post("/integrations/airbnb/connect", summary="Connect Airbnb (Phase 746)")
 async def connect_airbnb(
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     """
     Initiates Airbnb OAuth. In production, this redirects to Airbnb's OAuth page.
@@ -95,7 +98,9 @@ async def connect_airbnb(
 @router.post("/integrations/booking/connect", summary="Connect Booking.com (Phase 747)")
 async def connect_booking(
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     access_token = str(body.get("access_token") or "").strip()
     if not access_token:
@@ -155,7 +160,9 @@ def _fetch_ota_properties(
 @router.post("/import/preview", summary="Preview importable properties (Phase 748)")
 async def import_preview(
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     integration_id = str(body.get("integration_id") or "").strip()
     provider = str(body.get("provider") or "").strip()
@@ -194,7 +201,9 @@ async def import_preview(
 @router.post("/import/select", summary="Select properties to import (Phase 748)")
 async def import_select(
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     property_ids = body.get("property_ids", [])
     integration_id = str(body.get("integration_id") or "").strip()
@@ -246,7 +255,9 @@ _SMART_DEFAULTS = {
 @router.post("/import/execute/{job_id}", summary="Execute bulk import (Phase 749)")
 async def import_execute(
     job_id: str,
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     try:
         db = client if client is not None else _get_db()
@@ -326,7 +337,9 @@ async def import_execute(
 @router.post("/integrations/ical/connect", summary="Connect iCal URL (Phase 751)")
 async def connect_ical(
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     property_id = str(body.get("property_id") or "").strip()
     ical_url = str(body.get("ical_url") or "").strip()
@@ -411,7 +424,9 @@ async def list_ical_connections(
 @router.delete("/integrations/ical/{connection_id}", summary="Disconnect iCal feed")
 async def disconnect_ical(
     connection_id: str,
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     """DELETE /integrations/ical/{connection_id} — remove an iCal connection."""
     try:
@@ -622,7 +637,9 @@ _CSV_OPTIONAL_COLUMNS = {"rooms", "bathrooms", "max_guests", "wifi", "door_code"
 @router.post("/import/csv", summary="Import properties via CSV (Phase 752)")
 async def import_csv(
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
     """
     Accepts CSV content as a string in body.csv_content.

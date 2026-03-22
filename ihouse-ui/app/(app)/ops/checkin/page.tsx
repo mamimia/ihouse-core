@@ -150,6 +150,8 @@ export default function MobileCheckinPage() {
     const [depositNote, setDepositNote] = useState('');
     const [passportNumber, setPassportNumber] = useState('');
     const [passportName, setPassportName] = useState('');
+    const [guestPortalUrl, setGuestPortalUrl] = useState<string | null>(null);
+    const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
 
     const showNotice = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(null), 3000); };
 
@@ -300,9 +302,9 @@ export default function MobileCheckinPage() {
         nextStep();
     };
 
-    // ── D-5 + D-6: Complete check-in via POST /bookings/{id}/checkin ──
-    // This endpoint handles: booking state → checked_in, dual audit events (event_log + audit_events)
-    // D-5: Also transitions property operational_status → 'occupied'
+    // ── D-5 + D-6 + Phase 58/59: Complete check-in + auto-generate guest QR ──
+    // Backend now auto-issues guest HMAC token on successful check-in.
+    // Response includes guest_portal_url which we display as a real QR.
     const completeCheckin = async () => {
         if (!selected) return;
         const bookingId = getBookingId(selected);
@@ -310,23 +312,33 @@ export default function MobileCheckinPage() {
             const res = await apiFetch<any>(`/bookings/${bookingId}/checkin`, {
                 method: 'POST',
             });
-            const status = res?.data?.status || res?.status || 'checked_in';
+            const data = res?.data || res;
+            const status = data?.status || 'checked_in';
             if (status === 'already_checked_in') {
                 showNotice('ℹ️ Guest was already checked in');
             } else {
                 showNotice('✅ Check-in completed — booking is now InStay');
             }
-            // D-5: Set property operational_status → 'occupied'
+
+            // Phase 58: Extract guest portal URL from response
+            const portalUrl = data?.guest_portal_url || null;
+            setGuestPortalUrl(portalUrl);
+
+            // Phase 59: Fetch real QR image from backend (best-effort)
             try {
-                await apiFetch(`/properties/${selected.property_id}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ operational_status: 'occupied' }),
+                const qrRes = await fetch(`${BASE}/bookings/${bookingId}/qr-image`, {
+                    headers: { Authorization: `Bearer ${getToken()}` },
                 });
+                if (qrRes.ok) {
+                    const blob = await qrRes.blob();
+                    setQrImageUrl(URL.createObjectURL(blob));
+                }
             } catch {
-                // Best-effort — property status update is non-blocking
-                console.warn('Property status update to occupied failed — non-blocking');
+                // QR image fetch is non-blocking — portal URL is the fallback
+                console.warn('QR image fetch failed — using portal URL text');
             }
-            // Transition to success screen with QR handoff
+
+            // Transition to success screen with real QR
             setStep('success');
             return;
         } catch {
@@ -762,7 +774,7 @@ export default function MobileCheckinPage() {
                 </div>
             )}
 
-            {/* ========== SUCCESS SCREEN: QR Handoff ========== */}
+            {/* ========== SUCCESS SCREEN: QR Handoff (Phase 59) ========== */}
             {step === 'success' && selected && (
                 <div style={card}>
                     <div style={{
@@ -779,7 +791,7 @@ export default function MobileCheckinPage() {
                         </div>
                     </div>
 
-                    {/* QR Code placeholder */}
+                    {/* Real QR Code — Phase 59 */}
                     <div style={{
                         textAlign: 'center', padding: 'var(--space-5)',
                         background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)',
@@ -788,47 +800,53 @@ export default function MobileCheckinPage() {
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>
                             Guest Portal QR
                         </div>
-                        {/* Inline SVG QR placeholder — will be replaced with real QR generation */}
-                        <svg width="160" height="160" viewBox="0 0 160 160" style={{ margin: '0 auto', display: 'block' }}>
-                            <rect width="160" height="160" rx="12" fill="white" />
-                            {/* Simplified QR pattern */}
-                            <rect x="20" y="20" width="40" height="40" fill="#1a1f2e" />
-                            <rect x="24" y="24" width="32" height="32" fill="white" />
-                            <rect x="30" y="30" width="20" height="20" fill="#1a1f2e" />
-                            <rect x="100" y="20" width="40" height="40" fill="#1a1f2e" />
-                            <rect x="104" y="24" width="32" height="32" fill="white" />
-                            <rect x="110" y="30" width="20" height="20" fill="#1a1f2e" />
-                            <rect x="20" y="100" width="40" height="40" fill="#1a1f2e" />
-                            <rect x="24" y="104" width="32" height="32" fill="white" />
-                            <rect x="30" y="110" width="20" height="20" fill="#1a1f2e" />
-                            {/* Data area */}
-                            <rect x="70" y="20" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="70" y="40" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="20" y="70" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="40" y="70" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="60" y="70" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="80" y="70" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="100" y="70" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="130" y="70" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="70" y="100" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="90" y="100" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="110" y="110" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="130" y="130" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="70" y="130" width="10" height="10" fill="#1a1f2e" />
-                            <rect x="90" y="130" width="10" height="10" fill="#1a1f2e" />
-                        </svg>
+
+                        {/* Real QR image from backend, or portal URL fallback */}
+                        {qrImageUrl ? (
+                            <img
+                                src={qrImageUrl}
+                                alt="Guest Portal QR Code"
+                                style={{
+                                    width: 200, height: 200, margin: '0 auto', display: 'block',
+                                    borderRadius: 8, background: 'white', padding: 8,
+                                }}
+                            />
+                        ) : guestPortalUrl ? (
+                            <div style={{
+                                padding: 'var(--space-4)', background: 'white',
+                                borderRadius: 'var(--radius-md)', margin: '0 auto',
+                                maxWidth: 240,
+                            }}>
+                                <div style={{ fontSize: 'var(--text-sm)', color: '#1a1f2e', fontWeight: 600, wordBreak: 'break-all' }}>
+                                    📱 Guest Portal Link
+                                </div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: '#555', marginTop: 8, wordBreak: 'break-all', fontFamily: 'var(--font-mono)' }}>
+                                    {guestPortalUrl}
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ padding: 'var(--space-4)', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)' }}>
+                                ⏳ QR code generating...
+                            </div>
+                        )}
+
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 'var(--space-3)' }}>
                             Show this QR to the guest
                         </div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
-                            /guest/{getBookingId(selected)}
-                        </div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 8, fontStyle: 'italic' }}>
-                            Guest portal coming soon — QR will link to guest info page
-                        </div>
+                        {guestPortalUrl && (
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4 }}>
+                                Guest scans → opens stay portal with property info, WiFi, rules
+                            </div>
+                        )}
                     </div>
 
-                    <ActionButton label="Done — Return to Arrivals" onClick={returnToList} />
+                    <ActionButton label="Done — Return to Arrivals" onClick={() => {
+                        // Clean up blob URL to prevent memory leak
+                        if (qrImageUrl) URL.revokeObjectURL(qrImageUrl);
+                        setQrImageUrl(null);
+                        setGuestPortalUrl(null);
+                        returnToList();
+                    }} />
                 </div>
             )}
         </div>
