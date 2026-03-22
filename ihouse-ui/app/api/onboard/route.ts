@@ -129,7 +129,11 @@ export async function POST(request: NextRequest) {
             propertyData.submitter_last_name = body.lastName;
         }
         if (body.phone) {
-            propertyData.submitter_phone = body.phone;
+            // Strip country-code-only values ("+ 66 ", "+66 ") — require at least 4 digits
+            const phoneDigits = body.phone.replace(/\D/g, '');
+            if (phoneDigits.length >= 4) {
+                propertyData.submitter_phone = body.phone.trim();
+            }
         }
         if (body.userType) {
             propertyData.submitter_user_type = body.userType;
