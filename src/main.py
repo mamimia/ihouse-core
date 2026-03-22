@@ -366,6 +366,9 @@ app.include_router(outbound_log_router)
 from api.operations_router import router as operations_router  # noqa: E402  # Phase 153
 app.include_router(operations_router)
 
+from api.submitter_router import router as submitter_router  # noqa: E402  # Phase 862 P16
+app.include_router(submitter_router)
+
 from api.properties_router import router as properties_router  # noqa: E402  # Phase 156
 app.include_router(properties_router)
 
@@ -480,7 +483,7 @@ from api.intake_router import router as intake_router  # noqa: E402  # Phase 856
 app.include_router(intake_router)
 
 from api.submitter_router import router as submitter_router  # noqa: E402  # Phase 862 P16
-app.include_router(submitter_router)
+
 
 from api.admin_capabilities_router import router as admin_capabilities_router  # noqa: E402  # Phase 862 P32
 app.include_router(admin_capabilities_router)
