@@ -139,6 +139,27 @@ export async function POST(request: NextRequest) {
 
         const [createdProperty] = await propertyRes.json();
 
+        // ── Insert photos ──
+        const photos = body.photos || [];
+        for (let i = 0; i < photos.length; i++) {
+            try {
+                await supaFetch('property_photos', {
+                    method: 'POST',
+                    headers: { Prefer: 'return=minimal' },
+                    body: JSON.stringify({
+                        tenant_id: PUBLIC_ONBOARD_TENANT,
+                        property_id: propertyId,
+                        photo_url: photos[i],
+                        room_type: 'general',
+                        sort_order: i,
+                        is_hero: i === 0
+                    }),
+                });
+            } catch (err) {
+                console.warn('[onboard] Failed to save photo:', err);
+            }
+        }
+
         // ── Insert channel mappings ──
         const channels = body.channels || [];
         const channelResults = [];

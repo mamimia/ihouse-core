@@ -314,6 +314,7 @@ function PropertyCard({ property, onSubmit, submitting }: {
     onSubmit?: () => void;
     submitting?: boolean;
 }) {
+    const router = useRouter();
     const statusConf = STATUS_CONFIG[property.status] || STATUS_CONFIG.draft;
     const isExpired = property.status === 'expired';
 
@@ -353,18 +354,33 @@ function PropertyCard({ property, onSubmit, submitting }: {
                     </span>
                 </div>
 
-                {/* Action */}
+                {/* Actions */}
                 {property.status === 'draft' && onSubmit && (
-                    <button
-                        onClick={onSubmit}
-                        disabled={submitting}
-                        style={{
-                            ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
-                            opacity: submitting ? 0.5 : 1,
-                        }}
-                    >
-                        {submitting ? '…' : 'Submit →'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            onClick={() => router.push(`/get-started?edit=${property.id}`)}
+                            disabled={submitting}
+                            style={{
+                                ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
+                                background: 'transparent',
+                                border: '1px solid rgba(234,229,222,0.15)',
+                                color: 'var(--color-stone)',
+                                opacity: submitting ? 0.5 : 1,
+                            }}
+                        >
+                            Edit ✏️
+                        </button>
+                        <button
+                            onClick={onSubmit}
+                            disabled={submitting}
+                            style={{
+                                ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
+                                opacity: submitting ? 0.5 : 1,
+                            }}
+                        >
+                            {submitting ? '…' : 'Submit →'}
+                        </button>
+                    </div>
                 )}
             </div>
         </div>

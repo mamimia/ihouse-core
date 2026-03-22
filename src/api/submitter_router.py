@@ -143,6 +143,75 @@ async def list_my_properties(
     return ok({"items": items, "count": len(items)})
 
 
+@router.get(
+    "/properties/{property_id}/draft",
+    tags=["submitter"],
+    summary="Get a draft property by ID to edit before submission",
+)
+async def get_draft_property(
+    property_id: str,
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    user_id = _extract_user_id(request, tenant_id)
+    db = _get_db()
+    if not db: return ok({"error": "db not configured"})
+    result = db.table("properties").select("*").eq("property_id", property_id).eq("submitter_user_id", user_id).limit(1).execute()
+    if not result.data:
+        return err("NOT_FOUND", "Draft not found or unauthorized", 404)
+    # fetch photos
+    try:
+        photos_res = db.table("property_photos").select("photo_url").eq("property_id", property_id).order("sort_order").execute()
+        result.data[0]["photos"] = [p["photo_url"] for p in photos_res.data]
+    except Exception as exc:
+        result.data[0]["photos"] = []
+        logger.warning(f"Error fetching photos: {exc}")
+    return ok(result.data[0])
+
+@router.put(
+    "/properties/{property_id}/draft",
+    tags=["submitter"],
+    summary="Update a draft property before submission",
+)
+async def update_draft_property(
+    property_id: str,
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    user_id = _extract_user_id(request, tenant_id)
+    db = _get_db()
+    if not db: return ok({"error": "db not configured"})
+    check = db.table("properties").select("status").eq("property_id", property_id).eq("submitter_user_id", user_id).limit(1).execute()
+    if not check.data or check.data[0].get("status") != "draft":
+        return err("NOT_FOUND", "Cannot edit non-draft property", 400)
+    
+    body = await request.json()
+    
+    # Extract photos to save to property_photos
+    photos = body.pop("photos", None)
+    
+    try:
+        db.table("properties").update(body).eq("property_id", property_id).eq("submitter_user_id", user_id).execute()
+    except Exception as exc:
+        return err("UPDATE_FAILED", f"Failed to update: {exc}", 500)
+    
+    if photos is not None and isinstance(photos, list):
+        try:
+            db.table("property_photos").delete().eq("property_id", property_id).execute()
+            for i, phot_url in enumerate(photos):
+                db.table("property_photos").insert({
+                    "tenant_id": "DOM-ONB-000",
+                    "property_id": property_id,
+                    "photo_url": phot_url,
+                    "room_type": "general",
+                    "sort_order": i,
+                    "is_hero": i == 0
+                }).execute()
+        except Exception as e:
+            logger.error("Failed to update photos: %s", e)
+            
+    return ok({"property_id": property_id, "updated": True})
+
 @router.post(
     "/properties/{intake_id}/submit",
     tags=["submitter"],

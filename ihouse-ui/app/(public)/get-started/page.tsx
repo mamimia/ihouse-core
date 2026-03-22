@@ -96,6 +96,7 @@ interface PropertyDraft {
     source_url: string;
     source_platform: string;
     photos: string[];
+    id?: string;
 }
 
 const EMPTY_DRAFT: PropertyDraft = {
@@ -116,6 +117,7 @@ interface WizardState {
     property: PropertyDraft;
     extracting: boolean;
     extractedCount: number;
+    uploadingPhotos?: boolean;
 }
 
 /* ─────────── Styles ─────────── */
@@ -193,7 +195,48 @@ export default function GetStartedWizard() {
         property: { ...EMPTY_DRAFT },
         extracting: false,
         extractedCount: 0,
+        uploadingPhotos: false,
     });
+
+    // Handle File Uploads for Photos
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0 || !supabase) return;
+
+        setState(prev => ({ ...prev, uploadingPhotos: true }));
+
+        const newUrls: string[] = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const ext = file.name.split('.').pop() || 'jpg';
+            const fileName = `pre-onboard-${Date.now()}-${i}.${ext}`;
+            try {
+                const { data, error } = await supabase.storage
+                    .from('property-photos')
+                    .upload(`staging/${fileName}`, file, { upsert: false });
+
+                if (data && !error) {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('property-photos')
+                        .getPublicUrl(data.path);
+                    newUrls.push(publicUrl);
+                } else if (error) {
+                    console.error('Failed to upload photo:', error);
+                }
+            } catch (err) {
+                console.error('Upload exception:', err);
+            }
+        }
+
+        setState(prev => ({
+            ...prev,
+            property: { ...prev.property, photos: [...prev.property.photos, ...newUrls] },
+            uploadingPhotos: false,
+        }));
+
+        // clear input so same files can be chosen again if needed
+        e.target.value = '';
+    };
 
     // Auth state
     const [authEmail, setAuthEmail] = useState('');
@@ -206,6 +249,45 @@ export default function GetStartedWizard() {
     // Phase 872: Tracks whether user was already authenticated BEFORE entering Get Started.
     // Pre-existing auth users skip password fields — they already have credentials.
     const [preExistingAuth, setPreExistingAuth] = useState(false);
+
+    // Load Property Draft for Editing
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('edit');
+        if (editId) {
+            const loadDraft = async () => {
+                const token = document.cookie
+                    .split('; ')
+                    .find(c => c.startsWith('ihouse_token='))
+                    ?.split('=')[1];
+                if (!token) return;
+                const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+                const res = await fetch(`${apiBase}/properties/${editId}/draft`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const draft = data.data || data;
+                    setState(prev => ({
+                        ...prev,
+                        step: 5, // skip straight to editing forms
+                        property: {
+                            ...prev.property,
+                            id: draft.property_id || editId,
+                            name: draft.name || '',
+                            type: draft.property_type || '',
+                            guests: draft.max_guests?.toString() || '',
+                            bedrooms: draft.bedrooms?.toString() || '',
+                            city: draft.city || '',
+                            country: draft.country || '',
+                            photos: draft.photos || [],
+                        }
+                    }));
+                }
+            };
+            loadDraft();
+        }
+    }, []);
 
     // Profile state
     const [profile, setProfile] = useState({ firstName: '', lastName: '', phone: '', countryCode: '+66', userType: '' });
@@ -481,40 +563,70 @@ export default function GetStartedWizard() {
             ?.split('=')[1];
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
-        const res = await fetch('/api/onboard', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                propertyName: state.property.name.trim(),
-                propertyType: state.property.type,
+
+        const isUpdate = !!state.property.id;
+        
+        if (isUpdate) {
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+            const url = `${apiBase}/properties/${state.property.id}/draft`;
+            const payload = {
+                name: state.property.name.trim(),
+                property_type: state.property.type,
                 city: state.property.city,
                 country: state.property.country,
-                maxGuests: state.property.guests,
-                bedrooms: state.property.bedrooms,
-                beds: state.property.beds,
-                bathrooms: state.property.bathrooms,
-                address: state.property.address,
-                description: state.property.description,
-                sourceUrl: state.property.source_url,
-                sourcePlatform: state.property.source_platform,
-                submitterUserId: authedUser.id,
-                submitterEmail: authedUser.email,
-                firstName: profile.firstName,
-                lastName: profile.lastName,
-                phone: profile.countryCode + ' ' + profile.phone,
-                userType: profile.userType,
-                channels: state.selectedPlatforms
-                    .filter(id => state.urls[id]?.trim())
-                    .map(id => ({ provider: id, url: state.urls[id] })),
-            }),
-        });
-        const data = await res.json();
-        if (data.success || data.property_id) {
-            sessionStorage.removeItem(STORAGE_KEY);
-            router.push('/my-properties');
-            return true;
+                max_guests: state.property.guests ? parseInt(state.property.guests) : null,
+                bedrooms: state.property.bedrooms ? parseInt(state.property.bedrooms) : null,
+                photos: state.property.photos,
+            };
+            try {
+                const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(payload) });
+                if (res.ok) {
+                    sessionStorage.removeItem(STORAGE_KEY);
+                    router.push('/my-properties');
+                    return true;
+                }
+                return false;
+            } catch {
+                return false;
+            }
+        } else {
+            const url = '/api/onboard';
+            const res = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    propertyName: state.property.name.trim(),
+                    propertyType: state.property.type,
+                    city: state.property.city,
+                    country: state.property.country,
+                    maxGuests: state.property.guests,
+                    bedrooms: state.property.bedrooms,
+                    beds: state.property.beds,
+                    bathrooms: state.property.bathrooms,
+                    address: state.property.address,
+                    description: state.property.description,
+                    sourceUrl: state.property.source_url,
+                    sourcePlatform: state.property.source_platform,
+                    submitterUserId: authedUser.id,
+                    submitterEmail: authedUser.email,
+                    firstName: profile.firstName,
+                    lastName: profile.lastName,
+                    phone: profile.countryCode + ' ' + profile.phone,
+                    userType: profile.userType,
+                    photos: state.property.photos,
+                    channels: state.selectedPlatforms
+                        .filter(id => state.urls[id]?.trim())
+                        .map(id => ({ provider: id, url: state.urls[id] })),
+                }),
+            });
+            const data = await res.json();
+            if (data.success || data.property_id) {
+                sessionStorage.removeItem(STORAGE_KEY);
+                router.push('/my-properties');
+                return true;
+            }
+            return false;
         }
-        return false;
     };
 
     /* ─── Set Password + Save (OTP path) ─── */
@@ -874,9 +986,21 @@ export default function GetStartedWizard() {
                             )}
 
                             <div style={card}>
-                                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-stone)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ fontSize: 16 }}>🏠</span> Property Details
+                                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-stone)', margin: '0 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontSize: 16 }}>🏠</span> Property Details
+                                    </span>
+                                    {state.uploadingPhotos && <span style={{ fontSize: 12, color: 'var(--color-copper)', fontWeight: 600 }}>Uploading...</span>}
                                 </h3>
+
+                                <input
+                                    type="file"
+                                    id="gs-upload-photo"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={handlePhotoUpload}
+                                    style={{ display: 'none' }}
+                                />
 
                                 {/* ── Photo Strip ── */}
                                 <div style={{ display: 'flex', gap: 8, marginBottom: 18, overflowX: 'auto' }}>
@@ -884,8 +1008,8 @@ export default function GetStartedWizard() {
                                         <>
                                             {state.property.photos.slice(0, 4).map((url, i) => (
                                                 <div key={i} onClick={() => setLightboxIndex(i)} style={{
-                                                    width: 80, height: 56, borderRadius: 8, overflow: 'hidden',
-                                                    cursor: 'pointer', flexShrink: 0, position: 'relative',
+                                                    flex: 1, minWidth: 0, height: 64, borderRadius: 8, overflow: 'hidden',
+                                                    cursor: 'pointer', position: 'relative',
                                                     border: '1px solid rgba(234,229,222,0.08)',
                                                 }}>
                                                     <img src={url} alt={`Photo ${i + 1}`} style={{
@@ -895,7 +1019,7 @@ export default function GetStartedWizard() {
                                             ))}
                                             {state.property.photos.length > 4 && (
                                                 <div onClick={() => setLightboxIndex(4)} style={{
-                                                    width: 80, height: 56, borderRadius: 8, flexShrink: 0,
+                                                    flex: 1, minWidth: 0, height: 64, borderRadius: 8,
                                                     background: 'rgba(234,229,222,0.04)', border: '1px solid rgba(234,229,222,0.08)',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     cursor: 'pointer', fontSize: 14, fontWeight: 600,
@@ -910,12 +1034,23 @@ export default function GetStartedWizard() {
                                         <div style={{ display: 'flex', gap: 8, width: '100%' }}>
                                             {[0, 1, 2, 3, 4].map(i => (
                                                 <div key={i} style={{
-                                                    width: 80, height: 56, borderRadius: 8, flexShrink: 0,
+                                                    flex: 1, minWidth: 0, height: 64, borderRadius: 8,
                                                     border: '1px dashed rgba(234,229,222,0.1)',
                                                     background: 'rgba(234,229,222,0.015)',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    cursor: 'pointer', position: 'relative',
+                                                    transition: 'background 0.2s',
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(234,229,222,0.04)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(234,229,222,0.015)'}
+                                                onClick={() => {
+                                                    const fi = document.getElementById('gs-upload-photo');
+                                                    if (fi) fi.click();
                                                 }}>
-                                                    {i === 2 && <span style={{ fontSize: 11, color: 'rgba(234,229,222,0.15)' }}>📷</span>}
+                                                    {i === 2 && <span style={{ fontSize: 13, color: 'rgba(234,229,222,0.25)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                                        <span style={{ fontSize: 16 }}>📷</span>
+                                                        <span style={{ fontSize: 9, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Upload</span>
+                                                    </span>}
                                                 </div>
                                             ))}
                                         </div>
