@@ -150,7 +150,8 @@ export async function POST(request: NextRequest) {
                         tenant_id: PUBLIC_ONBOARD_TENANT,
                         property_id: propertyId,
                         photo_url: photos[i],
-                        sort_order: i,
+                        display_order: i,
+                        source: 'submitter',
                     }),
                 });
             } catch (err) {
