@@ -928,7 +928,17 @@ export default function GetStartedWizard() {
                     )}
 
                     {/* ═══════ Step 6: AUTH GATE ═══════ */}
-                    {state.step === 6 && (
+                    {state.step === 6 && (() => {
+                        // Guard: if user is already authenticated, never show the auth gate.
+                        // Bypass immediately to step 7. This handles the case where
+                        // sessionStorage restored step=6 before the Supabase session
+                        // check could correct it.
+                        if (authedUser) {
+                            // Schedule state update outside render
+                            setTimeout(() => setStep(7 as Step), 0);
+                            return null;
+                        }
+                        return (
                         <div className="gs-fade" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <div style={card}>
                                 <p style={{ fontSize: 14, color: 'rgba(234,229,222,0.4)', margin: '0 0 20px', lineHeight: 1.6 }}>
@@ -1012,7 +1022,8 @@ export default function GetStartedWizard() {
 
                             <button onClick={() => setStep(5)} style={{ ...ghostBtn, fontSize: 13 }}>← Back to property details</button>
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {/* ═══════ Step 7: Account Completion (Profile + Password) ═══════ */}
                     {state.step === 7 && authedUser && (

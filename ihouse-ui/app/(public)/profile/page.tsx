@@ -123,7 +123,7 @@ export default function ProfilePage() {
                 .find(c => c.startsWith('ihouse_token='))
                 ?.split('=')[1];
 
-            const apiBase = process.env.NEXT_PUBLIC_API_BASE || '';
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
             const res = await fetch(`${apiBase}/auth/profile`, {
                 method: 'PATCH',
                 headers: {

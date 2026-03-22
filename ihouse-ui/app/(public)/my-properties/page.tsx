@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DMonogram from '@/components/DMonogram';
 import { supabase } from '@/lib/supabaseClient';
+import { performClientLogout } from '@/lib/api';
 
 interface Property {
     id: string;
@@ -92,7 +93,7 @@ export default function MyPropertiesPage() {
                 ?.split('=')[1];
             if (!token) { setLoading(false); return; }
 
-            const apiBase = process.env.NEXT_PUBLIC_API_BASE || '';
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
             const res = await fetch(`${apiBase}/properties/mine`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
@@ -114,7 +115,7 @@ export default function MyPropertiesPage() {
                 .split('; ')
                 .find(c => c.startsWith('ihouse_token='))
                 ?.split('=')[1];
-            const apiBase = process.env.NEXT_PUBLIC_API_BASE || '';
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
             const res = await fetch(`${apiBase}/properties/${propertyId}/submit`, {
                 method: 'POST',
                 headers: {
@@ -134,7 +135,7 @@ export default function MyPropertiesPage() {
 
     const handleSignOut = async () => {
         await supabase?.auth.signOut();
-        router.replace('/');
+        performClientLogout('/');
     };
 
     const drafts = properties.filter(p => p.status === 'draft');

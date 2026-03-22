@@ -42,7 +42,7 @@ function getToken(): string {
 }
 
 const API_BASE = typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_BASE || '')
+    ? (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
     : '';
 
 export default function AdminManagersPage() {
