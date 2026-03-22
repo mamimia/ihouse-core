@@ -367,14 +367,29 @@ export default function GetStartedWizard() {
 
     const otpInputRef = useRef<HTMLInputElement>(null);
 
-    // Restore state from sessionStorage
+    // Restore state from sessionStorage — but only if it's safe to do so
     useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isEditMode = !!urlParams.get('edit');
         const saved = sessionStorage.getItem(STORAGE_KEY);
+
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                setState(prev => ({ ...prev, ...parsed, extracting: false }));
-            } catch { /* ignore corrupt state */ }
+
+                // If the saved state has a property.id, only restore it in explicit edit mode.
+                // Otherwise, a stale draft (possibly deleted) would be resurrected.
+                if (parsed?.property?.id && !isEditMode) {
+                    // Stale draft state — clear it and start fresh
+                    sessionStorage.removeItem(STORAGE_KEY);
+                } else if (!parsed?.property?.id) {
+                    // Safe to restore — it's a fresh in-progress form (no saved property yet)
+                    setState(prev => ({ ...prev, ...parsed, extracting: false }));
+                }
+                // If isEditMode + has id, the edit useEffect below will handle loading
+            } catch {
+                sessionStorage.removeItem(STORAGE_KEY);
+            }
         }
 
         // Detect auth from ihouse_token cookie (canonical credential)

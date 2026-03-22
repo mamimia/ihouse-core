@@ -16,7 +16,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import DMonogram from '@/components/DMonogram';
 import { supabase } from '@/lib/supabaseClient';
 import { performClientLogout } from '@/lib/api';
@@ -196,6 +195,16 @@ export default function MyPropertiesPage() {
                 setTimeout(() => setDeleteToast(null), 3000);
             } else {
                 setDeleteToast(null);
+                // Clear wizard draft state if the deleted property was the cached draft
+                try {
+                    const wizardState = sessionStorage.getItem('domaniqo_get_started_state');
+                    if (wizardState) {
+                        const parsed = JSON.parse(wizardState);
+                        if (parsed?.property?.id === propertyId) {
+                            sessionStorage.removeItem('domaniqo_get_started_state');
+                        }
+                    }
+                } catch { /* ignore */ }
             }
         } catch { 
             // Network error — roll back
@@ -300,9 +309,15 @@ export default function MyPropertiesPage() {
                             <p style={{ fontSize: 14, color: 'rgba(234,229,222,0.4)', margin: '0 0 20px', lineHeight: 1.6 }}>
                                 Add your first property to get started with Domaniqo.
                             </p>
-                            <Link href="/get-started" style={primaryBtn}>
+                            <button
+                                style={primaryBtn}
+                                onClick={() => {
+                                    sessionStorage.removeItem('domaniqo_get_started_state');
+                                    router.push('/get-started');
+                                }}
+                            >
                                 + Add Your First Property
-                            </Link>
+                            </button>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -398,9 +413,15 @@ export default function MyPropertiesPage() {
 
                             {/* Add another */}
                             <div style={{ textAlign: 'center', paddingTop: 4 }}>
-                                <Link href="/get-started" style={primaryBtn}>
+                                <button
+                                    style={primaryBtn}
+                                    onClick={() => {
+                                        sessionStorage.removeItem('domaniqo_get_started_state');
+                                        router.push('/get-started');
+                                    }}
+                                >
                                     + Add Another Property
-                                </Link>
+                                </button>
                             </div>
                         </div>
                     )}
