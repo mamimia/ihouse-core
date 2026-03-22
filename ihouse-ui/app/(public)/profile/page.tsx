@@ -82,6 +82,16 @@ export default function ProfilePage() {
     const [passwordFocused, setPasswordFocused] = useState(false);
     const pwRules = usePasswordRules(newPassword);
     const allPwRulesPass = pwRules.every(r => r.pass);
+    // Track if Supabase session is active (needed for Google identity linking)
+    const [hasSupabaseSession, setHasSupabaseSession] = useState(false);
+
+    // Check for Supabase session at mount
+    useEffect(() => {
+        if (!supabase) return;
+        supabase.auth.getSession().then(({ data }) => {
+            if (data.session) setHasSupabaseSession(true);
+        });
+    }, []);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -342,8 +352,8 @@ export default function ProfilePage() {
                         ))}
                     </div>
 
-                    {/* Link Google — if not already linked */}
-                    {!(profile?.providers || []).includes('google') && (
+                    {/* Link Google — if not already linked AND Supabase session is active */}
+                    {hasSupabaseSession && !(profile?.providers || []).includes('google') && (
                         <button
                             id="link-google-btn"
                             onClick={async () => {

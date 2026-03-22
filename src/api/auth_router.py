@@ -614,6 +614,21 @@ async def get_identity_surface(
         "intake_status": None,
     }
 
+    # Enrich full_name and email from Supabase Auth if not in JWT claims
+    if not result["full_name"] or not result["email"]:
+        try:
+            supa_admin = _get_supabase_admin()
+            if supa_admin:
+                user_obj = supa_admin.auth.admin.get_user_by_id(user_id)
+                if user_obj and user_obj.user:
+                    metadata = user_obj.user.user_metadata or {}
+                    if not result["full_name"]:
+                        result["full_name"] = metadata.get("full_name", "") or metadata.get("name", "")
+                    if not result["email"]:
+                        result["email"] = user_obj.user.email or ""
+        except Exception as exc:
+            logger.warning("auth/identity: Supabase metadata fetch failed for user=%s: %s", user_id, exc)
+
     # Lookup tenant_permissions (membership)
     try:
         from services.tenant_bridge import lookup_user_tenant

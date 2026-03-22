@@ -233,15 +233,33 @@ export default function GetStartedWizard() {
                 setState(prev => ({ ...prev, ...parsed, extracting: false }));
             } catch { /* ignore corrupt state */ }
         }
-        // Phase 872: Check if user is already authenticated (signed-in mode)
+
+        // Detect auth from ihouse_token cookie (canonical credential)
+        const ihouseToken = document.cookie
+            .split('; ')
+            .find(c => c.startsWith('ihouse_token='))
+            ?.split('=')[1];
+
+        if (ihouseToken) {
+            // User is signed in via ihouse_token — mark as authenticated
+            // Decode minimal info from JWT for display (without verification)
+            try {
+                const payload = JSON.parse(atob(ihouseToken.split('.')[1]));
+                setAuthedUser({ id: payload.sub || '', email: payload.email || '' });
+                setPreExistingAuth(true);
+                // Auto-advance past auth gate if stale sessionStorage
+                setState(prev => (prev.step === 6 || prev.step === 7) ? { ...prev, step: 5 as Step } : prev);
+            } catch { /* corrupt token — fall through */ }
+        }
+
+        // Also check Supabase session (for Google OAuth users)
         if (supabase) {
             supabase.auth.getSession().then(({ data }) => {
                 if (data.session?.user) {
                     setAuthedUser({ id: data.session.user.id, email: data.session.user.email || '' });
-                    setPreExistingAuth(true); // Phase 872: mark as pre-existing
+                    setPreExistingAuth(true);
                     const provider = data.session.user.app_metadata?.provider;
                     if (provider === 'google') setAuthProvider('google');
-                    // Phase 872: Pre-fill name from user metadata if available
                     const meta = data.session.user.user_metadata;
                     if (meta?.full_name) {
                         const parts = (meta.full_name as string).split(' ');
@@ -251,9 +269,7 @@ export default function GetStartedWizard() {
                             lastName: p.lastName || parts.slice(1).join(' ') || '',
                         }));
                     }
-                    // Phase 872 fix: If stale sessionStorage had step=6, auto-advance past auth gate.
-                    // Without this, a signed-in user could briefly see the auth gate.
-                    setState(prev => prev.step === 6 ? { ...prev, step: 7 as Step } : prev);
+                    setState(prev => (prev.step === 6 || prev.step === 7) ? { ...prev, step: 5 as Step } : prev);
                 }
             });
         }
@@ -453,9 +469,15 @@ export default function GetStartedWizard() {
     /* ─── Save property draft (shared between both paths) ─── */
     const saveDraft = async () => {
         if (!authedUser) return false;
+        const token = document.cookie
+            .split('; ')
+            .find(c => c.startsWith('ihouse_token='))
+            ?.split('=')[1];
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const res = await fetch('/api/onboard', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({
                 propertyName: state.property.name.trim(),
                 propertyType: state.property.type,
@@ -539,13 +561,25 @@ export default function GetStartedWizard() {
     const displayStep = Math.min(state.step, totalVisibleSteps);
 
     /* ─── Step 5: proceed to auth or skip ─── */
-    const handleStep5Continue = () => {
-        // If already authenticated, skip auth gate
+    const handleStep5Continue = async () => {
+        // If already authenticated (signed-in user), save draft directly and go to /my-properties.
+        // Do NOT show step 6 (auth gate) or step 7 (profile completion).
         if (authedUser) {
-            setStep(7); // Skip to profile
-        } else {
-            setStep(6); // Auth gate
+            setDraftSaving(true);
+            try {
+                const ok = await saveDraft();
+                if (!ok) {
+                    setPasswordError('Failed to save property. Please try again.');
+                }
+            } catch {
+                setPasswordError('Network error. Please try again.');
+            } finally {
+                setDraftSaving(false);
+            }
+            return;
         }
+        // Not authenticated — show auth gate
+        setStep(6);
     };
 
     /* ─── Render ─── */
@@ -647,11 +681,13 @@ export default function GetStartedWizard() {
                                 Continue →
                             </button>
 
-                            <div style={{ textAlign: 'center', marginTop: 12 }}>
-                                <Link href="/login" style={{ fontSize: 'var(--text-sm, 14px)', color: 'rgba(234,229,222,0.4)', textDecoration: 'none' }}>
-                                    Already a user? <span style={{ textDecoration: 'underline' }}>Log in</span>
-                                </Link>
-                            </div>
+                            {!authedUser && (
+                                <div style={{ textAlign: 'center', marginTop: 12 }}>
+                                    <Link href="/login" style={{ fontSize: 'var(--text-sm, 14px)', color: 'rgba(234,229,222,0.4)', textDecoration: 'none' }}>
+                                        Already a user? <span style={{ textDecoration: 'underline' }}>Log in</span>
+                                    </Link>
+                                </div>
+                            )}
                         </div>
                     )}
 
