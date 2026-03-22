@@ -288,6 +288,30 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
               background: 'var(--color-border)',
               margin: '4px 0',
             }} />
+            {role === 'admin' && (
+              <Link
+                href="/admin/profile"
+                className="rail-link"
+                onClick={onClose}
+                title="My Profile"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 44,
+                  height: 44,
+                  fontSize: '1.15em',
+                  color: isActive('/admin/profile') ? 'var(--color-primary)' : 'var(--color-text-dim)',
+                  textDecoration: 'none',
+                  borderRadius: 8,
+                  transition: 'all 0.15s',
+                  position: 'relative',
+                }}
+              >
+                👤
+                <span className="rail-tooltip">My Profile</span>
+              </Link>
+            )}
             <button
               id="logout-btn-rail"
               onClick={async () => {
@@ -328,6 +352,25 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
             </div>
             <LanguageSwitcher />
             <div style={{ height: 1, background: 'var(--color-border)', margin: '8px 0' }} />
+            {/* Profile link — visible and discoverable for admin */}
+            {role === 'admin' && (
+              <Link href="/admin/profile" onClick={onClose} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-3)',
+                padding: 'var(--space-3) var(--space-6)',
+                fontSize: 'var(--text-sm)',
+                color: isActive('/admin/profile') ? 'var(--color-primary)' : 'var(--color-text-dim)',
+                background: isActive('/admin/profile') ? 'rgba(59,130,246,0.06)' : 'transparent',
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: isActive('/admin/profile') ? 600 : 400,
+                textDecoration: 'none',
+                transition: 'all var(--transition-fast)',
+              }}>
+                <span style={{ fontSize: '1em', opacity: isActive('/admin/profile') ? 1 : 0.65 }}>👤</span>
+                My Profile
+              </Link>
+            )}
             <LogoutButton />
           </>
         )}

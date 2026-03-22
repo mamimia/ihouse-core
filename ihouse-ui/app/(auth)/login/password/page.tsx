@@ -43,6 +43,21 @@ function PasswordForm() {
             // Set cookie with appropriate maxAge
             const maxAge = remember ? 30 * 24 * 3600 : resp.expires_in; // 30 days if remember, else default
             document.cookie = `ihouse_token=${resp.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+
+            // Establish Supabase browser session so linkIdentity / updateUser work
+            // This does NOT change authorization — ihouse_token is still the canonical auth source.
+            // The Supabase session is used purely for identity management (link/unlink providers).
+            if (resp.supabase_access_token && resp.supabase_refresh_token && supabase) {
+                try {
+                    await supabase.auth.setSession({
+                        access_token: resp.supabase_access_token,
+                        refresh_token: resp.supabase_refresh_token,
+                    });
+                } catch {
+                    // Non-fatal — identity linking will show a helpful message
+                }
+            }
+
             // Persist language on successful login
             if (resp.language) {
                 localStorage.setItem('domaniqo_lang', resp.language);

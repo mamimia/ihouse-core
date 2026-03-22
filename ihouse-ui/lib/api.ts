@@ -331,6 +331,8 @@ export interface LoginResponse {
     full_name?: string;     // Pre-801: user full name
     auth_method?: string;   // Pre-801: 'supabase' for production login
     language?: string;      // Phase 839: Localization preference
+    supabase_access_token?: string;   // Supabase session — for linkIdentity/updateUser
+    supabase_refresh_token?: string;  // Supabase session — for linkIdentity/updateUser
 }
 
 // Phase 191 — Multi-Currency Overview types
