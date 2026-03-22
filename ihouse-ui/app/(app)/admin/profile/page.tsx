@@ -354,16 +354,24 @@ export default function AdminProfilePage() {
                 </div>
 
                 {/* Link Google */}
-                {hasSupabaseSession && !(profile?.providers || []).includes('google') && (
+                {!(profile?.providers || []).includes('google') && (
                     <button
                         onClick={async () => {
                             if (!supabase) return;
                             try {
+                                // Check if we have a Supabase session
+                                const { data: sessionData } = await supabase.auth.getSession();
+                                if (!sessionData.session) {
+                                    // No Supabase session — try to sign in with the email first
+                                    // so we can then link Google
+                                    setMessage('To link Google, you need an active browser session. Please sign out and sign in with Google to link accounts, or sign in via email first.');
+                                    return;
+                                }
                                 sessionStorage.setItem('ihouse_linking_provider', 'google');
                                 await supabase.auth.linkIdentity({ provider: 'google' });
                             } catch {
                                 sessionStorage.removeItem('ihouse_linking_provider');
-                                setMessage('Failed to link Google account');
+                                setMessage('Failed to link Google account. Make sure you are signed in via Supabase.');
                             }
                         }}
                         style={{
@@ -425,6 +433,12 @@ export default function AdminProfilePage() {
                                     onClick={async () => {
                                         if (!supabase || !allPwRulesPass || newPassword !== confirmNewPassword) return;
                                         try {
+                                            // Check for Supabase session first
+                                            const { data: sessionData } = await supabase.auth.getSession();
+                                            if (!sessionData.session) {
+                                                setMessage('No active browser session. Sign in via Google first, then add email/password.');
+                                                return;
+                                            }
                                             const { error } = await supabase.auth.updateUser({ password: newPassword });
                                             if (error) throw error;
                                             setMessage('Password added ✓ — you can now login with email + password');
@@ -432,8 +446,8 @@ export default function AdminProfilePage() {
                                             setNewPassword('');
                                             setConfirmNewPassword('');
                                             fetchProfile();
-                                        } catch {
-                                            setMessage('Failed to add password');
+                                        } catch (e) {
+                                            setMessage(`Failed to add password: ${e instanceof Error ? e.message : 'Unknown error'}`);
                                         }
                                     }}
                                     disabled={!allPwRulesPass || newPassword !== confirmNewPassword}
