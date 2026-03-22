@@ -1,22 +1,28 @@
 'use client';
 
 /**
- * Phase 858 — Progressive Get Started Wizard (Corrected Flow)
+ * Phase 858 — Progressive Get Started Wizard (Two-Mode)
  * Route: /get-started
  *
- * 7-step progressive wizard optimized for mobile-first.
- * Auth gate at step 6 (after first value moment at step 5).
- * Operational details REMOVED — deferred to post-auth draft editing.
+ * Two distinct modes served by one engine:
  *
- * Steps:
- *   1. Portfolio size (1-5 / 5-20 / 20+)
- *   2. Platform selection (Airbnb, Booking, etc.)
- *   3. Import mode (link / manual / connect-coming-soon)
+ * PUBLIC MODE (unauthenticated, 7 steps):
+ *   1. Portfolio size
+ *   2. Platform selection
+ *   3. Import mode
  *   4. Paste listing URLs
- *   5. Property preview / review (first value moment) + photo strip
- *   6. AUTH GATE (email verification code or Google OAuth)
- *   7. ACCOUNT COMPLETION (profile + set password — merged)
+ *   5. Property details (first value moment)
+ *   6. AUTH GATE (email verification or Google OAuth)
+ *   7. Account completion (profile + set password)
  *   → Draft saved → redirect to /my-properties
+ *
+ * SIGNED-IN MODE (authenticated, 5 steps):
+ *   1. Portfolio size
+ *   2. Platform selection
+ *   3. Import mode
+ *   4. Paste listing URLs
+ *   5. Property details → Save → /my-properties
+ *   No auth gate. No account completion. No auth copy.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -556,8 +562,9 @@ export default function GetStartedWizard() {
     };
 
     /* ─── Progress ─── */
-    // Steps visible: 1-5 pre-auth, 6 auth, 7 account completion (profile + password)
-    const totalVisibleSteps = 7;
+    // Signed-in users see 5 steps (property-only). Public users see 7 (including auth).
+    const isSignedIn = !!preExistingAuth;
+    const totalVisibleSteps = isSignedIn ? 5 : 7;
     const displayStep = Math.min(state.step, totalVisibleSteps);
 
     /* ─── Step 5: proceed to auth or skip ─── */
@@ -618,7 +625,10 @@ export default function GetStartedWizard() {
                                 color: 'var(--color-stone, #EAE5DE)',
                                 margin: '16px 0 6px', fontWeight: 400,
                             }}>
-                                {state.step <= 5 ? 'Get Started' : state.step === 6 ? 'Save Your Property' : 'Complete Your Account'}
+                                {isSignedIn
+                                    ? 'Add Property'
+                                    : state.step <= 5 ? 'Get Started' : state.step === 6 ? 'Save Your Property' : 'Complete Your Account'
+                                }
                             </h1>
 
                             {/* Progress bar */}
@@ -956,15 +966,15 @@ export default function GetStartedWizard() {
 
                             <div style={{ display: 'flex', gap: 10 }}>
                                 <button onClick={() => { if (state.importMode === 'link') setStep(4); else if (state.notListed) setStep(2); else setStep(3); }} style={{ ...ghostBtn, flex: 1 }}>← Back</button>
-                                <button onClick={handleStep5Continue} disabled={!state.property.name.trim()} style={{ ...primaryBtn, flex: 2, ...disabledStyle(!state.property.name.trim()) }}>
-                                    Save & Continue →
+                                <button onClick={handleStep5Continue} disabled={!state.property.name.trim() || draftSaving} style={{ ...primaryBtn, flex: 2, ...disabledStyle(!state.property.name.trim() || draftSaving) }}>
+                                    {draftSaving ? 'Saving…' : isSignedIn ? 'Save Property →' : 'Save & Continue →'}
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* ═══════ Step 6: AUTH GATE ═══════ */}
-                    {state.step === 6 && (() => {
+                    {/* ═══════ Step 6: AUTH GATE (public mode only) ═══════ */}
+                    {!isSignedIn && state.step === 6 && (() => {
                         // Guard: if user is already authenticated, never show the auth gate.
                         // Bypass immediately to step 7. This handles the case where
                         // sessionStorage restored step=6 before the Supabase session
@@ -1061,8 +1071,8 @@ export default function GetStartedWizard() {
                         );
                     })()}
 
-                    {/* ═══════ Step 7: Account Completion (Profile + Password) ═══════ */}
-                    {state.step === 7 && authedUser && (
+                    {/* ═══════ Step 7: Account Completion (public mode only) ═══════ */}
+                    {!isSignedIn && state.step === 7 && authedUser && (
                         <div className="gs-fade" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <div style={card}>
                                 <div style={{
