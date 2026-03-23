@@ -714,7 +714,9 @@ async def get_profile(
         "phone": "",
         "avatar_url": "",
         "language": "",
-        "providers": [],        # Phase 862 P29: linked login methods
+        "providers": [],        # Phase 862 P29: linked login methods [{provider, email}]
+        "auth_method": claims.get("auth_method", ""),  # how user logged in this session
+        "auth_email": claims.get("email", ""),          # email used for this session
         "role": claims.get("role", ""),
         "tenant_id": claims.get("tenant_id", ""),
         "has_membership": bool(claims.get("tenant_id", "")),
@@ -732,13 +734,18 @@ async def get_profile(
                 profile["full_name"] = metadata.get("full_name", "") or metadata.get("name", "")
                 profile["phone"] = metadata.get("phone", "") or user.phone or ""
                 profile["avatar_url"] = metadata.get("avatar_url", "")
-                # Extract linked providers
+                # Extract linked providers with their emails
                 identities = getattr(user, "identities", None) or []
                 providers = []
+                seen = set()
                 for identity in identities:
                     provider = getattr(identity, "provider", None) or (identity.get("provider") if isinstance(identity, dict) else None)
-                    if provider and provider not in providers:
-                        providers.append(provider)
+                    if provider and provider not in seen:
+                        seen.add(provider)
+                        # Get the email from identity_data
+                        identity_data = getattr(identity, "identity_data", None) or (identity.get("identity_data") if isinstance(identity, dict) else None) or {}
+                        id_email = identity_data.get("email", "") if isinstance(identity_data, dict) else ""
+                        providers.append({"provider": provider, "email": id_email or user.email or ""})
                 profile["providers"] = providers
     except Exception as exc:
         logger.warning("auth/profile: Supabase metadata fetch failed for user=%s: %s", user_id, exc)

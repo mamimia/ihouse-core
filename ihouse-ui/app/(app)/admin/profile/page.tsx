@@ -60,6 +60,11 @@ function parsePhone(raw: string): { countryCode: string; digits: string } {
     return { countryCode: '+66', digits: trimmed };
 }
 
+interface ProviderInfo {
+    provider: string;
+    email: string;
+}
+
 interface Profile {
     user_id: string;
     email: string;
@@ -67,7 +72,9 @@ interface Profile {
     phone: string;
     avatar_url: string;
     language: string;
-    providers: string[];
+    providers: ProviderInfo[];
+    auth_method: string;
+    auth_email: string;
     role: string;
     tenant_id: string;
     has_membership: boolean;
@@ -404,9 +411,29 @@ export default function AdminProfilePage() {
             <div style={sectionStyle}>
                 {sectionHeader('Linked Login Methods')}
 
+                {/* Currently logged in with */}
+                {profile && (
+                    <div style={{
+                        padding: '10px 14px',
+                        background: 'var(--color-surface-2, #f3f4f6)',
+                        border: '1px solid var(--color-border, #e5e7eb)',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                        fontSize: '13px',
+                        color: 'var(--color-text-faint, #6b7280)',
+                    }}>
+                        <span>Currently logged in with: </span>
+                        <strong style={{ color: 'var(--color-text, #1f2937)' }}>
+                            {profile.auth_method === 'google' ? 'Google' : 'Email/Password'}
+                            {' — '}
+                            {profile.auth_email || profile.email}
+                        </strong>
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                    {(profile?.providers || []).map(provider => (
-                        <span key={provider} style={{
+                    {(profile?.providers || []).map((p: ProviderInfo) => (
+                        <span key={typeof p === 'string' ? p : p.provider} style={{
                             background: 'var(--color-surface-2, #f3f4f6)',
                             border: '1px solid var(--color-border, #e5e7eb)',
                             borderRadius: '8px',
@@ -418,14 +445,20 @@ export default function AdminProfilePage() {
                             gap: '8px',
                             fontWeight: 500,
                         }}>
-                            {provider === 'email' ? '📧 Email/Password' : provider === 'google' ? <><GoogleIcon /> Google</> : provider}
+                            {(typeof p === 'string' ? p : p.provider) === 'email'
+                                ? <>📧 Email/Password — <span style={{ fontWeight: 400, fontSize: 13 }}>{typeof p === 'string' ? profile?.email : p.email}</span></>
+                                : (typeof p === 'string' ? p : p.provider) === 'google'
+                                    ? <><GoogleIcon /> Google — <span style={{ fontWeight: 400, fontSize: 13 }}>{typeof p === 'string' ? '' : p.email}</span></>
+                                    : (typeof p === 'string' ? p : p.provider)
+                            }
                             {(profile?.providers?.length || 0) > 1 && (
                                 <button
                                     onClick={async () => {
-                                        if (!confirm(`Unlink ${provider} login? You'll still have other login methods.`)) return;
-                                        const result = await unlinkProvider(provider);
+                                        const provName = typeof p === 'string' ? p : p.provider;
+                                        if (!confirm(`Unlink ${provName} login? You'll still have other login methods.`)) return;
+                                        const result = await unlinkProvider(provName);
                                         if (result.success) {
-                                            setMessage(`${provider} unlinked ✓`);
+                                            setMessage(`${provName} unlinked ✓`);
                                             fetchProfile();
                                         } else {
                                             setMessage(result.error || 'Failed to unlink provider');
@@ -436,7 +469,7 @@ export default function AdminProfilePage() {
                                         color: 'var(--color-text-faint, #9ca3af)',
                                         fontSize: '11px', cursor: 'pointer',
                                     }}
-                                    title={`Unlink ${provider}`}
+                                    title={`Unlink ${typeof p === 'string' ? p : p.provider}`}
                                 >✕</button>
                             )}
                         </span>
@@ -449,7 +482,7 @@ export default function AdminProfilePage() {
                 </div>
 
                 {/* Link Google */}
-                {!(profile?.providers || []).includes('google') && (
+                {!(profile?.providers || []).some((p: ProviderInfo) => (typeof p === 'string' ? p : p.provider) === 'google') && (
                     <button
                         onClick={async () => {
                             const result = await linkGoogleAccount();
@@ -472,7 +505,7 @@ export default function AdminProfilePage() {
                 )}
 
                 {/* Add Email+Password */}
-                {!(profile?.providers || []).includes('email') && (
+                {!(profile?.providers || []).some((p: ProviderInfo) => (typeof p === 'string' ? p : p.provider) === 'email') && (
                     addPasswordMode ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
                             {/* Show which email the password will be linked to */}

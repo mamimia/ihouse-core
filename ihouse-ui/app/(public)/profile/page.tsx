@@ -17,6 +17,11 @@ import { usePasswordRules } from '@/hooks/usePasswordRules';
 import { linkGoogleAccount, unlinkProvider, addPassword, GoogleIcon } from '@/lib/identityLinking';
 import SignedInShell, { SHELL_TOP_PADDING } from '@/components/SignedInShell';
 
+interface ProviderInfo {
+    provider: string;
+    email: string;
+}
+
 interface Profile {
     user_id: string;
     email: string;
@@ -24,7 +29,9 @@ interface Profile {
     phone: string;
     avatar_url: string;
     language: string;
-    providers: string[];       // Phase 862 P29: linked login methods
+    providers: ProviderInfo[];
+    auth_method: string;
+    auth_email: string;
     role: string;
     tenant_id: string;
     has_membership: boolean;
@@ -291,11 +298,31 @@ export default function ProfilePage() {
                 <div style={{ ...card, marginTop: 'var(--space-4, 16px)' }}>
                     <label style={labelStyle}>Linked Login Methods</label>
 
+                    {/* Currently logged in with */}
+                    {profile && (
+                        <div style={{
+                            padding: '10px 14px',
+                            background: 'rgba(234,229,222,0.06)',
+                            border: '1px solid rgba(234,229,222,0.1)',
+                            borderRadius: '8px',
+                            marginBottom: '12px',
+                            fontSize: '13px',
+                            color: 'rgba(234,229,222,0.5)',
+                        }}>
+                            <span>Currently logged in with: </span>
+                            <strong style={{ color: 'var(--color-text-primary, #EAE5DE)' }}>
+                                {profile.auth_method === 'google' ? 'Google' : 'Email/Password'}
+                                {' — '}
+                                {profile.auth_email || profile.email}
+                            </strong>
+                        </div>
+                    )}
+
                     {/* Current providers */}
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                        {(profile?.providers || []).map(provider => (
+                        {(profile?.providers || []).map((p: ProviderInfo) => (
                             <span
-                                key={provider}
+                                key={typeof p === 'string' ? p : p.provider}
                                 style={{
                                     background: 'rgba(234,229,222,0.06)',
                                     border: '1px solid rgba(234,229,222,0.1)',
@@ -308,14 +335,20 @@ export default function ProfilePage() {
                                     gap: '6px',
                                 }}
                             >
-                                {provider === 'email' ? '📧 Email' : provider === 'google' ? <><GoogleIcon /> Google</> : provider}
+                                {(typeof p === 'string' ? p : p.provider) === 'email'
+                                    ? <>📧 Email/Password — <span style={{ fontWeight: 400, fontSize: 12 }}>{typeof p === 'string' ? profile?.email : p.email}</span></>
+                                    : (typeof p === 'string' ? p : p.provider) === 'google'
+                                        ? <><GoogleIcon /> Google — <span style={{ fontWeight: 400, fontSize: 12 }}>{typeof p === 'string' ? '' : p.email}</span></>
+                                        : (typeof p === 'string' ? p : p.provider)
+                                }
                                 {(profile?.providers?.length || 0) > 1 && (
                                     <button
                                         onClick={async () => {
-                                            if (!confirm(`Unlink ${provider} login? You'll still have other login methods.`)) return;
-                                            const result = await unlinkProvider(provider);
+                                            const provName = typeof p === 'string' ? p : p.provider;
+                                            if (!confirm(`Unlink ${provName} login? You'll still have other login methods.`)) return;
+                                            const result = await unlinkProvider(provName);
                                             if (result.success) {
-                                                setMessage(`${provider} unlinked ✓`);
+                                                setMessage(`${provName} unlinked ✓`);
                                                 fetchProfile();
                                             } else {
                                                 setMessage(result.error || 'Failed to unlink provider');
@@ -329,7 +362,7 @@ export default function ProfilePage() {
                                             cursor: 'pointer',
                                             padding: '0 2px',
                                         }}
-                                        title={`Unlink ${provider}`}
+                                        title={`Unlink ${typeof p === 'string' ? p : p.provider}`}
                                     >
                                         ✕
                                     </button>
@@ -339,7 +372,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Link Google — always shown if not already linked; session check is inside shared function */}
-                    {!(profile?.providers || []).includes('google') && (
+                    {!(profile?.providers || []).some((p: ProviderInfo) => (typeof p === 'string' ? p : p.provider) === 'google') && (
                         <button
                             id="link-google-btn"
                             onClick={async () => {
@@ -365,7 +398,7 @@ export default function ProfilePage() {
                     )}
 
                     {/* Add Password */}
-                    {!(profile?.providers || []).includes('email') && (
+                    {!(profile?.providers || []).some((p: ProviderInfo) => (typeof p === 'string' ? p : p.provider) === 'email') && (
                         addPasswordMode ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
                                 {/* Show which email the password will be linked to */}
