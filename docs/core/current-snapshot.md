@@ -1,12 +1,12 @@
 ## Current Phase
-Phase 862 — Next Phase
+Phase 863 — Next Phase
 
 ## Last Closed Phase
-Phase 861 — Identity Merge & Auth Linking Closure
+Phase 862 — Staff Onboarding Data Mapping Correction + Email Delivery UX
 
 ## System Status
 
-**[...System status through Phase 855E unchanged...] Phase 857 Onboarding Remediation Wave (7 fixes runtime-proven). Phase 858 Product Language Correction + Google Path Separation. Phase 859 Admin Intake Queue + Property Submit API + Login UX + Draft Expiration. Phase 860 Landing Page UI Fixes + Mobile Menu Tab Overflow Fix. Phase 861 Identity Merge & Auth Linking Closure.**
+**[...System status through Phase 861 unchanged...] Phase 862 Staff Onboarding Data Mapping Correction + Email Delivery UX: mobile form layout fixed (CC no flags, DOB own row, emergency CC), staff card Full Name/Nickname separated, all compliance columns (DOB/ID/WP) read from dedicated DB columns, approval delivery UX upgraded, language-aware mailto templates en/th/he in both invite generator and staff card resend.**
 
 ## Deferred Items — Managed Open Items Registry
 

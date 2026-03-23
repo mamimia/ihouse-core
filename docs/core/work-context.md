@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 862 — Next Phase. Phases 841–861 closed.
+Phase 863 — Next Phase. Phases 841–862 closed.
 
 ## Last Closed Phase
 
-Phase 861 — Identity Merge & Auth Linking Closure.
+Phase 862 — Staff Onboarding Data Mapping Correction + Email Delivery UX.
 
 ## Current Objective
 
@@ -57,7 +57,8 @@ Phase 858 — Product Language Correction + Google Path          ← CLOSED
 Phase 859 — Admin Intake + Login UX + Draft Expiration         ← CLOSED
 Phase 860 — Landing Page UI Fixes & Mobile Scrolling          ← CLOSED
 Phase 861 — Identity Merge & Auth Linking Closure              ← CLOSED
-Phase 862 — Next Phase                                        ← ACTIVE
+Phase 862 — Staff Onboarding Data Mapping + mailto UX         ← CLOSED
+Phase 863 — Next Phase                                        ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)

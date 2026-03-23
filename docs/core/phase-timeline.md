@@ -8335,3 +8335,24 @@ Resolved severe layout and styling bugs in the frontend application on narrow sc
 **Date:** 2026-03-23
 
 Resolved dual admin identity (admin@domaniqo.com + esegeve@gmail.com). Full dependency audit → 2 test property rows migrated → duplicate tenant_permissions deleted → duplicate auth user deleted → Google identity manually linked via product UI. Fixed linkIdentity callback to preserve origin route (admin→admin, public→public). Upgraded Linked Login Methods UI: "Currently logged in with: email", provider pills with actual emails, explicit "Unlink" buttons. Backend GET /auth/profile now returns provider details as [{provider, email}] objects with auth_method and auth_email fields.
+
+
+## Phase 862 — Staff Onboarding Data Mapping Correction + Email Delivery UX — Closed 2026-03-24
+
+**Goal:** Full correction pass on the staff onboarding → approval → staff-card data flow. All field mapping gaps identified in a live staging audit were resolved.
+
+### Fixes Applied
+
+| Area | Fix |
+|------|-----|
+| Mobile form layout | CC flags stripped (code only); phone on own full-width row; DOB on own full-width row; emergency contact CC selector added; outer padding tightened; all date inputs get `width:100%` + `boxSizing:border-box` |
+| Name structure | Profile tab restructured: Full Name (real) + Nickname (optional) as separate fields; card header shows Full Name |
+| Data mapping | DOB, ID/Passport photo+number+expiry, Work Permit photo+number+expiry all now read from dedicated DB columns |
+| Role sub-selection | `ApproveOnboardingRequest` default worker_roles changed to `[]` so submitted roles always take precedence |
+| Approval UX | Delivery status feedback (email auto-sent vs manual); WhatsApp/Telegram/Email/SMS direct-send shortcuts on success screen |
+| mailto delivery | `Send by Email` added to invite generator (Link + QR) and staff card resend block; language-aware en/th/he copy; Hebrew RTL (U+200F) |
+
+### Commits
+`9a42c84`, `e8a206f`, `2d10d6d`, `1c5f9ea`, `069f670`, `411db64`
+
+**Result:** 0 TypeScript errors. Build passes. Deployed to staging. Pre-existing backend test failures unaffected.

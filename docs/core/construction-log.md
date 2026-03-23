@@ -5235,3 +5235,15 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Backend GET /auth/profile: providers now [{provider, email}] objects, added auth_method + auth_email fields.
 - Admin + public profile UI: "Currently logged in with: email" (simplified), provider pills with emails, explicit "Unlink" buttons.
 - Build passes (Next.js + Python). Deployed to Vercel staging + Railway auto-deploy.
+
+
+## Phase 862 — Staff Onboarding Data Mapping Correction + Email Delivery UX — 2026-03-24
+
+- Mobile onboarding form: stripped emoji flags from CC codes; phone on own full-width row; DOB on own full-width row below; emergency contact CC selector added; outer padding 16px; date inputs `width:100%`, `boxSizing:border-box`.
+- Staff card Profile tab: Full Name (real name, from `display_name` column) + Nickname (from `comm_preference.preferred_name`) as separate dedicated fields. Card header shows Full Name only.
+- Staff card Documents tab: load now reads from dedicated DB columns (`id_number`, `id_expiry_date`, `work_permit_number`, `work_permit_expiry_date`, `id_photo_url`, `work_permit_photo_url`, `date_of_birth`) — no longer falls back to `comm_preference`.
+- Approval: `ApproveOnboardingRequest.worker_roles` default changed from `["CLEANER"]` to `[]` so submitted roles always win.
+- Approval success screen: delivery status shown (auto-email vs rate-limited); WhatsApp/Telegram/Email/SMS direct-send shortcuts available.
+- mailto delivery (temporary, until Resend): `Send by Email` button in invite generator (Link + QR) shown when email was filled; `Quick Send by Email` in staff card Access & Comms; language-aware templates (en/th/he) in `MAILTO_ONBOARDING` / `MAILTO_ACCESS` dictionaries; Hebrew body prefixed with U+200F RLM for RTL rendering.
+- `staff_onboarding_router.py`: `first_name`, `last_name`, `display_name` wired from submit through to approval record; magic link always generated and returned; `_extract_action_link` hardened.
+- 6 commits pushed to `checkpoint/supabase-single-write-20260305-1747`. Build: 0 TS errors.
