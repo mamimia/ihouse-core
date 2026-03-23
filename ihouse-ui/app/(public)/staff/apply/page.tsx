@@ -13,18 +13,18 @@ import { useSearchParams } from 'next/navigation';
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
 const COUNTRY_CODES = [
-  { code: '+66', label: '🇹🇭 +66' },
-  { code: '+972', label: '🇮🇱 +972' },
-  { code: '+1', label: '🇺🇸 +1' },
-  { code: '+44', label: '🇬🇧 +44' },
-  { code: '+61', label: '🇦🇺 +61' },
-  { code: '+81', label: '🇯🇵 +81' },
-  { code: '+65', label: '🇸🇬 +65' },
-  { code: '+60', label: '🇲🇾 +60' },
-  { code: '+62', label: '🇮🇩 +62' },
-  { code: '+63', label: '🇵🇭 +63' },
-  { code: '+82', label: '🇰🇷 +82' },
-  { code: '+86', label: '🇨🇳 +86' },
+  { code: '+66', label: '+66' },
+  { code: '+972', label: '+972' },
+  { code: '+1', label: '+1' },
+  { code: '+44', label: '+44' },
+  { code: '+61', label: '+61' },
+  { code: '+81', label: '+81' },
+  { code: '+65', label: '+65' },
+  { code: '+60', label: '+60' },
+  { code: '+62', label: '+62' },
+  { code: '+63', label: '+63' },
+  { code: '+82', label: '+82' },
+  { code: '+86', label: '+86' },
 ];
 
 const TRANSLATIONS = {
@@ -258,6 +258,7 @@ function ApplyForm() {
   
   const [language, setLanguage] = useState('th');
   const [ecName, setEcName] = useState('');
+  const [ecCountryCode, setEcCountryCode] = useState('+66');
   const [ecPhone, setEcPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -339,7 +340,7 @@ function ApplyForm() {
       display_name: displayName.trim() || fullName,
       phone,
       language,
-      emergency_contact: `${ecName} | ${ecPhone}`.trim(),
+      emergency_contact: `${ecName} | ${ecCountryCode}${ecPhone}`.trim(),
       photo_url: photoUrl,
       worker_roles: workerRoles,
       comm_preference: {
@@ -456,14 +457,15 @@ function ApplyForm() {
       maxWidth: 480, margin: '24px auto 60px', background: '#fff',
       border: '1px solid #d0d7de', borderRadius: 12, overflow: 'hidden',
       direction: isRTL ? 'rtl' : 'ltr', boxSizing: 'border-box',
+      width: '100%',
     }}>
       {/* Header */}
-      <div style={{ padding: '20px 20px', borderBottom: '1px solid #d0d7de', background: '#fafbfc' }}>
+      <div style={{ padding: '18px 16px', borderBottom: '1px solid #d0d7de', background: '#fafbfc' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px 0', color: '#24292e' }}>{t.sysTitle}</h1>
         <p style={{ margin: 0, color: '#57606a', fontSize: 13 }}>{t.sysSub}</p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ padding: '20px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <form onSubmit={handleSubmit} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Top-level error */}
         {error && (
@@ -515,32 +517,32 @@ function ApplyForm() {
           </div>
         </div>
 
-        {/* Phone + DOB */}
-        <div style={gridTwo}>
-          <div style={fieldWrap}>
-            <label style={labelStyle}>{t.fPhone}</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <select
-                value={countryCode}
-                onChange={e => setCountryCode(e.target.value)}
-                style={{ ...inputStyle, width: 'auto', flex: '0 0 auto', padding: '10px 6px', fontSize: 12 }}
-              >
-                {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
-              </select>
-              <input
-                required
-                style={{ ...inputStyle, flex: 1, direction: 'ltr', minWidth: 0 }}
-                value={phoneLocal}
-                onChange={e => setPhoneLocal(e.target.value)}
-                placeholder={t.pPhone}
-                type="tel"
-              />
-            </div>
+        {/* Phone — full width, CC + number */}
+        <div>
+          <label style={labelStyle}>{t.fPhone}</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <select
+              value={countryCode}
+              onChange={e => setCountryCode(e.target.value)}
+              style={{ ...inputStyle, width: 70, flex: '0 0 70px', padding: '10px 4px', fontSize: 13, textAlign: 'center' }}
+            >
+              {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+            </select>
+            <input
+              required
+              style={{ ...inputStyle, flex: 1, direction: 'ltr', minWidth: 0 }}
+              value={phoneLocal}
+              onChange={e => setPhoneLocal(e.target.value)}
+              placeholder={t.pPhone}
+              type="tel"
+            />
           </div>
-          <div style={fieldWrap}>
-            <label style={labelStyle}>{t.fDob}</label>
-            <input required type="date" style={{ ...inputStyle, boxSizing: 'border-box' }} value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
-          </div>
+        </div>
+
+        {/* DOB — full width own row */}
+        <div>
+          <label style={labelStyle}>{t.fDob}</label>
+          <input required type="date" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
         </div>
 
         {/* ID / Passport Photo */}
@@ -614,7 +616,22 @@ function ApplyForm() {
             </div>
             <div style={fieldWrap}>
               <label style={labelStyle}>{t.fEcPhone}</label>
-              <input style={{ ...inputStyle, background: '#fff', direction: 'ltr' }} value={ecPhone} onChange={e => setEcPhone(e.target.value)} placeholder={t.pEcPhone} />
+              <div style={{ display: 'flex', gap: 4 }}>
+                <select
+                  value={ecCountryCode}
+                  onChange={e => setEcCountryCode(e.target.value)}
+                  style={{ ...inputStyle, background: '#fff', width: 64, flex: '0 0 64px', padding: '10px 2px', fontSize: 12, textAlign: 'center' }}
+                >
+                  {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                </select>
+                <input
+                  style={{ ...inputStyle, background: '#fff', direction: 'ltr', flex: 1, minWidth: 0 }}
+                  value={ecPhone}
+                  onChange={e => setEcPhone(e.target.value)}
+                  placeholder="81 234 5678"
+                  type="tel"
+                />
+              </div>
             </div>
           </div>
         </div>
