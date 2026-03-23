@@ -311,64 +311,63 @@ export default function ProfilePage() {
                         }}>
                             <span>Currently logged in with: </span>
                             <strong style={{ color: 'var(--color-text-primary, #EAE5DE)' }}>
-                                {profile.auth_method === 'google' ? 'Google' : 'Email/Password'}
-                                {' — '}
                                 {profile.auth_email || profile.email}
                             </strong>
                         </div>
                     )}
 
                     {/* Current providers */}
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                        {(profile?.providers || []).map((p: ProviderInfo) => (
-                            <span
-                                key={typeof p === 'string' ? p : p.provider}
-                                style={{
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                        {(profile?.providers || []).map((p: ProviderInfo) => {
+                            const provName = typeof p === 'string' ? p : p.provider;
+                            const provEmail = typeof p === 'string' ? profile?.email || '' : p.email;
+                            const canUnlink = (profile?.providers?.length || 0) > 1;
+                            return (
+                                <div key={provName} style={{
                                     background: 'rgba(234,229,222,0.06)',
                                     border: '1px solid rgba(234,229,222,0.1)',
                                     borderRadius: '6px',
-                                    padding: '6px 12px',
-                                    fontSize: '13px',
-                                    color: 'var(--color-text-primary, #EAE5DE)',
-                                    display: 'inline-flex',
+                                    padding: '8px 12px',
+                                    display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px',
-                                }}
-                            >
-                                {(typeof p === 'string' ? p : p.provider) === 'email'
-                                    ? <>📧 Email/Password — <span style={{ fontWeight: 400, fontSize: 12 }}>{typeof p === 'string' ? profile?.email : p.email}</span></>
-                                    : (typeof p === 'string' ? p : p.provider) === 'google'
-                                        ? <><GoogleIcon /> Google — <span style={{ fontWeight: 400, fontSize: 12 }}>{typeof p === 'string' ? '' : p.email}</span></>
-                                        : (typeof p === 'string' ? p : p.provider)
-                                }
-                                {(profile?.providers?.length || 0) > 1 && (
-                                    <button
-                                        onClick={async () => {
-                                            const provName = typeof p === 'string' ? p : p.provider;
-                                            if (!confirm(`Unlink ${provName} login? You'll still have other login methods.`)) return;
-                                            const result = await unlinkProvider(provName);
-                                            if (result.success) {
-                                                setMessage(`${provName} unlinked ✓`);
-                                                fetchProfile();
-                                            } else {
-                                                setMessage(result.error || 'Failed to unlink provider');
-                                            }
-                                        }}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            color: 'rgba(234,229,222,0.3)',
-                                            fontSize: '11px',
-                                            cursor: 'pointer',
-                                            padding: '0 2px',
-                                        }}
-                                        title={`Unlink ${typeof p === 'string' ? p : p.provider}`}
-                                    >
-                                        ✕
-                                    </button>
-                                )}
-                            </span>
-                        ))}
+                                    justifyContent: 'space-between',
+                                    gap: '8px',
+                                }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-primary, #EAE5DE)' }}>
+                                        {provName === 'email'
+                                            ? <>📧 Email/Password — <span style={{ fontWeight: 400, fontSize: 12 }}>{provEmail}</span></>
+                                            : provName === 'google'
+                                                ? <><GoogleIcon /> Google — <span style={{ fontWeight: 400, fontSize: 12 }}>{provEmail}</span></>
+                                                : provName
+                                        }
+                                    </span>
+                                    {canUnlink && (
+                                        <button
+                                            onClick={async () => {
+                                                if (!confirm(`Unlink ${provName === 'google' ? 'Google' : 'Email/Password'} login?\nYou will still have other login methods.`)) return;
+                                                const result = await unlinkProvider(provName);
+                                                if (result.success) {
+                                                    setMessage(`${provName === 'google' ? 'Google' : 'Email/Password'} unlinked ✓`);
+                                                    fetchProfile();
+                                                } else {
+                                                    setMessage(result.error || 'Failed to unlink');
+                                                }
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: '1px solid rgba(234,229,222,0.15)',
+                                                borderRadius: '6px',
+                                                padding: '4px 12px',
+                                                fontSize: '12px',
+                                                color: 'rgba(234,229,222,0.4)',
+                                                cursor: 'pointer',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                        >Unlink</button>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
 
                     {/* Link Google — always shown if not already linked; session check is inside shared function */}

@@ -424,56 +424,62 @@ export default function AdminProfilePage() {
                     }}>
                         <span>Currently logged in with: </span>
                         <strong style={{ color: 'var(--color-text, #1f2937)' }}>
-                            {profile.auth_method === 'google' ? 'Google' : 'Email/Password'}
-                            {' — '}
                             {profile.auth_email || profile.email}
                         </strong>
                     </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                    {(profile?.providers || []).map((p: ProviderInfo) => (
-                        <span key={typeof p === 'string' ? p : p.provider} style={{
-                            background: 'var(--color-surface-2, #f3f4f6)',
-                            border: '1px solid var(--color-border, #e5e7eb)',
-                            borderRadius: '8px',
-                            padding: '8px 14px',
-                            fontSize: '14px',
-                            color: 'var(--color-text, #1f2937)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            fontWeight: 500,
-                        }}>
-                            {(typeof p === 'string' ? p : p.provider) === 'email'
-                                ? <>📧 Email/Password — <span style={{ fontWeight: 400, fontSize: 13 }}>{typeof p === 'string' ? profile?.email : p.email}</span></>
-                                : (typeof p === 'string' ? p : p.provider) === 'google'
-                                    ? <><GoogleIcon /> Google — <span style={{ fontWeight: 400, fontSize: 13 }}>{typeof p === 'string' ? '' : p.email}</span></>
-                                    : (typeof p === 'string' ? p : p.provider)
-                            }
-                            {(profile?.providers?.length || 0) > 1 && (
-                                <button
-                                    onClick={async () => {
-                                        const provName = typeof p === 'string' ? p : p.provider;
-                                        if (!confirm(`Unlink ${provName} login? You'll still have other login methods.`)) return;
-                                        const result = await unlinkProvider(provName);
-                                        if (result.success) {
-                                            setMessage(`${provName} unlinked ✓`);
-                                            fetchProfile();
-                                        } else {
-                                            setMessage(result.error || 'Failed to unlink provider');
-                                        }
-                                    }}
-                                    style={{
-                                        background: 'none', border: 'none',
-                                        color: 'var(--color-text-faint, #9ca3af)',
-                                        fontSize: '11px', cursor: 'pointer',
-                                    }}
-                                    title={`Unlink ${typeof p === 'string' ? p : p.provider}`}
-                                >✕</button>
-                            )}
-                        </span>
-                    ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    {(profile?.providers || []).map((p: ProviderInfo) => {
+                        const provName = typeof p === 'string' ? p : p.provider;
+                        const provEmail = typeof p === 'string' ? profile?.email || '' : p.email;
+                        const canUnlink = (profile?.providers?.length || 0) > 1;
+                        return (
+                            <div key={provName} style={{
+                                background: 'var(--color-surface-2, #f3f4f6)',
+                                border: '1px solid var(--color-border, #e5e7eb)',
+                                borderRadius: '8px',
+                                padding: '10px 14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px',
+                            }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 500, color: 'var(--color-text, #1f2937)' }}>
+                                    {provName === 'email'
+                                        ? <>📧 Email/Password — <span style={{ fontWeight: 400, fontSize: 13 }}>{provEmail}</span></>
+                                        : provName === 'google'
+                                            ? <><GoogleIcon /> Google — <span style={{ fontWeight: 400, fontSize: 13 }}>{provEmail}</span></>
+                                            : provName
+                                    }
+                                </span>
+                                {canUnlink && (
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm(`Unlink ${provName === 'google' ? 'Google' : 'Email/Password'} login?\nYou will still have other login methods.`)) return;
+                                            const result = await unlinkProvider(provName);
+                                            if (result.success) {
+                                                setMessage(`${provName === 'google' ? 'Google' : 'Email/Password'} unlinked ✓`);
+                                                fetchProfile();
+                                            } else {
+                                                setMessage(result.error || 'Failed to unlink');
+                                            }
+                                        }}
+                                        style={{
+                                            background: 'none',
+                                            border: '1px solid var(--color-border, #e5e7eb)',
+                                            borderRadius: '6px',
+                                            padding: '4px 12px',
+                                            fontSize: '12px',
+                                            color: 'var(--color-text-faint, #9ca3af)',
+                                            cursor: 'pointer',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >Unlink</button>
+                                )}
+                            </div>
+                        );
+                    })}
                     {(profile?.providers || []).length === 0 && (
                         <span style={{ fontSize: 14, color: 'var(--color-text-faint, #9ca3af)' }}>
                             No linked providers found

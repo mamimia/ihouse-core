@@ -36,6 +36,10 @@ export async function linkGoogleAccount(): Promise<{ success: boolean; error?: s
 
     try {
         sessionStorage.setItem('ihouse_linking_provider', 'google');
+        // Preserve the current route so callback can return here
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('ihouse_linking_return', window.location.pathname);
+        }
         const { error } = await supabase.auth.linkIdentity({
             provider: 'google',
             options: { redirectTo: getRedirectUrl() },

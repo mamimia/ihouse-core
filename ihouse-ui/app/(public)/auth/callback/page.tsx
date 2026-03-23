@@ -34,8 +34,10 @@ export default function AuthCallbackPage() {
             const linkingProvider = sessionStorage.getItem('ihouse_linking_provider');
             if (linkingProvider) {
                 sessionStorage.removeItem('ihouse_linking_provider');
-                // Identity link completed — session is already active, just go to profile
-                window.location.href = '/profile';
+                // Return to the route where linking was initiated
+                const returnRoute = sessionStorage.getItem('ihouse_linking_return') || '/profile';
+                sessionStorage.removeItem('ihouse_linking_return');
+                window.location.href = returnRoute;
                 return;
             }
 
