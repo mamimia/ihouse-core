@@ -12,6 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { getToken } from '@/lib/api';
+import MobileStaffShell from '@/components/MobileStaffShell';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -61,13 +62,13 @@ function getBookingId(b: Booking): string {
 type CheckInStep = 'list' | 'arrival' | 'passport' | 'deposit' | 'welcome' | 'complete' | 'success';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-    Upcoming: { bg: 'rgba(88,166,255,0.15)', text: '#58a6ff' },
-    Arrived: { bg: 'rgba(210,153,34,0.15)', text: '#d29922' },
-    InStay: { bg: 'rgba(63,185,80,0.15)', text: '#3fb950' },
-    Completed: { bg: 'rgba(110,118,129,0.15)', text: '#8b949e' },
-    checked_in: { bg: 'rgba(63,185,80,0.15)', text: '#3fb950' },
-    active: { bg: 'rgba(88,166,255,0.15)', text: '#58a6ff' },
-    observed: { bg: 'rgba(210,153,34,0.15)', text: '#d29922' },
+    Upcoming: { bg: 'rgba(88,166,255,0.15)', text: 'var(--color-sage)' },
+    Arrived: { bg: 'rgba(210,153,34,0.15)', text: 'var(--color-warn)' },
+    InStay: { bg: 'rgba(63,185,80,0.15)', text: 'var(--color-ok)' },
+    Completed: { bg: 'rgba(110,118,129,0.15)', text: 'var(--color-text-dim)' },
+    checked_in: { bg: 'rgba(63,185,80,0.15)', text: 'var(--color-ok)' },
+    active: { bg: 'rgba(88,166,255,0.15)', text: 'var(--color-sage)' },
+    observed: { bg: 'rgba(210,153,34,0.15)', text: 'var(--color-warn)' },
 };
 
 function StatusBadge({ status }: { status?: string }) {
@@ -123,7 +124,7 @@ function ActionButton({ label, onClick, variant = 'primary', disabled = false }:
 }) {
     const styles = {
         primary: { bg: 'var(--color-primary)', color: '#fff', border: 'none' },
-        danger: { bg: 'rgba(248,81,73,0.1)', color: '#f85149', border: '1px solid rgba(248,81,73,0.3)' },
+        danger: { bg: 'rgba(248,81,73,0.1)', color: 'var(--color-alert)', border: '1px solid rgba(248,81,73,0.3)' },
         outline: { bg: 'transparent', color: 'var(--color-text-dim)', border: '1px solid var(--color-border)' },
     };
     const s = styles[variant];
@@ -372,6 +373,7 @@ export default function MobileCheckinPage() {
     };
 
     return (
+        <MobileStaffShell hideHeader>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
             {/* Notice toast */}
             {notice && (
@@ -493,7 +495,7 @@ export default function MobileCheckinPage() {
                                             </div>
                                             <span style={{
                                                 padding: '2px 10px', borderRadius: 12, fontSize: 'var(--text-xs)', fontWeight: 600,
-                                                background: 'rgba(63,185,80,0.15)', color: '#3fb950',
+                                                background: 'rgba(63,185,80,0.15)', color: 'var(--color-ok)',
                                             }}>✅ Checked In</span>
                                         </div>
                                     </div>
@@ -524,7 +526,7 @@ export default function MobileCheckinPage() {
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Property Status</span>
                         <span style={{
                             fontSize: 'var(--text-xs)', fontWeight: 700,
-                            color: selected.property_status === 'Ready' || !selected.property_status ? '#3fb950' : '#d29922',
+                            color: selected.property_status === 'Ready' || !selected.property_status ? 'var(--color-ok)' : 'var(--color-warn)',
                         }}>
                             {selected.property_status || 'Ready'}
                         </span>
@@ -542,7 +544,7 @@ export default function MobileCheckinPage() {
                         <div style={{
                             marginTop: 'var(--space-3)', padding: '8px 12px',
                             background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.2)',
-                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: '#d29922',
+                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-warn)',
                         }}>
                             📝 {selected.operator_note}
                         </div>
@@ -597,7 +599,7 @@ export default function MobileCheckinPage() {
                             </div>
                             {DEV_PHOTO_BYPASS && (
                                 <div style={{
-                                    marginTop: 8, fontSize: 'var(--text-xs)', color: '#d29922',
+                                    marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--color-warn)',
                                     padding: '4px 8px', background: 'rgba(210,153,34,0.08)',
                                     border: '1px solid rgba(210,153,34,0.15)', borderRadius: 'var(--radius-sm)',
                                     display: 'inline-block',
@@ -625,7 +627,7 @@ export default function MobileCheckinPage() {
                                 marginBottom: 'var(--space-4)',
                             }}>
                                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Deposit Required</div>
-                                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: '#d29922', marginTop: 4 }}>
+                                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-warn)', marginTop: 4 }}>
                                     {selected.deposit_currency || 'THB'} {selected.deposit_amount || '—'}
                                 </div>
                             </div>
@@ -697,7 +699,7 @@ export default function MobileCheckinPage() {
                         }} style={{
                             flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
                             background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)',
-                            color: '#3fb950', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                            color: 'var(--color-ok)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
                         }}>📱 SMS</button>
 
                         {/* Email — wired to POST /notifications/send-email */}
@@ -720,7 +722,7 @@ export default function MobileCheckinPage() {
                         }} style={{
                             flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
                             background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.3)',
-                            color: '#58a6ff', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                            color: 'var(--color-sage)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
                         }}>📧 Email</button>
 
                         {/* LINE / Telegram / WhatsApp — honestly labeled as not connected */}
@@ -736,7 +738,7 @@ export default function MobileCheckinPage() {
                     <div style={{
                         padding: 'var(--space-2) var(--space-3)', background: 'rgba(210,153,34,0.08)',
                         border: '1px solid rgba(210,153,34,0.2)', borderRadius: 'var(--radius-sm)',
-                        fontSize: 'var(--text-xs)', color: '#d29922', marginBottom: 'var(--space-4)',
+                        fontSize: 'var(--text-xs)', color: 'var(--color-warn)', marginBottom: 'var(--space-4)',
                     }}>
                         ℹ️ Guest phone/email will be auto-populated when guest profile data is available.
                         LINE and Telegram channels require channel setup in Settings.
@@ -783,7 +785,7 @@ export default function MobileCheckinPage() {
                         border: '1px solid rgba(63,185,80,0.2)', marginBottom: 'var(--space-4)',
                     }}>
                         <div style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-2)' }}>✅</div>
-                        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: '#3fb950' }}>
+                        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-ok)' }}>
                             Check-in Complete
                         </div>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
@@ -817,7 +819,7 @@ export default function MobileCheckinPage() {
                                 borderRadius: 'var(--radius-md)', margin: '0 auto',
                                 maxWidth: 240,
                             }}>
-                                <div style={{ fontSize: 'var(--text-sm)', color: '#1a1f2e', fontWeight: 600, wordBreak: 'break-all' }}>
+                                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-surface)', fontWeight: 600, wordBreak: 'break-all' }}>
                                     📱 Guest Portal Link
                                 </div>
                                 <div style={{ fontSize: 'var(--text-xs)', color: '#555', marginTop: 8, wordBreak: 'break-all', fontFamily: 'var(--font-mono)' }}>
@@ -850,5 +852,6 @@ export default function MobileCheckinPage() {
                 </div>
             )}
         </div>
+        </MobileStaffShell>
     );
 }

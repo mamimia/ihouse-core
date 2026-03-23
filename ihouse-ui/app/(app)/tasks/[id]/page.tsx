@@ -372,7 +372,7 @@ export default function TaskDetailPage() {
                         <Field label="Due Date" value={task.due_date} />
                         <Field label="Property" value={task.property_id} mono />
                         <Field label="Booking" value={task.booking_id} mono />
-                        <Field label="Worker Role" value={task.worker_role} />
+                        <Field label="Assigned Role" value={task.worker_role} />
                         {task.due_time && <Field label="Due Time" value={task.due_time} />}
                     </div>
 

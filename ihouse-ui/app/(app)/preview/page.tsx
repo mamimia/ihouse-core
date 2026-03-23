@@ -11,14 +11,21 @@ export function PreviewPageContent() {
         const role = searchParams?.get('role');
         if (role) {
             sessionStorage.setItem('ihouse_preview_role', role);
-            
-            // Redirect based on role
+
+            // Canonical route map — must match preview-dropdown-matrix.md
+            const PREVIEW_ROUTES: Record<string, string> = {
+                manager:          '/dashboard',
+                owner:            '/owner',
+                cleaner:          '/ops/cleaner',
+                checkin:          '/ops/checkin',
+                checkout:         '/ops/checkout',
+                checkin_checkout: '/worker',
+                maintenance:      '/ops/maintenance',
+            };
+            const target = PREVIEW_ROUTES[role] ?? '/dashboard';
+
             setTimeout(() => {
-                if (role === 'owner') window.location.href = '/owner';
-                else if (role === 'manager') window.location.href = '/ops';
-                else if (role === 'checkin_staff') window.location.href = '/ops/checkin';
-                else if (['worker', 'cleaner', 'maintenance'].includes(role)) window.location.href = '/worker';
-                else window.location.href = '/dashboard';
+                window.location.href = target;
             }, 600);
         } else {
             setMsg('No role specified.');

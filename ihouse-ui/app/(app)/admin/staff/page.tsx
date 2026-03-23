@@ -56,7 +56,7 @@ type UserRecord = {
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   manager: 'Manager',
-  worker: 'Worker',
+  worker: 'Staff Member',
   owner: 'Owner',
   // Legacy display-only labels
   cleaner: 'Cleaner ⚠',

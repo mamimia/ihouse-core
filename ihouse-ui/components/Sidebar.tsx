@@ -20,7 +20,7 @@ import PreviewAsSelector from './PreviewAsSelector';
 import DMonogram from './DMonogram';
 import { TranslationKey } from '../lib/translations';
 
-type Role = 'admin' | 'manager' | 'owner' | 'worker' | 'cleaner' | 'checkin_staff' | 'maintenance';
+type Role = 'admin' | 'manager' | 'owner' | 'worker' | 'cleaner' | 'checkin' | 'checkin_staff' | 'checkout' | 'maintenance';
 
 const IconDashboard = <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>;
 const IconTasks = <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
@@ -63,9 +63,10 @@ function getUserRole(): Role {
 }
 
 const ROLE_DISPLAY: Record<string, string> = {
-  admin: 'Admin', manager: 'Manager', owner: 'Owner',
-  worker: 'Worker', cleaner: 'Cleaner',
-  checkin_staff: 'Check-in', maintenance: 'Maintenance',
+  admin: 'Admin', manager: 'Ops Manager', owner: 'Owner',
+  worker: 'Staff Member', cleaner: 'Cleaner',
+  checkin_staff: 'Check-in', checkin: 'Check-in',
+  checkout: 'Check-out', maintenance: 'Maintenance',
 };
 
 function getGreetingName(role: Role): string {

@@ -36,29 +36,16 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     const toggleDrawer = useCallback(() => setDrawerOpen(prev => !prev), []);
     const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
-    // Full-screen native mobile routes where the shell shouldn't render its own navigation
-    if (pathname.startsWith('/worker') || pathname.startsWith('/ops/cleaner')) {
+    // Full-screen mobile staff routes — bypass sidebar/breadcrumbs, use MobileStaffShell
+    const MOBILE_STAFF_PREFIXES = ['/worker', '/ops/cleaner', '/ops/checkin', '/ops/checkout', '/ops/maintenance'];
+    const isMobileStaffRoute = MOBILE_STAFF_PREFIXES.some(p => pathname.startsWith(p));
+
+    if (isMobileStaffRoute) {
+        // MobileStaffShell handles its own frame (dark theme, phone sim, header, nav)
+        // Each page supplies its own header/bottomNav via MobileStaffShell props
         return (
-            <div style={{ 
-                flex: 1, display: 'flex', justifyContent: 'center', 
-                background: isDesktop ? 'var(--color-bg, #0d1117)' : 'transparent',
-                minHeight: '100vh', width: '100%' 
-            }}>
-                <main style={{ 
-                    flex: 1, 
-                    width: '100%', 
-                    maxWidth: isDesktop ? '480px' : '100%', 
-                    minHeight: '100vh', 
-                    padding: 0, 
-                    margin: 0,
-                    position: 'relative',
-                    overflowX: 'hidden',
-                    boxShadow: isDesktop ? '0 0 50px rgba(0,0,0,0.4), 0 0 10px rgba(0,0,0,0.5)' : 'none',
-                    borderLeft: isDesktop ? '1px solid #1f2937' : 'none',
-                    borderRight: isDesktop ? '1px solid #1f2937' : 'none',
-                }}>
-                    {children}
-                </main>
+            <div style={{ flex: 1, width: '100%', minHeight: '100vh' }}>
+                {children}
             </div>
         );
     }

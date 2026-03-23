@@ -44,6 +44,46 @@ const LEGACY_ROLE_MAP: Record<string, { role: string; worker_roles: string[] }> 
   maintenance: { role: 'worker', worker_roles: ['maintenance'] },
 };
 
+const DOC_STATUSES = [
+  { value: 'missing', label: 'Missing' },
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'expiring_soon', label: 'Expiring Soon' },
+  { value: 'expired', label: 'Expired' },
+];
+
+function docStatusColor(status: string): string {
+  switch (status) {
+    case 'verified': return 'var(--color-ok, #4A7C59)';
+    case 'submitted': return 'var(--color-sage, #8FA39B)';
+    case 'expiring_soon': return 'var(--color-warn, #B56E45)';
+    case 'expired': return 'var(--color-alert, #C45B4A)';
+    case 'missing': default: return 'var(--color-text-faint, #9A958E)';
+  }
+}
+
+function expiryWarning(expiryDate: string): { label: string; color: string } | null {
+  if (!expiryDate) return null;
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0) return { label: 'Expired', color: 'var(--color-alert)' };
+  if (daysLeft <= 30) return { label: `${daysLeft}d left`, color: 'var(--color-alert)' };
+  if (daysLeft <= 60) return { label: `${daysLeft}d left`, color: 'var(--color-warn)' };
+  if (daysLeft <= 90) return { label: `${daysLeft}d left`, color: 'var(--color-warn)' };
+  return null;
+}
+
+function autoDocStatus(status: string, expiryDate: string): string {
+  if (!expiryDate) return status;
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0) return 'expired';
+  if (daysLeft <= 90 && (status === 'verified' || status === 'submitted')) return 'expiring_soon';
+  return status;
+}
+
 type RawRecord = {
   user_id: string;
   role: string;
@@ -64,7 +104,7 @@ type RawRecord = {
 };
 
 type NormalizedRecord = RawRecord & {
-  _legacyRole?: string; // set if the original role was a legacy value
+  _legacyRole?: string;
 };
 
 function normalizeLegacyRole(raw: RawRecord): NormalizedRecord {
@@ -217,7 +257,7 @@ export default function EditStaffPage() {
   const [legacyRole, setLegacyRole] = useState<string | undefined>(undefined);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<0 | 1 | 2>(0);
+  const [activeTab, setActiveTab] = useState<0 | 1 | 2 | 3>(0);
 
   // Tab 1 — Profile
   const [fullName, setFullName] = useState('');
@@ -235,6 +275,7 @@ export default function EditStaffPage() {
   const [language, setLanguage] = useState('en');
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState('');
+  const [startDate, setStartDate] = useState('');
 
   // Tab 2 — Role & Assignment
   const [role, setRole] = useState('worker');
@@ -248,7 +289,17 @@ export default function EditStaffPage() {
   const [whatsapp, setWhatsapp] = useState('');
   const [telegram, setTelegram] = useState('');
   const [line, setLine] = useState('');
+  const [preferredContact, setPreferredContact] = useState('');
   const [sms, setSms] = useState('');
+
+  // Tab 4 — Documents & Compliance
+  const [idDocNumber, setIdDocNumber] = useState('');
+  const [idDocExpiry, setIdDocExpiry] = useState('');
+  const [idDocStatus, setIdDocStatus] = useState('missing');
+  const [workPermitPhotoUrl, setWorkPermitPhotoUrl] = useState('');
+  const [workPermitNumber, setWorkPermitNumber] = useState('');
+  const [workPermitExpiry, setWorkPermitExpiry] = useState('');
+  const [workPermitStatus, setWorkPermitStatus] = useState('missing');
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -264,6 +315,9 @@ export default function EditStaffPage() {
 
   const [uploadingIdPhoto, setUploadingIdPhoto] = useState(false);
   const idFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [uploadingPermitPhoto, setUploadingPermitPhoto] = useState(false);
+  const permitFileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -316,6 +370,7 @@ export default function EditStaffPage() {
       setLanguage(record.language || 'en');
       setIsActive(record.is_active !== false);
       setNotes(record.notes || '');
+      setStartDate(record.comm_preference?.start_date || '');
       setCreatedAt(record.created_at);
       setUpdatedAt(record.updated_at);
 
@@ -340,6 +395,16 @@ export default function EditStaffPage() {
       setTelegram(record.comm_preference?.telegram || '');
       setLine(record.comm_preference?.line || '');
       setSms(record.comm_preference?.sms || record.comm_preference?.phone || record.phone || '');
+      setPreferredContact(record.comm_preference?.preferred_contact || '');
+
+      // Populate Tab 4 — Documents
+      setIdDocNumber(record.comm_preference?.id_doc_number || '');
+      setIdDocExpiry(record.comm_preference?.id_doc_expiry || '');
+      setIdDocStatus(record.comm_preference?.id_doc_status || 'missing');
+      setWorkPermitPhotoUrl(record.comm_preference?.work_permit_photo_url || '');
+      setWorkPermitNumber(record.comm_preference?.work_permit_number || '');
+      setWorkPermitExpiry(record.comm_preference?.work_permit_expiry || '');
+      setWorkPermitStatus(record.comm_preference?.work_permit_status || 'missing');
 
     } catch (e) {
       setLoadError('Failed to load staff record.');
@@ -386,7 +451,16 @@ export default function EditStaffPage() {
             sms: sms.trim() || undefined,
             email: email.trim() || undefined,
             date_of_birth: dateOfBirth || undefined,
+            start_date: startDate || undefined,
+            preferred_contact: preferredContact || undefined,
             id_photo_url: idPhotoUrl.trim() || undefined,
+            id_doc_number: idDocNumber.trim() || undefined,
+            id_doc_expiry: idDocExpiry || undefined,
+            id_doc_status: autoDocStatus(idDocStatus, idDocExpiry),
+            work_permit_photo_url: workPermitPhotoUrl.trim() || undefined,
+            work_permit_number: workPermitNumber.trim() || undefined,
+            work_permit_expiry: workPermitExpiry || undefined,
+            work_permit_status: autoDocStatus(workPermitStatus, workPermitExpiry),
           },
         }),
       });
@@ -491,7 +565,28 @@ export default function EditStaffPage() {
     }
   };
 
-  const TABS = ['Profile', 'Role & Assignment', 'Access & Comms'];
+  const handlePermitPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPermitPhoto(true);
+    setError(null);
+    try {
+      const tok = getToken();
+      if (!tok) throw new Error('Not authenticated');
+      const { url } = await uploadPropertyPhoto(file, 'staff-pii', 'reference', tok);
+      setWorkPermitPhotoUrl(url);
+      if (workPermitStatus === 'missing') setWorkPermitStatus('submitted');
+      setSuccess('Work permit uploaded. Click Save Changes to keep.');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload document');
+    } finally {
+      setUploadingPermitPhoto(false);
+      if (permitFileInputRef.current) permitFileInputRef.current.value = '';
+    }
+  };
+
+  const TABS = ['Profile', 'Role & Assignment', 'Access & Comms', 'Documents & Compliance'];
 
   if (loading) {
     return (
@@ -594,12 +689,12 @@ export default function EditStaffPage() {
         background: 'var(--color-surface)', padding: '0 var(--space-5)',
       }}>
         {TABS.map((t, i) => (
-          <button key={t} onClick={() => setActiveTab(i as 0 | 1 | 2)} style={{
+          <button key={t} onClick={() => setActiveTab(i as 0 | 1 | 2 | 3)} style={{
             padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer',
             fontSize: 'var(--text-sm)', fontWeight: activeTab === i ? 700 : 400,
             color: activeTab === i ? 'var(--color-primary)' : 'var(--color-text-dim)',
             borderBottom: activeTab === i ? '2px solid var(--color-primary)' : '2px solid transparent',
-            marginBottom: -1, transition: 'all 0.15s',
+            marginBottom: -1, transition: 'all 0.15s', whiteSpace: 'nowrap',
           }}>{t}</button>
         ))}
       </div>
@@ -690,36 +785,12 @@ export default function EditStaffPage() {
               <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 72 }} value={address} onChange={e => setAddress(e.target.value)} />
             </Field>
 
-            <div style={sectionHeadStyle}>PII & Identity Verification</div>
-            <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-              <Field label="ID / Passport Photo">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                  {idPhotoUrl ? (
-                    <div>
-                      <a href={idPhotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', position: 'relative' }}>
-                        <img src={idPhotoUrl} alt="ID Document" style={{ maxWidth: 200, maxHeight: 120, objectFit: 'contain', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }} />
-                      </a>
-                      <div style={{ marginTop: 8 }}>
-                         <button type="button" onClick={() => setIdPhotoUrl('')} style={{ fontSize: 'var(--text-xs)', color: '#f85149', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Remove ID Photo</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
-                      No ID uploaded securely.
-                    </div>
-                  )}
-                  
-                  <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={idFileInputRef} style={{ display: 'none' }} onChange={handleIdPhotoSelect} />
-                  
-                  <button type="button" onClick={() => idFileInputRef.current?.click()} disabled={uploadingIdPhoto} style={{
-                    padding: '8px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)', color: 'var(--color-text)', cursor: uploadingIdPhoto ? 'not-allowed' : 'pointer',
-                    fontSize: 'var(--text-xs)', fontWeight: 600, width: 'fit-content',
-                  }}>
-                    {uploadingIdPhoto ? 'Uploading securely...' : 'Upload ID / Passport'}
-                  </button>
-                </div>
+            <div style={sectionHeadStyle}>Employment</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <Field label="Start Date / Hired Date">
+                <input type="date" style={inputStyle} value={startDate} onChange={e => setStartDate(e.target.value)} />
               </Field>
+              <div />
             </div>
 
             <div style={sectionHeadStyle}>Preferences</div>
@@ -844,7 +915,7 @@ export default function EditStaffPage() {
 
             {role === 'worker' && (
               <div>
-                <div style={sectionHeadStyle}>Worker Roles</div>
+                <div style={sectionHeadStyle}>Staff Roles</div>
                 {workerRoles.length === 0 && (
                   <div style={{ fontSize: 'var(--text-xs)', color: '#f85149', marginBottom: 'var(--space-2)' }}>
                     Select at least one worker role.
@@ -921,6 +992,20 @@ export default function EditStaffPage() {
               </Field>
             </div>
 
+            <div style={sectionHeadStyle}>Contact Preferences</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <Field label="Preferred Contact Channel">
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={preferredContact} onChange={e => setPreferredContact(e.target.value)}>
+                  <option value="">— Not set —</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="telegram">Telegram</option>
+                  <option value="line">LINE</option>
+                  <option value="sms">SMS / Phone</option>
+                  <option value="email">Email</option>
+                </select>
+              </Field>
+            </div>
+
             {role === 'owner' && (
               <div>
                 <div style={sectionHeadStyle}>Owner Visibility Controls</div>
@@ -935,6 +1020,141 @@ export default function EditStaffPage() {
             )}
           </div>
         )}
+
+        {/* ── Tab 4: Documents & Compliance ─────────────────────────────── */}
+        {activeTab === 3 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+
+            {/* ── ID / Passport ─────────────────────────────── */}
+            <div style={sectionHeadStyle}>ID / Passport</div>
+            <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                {/* Photo/file */}
+                <Field label="Document Photo">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                    {idPhotoUrl ? (
+                      <div>
+                        <a href={idPhotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
+                          <img src={idPhotoUrl} alt="ID Document" style={{ maxWidth: 200, maxHeight: 120, objectFit: 'contain', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }} />
+                        </a>
+                        <div style={{ marginTop: 8 }}>
+                          <button type="button" onClick={() => setIdPhotoUrl('')} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-alert)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Remove</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>No ID uploaded.</div>
+                    )}
+                    <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={idFileInputRef} style={{ display: 'none' }} onChange={handleIdPhotoSelect} />
+                    <button type="button" onClick={() => idFileInputRef.current?.click()} disabled={uploadingIdPhoto} style={{
+                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)', color: 'var(--color-text)', cursor: uploadingIdPhoto ? 'not-allowed' : 'pointer',
+                      fontSize: 'var(--text-xs)', fontWeight: 600, width: 'fit-content',
+                    }}>
+                      {uploadingIdPhoto ? 'Uploading…' : 'Upload ID / Passport'}
+                    </button>
+                  </div>
+                </Field>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <Field label="Document Number">
+                    <input style={inputStyle} value={idDocNumber} onChange={e => setIdDocNumber(e.target.value)} placeholder="Passport / ID number" />
+                  </Field>
+                  <Field label="Expiry Date">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <input type="date" style={{ ...inputStyle, flex: 1 }} value={idDocExpiry} onChange={e => setIdDocExpiry(e.target.value)} />
+                      {(() => { const w = expiryWarning(idDocExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
+                    </div>
+                  </Field>
+                </div>
+
+                <Field label="Status">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <select style={{ ...inputStyle, flex: 1, cursor: 'pointer' }} value={autoDocStatus(idDocStatus, idDocExpiry)} onChange={e => setIdDocStatus(e.target.value)}>
+                      {DOC_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: docStatusColor(autoDocStatus(idDocStatus, idDocExpiry)), flexShrink: 0 }} />
+                  </div>
+                </Field>
+              </div>
+            </div>
+
+            {/* ── Work Permit ──────────────────────────────── */}
+            <div style={sectionHeadStyle}>Work Permit</div>
+            <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                {/* Photo/file */}
+                <Field label="Document Photo">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                    {workPermitPhotoUrl ? (
+                      <div>
+                        <a href={workPermitPhotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
+                          <img src={workPermitPhotoUrl} alt="Work Permit" style={{ maxWidth: 200, maxHeight: 120, objectFit: 'contain', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }} />
+                        </a>
+                        <div style={{ marginTop: 8 }}>
+                          <button type="button" onClick={() => setWorkPermitPhotoUrl('')} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-alert)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Remove</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>No permit uploaded.</div>
+                    )}
+                    <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={permitFileInputRef} style={{ display: 'none' }} onChange={handlePermitPhotoSelect} />
+                    <button type="button" onClick={() => permitFileInputRef.current?.click()} disabled={uploadingPermitPhoto} style={{
+                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)', color: 'var(--color-text)', cursor: uploadingPermitPhoto ? 'not-allowed' : 'pointer',
+                      fontSize: 'var(--text-xs)', fontWeight: 600, width: 'fit-content',
+                    }}>
+                      {uploadingPermitPhoto ? 'Uploading…' : 'Upload Work Permit'}
+                    </button>
+                  </div>
+                </Field>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <Field label="Permit Number">
+                    <input style={inputStyle} value={workPermitNumber} onChange={e => setWorkPermitNumber(e.target.value)} placeholder="Work permit number" />
+                  </Field>
+                  <Field label="Expiry Date">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <input type="date" style={{ ...inputStyle, flex: 1 }} value={workPermitExpiry} onChange={e => setWorkPermitExpiry(e.target.value)} />
+                      {(() => { const w = expiryWarning(workPermitExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
+                    </div>
+                  </Field>
+                </div>
+
+                <Field label="Status">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <select style={{ ...inputStyle, flex: 1, cursor: 'pointer' }} value={autoDocStatus(workPermitStatus, workPermitExpiry)} onChange={e => setWorkPermitStatus(e.target.value)}>
+                      {DOC_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: docStatusColor(autoDocStatus(workPermitStatus, workPermitExpiry)), flexShrink: 0 }} />
+                  </div>
+                </Field>
+              </div>
+            </div>
+
+            {/* Compliance Summary */}
+            <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginTop: 'var(--space-2)' }}>
+              <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>Compliance Overview</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                {[{ label: 'ID / Passport', status: autoDocStatus(idDocStatus, idDocExpiry), expiry: idDocExpiry },
+                  { label: 'Work Permit', status: autoDocStatus(workPermitStatus, workPermitExpiry), expiry: workPermitExpiry }].map(doc => {
+                  const warning = expiryWarning(doc.expiry);
+                  return (
+                    <div key={doc.label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: docStatusColor(doc.status), flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>{doc.label}</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: docStatusColor(doc.status), textTransform: 'capitalize' }}>
+                          {doc.status.replace(/_/g, ' ')}
+                          {warning && <span style={{ marginLeft: 8, fontWeight: 700 }}>· {warning.label}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Sticky footer ───────────────────────────────────────────────── */}
@@ -946,14 +1166,14 @@ export default function EditStaffPage() {
       }}>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {activeTab > 0 && (
-            <button onClick={() => setActiveTab((activeTab - 1) as 0 | 1 | 2)} style={{
+            <button onClick={() => setActiveTab((activeTab - 1) as 0 | 1 | 2 | 3)} style={{
               padding: '8px 18px', borderRadius: 'var(--radius-sm)',
               background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
               color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 'var(--text-sm)',
             }}>← Previous</button>
           )}
-          {activeTab < 2 && (
-            <button onClick={() => setActiveTab((activeTab + 1) as 0 | 1 | 2)} style={{
+          {activeTab < 3 && (
+            <button onClick={() => setActiveTab((activeTab + 1) as 0 | 1 | 2 | 3)} style={{
               padding: '8px 18px', borderRadius: 'var(--radius-sm)',
               background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
               color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--text-sm)',

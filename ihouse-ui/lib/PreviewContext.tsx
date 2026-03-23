@@ -9,7 +9,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type Role = 'admin' | 'manager' | 'owner' | 'worker' | 'cleaner' | 'checkin_staff' | 'maintenance' | null;
+type Role = 'admin' | 'manager' | 'owner' | 'worker' | 'cleaner' | 'checkin' | 'checkout' | 'checkin_checkout' | 'maintenance' | null;
 
 interface PreviewContextType {
     previewRole: Role;

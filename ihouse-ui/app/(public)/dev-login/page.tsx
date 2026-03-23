@@ -162,7 +162,7 @@ export default function DevLoginPage() {
                                     <option value="admin">Admin</option>
                                     <option value="owner">Owner</option>
                                     <option value="ops">Operations</option>
-                                    <option value="worker">Worker</option>
+                                    <option value="worker">Staff Member</option>
                                     <option value="cleaner">Cleaner</option>
                                     <option value="checkin">Check-in Staff</option>
                                     <option value="checkout">Check-out Staff</option>

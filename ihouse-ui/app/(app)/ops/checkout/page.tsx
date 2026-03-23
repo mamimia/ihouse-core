@@ -13,6 +13,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getToken } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
+import MobileStaffShell from '@/components/MobileStaffShell';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -84,7 +85,7 @@ function ActionButton({ label, onClick, variant = 'primary', disabled = false }:
 }) {
     const styles = {
         primary: { bg: 'var(--color-primary)', color: '#fff', border: 'none' },
-        danger: { bg: 'rgba(248,81,73,0.1)', color: '#f85149', border: '1px solid rgba(248,81,73,0.3)' },
+        danger: { bg: 'rgba(248,81,73,0.1)', color: 'var(--color-alert)', border: '1px solid rgba(248,81,73,0.3)' },
         outline: { bg: 'transparent', color: 'var(--color-text-dim)', border: '1px solid var(--color-border)' },
     };
     const s = styles[variant];
@@ -275,6 +276,7 @@ export default function MobileCheckoutPage() {
     };
 
     return (
+        <MobileStaffShell hideHeader>
         <div style={{ maxWidth: 600, margin: '0 auto', paddingBottom: 80 }}>
             {/* Notice toast */}
             {notice && (
@@ -327,7 +329,7 @@ export default function MobileCheckoutPage() {
                                     </div>
                                     <span style={{
                                         padding: '2px 10px', borderRadius: 12, fontSize: 'var(--text-xs)', fontWeight: 600,
-                                        background: 'rgba(130,80,223,0.12)', color: '#a371f7',
+                                        background: 'rgba(130,80,223,0.12)', color: 'var(--color-accent)',
                                     }}>In Stay</span>
                                 </div>
                                 <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
@@ -337,7 +339,7 @@ export default function MobileCheckoutPage() {
                                 </div>
                                 <div style={{ marginTop: 'var(--space-3)' }}>
                                     <button style={{
-                                        width: '100%', padding: '8px', background: 'rgba(248,81,73,0.08)', color: '#f85149',
+                                        width: '100%', padding: '8px', background: 'rgba(248,81,73,0.08)', color: 'var(--color-alert)',
                                         border: '1px solid rgba(248,81,73,0.2)', borderRadius: 'var(--radius-sm)',
                                         fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
                                     }}>Start Check-out →</button>
@@ -371,7 +373,7 @@ export default function MobileCheckoutPage() {
                                 flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
                                 background: inspectionOk === opt.ok ? (opt.ok ? 'rgba(63,185,80,0.1)' : 'rgba(248,81,73,0.1)') : 'var(--color-surface-2)',
                                 border: `1px solid ${inspectionOk === opt.ok ? (opt.ok ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)') : 'var(--color-border)'}`,
-                                color: inspectionOk === opt.ok ? (opt.ok ? '#3fb950' : '#f85149') : 'var(--color-text-dim)',
+                                color: inspectionOk === opt.ok ? (opt.ok ? 'var(--color-ok)' : 'var(--color-alert)') : 'var(--color-text-dim)',
                                 fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
                             }}>{opt.label}</button>
                         ))}
@@ -461,7 +463,7 @@ export default function MobileCheckoutPage() {
                                 marginBottom: 'var(--space-4)',
                             }}>
                                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Deposit Held</div>
-                                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: '#d29922', marginTop: 4 }}>
+                                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-warn)', marginTop: 4 }}>
                                     {selected.deposit_currency || 'THB'} {selected.deposit_amount}
                                 </div>
                             </div>
@@ -470,7 +472,7 @@ export default function MobileCheckoutPage() {
                                 <div style={{
                                     padding: 'var(--space-3)', background: 'rgba(248,81,73,0.05)',
                                     border: '1px solid rgba(248,81,73,0.15)', borderRadius: 'var(--radius-sm)',
-                                    fontSize: 'var(--text-xs)', color: '#f85149', marginBottom: 'var(--space-4)',
+                                    fontSize: 'var(--text-xs)', color: 'var(--color-alert)', marginBottom: 'var(--space-4)',
                                 }}>
                                     ⚠ {issues.length} issue(s) reported — consider deduction
                                 </div>
@@ -572,7 +574,7 @@ export default function MobileCheckoutPage() {
                         border: '1px solid rgba(63,185,80,0.2)', marginBottom: 'var(--space-4)',
                     }}>
                         <div style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-2)' }}>✅</div>
-                        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: '#3fb950' }}>
+                        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-ok)' }}>
                             Check-out Complete
                         </div>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
@@ -594,5 +596,6 @@ export default function MobileCheckoutPage() {
                 { href: '/ops/maintenance', label: 'Maint.', icon: '🔧' },
             ]} />
         </div>
+        </MobileStaffShell>
     );
 }

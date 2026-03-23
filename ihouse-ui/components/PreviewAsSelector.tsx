@@ -1,10 +1,13 @@
 'use client';
 
 /**
- * Phase 847 — Admin Preview Parallel Tabs
+ * Phase 875 — Admin Preview As Selector (Canonical Dropdown)
  * 
  * Embedded directly in the sidebar for admins.
  * Opens preview in a new tab leaving the admin session untouched.
+ * 
+ * Dropdown targets follow the canonical preview-dropdown-matrix.md:
+ * 7 targets — no "Worker" in user-facing language.
  */
 
 import { usePreview } from '../lib/PreviewContext';
@@ -37,7 +40,7 @@ export default function PreviewAsSelector() {
                     display: 'flex', flexDirection: 'column', gap: 6,
                 }}>
                     <span style={{ fontSize: 'var(--text-xs)', color: '#EAB308', fontWeight: 600 }}>
-                        👀 SIMULATING
+                        👀 PREVIEWING
                     </span>
                     <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', textTransform: 'capitalize' }}>
                         {previewRole.replace('_', ' ')}
@@ -77,11 +80,12 @@ export default function PreviewAsSelector() {
                 }}
             >
                 <option value="" disabled>👀 Preview UI As...</option>
-                <option value="manager">Manager</option>
+                <option value="manager">Ops Manager</option>
                 <option value="owner">Owner</option>
-                <option value="worker">Worker (General)</option>
                 <option value="cleaner">Cleaner</option>
-                <option value="checkin_staff">Check-in Staff</option>
+                <option value="checkin">Check-in Staff</option>
+                <option value="checkout">Check-out Staff</option>
+                <option value="checkin_checkout">Check-in &amp; Check-out</option>
                 <option value="maintenance">Maintenance</option>
             </select>
         </div>

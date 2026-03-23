@@ -12,6 +12,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { api, apiFetch, WorkerTask, WorkerChannel } from '../../../lib/api';
 import { useLanguage } from '../../../lib/LanguageContext';
 import CompactLangSwitcher from '../../../components/CompactLangSwitcher';
+import MobileStaffShell from '../../../components/MobileStaffShell';
 import { useRouter } from 'next/navigation';
 
 // ---------------------------------------------------------------------------
@@ -20,10 +21,10 @@ import { useRouter } from 'next/navigation';
 
 function priorityBg(p: string) {
     switch (p?.toUpperCase()) {
-        case 'CRITICAL': return '#C45B4A'; // Warm Alert
-        case 'HIGH': return '#B56E45'; // Signal Copper
-        case 'MEDIUM': return '#334036'; // Deep Moss
-        default: return '#6B7258'; // Quiet Olive
+        case 'CRITICAL': return 'var(--color-alert)'; // Warm Alert
+        case 'HIGH': return 'var(--color-accent)'; // Signal Copper
+        case 'MEDIUM': return 'var(--color-primary)'; // Deep Moss
+        default: return 'var(--color-muted)'; // Quiet Olive
     }
 }
 
@@ -118,7 +119,7 @@ function SlaCountdown({ task }: { task: WorkerTask }) {
         <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
             fontSize: 13, fontFamily: 'monospace',
-            color: gone ? '#8FA39B' : hot ? '#C45B4A' : '#B56E45',
+            color: gone ? 'var(--color-sage)' : hot ? 'var(--color-alert)' : 'var(--color-accent)',
             animation: hot && !gone ? 'pulse 1s infinite' : 'none',
             marginTop: 6,
         }}>
@@ -147,7 +148,7 @@ function TaskCard({ task, propName, onTap }: CardProps) {
             onClick={onTap}
             style={{
                 background: 'var(--color-surface, #1F2329)',
-                border: `1px solid ${overdue ? '#C45B4A80' : isCrit ? '#C45B4A50' : '#F8F6F212'}`,
+                border: `1px solid ${overdue ? 'var(--color-alert)' : isCrit ? 'rgba(196,91,74,0.3)' : 'rgba(248,246,242,0.07)'}`,
                 borderRadius: 16,
                 padding: '16px 16px 16px 20px',
                 position: 'relative',
@@ -167,11 +168,11 @@ function TaskCard({ task, propName, onTap }: CardProps) {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <div style={{ paddingRight: 10 }}>
-                    <div style={{ fontSize: 11, color: '#8FA39B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span style={{ fontSize: 13 }}>{kindEmoji(task.kind)}</span>
                         <span style={{ fontWeight: 600 }}>{task.worker_role?.replace('_', ' ')}</span>
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#F8F6F2', lineHeight: 1.3 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.3 }}>
                         {kindLabelEn(task.kind)}
                     </div>
                 </div>
@@ -179,22 +180,22 @@ function TaskCard({ task, propName, onTap }: CardProps) {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                     <span style={{
                         fontSize: 10, fontWeight: 800, letterSpacing: '0.05em',
-                        color: task.priority === 'CRITICAL' || task.priority === 'HIGH' ? '#F8F6F2' : '#D6C8B7',
+                        color: task.priority === 'CRITICAL' || task.priority === 'HIGH' ? 'var(--color-text)' : 'var(--color-text-dim)',
                         background: priorityBg(task.priority),
                         borderRadius: 4, padding: '3px 8px',
                     }}>{task.priority}</span>
                     <span style={{
-                        fontSize: 11, fontWeight: 500, color: task.status?.toUpperCase() === 'COMPLETED' ? '#6B7258' : '#8FA39B',
+                        fontSize: 11, fontWeight: 500, color: task.status?.toUpperCase() === 'COMPLETED' ? 'var(--color-muted)' : 'var(--color-sage)',
                     }}>{t(`status.${(task.status || '').toLowerCase()}` as Parameters<typeof t>[0]) || statusLabelEn(task.status)}</span>
                 </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#D6C8B7' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-dim)' }}>
                         🏡 <span style={{ fontWeight: 600, fontSize: 13 }}>{displayName}</span>
                     </span>
-                    <span style={{ color: overdue ? '#C45B4A' : '#8FA39B', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ color: overdue ? 'var(--color-alert)' : 'var(--color-sage)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                         🕒 {overdue && <span style={{ fontWeight: 700 }}>{t('worker.overdue') || 'Overdue'} - </span>}
                         {task.due_time ? fmtTime(`${task.due_date}T${task.due_time}`, l) : fmtDate(task.due_date, l)}
                     </span>
@@ -223,9 +224,9 @@ function TaskCard({ task, propName, onTap }: CardProps) {
                         }
                     }}
                     style={{
-                        background: '#334036',
-                        color: '#F8F6F2',
-                        border: '1px solid #6B7258',
+                        background: 'var(--color-primary)',
+                        color: 'var(--color-text)',
+                        border: '1px solid var(--color-muted)',
                         padding: '6px 12px',
                         borderRadius: 8,
                         fontSize: 12,
@@ -276,48 +277,48 @@ function DetailSheet({ task, propName, onClose, onAck, onComplete, loading }: Sh
             <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, backdropFilter: 'blur(4px)' }} />
             <div style={{
                 position: 'fixed', bottom: 0, left: 0, right: 0,
-                background: '#171A1F', borderRadius: '24px 24px 0 0', zIndex: 101,
+                background: 'var(--color-bg)', borderRadius: '24px 24px 0 0', zIndex: 101,
                 padding: '0 0 env(safe-area-inset-bottom,24px)', maxHeight: '85vh', overflowY: 'auto',
                 animation: 'slideUp 240ms cubic-bezier(0.32,0.72,0,1)',
             }}>
                 <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
-                    <div style={{ width: 40, height: 4, background: '#3A424E', borderRadius: 99 }} />
+                    <div style={{ width: 40, height: 4, background: 'var(--color-surface-3)', borderRadius: 99 }} />
                 </div>
 
                 <div style={{ padding: '12px 20px 28px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                         <div>
-                            <div style={{ fontSize: 12, color: '#8FA39B', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ fontSize: 12, color: 'var(--color-sage)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {kindEmoji(task.kind)} {task.worker_role?.replace('_', ' ')}
                             </div>
-                            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#F8F6F2', lineHeight: 1.2 }}>
+                            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--color-text)', lineHeight: 1.2 }}>
                                 {kindLabelEn(task.kind)}
                             </h2>
                         </div>
                         <button onClick={onClose} style={{
-                            background: '#22272E', border: 'none', color: '#8FA39B',
+                            background: 'var(--color-surface-2)', border: 'none', color: 'var(--color-sage)',
                             width: 32, height: 32, borderRadius: 16, fontSize: 16, cursor: 'pointer'
                         }}>✕</button>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-                        <div style={{ background: '#22272E', padding: 12, borderRadius: 12 }}>
-                            <div style={{ fontSize: 11, color: '#8FA39B', marginBottom: 2 }}>Property</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: '#F8F6F2' }}>{propName || task.property_id}</div>
+                        <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 12 }}>
+                            <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 2 }}>Property</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{propName || task.property_id}</div>
                         </div>
-                        <div style={{ background: '#22272E', padding: 12, borderRadius: 12 }}>
-                            <div style={{ fontSize: 11, color: '#8FA39B', marginBottom: 2 }}>Due</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: overdue ? '#C45B4A' : '#F8F6F2' }}>
+                        <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 12 }}>
+                            <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 2 }}>Due</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: overdue ? 'var(--color-alert)' : 'var(--color-text)' }}>
                                 {task.due_time ? fmtTime(`${task.due_date}T${task.due_time}`, l) : fmtDate(task.due_date, l)}
                             </div>
                         </div>
-                        <div style={{ background: '#22272E', padding: 12, borderRadius: 12 }}>
-                            <div style={{ fontSize: 11, color: '#8FA39B', marginBottom: 2 }}>Priority</div>
+                        <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 12 }}>
+                            <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 2 }}>Priority</div>
                             <div style={{ fontSize: 14, fontWeight: 600, color: priorityBg(task.priority) }}>{task.priority}</div>
                         </div>
-                        <div style={{ background: '#22272E', padding: 12, borderRadius: 12 }}>
-                            <div style={{ fontSize: 11, color: '#8FA39B', marginBottom: 2 }}>Status</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: '#F8F6F2' }}>{statusLabelEn(task.status)}</div>
+                        <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 12 }}>
+                            <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 2 }}>Status</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{statusLabelEn(task.status)}</div>
                         </div>
                     </div>
 
@@ -333,7 +334,7 @@ function DetailSheet({ task, propName, onClose, onAck, onComplete, loading }: Sh
                                     onClick={() => onAck(task.task_id)}
                                     style={{
                                         flex: 1, padding: 16, borderRadius: 12, border: 'none',
-                                        background: '#334036', color: '#F8F6F2', fontSize: 16, fontWeight: 700,
+                                        background: 'var(--color-primary)', color: 'var(--color-text)', fontSize: 16, fontWeight: 700,
                                         opacity: loading ? 0.5 : 1, cursor: 'pointer',
                                     }}
                                 >
@@ -346,7 +347,7 @@ function DetailSheet({ task, propName, onClose, onAck, onComplete, loading }: Sh
                                     onClick={() => setView('complete')}
                                     style={{
                                         flex: 1, padding: 16, borderRadius: 12, border: 'none',
-                                        background: '#6B7258', color: '#F8F6F2', fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                                        background: 'var(--color-muted)', color: 'var(--color-text)', fontSize: 16, fontWeight: 700, cursor: 'pointer',
                                     }}
                                 >
                                     {(t('worker.btn_complete' as any) || 'Mark Complete')}
@@ -354,7 +355,7 @@ function DetailSheet({ task, propName, onClose, onAck, onComplete, loading }: Sh
                             )}
 
                             {isDone && (
-                                <div style={{ flex: 1, textAlign: 'center', padding: 16, color: '#8FA39B', background: '#22272E', borderRadius: 12 }}>
+                                <div style={{ flex: 1, textAlign: 'center', padding: 16, color: 'var(--color-sage)', background: 'var(--color-surface-2)', borderRadius: 12 }}>
                                     Task completed or canceled.
                                 </div>
                             )}
@@ -363,26 +364,26 @@ function DetailSheet({ task, propName, onClose, onAck, onComplete, loading }: Sh
 
                     {view === 'complete' && (
                         <div style={{ animation: 'fadeIn 200ms ease' }}>
-                            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#F8F6F2', marginBottom: 8, marginTop: 0 }}>Add Notes (Optional)</h3>
+                            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', marginBottom: 8, marginTop: 0 }}>Add Notes (Optional)</h3>
                             <textarea
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
                                 placeholder="Any issues or details?"
                                 style={{
-                                    width: '100%', height: 100, background: '#22272E', color: '#F8F6F2',
-                                    border: '1px solid #3A424E', borderRadius: 12, padding: 12,
+                                    width: '100%', height: 100, background: 'var(--color-surface-2)', color: 'var(--color-text)',
+                                    border: '1px solid var(--color-border)', borderRadius: 12, padding: 12,
                                     fontSize: 14, resize: 'none', marginBottom: 16,
                                 }}
                             />
                             <div style={{ display: 'flex', gap: 12 }}>
                                 <button
                                     onClick={() => setView('detail')}
-                                    style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: '#3A424E', color: '#F8F6F2', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+                                    style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: 'var(--color-surface-3)', color: 'var(--color-text)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
                                 >Cancel</button>
                                 <button
                                     disabled={loading}
                                     onClick={() => onComplete(task.task_id, notes)}
-                                    style={{ flex: 2, padding: 14, borderRadius: 12, border: 'none', background: '#6B7258', color: '#F8F6F2', fontSize: 15, fontWeight: 700, opacity: loading ? 0.5 : 1, cursor: 'pointer' }}
+                                    style={{ flex: 2, padding: 14, borderRadius: 12, border: 'none', background: 'var(--color-muted)', color: 'var(--color-text)', fontSize: 15, fontWeight: 700, opacity: loading ? 0.5 : 1, cursor: 'pointer' }}
                                 >{loading ? '...' : 'Confirm Complete'}</button>
                             </div>
                         </div>
@@ -429,23 +430,23 @@ function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void
                         style={{
                             flex: 1, background: 'none', border: 'none',
                             padding: '12px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                            color: active ? '#B56E45' : '#6b7280',
+                            color: active ? 'var(--color-accent)' : 'var(--color-text-faint)',
                             transition: 'color 0.2s', cursor: 'pointer', position: 'relative',
                         }}
                     >
                         <div style={{ position: 'relative' }}>
                             <div style={{ fontSize: 22, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: active ? 1 : 0.7 }}>
                                 {item.icon === 'N' ? (
-                                    <div style={{ width: 24, height: 24, borderRadius: 12, background: active ? '#B56E45' : '#3A424E', color: '#171A1F', fontWeight: 800, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>N</div>
+                                    <div style={{ width: 24, height: 24, borderRadius: 12, background: active ? 'var(--color-accent)' : 'var(--color-surface-3)', color: 'var(--color-bg)', fontWeight: 800, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>N</div>
                                 ) : item.icon}
                             </div>
                             {showBadge && (
                                 <div style={{
                                     position: 'absolute', top: -6, right: -10,
-                                    background: '#C45B4A', color: '#F8F6F2',
+                                    background: 'var(--color-alert)', color: 'var(--color-text)',
                                     fontSize: 10, fontWeight: 700,
                                     padding: '2px 6px', borderRadius: 99,
-                                    border: '2px solid #171A1F',
+                                    border: '2px solid var(--color-bg)',
                                 }}>{counts.todo > 99 ? '99+' : counts.todo}</div>
                             )}
                         </div>
@@ -461,23 +462,24 @@ function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void
 // Settings Tab
 // ---------------------------------------------------------------------------
 
-function SettingsTab({ showToast }: { showToast: (msg: string) => void }) {
+function SettingsTab({ showToast, userName }: { showToast: (msg: string) => void; userName?: string }) {
     const { lang, t } = useLanguage();
     const l = getLocale(lang);
     const router = useRouter();
+    const initial = (userName || 'S').charAt(0).toUpperCase();
 
     return (
         <div style={{ padding: '20px', animation: 'fadeIn 200ms ease' }}>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#F8F6F2', marginBottom: 24 }}>My Profile</h2>
+            <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--color-text)', marginBottom: 24 }}>My Profile</h2>
             
-            <div style={{ background: '#22272E', borderRadius: 16, overflow: 'hidden', marginBottom: 24 }}>
-                <div style={{ padding: 20, borderBottom: '1px solid #3A424E', display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 60, height: 60, borderRadius: 30, background: '#334036', color: '#F8F6F2', fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        W
+            <div style={{ background: 'var(--color-surface-2)', borderRadius: 16, overflow: 'hidden', marginBottom: 24 }}>
+                <div style={{ padding: 20, borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ width: 60, height: 60, borderRadius: 30, background: 'var(--color-primary)', color: 'var(--color-text)', fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {initial}
                     </div>
                     <div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: '#F8F6F2' }}>Worker Profile</div>
-                        <div style={{ fontSize: 14, color: '#8FA39B' }}>iHouse Staff</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>My Profile</div>
+                        <div style={{ fontSize: 14, color: 'var(--color-sage)' }}>Domaniqo Staff</div>
                     </div>
                 </div>
             </div>
@@ -488,8 +490,8 @@ function SettingsTab({ showToast }: { showToast: (msg: string) => void }) {
                     router.push('/login');
                 }}
                 style={{
-                    width: '100%', padding: 16, background: '#C45B4A20', color: '#C45B4A',
-                    border: '1px solid #C45B4A50', borderRadius: 12, fontSize: 16, fontWeight: 700,
+                    width: '100%', padding: 16, background: 'rgba(196,91,74,0.12)', color: 'var(--color-alert)',
+                    border: '1px solid rgba(196,91,74,0.3)', borderRadius: 12, fontSize: 16, fontWeight: 700,
                     cursor: 'pointer'
                 }}
             >
@@ -513,7 +515,7 @@ export default function WorkerPage() {
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
     const [userName, setUserName] = useState('');
-    const [userRole, setUserRole] = useState('Staff');
+    const [userRole, setUserRole] = useState('Staff Member');
     const { lang, t } = useLanguage();
     const l = getLocale(lang);
     const router = useRouter();
@@ -547,11 +549,18 @@ export default function WorkerPage() {
         }).catch(() => {});
 
         // Parse token for greeting
+        const ROLE_DISPLAY_LABELS: Record<string, string> = {
+            admin: 'Admin', manager: 'Ops Manager', owner: 'Owner',
+            worker: 'Staff Member', cleaner: 'Cleaner',
+            checkin: 'Check-in', checkin_staff: 'Check-in',
+            checkout: 'Check-out', maintenance: 'Maintenance',
+            ops: 'Operations',
+        };
         const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
         if (token) {
             const p = parseJwt(token);
             if (p.email) setUserName(p.email.split('@')[0]);
-            if (p.role) setUserRole(p.role);
+            if (p.role) setUserRole(ROLE_DISPLAY_LABELS[p.role] || 'Staff Member');
         }
     }, [load]);
 
@@ -605,19 +614,18 @@ export default function WorkerPage() {
     const visible = tab === 'todo' ? todo : done;
 
     return (
-        <>
+        <MobileStaffShell hideHeader>
             <style>{`
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
         @keyframes slideUp { from { opacity:0; transform:translateY(24px) } to { opacity:1; transform:translateY(0) } }
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
         @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(12px) } to { opacity:1; transform:translateX(-50%) translateY(0) } }
         * { box-sizing:border-box }
-        /* We use viewport fixes because AdaptiveShell will center us on Desktop */
       `}</style>
 
             <div style={{
                 minHeight: '100vh',
-                color: '#F8F6F2', fontFamily: "'Inter', -apple-system, sans-serif",
+                color: 'var(--color-text)', fontFamily: "'Inter', -apple-system, sans-serif",
                 paddingBottom: 80,
             }}>
                 {/* Header (Hidden on Dashboard because Dasboard has its own header) */}
@@ -629,10 +637,10 @@ export default function WorkerPage() {
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                     }}>
                         <div>
-                            <h1 style={{ fontSize: 24, fontWeight: 800, color: '#F8F6F2', margin: 0, letterSpacing: '-0.03em' }}>
+                            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.03em' }}>
                                 {tab === 'todo' ? 'Tasks' : tab === 'done' ? 'Done' : 'Profile'}
                             </h1>
-                            <p style={{ fontSize: 13, color: '#8FA39B', margin: '2px 0 0' }}>
+                            <p style={{ fontSize: 13, color: 'var(--color-sage)', margin: '2px 0 0' }}>
                                 {new Date().toLocaleDateString(getLocale(lang), { weekday: 'long', month: 'short', day: 'numeric' })}
                             </p>
                         </div>
@@ -650,7 +658,7 @@ export default function WorkerPage() {
                                 <CompactLangSwitcher theme="dark" position="inline" />
                                 <button
                                     onClick={() => { localStorage.removeItem('ihouse_token'); router.push('/login'); }}
-                                    style={{ background: 'none', border: 'none', color: '#8FA39B', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                    style={{ background: 'none', border: 'none', color: 'var(--color-sage)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                                 >
                                     ➔ Sign Out
                                 </button>
@@ -660,13 +668,13 @@ export default function WorkerPage() {
                         <div style={{ padding: '0 20px' }}>
 
                             {/* Welcome Card */}
-                            <div style={{ background: '#22272E', borderRadius: 16, padding: 20, marginBottom: 24 }}>
-                                <div style={{ fontSize: 11, color: '#8FA39B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Welcome</div>
+                            <div style={{ background: 'var(--color-surface-2)', borderRadius: 16, padding: 20, marginBottom: 24 }}>
+                                <div style={{ fontSize: 11, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Welcome</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <div style={{ fontSize: 24, color: '#F8F6F2' }}>
+                                    <div style={{ fontSize: 24, color: 'var(--color-text)' }}>
                                         Hello, <span style={{ fontWeight: 700 }}>{userName || 'Staff'}</span>
                                     </div>
-                                    <span style={{ background: '#3A424E', color: '#D6C8B7', fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>
+                                    <span style={{ background: 'var(--color-surface-3)', color: 'var(--color-text-dim)', fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>
                                         {userRole}
                                     </span>
                                 </div>
@@ -674,12 +682,12 @@ export default function WorkerPage() {
 
                             {/* Quick Actions */}
                             <div style={{ marginBottom: 24 }}>
-                                <div style={{ fontSize: 12, color: '#8FA39B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Quick Actions</div>
+                                <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Quick Actions</div>
                                 <div style={{ display: 'flex', gap: 12 }}>
-                                    <button onClick={() => setTab('todo')} style={{ flex: 1, background: '#22272E', border: 'none', borderRadius: 12, padding: '16px', color: '#F8F6F2', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                    <button onClick={() => setTab('todo')} style={{ flex: 1, background: 'var(--color-surface-2)', border: 'none', borderRadius: 12, padding: '16px', color: 'var(--color-text)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                                         📋 My Tasks
                                     </button>
-                                    <button onClick={() => setTab('settings')} style={{ flex: 1, background: '#22272E', border: 'none', borderRadius: 12, padding: '16px', color: '#F8F6F2', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                    <button onClick={() => setTab('settings')} style={{ flex: 1, background: 'var(--color-surface-2)', border: 'none', borderRadius: 12, padding: '16px', color: 'var(--color-text)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                                         ⚙️ My Profile
                                     </button>
                                 </div>
@@ -687,33 +695,33 @@ export default function WorkerPage() {
 
                             {/* My Status */}
                             <div style={{ marginBottom: 32 }}>
-                                <div style={{ fontSize: 12, color: '#8FA39B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>My Status</div>
+                                <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>My Status</div>
                                 <div style={{ display: 'flex', gap: 12 }}>
-                                    <div style={{ flex: 1, background: '#22272E', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: '#8FA39B', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>📋 Open Tasks</div>
-                                        <div style={{ fontSize: 28, fontWeight: 700, color: '#F8F6F2' }}>{openCount}</div>
+                                    <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>📋 Open Tasks</div>
+                                        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text)' }}>{openCount}</div>
                                     </div>
-                                    <div style={{ flex: 1, background: '#22272E', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: '#8FA39B', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>🕒 Overdue</div>
-                                        <div style={{ fontSize: 28, fontWeight: 700, color: overdueCount > 0 ? '#C45B4A' : '#F8F6F2' }}>{overdueCount}</div>
+                                    <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>🕒 Overdue</div>
+                                        <div style={{ fontSize: 28, fontWeight: 700, color: overdueCount > 0 ? 'var(--color-alert)' : 'var(--color-text)' }}>{overdueCount}</div>
                                     </div>
-                                    <div style={{ flex: 1, background: '#22272E', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: '#8FA39B', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>📅 Due Today</div>
-                                        <div style={{ fontSize: 28, fontWeight: 700, color: '#F8F6F2' }}>{dueTodayCount}</div>
+                                    <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>📅 Due Today</div>
+                                        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text)' }}>{dueTodayCount}</div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Next Tasks */}
                             <div>
-                                <div style={{ fontSize: 12, color: '#8FA39B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Next Tasks</div>
-                                <div style={{ background: '#22272E', borderRadius: 16, padding: '32px 20px', textAlign: 'center' }}>
+                                <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Next Tasks</div>
+                                <div style={{ background: 'var(--color-surface-2)', borderRadius: 16, padding: '32px 20px', textAlign: 'center' }}>
                                     {todo.length === 0 ? (
-                                        <div style={{ color: '#8FA39B', fontSize: 14 }}>No tasks yet.</div>
+                                        <div style={{ color: 'var(--color-sage)', fontSize: 14 }}>No tasks yet.</div>
                                     ) : (
                                         <>
-                                            <div style={{ color: '#F8F6F2', fontSize: 15, fontWeight: 600, marginBottom: 16 }}>You have {todo.length} tasks in your queue.</div>
-                                            <button onClick={() => setTab('todo')} style={{ background: '#334036', color: '#F8F6F2', border: 'none', padding: '10px 20px', borderRadius: 99, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                                            <div style={{ color: 'var(--color-text)', fontSize: 15, fontWeight: 600, marginBottom: 16 }}>You have {todo.length} tasks in your queue.</div>
+                                            <button onClick={() => setTab('todo')} style={{ background: 'var(--color-primary)', color: 'var(--color-text)', border: 'none', padding: '10px 20px', borderRadius: 99, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                                                 View My Tasks ➔
                                             </button>
                                         </>
@@ -731,12 +739,12 @@ export default function WorkerPage() {
                         {visible.length === 0 && (
                             <div style={{
                                 textAlign: 'center', padding: '60px 20px',
-                                color: '#6B7258',
+                                color: 'var(--color-muted)',
                             }}>
                                 <div style={{ fontSize: 48, marginBottom: 12 }}>
                                     {tab === 'done' ? '✅' : '🎉'}
                                 </div>
-                                <div style={{ fontSize: 18, fontWeight: 600, color: '#8FA39B' }}>
+                                <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-sage)' }}>
                                     {tab === 'done' ? 'No completed tasks yet' : 'All clear!'}
                                 </div>
                             </div>
@@ -750,7 +758,7 @@ export default function WorkerPage() {
                 )}
 
                 {/* Settings tab */}
-                {tab === 'settings' && <SettingsTab showToast={showToast} />}
+                {tab === 'settings' && <SettingsTab showToast={showToast} userName={userName} />}
 
                 {/* Detail Sheet */}
                 {selected && (
@@ -767,19 +775,19 @@ export default function WorkerPage() {
 
             {/* Error Toast */}
             {error && (
-                <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', background: '#C45B4A', color: '#F8F6F2', padding: '12px 24px', borderRadius: 12, zIndex: 200, boxShadow: '0 4px 12px rgba(239,68,68,0.3)' }}>
+                <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-alert)', color: 'var(--color-text)', padding: '12px 24px', borderRadius: 12, zIndex: 200, boxShadow: '0 4px 12px rgba(239,68,68,0.3)' }}>
                     {error}
                 </div>
             )}
 
             {/* Success Toast */}
             {toast && (
-                <div style={{ position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)', background: '#6B7258', color: '#F8F6F2', padding: '12px 24px', borderRadius: 99, zIndex: 100, fontWeight: 600, animation: 'toastIn 300ms cubic-bezier(0.34,1.56,0.64,1)', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+                <div style={{ position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-muted)', color: 'var(--color-text)', padding: '12px 24px', borderRadius: 99, zIndex: 100, fontWeight: 600, animation: 'toastIn 300ms cubic-bezier(0.34,1.56,0.64,1)', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
                     {toast}
                 </div>
             )}
 
             <BottomNav tab={tab} setTab={setTab} counts={{ todo: todo.length, done: done.length }} />
-        </>
+        </MobileStaffShell>
     );
 }

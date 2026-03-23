@@ -41,7 +41,7 @@ export default function WelcomePage() {
 
         if (!identity) return;
 
-        // Worker → existing worker app
+        // Staff member → staff task dashboard
         if (identity.role === 'worker' || identity.role === 'cleaner' || identity.role === 'maintenance') {
             router.replace('/worker');
             return;

@@ -20,7 +20,7 @@ const LABEL_MAP: Record<string, string> = {
     dashboard: 'Dashboard',
     settings: 'Settings',
     tasks: 'Tasks',
-    worker: 'Worker',
+    worker: 'Staff',
     maintenance: 'Maintenance',
     owner: 'Owner',
     manager: 'Manager',

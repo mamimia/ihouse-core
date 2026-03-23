@@ -77,7 +77,7 @@ export default function PendingRequestsPage() {
     if (!confirm('Approve this worker and provision their access?')) return;
     const role = metadata?.intended_role || 'worker';
     const workerRoles = metadata?.worker_data?.worker_roles || [];
-    const displayName = metadata?.display_name || 'Worker';
+    const displayName = metadata?.display_name || 'Staff Member';
 
     try {
       const resp = await apiFetch<{ magic_link?: string }>(`/admin/staff-onboarding/${id}/approve`, {
@@ -161,7 +161,7 @@ export default function PendingRequestsPage() {
         <div>
           <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>Pending Onboarding Requests</h1>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', marginTop: 4 }}>
-            Generate public invitation links for new workers, and approve their submitted details here.
+            Generate public invitation links for new staff members, and approve their submitted details here.
           </p>
         </div>
       </div>
@@ -218,7 +218,7 @@ export default function PendingRequestsPage() {
             onChange={e => setGenAccountRole(e.target.value)}
             style={{ ...selectStyle, width: '150px' }}
           >
-            <option value="worker">Worker</option>
+            <option value="worker">Staff Member</option>
             <option value="owner">Owner</option>
           </select>
           <select
@@ -347,8 +347,8 @@ export default function PendingRequestsPage() {
 
                   <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-sm)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
                     <div>
-                      <strong style={{ color: 'var(--color-text-dim)', fontSize: '11px', textTransform: 'uppercase' }}>Worker Roles</strong>
-                      <div style={{ color: '#58a6ff', fontWeight: 600, marginTop: 2 }}>{wdata.worker_roles?.join(', ') || 'Worker'}</div>
+                      <strong style={{ color: 'var(--color-text-dim)', fontSize: '11px', textTransform: 'uppercase' }}>Staff Roles</strong>
+                      <div style={{ color: '#58a6ff', fontWeight: 600, marginTop: 2 }}>{wdata.worker_roles?.join(', ') || 'Staff Member'}</div>
                     </div>
                     <div>
                       <strong style={{ color: 'var(--color-text-dim)', fontSize: '11px', textTransform: 'uppercase' }}>Emergency</strong>

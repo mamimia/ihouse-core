@@ -294,5 +294,5 @@ PMS / BMS rules:
   9. Propose 10 phases
   10. Get user approval
   11. Execute with UI proof checkpoints
-  12. Final phase = audit + alignment + handoff
+  12. Final phase = audit + alignment of all protocols and docs + and ask user if he like to get the handoff now
 ```

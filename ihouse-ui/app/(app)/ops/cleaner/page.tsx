@@ -13,6 +13,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getToken } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
+import MobileStaffShell from '@/components/MobileStaffShell';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -90,17 +91,17 @@ type Screen = 'list' | 'detail' | 'checklist' | 'complete' | 'success';
 // ======== Status Colors ========
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-    PENDING:       { bg: 'rgba(88,166,255,0.15)',  text: '#58a6ff', label: 'To Do' },
-    ACKNOWLEDGED:  { bg: 'rgba(210,153,34,0.15)',  text: '#d29922', label: 'Acknowledged' },
-    IN_PROGRESS:   { bg: 'rgba(163,113,247,0.15)', text: '#a371f7', label: 'In Progress' },
-    COMPLETED:     { bg: 'rgba(63,185,80,0.15)',   text: '#3fb950', label: 'Completed' },
+    PENDING:       { bg: 'rgba(143,163,155,0.15)',  text: 'var(--color-sage)', label: 'To Do' },
+    ACKNOWLEDGED:  { bg: 'rgba(212,149,106,0.15)',  text: 'var(--color-warn)', label: 'Acknowledged' },
+    IN_PROGRESS:   { bg: 'rgba(181,110,69,0.15)', text: 'var(--color-accent)', label: 'In Progress' },
+    COMPLETED:     { bg: 'rgba(74,222,128,0.15)',   text: 'var(--color-ok)', label: 'Completed' },
 };
 
 const SUPPLY_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
     unchecked: { bg: 'var(--color-surface-2)', text: 'var(--color-text-dim)', icon: '⬜' },
-    ok:        { bg: 'rgba(63,185,80,0.1)',    text: '#3fb950',              icon: '✅' },
-    low:       { bg: 'rgba(210,153,34,0.1)',   text: '#d29922',              icon: '⚠️' },
-    empty:     { bg: 'rgba(248,81,73,0.1)',     text: '#f85149',              icon: '🔴' },
+    ok:        { bg: 'rgba(74,222,128,0.1)',    text: 'var(--color-ok)',              icon: '✅' },
+    low:       { bg: 'rgba(212,149,106,0.1)',   text: 'var(--color-warn)',              icon: '⚠️' },
+    empty:     { bg: 'rgba(196,91,74,0.1)',     text: 'var(--color-alert)',              icon: '🔴' },
 };
 
 // ======== Reusable Components ========
@@ -120,7 +121,7 @@ function ActionButton({ label, onClick, variant = 'primary', disabled = false }:
 }) {
     const styles = {
         primary: { bg: 'var(--color-primary)', color: '#fff', border: 'none' },
-        danger: { bg: 'rgba(248,81,73,0.1)', color: '#f85149', border: '1px solid rgba(248,81,73,0.3)' },
+        danger: { bg: 'rgba(196,91,74,0.1)', color: 'var(--color-alert)', border: '1px solid rgba(196,91,74,0.3)' },
         outline: { bg: 'transparent', color: 'var(--color-text-dim)', border: '1px solid var(--color-border)' },
     };
     const s = styles[variant];
@@ -152,7 +153,7 @@ function ProgressBar({ done, total, label }: { done: number; total: number; labe
                 <span>{done}/{total}</span>
             </div>
             <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 2 }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#3fb950' : 'var(--color-primary)', borderRadius: 2, transition: 'width 0.3s' }} />
+                <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? 'var(--color-ok)' : 'var(--color-primary)', borderRadius: 2, transition: 'width 0.3s' }} />
             </div>
         </div>
     );
@@ -634,6 +635,7 @@ export default function MobileCleanerPage() {
     const nextDeadline = activeTasks.length > 0 ? (activeTasks[0].due_date || activeTasks[0].deadline || '—') : '—';
 
     return (
+        <MobileStaffShell hideHeader>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
             {/* Notice toast */}
             {notice && (
@@ -714,8 +716,8 @@ export default function MobileCleanerPage() {
                                 <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
                                     {t.status === 'PENDING' && (
                                         <button onClick={e => { e.stopPropagation(); acknowledgeTask(t); }} style={{
-                                            flex: 1, padding: '8px', background: 'rgba(210,153,34,0.1)', color: '#d29922',
-                                            border: '1px solid rgba(210,153,34,0.3)', borderRadius: 'var(--radius-sm)',
+                                            flex: 1, padding: '8px', background: 'rgba(212,149,106,0.1)', color: 'var(--color-warn)',
+                                            border: '1px solid rgba(212,149,106,0.3)', borderRadius: 'var(--radius-sm)',
                                             fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
                                         }}>Acknowledge</button>
                                     )}
@@ -740,7 +742,7 @@ export default function MobileCleanerPage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                                 {completedTasks.map(t => (
-                                    <div key={t.task_id} style={{ ...card, opacity: 0.6, borderColor: 'rgba(63,185,80,0.2)' }}>
+                                    <div key={t.task_id} style={{ ...card, opacity: 0.6, borderColor: 'rgba(74,222,128,0.2)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
                                                 <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>{t.property_name || t.property_id}</div>
@@ -778,8 +780,8 @@ export default function MobileCleanerPage() {
                     {selected.description && (
                         <div style={{
                             marginTop: 'var(--space-3)', padding: '8px 12px',
-                            background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.2)',
-                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: '#58a6ff',
+                            background: 'rgba(143,163,155,0.08)', border: '1px solid rgba(143,163,155,0.2)',
+                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-sage)',
                         }}>
                             📝 {selected.description}
                         </div>
@@ -830,10 +832,10 @@ export default function MobileCleanerPage() {
                             }}>
                                 <button onClick={() => toggleItem(idx)} style={{
                                     width: 28, height: 28, borderRadius: 6,
-                                    background: item.done ? 'rgba(63,185,80,0.15)' : 'var(--color-surface-2)',
-                                    border: `2px solid ${item.done ? '#3fb950' : 'var(--color-border)'}`,
+                                    background: item.done ? 'rgba(74,222,128,0.15)' : 'var(--color-surface-2)',
+                                    border: `2px solid ${item.done ? 'var(--color-ok)' : 'var(--color-border)'}`,
                                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 'var(--text-sm)', color: item.done ? '#3fb950' : 'transparent',
+                                    fontSize: 'var(--text-sm)', color: item.done ? 'var(--color-ok)' : 'transparent',
                                     transition: 'all 0.2s',
                                 }}>✓</button>
                                 <div style={{ flex: 1 }}>
@@ -846,9 +848,9 @@ export default function MobileCleanerPage() {
                                 {item.requires_photo && (
                                     <button onClick={() => capturePhoto(item.room)} style={{
                                         padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                                        background: photosUploaded.has(item.room) ? 'rgba(63,185,80,0.1)' : 'var(--color-surface-2)',
-                                        border: `1px solid ${photosUploaded.has(item.room) ? 'rgba(63,185,80,0.3)' : 'var(--color-border)'}`,
-                                        color: photosUploaded.has(item.room) ? '#3fb950' : 'var(--color-text-dim)',
+                                        background: photosUploaded.has(item.room) ? 'rgba(74,222,128,0.1)' : 'var(--color-surface-2)',
+                                        border: `1px solid ${photosUploaded.has(item.room) ? 'rgba(74,222,128,0.3)' : 'var(--color-border)'}`,
+                                        color: photosUploaded.has(item.room) ? 'var(--color-ok)' : 'var(--color-text-dim)',
                                         fontSize: 'var(--text-xs)', cursor: 'pointer',
                                     }}>{photosUploaded.has(item.room) ? '📷 ✓' : '📷'}</button>
                                 )}
@@ -886,8 +888,8 @@ export default function MobileCleanerPage() {
                         {!showIssueForm ? (
                             <button onClick={() => setShowIssueForm(true)} style={{
                                 width: '100%', padding: '12px', borderRadius: 'var(--radius-sm)',
-                                background: 'rgba(248,81,73,0.05)', border: '1px solid rgba(248,81,73,0.2)',
-                                color: '#f85149', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
+                                background: 'rgba(196,91,74,0.05)', border: '1px solid rgba(196,91,74,0.2)',
+                                color: 'var(--color-alert)', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
                             }}>🚨 Report Issue</button>
                         ) : (
                             <div>
@@ -913,13 +915,13 @@ export default function MobileCleanerPage() {
                                             <button key={sev} onClick={() => setIssueSeverity(sev)} style={{
                                                 flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
                                                 background: issueSeverity === sev
-                                                    ? (sev === 'critical' ? 'rgba(248,81,73,0.15)' : 'rgba(63,185,80,0.1)')
+                                                    ? (sev === 'critical' ? 'rgba(196,91,74,0.15)' : 'rgba(74,222,128,0.1)')
                                                     : 'var(--color-surface-2)',
                                                 border: `1px solid ${issueSeverity === sev
-                                                    ? (sev === 'critical' ? 'rgba(248,81,73,0.3)' : 'rgba(63,185,80,0.3)')
+                                                    ? (sev === 'critical' ? 'rgba(196,91,74,0.3)' : 'rgba(74,222,128,0.3)')
                                                     : 'var(--color-border)'}`,
                                                 color: issueSeverity === sev
-                                                    ? (sev === 'critical' ? '#f85149' : '#3fb950')
+                                                    ? (sev === 'critical' ? 'var(--color-alert)' : 'var(--color-ok)')
                                                     : 'var(--color-text-dim)',
                                                 fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
                                                 textTransform: 'capitalize',
@@ -929,8 +931,8 @@ export default function MobileCleanerPage() {
                                     {issueSeverity === 'critical' && (
                                         <div style={{
                                             marginTop: 'var(--space-2)', padding: '8px 12px',
-                                            background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)',
-                                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: '#f85149',
+                                            background: 'rgba(196,91,74,0.08)', border: '1px solid rgba(196,91,74,0.2)',
+                                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-alert)',
                                         }}>
                                             ⚠️ Critical issues will immediately block this property and trigger a 5-minute SLA.
                                         </div>
@@ -971,8 +973,8 @@ export default function MobileCleanerPage() {
 
                     <div style={{
                         padding: 'var(--space-6)', textAlign: 'center',
-                        background: 'rgba(63,185,80,0.05)', borderRadius: 'var(--radius-md)',
-                        border: '1px solid rgba(63,185,80,0.2)', marginBottom: 'var(--space-4)',
+                        background: 'rgba(74,222,128,0.05)', borderRadius: 'var(--radius-md)',
+                        border: '1px solid rgba(74,222,128,0.2)', marginBottom: 'var(--space-4)',
                     }}>
                         <div style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-2)' }}>🏠</div>
                         <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)' }}>
@@ -999,11 +1001,11 @@ export default function MobileCleanerPage() {
                 <div style={card}>
                     <div style={{
                         padding: 'var(--space-6)', textAlign: 'center',
-                        background: 'rgba(63,185,80,0.05)', borderRadius: 'var(--radius-md)',
-                        border: '1px solid rgba(63,185,80,0.2)', marginBottom: 'var(--space-4)',
+                        background: 'rgba(74,222,128,0.05)', borderRadius: 'var(--radius-md)',
+                        border: '1px solid rgba(74,222,128,0.2)', marginBottom: 'var(--space-4)',
                     }}>
                         <div style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-2)' }}>✅</div>
-                        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: '#3fb950' }}>
+                        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-ok)' }}>
                             Cleaning Complete
                         </div>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
@@ -1021,5 +1023,6 @@ export default function MobileCleanerPage() {
                 { href: '/tasks', label: 'Tasks', icon: '✓' },
             ]} />
         </div>
+        </MobileStaffShell>
     );
 }

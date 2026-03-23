@@ -14,6 +14,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getToken } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
+import MobileStaffShell from '@/components/MobileStaffShell';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -55,10 +56,10 @@ type Task = {
 };
 
 const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-    CRITICAL: { bg: 'rgba(248,81,73,0.12)', text: '#f85149', border: '#f8514930' },
-    HIGH: { bg: 'rgba(210,153,34,0.12)', text: '#d29922', border: '#d2992230' },
-    MEDIUM: { bg: 'rgba(88,166,255,0.12)', text: '#58a6ff', border: '#58a6ff30' },
-    LOW: { bg: 'rgba(110,118,129,0.12)', text: '#8b949e', border: '#8b949e30' },
+    CRITICAL: { bg: 'rgba(248,81,73,0.12)', text: 'var(--color-alert)', border: 'var(--color-alert)30' },
+    HIGH: { bg: 'rgba(210,153,34,0.12)', text: 'var(--color-warn)', border: 'var(--color-warn)30' },
+    MEDIUM: { bg: 'rgba(88,166,255,0.12)', text: 'var(--color-sage)', border: 'var(--color-sage)30' },
+    LOW: { bg: 'rgba(110,118,129,0.12)', text: 'var(--color-text-dim)', border: 'var(--color-text-dim)30' },
 };
 
 type ViewMode = 'list' | 'detail' | 'work';
@@ -201,6 +202,7 @@ export default function MobileMaintenancePage() {
     };
 
     return (
+        <MobileStaffShell hideHeader>
         <div style={{ maxWidth: 600, margin: '0 auto', paddingBottom: 80 }}>
             {/* Notice toast */}
             {notice && (
@@ -234,7 +236,7 @@ export default function MobileMaintenancePage() {
                         </div>
                         <div style={card}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Critical</div>
-                            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: criticalCount > 0 ? '#f85149' : 'var(--color-ok)', marginTop: 4 }}>
+                            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: criticalCount > 0 ? 'var(--color-alert)' : 'var(--color-ok)', marginTop: 4 }}>
                                 {criticalCount}
                             </div>
                         </div>
@@ -355,7 +357,7 @@ export default function MobileMaintenancePage() {
                             {selectedTask?.status === 'PENDING' && (
                                 <button onClick={acknowledgeTask} style={{
                                     width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
-                                    background: 'rgba(88,166,255,0.1)', color: '#58a6ff',
+                                    background: 'rgba(88,166,255,0.1)', color: 'var(--color-sage)',
                                     border: '1px solid rgba(88,166,255,0.3)',
                                     fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer',
                                 }}>Acknowledge Task</button>
@@ -406,7 +408,7 @@ export default function MobileMaintenancePage() {
                                 marginBottom: 'var(--space-4)',
                             }}>
                                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Started at</div>
-                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: '#3fb950' }}>
+                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-ok)' }}>
                                     {new Date(workStartTime).toLocaleTimeString()}
                                 </div>
                             </div>
@@ -484,5 +486,6 @@ export default function MobileMaintenancePage() {
                 { href: '/ops/maintenance', label: 'Maint.', icon: '🔧' },
             ]} />
         </div>
+        </MobileStaffShell>
     );
 }

@@ -645,7 +645,7 @@ export default function NewStaffPage() {
             {/* Worker Roles section */}
             {role === 'worker' && (
               <div>
-                <div style={sectionHeadStyle}>Worker Roles</div>
+                <div style={sectionHeadStyle}>Staff Roles</div>
                 {workerRoles.length === 0 && (
                   <div style={{ fontSize: 'var(--text-xs)', color: '#f85149', marginBottom: 'var(--space-2)' }}>
                     Select at least one worker role.
