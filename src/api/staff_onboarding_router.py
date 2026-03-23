@@ -212,6 +212,7 @@ async def upload_onboarding_photo(token: str, file: UploadFile = File(...)) -> J
 class OnboardingSubmitRequest(BaseModel):
     email: Optional[str] = None
     full_name: str
+    display_name: str = ""
     phone: str = ""
     language: str = "en"
     emergency_contact: str = ""
@@ -258,6 +259,7 @@ async def submit_onboarding(token: str, body: OnboardingSubmitRequest) -> JSONRe
         meta["worker_data"] = {
             "email": body.email,
             "full_name": body.full_name,
+            "display_name": body.display_name or body.full_name,
             "phone": body.phone,
             "language": body.language,
             "emergency_contact": body.emergency_contact,
@@ -408,6 +410,11 @@ async def approve_onboarding(
         comm_pref = wdata.get("comm_preference", {})
         date_of_birth = comm_pref.pop("date_of_birth", None)
         id_photo_url = comm_pref.pop("id_photo_url", None)
+        id_number = comm_pref.pop("id_number", None)
+        id_expiry_date = comm_pref.pop("id_expiry_date", None)
+        work_permit_photo_url = comm_pref.pop("work_permit_photo_url", None)
+        work_permit_number = comm_pref.pop("work_permit_number", None)
+        work_permit_expiry_date = comm_pref.pop("work_permit_expiry_date", None)
 
         perm_row = {
             "tenant_id": tenant_id,
@@ -415,7 +422,7 @@ async def approve_onboarding(
             "role": role,
             "worker_roles": wroles,
             "is_active": True,
-            "display_name": wdata.get("full_name", ""),
+            "display_name": wdata.get("display_name") or wdata.get("full_name", ""),
             "phone": wdata.get("phone", ""),
             "language": wdata.get("language", "en"),
             "photo_url": wdata.get("photo_url", ""),
@@ -430,6 +437,16 @@ async def approve_onboarding(
             perm_row["date_of_birth"] = date_of_birth
         if id_photo_url:
             perm_row["id_photo_url"] = id_photo_url
+        if id_number:
+            perm_row["id_number"] = id_number
+        if id_expiry_date:
+            perm_row["id_expiry_date"] = id_expiry_date
+        if work_permit_photo_url:
+            perm_row["work_permit_photo_url"] = work_permit_photo_url
+        if work_permit_number:
+            perm_row["work_permit_number"] = work_permit_number
+        if work_permit_expiry_date:
+            perm_row["work_permit_expiry_date"] = work_permit_expiry_date
 
         admin_client.table("tenant_permissions").upsert(
             perm_row, on_conflict="tenant_id,user_id"
@@ -472,3 +489,123 @@ async def reject_onboarding(request_id: str, tenant_id: str = Depends(jwt_auth))
          
     db.table("access_tokens").update({"metadata": meta, "revoked_at": now}).eq("id", request_id).execute()
     return JSONResponse(status_code=200, content={"status": "rejected"})
+
+
+class ResendAccessRequest(BaseModel):
+    channel: str = Field("email", description="Delivery channel: email, whatsapp, sms, telegram, line")
+
+
+@router.post(
+    "/admin/staff/{user_id}/resend-access",
+    tags=["admin"],
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def resend_access(
+    user_id: str,
+    body: ResendAccessRequest,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """Resend/send first-access link for an approved staff member."""
+    db = _get_db()
+
+    # Look up the staff member
+    res = db.table("tenant_permissions").select("*").eq("tenant_id", tenant_id).eq("user_id", user_id).limit(1).execute()
+    if not res.data:
+        return make_error_response(status_code=404, code="NOT_FOUND", extra={"detail": "Staff member not found."})
+
+    perm = res.data[0]
+    comm = perm.get("comm_preference") or {}
+
+    # For email delivery, use Supabase's built-in invite/magic-link mechanism
+    if body.channel == "email":
+        # Resolve email from Supabase Auth user
+        from supabase import create_client
+        url = os.environ["SUPABASE_URL"]
+        key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+        admin_client = create_client(url, key)
+
+        try:
+            user = admin_client.auth.admin.get_user_by_id(user_id)
+            email = user.user.email
+            if not email:
+                return make_error_response(status_code=400, code="NO_EMAIL", extra={"detail": "User has no email on file."})
+
+            frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
+            try:
+                admin_client.auth.admin.invite_user_by_email(
+                    email,
+                    options={
+                        "data": {
+                            "full_name": perm.get("display_name", ""),
+                            "force_reset": True,
+                        },
+                        "redirect_to": f"{frontend_url}/auth/callback"
+                    }
+                )
+                delivery_method = "email_invite"
+            except Exception as inv_exc:
+                if "already" in str(inv_exc).lower() or "exists" in str(inv_exc).lower():
+                    admin_client.auth.admin.generate_link(
+                        {"type": "magiclink", "email": email,
+                         "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
+                    )
+                    delivery_method = "magic_link_resent"
+                else:
+                    raise inv_exc
+
+            # Ensure force_reset is set
+            existing_meta = user.user.user_metadata or {}
+            existing_meta["force_reset"] = True
+            admin_client.auth.admin.update_user_by_id(user_id, {
+                "user_metadata": existing_meta
+            })
+
+            return JSONResponse(status_code=200, content={
+                "status": "sent",
+                "channel": "email",
+                "email": email,
+                "delivery_method": delivery_method,
+            })
+        except Exception as exc:
+            logger.exception("Failed to resend access via email: %s", exc)
+            return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+    else:
+        # For non-email channels, generate a magic link and return it for admin to send manually
+        from supabase import create_client
+        url = os.environ["SUPABASE_URL"]
+        key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+        admin_client = create_client(url, key)
+
+        try:
+            user = admin_client.auth.admin.get_user_by_id(user_id)
+            email = user.user.email
+            if not email:
+                return make_error_response(status_code=400, code="NO_EMAIL", extra={"detail": "User has no email on file."})
+
+            frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
+            link_res = admin_client.auth.admin.generate_link(
+                {"type": "magiclink", "email": email,
+                 "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
+            )
+
+            # Ensure force_reset
+            existing_meta = user.user.user_metadata or {}
+            existing_meta["force_reset"] = True
+            admin_client.auth.admin.update_user_by_id(user_id, {
+                "user_metadata": existing_meta
+            })
+
+            # Construct the link — the action_link from Supabase
+            action_link = getattr(link_res, 'properties', {}).get('action_link', '') if hasattr(link_res, 'properties') else ''
+            if not action_link and hasattr(link_res, 'data') and hasattr(link_res.data, 'properties'):
+                action_link = link_res.data.properties.get('action_link', '')
+
+            return JSONResponse(status_code=200, content={
+                "status": "link_generated",
+                "channel": body.channel,
+                "magic_link": action_link,
+                "message": f"Copy this link and send it to the worker via {body.channel}.",
+            })
+        except Exception as exc:
+            logger.exception("Failed to generate resend link: %s", exc)
+            return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

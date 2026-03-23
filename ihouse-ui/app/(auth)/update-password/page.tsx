@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch, performClientLogout } from '../../../lib/api';
+import { apiFetch, performClientLogout, getToken } from '../../../lib/api';
 import AuthCard from '../../../components/auth/AuthCard';
 import PasswordInput from '../../../components/auth/PasswordInput';
 import { usePasswordRules } from '@/hooks/usePasswordRules';
@@ -14,6 +14,19 @@ export default function UpdatePasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
+
+  // Decode JWT to extract role for welcome copy
+  useEffect(() => {
+    try {
+      const token = getToken();
+      if (!token) return;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      setUserRole(payload.role || '');
+      setUserName(payload.full_name || payload.display_name || '');
+    } catch { /* ignore decode errors */ }
+  }, []);
 
   const pwRules = usePasswordRules(password);
   const allRulesPass = pwRules.every(r => r.pass);
@@ -58,8 +71,27 @@ export default function UpdatePasswordPage() {
     boxSizing: 'border-box',
   };
 
+  const ROLE_LABELS: Record<string, string> = {
+    worker: 'Staff Member',
+    cleaner: 'Cleaner',
+    maintenance: 'Maintenance',
+    checkin: 'Check-in Agent',
+    checkout: 'Check-out Agent',
+    admin: 'Administrator',
+    manager: 'Operations Manager',
+    ops: 'Operations Manager',
+    owner: 'Property Owner',
+  };
+  const roleLabel = ROLE_LABELS[userRole] || '';
+  const welcomeTitle = userName
+    ? `Welcome, ${userName}`
+    : 'Set Your Password';
+  const welcomeSubtitle = roleLabel
+    ? `You're joining Domaniqo as ${roleLabel}. Please set a secure password to continue.`
+    : 'Please set a new password for your account to continue.';
+
   return (
-    <AuthCard title="Set Your Password" subtitle="Please set a new password for your account to continue.">
+    <AuthCard title={welcomeTitle} subtitle={welcomeSubtitle}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
         
         {error && (

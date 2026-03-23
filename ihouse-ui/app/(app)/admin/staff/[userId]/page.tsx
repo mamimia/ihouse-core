@@ -290,6 +290,9 @@ export default function EditStaffPage() {
   const [telegram, setTelegram] = useState('');
   const [line, setLine] = useState('');
   const [preferredContact, setPreferredContact] = useState('');
+  const [resendChannel, setResendChannel] = useState('email');
+  const [resendSending, setResendSending] = useState(false);
+  const [resendResult, setResendResult] = useState<{ status: string; message?: string; magic_link?: string } | null>(null);
   const [sms, setSms] = useState('');
 
   // Tab 4 — Documents & Compliance
@@ -1004,6 +1007,81 @@ export default function EditStaffPage() {
                   <option value="email">Email</option>
                 </select>
               </Field>
+            </div>
+
+            {/* Send / Resend Access Link */}
+            <div>
+              <div style={sectionHeadStyle}>Send / Resend Access Link</div>
+              <div style={{
+                background: 'var(--color-surface-2)', padding: 'var(--space-4)',
+                borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+              }}>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', margin: '0 0 var(--space-3) 0' }}>
+                  Send or re-send a first-access link to this staff member. They can use this to set their password and log into their role-specific app.
+                </p>
+                <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Delivery Channel</label>
+                    <select
+                      style={{ ...inputStyle, cursor: 'pointer', width: '100%' }}
+                      value={resendChannel}
+                      onChange={e => setResendChannel(e.target.value)}
+                    >
+                      <option value="email">Email</option>
+                      {whatsapp && <option value="whatsapp">WhatsApp</option>}
+                      {sms && <option value="sms">SMS / Phone</option>}
+                      {telegram && <option value="telegram">Telegram</option>}
+                      {line && <option value="line">LINE</option>}
+                    </select>
+                  </div>
+                  <button
+                    disabled={resendSending}
+                    onClick={async () => {
+                      setResendSending(true);
+                      setResendResult(null);
+                      try {
+                        const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
+                          method: 'POST',
+                          body: JSON.stringify({ channel: resendChannel }),
+                        });
+                        setResendResult(resp);
+                      } catch (err: any) {
+                        setResendResult({ status: 'error', message: err.message || 'Failed to send' });
+                      } finally {
+                        setResendSending(false);
+                      }
+                    }}
+                    style={{
+                      padding: '10px 20px', borderRadius: 'var(--radius-sm)',
+                      background: 'var(--color-primary, #4A7C59)', color: '#fff', border: 'none',
+                      cursor: resendSending ? 'not-allowed' : 'pointer', fontWeight: 600,
+                      fontSize: 'var(--text-sm)', opacity: resendSending ? 0.6 : 1,
+                      minHeight: 40, whiteSpace: 'nowrap' as const,
+                    }}
+                  >
+                    {resendSending ? 'Sending...' : 'Send Access Link'}
+                  </button>
+                </div>
+                {resendResult && (
+                  <div style={{
+                    marginTop: 'var(--space-3)', padding: 'var(--space-3)',
+                    borderRadius: 'var(--radius-sm)',
+                    background: resendResult.status === 'error' ? 'rgba(196,91,74,0.1)' : 'rgba(74,124,89,0.1)',
+                    border: `1px solid ${resendResult.status === 'error' ? 'rgba(196,91,74,0.3)' : 'rgba(74,124,89,0.3)'}`,
+                    fontSize: 'var(--text-sm)',
+                    color: resendResult.status === 'error' ? 'var(--color-alert)' : 'var(--color-ok, #4A7C59)',
+                  }}>
+                    {resendResult.status === 'sent' && '✓ Access link sent via email.'}
+                    {resendResult.status === 'link_generated' && (
+                      <div>
+                        <div style={{ marginBottom: 8 }}>✓ Magic link generated. Copy and send via {resendResult.message?.split('via ')[1] || resendChannel}:</div>
+                        <input readOnly value={resendResult.magic_link || ''} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, width: '100%' }} onClick={(e: any) => e.target.select()} />
+                      </div>
+                    )}
+                    {resendResult.status === 'error' && `✗ ${resendResult.message}`}
+                  </div>
+                )}
+              </div>
             </div>
 
             {role === 'owner' && (

@@ -20,12 +20,15 @@ type PendingRequest = {
   metadata?: {
     status?: string;
     intended_role?: string;
+    display_name?: string;
     worker_data?: {
       full_name?: string;
+      display_name?: string;
       phone?: string;
       emergency_contact?: string;
       photo_url?: string;
       worker_roles?: string[];
+      language?: string;
       comm_preference?: Record<string, string>;
     }
   }
@@ -325,6 +328,7 @@ export default function PendingRequestsPage() {
 
         {requests.map(req => {
           const wdata = req.metadata?.worker_data || {};
+          const comm = wdata.comm_preference || {};
           return (
             <div key={req.id} style={{ ...cardStyle, position: 'relative' }}>
               <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-start' }}>
@@ -340,9 +344,13 @@ export default function PendingRequestsPage() {
                   <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
                     {wdata.full_name || req.email}
                   </h3>
+                  {wdata.display_name && wdata.display_name !== wdata.full_name && (
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 4 }}>Display: {wdata.display_name}</div>
+                  )}
                   <div style={{ display: 'flex', gap: 16, fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', marginBottom: 12 }}>
                     <span>✉️ {req.email}</span>
                     {wdata.phone && <span>📞 {wdata.phone}</span>}
+                    {wdata.language && <span>🌐 {wdata.language.toUpperCase()}</span>}
                   </div>
 
                   <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-sm)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
@@ -354,7 +362,52 @@ export default function PendingRequestsPage() {
                       <strong style={{ color: 'var(--color-text-dim)', fontSize: '11px', textTransform: 'uppercase' }}>Emergency</strong>
                       <div style={{ color: 'var(--color-text)', marginTop: 2 }}>{wdata.emergency_contact || '-'}</div>
                     </div>
+                    {comm?.date_of_birth && (
+                      <div>
+                        <strong style={{ color: 'var(--color-text-dim)', fontSize: '11px', textTransform: 'uppercase' }}>Date of Birth</strong>
+                        <div style={{ color: 'var(--color-text)', marginTop: 2 }}>{comm.date_of_birth}</div>
+                      </div>
+                    )}
+                    {comm?.id_number && (
+                      <div>
+                        <strong style={{ color: 'var(--color-text-dim)', fontSize: '11px', textTransform: 'uppercase' }}>ID / Passport #</strong>
+                        <div style={{ color: 'var(--color-text)', marginTop: 2 }}>{comm.id_number}{comm.id_expiry_date ? ` (exp: ${comm.id_expiry_date})` : ''}</div>
+                      </div>
+                    )}
+                    {comm?.work_permit_number && (
+                      <div>
+                        <strong style={{ color: 'var(--color-text-dim)', fontSize: '11px', textTransform: 'uppercase' }}>Work Permit #</strong>
+                        <div style={{ color: 'var(--color-text)', marginTop: 2 }}>{comm.work_permit_number}{comm.work_permit_expiry_date ? ` (exp: ${comm.work_permit_expiry_date})` : ''}</div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Document thumbnails */}
+                  {(comm?.id_photo_url || comm?.work_permit_photo_url) && (
+                    <div style={{ display: 'flex', gap: 12, marginTop: 'var(--space-3)' }}>
+                      {comm?.id_photo_url && (
+                        <div style={{ textAlign: 'center' }}>
+                          <img src={comm.id_photo_url} alt="ID" style={{ width: 80, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--color-border)' }} />
+                          <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>ID/Passport</div>
+                        </div>
+                      )}
+                      {comm?.work_permit_photo_url && (
+                        <div style={{ textAlign: 'center' }}>
+                          <img src={comm.work_permit_photo_url} alt="WP" style={{ width: 80, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--color-border)' }} />
+                          <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>Work Permit</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Communication channels */}
+                  {(comm?.telegram || comm?.line || comm?.whatsapp) && (
+                    <div style={{ display: 'flex', gap: 12, marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+                      {comm?.telegram && <span>TG: {comm.telegram}</span>}
+                      {comm?.line && <span>LINE: {comm.line}</span>}
+                      {comm?.whatsapp && <span>WA: {comm.whatsapp}</span>}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 'var(--space-4)' }}>

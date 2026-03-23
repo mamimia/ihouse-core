@@ -43,9 +43,20 @@ const TRANSLATIONS = {
     rMaint: 'Maintenance',
     rOp: 'Op Manager',
     fDob: 'Date of Birth *',
+    fDisplayName: 'Display Name / Nickname',
+    pDisplayName: 'Optional — if different from full name',
     fIdPhoto: 'ID / Passport Photo *',
     idPhotoReq: 'Upload ID / Passport to continue',
     idPhotoUpld: 'Uploading ID document...',
+    fIdNumber: 'ID / Passport Number',
+    pIdNumber: 'e.g. AB1234567',
+    fIdExpiry: 'ID / Passport Expiry Date',
+    fWpTitle: 'Work Permit',
+    fWpPhoto: 'Work Permit Photo',
+    wpPhotoUpld: 'Uploading work permit...',
+    fWpNumber: 'Work Permit Number',
+    pWpNumber: 'e.g. WP-2025-12345',
+    fWpExpiry: 'Work Permit Expiry Date',
     fTg: 'Telegram ID (Numeric)',
     btnTg: 'Get My ID →',
     pTg: 'e.g. 123456789',
@@ -95,9 +106,20 @@ const TRANSLATIONS = {
     rMaint: 'ช่างซ่อมบำรุง',
     rOp: 'ผู้จัดการฝ่ายปฏิบัติการ',
     fDob: 'วันเดือนปีเกิด *',
+    fDisplayName: 'ชื่อเล่น / ชื่อที่ต้องการใช้',
+    pDisplayName: 'ไม่บังคับ — หากแตกต่างจากชื่อจริง',
     fIdPhoto: 'รูปถ่ายบัตรประชาชน / พาสปอร์ต *',
     idPhotoReq: 'อัปโหลดบัตรประชาชนเพื่อดำเนินการต่อ',
     idPhotoUpld: 'กำลังอัปโหลดเอกสาร...',
+    fIdNumber: 'เลขบัตรประชาชน / พาสปอร์ต',
+    pIdNumber: 'เช่น AB1234567',
+    fIdExpiry: 'วันหมดอายุบัตรประชาชน / พาสปอร์ต',
+    fWpTitle: 'ใบอนุญาตทำงาน',
+    fWpPhoto: 'รูปถ่ายใบอนุญาตทำงาน',
+    wpPhotoUpld: 'กำลังอัปโหลดใบอนุญาต...',
+    fWpNumber: 'เลขที่ใบอนุญาตทำงาน',
+    pWpNumber: 'เช่น WP-2025-12345',
+    fWpExpiry: 'วันหมดอายุใบอนุญาตทำงาน',
     fTg: 'Telegram ID (ตัวเลข)',
     btnTg: 'รับ ID ของฉัน →',
     pTg: 'เช่น 123456789',
@@ -147,9 +169,20 @@ const TRANSLATIONS = {
     rMaint: 'תחזוקה',
     rOp: 'מנהל תפעול',
     fDob: 'תאריך לידה *',
+    fDisplayName: 'כינוי / שם תצוגה',
+    pDisplayName: 'אופציונלי — אם שונה מהשם המלא',
     fIdPhoto: 'צילום תעודת זהות / דרכון *',
     idPhotoReq: 'העלה/י תעודה כדי להמשיך',
     idPhotoUpld: 'מעלה מסמך מזהה...',
+    fIdNumber: 'מספר תעודת זהות / דרכון',
+    pIdNumber: 'למשל AB1234567',
+    fIdExpiry: 'תאריך תפוגה ת.ז / דרכון',
+    fWpTitle: 'היתר עבודה',
+    fWpPhoto: 'צילום היתר עבודה',
+    wpPhotoUpld: 'מעלה היתר עבודה...',
+    fWpNumber: 'מספר היתר עבודה',
+    pWpNumber: 'למשל WP-2025-12345',
+    fWpExpiry: 'תאריך תפוגה היתר עבודה',
     fTg: 'מזהה טלגרם (מספר)',
     btnTg: 'קבל את ה-ID שלי ←',
     pTg: 'למשל 123456789',
@@ -195,7 +228,13 @@ function ApplyForm() {
   const [ecPhone, setEcPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [idPhotoUrl, setIdPhotoUrl] = useState('');
+  const [idNumber, setIdNumber] = useState('');
+  const [idExpiryDate, setIdExpiryDate] = useState('');
+  const [workPermitPhotoUrl, setWorkPermitPhotoUrl] = useState('');
+  const [workPermitNumber, setWorkPermitNumber] = useState('');
+  const [workPermitExpiryDate, setWorkPermitExpiryDate] = useState('');
   const [workerRoles, setWorkerRoles] = useState<string[]>([]);
   const [telegram, setTelegram] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -204,6 +243,7 @@ function ApplyForm() {
   const [rolesLocked, setRolesLocked] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [idPhotoUploading, setIdPhotoUploading] = useState(false);
+  const [wpPhotoUploading, setWpPhotoUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -267,6 +307,7 @@ function ApplyForm() {
     const payload = {
       email: email.trim(),
       full_name: fullName,
+      display_name: displayName || fullName,
       phone,
       language,
       emergency_contact: `${ecName} | ${ecPhone}`.trim(),
@@ -278,7 +319,12 @@ function ApplyForm() {
         line, 
         email: email.trim(), 
         date_of_birth: dateOfBirth, 
-        id_photo_url: idPhotoUrl 
+        id_photo_url: idPhotoUrl,
+        id_number: idNumber,
+        id_expiry_date: idExpiryDate,
+        work_permit_photo_url: workPermitPhotoUrl,
+        work_permit_number: workPermitNumber,
+        work_permit_expiry_date: workPermitExpiryDate,
       }
     };
 
@@ -387,6 +433,41 @@ function ApplyForm() {
     }
   };
 
+  const handleWpPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    
+    const mime = file.type || '';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mime)) {
+      alert('Only JPG, PNG, and WebP images are allowed.');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Image exceeds 15MB limit. Please choose a smaller file.');
+      return;
+    }
+
+    try {
+      setWpPhotoUploading(true);
+      setError(null);
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(`${BASE}/staff-onboarding/upload-photo/${token}`, {
+        method: 'POST',
+        body: form
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Upload failed');
+      }
+      const data = await res.json();
+      setWorkPermitPhotoUrl(data.url);
+    } catch (err: any) {
+      alert(err.message || 'Network error during upload');
+    } finally {
+      setWpPhotoUploading(false);
+    }
+  };
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>{t.loading}</div>;
   if (error && !validToken) return (
     <div style={{ maxWidth: 400, margin: '80px auto', padding: 24, textAlign: 'center', background: '#fff', border: '1px solid #e1e4e8', borderRadius: 8 }}>
@@ -433,6 +514,11 @@ function ApplyForm() {
         </div>
 
         <div>
+          <label style={labelStyle}>{(t as any).fDisplayName}</label>
+          <input style={inputStyle} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={(t as any).pDisplayName} />
+        </div>
+
+        <div>
           <label style={labelStyle}>{t.fPhoto}</label>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             {photoUrl ? (
@@ -470,6 +556,48 @@ function ApplyForm() {
             <div style={{ flex: 1, textAlign: isRTL ? 'right' : 'left' }}>
               <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleIdPhotoUpload} disabled={idPhotoUploading} style={{ fontSize: 13, display: 'block', maxWidth: '100%' }} />
               {idPhotoUploading && <span style={{ fontSize: 12, color: '#b08800', display: 'block', marginTop: 4 }}>{(t as any).idPhotoUpld}</span>}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div>
+            <label style={labelStyle}>{(t as any).fIdNumber}</label>
+            <input style={{ ...inputStyle, direction: 'ltr', textAlign: isRTL ? 'right' as const : 'left' as const }} value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder={(t as any).pIdNumber} />
+          </div>
+          <div>
+            <label style={labelStyle}>{(t as any).fIdExpiry}</label>
+            <input type="date" style={inputStyle} value={idExpiryDate} onChange={e => setIdExpiryDate(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Work Permit Section */}
+        <div style={{ padding: 16, background: '#f6f8fa', borderRadius: 8, border: '1px solid #e1e4e8' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: 13, textTransform: 'uppercase', color: '#24292e' }}>{(t as any).fWpTitle}</h4>
+          
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelStyle}>{(t as any).fWpPhoto}</label>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              {workPermitPhotoUrl ? (
+                <img src={workPermitPhotoUrl} alt="WP Preview" style={{ width: 64, height: 64, objectFit: 'contain', imageOrientation: 'from-image' as any, borderRadius: '8px', border: '1px solid #e1e4e8' }} />
+              ) : (
+                <div style={{ width: 64, height: 64, borderRadius: '8px', background: '#fff', border: '1px dashed #d1d5da', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: '#d1d5da' }}>📄</div>
+              )}
+              <div style={{ flex: 1, textAlign: isRTL ? 'right' : 'left' }}>
+                <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleWpPhotoUpload} disabled={wpPhotoUploading} style={{ fontSize: 13, display: 'block', maxWidth: '100%' }} />
+                {wpPhotoUploading && <span style={{ fontSize: 12, color: '#b08800', display: 'block', marginTop: 4 }}>{(t as any).wpPhotoUpld}</span>}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={labelStyle}>{(t as any).fWpNumber}</label>
+              <input style={{ ...inputStyle, background: '#fff', direction: 'ltr', textAlign: isRTL ? 'right' as const : 'left' as const }} value={workPermitNumber} onChange={e => setWorkPermitNumber(e.target.value)} placeholder={(t as any).pWpNumber} />
+            </div>
+            <div>
+              <label style={labelStyle}>{(t as any).fWpExpiry}</label>
+              <input type="date" style={{ ...inputStyle, background: '#fff' }} value={workPermitExpiryDate} onChange={e => setWorkPermitExpiryDate(e.target.value)} />
             </div>
           </div>
         </div>
@@ -548,11 +676,11 @@ function ApplyForm() {
 
         <button 
           type="submit" 
-          disabled={submitting || photoUploading || idPhotoUploading || !photoUrl || !idPhotoUrl}
+          disabled={submitting || photoUploading || idPhotoUploading || wpPhotoUploading || !photoUrl || !idPhotoUrl}
           style={{ 
             marginTop: 16, padding: '14px 0', width: '100%', 
             background: '#2ea44f', color: '#fff', border: 'none', borderRadius: 6, 
-            fontSize: 16, fontWeight: 600, cursor: (submitting || photoUploading || idPhotoUploading || !photoUrl || !idPhotoUrl) ? 'not-allowed' : 'pointer', opacity: (submitting || photoUploading || idPhotoUploading || !photoUrl || !idPhotoUrl) ? 0.7 : 1 
+            fontSize: 16, fontWeight: 600, cursor: (submitting || photoUploading || idPhotoUploading || wpPhotoUploading || !photoUrl || !idPhotoUrl) ? 'not-allowed' : 'pointer', opacity: (submitting || photoUploading || idPhotoUploading || wpPhotoUploading || !photoUrl || !idPhotoUrl) ? 0.7 : 1 
           }}
         >
           {submitting ? t.btnSubmitting : (!photoUrl ? t.photoReq : (!idPhotoUrl ? (t as any).idPhotoReq : t.btnSubmit))}
