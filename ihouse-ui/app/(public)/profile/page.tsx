@@ -14,6 +14,7 @@ import DMonogram from '@/components/DMonogram';
 import PasswordInput from '@/components/auth/PasswordInput';
 import { supabase } from '@/lib/supabaseClient';
 import { usePasswordRules } from '@/hooks/usePasswordRules';
+import { linkGoogleAccount, unlinkProvider, addPassword, GoogleIcon } from '@/lib/identityLinking';
 import SignedInShell, { SHELL_TOP_PADDING } from '@/components/SignedInShell';
 
 interface Profile {
@@ -82,16 +83,7 @@ export default function ProfilePage() {
     const [passwordFocused, setPasswordFocused] = useState(false);
     const pwRules = usePasswordRules(newPassword);
     const allPwRulesPass = pwRules.every(r => r.pass);
-    // Track if Supabase session is active (needed for Google identity linking)
-    const [hasSupabaseSession, setHasSupabaseSession] = useState(false);
 
-    // Check for Supabase session at mount
-    useEffect(() => {
-        if (!supabase) return;
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session) setHasSupabaseSession(true);
-        });
-    }, []);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -316,23 +308,17 @@ export default function ProfilePage() {
                                     gap: '6px',
                                 }}
                             >
-                                {provider === 'email' ? '📧 Email' : provider === 'google' ? '🔵 Google' : provider}
-                                {/* Show unlink button only if > 1 providers */}
+                                {provider === 'email' ? '📧 Email' : provider === 'google' ? <><GoogleIcon /> Google</> : provider}
                                 {(profile?.providers?.length || 0) > 1 && (
                                     <button
                                         onClick={async () => {
-                                            if (!supabase) return;
                                             if (!confirm(`Unlink ${provider} login? You'll still have other login methods.`)) return;
-                                            try {
-                                                const { data: { user } } = await supabase.auth.getUser();
-                                                const identity = user?.identities?.find(i => i.provider === provider);
-                                                if (identity) {
-                                                    await supabase.auth.unlinkIdentity(identity);
-                                                    setMessage(`${provider} unlinked ✓`);
-                                                    fetchProfile();
-                                                }
-                                            } catch {
-                                                setMessage('Failed to unlink provider');
+                                            const result = await unlinkProvider(provider);
+                                            if (result.success) {
+                                                setMessage(`${provider} unlinked ✓`);
+                                                fetchProfile();
+                                            } else {
+                                                setMessage(result.error || 'Failed to unlink provider');
                                             }
                                         }}
                                         style={{
@@ -352,20 +338,14 @@ export default function ProfilePage() {
                         ))}
                     </div>
 
-                    {/* Link Google — if not already linked AND Supabase session is active */}
-                    {hasSupabaseSession && !(profile?.providers || []).includes('google') && (
+                    {/* Link Google — always shown if not already linked; session check is inside shared function */}
+                    {!(profile?.providers || []).includes('google') && (
                         <button
                             id="link-google-btn"
                             onClick={async () => {
-                                if (!supabase) return;
-                                try {
-                                    // Phase 865: flag for /auth/callback to redirect back to profile
-                                    sessionStorage.setItem('ihouse_linking_provider', 'google');
-                                    await supabase.auth.linkIdentity({ provider: 'google' });
-                                    // Supabase will redirect to Google OAuth
-                                } catch {
-                                    sessionStorage.removeItem('ihouse_linking_provider');
-                                    setMessage('Failed to link Google account');
+                                const result = await linkGoogleAccount();
+                                if (!result.success) {
+                                    setMessage(result.error || 'Failed to link Google account');
                                 }
                             }}
                             style={{
@@ -380,14 +360,28 @@ export default function ProfilePage() {
                                 justifyContent: 'center',
                             }}
                         >
-                            🟢 Link Google Account
+                            <GoogleIcon /> Link Google Account
                         </button>
                     )}
 
-                    {/* Add Password — Phase 873: inline form replaces prompt() */}
+                    {/* Add Password */}
                     {!(profile?.providers || []).includes('email') && (
                         addPasswordMode ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                                {/* Show which email the password will be linked to */}
+                                <div style={{
+                                    padding: '10px 14px',
+                                    background: 'rgba(234,229,222,0.04)',
+                                    border: '1px solid rgba(234,229,222,0.1)',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    color: 'var(--color-text-primary, #EAE5DE)',
+                                }}>
+                                    <span style={{ color: 'rgba(234,229,222,0.4)', fontSize: '12px', display: 'block', marginBottom: 4 }}>
+                                        Adding password for:
+                                    </span>
+                                    <strong>{profile?.email || '—'}</strong>
+                                </div>
                                 <PasswordInput
                                     id="profile-add-password"
                                     value={newPassword}
@@ -427,17 +421,16 @@ export default function ProfilePage() {
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     <button
                                         onClick={async () => {
-                                            if (!supabase || !allPwRulesPass || newPassword !== confirmNewPassword) return;
-                                            try {
-                                                const { error } = await supabase.auth.updateUser({ password: newPassword });
-                                                if (error) throw error;
+                                            if (!allPwRulesPass || newPassword !== confirmNewPassword) return;
+                                            const result = await addPassword(newPassword);
+                                            if (result.success) {
                                                 setMessage('Password added ✓ — you can now login with email + password');
                                                 setAddPasswordMode(false);
                                                 setNewPassword('');
                                                 setConfirmNewPassword('');
                                                 fetchProfile();
-                                            } catch {
-                                                setMessage('Failed to add password');
+                                            } else {
+                                                setMessage(result.error || 'Failed to add password');
                                             }
                                         }}
                                         disabled={!allPwRulesPass || newPassword !== confirmNewPassword}
