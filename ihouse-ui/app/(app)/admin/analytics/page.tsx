@@ -115,7 +115,7 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
-            <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>iHouse Core — Analytics · Phase 555</div>
+            <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>Domaniqo — Analytics · Phase 555</div>
         </div>
     );
 }

@@ -618,7 +618,7 @@ function AdminPropertiesContent() {
                 display: 'flex',
                 justifyContent: 'space-between',
             }}>
-                <span>iHouse Core — Property Admin · Phase 396</span>
+                <span>Domaniqo — Property Admin · Phase 396</span>
                 <span>Onboarding: Phase 395 · Admin API: Phase 396</span>
             </div>
         </div>

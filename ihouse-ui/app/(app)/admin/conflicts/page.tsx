@@ -64,7 +64,7 @@ export default function ConflictDashboardPage() {
             </div>
 
             <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>
-                iHouse Core — Conflict Dashboard · Phase 522
+                Domaniqo — Conflict Dashboard · Phase 522
             </div>
         </div>
     );

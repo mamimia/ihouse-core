@@ -1013,7 +1013,7 @@ export default function AdminPage() {
                 display: 'flex',
                 justifyContent: 'space-between',
             }}>
-                <span>iHouse Core — Admin Settings · Phase 169</span>
+                <span>Domaniqo — Admin Settings · Phase 169</span>
                 <span>Permissions: Phase 165–167 · Provider Registry: Phase 136</span>
             </div>
         </div>

@@ -145,7 +145,7 @@ export default function ArchivedPropertiesPage() {
             )}
 
             <div style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-5)', borderTop: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                iHouse Core · Archived Properties · Phase 844
+                Domaniqo · Archived Properties · Phase 844
             </div>
         </div>
     );

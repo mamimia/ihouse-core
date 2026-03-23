@@ -97,7 +97,7 @@ export default function GuestFeedbackPage() {
             </div>
 
             <div style={{ paddingTop: 'var(--space-6)', borderTop: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>
-                iHouse Core — Guest Feedback Dashboard · Phase 510
+                Domaniqo — Guest Feedback Dashboard · Phase 510
             </div>
         </div>
     );

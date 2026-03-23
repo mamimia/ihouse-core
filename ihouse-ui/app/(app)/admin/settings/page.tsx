@@ -212,7 +212,7 @@ export default function AdminSettingsPage() {
             )}
 
             <div style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-5)', borderTop: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                iHouse Core · Admin Settings · Phase 844
+                Domaniqo · Admin Settings · Phase 844
             </div>
         </div>
     );

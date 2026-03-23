@@ -98,7 +98,7 @@ export default function NotificationCenterPage() {
             </div>
 
             <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>
-                iHouse Core — Notification Center · Phase 529
+                Domaniqo — Notification Center · Phase 529
             </div>
         </div>
     );

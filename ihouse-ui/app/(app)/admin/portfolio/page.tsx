@@ -70,7 +70,7 @@ export default function PortfolioPage() {
             ))}
 
             <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>
-                iHouse Core — Portfolio Overview · Phase 522
+                Domaniqo — Portfolio Overview · Phase 522
             </div>
         </div>
     );

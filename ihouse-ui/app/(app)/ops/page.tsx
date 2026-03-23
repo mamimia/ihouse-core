@@ -98,7 +98,7 @@ export default function OperationsTodayPage() {
             )}
 
             <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>
-                iHouse Core — Operations Today · Phase 533 · Auto-refresh: 60s
+                Domaniqo — Operations Today · Phase 533 · Auto-refresh: 60s
             </div>
         </div>
     );

@@ -17,6 +17,47 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { usePasswordRules } from '@/hooks/usePasswordRules';
 import PasswordInput from '@/components/auth/PasswordInput';
+import { useLanguage } from '@/lib/LanguageContext';
+
+const COUNTRY_CODES = [
+    { code: '+66', country: 'TH' }, { code: '+1', country: 'US' },
+    { code: '+44', country: 'UK' }, { code: '+61', country: 'AU' },
+    { code: '+81', country: 'JP' }, { code: '+82', country: 'KR' },
+    { code: '+49', country: 'DE' }, { code: '+33', country: 'FR' },
+    { code: '+39', country: 'IT' }, { code: '+34', country: 'ES' },
+    { code: '+7', country: 'RU' }, { code: '+86', country: 'CN' },
+    { code: '+91', country: 'IN' }, { code: '+65', country: 'SG' },
+    { code: '+60', country: 'MY' }, { code: '+62', country: 'ID' },
+    { code: '+63', country: 'PH' }, { code: '+84', country: 'VN' },
+    { code: '+852', country: 'HK' }, { code: '+971', country: 'AE' },
+    { code: '+55', country: 'BR' }, { code: '+52', country: 'MX' },
+    { code: '+27', country: 'ZA' }, { code: '+64', country: 'NZ' },
+    { code: '+46', country: 'SE' }, { code: '+47', country: 'NO' },
+    { code: '+45', country: 'DK' }, { code: '+31', country: 'NL' },
+    { code: '+41', country: 'CH' }, { code: '+48', country: 'PL' },
+    { code: '+90', country: 'TR' }, { code: '+20', country: 'EG' },
+];
+
+/** Parse a stored phone string like '+66 81xxx' into { countryCode, digits } */
+function parsePhone(raw: string): { countryCode: string; digits: string } {
+    if (!raw) return { countryCode: '+66', digits: '' };
+    const trimmed = raw.trim();
+    // Try to match a known country code prefix
+    for (const cc of COUNTRY_CODES) {
+        if (trimmed.startsWith(cc.code)) {
+            return { countryCode: cc.code, digits: trimmed.slice(cc.code.length).trim() };
+        }
+    }
+    // If starts with + but not matched, take first segment
+    if (trimmed.startsWith('+')) {
+        const spaceIdx = trimmed.indexOf(' ');
+        if (spaceIdx > 0) {
+            return { countryCode: trimmed.slice(0, spaceIdx), digits: trimmed.slice(spaceIdx + 1).trim() };
+        }
+        return { countryCode: trimmed, digits: '' };
+    }
+    return { countryCode: '+66', digits: trimmed };
+}
 
 interface Profile {
     user_id: string;
@@ -37,7 +78,8 @@ export default function AdminProfilePage() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
     const [editMode, setEditMode] = useState(false);
-    const [form, setForm] = useState({ full_name: '', phone: '', language: '' });
+    const [form, setForm] = useState({ full_name: '', phone: '', countryCode: '+66', language: '' });
+    const { setLang } = useLanguage();
     const [addPasswordMode, setAddPasswordMode] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -71,7 +113,8 @@ export default function AdminProfilePage() {
             const data = await res.json();
             const p = data.data || data;
             setProfile(p);
-            setForm({ full_name: p.full_name || '', phone: p.phone || '', language: p.language || '' });
+            const parsed = parsePhone(p.phone || '');
+            setForm({ full_name: p.full_name || '', phone: parsed.digits, countryCode: parsed.countryCode, language: p.language || '' });
         } catch {
             setMessage('Error loading profile');
         }
@@ -98,7 +141,7 @@ export default function AdminProfilePage() {
                 },
                 body: JSON.stringify({
                     full_name: form.full_name.trim() || undefined,
-                    phone: form.phone.trim() || undefined,
+                    phone: form.phone.trim() ? `${form.countryCode} ${form.phone.trim()}` : undefined,
                     language: form.language.trim() || undefined,
                 }),
             });
@@ -106,6 +149,11 @@ export default function AdminProfilePage() {
             if (res.ok) {
                 setMessage('Profile updated ✓');
                 setEditMode(false);
+                // Persist language to localStorage so the app reacts immediately
+                if (form.language && form.language.trim()) {
+                    localStorage.setItem('domaniqo_lang', form.language.trim());
+                    setLang(form.language.trim() as 'en' | 'th' | 'he');
+                }
                 fetchProfile();
             } else {
                 setMessage('Failed to save');
@@ -232,9 +280,59 @@ export default function AdminProfilePage() {
                 <div style={{ marginBottom: 16 }}>
                     <label style={labelStyle}>Phone</label>
                     {editMode ? (
-                        <input style={inputStyle} value={form.phone}
-                            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                            placeholder="+66 XXX XXX XXXX" />
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'stretch',
+                            background: 'var(--color-surface-2, #f9fafb)',
+                            border: '1px solid var(--color-border, #e5e7eb)',
+                            borderRadius: 'var(--radius-sm, 8px)',
+                            overflow: 'hidden',
+                        }}>
+                            {/* Country code selector */}
+                            <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', borderRight: '1px solid var(--color-border, #e5e7eb)' }}>
+                                <span style={{
+                                    padding: '10px 4px 10px 12px',
+                                    fontSize: 'var(--text-sm, 14px)',
+                                    color: 'var(--color-text, #1f2937)',
+                                    pointerEvents: 'none',
+                                    whiteSpace: 'nowrap',
+                                    fontWeight: 500,
+                                }}>
+                                    {form.countryCode}
+                                </span>
+                                <span style={{ color: 'var(--color-text-faint, #9ca3af)', fontSize: 10, pointerEvents: 'none', marginRight: 6 }}>▾</span>
+                                <select
+                                    value={form.countryCode}
+                                    onChange={e => setForm(f => ({ ...f, countryCode: e.target.value }))}
+                                    style={{
+                                        position: 'absolute', inset: 0,
+                                        opacity: 0, cursor: 'pointer',
+                                        width: '100%', height: '100%',
+                                    }}
+                                >
+                                    {COUNTRY_CODES.map(cc => (
+                                        <option key={cc.code} value={cc.code}>{cc.code} {cc.country}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            {/* Phone digits */}
+                            <input
+                                type="tel"
+                                style={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: 'var(--color-text, #1f2937)',
+                                    fontSize: 'var(--text-sm, 14px)',
+                                    padding: '10px 14px 10px 10px',
+                                    outline: 'none',
+                                }}
+                                value={form.phone}
+                                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                                placeholder="81 xxx xxxx"
+                            />
+                        </div>
                     ) : (
                         <div style={inputStyle}>{profile?.phone || '—'}</div>
                     )}
@@ -267,7 +365,8 @@ export default function AdminProfilePage() {
                             </button>
                             <button style={btnSecondary} onClick={() => {
                                 setEditMode(false);
-                                setForm({ full_name: profile?.full_name || '', phone: profile?.phone || '', language: profile?.language || '' });
+                                const parsed2 = parsePhone(profile?.phone || '');
+                                setForm({ full_name: profile?.full_name || '', phone: parsed2.digits, countryCode: parsed2.countryCode, language: profile?.language || '' });
                             }}>Cancel</button>
                         </>
                     ) : (
@@ -392,6 +491,20 @@ export default function AdminProfilePage() {
                 {!(profile?.providers || []).includes('email') && (
                     addPasswordMode ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                            {/* Show which email the password will be linked to */}
+                            <div style={{
+                                padding: '10px 14px',
+                                background: 'rgba(59,130,246,0.04)',
+                                border: '1px solid rgba(59,130,246,0.12)',
+                                borderRadius: 'var(--radius-sm, 8px)',
+                                fontSize: 'var(--text-sm, 14px)',
+                                color: 'var(--color-text, #1f2937)',
+                            }}>
+                                <span style={{ color: 'var(--color-text-faint, #9ca3af)', fontSize: 'var(--text-xs, 12px)', display: 'block', marginBottom: 4 }}>
+                                    Adding password for:
+                                </span>
+                                <strong>{profile?.email || '—'}</strong>
+                            </div>
                             <PasswordInput
                                 id="admin-add-password"
                                 value={newPassword}
@@ -433,7 +546,6 @@ export default function AdminProfilePage() {
                                     onClick={async () => {
                                         if (!supabase || !allPwRulesPass || newPassword !== confirmNewPassword) return;
                                         try {
-                                            // Check for Supabase session first
                                             const { data: sessionData } = await supabase.auth.getSession();
                                             if (!sessionData.session) {
                                                 setMessage('No active browser session. Sign in via Google first, then add email/password.');
@@ -502,7 +614,7 @@ export default function AdminProfilePage() {
                 fontSize: 'var(--text-xs, 12px)',
                 color: 'var(--color-text-faint, #9ca3af)',
             }}>
-                iHouse Core · Admin Profile
+                Domaniqo · Admin Profile
             </div>
         </div>
     );

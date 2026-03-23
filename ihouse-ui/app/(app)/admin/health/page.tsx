@@ -128,7 +128,7 @@ export default function SystemHealthPage() {
             )}
 
             <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>
-                iHouse Core — System Health · Phase 527
+                Domaniqo — System Health · Phase 527
             </div>
         </div>
     );

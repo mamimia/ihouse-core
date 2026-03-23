@@ -91,7 +91,7 @@ export default function IntegrationManagementPage() {
             ))}
 
             <div style={{ paddingTop: 'var(--space-6)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-6)' }}>
-                iHouse Core — Integration Management · Phase 513
+                Domaniqo — Integration Management · Phase 513
             </div>
         </div>
     );
