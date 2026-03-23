@@ -261,7 +261,8 @@ export default function EditStaffPage() {
 
   // Tab 1 — Profile
   const [fullName, setFullName] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [displayName, setDisplayName] = useState('');  // legacy compat
+  const [preferredName, setPreferredName] = useState('');  // nickname / display name
   const [email, setEmail] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
@@ -398,7 +399,8 @@ export default function EditStaffPage() {
       setTelegram(record.comm_preference?.telegram || '');
       setLine(record.comm_preference?.line || '');
       setSms(record.comm_preference?.sms || record.comm_preference?.phone || record.phone || '');
-      setPreferredContact(record.comm_preference?.preferred_contact || '');
+      setPreferredContact(record.comm_preference?.preferred_contact || record.comm_preference?.preferred_channel || '');
+      setPreferredName(record.comm_preference?.preferred_name || record.comm_preference?.nickname || '');
 
       // Populate Tab 4 — Documents
       setIdDocNumber(record.comm_preference?.id_doc_number || '');
@@ -437,7 +439,7 @@ export default function EditStaffPage() {
         method: 'PATCH',
         body: JSON.stringify({
           role,
-          display_name: displayName.trim() || undefined,
+          display_name: fullName.trim() || undefined,  // primary: real full name
           phone: phoneNumber.trim() ? `${phoneCode}${phoneNumber.trim()}` : undefined,
           address: address.trim() || undefined,
           emergency_contact: emergencyName.trim() || emergencyNumber.trim() ? `${emergencyName.trim()} | ${emergencyCode}${emergencyNumber.trim()}` : undefined,
@@ -456,6 +458,7 @@ export default function EditStaffPage() {
             date_of_birth: dateOfBirth || undefined,
             start_date: startDate || undefined,
             preferred_contact: preferredContact || undefined,
+            preferred_name: preferredName.trim() || undefined,
             id_photo_url: idPhotoUrl.trim() || undefined,
             id_doc_number: idDocNumber.trim() || undefined,
             id_doc_expiry: idDocExpiry || undefined,
@@ -657,7 +660,7 @@ export default function EditStaffPage() {
             Staff Member
           </p>
           <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            {displayName || rawUserId}
+            {fullName || rawUserId}
           </h1>
           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
             {rawUserId}
@@ -720,19 +723,26 @@ export default function EditStaffPage() {
         {/* ── Tab 1: Profile ────────────────────────────────────────────── */}
         {activeTab === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            {/* Full Name row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-              <Field label="Display Name">
-                <input style={inputStyle} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Name" />
+              <Field label="Full Name">
+                <input style={inputStyle} value={fullName} onChange={e => setFullName(e.target.value)} placeholder="e.g. Somchai Jaidee" />
               </Field>
+              <Field label="Display Name / Nickname">
+                <input style={inputStyle} value={preferredName} onChange={e => setPreferredName(e.target.value)} placeholder="Optional — nickname at work" />
+              </Field>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Field label="Email">
                 <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="worker@example.com" />
               </Field>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Field label="Date of Birth">
                 <input type="date" style={inputStyle} value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
               </Field>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Field label="Photo URL / Avatar">
                 <input style={inputStyle} value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="https://..." />
               </Field>
