@@ -5223,3 +5223,15 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Injected `!important` to CTA button colors to win the inheritance hierarchy against default `a` tags in light mode, ensuring brand colors remain prominent.
 
 
+
+## Phase 861 — Identity Merge & Auth Linking Closure — 2026-03-23
+
+- Full dependency audit of dual admin identities (admin@domaniqo.com UUID 25407914 vs esegeve@gmail.com UUID 736f4d6a).
+- Migrated 2 rejected test property rows from Gmail UUID to canonical admin UUID.
+- Deleted duplicate tenant_permissions row (#37) for Gmail UUID.
+- Deleted duplicate auth user 736f4d6a (identities, sessions, refresh_tokens, user record).
+- User manually linked Google identity to canonical user via product UI — confirmed both providers on single UUID.
+- Fixed linkIdentity callback: stores origin path in sessionStorage, callback redirects to origin (not hardcoded /profile).
+- Backend GET /auth/profile: providers now [{provider, email}] objects, added auth_method + auth_email fields.
+- Admin + public profile UI: "Currently logged in with: email" (simplified), provider pills with emails, explicit "Unlink" buttons.
+- Build passes (Next.js + Python). Deployed to Vercel staging + Railway auto-deploy.

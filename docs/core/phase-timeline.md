@@ -8329,3 +8329,9 @@ Spec: `docs/archive/phases/phase-832-spec.md`
 
 Resolved severe layout and styling bugs in the frontend application on narrow screens and in light mode. This included preventing text overlap in the property menu tabs by enforcing valid horizontal scrolling, rectifying main layout breakouts caused by flex containers without wrap properties, fixing the global styling of date inputs so native calendar icons respond to dark/light themes correctly, and correcting landing page CSS specificity issues that rendered CTAs unreadable in light mode.
 
+
+## Phase 861 — Identity Merge & Auth Linking Closure — Closed
+
+**Date:** 2026-03-23
+
+Resolved dual admin identity (admin@domaniqo.com + esegeve@gmail.com). Full dependency audit → 2 test property rows migrated → duplicate tenant_permissions deleted → duplicate auth user deleted → Google identity manually linked via product UI. Fixed linkIdentity callback to preserve origin route (admin→admin, public→public). Upgraded Linked Login Methods UI: "Currently logged in with: email", provider pills with actual emails, explicit "Unlink" buttons. Backend GET /auth/profile now returns provider details as [{provider, email}] objects with auth_method and auth_email fields.

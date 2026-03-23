@@ -1,12 +1,12 @@
 ## Current Phase
-Phase 861 — Next Phase
+Phase 862 — Next Phase
 
 ## Last Closed Phase
-Phase 860 — Landing Page UI Fixes & Tab Responsive Scrolling
+Phase 861 — Identity Merge & Auth Linking Closure
 
 ## System Status
 
-**[...System status through Phase 855E unchanged...] Phase 857 Onboarding Remediation Wave (7 fixes runtime-proven). Phase 858 Product Language Correction + Google Path Separation. Phase 859 Admin Intake Queue + Property Submit API + Login UX + Draft Expiration. Phase 860 Landing Page UI Fixes + Mobile Menu Tab Overflow Fix.**
+**[...System status through Phase 855E unchanged...] Phase 857 Onboarding Remediation Wave (7 fixes runtime-proven). Phase 858 Product Language Correction + Google Path Separation. Phase 859 Admin Intake Queue + Property Submit API + Login UX + Draft Expiration. Phase 860 Landing Page UI Fixes + Mobile Menu Tab Overflow Fix. Phase 861 Identity Merge & Auth Linking Closure.**
 
 ## Deferred Items — Managed Open Items Registry
 
