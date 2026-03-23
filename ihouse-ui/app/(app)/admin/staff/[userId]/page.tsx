@@ -1114,6 +1114,40 @@ export default function EditStaffPage() {
                     {resendSending ? 'Sending...' : 'Send Access Link'}
                   </button>
                 </div>
+
+                {/* mailto Send by Email — shown when email is known */}
+                {email && (
+                  <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Quick Send by Email</p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>To: {email}</span>
+                      <a
+                        href={`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Your Access Link — Domaniqo')}&body=${encodeURIComponent(
+                          `Hello,\n\nHere is your secure access link to the Domaniqo staff portal:\n\n[Click "Send Access Link" above to generate your link, then paste it here]\n\nThis link is single-use. Please use it to set your password and log in.\n\nDomaniqo Team`
+                        )}`}
+                        style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                      >
+                        ✉ Send by Email
+                      </a>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>Opens your mail client</span>
+                    </div>
+                    {resendResult?.magic_link && (
+                      <div style={{ marginTop: 10 }}>
+                        <p style={{ fontSize: 11, color: 'var(--color-text-faint)', margin: '0 0 6px' }}>Or copy the link and paste it into the email body:</p>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input readOnly value={resendResult.magic_link} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, flex: 1 }} onClick={(e: any) => e.target.select()} />
+                          <a
+                            href={`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Your Access Link — Domaniqo')}&body=${encodeURIComponent(`Hello,\n\nYour secure access link:\n\n${resendResult.magic_link}\n\nThis link is single-use. Use it to set your password and log in.\n\nDomaniqo Team`)}`}
+                            style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                          >
+                            ✉ Send by Email
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {resendResult && (
                   <div style={{
                     marginTop: 'var(--space-3)', padding: 'var(--space-3)',

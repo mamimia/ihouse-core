@@ -45,6 +45,7 @@ export default function PendingRequestsPage() {
   const [inviteGenerated, setInviteGenerated] = useState('');
   const [showQR, setShowQR] = useState(false);
   const [approvedLink, setApprovedLink] = useState<{ workerName: string; link: string; deliveryMethod?: string } | null>(null);
+  const [generatedForEmail, setGeneratedForEmail] = useState(''); // email used when generating the invite
 
   const load = useCallback(async () => {
     try {
@@ -69,8 +70,10 @@ export default function PendingRequestsPage() {
         })
       });
       const fullLink = `${window.location.host}${data.invite_url}`;
-      setInviteGenerated(`${window.location.protocol}//${fullLink}`);
-      setInviteEmail('');
+      const generated = `${window.location.protocol}//${fullLink}`;
+      setInviteGenerated(generated);
+      setGeneratedForEmail(inviteEmail.trim()); // remember email for Send by Email
+      setInviteEmail(''); // clear input for next use
     } catch {
       alert('Network error or token expired. Try logging in again.');
     }
@@ -311,42 +314,66 @@ export default function PendingRequestsPage() {
           </button>
         </div>
 
-        {inviteGenerated && (
-          <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-3)', background: 'rgba(99,102,241,0.1)', border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-sm)' }}>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 6 }}>Copy and send this link to the {genAccountRole}:</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <textarea
-                readOnly
-                value={messageTemplate}
-                style={{ ...inputStyle, flex: 1, fontFamily: 'monospace', fontSize: 13, minHeight: '80px', resize: 'vertical' }}
-              />
-              <button
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(messageTemplate);
-                    alert('Copied to clipboard!');
-                  } catch (err) {
-                    alert('Could not auto-copy (browser blocked). Please select the text manually and copy.');
-                  }
-                }}
-                style={{ padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, color: 'var(--color-text)' }}
-              >
-                Copy
-              </button>
-            </div>
-            
-            {showQR && (
-              <div style={{ marginTop: 24, padding: 16, background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center', border: '1px solid var(--color-border)' }}>
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', fontWeight: 600, marginBottom: 12 }}>Scan to Open Form</p>
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(inviteGenerated)}`} 
-                  alt="QR Code" 
-                  style={{ width: 180, height: 180, borderRadius: 8, background: '#fff', padding: 8, margin: '0 auto', display: 'block' }} 
+          {inviteGenerated && (
+            <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-3)', background: 'rgba(99,102,241,0.1)', border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-sm)' }}>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 6 }}>Copy and send this link to the {genAccountRole}:</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <textarea
+                  readOnly
+                  value={messageTemplate}
+                  style={{ ...inputStyle, flex: 1, fontFamily: 'monospace', fontSize: 13, minHeight: '80px', resize: 'vertical' }}
                 />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(messageTemplate);
+                        alert('Copied to clipboard!');
+                      } catch (err) {
+                        alert('Could not auto-copy (browser blocked). Please select the text manually and copy.');
+                      }
+                    }}
+                    style={{ padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, color: 'var(--color-text)', whiteSpace: 'nowrap' }}
+                  >
+                    Copy
+                  </button>
+                  {generatedForEmail && (
+                    <a
+                      href={`mailto:${encodeURIComponent(generatedForEmail)}?subject=${encodeURIComponent('Your Onboarding Link — Domaniqo')}&body=${encodeURIComponent(messageTemplate)}`}
+                      style={{ padding: '8px 12px', background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, color: '#fff', fontWeight: 600, textDecoration: 'none', textAlign: 'center', whiteSpace: 'nowrap' }}
+                    >
+                      Send by Email
+                    </a>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        )}
+              {generatedForEmail && (
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-faint)' }}>✉ Will open your mail client addressed to {generatedForEmail}</p>
+              )}
+
+              {showQR && (
+                <div style={{ marginTop: 24, padding: 16, background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center', border: '1px solid var(--color-border)' }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', fontWeight: 600, marginBottom: 12 }}>Scan to Open Form</p>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(inviteGenerated)}`}
+                    alt="QR Code"
+                    style={{ width: 180, height: 180, borderRadius: 8, background: '#fff', padding: 8, margin: '0 auto', display: 'block' }}
+                  />
+                  {generatedForEmail && (
+                    <div style={{ marginTop: 16 }}>
+                      <a
+                        href={`mailto:${encodeURIComponent(generatedForEmail)}?subject=${encodeURIComponent('Your Onboarding Link — Domaniqo')}&body=${encodeURIComponent(messageTemplate)}`}
+                        style={{ display: 'inline-block', padding: '8px 18px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                      >
+                        Send by Email
+                      </a>
+                      <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-faint)' }}>✉ Send to {generatedForEmail}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
       </div>
 
       {/* Requests List */}
