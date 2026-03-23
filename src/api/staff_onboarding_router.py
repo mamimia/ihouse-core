@@ -212,7 +212,9 @@ async def upload_onboarding_photo(token: str, file: UploadFile = File(...)) -> J
 class OnboardingSubmitRequest(BaseModel):
     email: Optional[str] = None
     full_name: str
-    display_name: str = ""
+    first_name: str = ""
+    last_name: str = ""
+    display_name: str = ""  # nickname / preferred name
     phone: str = ""
     language: str = "en"
     emergency_contact: str = ""
@@ -258,8 +260,10 @@ async def submit_onboarding(token: str, body: OnboardingSubmitRequest) -> JSONRe
         meta["submitted_at"] = now
         meta["worker_data"] = {
             "email": body.email,
-            "full_name": body.full_name,
-            "display_name": body.display_name or body.full_name,
+            "full_name": body.full_name or f"{body.first_name} {body.last_name}".strip(),
+            "first_name": body.first_name,
+            "last_name": body.last_name,
+            "display_name": body.display_name.strip() or "",  # nickname only
             "phone": body.phone,
             "language": body.language,
             "emergency_contact": body.emergency_contact,
@@ -312,6 +316,31 @@ class ApproveOnboardingRequest(BaseModel):
     role: str = "worker"
     worker_roles: list[str] = ["CLEANER"]
 
+
+def _extract_action_link(link_res: Any) -> str:
+    """Robustly extract action_link from any shape of Supabase generate_link response."""
+    candidates = [
+        link_res,
+        getattr(link_res, "user", None),
+        getattr(link_res, "properties", None),
+        getattr(link_res, "data", None),
+    ]
+    for obj in candidates:
+        if obj is None:
+            continue
+        if isinstance(obj, dict) and obj.get("action_link"):
+            return obj["action_link"]
+        if hasattr(obj, "action_link") and getattr(obj, "action_link"):
+            return getattr(obj, "action_link")
+        # try nested .properties
+        props = getattr(obj, "properties", None)
+        if props:
+            if isinstance(props, dict) and props.get("action_link"):
+                return props["action_link"]
+            if hasattr(props, "action_link") and getattr(props, "action_link"):
+                return getattr(props, "action_link")
+    return ""
+
 @router.post(
     "/admin/staff-onboarding/{request_id}/approve",
     tags=["admin"],
@@ -347,51 +376,57 @@ async def approve_onboarding(
             return make_error_response(status_code=400, code="VALIDATION_ERROR", extra={"detail": "Missing email for invited user. Worker must provide an email."})
 
         try:
-            # Phase 857 (audit C1): auto-delivery via invite_user_by_email.
-            # This creates the Supabase Auth user (if new) AND sends the branded
-            # invite email directly to the worker's inbox — no admin courier.
             frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
+            user_id: Optional[str] = None
+            delivery_method = "unknown"
+            action_link = ""
+
+            # Step 1: Try invite (creates user + sends branded email for new users)
             try:
                 auth_res = admin_client.auth.admin.invite_user_by_email(
                     email,
                     options={
                         "data": {
                             "full_name": wdata.get("full_name", ""),
-                            "phone": wdata.get("phone", ""),
                             "force_reset": True,
                         },
                         "redirect_to": f"{frontend_url}/auth/callback"
                     }
                 )
                 user_id = auth_res.user.id
-                delivery_method = "email_auto"  # Supabase sent the invitation email
+                delivery_method = "email_invite_sent"
+                logger.info("staff-onboarding/approve: invite sent to %s (new user)", email)
             except Exception as invite_exc:
-                # User may already exist — fall back to generate_link
                 if "already" in str(invite_exc).lower() or "exists" in str(invite_exc).lower():
-                    logger.info(
-                        "staff-onboarding/approve: user %s already exists — "
-                        "falling back to generate_link (Phase 857)", email
-                    )
-                    auth_res = admin_client.auth.admin.generate_link(
-                        {"type": "magiclink", "email": email,
-                         "data": {"full_name": wdata.get("full_name", "")},
-                         "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
-                    )
-                    user_id = auth_res.user.id
-                    delivery_method = "magic_link_generated"  # Supabase generated link but user already exists
+                    logger.info("staff-onboarding/approve: user %s already exists — generating magic link", email)
+                    delivery_method = "existing_user_magic_link"
                 else:
                     raise invite_exc
 
-            # For new users, ensure force_reset is set
-            import datetime as dt_mod
-            now_dt = dt_mod.datetime.now(dt_mod.timezone.utc)
-            is_new = (now_dt - auth_res.user.created_at).total_seconds() < 60
-            if is_new:
-                existing_meta = auth_res.user.user_metadata or {}
-                existing_meta["force_reset"] = True
-                admin_client.auth.admin.update_user_by_id(user_id, {
-                    "user_metadata": existing_meta
-                })
+            # Step 2: Always generate a magic link regardless (fallback + always return to admin)
+            try:
+                link_res = admin_client.auth.admin.generate_link(
+                    {"type": "magiclink", "email": email,
+                     "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
+                )
+                if user_id is None:
+                    user_id = link_res.user.id
+                action_link = _extract_action_link(link_res)
+                if delivery_method == "existing_user_magic_link" and not action_link:
+                    delivery_method = "magic_link_generation_failed"
+            except Exception as link_exc:
+                logger.warning("staff-onboarding/approve: generate_link failed for %s: %s", email, link_exc)
+                if user_id is None:
+                    raise link_exc
+
+            # Step 3: Always set force_reset on the user metadata
+            if user_id:
+                try:
+                    existing_meta = admin_client.auth.admin.get_user_by_id(user_id).user.user_metadata or {}
+                    existing_meta["force_reset"] = True
+                    admin_client.auth.admin.update_user_by_id(user_id, {"user_metadata": existing_meta})
+                except Exception as meta_exc:
+                    logger.warning("staff-onboarding/approve: could not set force_reset for %s: %s", user_id, meta_exc)
 
         except Exception as e:
             if "rate limit" in str(e).lower():
@@ -405,9 +440,9 @@ async def approve_onboarding(
         # 2. Provision permissions with all the rich data
         role = body.role or meta.get("intended_role", "worker")
         wroles = body.worker_roles or wdata.get("worker_roles", [])
-        
-        # Phase 857 (audit C8): extract PII from comm_preference into dedicated fields
-        comm_pref = wdata.get("comm_preference", {})
+
+        # Extract PII/compliance fields from comm_preference into dedicated columns
+        comm_pref = dict(wdata.get("comm_preference") or {})
         date_of_birth = comm_pref.pop("date_of_birth", None)
         id_photo_url = comm_pref.pop("id_photo_url", None)
         id_number = comm_pref.pop("id_number", None)
@@ -415,6 +450,18 @@ async def approve_onboarding(
         work_permit_photo_url = comm_pref.pop("work_permit_photo_url", None)
         work_permit_number = comm_pref.pop("work_permit_number", None)
         work_permit_expiry_date = comm_pref.pop("work_permit_expiry_date", None)
+        preferred_channel = comm_pref.pop("preferred_channel", None)
+        preferred_name = comm_pref.pop("preferred_name", None)  # nickname
+        # Keep telegram/line/whatsapp/email in comm_pref, store preferred_name back cleaned
+        if preferred_name:
+            comm_pref["preferred_name"] = preferred_name
+        if preferred_channel:
+            comm_pref["preferred_channel"] = preferred_channel
+
+        # Primary name for the staff card = real full name, not nickname
+        full_name = wdata.get("full_name") or (
+            f"{wdata.get('first_name', '')} {wdata.get('last_name', '')}".strip()
+        )
 
         perm_row = {
             "tenant_id": tenant_id,
@@ -422,13 +469,13 @@ async def approve_onboarding(
             "role": role,
             "worker_roles": wroles,
             "is_active": True,
-            "display_name": wdata.get("display_name") or wdata.get("full_name", ""),
+            "display_name": full_name,          # primary: real full name
             "phone": wdata.get("phone", ""),
             "language": wdata.get("language", "en"),
             "photo_url": wdata.get("photo_url", ""),
             "emergency_contact": wdata.get("emergency_contact", ""),
             "address": "",
-            "comm_preference": comm_pref,  # cleaned — PII removed
+            "comm_preference": comm_pref,
             "created_at": "now()",
             "updated_at": "now()"
         }
@@ -458,13 +505,13 @@ async def approve_onboarding(
         meta["status"] = "approved"
         db.table("access_tokens").update({"used_at": now, "metadata": meta}).eq("id", request_id).execute()
         
-        # Phase 857 (audit C1): no raw magic_link in response — link was auto-delivered
         return JSONResponse(status_code=200, content={
             "status": "approved",
             "user_id": user_id,
             "delivery_method": delivery_method,
-            "delivery_status": "sent",
             "email": email,
+            # Always include magic_link — admin UI can surface it as a copy-able fallback
+            "magic_link": action_link,
         })
     except Exception as exc:
         logger.exception("Failed to approve onboarding: %s", exc)
@@ -595,10 +642,8 @@ async def resend_access(
                 "user_metadata": existing_meta
             })
 
-            # Construct the link — the action_link from Supabase
-            action_link = getattr(link_res, 'properties', {}).get('action_link', '') if hasattr(link_res, 'properties') else ''
-            if not action_link and hasattr(link_res, 'data') and hasattr(link_res.data, 'properties'):
-                action_link = link_res.data.properties.get('action_link', '')
+            # Construct the link using the shared robust extractor
+            action_link = _extract_action_link(link_res)
 
             return JSONResponse(status_code=200, content={
                 "status": "link_generated",
