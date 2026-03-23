@@ -314,7 +314,7 @@ async def list_pending_onboarding(tenant_id: str = Depends(jwt_auth)) -> JSONRes
 
 class ApproveOnboardingRequest(BaseModel):
     role: str = "worker"
-    worker_roles: list[str] = ["CLEANER"]
+    worker_roles: list[str] = Field(default_factory=list)  # empty = use submitted roles from form
 
 
 def _extract_action_link(link_res: Any) -> str:

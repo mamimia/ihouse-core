@@ -101,6 +101,14 @@ type RawRecord = {
   permissions?: Record<string, any>;
   created_at?: string;
   updated_at?: string;
+  // Dedicated compliance columns (added in migration 20260323170000)
+  date_of_birth?: string;
+  id_photo_url?: string;
+  id_number?: string;
+  id_expiry_date?: string;
+  work_permit_photo_url?: string;
+  work_permit_number?: string;
+  work_permit_expiry_date?: string;
 };
 
 type NormalizedRecord = RawRecord & {
@@ -337,12 +345,22 @@ export default function EditStaffPage() {
       setLegacyRole(record._legacyRole);
 
       // Populate Tab 1
-      setDisplayName(record.display_name || '');
       setFullName(record.display_name || '');
+      setDisplayName('');  // legacy — unused for display; preferredName handles nickname
       setPhotoUrl(record.photo_url || '');
       setEmail(record.comm_preference?.email || '');
-      setDateOfBirth(record.comm_preference?.date_of_birth || '');
-      setIdPhotoUrl(record.comm_preference?.id_photo_url || '');
+      // DOB: read from dedicated column first, fall back to comm_preference
+      setDateOfBirth(
+        record.date_of_birth ||
+        record.comm_preference?.date_of_birth ||
+        ''
+      );
+      // ID photo: read from dedicated column first
+      setIdPhotoUrl(
+        record.id_photo_url ||
+        record.comm_preference?.id_photo_url ||
+        ''
+      );
 
       const pMatch = (record.phone || '').match(/^(\+\d{1,3})\s*(.*)$/);
       if (pMatch) {
@@ -403,12 +421,36 @@ export default function EditStaffPage() {
       setPreferredName(record.comm_preference?.preferred_name || record.comm_preference?.nickname || '');
 
       // Populate Tab 4 — Documents
-      setIdDocNumber(record.comm_preference?.id_doc_number || '');
-      setIdDocExpiry(record.comm_preference?.id_doc_expiry || '');
-      setIdDocStatus(record.comm_preference?.id_doc_status || 'missing');
-      setWorkPermitPhotoUrl(record.comm_preference?.work_permit_photo_url || '');
-      setWorkPermitNumber(record.comm_preference?.work_permit_number || '');
-      setWorkPermitExpiry(record.comm_preference?.work_permit_expiry || '');
+      // Read from dedicated columns first, fall back to comm_preference variants
+      setIdDocNumber(
+        record.id_number ||
+        record.comm_preference?.id_number ||
+        record.comm_preference?.id_doc_number ||
+        ''
+      );
+      setIdDocExpiry(
+        record.id_expiry_date ||
+        record.comm_preference?.id_expiry_date ||
+        record.comm_preference?.id_doc_expiry ||
+        ''
+      );
+      setIdDocStatus(record.comm_preference?.id_doc_status || 'valid');
+      setWorkPermitPhotoUrl(
+        record.work_permit_photo_url ||
+        record.comm_preference?.work_permit_photo_url ||
+        ''
+      );
+      setWorkPermitNumber(
+        record.work_permit_number ||
+        record.comm_preference?.work_permit_number ||
+        ''
+      );
+      setWorkPermitExpiry(
+        record.work_permit_expiry_date ||
+        record.comm_preference?.work_permit_expiry_date ||
+        record.comm_preference?.work_permit_expiry ||
+        ''
+      );
       setWorkPermitStatus(record.comm_preference?.work_permit_status || 'missing');
 
     } catch (e) {

@@ -44,7 +44,7 @@ export default function PendingRequestsPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteGenerated, setInviteGenerated] = useState('');
   const [showQR, setShowQR] = useState(false);
-  const [approvedLink, setApprovedLink] = useState<{ workerName: string; link: string } | null>(null);
+  const [approvedLink, setApprovedLink] = useState<{ workerName: string; link: string; deliveryMethod?: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -91,7 +91,7 @@ export default function PendingRequestsPage() {
       setRequests(r => r.filter(x => x.id !== id));
       
       if (resp.magic_link) {
-        setApprovedLink({ workerName: displayName, link: resp.magic_link });
+        setApprovedLink({ workerName: displayName, link: resp.magic_link, deliveryMethod: (resp as any).delivery_method });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         alert('Worker Approved successfully.');
@@ -177,34 +177,68 @@ export default function PendingRequestsPage() {
           padding: 'var(--space-5)',
           marginBottom: 'var(--space-5)',
         }}>
-          <h3 style={{ margin: '0 0 var(--space-3) 0', color: 'var(--color-ok, #2ea043)' }}>
-            ✓ {approvedLink.workerName} Approved Successfully!
+          <h3 style={{ margin: '0 0 var(--space-2) 0', color: 'var(--color-ok, #2ea043)' }}>
+            ✓ {approvedLink.workerName} Approved
           </h3>
-          <p style={{ margin: '0 0 var(--space-4) 0', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-            Here is their personalized single-use login link. Please copy it and send it to them right away.
+          <p style={{ margin: '0 0 var(--space-3) 0', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+            {approvedLink.deliveryMethod === 'email_invite_sent'
+              ? '✉ Invite email sent automatically to the worker.'
+              : '⚠ Email could not be auto-sent (existing user or rate limit). Use the link below.'}
           </p>
-          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-            <input 
-              readOnly 
-              value={approvedLink.link} 
-              style={{ ...inputStyle, flex: 1, fontFamily: 'monospace', fontSize: 13 }}
+
+          {/* Copy link row */}
+          <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+            <input
+              readOnly
+              value={approvedLink.link}
+              style={{ ...inputStyle, flex: 1, fontFamily: 'monospace', fontSize: 12 }}
             />
-            <button 
-              onClick={() => {
-                navigator.clipboard.writeText(approvedLink.link);
-                alert('Copied to clipboard!');
-              }}
-              style={{
-                padding: '10px 16px', borderRadius: 'var(--radius-sm)',
-                background: 'var(--color-primary)', color: '#fff', border: 'none',
-                cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)'
-              }}
+            <button
+              onClick={() => { navigator.clipboard.writeText(approvedLink.link); alert('Copied!'); }}
+              style={{ padding: '8px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)', whiteSpace: 'nowrap' }}
             >
               Copy Link
             </button>
           </div>
+
+          {/* Direct send shortcuts */}
+          <p style={{ margin: '0 0 var(--space-2) 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+            Send directly:
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent('Your access link: ' + approvedLink.link)}`}
+              target="_blank" rel="noreferrer"
+              style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', background: '#25D366', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+            >
+              WhatsApp
+            </a>
+            <a
+              href={`https://t.me/share/url?url=${encodeURIComponent(approvedLink.link)}&text=${encodeURIComponent('Your access link')}`}
+              target="_blank" rel="noreferrer"
+              style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', background: '#2AABEE', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+            >
+              Telegram
+            </a>
+            <a
+              href={`mailto:?subject=Your+Access+Link&body=${encodeURIComponent('Your access link: ' + approvedLink.link)}`}
+              style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-3, #444)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+            >
+              Email
+            </a>
+            <a
+              href={`sms:?body=${encodeURIComponent('Your access link: ' + approvedLink.link)}`}
+              style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-3, #444)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+            >
+              SMS
+            </a>
+          </div>
+          <button onClick={() => setApprovedLink(null)} style={{ marginTop: 'var(--space-3)', background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 12 }}>
+            Dismiss
+          </button>
         </div>
       )}
+
 
       {/* Generate Link Card */}
       <div style={{ ...cardStyle, background: 'var(--color-surface-2)' }}>
