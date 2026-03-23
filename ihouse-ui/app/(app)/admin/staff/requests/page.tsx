@@ -13,6 +13,32 @@ import { apiFetch } from '@/lib/api';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
+// Temporary mailto email copy — language-aware (until Resend is wired)
+const MAILTO_ONBOARDING: Record<string, { subject: string; body: (link: string) => string }> = {
+  en: {
+    subject: 'Complete your Domaniqo staff onboarding',
+    body: (link) =>
+      `Hello,\n\nWe would like to continue your staff onboarding with Domaniqo.\n\nPlease complete your onboarding form here:\n${link}\n\nThis link was prepared for your role and language selection.\n\nThank you,\nDomaniqo Team`,
+  },
+  th: {
+    subject: 'กรอกแบบฟอร์มเริ่มต้นการทำงานกับ Domaniqo ให้เสร็จสมบูรณ์',
+    body: (link) =>
+      `สวัสดี,\n\nเราต้องการดำเนินการเริ่มต้นการทำงานกับ Domaniqo ของคุณต่อให้เรียบร้อย\n\nกรุณากรอกแบบฟอร์มที่นี่:\n${link}\n\nลิงก์นี้ถูกเตรียมไว้ตามบทบาทและภาษาที่เลือกให้คุณ\n\nขอบคุณ,\nทีมงาน Domaniqo`,
+  },
+  he: {
+    subject: 'השלמת קליטת העובד שלך ב-Domaniqo',
+    // RTL: prepend RLM mark so mail clients render the body RTL
+    body: (link) =>
+      `\u200Fשלום,\n\n\u200Fנשמח להמשיך את תהליך קליטת העובד שלך ב-Domaniqo.\n\n\u200Fאפשר להשלים את טופס הקליטה כאן:\n${link}\n\n\u200Fהקישור הוכן בהתאם לתפקיד ולשפה שנבחרו עבורך.\n\n\u200Fתודה,\n\u200Fצוות Domaniqo`,
+  },
+};
+
+function getOnboardingMailto(lang: string, toEmail: string, link: string): string {
+  const tpl = MAILTO_ONBOARDING[lang] ?? MAILTO_ONBOARDING.en;
+  return `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(tpl.subject)}&body=${encodeURIComponent(tpl.body(link))}`;
+}
+
+
 type PendingRequest = {
   id: string;
   email: string;
@@ -339,7 +365,7 @@ export default function PendingRequestsPage() {
                   </button>
                   {generatedForEmail && (
                     <a
-                      href={`mailto:${encodeURIComponent(generatedForEmail)}?subject=${encodeURIComponent('Your Onboarding Link — Domaniqo')}&body=${encodeURIComponent(messageTemplate)}`}
+                      href={getOnboardingMailto(genLanguage, generatedForEmail, inviteGenerated)}
                       style={{ padding: '8px 12px', background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, color: '#fff', fontWeight: 600, textDecoration: 'none', textAlign: 'center', whiteSpace: 'nowrap' }}
                     >
                       Send by Email
@@ -362,7 +388,7 @@ export default function PendingRequestsPage() {
                   {generatedForEmail && (
                     <div style={{ marginTop: 16 }}>
                       <a
-                        href={`mailto:${encodeURIComponent(generatedForEmail)}?subject=${encodeURIComponent('Your Onboarding Link — Domaniqo')}&body=${encodeURIComponent(messageTemplate)}`}
+                        href={getOnboardingMailto(genLanguage, generatedForEmail, inviteGenerated)}
                         style={{ display: 'inline-block', padding: '8px 18px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
                       >
                         Send by Email

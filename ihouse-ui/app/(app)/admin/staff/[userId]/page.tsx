@@ -19,6 +19,31 @@ import { useRouter, useParams } from 'next/navigation';
 import { getToken } from '@/lib/api';
 import { uploadPropertyPhoto, ACCEPTED_IMAGE_TYPES } from '@/lib/uploadPhoto';
 
+// Temporary mailto email copy — language-aware (until Resend is wired)
+const MAILTO_ACCESS: Record<string, { subject: string; body: (link: string) => string }> = {
+  en: {
+    subject: 'Welcome to Domaniqo \u2014 set up your access',
+    body: (link) =>
+      `Hello,\n\nWelcome to Domaniqo.\n\nYour staff profile has been approved.\nPlease use the link below to set your password and access your app:\n${link}\n\nThank you,\nDomaniqo Team`,
+  },
+  th: {
+    subject: 'ยินดีต้อนรับสู่ Domaniqo \u2014 ตั้งค่าการเข้าใช้งานของคุณ',
+    body: (link) =>
+      `สวัสดี,\n\nยินดีต้อนรับสู่ Domaniqo\n\nโปรไฟล์พนักงานของคุณได้รับการอนุมัติแล้ว\nกรุณาใช้ลิงก์ด้านล่างเพื่อตั้งรหัสผ่านและเข้าใช้งานแอปของคุณ:\n${link}\n\nขอบคุณ,\nทีมงาน Domaniqo`,
+  },
+  he: {
+    subject: 'ברוך הבא ל-Domaniqo \u2014 הגדרת הגישה שלך',
+    body: (link) =>
+      `\u200Fשלום,\n\n\u200Fברוך הבא ל-Domaniqo.\n\n\u200Fפרופיל העובד שלך אושר.\n\u200Fאפשר להשתמש בקישור הבא כדי להגדיר סיסמה ולהיכנס לאפליקציה שלך:\n${link}\n\n\u200Fתודה,\n\u200Fצוות Domaniqo`,
+  },
+};
+
+function getAccessMailto(lang: string, toEmail: string, link: string): string {
+  const tpl = MAILTO_ACCESS[lang] ?? MAILTO_ACCESS.en;
+  return `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(tpl.subject)}&body=${encodeURIComponent(tpl.body(link))}`;
+}
+
+
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
 async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
@@ -1122,9 +1147,7 @@ export default function EditStaffPage() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>To: {email}</span>
                       <a
-                        href={`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Your Access Link — Domaniqo')}&body=${encodeURIComponent(
-                          `Hello,\n\nHere is your secure access link to the Domaniqo staff portal:\n\n[Click "Send Access Link" above to generate your link, then paste it here]\n\nThis link is single-use. Please use it to set your password and log in.\n\nDomaniqo Team`
-                        )}`}
+                        href={getAccessMailto(language, email, '[Generate a link above first, then paste it here]')}
                         style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
                       >
                         ✉ Send by Email
@@ -1137,7 +1160,7 @@ export default function EditStaffPage() {
                         <div style={{ display: 'flex', gap: 8 }}>
                           <input readOnly value={resendResult.magic_link} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, flex: 1 }} onClick={(e: any) => e.target.select()} />
                           <a
-                            href={`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Your Access Link — Domaniqo')}&body=${encodeURIComponent(`Hello,\n\nYour secure access link:\n\n${resendResult.magic_link}\n\nThis link is single-use. Use it to set your password and log in.\n\nDomaniqo Team`)}`}
+                            href={getAccessMailto(language, email, resendResult.magic_link)}
                             style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
                           >
                             ✉ Send by Email
