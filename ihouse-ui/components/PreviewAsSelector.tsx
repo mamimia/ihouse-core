@@ -91,9 +91,17 @@ function PreviewAsSelectorOpen() {
                     onChange={(e) => setSelectedRole(e.target.value)}
                     style={{
                         flex: 1,
-                        padding: '6px 8px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-                        background: 'var(--color-surface-2)', color: 'var(--color-text)', fontSize: 'var(--text-xs)',
-                        outline: 'none', cursor: 'pointer', appearance: 'none'
+                        height: 32,
+                        padding: '0 8px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface-2)',
+                        color: 'var(--color-text)',
+                        fontSize: 'var(--text-xs)',
+                        outline: 'none',
+                        cursor: 'pointer',
+                        appearance: 'none',
+                        boxSizing: 'border-box',
                     }}
                 >
                     <option value="" disabled>👀 Preview UI As...</option>
@@ -110,7 +118,11 @@ function PreviewAsSelectorOpen() {
                     disabled={!selectedRole}
                     title="Open preview in new tab"
                     style={{
-                        padding: '6px 10px',
+                        height: 32,
+                        padding: '0 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         borderRadius: 'var(--radius-md)',
                         border: '1px solid var(--color-border)',
                         background: selectedRole ? 'var(--color-moss, #334036)' : 'var(--color-surface-2)',
@@ -122,6 +134,7 @@ function PreviewAsSelectorOpen() {
                         whiteSpace: 'nowrap',
                         transition: 'all 0.15s',
                         flexShrink: 0,
+                        boxSizing: 'border-box',
                     }}
                 >
                     ↗ Go
