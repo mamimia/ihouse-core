@@ -197,6 +197,14 @@ from middleware.preview_mode import PreviewModeMiddleware  # noqa: E402
 app.add_middleware(PreviewModeMiddleware)
 
 # ---------------------------------------------------------------------------
+# Phase 869 — Act As: Mutation Attribution
+# ---------------------------------------------------------------------------
+
+from middleware.act_as_attribution import ActAsAttributionMiddleware  # noqa: E402
+
+app.add_middleware(ActAsAttributionMiddleware)
+
+# ---------------------------------------------------------------------------
 # Phase 570-572 — Response Envelope (Exception Handlers Only)
 # Middleware removed (Phase 585) — routers use api.envelope.ok/err explicitly.
 # Exception handlers kept for unhandled errors (422 validation, 500 internal).

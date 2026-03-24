@@ -295,6 +295,8 @@ def _make_identity_dependency():
         # Phase 868 — Act As tokens already carry the effective role.
         # Do not apply preview overlay on act_as sessions.
         if identity.get("is_acting"):
+            # Phase 869 — Store on request.state for attribution middleware
+            request.state.identity = identity
             return identity
 
         # Phase 847 — Admin Preview As JWT Simulation
@@ -309,7 +311,9 @@ def _make_identity_dependency():
                     identity.get("user_id", "?"),
                     preview_role,
                 )
-                
+
+        # Phase 869 — Store on request.state for attribution middleware
+        request.state.identity = identity
         return identity
 
     return _dep
