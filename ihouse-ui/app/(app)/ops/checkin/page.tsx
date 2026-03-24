@@ -260,17 +260,55 @@ export default function MobileCheckinPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            // Phase 883: Widen to 7-day arrival horizon so home is
-            // operationally useful even when there are no arrivals today.
+            // Phase 884 fix (B revised): Widen horizon, and ALWAYS query
+            // CHECKIN tasks in parallel. Union the results to ensure truth aligns
+            // with the tasks tab, even if bookings API returns something non-empty.
             const today = new Date().toISOString().slice(0, 10);
             const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-            const res = await apiFetch<any>(`/bookings?check_in_from=${today}&check_in_to=${nextWeek}&limit=100`);
-            const list = res.bookings || res.data?.bookings || res.data || [];
-            const rawBookings: Booking[] = Array.isArray(list) ? list : [];
+
+            const [bRes, tRes] = await Promise.all([
+                apiFetch<any>(`/bookings?check_in_from=${today}&check_in_to=${nextWeek}&limit=100`).catch(() => ({})),
+                apiFetch<any>(`/worker/tasks?worker_role=CHECKIN&limit=100`).catch(() => ({}))
+            ]);
+
+            const bList = bRes.bookings || bRes.data?.bookings || bRes.data || [];
+            const rawBookings: Booking[] = Array.isArray(bList) ? bList : [];
+            
+            const tList = tRes.tasks || tRes.data?.tasks || tRes.data || [];
+            const checkinTasks: any[] = Array.isArray(tList) ? tList : [];
+
+            // Merge: map direct bookings, then overlay synthetic bookings from tasks
+            const bookingMap = new Map<string, any>();
+            rawBookings.forEach(b => {
+                const id = b.booking_id || b.id;
+                if (id) bookingMap.set(id, b);
+            });
+
+            checkinTasks.forEach(t => {
+                if (t.status === 'COMPLETED' || t.status === 'CANCELED') return;
+                const bId = t.booking_id || t.task_id;
+                // If the task creates a booking that we didn't get from the API
+                if (!bookingMap.has(bId)) {
+                    bookingMap.set(bId, {
+                        booking_id: bId,
+                        booking_ref: t.task_id,
+                        property_id: t.property_id,
+                        guest_name: t.title || 'Check-in Task',
+                        check_in: t.due_date || today,
+                        check_out: t.due_date || today,
+                        status: 'Upcoming',
+                        deposit_required: false,
+                        nights: 1,
+                        operator_note: t.description || undefined,
+                    });
+                }
+            });
+
+            const merged = Array.from(bookingMap.values());
 
             // Enrich each booking with property deposit config + property status
             const enriched = await Promise.all(
-                rawBookings.map(async (b) => {
+                merged.map(async (b) => {
                     // Compute nights
                     let nights = b.nights;
                     if (!nights && b.check_in && b.check_out) {
@@ -298,36 +336,7 @@ export default function MobileCheckinPage() {
                 })
             );
 
-            // Phase 884 fix (B): if booking query returned 0, also check
-            // the CHECKIN task world — same source /tasks uses. This ensures
-            // the work page is never emptier than the Tasks tab.
-            if (enriched.length === 0) {
-                try {
-                    const taskRes = await apiFetch<any>(`/worker/tasks?worker_role=CHECKIN&limit=50`);
-                    const taskList = taskRes.tasks || taskRes.data?.tasks || taskRes.data || [];
-                    const tasks: any[] = Array.isArray(taskList) ? taskList : [];
-                    // Map tasks → minimal Booking shape so the list renders
-                    const fromTasks: Booking[] = tasks
-                        .filter((t: any) => t.status !== 'COMPLETED' && t.status !== 'CANCELED')
-                        .map((t: any) => ({
-                            booking_id: t.booking_id || t.task_id,
-                            booking_ref: t.task_id,
-                            property_id: t.property_id,
-                            guest_name: t.title || 'Check-in Task',
-                            check_in: t.due_date || today,
-                            check_out: t.due_date || today,
-                            status: 'Upcoming',
-                            deposit_required: false,
-                            nights: 1,
-                            operator_note: t.description || undefined,
-                        }));
-                    setBookings(fromTasks);
-                } catch {
-                    setBookings([]);
-                }
-            } else {
-                setBookings(enriched);
-            }
+            setBookings(enriched);
         } catch {
             setBookings([]);
         }

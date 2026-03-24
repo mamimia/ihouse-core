@@ -19,6 +19,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/staffApi';
 import { useCountdown } from '@/lib/useCountdown';
 import { CHECKIN_CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
@@ -26,7 +27,9 @@ import MobileStaffShell from '@/components/MobileStaffShell';
 import Link from 'next/link';
 
 export default function CheckinCheckoutHub() {
+    const router = useRouter();
     const [arrivals, setArrivals] = useState(0);
+
     const [nextArrivalIso, setNextArrivalIso] = useState<string | null>(null);
     const [activeCheckouts, setActiveCheckouts] = useState(0);
     const [overdueCheckouts, setOverdueCheckouts] = useState(0);
@@ -189,32 +192,32 @@ export default function CheckinCheckoutHub() {
                     {/* Phase 884 fix (D): Home / Profile access for combined role.
                         Single roles have Home in their bottom nav → /worker.
                         Combined role hub IS the home, but the worker still needs
-                        a way to reach their Profile/sign-out area. */}
-                    <Link href="/worker" style={{ textDecoration: 'none' }}>
-                        <div style={{
-                            ...card,
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            opacity: 0.75,
+                        a way to reach their Profile/sign-out area.
+                        User reported <Link /> wasn't firing, so switched to router.push. */}
+                    <div style={{
+                        ...card,
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        opacity: 0.75, cursor: 'pointer',
+                    }}
+                        onClick={() => router.push('/worker')}
+                        onMouseEnter={e => {
+                            (e.currentTarget as HTMLDivElement).style.opacity = '1';
+                            (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)';
                         }}
-                            onMouseEnter={e => {
-                                (e.currentTarget as HTMLDivElement).style.opacity = '1';
-                                (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)';
-                            }}
-                            onMouseLeave={e => {
-                                (e.currentTarget as HTMLDivElement).style.opacity = '0.75';
-                                (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)';
-                            }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                                <span style={{ fontSize: 'var(--text-xl)' }}>👤</span>
-                                <div>
-                                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Profile &amp; Settings</div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 1 }}>Home · Sign out · Language</div>
-                                </div>
+                        onMouseLeave={e => {
+                            (e.currentTarget as HTMLDivElement).style.opacity = '0.75';
+                            (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)';
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                            <span style={{ fontSize: 'var(--text-xl)' }}>👤</span>
+                            <div>
+                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Profile &amp; Settings</div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 1 }}>Home · Sign out · Language</div>
                             </div>
-                            <span style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-faint)' }}>›</span>
                         </div>
-                    </Link>
+                        <span style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-faint)' }}>›</span>
+                    </div>
                 </div>
             )}
         </div>
