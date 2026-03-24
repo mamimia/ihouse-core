@@ -40,7 +40,7 @@ const ADMIN_ROLES = new Set(['admin']);
  *   - email: user email
  *   - tenant_id: resolved tenant
  */
-async function verifyAdmin(request: NextRequest): Promise<{ userId: string; email: string; role: string } | null> {
+async function verifyAdmin(request: NextRequest): Promise<{ userId: string; email: string; role: string; tenantId: string } | null> {
     // 1. Try ihouse_token from cookie first (set during login)
     let token = request.cookies.get('ihouse_token')?.value;
 
@@ -77,6 +77,7 @@ async function verifyAdmin(request: NextRequest): Promise<{ userId: string; emai
     const role = (payload.role as string) || '';
     const userId = (payload.sub as string) || '';
     const email = (payload.email as string) || '';
+    const tenantId = (payload.tenant_id as string) || '';
     const exp = (payload.exp as number) || 0;
 
     // Log the decoded token claims for diagnostic purposes
@@ -132,7 +133,7 @@ async function verifyAdmin(request: NextRequest): Promise<{ userId: string; emai
         return null;
     }
 
-    return { userId, email, role };
+    return { userId, email, role, tenantId };
 }
 
 function supaFetch(path: string, opts: RequestInit = {}) {
@@ -220,9 +221,14 @@ export async function POST(request: NextRequest) {
 
         const updateData: Record<string, unknown> = action === 'approve'
             ? {
-                status: 'active',
+                status: 'approved',
                 approved_at: new Date().toISOString(),
                 approved_by: admin.email,
+                // Phase 877: Migrate property into admin's tenant on approval
+                // Properties start as tenant_id='public-onboard' from the onboarding wizard.
+                // On approval, they must move into the admin's real tenant scope
+                // so they appear in /admin/properties (which is tenant-filtered).
+                ...(admin.tenantId ? { tenant_id: admin.tenantId } : {}),
             }
             : {
                 status: 'rejected',
