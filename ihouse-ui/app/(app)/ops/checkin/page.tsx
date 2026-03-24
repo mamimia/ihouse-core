@@ -296,6 +296,10 @@ export default function MobileCheckinPage() {
                         return {
                             ...b,
                             nights,
+                            // Phase 887: store display_name so BookingCardList can pass it
+                            // as propertyName to WorkerTaskCard (which uses it as primary title).
+                            // Without this, propertyName fell back to property_id (e.g. KPG-502).
+                            property_name: prop.display_name || null,
                             deposit_required: prop.deposit_required ?? false,
                             deposit_amount: prop.deposit_amount ?? null,
                             deposit_currency: prop.deposit_currency || 'THB',

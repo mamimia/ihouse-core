@@ -600,9 +600,23 @@ export default function WorkerPage() {
         // Phase 884 — resolve role, guard admin
         const resolved = resolveWorkerRole();
 
-        // Admin and combined-role workers do not use /worker as home
-        if (resolved === 'admin' || resolved === 'checkin_checkout') {
-            router.replace(resolved === 'admin' ? '/dashboard' : '/ops/checkin-checkout');
+        // Phase 887: Combined-role workers CAN access /worker as their profile/home layer.
+        // Previously we bounced them back to /ops/checkin-checkout immediately, which
+        // made the Profile & Settings link a dead end. Now we detect the combined role
+        // and render a minimal profile view instead of redirecting.
+        if (resolved === 'admin') {
+            router.replace('/dashboard');
+            return;
+        }
+        if (resolved === 'checkin_checkout') {
+            // Stay on /worker — render combined profile view (handled in render below)
+            setRoleConfig(null); // signals the render to show combined-role profile
+            const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
+            if (token) {
+                const p = parseJwt(token);
+                if (p.email) setUserName(p.email.split('@')[0]);
+            }
+            setLoading(false);
             return;
         }
 
@@ -727,13 +741,40 @@ export default function WorkerPage() {
                                     <div style={{ fontSize: 24, color: 'var(--color-text)' }}>
                                         Hello, <span style={{ fontWeight: 700 }}>{userName || 'Staff'}</span>
                                     </div>
-                                    {roleConfig && (
+                                    {roleConfig ? (
                                         <span style={{ background: 'var(--color-surface-3)', color: 'var(--color-text-dim)', fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>
                                             {roleConfig.displayName}
+                                        </span>
+                                    ) : (
+                                        <span style={{ background: 'var(--color-surface-3)', color: 'var(--color-sage)', fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>
+                                            Check-in &amp; Check-out
                                         </span>
                                     )}
                                 </div>
                             </div>
+
+                            {/* Phase 887: Combined-role workers get a direct Work link back to their hub */}
+                            {!roleConfig && (
+                                <div style={{ marginBottom: 24 }}>
+                                    <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Work</div>
+                                    <a href="/ops/checkin-checkout" style={{ textDecoration: 'none' }}>
+                                        <div style={{
+                                            background: 'var(--color-surface-2)', borderRadius: 16, padding: '20px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            border: '1px solid var(--color-border)',
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                                <span style={{ fontSize: 32 }}>🏠🚪</span>
+                                                <div>
+                                                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>Go to Check-in &amp; Check-out</div>
+                                                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>Your combined operations hub</div>
+                                                </div>
+                                            </div>
+                                            <span style={{ fontSize: 20, color: 'var(--color-text-faint)' }}>›</span>
+                                        </div>
+                                    </a>
+                                </div>
+                            )}
 
                             {/* Role-specific stats */}
                             <div style={{ marginBottom: 24 }}>
