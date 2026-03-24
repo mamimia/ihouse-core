@@ -353,7 +353,7 @@ function getStaffRoleFromContext(): string | null {
  * and filters tasks at DB level. Admins normally get all tasks (unrestricted),
  * but for Preview As we explicitly pass the role to scope the view.
  */
-function getBackendWorkerRole(previewRole: string | null): string | undefined {
+function getBackendWorkerRole(previewRole: string | null | undefined): string | undefined {
     if (!previewRole) return undefined;
     switch (previewRole) {
         case 'checkin':          return 'CHECKIN';
@@ -387,7 +387,12 @@ export default function TasksPage() {
     const [staffMap, setStaffMap] = useState<Record<string, { name: string; photo: string }>>({});
 
     // Phase 882b — detect if we should render inside a staff shell
-    const [staffRole, setStaffRole] = useState<string | null>(null);
+    // Phase 882c fix: undefined = "not yet resolved from sessionStorage"
+    //                 null     = "resolved, no preview role (admin view)"
+    //                 string   = "resolved, previewing this role"
+    // This prevents the timing race where the first loadTasks fires before
+    // the sessionStorage read completes, which caused full admin leakage.
+    const [staffRole, setStaffRole] = useState<string | null | undefined>(undefined);
     useEffect(() => { setStaffRole(getStaffRoleFromContext()); }, []);
 
     useEffect(() => {
@@ -449,13 +454,17 @@ export default function TasksPage() {
         }
     }, [filter, staffRole]);
 
-    // Poll every 30s as fallback
+    // Poll every 30s as fallback.
+    // IMPORTANT: only start loading after staffRole has been resolved from
+    // sessionStorage (i.e. staffRole !== undefined). This prevents the first
+    // fetch from firing with staffRole=null (no filter) before the role is set.
     useEffect(() => {
+        if (staffRole === undefined) return; // not yet resolved — wait
         setLoading(true);
         loadTasks();
         const interval = setInterval(loadTasks, 30_000);
         return () => clearInterval(interval);
-    }, [loadTasks]);
+    }, [loadTasks, staffRole]);
 
     // SSE for real-time task events (Phase 308)
     useEffect(() => {
