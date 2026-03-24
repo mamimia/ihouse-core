@@ -129,6 +129,7 @@ function PreviewAsSelectorOpen() {
                         color: selectedRole ? '#fff' : 'var(--color-text-dim)',
                         fontSize: 'var(--text-xs)',
                         fontWeight: 600,
+                        lineHeight: 1,
                         cursor: selectedRole ? 'pointer' : 'not-allowed',
                         opacity: selectedRole ? 1 : 0.4,
                         whiteSpace: 'nowrap',
@@ -137,7 +138,7 @@ function PreviewAsSelectorOpen() {
                         boxSizing: 'border-box',
                     }}
                 >
-                    ↗ Go
+                    GO ➔
                 </button>
             </div>
         </div>
