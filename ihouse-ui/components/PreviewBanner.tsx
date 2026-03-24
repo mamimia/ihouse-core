@@ -53,7 +53,7 @@ export default function PreviewBanner() {
             <span style={{ color: 'rgba(234,179,8,0.5)', fontWeight: 400 }}>|</span>
             <span style={{ fontWeight: 400, opacity: 0.8 }}>Read-only — all actions disabled</span>
             <span style={{ color: 'rgba(234,179,8,0.5)', fontWeight: 400 }}>|</span>
-            <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 11 }}>Data: admin-scoped (not role-filtered)</span>
+            <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 11 }}>Data: tasks role-filtered · bookings admin-scoped</span>
             <span style={{ color: 'rgba(234,179,8,0.5)', fontWeight: 400 }}>|</span>
             <button
                 onClick={() => clearPreview()}
