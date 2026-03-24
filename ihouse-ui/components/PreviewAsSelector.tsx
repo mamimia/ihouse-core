@@ -119,23 +119,16 @@ function PreviewAsSelectorOpen() {
                     disabled={!selectedRole}
                     title="Open preview in new tab"
                     style={{
-                        width: 28,
-                        height: 28,
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 'var(--radius-sm, 6px)',
-                        border: '1px solid var(--color-border)',
-                        background: 'transparent',
+                        padding: 4,
+                        background: 'none',
+                        border: 'none',
                         color: selectedRole ? 'var(--color-text)' : 'var(--color-text-dim)',
-                        fontSize: 13,
+                        fontSize: 14,
                         lineHeight: 1,
                         cursor: selectedRole ? 'pointer' : 'not-allowed',
-                        opacity: selectedRole ? 0.7 : 0.25,
+                        opacity: selectedRole ? 0.6 : 0.2,
                         transition: 'opacity 0.15s',
                         flexShrink: 0,
-                        boxSizing: 'border-box',
                     }}
                 >
                     ↗
