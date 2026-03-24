@@ -40,7 +40,14 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     const MOBILE_STAFF_PREFIXES = ['/worker', '/ops/cleaner', '/ops/checkin', '/ops/checkout', '/ops/maintenance'];
     const isMobileStaffRoute = MOBILE_STAFF_PREFIXES.some(p => pathname.startsWith(p));
 
-    if (isMobileStaffRoute) {
+    // Phase 882b — Also bypass sidebar when preview role is active (staff preview context)
+    // This prevents the admin sidebar from rendering on pages (like /tasks) that are
+    // wrapped in MobileStaffShell by their own preview-aware logic.
+    const isPreviewStaffContext = typeof window !== 'undefined' && (() => {
+        try { return !!sessionStorage.getItem('ihouse_preview_role'); } catch { return false; }
+    })();
+
+    if (isMobileStaffRoute || isPreviewStaffContext) {
         // MobileStaffShell handles its own frame (dark theme, phone sim, header, nav)
         // Each page supplies its own header/bottomNav via MobileStaffShell props
         return (

@@ -302,9 +302,56 @@ const FILTERS = [
     { label: 'Done', value: 'completed' },
 ];
 
-// ---------------------------------------------------------------------------
-// Main Page
-// ---------------------------------------------------------------------------
+import {
+    CHECKIN_BOTTOM_NAV,
+    CHECKOUT_BOTTOM_NAV,
+    CHECKIN_CHECKOUT_BOTTOM_NAV,
+    CLEANER_BOTTOM_NAV,
+    MAINTENANCE_BOTTOM_NAV,
+} from '@/components/BottomNav';
+import MobileStaffShell from '@/components/MobileStaffShell';
+
+/**
+ * Phase 882b — Role-aware shell for the tasks page.
+ *
+ * Problem: `/tasks` was rendering inside AdaptiveShell (admin sidebar) even
+ * when a preview-staff or real-staff user navigated here from their role-correct
+ * bottom nav. This broke role isolation — the user exited their mobile staff
+ * world into the admin dashboard.
+ *
+ * Fix: detect preview role or real staff role, and wrap tasks content inside
+ * MobileStaffShell with the correct role-specific bottom nav. Admin users
+ * without preview still get the bare admin-shell tasks view.
+ */
+function getStaffRoleFromContext(): string | null {
+    if (typeof window === 'undefined') return null;
+    // Check preview role first (highest priority)
+    try {
+        const previewRole = sessionStorage.getItem('ihouse_preview_role');
+        if (previewRole) return previewRole;
+    } catch {}
+    // Check real JWT role
+    try {
+        const token = localStorage.getItem('ihouse_token');
+        if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+            const staffRoles = ['cleaner', 'checkin', 'checkout', 'checkin_checkout', 'maintenance', 'worker'];
+            if (staffRoles.includes(payload.role)) return payload.role;
+        }
+    } catch {}
+    return null;
+}
+
+function getRoleNav(role: string) {
+    switch (role) {
+        case 'checkin': return CHECKIN_BOTTOM_NAV;
+        case 'checkout': return CHECKOUT_BOTTOM_NAV;
+        case 'checkin_checkout': return CHECKIN_CHECKOUT_BOTTOM_NAV;
+        case 'cleaner': return CLEANER_BOTTOM_NAV;
+        case 'maintenance': return MAINTENANCE_BOTTOM_NAV;
+        default: return CLEANER_BOTTOM_NAV; // generic staff fallback
+    }
+}
 
 export default function TasksPage() {
     const [tasks, setTasks] = useState<WorkerTask[]>([]);
@@ -315,6 +362,10 @@ export default function TasksPage() {
     const [detailId, setDetailId] = useState<string | null>(null);
     const [propertyMap, setPropertyMap] = useState<Record<string, string>>({});
     const [staffMap, setStaffMap] = useState<Record<string, { name: string; photo: string }>>({});
+
+    // Phase 882b — detect if we should render inside a staff shell
+    const [staffRole, setStaffRole] = useState<string | null>(null);
+    useEffect(() => { setStaffRole(getStaffRoleFromContext()); }, []);
 
     useEffect(() => {
         Promise.allSettled([
@@ -419,7 +470,7 @@ export default function TasksPage() {
     const criticalCount = tasks.filter(t => t.priority === 'CRITICAL' && t.status === 'pending').length;
     const overdueCount = tasks.filter(t => isOverdue(t)).length;
 
-    return (
+    const tasksContent = (
         <>
             <style>{`
         @keyframes pulse {
@@ -624,4 +675,17 @@ export default function TasksPage() {
             </div>
         </>
     );
+
+    // Phase 882b — If in staff/preview context, wrap in MobileStaffShell with role-correct nav
+    if (staffRole) {
+        return (
+            <MobileStaffShell title="My Tasks" bottomNavItems={getRoleNav(staffRole)}>
+                {tasksContent}
+            </MobileStaffShell>
+        );
+    }
+
+    // Admin context — render bare (AdaptiveShell from layout provides the admin sidebar)
+    return tasksContent;
 }
+
