@@ -363,7 +363,7 @@ export default function EditStaffPage() {
       const [raw, assignmentsRes, propsRes] = await Promise.all([
         apiFetch<RawRecord>(`/permissions/${encodeURIComponent(rawUserId)}`),
         apiFetch<any>(`/staff/assignments/${encodeURIComponent(rawUserId)}`).catch(() => ({ property_ids: [] })),
-        apiFetch<any>('/admin/properties').catch(() => ({ properties: [] })),
+        apiFetch<any>('/admin/properties?status=approved').catch(() => ({ properties: [] })),
       ]);
 
       const record = normalizeLegacyRole(raw);
@@ -431,10 +431,14 @@ export default function EditStaffPage() {
       setAssignedProperties(propIds);
       setOriginalAssignments(propIds);
 
-      // Available properties
+      // Phase 887d: Available properties — approved only.
+      // The API call uses ?status=approved, but we also client-side filter as a
+      // safety net in case the backend returns mixed results (cached, etc).
       const props = propsRes.properties || propsRes.items || propsRes.data || [];
       setAvailableProperties(
-        props.map((p: any) => ({ id: p.id || p.property_id, name: p.display_name || p.name || p.id }))
+        props
+          .filter((p: any) => !p.status || p.status === 'approved')
+          .map((p: any) => ({ id: p.id || p.property_id, name: p.display_name || p.name || p.id }))
       );
 
       // Populate Tab 3

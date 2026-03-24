@@ -854,6 +854,37 @@ async def create_staff_assignment(
 
     try:
         db = client if client is not None else _get_supabase_client()
+
+        # Phase 887d: Enforce the "Approved-Only" operational rule.
+        # A property must be in 'approved' status before any staff can be assigned to it.
+        # Pending, draft, archived, and rejected properties are non-operational.
+        prop_check = (
+            db.table("properties")
+            .select("property_id, status")
+            .eq("property_id", property_id)
+            .limit(1)
+            .execute()
+        )
+        prop_rows = prop_check.data or []
+        if not prop_rows:
+            return make_error_response(
+                status_code=400,
+                code=ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"Property '{property_id}' not found."},
+            )
+        prop_status = prop_rows[0].get("status", "")
+        if prop_status != "approved":
+            return make_error_response(
+                status_code=400,
+                code=ErrorCode.VALIDATION_ERROR,
+                extra={
+                    "detail": (
+                        f"Property '{property_id}' has status '{prop_status}' and cannot be assigned to staff. "
+                        "Only 'approved' properties may be operationally assigned."
+                    )
+                },
+            )
+
         actor_id = body.get("assigned_by", tenant_id)
         row = {
             "tenant_id":   tenant_id,
