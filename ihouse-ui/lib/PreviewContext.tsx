@@ -2,9 +2,10 @@
 
 /**
  * Phase 846 — Admin Preview As Context
+ * Phase 863 — Honesty + Safety Hardening: added isPreviewActive for mutation disabling
  * 
  * Provides a context for Admins to simulate other roles across the UI.
- * This is the scaffolding phase. Actual JWT simulation happens in Phase 847.
+ * When isPreviewActive is true, all mutation controls must be disabled.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -13,6 +14,8 @@ type Role = 'admin' | 'manager' | 'owner' | 'worker' | 'cleaner' | 'checkin' | '
 
 interface PreviewContextType {
     previewRole: Role;
+    /** True when preview mode is active — all mutations must be disabled */
+    isPreviewActive: boolean;
     setPreviewRole: (role: Role) => void;
     clearPreview: () => void;
     getEffectiveRole: (realRole: string) => string;
@@ -53,9 +56,12 @@ export function PreviewProvider({ children }: { children: React.ReactNode }) {
         return realRole;
     };
 
+    const isPreviewActive = previewRole !== null;
+
     return (
         <PreviewContext.Provider value={{ 
-            previewRole, 
+            previewRole,
+            isPreviewActive,
             setPreviewRole: handleSetRole, 
             clearPreview: () => handleSetRole(null),
             getEffectiveRole
@@ -67,6 +73,7 @@ export function PreviewProvider({ children }: { children: React.ReactNode }) {
 
 export function usePreview() {
     const ctx = useContext(PreviewContext);
-    if (!ctx) return { previewRole: null, setPreviewRole: () => {}, clearPreview: () => {}, getEffectiveRole: (r: string) => r };
+    if (!ctx) return { previewRole: null, isPreviewActive: false, setPreviewRole: () => {}, clearPreview: () => {}, getEffectiveRole: (r: string) => r };
     return ctx;
 }
+

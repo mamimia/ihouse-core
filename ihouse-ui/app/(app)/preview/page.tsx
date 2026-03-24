@@ -5,21 +5,21 @@ import { useSearchParams } from 'next/navigation';
 
 export function PreviewPageContent() {
     const searchParams = useSearchParams();
-    const [msg, setMsg] = useState('Initializing simulated session...');
+    const [msg, setMsg] = useState('Entering Preview Mode...');
 
     useEffect(() => {
         const role = searchParams?.get('role');
         if (role) {
             sessionStorage.setItem('ihouse_preview_role', role);
 
-            // Canonical route map — must match preview-dropdown-matrix.md
+            // Canonical route map — must match admin-preview-and-act-as.md
             const PREVIEW_ROUTES: Record<string, string> = {
                 manager:          '/dashboard',
                 owner:            '/owner',
                 cleaner:          '/ops/cleaner',
                 checkin:          '/ops/checkin',
                 checkout:         '/ops/checkout',
-                checkin_checkout: '/worker',
+                checkin_checkout: '/ops/checkin',  // Combined target — routes to check-in surface
                 maintenance:      '/ops/maintenance',
             };
             const target = PREVIEW_ROUTES[role] ?? '/dashboard';
@@ -38,10 +38,10 @@ export function PreviewPageContent() {
             background: 'var(--color-surface, #1e2329)', color: 'var(--color-text)'
         }}>
             <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 32, marginBottom: 16 }}>👀</div>
+                <div style={{ fontSize: 32, marginBottom: 16 }}>👁</div>
                 <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{msg}</div>
                 <p style={{ fontSize: 14, color: 'var(--color-text-dim)' }}>
-                    Generating isolated session token...
+                    Read-only view — no actions will be performed
                 </p>
             </div>
         </div>
