@@ -85,15 +85,15 @@ function PreviewAsSelectorOpen() {
             <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-faint)', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.04em' }}>
                 Admin Tools
             </div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <select
                     value={selectedRole}
                     onChange={(e) => setSelectedRole(e.target.value)}
                     style={{
                         flex: 1,
-                        height: 32,
+                        height: 28,
                         padding: '0 8px',
-                        borderRadius: 'var(--radius-md)',
+                        borderRadius: 'var(--radius-sm, 6px)',
                         border: '1px solid var(--color-border)',
                         background: 'var(--color-surface-2)',
                         color: 'var(--color-text)',
@@ -102,6 +102,7 @@ function PreviewAsSelectorOpen() {
                         cursor: 'pointer',
                         appearance: 'none',
                         boxSizing: 'border-box',
+                        lineHeight: 1,
                     }}
                 >
                     <option value="" disabled>👀 Preview UI As...</option>
@@ -118,27 +119,26 @@ function PreviewAsSelectorOpen() {
                     disabled={!selectedRole}
                     title="Open preview in new tab"
                     style={{
-                        height: 32,
-                        padding: '0 12px',
+                        width: 28,
+                        height: 28,
+                        padding: 0,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        borderRadius: 'var(--radius-md)',
+                        borderRadius: 'var(--radius-sm, 6px)',
                         border: '1px solid var(--color-border)',
-                        background: selectedRole ? 'var(--color-moss, #334036)' : 'var(--color-surface-2)',
-                        color: selectedRole ? '#fff' : 'var(--color-text-dim)',
-                        fontSize: 'var(--text-xs)',
-                        fontWeight: 600,
+                        background: 'transparent',
+                        color: selectedRole ? 'var(--color-text)' : 'var(--color-text-dim)',
+                        fontSize: 13,
                         lineHeight: 1,
                         cursor: selectedRole ? 'pointer' : 'not-allowed',
-                        opacity: selectedRole ? 1 : 0.4,
-                        whiteSpace: 'nowrap',
-                        transition: 'all 0.15s',
+                        opacity: selectedRole ? 0.7 : 0.25,
+                        transition: 'opacity 0.15s',
                         flexShrink: 0,
                         boxSizing: 'border-box',
                     }}
                 >
-                    GO ➔
+                    ↗
                 </button>
             </div>
         </div>
