@@ -30,15 +30,27 @@ export default function AuthCallbackPage() {
                 return;
             }
 
-            // Phase 865: Check if this is a return from identity linking (not login)
+            // Phase 865: Check if this is a return from identity linking (not login).
+            // Guard: only treat this as a linking callback if Supabase already has a
+            // fresh session on the page (i.e. we actually returned from Google OAuth
+            // mid-linking).  If there is no Supabase session yet the key is a stale
+            // leftover from a previous browser restart — clear it and fall through to
+            // the normal login flow so we don't loop back to /profile without a token.
             const linkingProvider = sessionStorage.getItem('ihouse_linking_provider');
             if (linkingProvider) {
-                sessionStorage.removeItem('ihouse_linking_provider');
-                // Return to the route where linking was initiated
-                const returnRoute = sessionStorage.getItem('ihouse_linking_return') || '/profile';
-                sessionStorage.removeItem('ihouse_linking_return');
-                window.location.href = returnRoute;
-                return;
+                const { data: linkCheck } = await supabase!.auth.getSession();
+                if (linkCheck?.session) {
+                    // Real linking return — go back to the initiating route
+                    sessionStorage.removeItem('ihouse_linking_provider');
+                    const returnRoute = sessionStorage.getItem('ihouse_linking_return') || '/profile';
+                    sessionStorage.removeItem('ihouse_linking_return');
+                    window.location.href = returnRoute;
+                    return;
+                } else {
+                    // Stale key leftover from a previous session — clear and continue
+                    sessionStorage.removeItem('ihouse_linking_provider');
+                    sessionStorage.removeItem('ihouse_linking_return');
+                }
             }
 
             // Supabase handles the code exchange automatically via the URL hash/params
@@ -80,7 +92,9 @@ export default function AuthCallbackPage() {
             if (result.language) {
                 localStorage.setItem('domaniqo_lang', result.language);
             }
-            document.cookie = `ihouse_token=${result.token}; path=/; max-age=${result.expires_in || 86400}; SameSite=Lax`;
+            // Secure flag required so Chrome accepts the cookie on HTTPS (staging/production).
+            const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+            document.cookie = `ihouse_token=${result.token}; path=/; max-age=${result.expires_in || 86400}; SameSite=Lax${isHttps ? '; Secure' : ''}`;
             window.location.href = getRoleRoute(result.token);
         } catch (err) {
             setStatus('error');

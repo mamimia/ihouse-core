@@ -2,10 +2,11 @@
 
 /**
  * Phase 875 — Admin Preview As Selector (Canonical Dropdown)
- * 
+ * Phase 876 — Safari fix: window.open moved to button onClick (not select onChange)
+ *
  * Embedded directly in the sidebar for admins.
  * Opens preview in a new tab leaving the admin session untouched.
- * 
+ *
  * Dropdown targets follow the canonical preview-dropdown-matrix.md:
  * 7 targets — no "Worker" in user-facing language.
  */
@@ -60,34 +61,72 @@ export default function PreviewAsSelector() {
         );
     }
 
+    return <PreviewAsSelectorOpen />;
+}
+
+/**
+ * Isolated sub-component so we can use local state for the selected role
+ * without tangling it with the parent's admin/mount checks.
+ *
+ * Safari fix: window.open must be called from a direct button onClick,
+ * not from a <select> onChange, otherwise Safari's popup blocker kills it.
+ */
+function PreviewAsSelectorOpen() {
+    const [selectedRole, setSelectedRole] = useState('');
+
+    const handleOpen = () => {
+        if (!selectedRole) return;
+        // Direct button click — Safari allows window.open here
+        window.open('/preview?role=' + selectedRole, '_blank');
+    };
+
     return (
         <div style={{ padding: 'var(--space-2) var(--space-6)', margin: 'var(--space-2) 0' }}>
             <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-faint)', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.04em' }}>
                 Admin Tools
             </div>
-            <select
-                value=""
-                onChange={(e) => {
-                    const val = e.target.value;
-                    if (val) {
-                        window.open('/preview?role=' + val, '_blank');
-                    }
-                }}
-                style={{
-                    padding: '6px 8px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-                    background: 'var(--color-surface-2)', color: 'var(--color-text)', fontSize: 'var(--text-xs)',
-                    outline: 'none', cursor: 'pointer', width: '100%', appearance: 'none'
-                }}
-            >
-                <option value="" disabled>👀 Preview UI As...</option>
-                <option value="manager">Ops Manager</option>
-                <option value="owner">Owner</option>
-                <option value="cleaner">Cleaner</option>
-                <option value="checkin">Check-in Staff</option>
-                <option value="checkout">Check-out Staff</option>
-                <option value="checkin_checkout">Check-in &amp; Check-out</option>
-                <option value="maintenance">Maintenance</option>
-            </select>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <select
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    style={{
+                        flex: 1,
+                        padding: '6px 8px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface-2)', color: 'var(--color-text)', fontSize: 'var(--text-xs)',
+                        outline: 'none', cursor: 'pointer', appearance: 'none'
+                    }}
+                >
+                    <option value="" disabled>👀 Preview UI As...</option>
+                    <option value="manager">Ops Manager</option>
+                    <option value="owner">Owner</option>
+                    <option value="cleaner">Cleaner</option>
+                    <option value="checkin">Check-in Staff</option>
+                    <option value="checkout">Check-out Staff</option>
+                    <option value="checkin_checkout">Check-in &amp; Check-out</option>
+                    <option value="maintenance">Maintenance</option>
+                </select>
+                <button
+                    onClick={handleOpen}
+                    disabled={!selectedRole}
+                    title="Open preview in new tab"
+                    style={{
+                        padding: '6px 10px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--color-border)',
+                        background: selectedRole ? 'var(--color-moss, #334036)' : 'var(--color-surface-2)',
+                        color: selectedRole ? '#fff' : 'var(--color-text-dim)',
+                        fontSize: 'var(--text-xs)',
+                        fontWeight: 600,
+                        cursor: selectedRole ? 'pointer' : 'not-allowed',
+                        opacity: selectedRole ? 1 : 0.4,
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.15s',
+                        flexShrink: 0,
+                    }}
+                >
+                    ↗ Go
+                </button>
+            </div>
         </div>
     );
 }
