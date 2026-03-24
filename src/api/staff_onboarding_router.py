@@ -198,12 +198,21 @@ async def upload_onboarding_photo(token: str, file: UploadFile = File(...)) -> J
     full_path = f"staff_onboarding/{ts}_{uid}.{ext}"
 
     try:
-        db.storage.from_("property-photos").upload(
+        # INV-MEDIA-02: Staff files go to staff-documents (private), never property-photos (public)
+        db.storage.from_("staff-documents").upload(
             path=full_path, file=full_data,
             file_options={"content-type": "image/jpeg", "upsert": "true"},
         )
-        full_url = _get_storage_public_url(full_path)
-        return JSONResponse(status_code=200, content={"url": full_url})
+        # staff-documents is private — generate a long-lived signed URL (7 days)
+        signed = db.storage.from_("staff-documents").create_signed_url(full_path, 7 * 86400)
+        signed_url = signed.get("signedURL", "") if isinstance(signed, dict) else getattr(signed, "signed_url", "")
+        # Also store the storage path for future URL regeneration
+        base = os.environ["SUPABASE_URL"].rstrip("/")
+        # Return both: the signed URL for immediate display, and the storage path for DB reference
+        return JSONResponse(status_code=200, content={
+            "url": signed_url,
+            "storage_path": f"staff-documents/{full_path}",
+        })
     except Exception as exc:
         logger.exception("Onboarding photo upload error: %s", exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR, extra={"detail": str(exc)})

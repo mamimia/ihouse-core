@@ -722,6 +722,39 @@ async def delete_property(
         )
         deleted["properties"] = len(del_res.data or [])
 
+        # 5. Clean up Storage objects under this property's folder (INV-MEDIA-02 cascade)
+        try:
+            storage_files = db.storage.from_("property-photos").list(property_id)
+            if storage_files:
+                # Recursively collect all file paths (handles subfolders like reference/, gallery/)
+                paths_to_delete = []
+                for item in storage_files:
+                    name = item.get("name", "") if isinstance(item, dict) else ""
+                    if name:
+                        # Check if it's a folder (list its contents too)
+                        subfolder_path = f"{property_id}/{name}"
+                        try:
+                            sub_files = db.storage.from_("property-photos").list(subfolder_path)
+                            if sub_files:
+                                for sf in sub_files:
+                                    sf_name = sf.get("name", "") if isinstance(sf, dict) else ""
+                                    if sf_name:
+                                        paths_to_delete.append(f"{subfolder_path}/{sf_name}")
+                        except Exception:
+                            # Not a folder, it's a file at root level
+                            paths_to_delete.append(subfolder_path)
+
+                if paths_to_delete:
+                    db.storage.from_("property-photos").remove(paths_to_delete)
+                    deleted["storage_files"] = len(paths_to_delete)
+                else:
+                    deleted["storage_files"] = 0
+            else:
+                deleted["storage_files"] = 0
+        except Exception as _se:
+            logger.warning("delete_property: storage cleanup failed for %s: %s", property_id, _se)
+            deleted["storage_files"] = -1
+
         logger.info(
             "delete_property: permanently deleted property_id=%s display_name=%s tenant=%s — counts: %s",
             property_id, display_name, tenant_id, deleted,
