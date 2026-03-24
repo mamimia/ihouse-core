@@ -247,12 +247,29 @@ def get_identity(
 
     if tenant_id_claim:
         # New/unified format: sub=user_id, tenant_id explicit
-        return {
+        identity = {
             "user_id": sub,
             "tenant_id": str(tenant_id_claim).strip(),
             "role": str(payload.get("role", "manager")).strip(),
             "auth_method": auth_method,
         }
+
+        # Phase 868 — Act As token recognition
+        token_type = str(payload.get("token_type", "")).strip()
+        if token_type == "act_as":
+            identity["is_acting"] = True
+            identity["acting_session_id"] = str(payload.get("acting_session_id", "")).strip()
+            identity["real_admin_id"] = str(payload.get("real_admin_id", sub)).strip()
+            identity["real_admin_email"] = str(payload.get("real_admin_email", "")).strip()
+            logger.info(
+                "Act As identity: admin %s (%s) acting as %s (session=%s)",
+                identity["real_admin_id"],
+                identity["real_admin_email"],
+                identity["role"],
+                identity["acting_session_id"],
+            )
+
+        return identity
     else:
         # Legacy format (pre-P22): sub=tenant_id, user_id=tenant_id
         # This branch handles tokens issued before Phase 862 P22.
@@ -275,6 +292,11 @@ def _make_identity_dependency():
     ) -> dict:
         identity = get_identity(credentials)
         
+        # Phase 868 — Act As tokens already carry the effective role.
+        # Do not apply preview overlay on act_as sessions.
+        if identity.get("is_acting"):
+            return identity
+
         # Phase 847 — Admin Preview As JWT Simulation
         # Phase 866 — Enhanced: set is_preview flag for server-enforced isolation
         if identity.get("role") == "admin":

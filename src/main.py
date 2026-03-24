@@ -395,6 +395,9 @@ app.include_router(broadcaster_router)
 from api.auth_router import router as auth_router  # noqa: E402  # Phase 179
 app.include_router(auth_router)
 
+from api.act_as_router import router as act_as_router  # noqa: E402  # Phase 868
+app.include_router(act_as_router)
+
 from api.bootstrap_router import router as bootstrap_router  # noqa: E402  # Phase 761
 app.include_router(bootstrap_router)
 
