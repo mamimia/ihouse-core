@@ -189,6 +189,14 @@ from middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
 app.add_middleware(SecurityHeadersMiddleware)
 
 # ---------------------------------------------------------------------------
+# Phase 866 — Preview Mode (Server-Enforced Read-Only)
+# ---------------------------------------------------------------------------
+
+from middleware.preview_mode import PreviewModeMiddleware  # noqa: E402
+
+app.add_middleware(PreviewModeMiddleware)
+
+# ---------------------------------------------------------------------------
 # Phase 570-572 — Response Envelope (Exception Handlers Only)
 # Middleware removed (Phase 585) — routers use api.envelope.ok/err explicitly.
 # Exception handlers kept for unhandled errors (422 validation, 500 internal).

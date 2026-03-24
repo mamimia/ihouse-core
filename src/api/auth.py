@@ -276,10 +276,17 @@ def _make_identity_dependency():
         identity = get_identity(credentials)
         
         # Phase 847 — Admin Preview As JWT Simulation
+        # Phase 866 — Enhanced: set is_preview flag for server-enforced isolation
         if identity.get("role") == "admin":
             preview_role = request.headers.get("x-preview-role")
             if preview_role:
                 identity["role"] = preview_role
+                identity["is_preview"] = True
+                logger.info(
+                    "Preview mode active: admin %s viewing as %s",
+                    identity.get("user_id", "?"),
+                    preview_role,
+                )
                 
         return identity
 

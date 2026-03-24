@@ -29,13 +29,23 @@ function getToken(): string | null {
 /** Authenticated fetch wrapper for staff API calls. */
 export async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
     const token = getToken();
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers as Record<string, string> || {}),
+    };
+
+    // Phase 866 — Propagate preview role for server-enforced read-only
+    if (typeof window !== 'undefined') {
+        const previewRole = sessionStorage.getItem('ihouse_preview_role');
+        if (previewRole) {
+            headers['X-Preview-Role'] = previewRole;
+        }
+    }
+
     const res = await fetch(`${BASE}${path}`, {
         ...init,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(init?.headers || {}),
-        },
+        headers,
     });
     if (!res.ok) throw new Error(`${res.status}`);
     return res.json();

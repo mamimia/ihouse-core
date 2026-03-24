@@ -97,10 +97,12 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _retryCount 
         // Phase 862 P44: Distinguish auth failures from capability denials.
         // CAPABILITY_DENIED means the user IS authenticated but lacks a specific
         // delegated capability — do NOT logout, just throw the error.
+        // Phase 866: PREVIEW_READ_ONLY means preview mode blocked a mutation — same treatment.
         // Only auto-logout on true auth failures (missing/expired/invalid token).
         if (resp.status === 401 || resp.status === 403) {
             const isCapabilityDenial = typeof detail === 'string' && detail.startsWith('CAPABILITY_DENIED');
-            if (!isCapabilityDenial && _token) {
+            const isPreviewBlock = body?.error?.code === 'PREVIEW_READ_ONLY' || body?.ok === false && body?.error?.code === 'PREVIEW_READ_ONLY';
+            if (!isCapabilityDenial && !isPreviewBlock && _token) {
                 performClientLogout('/login');
             }
         }
