@@ -321,6 +321,26 @@ async def list_bookings(
         result = query.limit(limit).order(_sort_field, desc=_sort_desc).execute()
         rows = result.data or []
 
+        # Phase 887d: Approved-Only Lifecycle Rule.
+        # Filter out bookings whose property is not in 'approved' status.
+        # This covers iCal imports, manual entries, and any other source.
+        # Pending, draft, rejected, and archived properties must not appear
+        # in operational booking lists before approval.
+        if not property_id:  # if property_id filter already applied, no need to re-check
+            try:
+                prop_result = (
+                    db.table("properties")
+                    .select("property_id")
+                    .eq("tenant_id", tenant_id)
+                    .eq("status", "approved")
+                    .execute()
+                )
+                approved_ids = {r["property_id"] for r in (prop_result.data or [])}
+                if approved_ids:
+                    rows = [r for r in rows if r.get("property_id") in approved_ids]
+            except Exception:  # noqa: BLE001
+                pass  # if property check fails, return rows as-is (safe fallback)
+
         bookings = [
             {
                 "booking_id":      r["booking_id"],
