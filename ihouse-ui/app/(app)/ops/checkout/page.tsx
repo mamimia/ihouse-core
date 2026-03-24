@@ -34,9 +34,14 @@ type CheckoutTask = {
     due_date?: string;         // ISO date — the checkout date
     status: string;
     title?: string;
-    // Enriched
+    // Enriched (Phase 886)
     guest_name?: string;
-    check_out?: string;        // same as due_date for display
+    check_in?: string;
+    check_out?: string;
+    property_name?: string;
+    property_latitude?: number | null;
+    property_longitude?: number | null;
+    property_address?: string | null;
 };
 
 function getBookingId(b: Booking): string {
@@ -138,16 +143,36 @@ function CheckoutSummaryStrip({ todayCount, upcomingCount, overdueCount, nextDue
     );
 }
 
-function CheckoutTaskCard({ t, onStart }: { t: CheckoutTask; onStart: (t: CheckoutTask) => void }) {
+function CheckoutTaskCard({ t, onStart, showNotice }: {
+    t: CheckoutTask;
+    onStart: (t: CheckoutTask) => void;
+    showNotice: (msg: string) => void;
+}) {
+    const handleNavigate = () => {
+        if (t.property_latitude != null && t.property_longitude != null) {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const url = isMobile
+                ? `https://waze.com/ul?ll=${t.property_latitude},${t.property_longitude}&navigate=yes`
+                : `https://maps.google.com/maps?daddr=${t.property_latitude},${t.property_longitude}`;
+            window.open(url, '_blank');
+        } else if (t.property_address) {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(t.property_address)}`, '_blank');
+        } else {
+            showNotice('📍 No location data for this property');
+        }
+    };
     return (
         <WorkerTaskCard
             kind="CHECKOUT_VERIFY"
             status={t.status || 'PENDING'}
-            propertyName={t.title || t.property_id} // we fallback to property_id in WorkerTaskCard if it's missing anyway
+            propertyName={t.property_name || t.property_id}
             propertyCode={t.property_id}
             date={t.due_date || ''}
+            checkIn={t.check_in}
+            checkOut={t.check_out || t.due_date}
             guestName={t.guest_name}
             onStart={() => onStart(t)}
+            onNavigate={handleNavigate}
         />
     );
 }
@@ -181,30 +206,44 @@ export default function MobileCheckoutPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            // Phase 883 Core Fix:
-            // The checkout worker world is driven by CHECKOUT_VERIFY tasks, not booking status.
-            // All checkout task booking_ids are disconnected from the bookings table in staging,
-            // so querying /bookings?status=checked_in returns zero.
-            // Instead: query the task world directly with worker_role=CHECKOUT.
+            // Phase 883/886: CHECKOUT_VERIFY tasks are the truth for the checkout world.
             const taskRes = await apiFetch<any>('/worker/tasks?worker_role=CHECKOUT&limit=100');
             const taskList = taskRes.tasks || taskRes.data?.tasks || taskRes.data || [];
             const rawTasks: CheckoutTask[] = Array.isArray(taskList) ? taskList : [];
 
-            // Sort: overdue first (due_date < today), then ascending by date
+            // Phase 886: Enrich each task with real property name + location (worker-safe).
+            // This fixes the title showing "Checkout verification for …" instead of villa name.
+            const enriched = await Promise.all(rawTasks.map(async (t) => {
+                try {
+                    const propRes = await apiFetch<any>(`/properties/${t.property_id}`);
+                    const prop = propRes.data || propRes;
+                    const rawName = prop.name || prop.display_name || prop.short_name || null;
+                    return {
+                        ...t,
+                        property_name: rawName || t.property_id,
+                        property_latitude:  prop.latitude  ?? null,
+                        property_longitude: prop.longitude ?? null,
+                        property_address:   prop.address   ?? null,
+                    };
+                } catch {
+                    return { ...t, property_name: t.property_id };
+                }
+            }));
+
+            // Sort: overdue first, then ascending by date.
             const today = new Date().toISOString().slice(0, 10);
-            rawTasks.sort((a, b) => {
+            enriched.sort((a, b) => {
                 const aDate = a.due_date || '';
                 const bDate = b.due_date || '';
-                // Overdue (past dates) sort first
                 const aOverdue = aDate < today;
                 const bOverdue = bDate < today;
                 if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
                 return aDate.localeCompare(bDate);
             });
 
-            setCheckoutTasks(rawTasks);
+            setCheckoutTasks(enriched);
 
-            // Also try booking status query as secondary — may surface additional data
+            // Keep booking query as secondary (needed for flow steps).
             try {
                 const bookRes = await apiFetch<any>('/bookings?status=checked_in&limit=50');
                 const list = bookRes.bookings || bookRes.data?.bookings || bookRes.data || [];
@@ -406,14 +445,14 @@ export default function MobileCheckoutPage() {
             {step === 'list' && (
                 <>
                     <div style={{ marginBottom: 'var(--space-5)' }}>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {dateStr}
                         </p>
-                        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.03em' }}>
+                        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.03em', marginTop: 4 }}>
                             Check-out
                         </h1>
                         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                            Departures — task world
+                            Departures · task world
                         </p>
                     </div>
 
@@ -438,7 +477,7 @@ export default function MobileCheckoutPage() {
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-alert)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)', fontWeight: 700 }}>⚠ Overdue</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                                {overdueTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} />)}
+                                {overdueTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} showNotice={showNotice} />)}
                             </div>
                         </div>
                     )}
@@ -448,7 +487,7 @@ export default function MobileCheckoutPage() {
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Today</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                                {todayTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} />)}
+                                {todayTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} showNotice={showNotice} />)}
                             </div>
                         </div>
                     )}
@@ -458,7 +497,7 @@ export default function MobileCheckoutPage() {
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Upcoming</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                                {upcomingTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} />)}
+                                {upcomingTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} showNotice={showNotice} />)}
                             </div>
                         </div>
                     )}

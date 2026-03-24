@@ -183,9 +183,10 @@ function BookingCardList({ bookings, onStart, showNotice }: {
                         propertyName={(b as any).property_name || b.property_id}
                         propertyCode={b.property_id}
                         date={b.check_in?.split('T')[0] || 'Unknown'}
+                        checkIn={b.check_in?.split('T')[0]}
+                        checkOut={b.check_out?.split('T')[0]}
                         guestName={b.guest_name}
                         guestCount={b.guest_count}
-                        nights={b.nights}
                         onStart={() => onStart(b)}
                         onNavigate={() => {
                             if (b.property_latitude && b.property_longitude) {
@@ -512,10 +513,10 @@ export default function MobileCheckinPage() {
             {step === 'list' && (
                 <>
                     <div style={{ marginBottom: 'var(--space-5)' }}>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {dateStr}
                         </p>
-                        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.03em' }}>
+                        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.03em', marginTop: 4 }}>
                             Arrivals
                         </h1>
                         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>

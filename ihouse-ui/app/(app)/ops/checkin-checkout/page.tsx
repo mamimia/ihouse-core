@@ -19,7 +19,6 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/staffApi';
 import { useCountdown } from '@/lib/useCountdown';
 import { CHECKIN_CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
@@ -27,7 +26,6 @@ import MobileStaffShell from '@/components/MobileStaffShell';
 import Link from 'next/link';
 
 export default function CheckinCheckoutHub() {
-    const router = useRouter();
     const [arrivals, setArrivals] = useState(0);
 
     const [nextArrivalIso, setNextArrivalIso] = useState<string | null>(null);
@@ -59,15 +57,19 @@ export default function CheckinCheckoutHub() {
         } catch { setArrivals(0); setNextArrivalIso(null); }
 
         try {
-            // Checkout side — already task-world sourced (Phase 883, unchanged)
+            // Phase 886: Count ALL non-completed checkout tasks (overdue + today + upcoming).
+            // Previously only counted "pending" (future) tasks, which understated the workload
+            // vs the 19 check-in tasks. The checkout page itself shows all three buckets.
             const today = new Date().toISOString().slice(0, 10);
             const coRes = await apiFetch<any>('/worker/tasks?worker_role=CHECKOUT&limit=100');
             const coList = coRes.tasks || coRes.data?.tasks || coRes.data || [];
-            const coTasks = Array.isArray(coList) ? coList : [];
+            const coTasks: any[] = Array.isArray(coList)
+                ? coList.filter((t: any) => t.status !== 'COMPLETED' && t.status !== 'CANCELED')
+                : [];
             const overdue = coTasks.filter((t: any) => t.due_date && t.due_date < today).length;
-            const pending = coTasks.filter((t: any) => !t.due_date || t.due_date >= today).length;
+            const active  = coTasks.filter((t: any) => !t.due_date || t.due_date >= today).length;
             setOverdueCheckouts(overdue);
-            setActiveCheckouts(pending);
+            setActiveCheckouts(active);
             const sortedCo = [...coTasks].sort((a: any, b: any) => (a.due_date || '').localeCompare(b.due_date || ''));
             setNextCheckoutIso(sortedCo[0]?.due_date || null);
         } catch { setActiveCheckouts(0); setOverdueCheckouts(0); setNextCheckoutIso(null); }
@@ -95,14 +97,14 @@ export default function CheckinCheckoutHub() {
         <div style={{ maxWidth: 600, margin: '0 auto', padding: 'var(--space-4)' }}>
             {/* Date + title */}
             <div style={{ marginBottom: 'var(--space-5)' }}>
-                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {dateStr}
                 </p>
-                <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.03em' }}>
-                    Your Shifts Today
+                <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.03em', marginTop: 4 }}>
+                    Your Shifts
                 </h1>
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                    Check-in tasks (7 days) &amp; Check-out tasks (task world)
+                    Check-ins (7 days) &amp; Check-outs (task world)
                 </p>
             </div>
 
@@ -189,23 +191,21 @@ export default function CheckinCheckoutHub() {
                         </div>
                     </Link>
 
-                    {/* Phase 884 fix (D): Home / Profile access for combined role.
-                        Single roles have Home in their bottom nav → /worker.
-                        Combined role hub IS the home, but the worker still needs
-                        a way to reach their Profile/sign-out area.
-                        User reported <Link /> wasn't firing, so switched to router.push. */}
+                    {/* Phase 886: Profile & Settings — use window.location for reliable
+                        navigation inside the Preview/iframe context where router.push
+                        may be intercepted and fall back to the same page. */}
                     <div style={{
                         ...card,
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        opacity: 0.75, cursor: 'pointer',
+                        opacity: 0.8, cursor: 'pointer',
                     }}
-                        onClick={() => router.push('/worker')}
+                        onClick={() => { window.location.href = '/worker'; }}
                         onMouseEnter={e => {
                             (e.currentTarget as HTMLDivElement).style.opacity = '1';
                             (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)';
                         }}
                         onMouseLeave={e => {
-                            (e.currentTarget as HTMLDivElement).style.opacity = '0.75';
+                            (e.currentTarget as HTMLDivElement).style.opacity = '0.8';
                             (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)';
                         }}
                     >
