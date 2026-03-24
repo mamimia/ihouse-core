@@ -293,6 +293,32 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
             bookings_skipped += 1
             continue
 
+        # Phase 887d: Approved-Only Lifecycle Rule.
+        # Never create tasks for bookings on non-approved properties.
+        # A property that is pending, draft, rejected, or archived is not
+        # operationally live — its bookings must not generate worker tasks.
+        if property_id:
+            try:
+                prop_status_result = (
+                    db.table("properties")
+                    .select("status")
+                    .eq("property_id", property_id)
+                    .limit(1)
+                    .execute()
+                )
+                prop_status_rows = prop_status_result.data or []
+                if not prop_status_rows or prop_status_rows[0].get("status") != "approved":
+                    logger.info(
+                        "pre_arrival_scanner: skipping booking_id=%s — "
+                        "property_id=%s is not approved (status=%s)",
+                        booking_id, property_id,
+                        prop_status_rows[0].get("status") if prop_status_rows else "not_found",
+                    )
+                    bookings_skipped += 1
+                    continue
+            except Exception:  # noqa: BLE001
+                pass  # if we can't verify, continue (safe default — let it process)
+
         try:
             # 1. Create tasks
             task_ids = _create_pre_arrival_tasks(

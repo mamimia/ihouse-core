@@ -43,19 +43,26 @@ async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
     return res.json();
 }
 
-// Status badge component
+// Status badge component — covers all property lifecycle states
 function StatusBadge({ status }: { status?: string }) {
-    const colors: Record<string, { bg: string; text: string; border: string }> = {
-        available: { bg: 'rgba(46,160,67,0.12)', text: '#3fb950', border: '#23863630' },
-        occupied: { bg: 'rgba(130,80,223,0.12)', text: '#a371f7', border: '#8b5cf630' },
-        cleaning: { bg: 'rgba(56,158,214,0.12)', text: '#58a6ff', border: '#388bfd30' },
-        ready: { bg: 'rgba(46,160,67,0.18)', text: '#3fb950', border: '#3fb95040' },
-        atrisk: { bg: 'rgba(210,153,34,0.18)', text: '#d29922', border: '#d2992240' },
-        blocked: { bg: 'rgba(248,81,73,0.18)', text: '#f85149', border: '#f8514940' },
-        archived: { bg: 'rgba(110,118,129,0.12)', text: '#8b949e', border: '#8b949e30' },
-    };
     const s = (status || 'available').toLowerCase().replace(/[\s_-]/g, '');
-    const c = colors[s] || colors.available;
+    const colors: Record<string, { bg: string; text: string; border: string }> = {
+        // Operational — green family
+        available:   { bg: 'rgba(46,160,67,0.12)',   text: '#3fb950', border: '#23863630' },
+        ready:       { bg: 'rgba(46,160,67,0.18)',   text: '#3fb950', border: '#3fb95040' },
+        occupied:    { bg: 'rgba(130,80,223,0.12)',  text: '#a371f7', border: '#8b5cf630' },
+        cleaning:    { bg: 'rgba(56,158,214,0.12)',  text: '#58a6ff', border: '#388bfd30' },
+        atrisk:      { bg: 'rgba(210,153,34,0.18)',  text: '#d29922', border: '#d2992240' },
+        blocked:     { bg: 'rgba(248,81,73,0.18)',   text: '#f85149', border: '#f8514940' },
+        // Non-operational lifecycle statuses — NEVER green
+        approved:    { bg: 'rgba(46,160,67,0.12)',   text: '#3fb950', border: '#23863630' },
+        pending:     { bg: 'rgba(245,158,11,0.15)',  text: '#f59e0b', border: '#f59e0b40' },
+        pendingreview: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', border: '#f59e0b40' },
+        draft:       { bg: 'rgba(110,118,129,0.12)', text: '#8b949e', border: '#8b949e30' },
+        rejected:    { bg: 'rgba(248,81,73,0.10)',   text: '#f85149', border: '#f8514930' },
+        archived:    { bg: 'rgba(110,118,129,0.12)', text: '#8b949e', border: '#8b949e30' },
+    };
+    const c = colors[s] || { bg: 'rgba(110,118,129,0.12)', text: '#8b949e', border: '#8b949e30' };
     return (
         <span style={{
             display: 'inline-block', padding: '2px 10px', borderRadius: 12,
@@ -326,6 +333,29 @@ export default function PropertyDetailPage() {
                 </div>
             )}
 
+            {/* Phase 887d — Pending/Draft/Rejected non-operational warning banner */}
+            {['pending', 'draft', 'rejected', 'pending_review'].includes(p.status) && (
+                <div style={{
+                    background: p.status === 'rejected'
+                        ? 'rgba(248,81,73,0.08)'
+                        : 'rgba(245,158,11,0.08)',
+                    border: `1px solid ${ p.status === 'rejected' ? 'rgba(248,81,73,0.35)' : 'rgba(245,158,11,0.35)'}`,
+                    borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-5)',
+                    marginBottom: 'var(--space-4)',
+                }}>
+                    <span style={{
+                        fontSize: 'var(--text-sm)',
+                        color: p.status === 'rejected' ? '#f85149' : '#f59e0b',
+                        fontWeight: 600,
+                    }}>
+                        {p.status === 'rejected'
+                            ? '🚫 This property has been rejected and is not operational. It cannot be assigned to staff, generate tasks, or participate in any booking flows.'
+                            : `⏳ This property is ${p.status === 'pending_review' ? 'pending review' : p.status} and is NOT yet operational. It cannot participate in staff assignments, task generation, or booking flows until approved.`
+                        }
+                    </span>
+                </div>
+            )}
+
             {/* Header */}
             <div style={{ marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
                 <button onClick={() => router.push('/admin/properties')} style={{
@@ -427,8 +457,9 @@ export default function PropertyDetailPage() {
 
                     <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>Active Tasks</div>
-                        <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length > 0 ? 'var(--color-warn)' : 'var(--color-ok)' }}>
-                            {tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length}
+                        {/* Phase 887d: compare uppercase CANCELED (DB) and lowercase cancelled (legacy) */}
+                        <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: tasks.filter(t => !['completed','cancelled','canceled','COMPLETED','CANCELLED','CANCELED'].includes(t.status)).length > 0 ? 'var(--color-warn)' : 'var(--color-ok)' }}>
+                            {tasks.filter(t => !['completed','cancelled','canceled','COMPLETED','CANCELLED','CANCELED'].includes(t.status)).length}
                         </div>
                     </div>
 
@@ -714,11 +745,11 @@ export default function PropertyDetailPage() {
                         </div>
                     ) : (
                         <>
-                            {/* Active */}
+                            {/* Active — Phase 887d: cover both CANCELED (uppercase DB) and cancelled (legacy) */}
                             <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>
-                                Active ({tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length})
+                                Active ({tasks.filter(t => !['completed','cancelled','canceled','COMPLETED','CANCELLED','CANCELED'].includes(t.status)).length})
                             </h3>
-                            {tasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').map(t => (
+                            {tasks.filter(t => !['completed','cancelled','canceled','COMPLETED','CANCELLED','CANCELED'].includes(t.status)).map(t => (
                                 <div key={t.task_id} style={{
                                     ...cardStyle, marginBottom: 'var(--space-2)',
                                     display: 'flex', alignItems: 'center', gap: 'var(--space-3)',

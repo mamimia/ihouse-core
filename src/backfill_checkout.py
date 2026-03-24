@@ -11,17 +11,29 @@ db = create_client(url, key)
 from tasks.task_model import TaskKind, TaskStatus, TaskPriority, WorkerRole
 from datetime import datetime, timezone
 
+# Phase 887d: Pre-fetch approved property IDs — Approved-Only Lifecycle Rule.
+# Never backfill CHECKOUT_VERIFY tasks for bookings on non-approved properties.
+approved_res = db.table("properties").select("property_id").eq("status", "approved").execute()
+approved_property_ids = {row["property_id"] for row in (approved_res.data or [])}
+print(f"Approved properties: {len(approved_property_ids)}")
+
 # Find all CLEANING tasks to figure out the dates and bookings
 res = db.table("tasks").select("booking_id, property_id, tenant_id, due_date").eq("kind", "CLEANING").execute()
 cleanings = res.data or []
 
 updates = 0
+skipped_non_approved = 0
 for c in cleanings:
     booking_id = c["booking_id"]
     property_id = c["property_id"]
     tenant_id = c["tenant_id"]
     due_date = c["due_date"] # The check_out date (since my update, or check_in for old)
-    
+
+    # Phase 887d: Skip non-approved properties
+    if property_id not in approved_property_ids:
+        skipped_non_approved += 1
+        continue
+
     # Check if a checkout task already exists
     check = db.table("tasks").select("task_id").eq("booking_id", booking_id).eq("kind", "CHECKOUT_VERIFY").execute()
     if not check.data:
@@ -29,7 +41,7 @@ for c in cleanings:
         # deterministic task_id
         seed = f"CHECKOUT_VERIFY:{booking_id}:{property_id}"
         task_id = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:16]
-        
+
         row = {
             "task_id": task_id,
             "tenant_id": tenant_id,
@@ -47,8 +59,8 @@ for c in cleanings:
             "created_at": datetime.now(tz=timezone.utc).isoformat(),
             "updated_at": datetime.now(tz=timezone.utc).isoformat()
         }
-        
+
         db.table("tasks").insert(row).execute()
         updates += 1
 
-print(f"Backfilled {updates} CHECKOUT_VERIFY tasks.")
+print(f"Backfilled {updates} CHECKOUT_VERIFY tasks. Skipped {skipped_non_approved} non-approved property tasks.")

@@ -159,6 +159,26 @@ async def list_tasks(
 
         result = query.execute()
         tasks = result.data if result.data else []
+
+        # Phase 887d: Approved-Only Lifecycle Rule.
+        # Strip out any tasks whose property is not in 'approved' status.
+        # This is the backend enforcement layer — regardless of how a task was
+        # created (automator, manual, iCal import), if its property is not
+        # approved it must not appear in any task query result.
+        try:
+            prop_result = (
+                db.table("properties")
+                .select("property_id")
+                .eq("tenant_id", tenant_id)
+                .eq("status", "approved")
+                .execute()
+            )
+            approved_ids = {row["property_id"] for row in (prop_result.data or [])}
+            if approved_ids:
+                tasks = [t for t in tasks if t.get("property_id") in approved_ids]
+        except Exception:  # noqa: BLE001
+            pass  # If property check fails, return tasks as-is (safe fallback)
+
         return JSONResponse(status_code=200, content={"tasks": tasks, "count": len(tasks)})
 
     except Exception as exc:  # noqa: BLE001
