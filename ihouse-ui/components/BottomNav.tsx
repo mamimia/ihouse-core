@@ -28,58 +28,50 @@ const DEFAULT_ITEMS: BottomNavItem[] = [
 ];
 
 /**
- * Phase 882 — Role-correct bottom nav sets for all worker-facing ops surfaces.
+ * Phase 882b — Role-isolated nav sets (corrected after full route audit).
  *
- * Each role gets its own nav where:
- *   - "Home" is the role's own surface (not the admin /dashboard)
- *   - Only tabs relevant to that role are shown
- *   - No cross-role items (e.g. Cleaning never shows for Check-in Staff)
+ * AUDIT FINDINGS (Phase 882b):
+ *   /tasks — contains router.push('/admin/properties/...') and router.push('/admin/staff/...')
+ *             inside task cards → admin-leaking from a staff preview context.
+ *   /worker — renders its own internal bottom nav (Home/Tasks/Done/Profile tabs) which
+ *             overrides the preview context and creates a self-contained mixed world.
  *
- * Previously a single STAFF_BOTTOM_NAV was shared, causing every role to see
- * Cleaning and Maintenance tabs even when previewing Check-in Staff, and
- * "Home" resolved to /dashboard (admin world) breaking role isolation.
+ * DECISION: Remove Tasks (/tasks) and More (/worker) from all staff preview navs.
+ * Each role's primary surface already shows its own task queue inline.
+ * Role isolation > nav completeness in preview context.
+ *
+ * Each role nav now contains ONLY tabs that stay inside the correct role world.
  */
 
-/** Check-in Staff: arrivals + tasks only */
+/** Check-in Staff: arrivals only — task queue is inline on the check-in surface */
 export const CHECKIN_BOTTOM_NAV: BottomNavItem[] = [
     { href: '/ops/checkin', label: 'Check-in', icon: '📋' },
-    { href: '/tasks',       label: 'Tasks',    icon: '✓' },
-    { href: '/worker',      label: 'More',     icon: '⚙' },
 ];
 
-/** Check-out Staff: departures + tasks only */
+/** Check-out Staff: departures only — task queue is inline on the check-out surface */
 export const CHECKOUT_BOTTOM_NAV: BottomNavItem[] = [
     { href: '/ops/checkout', label: 'Check-out', icon: '🚪' },
-    { href: '/tasks',        label: 'Tasks',     icon: '✓' },
-    { href: '/worker',       label: 'More',      icon: '⚙' },
 ];
 
-/** Check-in & Check-out (combined role): hub + both flows + tasks */
+/** Check-in & Check-out (combined role): hub + both flows — all role-correct routes */
 export const CHECKIN_CHECKOUT_BOTTOM_NAV: BottomNavItem[] = [
     { href: '/ops/checkin-checkout', label: 'Today',      icon: '📅' },
     { href: '/ops/checkin',          label: 'Arrivals',   icon: '📋' },
     { href: '/ops/checkout',         label: 'Departures', icon: '🚪' },
-    { href: '/tasks',                label: 'Tasks',      icon: '✓' },
 ];
 
-/** Cleaner: cleaning surface + tasks */
+/** Cleaner: cleaning surface only — task queue is inline on the cleaner surface */
 export const CLEANER_BOTTOM_NAV: BottomNavItem[] = [
     { href: '/ops/cleaner', label: 'Cleaning', icon: '🧹' },
-    { href: '/tasks',       label: 'Tasks',    icon: '✓' },
-    { href: '/worker',      label: 'More',     icon: '⚙' },
 ];
 
-/** Maintenance: maintenance surface + tasks */
+/** Maintenance: maintenance surface only — issue queue is inline on the maintenance surface */
 export const MAINTENANCE_BOTTOM_NAV: BottomNavItem[] = [
     { href: '/ops/maintenance', label: 'Maintenance', icon: '🔧' },
-    { href: '/tasks',           label: 'Tasks',       icon: '✓' },
-    { href: '/worker',          label: 'More',        icon: '⚙' },
 ];
 
 /**
  * @deprecated Phase 882: migrated to role-specific constants.
- * Use CHECKIN_BOTTOM_NAV, CHECKOUT_BOTTOM_NAV, CHECKIN_CHECKOUT_BOTTOM_NAV,
- * CLEANER_BOTTOM_NAV, or MAINTENANCE_BOTTOM_NAV instead.
  * Kept as CLEANER_BOTTOM_NAV alias during migration.
  */
 export const STAFF_BOTTOM_NAV = CLEANER_BOTTOM_NAV;
