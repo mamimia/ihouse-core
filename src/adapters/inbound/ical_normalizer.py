@@ -46,6 +46,41 @@ def normalize_ical_bookings(
     db = client if client is not None else _get_db()
     stats = {"observed": 0, "blocked": 0, "skipped": 0, "errors": 0}
 
+    # Phase 887d: Approved-Only guard point 1 — if a specific property_id was
+    # given, verify it is approved before reading or writing anything.
+    if property_id:
+        try:
+            prop_check = (
+                db.table("properties")
+                .select("status")
+                .eq("property_id", property_id)
+                .limit(1)
+                .execute()
+            )
+            prop_rows = prop_check.data or []
+            if not prop_rows or prop_rows[0].get("status") != "approved":
+                _status = prop_rows[0].get("status", "not_found") if prop_rows else "not_found"
+                logger.info(
+                    "ical_normalizer: BLOCKED — property_id=%s status=%s is not approved. "
+                    "Marking pending rows as blocked_non_approved.",
+                    property_id, _status,
+                )
+                try:
+                    db.table("bookings").update(
+                        {"import_status": "blocked_non_approved"}
+                    ).like("booking_id", "ICAL-%").eq(
+                        "property_id", property_id
+                    ).eq("import_status", "pending").execute()
+                except Exception:
+                    pass
+                return stats
+        except Exception as _guard_exc:  # noqa: BLE001
+            logger.warning(
+                "ical_normalizer: property status check failed for %s: %s — aborting.",
+                property_id, _guard_exc,
+            )
+            return stats  # Fail-safe: abort on unknown status
+
     # 1. Read pending iCal rows
     query = (db.table("bookings")
              .select("*")
@@ -58,9 +93,39 @@ def normalize_ical_bookings(
     result = query.limit(500).execute()
     rows = result.data or []
 
+    # Phase 887d: Approved-Only guard point 2 — when no property_id filter was
+    # applied (batch mode), strip rows from non-approved properties and mark
+    # them as blocked_non_approved so they are never retried.
+    if rows and not property_id:
+        try:
+            prop_result = (
+                db.table("properties")
+                .select("property_id")
+                .eq("status", "approved")
+                .execute()
+            )
+            approved_ids = {r["property_id"] for r in (prop_result.data or [])}
+            non_approved = [r for r in rows if r.get("property_id") not in approved_ids]
+            rows = [r for r in rows if r.get("property_id") in approved_ids]
+            if non_approved:
+                for na_row in non_approved:
+                    try:
+                        db.table("bookings").update(
+                            {"import_status": "blocked_non_approved"}
+                        ).eq("booking_id", na_row["booking_id"]).execute()
+                    except Exception:
+                        pass
+                logger.info(
+                    "ical_normalizer: blocked %d rows from non-approved properties",
+                    len(non_approved),
+                )
+        except Exception:  # noqa: BLE001
+            pass  # If property check fails, continue with all rows (safe fallback)
+
     if not rows:
         logger.info("ical_normalizer: no pending rows")
         return stats
+
 
     now_ms = int(time.time() * 1000)
     now_iso = datetime.now(tz=timezone.utc).isoformat()

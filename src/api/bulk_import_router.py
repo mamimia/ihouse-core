@@ -463,7 +463,39 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
         1. Write event_log entry FIRST (booking_state.last_event_id FK)
         2. Upsert booking_state with canonical fields
         3. Idempotent by UID-based booking_id
+
+    Phase 887d — Approved-Only Lifecycle Rule:
+        iCal bookings must NOT be written to booking_state or generate tasks
+        for properties that are not in 'approved' status. Pending, draft,
+        rejected, and archived properties are operationally dead until approved.
     """
+    # Phase 887d: Guard point 1 — verify property is approved before ANY ingestion.
+    # This is the canonical enforcement point for the iCal pipeline.
+    try:
+        prop_check = (
+            db.table("properties")
+            .select("status")
+            .eq("property_id", property_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        prop_rows = prop_check.data or []
+        if not prop_rows or prop_rows[0].get("status") != "approved":
+            _prop_status = prop_rows[0].get("status", "not_found") if prop_rows else "not_found"
+            logger.info(
+                "_parse_ical_bookings: BLOCKED — property_id=%s status=%s is not approved. "
+                "No booking_state rows, no tasks will be created.",
+                property_id, _prop_status,
+            )
+            return 0  # Bail out completely — no writes of any kind
+    except Exception as _guard_exc:  # noqa: BLE001
+        logger.warning(
+            "_parse_ical_bookings: property status check failed for %s: %s — aborting ingest.",
+            property_id, _guard_exc,
+        )
+        return 0  # Fail-safe: if we can't verify approval, do not ingest
+
     try:
         import urllib.request
         import time as _time
@@ -592,6 +624,9 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
                 }, on_conflict="booking_id").execute()
 
                 # 3. Create operational tasks for NEW bookings (same path as OTA webhook)
+                # Phase 887d: Guard point 2 — double-check approval before task creation.
+                # This guard is redundant (guard point 1 already blocks unapproved properties)
+                # but provides defense-in-depth at the task write layer.
                 if not is_update:
                     try:
                         from tasks.task_writer import write_tasks_for_booking_created
