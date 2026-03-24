@@ -269,7 +269,8 @@ function DayPropertyCard({ propertyId, date, tasks, onOpen, propertyMap, staffMa
 // Empty State
 // ---------------------------------------------------------------------------
 
-function EmptyState() {
+function EmptyState({ filter }: { filter: string }) {
+    const isDone = filter === 'completed';
     return (
         <div style={{
             display: 'flex',
@@ -280,12 +281,12 @@ function EmptyState() {
             gap: 'var(--space-4)',
             textAlign: 'center',
         }}>
-            <div style={{ fontSize: '3rem' }}>✅</div>
+            <div style={{ fontSize: '3rem' }}>{isDone ? '✅' : '🎉'}</div>
             <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--color-text)' }}>
-                All clear!
+                {isDone ? 'No completed tasks yet' : 'All clear!'}
             </div>
             <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
-                No tasks assigned to you right now.
+                {isDone ? 'Tasks you complete will appear here.' : 'No pending tasks assigned to you right now.'}
             </div>
         </div>
     );
@@ -295,11 +296,16 @@ function EmptyState() {
 // Status filter tabs
 // ---------------------------------------------------------------------------
 
+// Phase 884 fix (E): Simplified to 2 real states.
+// - Pending = all active/unfinished tasks (no status filter sent to backend,
+//   we rely on the backend default which returns non-completed tasks).
+//   In the future this could pass status=pending,acknowledged,in_progress.
+// - Done    = completed tasks (status=completed).
+// Removed: "All" (was identical to Pending) and "In Progress" (was fake UI
+// that passed in_progress to an endpoint that may not filter on it).
 const FILTERS = [
-    { label: 'All', value: '' },
-    { label: 'Pending', value: 'pending' },
-    { label: 'In Progress', value: 'in_progress' },
-    { label: 'Done', value: 'completed' },
+    { label: 'Pending', value: '' },
+    { label: 'Done',    value: 'completed' },
 ];
 
 import {
@@ -682,7 +688,7 @@ export default function TasksPage() {
                 )}
 
                 {/* Task list */}
-                {!loading && sorted.length === 0 && <EmptyState />}
+                {!loading && sorted.length === 0 && <EmptyState filter={filter} />}
 
                 {!loading && sorted.length > 0 && (() => {
                     const groupedTasks: { key: string; date: string; propertyId: string; tasks: WorkerTask[] }[] = [];

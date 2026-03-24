@@ -2,6 +2,10 @@
 
 /**
  * Phase 865 — Combined Check-in & Check-out Hub
+ * Phase 884 fixes:
+ *   C: Arrivals now sourced from CHECKIN tasks (same as /tasks),
+ *      not bookings. Bookings can return 0 even when tasks exist.
+ *   D: Added Home/Profile link so combined role has full worker world access.
  *
  * Surface for staff members who handle BOTH arrivals and departures.
  * This is a navigation hub, not a re-implementation of either flow.
@@ -31,22 +35,28 @@ export default function CheckinCheckoutHub() {
 
     const load = useCallback(async () => {
         setLoading(true);
+
+        // Phase 884 fix (C): Query CHECKIN tasks directly — same source as /tasks.
+        // Previously we used the booking API which returned 0 when the booking
+        // window query found nothing, even though real CHECKIN tasks existed.
         try {
-            // Phase 883: Widen to 7-day arrival horizon
             const today = new Date().toISOString().slice(0, 10);
-            const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-            const arrRes = await apiFetch<any>(`/bookings?check_in_from=${today}&check_in_to=${nextWeek}&limit=100`);
-            const arrList = arrRes.bookings || arrRes.data?.bookings || arrRes.data || [];
-            const arrBookings = Array.isArray(arrList) ? arrList : [];
-            const pendingArrivals = arrBookings.filter((b: any) => b.status !== 'checked_in' && b.status !== 'Completed' && b.status !== 'completed');
-            setArrivals(pendingArrivals.length);
-            // Earliest arrival for countdown
-            const earliest = pendingArrivals[0]?.check_in || null;
-            setNextArrivalIso(earliest);
+            const checkinRes = await apiFetch<any>('/worker/tasks?worker_role=CHECKIN&limit=100');
+            const checkinList = checkinRes.tasks || checkinRes.data?.tasks || checkinRes.data || [];
+            const checkinTasks: any[] = Array.isArray(checkinList) ? checkinList : [];
+            const pendingCheckins = checkinTasks.filter((t: any) =>
+                t.status !== 'COMPLETED' && t.status !== 'CANCELED' &&
+                (!t.due_date || t.due_date >= today)
+            );
+            setArrivals(pendingCheckins.length);
+            const sortedArrivals = [...pendingCheckins].sort((a: any, b: any) =>
+                (a.due_date || '').localeCompare(b.due_date || '')
+            );
+            setNextArrivalIso(sortedArrivals[0]?.due_date || null);
         } catch { setArrivals(0); setNextArrivalIso(null); }
 
         try {
-            // Phase 883 Core Fix: departure world = CHECKOUT_VERIFY tasks, not booking status
+            // Checkout side — already task-world sourced (Phase 883, unchanged)
             const today = new Date().toISOString().slice(0, 10);
             const coRes = await apiFetch<any>('/worker/tasks?worker_role=CHECKOUT&limit=100');
             const coList = coRes.tasks || coRes.data?.tasks || coRes.data || [];
@@ -55,9 +65,8 @@ export default function CheckinCheckoutHub() {
             const pending = coTasks.filter((t: any) => !t.due_date || t.due_date >= today).length;
             setOverdueCheckouts(overdue);
             setActiveCheckouts(pending);
-            // Earliest checkout task for countdown
-            const sorted = [...coTasks].sort((a: any, b: any) => (a.due_date || '').localeCompare(b.due_date || ''));
-            setNextCheckoutIso(sorted[0]?.due_date || null);
+            const sortedCo = [...coTasks].sort((a: any, b: any) => (a.due_date || '').localeCompare(b.due_date || ''));
+            setNextCheckoutIso(sortedCo[0]?.due_date || null);
         } catch { setActiveCheckouts(0); setOverdueCheckouts(0); setNextCheckoutIso(null); }
 
         setLoading(false);
@@ -90,7 +99,7 @@ export default function CheckinCheckoutHub() {
                     Your Shifts Today
                 </h1>
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                    Combined check-in (7 days) &amp; check-out (task world)
+                    Check-in tasks (7 days) &amp; Check-out tasks (task world)
                 </p>
             </div>
 
@@ -100,7 +109,7 @@ export default function CheckinCheckoutHub() {
 
             {!loading && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                    {/* Arrivals card */}
+                    {/* Arrivals card — sourced from CHECKIN tasks */}
                     <Link href="/ops/checkin" style={{ textDecoration: 'none' }}>
                         <div
                             style={{ ...card, borderColor: arrivalCountdown.isUrgent ? 'rgba(88,166,255,0.35)' : 'var(--color-border)' }}
@@ -112,14 +121,13 @@ export default function CheckinCheckoutHub() {
                                     <span style={{ fontSize: 'var(--text-2xl)' }}>📋</span>
                                     <div>
                                         <div style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--color-text)' }}>Check-in</div>
-                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>Next 7 days</div>
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>Next 7 days · task world</div>
                                     </div>
                                 </div>
                                 <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: arrivals > 0 ? 'var(--color-accent)' : 'var(--color-text-faint)' }}>
                                     {arrivals}
                                 </div>
                             </div>
-                            {/* Countdown line */}
                             {nextArrivalIso && arrivals > 0 && (
                                 <div style={{ fontSize: 'var(--text-xs)', color: arrivalCountdown.isUrgent ? 'var(--color-warn)' : 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>
                                     ⏱ Next arrival: {arrivalCountdown.label}
@@ -130,7 +138,7 @@ export default function CheckinCheckoutHub() {
                                 background: 'var(--color-primary)', color: '#fff',
                                 fontSize: 'var(--text-xs)', fontWeight: 600, textAlign: 'center',
                             }}>
-                                {arrivals > 0 ? `Start Check-ins (${arrivals} pending) →` : 'No arrivals — View schedule →'}
+                                {arrivals > 0 ? `Start Check-ins (${arrivals} pending) →` : 'No check-in tasks — View →'}
                             </div>
                         </div>
                     </Link>
@@ -161,7 +169,6 @@ export default function CheckinCheckoutHub() {
                                     </div>
                                 </div>
                             </div>
-                            {/* Countdown line */}
                             {nextCheckoutIso && (
                                 <div style={{ fontSize: 'var(--text-xs)', color: checkoutCountdown.isOverdue ? 'var(--color-alert)' : checkoutCountdown.isUrgent ? 'var(--color-warn)' : 'var(--color-text-dim)', marginBottom: 'var(--space-2)', fontWeight: checkoutCountdown.isOverdue ? 700 : 400 }}>
                                     {checkoutCountdown.isOverdue ? '⚠ ' : '⏱ '}Next checkout: {checkoutCountdown.label}
@@ -176,6 +183,36 @@ export default function CheckinCheckoutHub() {
                             }}>
                                 {activeCheckouts + overdueCheckouts > 0 ? `Process Check-outs (${activeCheckouts + overdueCheckouts}) →` : 'No checkouts — View →'}
                             </div>
+                        </div>
+                    </Link>
+
+                    {/* Phase 884 fix (D): Home / Profile access for combined role.
+                        Single roles have Home in their bottom nav → /worker.
+                        Combined role hub IS the home, but the worker still needs
+                        a way to reach their Profile/sign-out area. */}
+                    <Link href="/worker" style={{ textDecoration: 'none' }}>
+                        <div style={{
+                            ...card,
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            opacity: 0.75,
+                        }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLDivElement).style.opacity = '1';
+                                (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)';
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLDivElement).style.opacity = '0.75';
+                                (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)';
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                                <span style={{ fontSize: 'var(--text-xl)' }}>👤</span>
+                                <div>
+                                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Profile &amp; Settings</div>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 1 }}>Home · Sign out · Language</div>
+                                </div>
+                            </div>
+                            <span style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-faint)' }}>›</span>
                         </div>
                     </Link>
                 </div>

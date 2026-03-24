@@ -222,49 +222,56 @@ export default function MobileCleanerPage() {
         fontSize: 'var(--text-sm)', outline: 'none',
     };
 
-    // ── Load today's cleaning tasks ──
+    // ── Load cleaning tasks: today + next 7 days so work page
+    // matches the operational truth already visible in /tasks.
     // BRIDGE BEHAVIOR (Phase E closure):
     // Strategy: Try personal assignment filter first. If zero results (because
     // automated task creation from bookings does not yet populate assigned_to),
     // fall back to showing ALL CLEANER tasks for this tenant.
     //
-    // Why this is correct NOW: Cleaners need to see tasks. The assignment
-    // pipeline (manager assigns worker → task.assigned_to gets set) does not
-    // exist yet. Without this fallback, cleaners see zero tasks.
-    //
-    // Risk: A cleaner may see tasks not assigned to them. This is acceptable
-    // in a small-team context but must be replaced when:
-    //   1. Manager assignment UI exists, OR
-    //   2. Automated task creation populates assigned_to from a worker-property map
-    //
-    // When to remove: Once ALL cleaning tasks have assigned_to populated at
-    // creation time, remove the fallback branch and keep only the assigned filter.
+    // Phase 884 fix: widened from today-only to 7-day horizon.
+    // Reason: /tasks shows upcoming CLEANER tasks. The work page must match.
     const load = useCallback(async () => {
         setLoading(true);
         try {
             const today = new Date().toISOString().slice(0, 10);
+            const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
             const workerId = getWorkerId();
 
             let rawTasks: CleaningTask[] = [];
 
-            // Pass 1: Try personal assignment filter
+            // Pass 1: Try personal assignment filter (7-day window)
             let hasExplicitAssignments = false;
             if (workerId) {
                 const assignedRes = await apiFetch<any>(
-                    `/worker/tasks?worker_role=CLEANER&date=${today}&limit=50&assigned_to=${encodeURIComponent(workerId)}`
+                    `/worker/tasks?worker_role=CLEANER&due_date_from=${today}&due_date_to=${nextWeek}&limit=50&assigned_to=${encodeURIComponent(workerId)}`
                 );
                 const assignedList = assignedRes.tasks || assignedRes.data?.tasks || assignedRes.data || [];
                 rawTasks = Array.isArray(assignedList) ? assignedList : [];
                 hasExplicitAssignments = !!assignedRes.has_assignments;
             }
 
-            // Pass 2: Fallback — show all CLEANER tasks ONLY if worker has no explicit assignments
+            // Pass 2: Fallback — all CLEANER tasks (7-day window) if no personal assignments
             if (rawTasks.length === 0 && !hasExplicitAssignments) {
                 const allRes = await apiFetch<any>(
-                    `/worker/tasks?worker_role=CLEANER&date=${today}&limit=50`
+                    `/worker/tasks?worker_role=CLEANER&due_date_from=${today}&due_date_to=${nextWeek}&limit=50`
                 );
+                // If the backend doesn't support due_date_from/to, fall back to unfiltered
                 const allList = allRes.tasks || allRes.data?.tasks || allRes.data || [];
                 rawTasks = Array.isArray(allList) ? allList : [];
+
+                // Final fallback: no date filter at all (backend may not support range params)
+                if (rawTasks.length === 0) {
+                    const plainRes = await apiFetch<any>(`/worker/tasks?worker_role=CLEANER&limit=50`);
+                    const plainList = plainRes.tasks || plainRes.data?.tasks || plainRes.data || [];
+                    rawTasks = Array.isArray(plainList) ? plainList : [];
+                    // Keep only non-completed tasks due within next 7 days
+                    rawTasks = rawTasks.filter((t: any) => {
+                        if (t.status === 'COMPLETED' || t.status === 'CANCELED') return false;
+                        if (!t.due_date) return true; // no date = show it
+                        return t.due_date >= today && t.due_date <= nextWeek;
+                    });
+                }
             }
 
             // Enrich with property info (best-effort)
@@ -283,9 +290,13 @@ export default function MobileCleanerPage() {
                 })
             );
 
-            // Sort: PENDING first, then ACKNOWLEDGED, then IN_PROGRESS
+            // Sort: PENDING first, then ACKNOWLEDGED, then IN_PROGRESS; then by due_date asc
             const statusOrder: Record<string, number> = { PENDING: 0, ACKNOWLEDGED: 1, IN_PROGRESS: 2, COMPLETED: 3 };
-            enriched.sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
+            enriched.sort((a, b) => {
+                const sdiff = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+                if (sdiff !== 0) return sdiff;
+                return (a.due_date || '9999').localeCompare(b.due_date || '9999');
+            });
 
             setTasks(enriched);
         } catch {
@@ -710,49 +721,97 @@ export default function MobileCleanerPage() {
                         </div>
                     )}
 
-                    {/* Task list */}
+                    {/* ──── Active tasks: Today + Upcoming ──── */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                        {activeTasks.map(t => (
-                            <div key={t.task_id} style={{
-                                ...card, cursor: 'pointer', transition: 'border-color 0.2s',
-                            }}
-                                onClick={() => openDetail(t)}
-                                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-                                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                                    <div>
-                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-                                            {t.property_name || t.property_id}
+                        {/* Today's tasks */}
+                        {activeTasks.filter(t => t.due_date === new Date().toISOString().slice(0, 10)).length > 0 && (
+                            <>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-1)' }}>Today</div>
+                                {activeTasks.filter(t => t.due_date === new Date().toISOString().slice(0, 10)).map(t => (
+                                    <div key={t.task_id} style={{
+                                        ...card, cursor: 'pointer', transition: 'border-color 0.2s',
+                                    }}
+                                        onClick={() => openDetail(t)}
+                                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+                                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                                            <div>
+                                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
+                                                    {t.property_name || t.property_id}
+                                                </div>
+                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                                                    {t.property_id}
+                                                </div>
+                                            </div>
+                                            <StatusBadge status={t.status} />
                                         </div>
-                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                                            {t.property_id}
+                                        <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
+                                            <span>🧹 Cleaning</span>
+                                            <TaskCountdownChip dueDate={t.due_date || t.deadline || null} />
+                                        </div>
+                                        <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
+                                            {t.status === 'PENDING' && (
+                                                <button onClick={e => { e.stopPropagation(); acknowledgeTask(t); }} style={{
+                                                    flex: 1, padding: '8px', background: 'rgba(212,149,106,0.1)', color: 'var(--color-warn)',
+                                                    border: '1px solid rgba(212,149,106,0.3)', borderRadius: 'var(--radius-sm)',
+                                                    fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                                                }}>Acknowledge</button>
+                                            )}
+                                            <button style={{
+                                                flex: 1, padding: '8px', background: 'var(--color-primary)', color: '#fff',
+                                                border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                                            }}>{t.status === 'IN_PROGRESS' ? 'Resume' : 'Start'}</button>
+                                            <button onClick={e => { e.stopPropagation(); navigateToProperty(t.task_id); }} style={{
+                                                padding: '8px 12px', background: 'var(--color-surface-2)', color: 'var(--color-text-dim)',
+                                                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', cursor: 'pointer',
+                                            }}>📍</button>
                                         </div>
                                     </div>
-                                    <StatusBadge status={t.status} />
-                                </div>
-                                <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
-                                    <span>🧹 Cleaning</span>
-                                    <TaskCountdownChip dueDate={t.due_date || t.deadline || null} />
-                                </div>
-                                <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-                                    {t.status === 'PENDING' && (
-                                        <button onClick={e => { e.stopPropagation(); acknowledgeTask(t); }} style={{
-                                            flex: 1, padding: '8px', background: 'rgba(212,149,106,0.1)', color: 'var(--color-warn)',
-                                            border: '1px solid rgba(212,149,106,0.3)', borderRadius: 'var(--radius-sm)',
-                                            fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                                        }}>Acknowledge</button>
-                                    )}
-                                    <button style={{
-                                        flex: 1, padding: '8px', background: 'var(--color-primary)', color: '#fff',
-                                        border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                                    }}>{t.status === 'IN_PROGRESS' ? 'Resume' : 'Start'}</button>
-                                    <button onClick={e => { e.stopPropagation(); navigateToProperty(t.task_id); }} style={{
-                                        padding: '8px 12px', background: 'var(--color-surface-2)', color: 'var(--color-text-dim)',
-                                        border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', cursor: 'pointer',
-                                    }}>📍</button>
-                                </div>
+                                ))}
+                            </>
+                        )}
+
+                        {/* Upcoming tasks (after today) */}
+                        {activeTasks.filter(t => (t.due_date ?? '') > new Date().toISOString().slice(0, 10)).length > 0 && (
+                            <>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>Upcoming</div>
+                                {activeTasks.filter(t => (t.due_date ?? '') > new Date().toISOString().slice(0, 10)).map(t => (
+                                    <div key={t.task_id} style={{
+                                        ...card, cursor: 'pointer', transition: 'border-color 0.2s',
+                                        opacity: 0.85,
+                                    }}
+                                        onClick={() => openDetail(t)}
+                                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+                                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                                            <div>
+                                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
+                                                    {t.property_name || t.property_id}
+                                                </div>
+                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                                                    {t.property_id}
+                                                </div>
+                                            </div>
+                                            <StatusBadge status={t.status} />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
+                                            <span>🧹 Cleaning</span>
+                                            <span>📅 {t.due_date}</span>
+                                            <TaskCountdownChip dueDate={t.due_date || t.deadline || null} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+
+                        {/* No upcoming work at all */}
+                        {activeTasks.length === 0 && !loading && (
+                            <div style={{ ...card, textAlign: 'center', padding: 'var(--space-8)' }}>
+                                <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>🧹</div>
+                                <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>No upcoming cleaning tasks</div>
+                                <div style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)', marginTop: 4 }}>Check back or refresh — tasks appear here automatically</div>
                             </div>
-                        ))}
+                        )}
                     </div>
 
                     {/* Completed tasks */}

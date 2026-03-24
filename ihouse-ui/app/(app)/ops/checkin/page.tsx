@@ -297,7 +297,37 @@ export default function MobileCheckinPage() {
                     }
                 })
             );
-            setBookings(enriched);
+
+            // Phase 884 fix (B): if booking query returned 0, also check
+            // the CHECKIN task world — same source /tasks uses. This ensures
+            // the work page is never emptier than the Tasks tab.
+            if (enriched.length === 0) {
+                try {
+                    const taskRes = await apiFetch<any>(`/worker/tasks?worker_role=CHECKIN&limit=50`);
+                    const taskList = taskRes.tasks || taskRes.data?.tasks || taskRes.data || [];
+                    const tasks: any[] = Array.isArray(taskList) ? taskList : [];
+                    // Map tasks → minimal Booking shape so the list renders
+                    const fromTasks: Booking[] = tasks
+                        .filter((t: any) => t.status !== 'COMPLETED' && t.status !== 'CANCELED')
+                        .map((t: any) => ({
+                            booking_id: t.booking_id || t.task_id,
+                            booking_ref: t.task_id,
+                            property_id: t.property_id,
+                            guest_name: t.title || 'Check-in Task',
+                            check_in: t.due_date || today,
+                            check_out: t.due_date || today,
+                            status: 'Upcoming',
+                            deposit_required: false,
+                            nights: 1,
+                            operator_note: t.description || undefined,
+                        }));
+                    setBookings(fromTasks);
+                } catch {
+                    setBookings([]);
+                }
+            } else {
+                setBookings(enriched);
+            }
         } catch {
             setBookings([]);
         }
