@@ -561,18 +561,63 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
 
             # Detect if this is a new or updated booking
             existing = (db.table("booking_state")
-                        .select("booking_id, version")
+                        .select("booking_id, version, check_in, check_out, guest_name, status")
                         .eq("booking_id", booking_id)
                         .limit(1)
                         .execute())
             is_update = bool(existing.data)
             new_version = ((existing.data[0].get("version") or 0) + 1) if is_update else 1
+
+            # Phase 887d — BOOKING_AMENDED loop fix.
+            # Only emit an amendment event if a meaningful business field actually changed.
+            # If nothing changed, update updated_at_ms silently and skip event_log write.
+            if is_update:
+                ex = existing.data[0]
+                changed = (
+                    ex.get("check_in") != check_in
+                    or ex.get("check_out") != check_out
+                    or (ex.get("guest_name") or "") != (guest_name or "")
+                    or ex.get("status") != "active"
+                )
+                if not changed:
+                    # Silent no-op: touch updated_at_ms only, no event_log row.
+                    try:
+                        db.table("booking_state").update(
+                            {"updated_at_ms": now_ms}
+                        ).eq("booking_id", booking_id).execute()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    created += 1
+                    continue  # Skip event_log write — nothing changed
+
             event_kind = "BOOKING_AMENDED" if is_update else "BOOKING_CREATED"
 
             # Extract guest name from SUMMARY (iCal typically has "Reserved" or guest name)
             guest_name = summary if summary != "iCal Booking" else ""
 
             try:
+                # Phase 887d — Dedup guard (defense-in-depth).
+                # Prevent writing two identical (booking_id, kind) events within 10 minutes,
+                # e.g. if a sync fires twice in rapid succession before the change-detection
+                # guard is active (e.g. first-run new bookings).
+                from datetime import timedelta
+                dedup_cutoff = (datetime.now(tz=_tz.utc) - timedelta(minutes=10)).isoformat()
+                try:
+                    recent = (
+                        db.table("event_log")
+                        .select("event_id")
+                        .filter("payload_json->>'booking_id'", "eq", booking_id)
+                        .eq("kind", event_kind)
+                        .gte("occurred_at", dedup_cutoff)
+                        .limit(1)
+                        .execute()
+                    )
+                    if recent.data:
+                        created += 1
+                        continue  # Duplicate within 10-min window — skip
+                except Exception:  # noqa: BLE001
+                    pass  # Dedup check failure is non-fatal — proceed with write
+
                 # 1. Write event_log FIRST (booking_state.last_event_id FK)
                 evt_hash = hashlib.sha256(
                     f"ICAL:{booking_id}:{now_ms}".encode()
