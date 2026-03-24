@@ -206,6 +206,29 @@ export default function PropertyDetailPage() {
         setArchiving(false);
     };
 
+    // Phase 887d: Permanent Delete — only for rejected/archived properties.
+    // Requires admin to type the property name to confirm intent.
+    const [deleting, setDeleting] = useState(false);
+    const handlePermanentDelete = async () => {
+        const name = p.display_name || propertyId;
+        const typed = window.prompt(
+            `⚠ PERMANENT DELETE\n\nThis will remove "${name}" and ALL associated tasks, bookings, and records from the system. This cannot be undone.\n\nType the property name to confirm:`
+        );
+        if (typed === null) return; // cancelled
+        if (typed.trim() !== name.trim()) {
+            alert('Name did not match. Delete cancelled.');
+            return;
+        }
+        setDeleting(true);
+        try {
+            await apiFetch(`/properties/${propertyId}`, { method: 'DELETE' });
+            router.push('/admin/properties');
+        } catch {
+            showNotice('Delete failed — contact support if this persists');
+            setDeleting(false);
+        }
+    };
+
     const load = useCallback(async () => {
         setLoading(true);
         try {
@@ -342,6 +365,7 @@ export default function PropertyDetailPage() {
                     border: `1px solid ${ p.status === 'rejected' ? 'rgba(248,81,73,0.35)' : 'rgba(245,158,11,0.35)'}`,
                     borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-5)',
                     marginBottom: 'var(--space-4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)',
                 }}>
                     <span style={{
                         fontSize: 'var(--text-sm)',
@@ -353,6 +377,20 @@ export default function PropertyDetailPage() {
                             : `⏳ This property is ${p.status === 'pending_review' ? 'pending review' : p.status} and is NOT yet operational. It cannot participate in staff assignments, task generation, or booking flows until approved.`
                         }
                     </span>
+                    {p.status === 'rejected' && (
+                        <button
+                            onClick={handlePermanentDelete}
+                            disabled={deleting}
+                            style={{
+                                background: 'rgba(248,81,73,0.15)', color: '#f85149',
+                                border: '1px solid rgba(248,81,73,0.4)',
+                                borderRadius: 'var(--radius-md)', padding: '6px 16px',
+                                fontSize: 'var(--text-xs)', fontWeight: 700,
+                                cursor: deleting ? 'not-allowed' : 'pointer', flexShrink: 0,
+                                whiteSpace: 'nowrap',
+                            }}
+                        >{deleting ? 'Deleting…' : '🗑 Permanently Delete'}</button>
+                    )}
                 </div>
             )}
 
@@ -409,8 +447,8 @@ export default function PropertyDetailPage() {
                         color: '#fff', fontSize: 'var(--text-xs)', cursor: 'pointer', fontWeight: 600,
                     }}
                 >✍️ Add Booking</button>
-                {/* Archive / Unarchive button */}
-                {p.status !== 'archived' ? (
+                {/* Archive / Unarchive / Permanent Delete button */}
+                {p.status !== 'archived' && p.status !== 'rejected' ? (
                     <button
                         onClick={handleArchive}
                         disabled={archiving}
@@ -420,7 +458,7 @@ export default function PropertyDetailPage() {
                             color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)', cursor: 'pointer', fontWeight: 500,
                         }}
                     >{archiving ? '…' : '🗄 Archive'}</button>
-                ) : (
+                ) : p.status === 'archived' ? (
                     <button
                         onClick={handleUnarchive}
                         disabled={archiving}
@@ -430,6 +468,17 @@ export default function PropertyDetailPage() {
                             color: 'var(--color-warn)', fontSize: 'var(--text-xs)', cursor: 'pointer', fontWeight: 700,
                         }}
                     >{archiving ? '…' : '↩ Unarchive'}</button>
+                ) : (
+                    // Rejected: show permanent delete in header action area too
+                    <button
+                        onClick={handlePermanentDelete}
+                        disabled={deleting}
+                        style={{
+                            padding: 'var(--space-2) var(--space-4)', borderRadius: 'var(--radius-md)',
+                            background: 'rgba(248,81,73,0.12)', border: '1px solid rgba(248,81,73,0.35)',
+                            color: '#f85149', fontSize: 'var(--text-xs)', cursor: deleting ? 'not-allowed' : 'pointer', fontWeight: 700,
+                        }}
+                    >{deleting ? 'Deleting…' : '🗑 Delete'}</button>
                 )}
             </div>
 

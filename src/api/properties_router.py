@@ -612,6 +612,134 @@ async def unarchive_property(
 
 
 # ---------------------------------------------------------------------------
+# DELETE /properties/{property_id}  (Phase 887d — Permanent Delete)
+# ---------------------------------------------------------------------------
+
+@router.delete(
+    "/properties/{property_id}",
+    tags=["properties"],
+    summary="Permanently delete a rejected or archived property and all its data",
+    description=(
+        "Hard-deletes a property and ALL associated records from the system.\\n\\n"
+        "**Only allowed for properties with status `rejected` or `archived`.**\\n\\n"
+        "Cascade order:\\n"
+        "1. `tasks` — all tasks for this property\\n"
+        "2. `booking_state` — all booking state rows\\n"
+        "3. `bookings` — all raw import rows\\n"
+        "4. `pre_arrival_queue` — any queued automation entries\\n"
+        "5. `staff_property_assignments` — all staff links\\n"
+        "6. `event_log` — all events whose payload references this property\\n"
+        "7. `properties` — the property record itself\\n\\n"
+        "**This action is irreversible.** The UI requires explicit name confirmation before calling this endpoint."
+    ),
+    responses={
+        200: {"description": "Property and all associated data permanently deleted."},
+        400: {"description": "Property is not in a deletable state (must be rejected or archived)."},
+        401: {"description": "Missing or invalid JWT token."},
+        404: {"description": "Property not found."},
+        500: {"description": "Internal server error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def delete_property(
+    property_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("properties")),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """DELETE /properties/{property_id} — permanent hard delete for rejected/archived properties."""
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # 1. Verify property exists and is in a deletable state
+        prop_result = (
+            db.table("properties")
+            .select("property_id, status, display_name")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .limit(1)
+            .execute()
+        )
+        rows = prop_result.data or []
+        if not rows:
+            return make_error_response(
+                status_code=404,
+                code="NOT_FOUND",
+                extra={"detail": f"Property '{property_id}' not found for this tenant."},
+            )
+
+        prop_status = rows[0].get("status", "")
+        if prop_status not in ("rejected", "archived"):
+            return make_error_response(
+                status_code=400,
+                code=ErrorCode.VALIDATION_ERROR,
+                extra={
+                    "detail": (
+                        f"Property '{property_id}' has status '{prop_status}'. "
+                        "Permanent delete is only allowed for rejected or archived properties."
+                    )
+                },
+            )
+
+        display_name = rows[0].get("display_name") or property_id
+        deleted: Dict[str, int] = {}
+
+        # 2. Cascade deletes — count rows removed from each table
+        for table, col in [
+            ("tasks", "property_id"),
+            ("booking_state", "property_id"),
+            ("bookings", "property_id"),
+            ("pre_arrival_queue", "property_id"),
+            ("staff_property_assignments", "property_id"),
+        ]:
+            try:
+                res = db.table(table).delete().eq(col, property_id).execute()
+                deleted[table] = len(res.data or [])
+            except Exception as _te:
+                logger.warning("delete_property: error deleting from %s for %s: %s", table, property_id, _te)
+                deleted[table] = -1  # indicates partial failure
+
+        # 3. event_log — payload-level reference delete (best-effort)
+        try:
+            el_res = (
+                db.table("event_log")
+                .delete()
+                .filter("payload_json->>property_id", "eq", property_id)
+                .execute()
+            )
+            deleted["event_log"] = len(el_res.data or [])
+        except Exception as _el:
+            logger.warning("delete_property: event_log delete failed for %s: %s", property_id, _el)
+            deleted["event_log"] = -1
+
+        # 4. Delete the property record itself
+        del_res = (
+            db.table("properties")
+            .delete()
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .execute()
+        )
+        deleted["properties"] = len(del_res.data or [])
+
+        logger.info(
+            "delete_property: permanently deleted property_id=%s display_name=%s tenant=%s — counts: %s",
+            property_id, display_name, tenant_id, deleted,
+        )
+
+        return JSONResponse(status_code=200, content={
+            "deleted": True,
+            "property_id": property_id,
+            "display_name": display_name,
+            "deleted_counts": deleted,
+        })
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("DELETE /properties/%s error for tenant=%s: %s", property_id, tenant_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
 # Property ID Settings (Admin-configurable prefix/sequence)
 # ---------------------------------------------------------------------------
 
