@@ -148,8 +148,8 @@ These rules are inviolable. No code path, migration, or manual action may violat
 **INV-ARCHIVE-04 -- Failure-safe pruning:**
 > Archive generation failure, storage failure, or checksum mismatch must never trigger pruning. The live `event_log` table is always the safe state when an archive is absent or unverified. When in doubt, do nothing.
 
-**INV-STORAGE-01 -- PII auto-deletion:**
-> Passport and ID photos must be automatically deleted 90 days after guest checkout. No manual intervention required. The system must verify no active dispute or legal hold exists before deletion.
+**INV-STORAGE-01 -- Guest PII auto-deletion (guest documents only):**
+> Guest passport/ID photos captured during check-in must be automatically deleted 90 days after checkout. The system must verify no active dispute or legal hold exists. **This rule applies only to guest identity documents. Staff identity/employment documents are never auto-deleted.**
 
 **INV-STORAGE-02 -- Cleaning photo privacy:**
 > The `cleaning-photos` bucket must be private. Cleaning proof photos must only be accessible via signed URLs. Public access to cleaning photos is a privacy violation.

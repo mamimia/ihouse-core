@@ -22,8 +22,8 @@ Deletion requires proof. Archival requires verification.
 | `property-photos` | Public | Marketing + reference photos, cover images | Permanent | 5 MB |
 | `cleaning-photos` | **Private** | Worker proof photos (before/after cleaning) | 12 months live, then archive | 10 MB |
 | `guest-uploads` | Private | Guest check-in attachments, deposit evidence | Booking lifecycle + 90 days | 10 MB |
-| `pii-documents` | Private | Passport/ID photos, sensitive guest docs | **90 days from checkout** (configurable) | 10 MB |
-| `staff-documents` | Private | Worker ID, work permit, HR documents | While employed + 12 months | 10 MB |
+| `pii-documents` | Private | **Guest** passport/ID photos captured during check-in | **90 days from checkout** (configurable) | 10 MB |
+| `staff-documents` | Private | Worker ID, work permit, HR docs, **staff identity/employment documents** | **While employed + 12 months** | 10 MB |
 | `exports` | Private | Admin CSV/PDF data exports | 30 days, auto-delete | 50 MB |
 | `event-archives` | Private | Semi-annual audit archive packages | **Permanent** | 50 MB |
 
@@ -50,24 +50,42 @@ Public access is a liability. Access via signed URLs only.
 | Cover photos | `property-photos` | Permanent | No | No |
 | Cleaning proof photos | `cleaning-photos` | 12 months | Yes | After archive |
 | Problem report photos | `cleaning-photos` | 12 months | Yes | After archive |
-| Passport / ID photos | `pii-documents` | **90 days from checkout** | No -- hard delete | **Yes** |
+| **Guest** passport/ID photos | `pii-documents` | **90 days from checkout** | No -- hard delete | **Yes -- automatic** |
 | Guest deposit evidence | `guest-uploads` | Booking + 90 days | Yes | After settled |
 | Damage deduction evidence | `guest-uploads` | Booking + 180 days | Yes | After dispute window |
-| Staff identity docs | `staff-documents` | Employed + 12 months | Yes | After offboarding |
+| **Staff** identity/employment docs | `staff-documents` | **While employed + 12 months** | Yes -- HR archive | **No -- never auto-deleted** |
 | Admin exports | `exports` | 30 days | No -- regenerable | **Yes** |
 | Audit archives | `event-archives` | **Permanent** | N/A | Never |
 
 ---
 
-## 3. PII Retention Rules
+## 3. Identity Document Retention Rules
 
-Passport/ID photos are the most sensitive category.
+**Guest and staff identity documents are different categories with different rules.**
 
-1. **Default TTL:** 90 days from guest checkout date
-2. **Admin-configurable:** Some jurisdictions require longer retention (e.g., Thailand TM.30)
-3. **Before deletion:** System verifies no active dispute or legal hold exists
-4. **Deletion is hard delete:** Storage object removed. DB row retains event record only.
-5. **Audit trail:** A `PII_DELETED` event is written to `event_log` recording the deletion
+### 3a. Guest identity documents (check-in captures)
+
+Examples: guest passport photo, guest ID captured during check-in, temporary identity images tied to a stay.
+
+1. **Bucket:** `pii-documents`
+2. **Default TTL:** 90 days from guest checkout date
+3. **Admin-configurable:** Some jurisdictions require longer retention (e.g., Thailand TM.30)
+4. **Before deletion:** System verifies no active dispute or legal hold exists
+5. **Deletion is hard delete:** Storage object removed. DB row retains event record (upload/deletion timestamp) only.
+6. **Audit trail:** A `PII_DELETED` event is written to `event_log` recording the deletion
+7. **Auto-deletion:** Yes -- system runs this automatically, no admin action required
+
+### 3b. Staff identity / employment documents
+
+Examples: staff passport, staff ID, work permit, employment contract photos, any permanent identity or HR document.
+
+1. **Bucket:** `staff-documents`
+2. **Retention:** While employed + 12 months after offboarding
+3. **Admin-configurable:** Yes -- admin may extend per local labor law requirements
+4. **Auto-deletion:** **NO** -- staff documents are never auto-deleted
+5. **Archive on offboarding:** When a staff member is offboarded, their documents remain accessible for 12 months, then are archived (bundled into HR archive, originals removed from live Storage)
+6. **Access:** Admin only -- workers can view their own documents but cannot delete them
+7. **The system must never apply guest-document deletion logic to staff documents**
 
 ---
 
@@ -151,8 +169,8 @@ Super Platform -> All Tenants -> [Tenant X]
 
 ### Storage invariants
 
-> **INV-STORAGE-01 -- PII auto-deletion:**
-> Passport and ID photos must be automatically deleted 90 days after guest checkout. No manual intervention required. The system must verify no active dispute or legal hold exists before deletion.
+> **INV-STORAGE-01 -- Guest PII auto-deletion (guest documents only):**
+> Guest passport/ID photos captured during check-in must be automatically deleted 90 days after checkout. No manual intervention required. The system must verify no active dispute or legal hold exists before deletion. **This rule applies only to guest identity documents. Staff identity/employment documents are never auto-deleted.**
 
 > **INV-STORAGE-02 -- Cleaning photo privacy:**
 > The `cleaning-photos` bucket must be private. Cleaning proof photos must only be accessible via signed URLs. Public access to cleaning photos is a privacy violation.

@@ -241,23 +241,31 @@ It must open:
 Google Maps and Apple Maps.
 
 ## 13. Media Rules
+
+> **MANDATORY CANONICAL POINTER:**
+> Before building or modifying any image, file, or document upload flow, the implementation must first consult the canonical storage/media retention architecture document at `.agent/architecture/storage-retention.md` and follow it strictly. No image/file feature may bypass the rules defined there.
+
 Media categories:
 1. ReferencePhotos
 2. CleaningPhotos
 3. CheckInPhotos
 4. CheckOutPhotos
-5. PassportImages
-6. IssueEvidence
+5. GuestPassportImages (guest identity -- 90-day auto-delete after checkout)
+6. StaffIdentityDocuments (staff passport, ID, work permit -- retained while employed + 12 months, NEVER auto-deleted)
+7. IssueEvidence
 
 Visibility:
-1. PassportImages visible to Admin only.
-2. All other media visible to Admin and OperationalManager.
-3. Staff (Cleaner, CheckInStaff, Maintenance) can view only their own uploaded media for active tasks.
-4. After task completion, staff loses access to that task media. Admin retains access.
+1. GuestPassportImages visible to Admin only.
+2. StaffIdentityDocuments visible to Admin only. Workers can view their own.
+3. All other media visible to Admin and OperationalManager.
+4. Staff (Cleaner, CheckInStaff, Maintenance) can view only their own uploaded media for active tasks.
+5. After task completion, staff loses access to that task media. Admin retains access.
 
 Retention:
-1. PassportImages default 90 days, extendable by Admin.
-2. Other media retained with logs, redaction allowed if needed.
+1. GuestPassportImages: default 90 days after checkout, extendable by Admin. Auto-deleted.
+2. StaffIdentityDocuments: while employed + 12 months. Never auto-deleted. Archived on offboarding.
+3. Other media retained with logs, redaction allowed if needed.
+4. See `.agent/architecture/storage-retention.md` for the full retention matrix.
 
 ## 14. Property Profile Schema (Minimum)
 Property fields:
