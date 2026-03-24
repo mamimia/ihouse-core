@@ -149,6 +149,8 @@ Super Platform -> All Tenants -> [Tenant X]
 
 ## 7. Invariants
 
+### Storage invariants
+
 > **INV-STORAGE-01 -- PII auto-deletion:**
 > Passport and ID photos must be automatically deleted 90 days after guest checkout. No manual intervention required. The system must verify no active dispute or legal hold exists before deletion.
 
@@ -157,6 +159,75 @@ Super Platform -> All Tenants -> [Tenant X]
 
 > **INV-STORAGE-03 -- Original preservation before offload:**
 > Before any media offload/archive operation deletes original files from live Storage, the archive package must be verified as complete (checksum match, file count match) and admin must confirm.
+
+### Lightweight media invariants (canonical platform rules)
+
+> **INV-MEDIA-01 -- No binary in Postgres:**
+> The application database must never store image/file binary data (bytea, base64 strings, data URIs). DB columns store only the Storage path or URL reference. The binary lives in Supabase Storage.
+
+> **INV-MEDIA-02 -- Correct bucket routing:**
+> Every file must be uploaded to the bucket that matches its category. No bucket may be used as a catch-all. Staff files -> `staff-documents`. PII -> `pii-documents`. Property photos -> `property-photos`. Cleaning photos -> `cleaning-photos`. Never cross-route.
+
+> **INV-MEDIA-03 -- Thumbnail-first rendering:**
+> List pages and card views must render thumbnails (200x200px, 60% quality) via Supabase Image Transformations. Detail pages render previews (600px, 70%). Originals load only on explicit user action. No list page may load original-resolution images.
+
+> **INV-MEDIA-04 -- Lazy loading:**
+> All images below the initial viewport must use `loading="lazy"` or `IntersectionObserver`. No page may attempt to load all images on mount.
+
+> **INV-MEDIA-05 -- Metadata-only list queries:**
+> List/grid page queries must select only metadata columns. File URL columns should not be included in bulk list queries. Photo URLs are resolved per-card during render.
+
+> **INV-MEDIA-06 -- Retention assignment required:**
+> Every new file category must have a defined retention policy before the upload flow is implemented. No file category may exist without a documented retention period and archival/deletion rule.
+
+---
+
+## 8. Bucket Routing Rules
+
+| Upload source | Correct bucket | Never use |
+|--------------|---------------|-----------|
+| Property gallery/reference/cover | `property-photos` | -- |
+| Staff profile/avatar photos | `staff-documents` | `property-photos` |
+| Staff ID/work permit photos | `pii-documents` or `staff-documents` | `property-photos` |
+| Cleaning/problem proof photos | `cleaning-photos` | `property-photos` |
+| Guest passport/ID | `pii-documents` | any public bucket |
+| Guest deposit evidence | `guest-uploads` | any public bucket |
+| Pre-onboarding staging uploads | `property-photos` (staging/ path) | -- |
+| Admin exports | `exports` | -- |
+| Audit archives | `event-archives` | -- |
+
+**After property approval:** staging files must be migrated to the property's permanent path and staging originals must be deleted.
+
+---
+
+## 9. New Media Category Onboarding Checklist
+
+Before adding any new image/file feature, the developer must complete:
+
+1. **Category name** and business justification
+2. **Bucket assignment** -- which of the 7 buckets, or justify a new one
+3. **Privacy level** -- public, signed-URL, or service-role-only
+4. **Path structure** -- `/{tenant_id}/{type}/{entity_id}/{filename}`
+5. **Retention policy** -- live duration, archive or delete, auto-delete
+6. **DB reference** -- table, column (TEXT type, path only, no binary)
+7. **Rendering tiers** -- thumbnail, preview, original URL patterns
+8. **Frontend rules** -- lazy loading, shimmer placeholder, no bulk URL fetch
+9. **Upload limits** -- max file size, allowed MIME types
+10. **Cleanup rules** -- on entity deletion, staging cleanup, orphan prevention
+
+**This checklist must be completed before upload code is merged.**
+
+---
+
+## 10. Current-State Findings (2026-03-25 audit)
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| Staff PII files (2) in public `property-photos` bucket | **CRITICAL** | Needs immediate fix |
+| Staff onboarding photos (21) misrouted to `property-photos` | Medium | Fix routing, migrate existing |
+| Staging files (31, 18 MB) never cleaned after approval | Medium | Add post-approval cleanup |
+| Orphaned files (12) for deleted properties still in Storage | Low | Add Storage cascade to property delete |
+| `cleaning-photos` bucket is public, should be private | Medium | Change to private |
 
 ---
 

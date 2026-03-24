@@ -157,4 +157,22 @@ These rules are inviolable. No code path, migration, or manual action may violat
 **INV-STORAGE-03 -- Original preservation before offload:**
 > Before any media offload/archive operation deletes original files from live Storage, the archive package must be verified as complete (checksum match, file count match) and admin must confirm.
 
+**INV-MEDIA-01 -- No binary in Postgres:**
+> The application database must never store image/file binary data (bytea, base64, data URIs). DB columns store only the Storage path or URL reference.
+
+**INV-MEDIA-02 -- Correct bucket routing:**
+> Every file must be uploaded to the bucket that matches its category. No bucket may be used as a catch-all. Staff files -> `staff-documents`. PII -> `pii-documents`. Property photos -> `property-photos`. Never cross-route.
+
+**INV-MEDIA-03 -- Thumbnail-first rendering:**
+> List pages must render thumbnails (200x200px). Detail pages render previews (600px). Originals load only on explicit user action. No list page may load original-resolution images.
+
+**INV-MEDIA-04 -- Lazy loading:**
+> All images below the initial viewport must use `loading="lazy"`. No page may attempt to load all images on mount.
+
+**INV-MEDIA-05 -- Metadata-only list queries:**
+> List/grid page queries must select only metadata columns. File URL columns should not be in bulk list queries. Photo URLs are resolved per-card during render.
+
+**INV-MEDIA-06 -- Retention assignment required:**
+> Every new file category must have a defined retention policy before the upload flow is implemented. No file category may exist without a documented retention period.
+
 *Added Phase 887d -- 2026-03-25*
