@@ -12,6 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, getWorkerId, getToken, API_BASE as BASE } from '@/lib/staffApi';
+import { useCountdown } from '@/lib/useCountdown';
 import { CLEANER_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
@@ -134,7 +135,61 @@ function ProgressBar({ done, total, label }: { done: number; total: number; labe
     );
 }
 
+// ======== Countdown Components (Phase 883) ========
+
+function CleanerSummaryStrip({ activeTasks, completedTasks, nextDeadlineIso }: {
+    activeTasks: number; completedTasks: number; nextDeadlineIso: string | null;
+}) {
+    const { label, isOverdue, isUrgent } = useCountdown(nextDeadlineIso, '10:00');
+    const urgencyColor = isOverdue
+        ? 'var(--color-alert)'
+        : isUrgent
+          ? 'var(--color-warn)'
+          : 'var(--color-ok)';
+    const card: React.CSSProperties = {
+        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+    };
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            <div style={card}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Tasks</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-accent)', marginTop: 4 }}>{activeTasks}</div>
+            </div>
+            <div style={card}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Done</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-ok)', marginTop: 4 }}>{completedTasks}</div>
+            </div>
+            <div style={{ ...card, borderColor: nextDeadlineIso && isOverdue ? 'rgba(196,91,74,0.4)' : 'var(--color-border)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Next</div>
+                {nextDeadlineIso ? (
+                    <>
+                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: urgencyColor, marginTop: 6, lineHeight: 1.2 }}>
+                            {isOverdue ? '⚠ ' : '⏱ '}{label}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', marginTop: 2 }}>(clean by 10:00)</div>
+                    </>
+                ) : (
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 8 }}>—</div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function TaskCountdownChip({ dueDate }: { dueDate: string | null }) {
+    const { label, isOverdue, isUrgent } = useCountdown(dueDate, '10:00');
+    if (!dueDate) return <span>📅 —</span>;
+    const color = isOverdue ? 'var(--color-alert)' : isUrgent ? 'var(--color-warn)' : 'var(--color-text-dim)';
+    return (
+        <span style={{ color, fontWeight: isOverdue || isUrgent ? 600 : 400 }}>
+            {isOverdue ? '⚠ ' : '⏱ '}{label}
+        </span>
+    );
+}
+
 // ======== Main Page ========
+
 
 export default function MobileCleanerPage() {
     const [tasks, setTasks] = useState<CleaningTask[]>([]);
@@ -606,8 +661,8 @@ export default function MobileCleanerPage() {
     const hasCriticalIssue = false; // Will be tracked when issue persistence is wired
     const canComplete = checklistDone === checklistTotal && checklistTotal > 0 && photosComplete && !hasCriticalIssue;
 
-    // ── Next deadline ──
-    const nextDeadline = activeTasks.length > 0 ? (activeTasks[0].due_date || activeTasks[0].deadline || '—') : '—';
+    // ── Next deadline (used by countdown hook) ──
+    const nextDeadlineIso = activeTasks.length > 0 ? (activeTasks[0].due_date || activeTasks[0].deadline || null) : null;
 
     return (
         <MobileStaffShell title="Cleaning" bottomNavItems={CLEANER_BOTTOM_NAV}>
@@ -638,20 +693,11 @@ export default function MobileCleanerPage() {
                     </div>
 
                     {/* Summary strip */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-                        <div style={card}>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Tasks</div>
-                            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-accent)', marginTop: 4 }}>{activeTasks.length}</div>
-                        </div>
-                        <div style={card}>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Done</div>
-                            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-ok)', marginTop: 4 }}>{completedTasks.length}</div>
-                        </div>
-                        <div style={card}>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Next</div>
-                            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>{nextDeadline}</div>
-                        </div>
-                    </div>
+                    <CleanerSummaryStrip
+                        activeTasks={activeTasks.length}
+                        completedTasks={completedTasks.length}
+                        nextDeadlineIso={nextDeadlineIso}
+                    />
 
                     {/* Loading state */}
                     {loading && <div style={{ ...card, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading…</div>}
@@ -684,9 +730,9 @@ export default function MobileCleanerPage() {
                                     </div>
                                     <StatusBadge status={t.status} />
                                 </div>
-                                <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                                <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
                                     <span>🧹 Cleaning</span>
-                                    <span>📅 {t.due_date || '—'}</span>
+                                    <TaskCountdownChip dueDate={t.due_date || t.deadline || null} />
                                 </div>
                                 <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
                                     {t.status === 'PENDING' && (

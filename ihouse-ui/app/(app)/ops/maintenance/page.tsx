@@ -13,6 +13,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, getWorkerId, getToken, API_BASE as BASE } from '@/lib/staffApi';
+import { useElapsed, useCountdown } from '@/lib/useCountdown';
 import { MAINTENANCE_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
@@ -38,6 +39,35 @@ const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string
 };
 
 type ViewMode = 'list' | 'detail' | 'work';
+
+// Phase 883 — Issue age chip: "Reported 3h ago" / "CRITICAL — SLA exceeded X"
+function IssueAgeChip({ createdAt, severity }: { createdAt?: string; severity?: string }) {
+    const elapsed = useElapsed(createdAt || null);
+    // CRITICAL 5-minute SLA: show countdown if created_at < 5 min ago
+    const { label: slaLabel, isOverdue: slaOverdue } = useCountdown(
+        createdAt ? new Date(new Date(createdAt).getTime() + 5 * 60_000).toISOString() : null
+    );
+    if (!createdAt) return null;
+    if (severity === 'CRITICAL' && slaOverdue) {
+        return (
+            <span style={{ color: 'var(--color-alert)', fontWeight: 700, fontSize: 'var(--text-xs)' }}>
+                ⚠ CRITICAL — SLA exceeded {elapsed}
+            </span>
+        );
+    }
+    if (severity === 'CRITICAL' && !slaOverdue) {
+        return (
+            <span style={{ color: 'var(--color-warn)', fontWeight: 600, fontSize: 'var(--text-xs)' }}>
+                ⚠ CRITICAL — SLA: {slaLabel}
+            </span>
+        );
+    }
+    return (
+        <span style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-xs)' }}>
+            🔧 Reported {elapsed}
+        </span>
+    );
+}
 
 export default function MobileMaintenancePage() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -258,11 +288,8 @@ export default function MobileMaintenancePage() {
                                             background: sev.bg, color: sev.text, border: `1px solid ${sev.border}`,
                                         }}>{issue.severity || 'MEDIUM'}</span>
                                     </div>
-                                    {issue.created_at && (
-                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-2)', fontFamily: 'var(--font-mono)' }}>
-                                            {new Date(issue.created_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                        </div>
-                                    )}
+                                    <IssueAgeChip createdAt={issue.created_at} severity={issue.severity} />
+
                                 </div>
                             );
                         })}

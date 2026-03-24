@@ -12,6 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/staffApi';
+import { useCountdown } from '@/lib/useCountdown';
 import { CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
@@ -22,6 +23,19 @@ type Booking = {
     property_id: string; guest_name?: string; check_in?: string; check_out?: string;
     status?: string; guest_count?: number; nights?: number;
     deposit_amount?: number; deposit_currency?: string;
+};
+
+// Phase 883: Task-world checkout entry (sourced from CHECKOUT_VERIFY tasks)
+type CheckoutTask = {
+    task_id: string;
+    property_id: string;
+    booking_id?: string;
+    due_date?: string;         // ISO date — the checkout date
+    status: string;
+    title?: string;
+    // Enriched
+    guest_name?: string;
+    check_out?: string;        // same as due_date for display
 };
 
 function getBookingId(b: Booking): string {
@@ -85,12 +99,95 @@ function ActionButton({ label, onClick, variant = 'primary', disabled = false }:
     );
 }
 
+// ========== Phase 883 Countdown Components ==========
+
+function CheckoutSummaryStrip({ todayCount, upcomingCount, overdueCount, nextDueIso }: {
+    todayCount: number; upcomingCount: number; overdueCount: number; nextDueIso: string | null;
+}) {
+    const { label, isOverdue, isUrgent } = useCountdown(nextDueIso, '11:00');
+    const urgencyColor = isOverdue ? 'var(--color-alert)' : isUrgent ? 'var(--color-warn)' : 'var(--color-accent)';
+    const card: React.CSSProperties = {
+        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+    };
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            <div style={{ ...card, borderColor: overdueCount > 0 ? 'rgba(196,91,74,0.4)' : 'var(--color-border)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: overdueCount > 0 ? 'var(--color-alert)' : 'var(--color-text-faint)', textTransform: 'uppercase' }}>Overdue</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: overdueCount > 0 ? 'var(--color-alert)' : 'var(--color-text-faint)', marginTop: 4 }}>{overdueCount}</div>
+            </div>
+            <div style={card}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Today</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: todayCount > 0 ? 'var(--color-accent)' : 'var(--color-text-faint)', marginTop: 4 }}>{todayCount}</div>
+            </div>
+            <div style={{ ...card, borderColor: nextDueIso && isUrgent ? 'rgba(212,149,106,0.4)' : 'var(--color-border)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Next</div>
+                {nextDueIso ? (
+                    <>
+                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: urgencyColor, marginTop: 6, lineHeight: 1.2 }}>
+                            {isOverdue ? '⚠ ' : '⏱ '}{label}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', marginTop: 2 }}>(checkout 11:00)</div>
+                    </>
+                ) : (
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 8 }}>—</div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function CheckoutTaskCard({ t, onStart }: { t: CheckoutTask; onStart: (t: CheckoutTask) => void }) {
+    const { label, isOverdue, isUrgent } = useCountdown(t.due_date || null, '11:00');
+    const cdColor = isOverdue ? 'var(--color-alert)' : isUrgent ? 'var(--color-warn)' : 'var(--color-text-dim)';
+    const card: React.CSSProperties = {
+        background: 'var(--color-surface)', border: `1px solid ${isOverdue ? 'rgba(196,91,74,0.35)' : 'var(--color-border)'}`,
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+        cursor: 'pointer', transition: 'border-color 0.2s',
+    };
+    return (
+        <div style={card}
+            onClick={() => onStart(t)}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = isOverdue ? 'rgba(196,91,74,0.35)' : 'var(--color-border)')}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                <div>
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>{t.guest_name || t.property_id}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{t.property_id}</div>
+                </div>
+                <span style={{
+                    padding: '2px 10px', borderRadius: 12, fontSize: 'var(--text-xs)', fontWeight: 600,
+                    background: 'rgba(130,80,223,0.12)', color: 'var(--color-accent)',
+                }}>CHECKOUT</span>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', flexWrap: 'wrap' }}>
+                <span style={{ color: cdColor, fontWeight: isOverdue || isUrgent ? 600 : 400 }}>
+                    {isOverdue ? '⚠ ' : '⏱ '}{label}
+                </span>
+                <span style={{ color: 'var(--color-text-dim)' }}>📅 {t.due_date || '—'}</span>
+            </div>
+            <div style={{ marginTop: 'var(--space-3)' }}>
+                <button style={{
+                    width: '100%', padding: '8px', background: 'rgba(248,81,73,0.08)', color: 'var(--color-alert)',
+                    border: '1px solid rgba(248,81,73,0.2)', borderRadius: 'var(--radius-sm)',
+                    fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                }}>Start Check-out →</button>
+            </div>
+        </div>
+    );
+}
+
 // ========== Main Page ==========
 export default function MobileCheckoutPage() {
-    const [bookings, setBookings] = useState<Booking[]>([]);
+    // Phase 883: Checkout world is built on CHECKOUT_VERIFY tasks,
+    // NOT booking status. Booking status is stale/disconnected in staging.
+    const [checkoutTasks, setCheckoutTasks] = useState<CheckoutTask[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);  // kept for the checkout flow steps
     const [loading, setLoading] = useState(true);
     const [step, setStep] = useState<CheckoutStep>('list');
     const [selected, setSelected] = useState<Booking | null>(null);
+    const [selectedTask, setSelectedTask] = useState<CheckoutTask | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
 
     // Step state
@@ -110,10 +207,37 @@ export default function MobileCheckoutPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await apiFetch<any>('/bookings?status=checked_in&limit=50');
-            const list = res.bookings || res.data?.bookings || res.data || [];
-            setBookings(Array.isArray(list) ? list : []);
-        } catch { setBookings([]); }
+            // Phase 883 Core Fix:
+            // The checkout worker world is driven by CHECKOUT_VERIFY tasks, not booking status.
+            // All checkout task booking_ids are disconnected from the bookings table in staging,
+            // so querying /bookings?status=checked_in returns zero.
+            // Instead: query the task world directly with worker_role=CHECKOUT.
+            const taskRes = await apiFetch<any>('/worker/tasks?worker_role=CHECKOUT&limit=100');
+            const taskList = taskRes.tasks || taskRes.data?.tasks || taskRes.data || [];
+            const rawTasks: CheckoutTask[] = Array.isArray(taskList) ? taskList : [];
+
+            // Sort: overdue first (due_date < today), then ascending by date
+            const today = new Date().toISOString().slice(0, 10);
+            rawTasks.sort((a, b) => {
+                const aDate = a.due_date || '';
+                const bDate = b.due_date || '';
+                // Overdue (past dates) sort first
+                const aOverdue = aDate < today;
+                const bOverdue = bDate < today;
+                if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+                return aDate.localeCompare(bDate);
+            });
+
+            setCheckoutTasks(rawTasks);
+
+            // Also try booking status query as secondary — may surface additional data
+            try {
+                const bookRes = await apiFetch<any>('/bookings?status=checked_in&limit=50');
+                const list = bookRes.bookings || bookRes.data?.bookings || bookRes.data || [];
+                setBookings(Array.isArray(list) ? list : []);
+            } catch { setBookings([]); }
+
+        } catch { setCheckoutTasks([]); }
         setLoading(false);
     }, []);
 
@@ -121,6 +245,28 @@ export default function MobileCheckoutPage() {
 
     const startCheckout = (b: Booking) => {
         setSelected(b);
+        setStep('inspection');
+        setInspectionNotes('');
+        setInspectionOk(true);
+        setIssues([]);
+        setIssueDescription('');
+        setDepositAction('full_return');
+        setDeductionAmount('');
+        setDeductionReason('');
+        setSettlement(null);
+    };
+
+    const startCheckoutFromTask = (t: CheckoutTask) => {
+        // Convert task to a minimal Booking-like object for the checkout flow
+        const syntheticBooking: Booking = {
+            booking_id: t.booking_id || t.task_id,
+            property_id: t.property_id,
+            guest_name: t.guest_name || 'Guest',
+            check_out: t.due_date,
+            status: 'checked_in',
+        };
+        setSelected(syntheticBooking);
+        setSelectedTask(t);
         setStep('inspection');
         setInspectionNotes('');
         setInspectionOk(true);
@@ -249,7 +395,16 @@ export default function MobileCheckoutPage() {
     };
 
     const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
     const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    // Task-world split: overdue, today, upcoming
+    const overdueTasks = checkoutTasks.filter(t => t.due_date && t.due_date < todayStr);
+    const todayTasks = checkoutTasks.filter(t => t.due_date === todayStr);
+    const upcomingTasks = checkoutTasks.filter(t => t.due_date && t.due_date > todayStr);
+    // Earliest due task for countdown
+    const nextDueTask = overdueTasks[0] || todayTasks[0] || upcomingTasks[0] || null;
+    const nextDueIso = nextDueTask?.due_date || null;
 
     const card = {
         background: 'var(--color-surface)', border: '1px solid var(--color-border)',
@@ -274,7 +429,6 @@ export default function MobileCheckoutPage() {
                 }}>{notice}</div>
             )}
 
-            {/* ========== LIST: Active stays ========== */}
             {step === 'list' && (
                 <>
                     <div style={{ marginBottom: 'var(--space-5)' }}>
@@ -285,54 +439,55 @@ export default function MobileCheckoutPage() {
                             Check-out
                         </h1>
                         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                            Active stays ready for checkout
+                            Departures — task world
                         </p>
                     </div>
 
+                    <CheckoutSummaryStrip
+                        todayCount={todayTasks.length}
+                        upcomingCount={upcomingTasks.length}
+                        overdueCount={overdueTasks.length}
+                        nextDueIso={nextDueIso}
+                    />
+
                     {loading && <div style={{ ...card, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading…</div>}
 
-                    {!loading && bookings.length === 0 && (
+                    {!loading && checkoutTasks.length === 0 && (
                         <div style={{ ...card, textAlign: 'center' }}>
                             <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>🏠</div>
-                            <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>No active stays to check out</div>
+                            <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>No pending checkouts</div>
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                        {bookings.map(b => (
-                            <div key={getBookingId(b)} style={{ ...card, cursor: 'pointer', transition: 'border-color 0.2s' }}
-                                onClick={() => startCheckout(b)}
-                                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-                                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                                    <div>
-                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-                                            {b.guest_name || 'Guest'}
-                                        </div>
-                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                                            {b.property_id}
-                                        </div>
-                                    </div>
-                                    <span style={{
-                                        padding: '2px 10px', borderRadius: 12, fontSize: 'var(--text-xs)', fontWeight: 600,
-                                        background: 'rgba(130,80,223,0.12)', color: 'var(--color-accent)',
-                                    }}>In Stay</span>
-                                </div>
-                                <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
-                                    <span>📅 CO: {b.check_out || '—'}</span>
-                                    <span>👥 {b.guest_count || '—'} guests</span>
-                                    {b.deposit_amount && <span>💰 {b.deposit_currency || 'THB'} {b.deposit_amount}</span>}
-                                </div>
-                                <div style={{ marginTop: 'var(--space-3)' }}>
-                                    <button style={{
-                                        width: '100%', padding: '8px', background: 'rgba(248,81,73,0.08)', color: 'var(--color-alert)',
-                                        border: '1px solid rgba(248,81,73,0.2)', borderRadius: 'var(--radius-sm)',
-                                        fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                                    }}>Start Check-out →</button>
-                                </div>
+                    {/* Overdue checkouts — shown first, with red treatment */}
+                    {!loading && overdueTasks.length > 0 && (
+                        <div style={{ marginBottom: 'var(--space-4)' }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-alert)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)', fontWeight: 700 }}>⚠ Overdue</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                                {overdueTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} />)}
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    )}
+
+                    {/* Today's checkouts */}
+                    {!loading && todayTasks.length > 0 && (
+                        <div style={{ marginBottom: 'var(--space-4)' }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Today</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                                {todayTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} />)}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Upcoming checkouts */}
+                    {!loading && upcomingTasks.length > 0 && (
+                        <div style={{ marginBottom: 'var(--space-4)' }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Upcoming</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                                {upcomingTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} />)}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
 

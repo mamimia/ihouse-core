@@ -12,6 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, getToken, API_BASE as BASE } from '@/lib/staffApi';
+import { useCountdown } from '@/lib/useCountdown';
 import { CHECKIN_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
@@ -125,7 +126,120 @@ function ActionButton({ label, onClick, variant = 'primary', disabled = false }:
     );
 }
 
+// ========== Phase 883 Countdown Components ==========
+
+function CheckinSummaryStrip({ todayCount, upcomingCount, completedCount, nextArrivalIso }: {
+    todayCount: number; upcomingCount: number; completedCount: number; nextArrivalIso: string | null;
+}) {
+    const { label, isOverdue, isUrgent } = useCountdown(nextArrivalIso, '14:00');
+    const urgencyColor = isOverdue ? 'var(--color-alert)' : isUrgent ? 'var(--color-warn)' : 'var(--color-sage)';
+    const card: React.CSSProperties = {
+        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+    };
+    const totalPending = todayCount + upcomingCount;
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            <div style={card}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Today</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: todayCount > 0 ? 'var(--color-accent)' : 'var(--color-text-faint)', marginTop: 4 }}>{todayCount}</div>
+            </div>
+            <div style={card}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Upcoming</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: upcomingCount > 0 ? 'var(--color-sage)' : 'var(--color-text-faint)', marginTop: 4 }}>{upcomingCount}</div>
+            </div>
+            <div style={{ ...card, borderColor: nextArrivalIso && isUrgent ? 'rgba(88,166,255,0.3)' : 'var(--color-border)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Next</div>
+                {nextArrivalIso && totalPending > 0 ? (
+                    <>
+                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: urgencyColor, marginTop: 6, lineHeight: 1.2 }}>
+                            ⏱ {label}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', marginTop: 2 }}>(by 14:00)</div>
+                    </>
+                ) : (
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 8 }}>
+                        {completedCount > 0 ? `${completedCount} done` : '—'}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function BookingCardList({ bookings, onStart, showNotice }: {
+    bookings: Booking[]; onStart: (b: Booking) => void; showNotice: (msg: string) => void;
+}) {
+    const card: React.CSSProperties = {
+        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+    };
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {bookings.map(b => {
+                const bookingId = b.booking_id || b.booking_ref || b.id || 'unknown';
+                return (
+                    <BookingCard key={bookingId} b={b} onStart={onStart} showNotice={showNotice} card={card} />
+                );
+            })}
+        </div>
+    );
+}
+
+function BookingCard({ b, onStart, showNotice, card }: {
+    b: Booking; onStart: (b: Booking) => void; showNotice: (msg: string) => void;
+    card: React.CSSProperties;
+}) {
+    const { label: cdLabel, isOverdue: cdOverdue, isUrgent: cdUrgent } = useCountdown(b.check_in || null, '14:00');
+    const cdColor = cdOverdue ? 'var(--color-alert)' : cdUrgent ? 'var(--color-warn)' : 'var(--color-text-dim)';
+    return (
+        <div style={{ ...card, cursor: 'pointer', transition: 'border-color 0.2s' }}
+            onClick={() => onStart(b)}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                <div>
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>{b.guest_name || 'Guest'}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{b.property_id}</div>
+                </div>
+                <StatusBadge status={b.status} />
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', flexWrap: 'wrap' }}>
+                <span style={{ color: cdColor, fontWeight: cdOverdue || cdUrgent ? 600 : 400 }}>
+                    {cdOverdue ? '⚠ ' : '⏱ '}{cdLabel}
+                </span>
+                <span style={{ color: 'var(--color-text-dim)' }}>👥 {b.guest_count || '—'} guests</span>
+                <span style={{ color: 'var(--color-text-dim)' }}>🌙 {b.nights || '—'} nights</span>
+            </div>
+            <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
+                <button style={{
+                    flex: 1, padding: '8px', background: 'var(--color-primary)', color: '#fff',
+                    border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                }}>Start Check-in</button>
+                <button onClick={e => {
+                    e.stopPropagation();
+                    if (b.property_latitude && b.property_longitude) {
+                        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                        const url = isMobile
+                            ? `https://waze.com/ul?ll=${b.property_latitude},${b.property_longitude}&navigate=yes`
+                            : `https://maps.google.com/maps?daddr=${b.property_latitude},${b.property_longitude}`;
+                        window.open(url, '_blank');
+                    } else if (b.property_address) {
+                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.property_address)}`, '_blank');
+                    } else {
+                        showNotice('📍 No location data for this property');
+                    }
+                }} style={{
+                    padding: '8px 12px', background: 'var(--color-surface-2)', color: 'var(--color-text-dim)',
+                    border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', cursor: 'pointer',
+                }}>📍</button>
+            </div>
+        </div>
+    );
+}
+
 // ========== Main Page ==========
+
 export default function MobileCheckinPage() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
@@ -146,9 +260,11 @@ export default function MobileCheckinPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            // FIX: Use correct API params (check_in_from + check_in_to, not check_in)
+            // Phase 883: Widen to 7-day arrival horizon so home is
+            // operationally useful even when there are no arrivals today.
             const today = new Date().toISOString().slice(0, 10);
-            const res = await apiFetch<any>(`/bookings?check_in_from=${today}&check_in_to=${today}&limit=50`);
+            const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+            const res = await apiFetch<any>(`/bookings?check_in_from=${today}&check_in_to=${nextWeek}&limit=100`);
             const list = res.bookings || res.data?.bookings || res.data || [];
             const rawBookings: Booking[] = Array.isArray(list) ? list : [];
 
@@ -344,10 +460,22 @@ export default function MobileCheckinPage() {
     };
 
     const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
     const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    const arrivals = bookings.filter(b => b.status !== 'checked_in' && b.status !== 'Completed' && b.status !== 'completed');
+    // Split arrivals into today vs upcoming
+    const todayArrivals = bookings.filter(b =>
+        b.status !== 'checked_in' && b.status !== 'Completed' && b.status !== 'completed'
+        && b.check_in?.slice(0, 10) === todayStr
+    );
+    const upcomingArrivals = bookings.filter(b =>
+        b.status !== 'checked_in' && b.status !== 'Completed' && b.status !== 'completed'
+        && b.check_in?.slice(0, 10) !== todayStr
+    );
     const checkedIn = bookings.filter(b => b.status === 'checked_in');
     const completedCount = checkedIn.length + bookings.filter(b => b.status === 'Completed' || b.status === 'InStay').length;
+    // Next arrival ISO for the summary strip
+    const allPending = [...todayArrivals, ...upcomingArrivals];
+    const nextArrivalIso = allPending.length > 0 ? (allPending[0].check_in || null) : null;
 
     const card = {
         background: 'var(--color-surface)', border: '1px solid var(--color-border)',
@@ -380,85 +508,47 @@ export default function MobileCheckinPage() {
                             {dateStr}
                         </p>
                         <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.03em' }}>
-                            Today&apos;s Arrivals
+                            Arrivals
                         </h1>
                         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                            All tenant check-ins · Not filtered by assignment
+                            Today + next 7 days
                         </p>
                     </div>
 
                     {/* Summary strip */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-                        <div style={card}>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Check-ins</div>
-                            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-accent)', marginTop: 4 }}>{arrivals.length}</div>
-                        </div>
-                        <div style={card}>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Completed</div>
-                            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-ok)', marginTop: 4 }}>{completedCount}</div>
-                        </div>
-                    </div>
+                    <CheckinSummaryStrip
+                        todayCount={todayArrivals.length}
+                        upcomingCount={upcomingArrivals.length}
+                        completedCount={completedCount}
+                        nextArrivalIso={nextArrivalIso}
+                    />
 
-                    {/* Arrivals list */}
+                    {/* Loading */}
                     {loading && <div style={{ ...card, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading…</div>}
 
-                    {!loading && arrivals.length === 0 && (
+                    {/* Empty state — shows next arrival date if any upcoming */}
+                    {!loading && todayArrivals.length === 0 && upcomingArrivals.length === 0 && (
                         <div style={{ ...card, textAlign: 'center' }}>
                             <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>🎉</div>
-                            <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>No arrivals today</div>
+                            <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>No arrivals in the next 7 days</div>
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                        {arrivals.map(b => (
-                            <div key={getBookingId(b)} style={{
-                                ...card, cursor: 'pointer', transition: 'border-color 0.2s',
-                            }}
-                                onClick={() => startCheckin(b)}
-                                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-                                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                                    <div>
-                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-                                            {b.guest_name || 'Guest'}
-                                        </div>
-                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                                            {b.property_id}
-                                        </div>
-                                    </div>
-                                    <StatusBadge status={b.status} />
-                                </div>
-                                <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
-                                    <span>📅 {b.check_in || '—'}</span>
-                                    <span>👥 {b.guest_count || '—'} guests</span>
-                                    <span>🌙 {b.nights || '—'} nights</span>
-                                </div>
-                                <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-                                    <button style={{
-                                        flex: 1, padding: '8px', background: 'var(--color-primary)', color: '#fff',
-                                        border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                                    }}>Start Check-in</button>
-                                    <button onClick={e => {
-                                        e.stopPropagation();
-                                        if (b.property_latitude && b.property_longitude) {
-                                            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                                            const url = isMobile
-                                                ? `https://waze.com/ul?ll=${b.property_latitude},${b.property_longitude}&navigate=yes`
-                                                : `https://maps.google.com/maps?daddr=${b.property_latitude},${b.property_longitude}`;
-                                            window.open(url, '_blank');
-                                        } else if (b.property_address) {
-                                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.property_address)}`, '_blank');
-                                        } else {
-                                            showNotice('📍 No location data for this property');
-                                        }
-                                    }} style={{
-                                        padding: '8px 12px', background: 'var(--color-surface-2)', color: 'var(--color-text-dim)',
-                                        border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', cursor: 'pointer',
-                                    }}>📍 Navigate</button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    {/* Today's arrivals */}
+                    {!loading && todayArrivals.length > 0 && (
+                        <div style={{ marginBottom: 'var(--space-4)' }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Today</div>
+                            <BookingCardList bookings={todayArrivals} onStart={startCheckin} showNotice={showNotice} />
+                        </div>
+                    )}
+
+                    {/* Upcoming arrivals */}
+                    {!loading && upcomingArrivals.length > 0 && (
+                        <div style={{ marginBottom: 'var(--space-4)' }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Upcoming</div>
+                            <BookingCardList bookings={upcomingArrivals} onStart={startCheckin} showNotice={showNotice} />
+                        </div>
+                    )}
 
                     {/* ── Checked-in bookings ── */}
                     {checkedIn.length > 0 && (
