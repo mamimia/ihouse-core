@@ -482,15 +482,18 @@ export const api = {
     },
 
     // Phase 157 — Worker task actions
+    // Phase 882c — Added worker_role param for preview role-scoped task filtering
     getWorkerTasks: (params?: {
         status?: string;
         priority?: string;
         limit?: number;
+        worker_role?: string;
     }): Promise<WorkerTaskListResponse> => {
         const q = new URLSearchParams();
         if (params?.status) q.set("status", params.status);
         if (params?.priority) q.set("priority", params.priority);
         if (params?.limit) q.set("limit", String(params.limit));
+        if (params?.worker_role) q.set("worker_role", params.worker_role);
         return apiFetch(`/worker/tasks${q.size ? "?" + q : ""}`);
     },
 

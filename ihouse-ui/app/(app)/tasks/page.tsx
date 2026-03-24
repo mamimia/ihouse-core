@@ -342,6 +342,29 @@ function getStaffRoleFromContext(): string | null {
     return null;
 }
 
+/**
+ * Phase 882c — Map preview role to backend WorkerRole enum values.
+ * 
+ * Backend WorkerRole enum (from task_model.py):
+ *   CLEANER, CHECKIN, CHECKOUT, MAINTENANCE, PROPERTY_MANAGER,
+ *   MAINTENANCE_TECH, INSPECTOR, GENERAL_STAFF
+ *
+ * The backend accepts worker_role as a query param on GET /worker/tasks
+ * and filters tasks at DB level. Admins normally get all tasks (unrestricted),
+ * but for Preview As we explicitly pass the role to scope the view.
+ */
+function getBackendWorkerRole(previewRole: string | null): string | undefined {
+    if (!previewRole) return undefined;
+    switch (previewRole) {
+        case 'checkin':          return 'CHECKIN';
+        case 'checkout':         return 'CHECKOUT';
+        case 'cleaner':          return 'CLEANER';
+        case 'maintenance':      return 'MAINTENANCE';
+        case 'checkin_checkout':  return undefined; // handled specially below
+        default:                 return undefined;
+    }
+}
+
 function getRoleNav(role: string) {
     switch (role) {
         case 'checkin': return CHECKIN_BOTTOM_NAV;
@@ -393,17 +416,38 @@ export default function TasksPage() {
         });
     }, []);
 
+    // Phase 882c — Role-scoped task loading
     const loadTasks = useCallback(async () => {
         try {
             setError(null);
-            const resp = await api.getWorkerTasks({ status: filter || undefined, limit: 50 });
-            setTasks(resp.tasks ?? []);
+            const backendRole = getBackendWorkerRole(staffRole);
+
+            if (staffRole === 'checkin_checkout') {
+                // Special: combined role needs CHECKIN + CHECKOUT tasks merged
+                const [checkinResp, checkoutResp] = await Promise.all([
+                    api.getWorkerTasks({ status: filter || undefined, limit: 50, worker_role: 'CHECKIN' }),
+                    api.getWorkerTasks({ status: filter || undefined, limit: 50, worker_role: 'CHECKOUT' }),
+                ]);
+                // Merge and deduplicate by task_id
+                const merged = new Map<string, WorkerTask>();
+                for (const t of [...(checkinResp.tasks ?? []), ...(checkoutResp.tasks ?? [])]) {
+                    merged.set(t.task_id, t);
+                }
+                setTasks(Array.from(merged.values()));
+            } else {
+                const resp = await api.getWorkerTasks({
+                    status: filter || undefined,
+                    limit: 50,
+                    worker_role: backendRole,
+                });
+                setTasks(resp.tasks ?? []);
+            }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to load tasks');
         } finally {
             setLoading(false);
         }
-    }, [filter]);
+    }, [filter, staffRole]);
 
     // Poll every 30s as fallback
     useEffect(() => {
