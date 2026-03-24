@@ -11,24 +11,11 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { getToken } from '@/lib/api';
+import { apiFetch, getToken, API_BASE as BASE } from '@/lib/staffApi';
+import { STAFF_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
-
-async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
-    const token = getToken();
-    const res = await fetch(`${BASE}${path}`, {
-        ...init,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(init?.headers || {}),
-        },
-    });
-    if (!res.ok) throw new Error(`${res.status}`);
-    return res.json();
-}
+// Phase 865: apiFetch, getToken imported from lib/staffApi.ts
 
 type Booking = {
     booking_ref?: string;
@@ -373,7 +360,7 @@ export default function MobileCheckinPage() {
     };
 
     return (
-        <MobileStaffShell hideHeader>
+        <MobileStaffShell title="Check-in" bottomNavItems={STAFF_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
             {/* Notice toast */}
             {notice && (
