@@ -251,6 +251,25 @@ export async function POST(request: NextRequest) {
         }
 
         const [updated] = await res.json();
+
+        // Phase 877: When approval migrates tenant_id, also migrate related photo records
+        // so they become visible under the admin's tenant scope in the Properties detail page.
+        if (action === 'approve' && admin.tenantId) {
+            const photoTables = ['property_marketing_photos', 'property_reference_photos'];
+            for (const table of photoTables) {
+                try {
+                    const photoUrl = `${table}?property_id=eq.${encodeURIComponent(propertyId)}&tenant_id=neq.${encodeURIComponent(admin.tenantId)}`;
+                    await supaFetch(photoUrl, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ tenant_id: admin.tenantId }),
+                    });
+                } catch (photoErr) {
+                    // Non-fatal: property approval stands even if photo migration fails
+                    console.warn(`[admin/intake] photo tenant migration for ${table} failed:`, photoErr);
+                }
+            }
+        }
+
         return NextResponse.json({
             success: true,
             property_id: propertyId,
