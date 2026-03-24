@@ -12,36 +12,11 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { getToken } from '@/lib/api';
-import BottomNav from '@/components/BottomNav';
+import { apiFetch, getWorkerId, getToken, API_BASE as BASE } from '@/lib/staffApi';
+import { STAFF_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
-
-// Phase E-4: Extract real worker identity from JWT
-function getWorkerId(): string {
-    if (typeof window === 'undefined') return '';
-    try {
-        const token = localStorage.getItem('ihouse_token');
-        if (!token) return '';
-        const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
-        return payload.user_id || payload.sub || payload.tenant_id || '';
-    } catch { return ''; }
-}
-
-async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
-    const token = getToken();
-    const res = await fetch(`${BASE}${path}`, {
-        ...init,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(init?.headers || {}),
-        },
-    });
-    if (!res.ok) throw new Error(`${res.status}`);
-    return res.json();
-}
+// Phase 864: apiFetch, getWorkerId, getToken imported from lib/staffApi.ts
 
 type Issue = {
     id?: string; report_id?: string; property_id: string;
@@ -202,7 +177,7 @@ export default function MobileMaintenancePage() {
     };
 
     return (
-        <MobileStaffShell hideHeader>
+        <MobileStaffShell title="Maintenance" bottomNavItems={STAFF_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto', paddingBottom: 80 }}>
             {/* Notice toast */}
             {notice && (
@@ -478,13 +453,7 @@ export default function MobileMaintenancePage() {
                 </div>
             )}
 
-            <BottomNav items={[
-                { href: '/dashboard', label: 'Home', icon: '🏠' },
-                { href: '/ops/checkin', label: 'Check-in', icon: '📋' },
-                { href: '/ops/checkout', label: 'Check-out', icon: '🚪' },
-                { href: '/ops/cleaner', label: 'Cleaning', icon: '🧹' },
-                { href: '/ops/maintenance', label: 'Maint.', icon: '🔧' },
-            ]} />
+            {/* Phase 864: BottomNav now managed by MobileStaffShell via bottomNavItems prop */}
         </div>
         </MobileStaffShell>
     );

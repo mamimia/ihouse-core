@@ -27,6 +27,18 @@ const DEFAULT_ITEMS: BottomNavItem[] = [
     { href: '/admin',     label: 'More',     icon: '⚙' },
 ];
 
+/**
+ * Phase 864 — Canonical staff bottom nav for all worker-facing ops surfaces.
+ * Used by: /ops/cleaner, /ops/maintenance, /ops/checkin, /ops/checkout
+ */
+export const STAFF_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/dashboard',       label: 'Home',     icon: '🏠' },
+    { href: '/tasks',           label: 'Tasks',    icon: '✓' },
+    { href: '/ops/cleaner',     label: 'Cleaning', icon: '🧹' },
+    { href: '/ops/maintenance', label: 'Maint.',   icon: '🔧' },
+    { href: '/worker',          label: 'More',     icon: '⚙' },
+];
+
 interface BottomNavProps {
     items?: BottomNavItem[];
 }
