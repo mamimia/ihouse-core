@@ -142,10 +142,19 @@ These rules are inviolable. No code path, migration, or manual action may violat
 **INV-ARCHIVE-02 — Permanent business records:**
 > `BOOKING_CREATED` and `BOOKING_CANCELED` rows in `event_log` are permanent records. They must never be pruned under any condition, in any retention cycle.
 
-**INV-ARCHIVE-03 — Archive immutability:**
-> Archive packages stored in Supabase Storage are write-once. No application code path may overwrite or delete an archive object. Deletion requires direct engineering intervention with documented justification.
+**INV-ARCHIVE-03 -- Archive immutability:**
+> Archive packages stored in Supabase Storage are write-once. No application code path may overwrite or delete an archive object except the super-admin deletion flow with permanent-deletion warning gate.
 
-**INV-ARCHIVE-04 — Failure-safe pruning:**
+**INV-ARCHIVE-04 -- Failure-safe pruning:**
 > Archive generation failure, storage failure, or checksum mismatch must never trigger pruning. The live `event_log` table is always the safe state when an archive is absent or unverified. When in doubt, do nothing.
 
-*Added Phase 887d — 2026-03-25*
+**INV-STORAGE-01 -- PII auto-deletion:**
+> Passport and ID photos must be automatically deleted 90 days after guest checkout. No manual intervention required. The system must verify no active dispute or legal hold exists before deletion.
+
+**INV-STORAGE-02 -- Cleaning photo privacy:**
+> The `cleaning-photos` bucket must be private. Cleaning proof photos must only be accessible via signed URLs. Public access to cleaning photos is a privacy violation.
+
+**INV-STORAGE-03 -- Original preservation before offload:**
+> Before any media offload/archive operation deletes original files from live Storage, the archive package must be verified as complete (checksum match, file count match) and admin must confirm.
+
+*Added Phase 887d -- 2026-03-25*
