@@ -15,6 +15,7 @@ import { apiFetch, getToken, API_BASE as BASE } from '@/lib/staffApi';
 import { useCountdown } from '@/lib/useCountdown';
 import { CHECKIN_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
+import WorkerTaskCard from '@/components/WorkerTaskCard';
 
 // Phase 865: apiFetch, getToken imported from lib/staffApi.ts
 
@@ -170,70 +171,38 @@ function CheckinSummaryStrip({ todayCount, upcomingCount, completedCount, nextAr
 function BookingCardList({ bookings, onStart, showNotice }: {
     bookings: Booking[]; onStart: (b: Booking) => void; showNotice: (msg: string) => void;
 }) {
-    const card: React.CSSProperties = {
-        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-    };
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {bookings.map(b => {
                 const bookingId = b.booking_id || b.booking_ref || b.id || 'unknown';
                 return (
-                    <BookingCard key={bookingId} b={b} onStart={onStart} showNotice={showNotice} card={card} />
+                    <WorkerTaskCard
+                        key={bookingId}
+                        kind="CHECKIN_PREP"
+                        status={b.status || 'Upcoming'}
+                        propertyName={(b as any).property_name || b.property_id}
+                        propertyCode={b.property_id}
+                        date={b.check_in?.split('T')[0] || 'Unknown'}
+                        guestName={b.guest_name}
+                        guestCount={b.guest_count}
+                        nights={b.nights}
+                        onStart={() => onStart(b)}
+                        onNavigate={() => {
+                            if (b.property_latitude && b.property_longitude) {
+                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                const url = isMobile
+                                    ? `https://waze.com/ul?ll=${b.property_latitude},${b.property_longitude}&navigate=yes`
+                                    : `https://maps.google.com/maps?daddr=${b.property_latitude},${b.property_longitude}`;
+                                window.open(url, '_blank');
+                            } else if (b.property_address) {
+                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.property_address)}`, '_blank');
+                            } else {
+                                showNotice('📍 No location data for this property');
+                            }
+                        }}
+                    />
                 );
             })}
-        </div>
-    );
-}
-
-function BookingCard({ b, onStart, showNotice, card }: {
-    b: Booking; onStart: (b: Booking) => void; showNotice: (msg: string) => void;
-    card: React.CSSProperties;
-}) {
-    const { label: cdLabel, isOverdue: cdOverdue, isUrgent: cdUrgent } = useCountdown(b.check_in || null, '14:00');
-    const cdColor = cdOverdue ? 'var(--color-alert)' : cdUrgent ? 'var(--color-warn)' : 'var(--color-text-dim)';
-    return (
-        <div style={{ ...card, cursor: 'pointer', transition: 'border-color 0.2s' }}
-            onClick={() => onStart(b)}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                <div>
-                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>{b.guest_name || 'Guest'}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{b.property_id}</div>
-                </div>
-                <StatusBadge status={b.status} />
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', flexWrap: 'wrap' }}>
-                <span style={{ color: cdColor, fontWeight: cdOverdue || cdUrgent ? 600 : 400 }}>
-                    {cdOverdue ? '⚠ ' : '⏱ '}{cdLabel}
-                </span>
-                <span style={{ color: 'var(--color-text-dim)' }}>👥 {b.guest_count || '—'} guests</span>
-                <span style={{ color: 'var(--color-text-dim)' }}>🌙 {b.nights || '—'} nights</span>
-            </div>
-            <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-                <button style={{
-                    flex: 1, padding: '8px', background: 'var(--color-primary)', color: '#fff',
-                    border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                }}>Start Check-in</button>
-                <button onClick={e => {
-                    e.stopPropagation();
-                    if (b.property_latitude && b.property_longitude) {
-                        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                        const url = isMobile
-                            ? `https://waze.com/ul?ll=${b.property_latitude},${b.property_longitude}&navigate=yes`
-                            : `https://maps.google.com/maps?daddr=${b.property_latitude},${b.property_longitude}`;
-                        window.open(url, '_blank');
-                    } else if (b.property_address) {
-                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.property_address)}`, '_blank');
-                    } else {
-                        showNotice('📍 No location data for this property');
-                    }
-                }} style={{
-                    padding: '8px 12px', background: 'var(--color-surface-2)', color: 'var(--color-text-dim)',
-                    border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', cursor: 'pointer',
-                }}>📍</button>
-            </div>
         </div>
     );
 }

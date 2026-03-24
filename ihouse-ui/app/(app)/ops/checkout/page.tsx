@@ -15,6 +15,7 @@ import { apiFetch } from '@/lib/staffApi';
 import { useCountdown } from '@/lib/useCountdown';
 import { CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
+import WorkerTaskCard from '@/components/WorkerTaskCard';
 
 // Phase 865: apiFetch imported from lib/staffApi.ts
 
@@ -138,43 +139,16 @@ function CheckoutSummaryStrip({ todayCount, upcomingCount, overdueCount, nextDue
 }
 
 function CheckoutTaskCard({ t, onStart }: { t: CheckoutTask; onStart: (t: CheckoutTask) => void }) {
-    const { label, isOverdue, isUrgent } = useCountdown(t.due_date || null, '11:00');
-    const cdColor = isOverdue ? 'var(--color-alert)' : isUrgent ? 'var(--color-warn)' : 'var(--color-text-dim)';
-    const card: React.CSSProperties = {
-        background: 'var(--color-surface)', border: `1px solid ${isOverdue ? 'rgba(196,91,74,0.35)' : 'var(--color-border)'}`,
-        borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-        cursor: 'pointer', transition: 'border-color 0.2s',
-    };
     return (
-        <div style={card}
-            onClick={() => onStart(t)}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = isOverdue ? 'rgba(196,91,74,0.35)' : 'var(--color-border)')}
-        >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                <div>
-                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>{t.guest_name || t.property_id}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{t.property_id}</div>
-                </div>
-                <span style={{
-                    padding: '2px 10px', borderRadius: 12, fontSize: 'var(--text-xs)', fontWeight: 600,
-                    background: 'rgba(130,80,223,0.12)', color: 'var(--color-accent)',
-                }}>CHECKOUT</span>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', flexWrap: 'wrap' }}>
-                <span style={{ color: cdColor, fontWeight: isOverdue || isUrgent ? 600 : 400 }}>
-                    {isOverdue ? '⚠ ' : '⏱ '}{label}
-                </span>
-                <span style={{ color: 'var(--color-text-dim)' }}>📅 {t.due_date || '—'}</span>
-            </div>
-            <div style={{ marginTop: 'var(--space-3)' }}>
-                <button style={{
-                    width: '100%', padding: '8px', background: 'rgba(248,81,73,0.08)', color: 'var(--color-alert)',
-                    border: '1px solid rgba(248,81,73,0.2)', borderRadius: 'var(--radius-sm)',
-                    fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                }}>Start Check-out →</button>
-            </div>
-        </div>
+        <WorkerTaskCard
+            kind="CHECKOUT_VERIFY"
+            status={t.status || 'PENDING'}
+            propertyName={t.title || t.property_id} // we fallback to property_id in WorkerTaskCard if it's missing anyway
+            propertyCode={t.property_id}
+            date={t.due_date || ''}
+            guestName={t.guest_name}
+            onStart={() => onStart(t)}
+        />
     );
 }
 

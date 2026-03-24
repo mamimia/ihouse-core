@@ -15,6 +15,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { api, WorkerTask } from '../../../lib/api';
+import WorkerTaskCard from '@/components/WorkerTaskCard';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,209 +62,7 @@ function isOverdue(task: WorkerTask): boolean {
     return new Date() > due && task.status !== 'completed';
 }
 
-function getTargetTime(task: WorkerTask): Date {
-    const defaultTimes: Record<string, string> = {
-        'CHECKOUT_VERIFY': '11:00:00',
-        'CHECKOUT_PREP': '11:00:00',
-        'CLEANING': '11:00:00',
-        'CHECKIN_PREP': '15:00:00',
-    };
-    const timeStr = task.due_time || defaultTimes[task.kind] || '12:00:00';
-    const dateStr = task.due_date || new Date().toISOString().split('T')[0];
-    return new Date(`${dateStr}T${timeStr}`);
-}
-
-function TaskCountdown({ task }: { task: WorkerTask }) {
-    const [now, setNow] = useState(Date.now());
-    
-    useEffect(() => {
-        if (task.status === 'completed' || task.status === 'canceled') return;
-        const timer = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(timer);
-    }, [task.status]);
-    
-    if (task.status === 'completed') {
-        return <span style={{ color: 'var(--color-ok)', fontSize: 11, fontWeight: 700 }}>✔ DONE</span>;
-    }
-    if (task.status === 'canceled') {
-        return <span style={{ color: 'var(--color-text-faint)', fontSize: 11, fontWeight: 700 }}>CANCELED</span>;
-    }
-    
-    const target = getTargetTime(task).getTime();
-    const diff = target - now;
-    
-    const isOverdue = diff < 0;
-    const absDiff = Math.abs(diff);
-    
-    const hours = Math.floor(absDiff / 3600000);
-    const mins = Math.floor((absDiff % 3600000) / 60000);
-    const secs = Math.floor((absDiff % 60000) / 1000);
-    
-    const display = `${isOverdue ? '-' : ''}${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    
-    return (
-        <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 12,
-            fontWeight: 700,
-            color: isOverdue ? 'var(--color-danger)' : 'var(--color-text)',
-            background: isOverdue ? 'rgba(248,81,73,0.1)' : 'var(--color-surface-2)',
-            padding: '4px 8px',
-            borderRadius: 4,
-            width: '80px',
-            textAlign: 'center',
-            display: 'inline-block'
-        }}>
-            {display}
-        </span>
-    );
-}
-
-// ---------------------------------------------------------------------------
-function SmallAvatar({ name, photoUrl }: { name: string, photoUrl: string }) {
-    const initials = (name || '?').trim().split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-    return (
-        <div style={{
-            width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-            background: photoUrl ? 'transparent' : 'var(--color-primary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 9, fontWeight: 700, color: '#fff',
-            overflow: 'hidden', border: '1px solid var(--color-border)',
-        }}>
-            {photoUrl
-                ? <img src={photoUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : initials}
-        </div>
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Task Card
-// ---------------------------------------------------------------------------
-
-interface DayPropertyCardProps {
-    propertyId: string;
-    date: string;
-    tasks: WorkerTask[];
-    onOpen: (id: string) => void;
-    propertyMap: Record<string, string>;
-    staffMap: Record<string, { name: string; photo: string }>;
-}
-
-import { useRouter } from 'next/navigation';
-
-function DayPropertyCard({ propertyId, date, tasks, onOpen, propertyMap, staffMap }: DayPropertyCardProps) {
-    const router = useRouter();
-    const propName = propertyMap[propertyId] || propertyId;
-    
-    const hasOverdue = tasks.some(t => isOverdue(t));
-    const hasCritical = tasks.some(t => t.priority === 'CRITICAL' && t.status === 'pending');
-    
-    return (
-        <div style={{
-            background: 'var(--color-surface)',
-            borderRadius: 'var(--radius-lg)',
-            border: `1px solid ${hasCritical ? 'rgba(239,68,68,0.5)' : hasOverdue ? 'var(--color-danger)' : 'var(--color-border)'}`,
-            marginBottom: 'var(--space-4)',
-            boxShadow: hasCritical ? '0 0 12px rgba(239,68,68,0.15)' : 'var(--shadow-sm)',
-            overflow: 'hidden',
-        }}>
-             {/* Header */}
-             <div style={{
-                 background: 'var(--color-surface-2)',
-                 padding: 'var(--space-3) var(--space-4)',
-                 borderBottom: '1px solid var(--color-border)',
-                 display: 'flex',
-                 justifyContent: 'space-between',
-                 alignItems: 'center'
-             }}>
-                 <div 
-                    onClick={() => router.push(`/admin/properties/${propertyId}`)}
-                    style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                 >
-                    {propName}
-                 </div>
-                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 600 }}>
-                    {date}
-                </div>
-            </div>
-            
-            {/* Task Columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, tasks.length)}, minmax(0, 1fr))`, gap: '1px', background: 'var(--color-border)' }}>
-                {tasks.map((task, idx) => (
-                    <div key={task.task_id} 
-                         onClick={() => onOpen(task.task_id)}
-                         style={{
-                             display: 'flex',
-                             flexDirection: 'column',
-                             padding: '10px 12px',
-                             cursor: 'pointer',
-                             background: task.status === 'completed' ? 'var(--color-surface-hover)' : 'var(--color-surface)',
-                             gap: 8,
-                             transition: 'background 0.2s',
-                             minWidth: 0,
-                         }}
-                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
-                         onMouseLeave={(e) => { e.currentTarget.style.background = task.status === 'completed' ? 'var(--color-surface-hover)' : 'var(--color-surface)'; }}
-                    >
-                         {/* Header: Task Kind + Badges */}
-                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, paddingRight: 8 }}>
-                                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                     {kindLabel(task.kind)}
-                                 </span>
-                                 <span 
-                                    onClick={(e) => { e.stopPropagation(); router.push(`/bookings/${task.booking_id}`); }}
-                                    style={{ fontSize: 10, cursor: 'pointer', color: 'var(--color-text-faint)', textDecoration: 'underline', width: 'fit-content' }}
-                                    title="View Booking"
-                                 >
-                                    #{task.booking_id.split('-').pop()}
-                                 </span>
-                             </div>
-                             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                                 {task.priority === 'CRITICAL' && task.status === 'pending' && <span style={{ fontSize: 9, color: '#fff', background: '#f85149', padding: '2px 4px', borderRadius: 4, fontWeight: 700 }}>CRITICAL</span>}
-                                 {task.status !== 'completed' && task.status !== 'pending' && (
-                                    <span style={{ fontSize: 9, color: 'var(--color-primary)', background: 'rgba(88,166,255,0.1)', padding: '2px 4px', borderRadius: 4, fontWeight: 600 }}>
-                                        {task.status.replace('_', ' ')}
-                                    </span>
-                                 )}
-                             </div>
-                         </div>
-                         
-                         {/* Footer: Worker + Timer */}
-                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                             <div 
-                                onClick={(e) => {
-                                    if (task.assigned_to) {
-                                        e.stopPropagation();
-                                        router.push(`/admin/staff/${task.assigned_to}`);
-                                    }
-                                }}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, paddingRight: 6, cursor: task.assigned_to ? 'pointer' : 'default' }}
-                                onMouseEnter={(e) => { if (task.assigned_to) e.currentTarget.style.opacity = '0.7'; }}
-                                onMouseLeave={(e) => { if (task.assigned_to) e.currentTarget.style.opacity = '1'; }}
-                             >
-                                 <SmallAvatar 
-                                    name={task.assigned_to ? (staffMap[task.assigned_to]?.name || task.assigned_to) : '?'} 
-                                    photoUrl={task.assigned_to ? (staffMap[task.assigned_to]?.photo || '') : ''} 
-                                 />
-                                 <span style={{ fontSize: 11, color: task.assigned_to ? 'var(--color-text-dim)' : 'var(--color-text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {task.assigned_to ? (staffMap[task.assigned_to]?.name || task.assigned_to).split(' ')[0] : 'Unassigned'}
-                                 </span>
-                             </div>
-                             
-                             <div style={{ flexShrink: 0 }}>
-                                 <TaskCountdown task={task} />
-                             </div>
-                         </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
+// Old task rendering components (TaskCountdown, SmallAvatar, DayPropertyCard) removed (Phase 885)
 
 // ---------------------------------------------------------------------------
 // Empty State
@@ -690,35 +489,47 @@ export default function TasksPage() {
                 {/* Task list */}
                 {!loading && sorted.length === 0 && <EmptyState filter={filter} />}
 
-                {!loading && sorted.length > 0 && (() => {
-                    const groupedTasks: { key: string; date: string; propertyId: string; tasks: WorkerTask[] }[] = [];
-                    const groupMap = new Map<string, WorkerTask[]>();
-                    for (const t of sorted) {
-                        const key = `${t.due_date}_${t.property_id}`;
-                        if (!groupMap.has(key)) {
-                            groupMap.set(key, []);
-                            groupedTasks.push({ key, date: t.due_date || 'No Date', propertyId: t.property_id, tasks: groupMap.get(key)! });
-                        }
-                        groupMap.get(key)!.push(t);
-                    }
+                {!loading && sorted.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                        {sorted.map((t, idx) => {
+                            const propName = propertyMap[t.property_id] || t.property_id;
+                            
+                            // Determine route destination based on task kind
+                            let dest = '/tasks';
+                            if (t.kind.includes('CLEAN')) dest = `/ops/cleaner`;
+                            else if (t.kind.includes('CHECKIN') || t.kind.includes('GUEST')) dest = `/ops/checkin`;
+                            else if (t.kind.includes('CHECKOUT')) dest = `/ops/checkout`;
+                            else if (t.kind.includes('MAINTENANCE')) dest = `/ops/maintenance`;
 
-                    return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                            {groupedTasks.map((group, idx) => (
-                                <div key={group.key} className="task-card-enter" style={{ animationDelay: `${idx * 40}ms` }}>
-                                    <DayPropertyCard
-                                        propertyId={group.propertyId}
-                                        date={group.date}
-                                        tasks={group.tasks}
-                                        onOpen={setDetailId}
-                                        propertyMap={propertyMap}
-                                        staffMap={staffMap}
+                            return (
+                                <div key={t.task_id} className="task-card-enter" style={{ animationDelay: `${idx * 40}ms` }}>
+                                    <WorkerTaskCard
+                                        taskId={t.task_id}
+                                        kind={t.kind}
+                                        status={t.status}
+                                        priority={t.priority}
+                                        date={t.due_date || ''}
+                                        time={t.due_time || ''}
+                                        propertyName={propName}
+                                        propertyCode={t.property_id}
+                                        guestName={t.title || ''}
+                                        onStart={() => window.location.href = dest} // navigate straight to execution page
+                                        onAcknowledge={
+                                            t.status === 'PENDING' 
+                                                ? () => handleAcknowledge(t.task_id) 
+                                                : undefined
+                                        }
+                                        onNavigate={() => {
+                                            if (t.property_id) {
+                                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(propName + ' ' + t.property_id)}`, '_blank');
+                                            }
+                                        }}
                                     />
                                 </div>
-                            ))}
-                        </div>
-                    );
-                })()}
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Task count footer */}
                 {!loading && sorted.length > 0 && (

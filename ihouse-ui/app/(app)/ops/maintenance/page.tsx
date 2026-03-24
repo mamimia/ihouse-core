@@ -16,6 +16,7 @@ import { apiFetch, getWorkerId, getToken, API_BASE as BASE } from '@/lib/staffAp
 import { useElapsed, useCountdown } from '@/lib/useCountdown';
 import { MAINTENANCE_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
+import WorkerTaskCard from '@/components/WorkerTaskCard';
 
 // Phase 864: apiFetch, getWorkerId, getToken imported from lib/staffApi.ts
 
@@ -266,31 +267,17 @@ export default function MobileMaintenancePage() {
                         {openIssues.map(issue => {
                             const sev = SEVERITY_COLORS[issue.severity || 'MEDIUM'] || SEVERITY_COLORS.MEDIUM;
                             return (
-                                <div key={issue.id || issue.report_id} style={{
-                                    ...card, cursor: 'pointer', transition: 'border-color 0.2s',
-                                    borderLeft: `3px solid ${sev.text}`,
-                                }}
-                                    onClick={() => openIssue(issue)}
-                                    onMouseEnter={e => (e.currentTarget.style.borderColor = sev.text)}
-                                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div>
-                                            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-                                                {issue.description?.substring(0, 50) || 'Issue'}
-                                                {(issue.description?.length || 0) > 50 ? '…' : ''}
-                                            </div>
-                                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                                                {issue.property_id} · {issue.category || '—'}
-                                            </div>
-                                        </div>
-                                        <span style={{
-                                            padding: '2px 10px', borderRadius: 12, fontSize: 'var(--text-xs)', fontWeight: 600,
-                                            background: sev.bg, color: sev.text, border: `1px solid ${sev.border}`,
-                                        }}>{issue.severity || 'MEDIUM'}</span>
-                                    </div>
-                                    <IssueAgeChip createdAt={issue.created_at} severity={issue.severity} />
-
-                                </div>
+                                <WorkerTaskCard
+                                    key={issue.id || issue.report_id}
+                                    kind="MAINTENANCE"
+                                    status={issue.status || 'PENDING'}
+                                    priority={issue.severity || 'MEDIUM'}
+                                    propertyName={issue.property_id}
+                                    propertyCode={issue.category || 'General'}
+                                    date={issue.created_at ? new Date(issue.created_at).toISOString().split('T')[0] : ''}
+                                    guestName={issue.description?.substring(0, 50) || 'Issue'} // Use guestName slot for issue title summary
+                                    onStart={() => openIssue(issue)}
+                                />
                             );
                         })}
                     </div>

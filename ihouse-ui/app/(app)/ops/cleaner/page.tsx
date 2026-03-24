@@ -15,6 +15,7 @@ import { apiFetch, getWorkerId, getToken, API_BASE as BASE } from '@/lib/staffAp
 import { useCountdown } from '@/lib/useCountdown';
 import { CLEANER_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
+import WorkerTaskCard from '@/components/WorkerTaskCard';
 
 // Phase 864: apiFetch, getWorkerId, getToken imported from lib/staffApi.ts
 
@@ -26,6 +27,7 @@ type CleaningTask = {
     booking_id?: string;
     status: string;
     kind: string;
+    priority?: string;
     title?: string;
     due_date?: string;
     description?: string;
@@ -177,16 +179,7 @@ function CleanerSummaryStrip({ activeTasks, completedTasks, nextDeadlineIso }: {
     );
 }
 
-function TaskCountdownChip({ dueDate }: { dueDate: string | null }) {
-    const { label, isOverdue, isUrgent } = useCountdown(dueDate, '10:00');
-    if (!dueDate) return <span>📅 —</span>;
-    const color = isOverdue ? 'var(--color-alert)' : isUrgent ? 'var(--color-warn)' : 'var(--color-text-dim)';
-    return (
-        <span style={{ color, fontWeight: isOverdue || isUrgent ? 600 : 400 }}>
-            {isOverdue ? '⚠ ' : '⏱ '}{label}
-        </span>
-    );
-}
+// obsolete TaskCountdownChip removed
 
 // ======== Main Page ========
 
@@ -728,45 +721,19 @@ export default function MobileCleanerPage() {
                             <>
                                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-1)' }}>Today</div>
                                 {activeTasks.filter(t => t.due_date === new Date().toISOString().slice(0, 10)).map(t => (
-                                    <div key={t.task_id} style={{
-                                        ...card, cursor: 'pointer', transition: 'border-color 0.2s',
-                                    }}
-                                        onClick={() => openDetail(t)}
-                                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-                                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                                            <div>
-                                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-                                                    {t.property_name || t.property_id}
-                                                </div>
-                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                                                    {t.property_id}
-                                                </div>
-                                            </div>
-                                            <StatusBadge status={t.status} />
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
-                                            <span>🧹 Cleaning</span>
-                                            <TaskCountdownChip dueDate={t.due_date || t.deadline || null} />
-                                        </div>
-                                        <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-                                            {t.status === 'PENDING' && (
-                                                <button onClick={e => { e.stopPropagation(); acknowledgeTask(t); }} style={{
-                                                    flex: 1, padding: '8px', background: 'rgba(212,149,106,0.1)', color: 'var(--color-warn)',
-                                                    border: '1px solid rgba(212,149,106,0.3)', borderRadius: 'var(--radius-sm)',
-                                                    fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                                                }}>Acknowledge</button>
-                                            )}
-                                            <button style={{
-                                                flex: 1, padding: '8px', background: 'var(--color-primary)', color: '#fff',
-                                                border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                                            }}>{t.status === 'IN_PROGRESS' ? 'Resume' : 'Start'}</button>
-                                            <button onClick={e => { e.stopPropagation(); navigateToProperty(t.task_id); }} style={{
-                                                padding: '8px 12px', background: 'var(--color-surface-2)', color: 'var(--color-text-dim)',
-                                                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', cursor: 'pointer',
-                                            }}>📍</button>
-                                        </div>
-                                    </div>
+                                    <WorkerTaskCard
+                                        key={t.task_id}
+                                        kind={t.kind || 'CLEANING'}
+                                        status={t.status}
+                                        priority={t.priority}
+                                        propertyName={t.property_name || t.property_id}
+                                        propertyCode={t.property_id}
+                                        date={t.due_date || t.deadline?.slice(0, 10) || ''}
+                                        time={t.deadline ? t.deadline.slice(11, 19) : undefined}
+                                        onStart={() => openDetail(t)}
+                                        onAcknowledge={t.status === 'PENDING' ? () => acknowledgeTask(t) : undefined}
+                                        onNavigate={() => navigateToProperty(t.task_id)}
+                                    />
                                 ))}
                             </>
                         )}
@@ -776,29 +743,19 @@ export default function MobileCleanerPage() {
                             <>
                                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>Upcoming</div>
                                 {activeTasks.filter(t => (t.due_date ?? '') > new Date().toISOString().slice(0, 10)).map(t => (
-                                    <div key={t.task_id} style={{
-                                        ...card, cursor: 'pointer', transition: 'border-color 0.2s',
-                                        opacity: 0.85,
-                                    }}
-                                        onClick={() => openDetail(t)}
-                                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-                                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                                            <div>
-                                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-                                                    {t.property_name || t.property_id}
-                                                </div>
-                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                                                    {t.property_id}
-                                                </div>
-                                            </div>
-                                            <StatusBadge status={t.status} />
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
-                                            <span>🧹 Cleaning</span>
-                                            <span>📅 {t.due_date}</span>
-                                            <TaskCountdownChip dueDate={t.due_date || t.deadline || null} />
-                                        </div>
+                                    <div key={t.task_id} style={{ opacity: 0.85 }}>
+                                        <WorkerTaskCard
+                                            kind={t.kind || 'CLEANING'}
+                                            status={t.status}
+                                            priority={t.priority}
+                                            propertyName={t.property_name || t.property_id}
+                                            propertyCode={t.property_id}
+                                            date={t.due_date || t.deadline?.slice(0, 10) || ''}
+                                            time={t.deadline ? t.deadline.slice(11, 19) : undefined}
+                                            onStart={() => openDetail(t)}
+                                            onAcknowledge={t.status === 'PENDING' ? () => acknowledgeTask(t) : undefined}
+                                            onNavigate={() => navigateToProperty(t.task_id)}
+                                        />
                                     </div>
                                 ))}
                             </>
@@ -822,14 +779,15 @@ export default function MobileCleanerPage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                                 {completedTasks.map(t => (
-                                    <div key={t.task_id} style={{ ...card, opacity: 0.6, borderColor: 'rgba(74,222,128,0.2)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div>
-                                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>{t.property_name || t.property_id}</div>
-                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>{t.property_id}</div>
-                                            </div>
-                                            <StatusBadge status="COMPLETED" />
-                                        </div>
+                                    <div key={t.task_id} style={{ opacity: 0.6 }}>
+                                        <WorkerTaskCard
+                                            kind={t.kind || 'CLEANING'}
+                                            status="COMPLETED"
+                                            propertyName={t.property_name || t.property_id}
+                                            propertyCode={t.property_id}
+                                            date={t.due_date || t.deadline?.slice(0, 10) || ''}
+                                            time={t.deadline ? t.deadline.slice(11, 19) : undefined}
+                                        />
                                     </div>
                                 ))}
                             </div>
