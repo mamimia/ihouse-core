@@ -64,6 +64,19 @@ export function useIdentity(): UseIdentityResult {
             });
 
             if (!res.ok) {
+                // Phase 877: Active Token Purge on 401/403
+                // If we get an auth error, we MUST clear the token from browser state.
+                // Otherwise, the page redirects to /login, but /login sees the token
+                // and bounces us back here, causing an infinite redirect loop.
+                if (res.status === 401 || res.status === 403) {
+                    if (typeof document !== 'undefined') {
+                        document.cookie = 'ihouse_token=; path=/; max-age=0; SameSite=Lax';
+                    }
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem('ihouse_token');
+                    }
+                }
+
                 setError(`HTTP_${res.status}`);
                 setIdentity(null);
                 setLoading(false);

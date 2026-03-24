@@ -108,6 +108,19 @@ export function middleware(request: NextRequest) {
     // Phase 397: Role enforcement
     const payload = decodeJwtPayload(token);
     
+    // Phase 877: Active Token Purge on Edge level
+    // If the token is expired, reject it immediately, clear the cookie, and force re-auth.
+    if (payload && typeof payload.exp === 'number') {
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        if (payload.exp < nowSeconds) {
+            const loginUrl = new URL('/login', request.url);
+            loginUrl.searchParams.set('from', pathname);
+            const response = NextResponse.redirect(loginUrl);
+            response.cookies.delete('ihouse_token');
+            return response;
+        }
+    }
+
     // Check if the user is deactivated
     if (payload?.is_active === false) {
         if (pathname !== '/deactivated') {
