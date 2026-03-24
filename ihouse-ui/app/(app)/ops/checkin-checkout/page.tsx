@@ -37,15 +37,22 @@ export default function CheckinCheckoutHub() {
     const load = useCallback(async () => {
         setLoading(true);
 
-        // Phase 884 fix (C): Query CHECKIN tasks directly — same source as /tasks.
-        // Previously we used the booking API which returned 0 when the booking
-        // window query found nothing, even though real CHECKIN tasks existed.
+        // Phase 887 Root Fix: The /worker/tasks endpoint applies assignment-level
+        // filtering when the JWT holder is treated as a worker (or act-as worker).
+        // This means only tasks on properties personally assigned to the caller are
+        // returned — causing CHECKOUT to show 8 when 14 PENDING tasks exist in the DB.
+        //
+        // Solution: count hub summaries using the admin /tasks?kind= endpoint,
+        // which sees ALL tenant tasks for the given kind with no assignment filtering.
+        // The detailed work pages (/ops/checkin, /ops/checkout) are unaffected —
+        // they already handle their own data fetching and enrichment.
+
         try {
             const today = new Date().toISOString().slice(0, 10);
-            const checkinRes = await apiFetch<any>('/worker/tasks?worker_role=CHECKIN&limit=100');
-            const checkinList = checkinRes.tasks || checkinRes.data?.tasks || checkinRes.data || [];
-            const checkinTasks: any[] = Array.isArray(checkinList) ? checkinList : [];
-            const pendingCheckins = checkinTasks.filter((t: any) =>
+            const ciRes = await apiFetch<any>('/tasks?kind=CHECKIN_PREP&limit=100');
+            const ciList = ciRes.tasks || ciRes.data?.tasks || ciRes.data || [];
+            const ciTasks: any[] = Array.isArray(ciList) ? ciList : [];
+            const pendingCheckins = ciTasks.filter((t: any) =>
                 t.status !== 'COMPLETED' && t.status !== 'CANCELED' &&
                 (!t.due_date || t.due_date >= today)
             );
@@ -57,11 +64,8 @@ export default function CheckinCheckoutHub() {
         } catch { setArrivals(0); setNextArrivalIso(null); }
 
         try {
-            // Phase 886: Count ALL non-completed checkout tasks (overdue + today + upcoming).
-            // Previously only counted "pending" (future) tasks, which understated the workload
-            // vs the 19 check-in tasks. The checkout page itself shows all three buckets.
             const today = new Date().toISOString().slice(0, 10);
-            const coRes = await apiFetch<any>('/worker/tasks?worker_role=CHECKOUT&limit=100');
+            const coRes = await apiFetch<any>('/tasks?kind=CHECKOUT_VERIFY&limit=100');
             const coList = coRes.tasks || coRes.data?.tasks || coRes.data || [];
             const coTasks: any[] = Array.isArray(coList)
                 ? coList.filter((t: any) => t.status !== 'COMPLETED' && t.status !== 'CANCELED')
@@ -191,33 +195,38 @@ export default function CheckinCheckoutHub() {
                         </div>
                     </Link>
 
-                    {/* Phase 886: Profile & Settings — use window.location for reliable
-                        navigation inside the Preview/iframe context where router.push
-                        may be intercepted and fall back to the same page. */}
-                    <div style={{
-                        ...card,
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        opacity: 0.8, cursor: 'pointer',
-                    }}
-                        onClick={() => { window.location.href = '/worker'; }}
-                        onMouseEnter={e => {
-                            (e.currentTarget as HTMLDivElement).style.opacity = '1';
-                            (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)';
-                        }}
-                        onMouseLeave={e => {
-                            (e.currentTarget as HTMLDivElement).style.opacity = '0.8';
-                            (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)';
-                        }}
+                    {/* Phase 887: Profile nav — plain <a href> tag.
+                        router.push and window.location.href are both intercepted
+                        in some Preview iframe contexts. A native anchor with href
+                        is the most reliable cross-context navigation primitive. */}
+                    <a
+                        href="/worker"
+                        style={{ textDecoration: 'none' }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                            <span style={{ fontSize: 'var(--text-xl)' }}>👤</span>
-                            <div>
-                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Profile &amp; Settings</div>
-                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 1 }}>Home · Sign out · Language</div>
+                        <div style={{
+                            ...card,
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            opacity: 0.85, cursor: 'pointer', marginBottom: 0,
+                        }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLDivElement).style.opacity = '1';
+                                (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-primary)';
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLDivElement).style.opacity = '0.85';
+                                (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)';
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                                <span style={{ fontSize: 'var(--text-xl)' }}>👤</span>
+                                <div>
+                                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Profile &amp; Settings</div>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 1 }}>Home · Sign out · Language</div>
+                                </div>
                             </div>
+                            <span style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-faint)' }}>›</span>
                         </div>
-                        <span style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-faint)' }}>›</span>
-                    </div>
+                    </a>
                 </div>
             )}
         </div>

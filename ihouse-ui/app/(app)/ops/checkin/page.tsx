@@ -257,18 +257,19 @@ export default function MobileCheckinPage() {
             checkinTasks.forEach(t => {
                 if (t.status === 'COMPLETED' || t.status === 'CANCELED') return;
                 const bId = t.booking_id || t.task_id;
-                // If the task creates a booking that we didn't get from the API
+                // Synthetic booking from task: we know the check-in date from due_date
+                // but don't know check-out. Leave check_out undefined so nights
+                // computation returns null (hidden) rather than showing wrong value.
                 if (!bookingMap.has(bId)) {
                     bookingMap.set(bId, {
                         booking_id: bId,
                         booking_ref: t.task_id,
                         property_id: t.property_id,
-                        guest_name: t.title || 'Check-in Task',
+                        guest_name: t.title || undefined,  // will be sanitated by WorkerTaskCard
                         check_in: t.due_date || today,
-                        check_out: t.due_date || today,
+                        check_out: undefined,              // unknown — do not guess
                         status: 'Upcoming',
                         deposit_required: false,
-                        nights: 1,
                         operator_note: t.description || undefined,
                     });
                 }
@@ -279,12 +280,15 @@ export default function MobileCheckinPage() {
             // Enrich each booking with property deposit config + property status
             const enriched = await Promise.all(
                 merged.map(async (b) => {
-                    // Compute nights
+                    // Compute nights from real dates; do NOT force a minimum of 1.
+                    // If check_in === check_out (or check_out is missing), nights is null
+                    // → WorkerTaskCard omits the field rather than showing wrong data.
                     let nights = b.nights;
-                    if (!nights && b.check_in && b.check_out) {
+                    if (!nights && b.check_in && b.check_out && b.check_out !== b.check_in) {
                         const d1 = new Date(b.check_in).getTime();
                         const d2 = new Date(b.check_out).getTime();
-                        nights = Math.max(1, Math.round((d2 - d1) / 86400000));
+                        const n = Math.round((d2 - d1) / 86400000);
+                        nights = n > 0 ? n : undefined;
                     }
                     try {
                         const propRes = await apiFetch<any>(`/properties/${b.property_id}`);
