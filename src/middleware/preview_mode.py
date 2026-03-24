@@ -53,6 +53,7 @@ _EXEMPT_PREFIXES = (
     "/health",
     "/readiness",
     "/auth/",
+    "/admin/preview/",  # Phase 867: preview audit must work during preview
     "/docs",
     "/openapi.json",
     "/redoc",

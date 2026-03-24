@@ -404,6 +404,9 @@ app.include_router(sse_router)
 from api.audit_router import router as audit_router  # noqa: E402  # Phase 189
 app.include_router(audit_router)
 
+from api.preview_audit_router import router as preview_audit_router  # noqa: E402  # Phase 867
+app.include_router(preview_audit_router)
+
 from api.guests_router import router as guests_router  # noqa: E402  # Phase 192
 app.include_router(guests_router)
 

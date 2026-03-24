@@ -3,6 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+// Phase 867 — Preview audit helper (mirrors PreviewContext.tsx)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+
+function emitPreviewAudit(action: 'PREVIEW_OPENED' | 'PREVIEW_CLOSED', previewRole: string, route: string) {
+    if (typeof window === 'undefined') return;
+    const token = localStorage.getItem('ihouse_token');
+    if (!token) return;
+    fetch(`${API_BASE}/admin/preview/audit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action, preview_role: previewRole, route }),
+    }).catch(() => {});
+}
+
 export function PreviewPageContent() {
     const searchParams = useSearchParams();
     const [msg, setMsg] = useState('Entering Preview Mode...');
@@ -23,6 +40,9 @@ export function PreviewPageContent() {
                 maintenance:      '/ops/maintenance',
             };
             const target = PREVIEW_ROUTES[role] ?? '/dashboard';
+
+            // Phase 867 — Emit structured audit event for preview open
+            emitPreviewAudit('PREVIEW_OPENED', role, target);
 
             setTimeout(() => {
                 window.location.href = target;

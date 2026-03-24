@@ -37,7 +37,7 @@ router = APIRouter()
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 100
 
-_VALID_ENTITY_TYPES = frozenset({"task", "booking"})
+_VALID_ENTITY_TYPES = frozenset({"task", "booking", "preview"})  # Phase 867: added "preview"
 
 
 # ---------------------------------------------------------------------------
