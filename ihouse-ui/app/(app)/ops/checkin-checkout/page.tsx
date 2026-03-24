@@ -37,15 +37,21 @@ export default function CheckinCheckoutHub() {
     const load = useCallback(async () => {
         setLoading(true);
 
-        // Phase 887 Root Fix: The /worker/tasks endpoint applies assignment-level
-        // filtering when the JWT holder is treated as a worker (or act-as worker).
-        // This means only tasks on properties personally assigned to the caller are
-        // returned — causing CHECKOUT to show 8 when 14 PENDING tasks exist in the DB.
-        //
-        // Solution: count hub summaries using the admin /tasks?kind= endpoint,
-        // which sees ALL tenant tasks for the given kind with no assignment filtering.
-        // The detailed work pages (/ops/checkin, /ops/checkout) are unaffected —
-        // they already handle their own data fetching and enrichment.
+        // Phase 887c: Pre-fetch approved property IDs so counts only reflect
+        // operationally live properties. Unapproved properties (pending, draft,
+        // rejected) must not contribute to worker-facing counts even if tasks
+        // exist for them in the DB (leakage from the task automator).
+        let approvedPropertyIds: Set<string> = new Set();
+        try {
+            const propRes = await apiFetch<any>('/properties?limit=200');
+            const propList = propRes.properties || propRes.data?.properties || propRes.data || [];
+            const props: any[] = Array.isArray(propList) ? propList : [];
+            approvedPropertyIds = new Set(
+                props
+                    .filter((p: any) => p.status === 'approved')
+                    .map((p: any) => p.property_id)
+            );
+        } catch { /* if fetch fails, approvedPropertyIds stays empty → counts show 0, safe default */ }
 
         try {
             const today = new Date().toISOString().slice(0, 10);
@@ -54,7 +60,8 @@ export default function CheckinCheckoutHub() {
             const ciTasks: any[] = Array.isArray(ciList) ? ciList : [];
             const pendingCheckins = ciTasks.filter((t: any) =>
                 t.status !== 'COMPLETED' && t.status !== 'CANCELED' &&
-                (!t.due_date || t.due_date >= today)
+                (!t.due_date || t.due_date >= today) &&
+                (approvedPropertyIds.size === 0 || approvedPropertyIds.has(t.property_id))
             );
             setArrivals(pendingCheckins.length);
             const sortedArrivals = [...pendingCheckins].sort((a: any, b: any) =>
@@ -68,7 +75,10 @@ export default function CheckinCheckoutHub() {
             const coRes = await apiFetch<any>('/tasks?kind=CHECKOUT_VERIFY&limit=100');
             const coList = coRes.tasks || coRes.data?.tasks || coRes.data || [];
             const coTasks: any[] = Array.isArray(coList)
-                ? coList.filter((t: any) => t.status !== 'COMPLETED' && t.status !== 'CANCELED')
+                ? coList.filter((t: any) =>
+                    t.status !== 'COMPLETED' && t.status !== 'CANCELED' &&
+                    (approvedPropertyIds.size === 0 || approvedPropertyIds.has(t.property_id))
+                )
                 : [];
             const overdue = coTasks.filter((t: any) => t.due_date && t.due_date < today).length;
             const active  = coTasks.filter((t: any) => !t.due_date || t.due_date >= today).length;

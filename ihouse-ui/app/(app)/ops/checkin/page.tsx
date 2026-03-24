@@ -168,13 +168,14 @@ function CheckinSummaryStrip({ todayCount, upcomingCount, completedCount, nextAr
     );
 }
 
-function BookingCardList({ bookings, onStart, showNotice }: {
-    bookings: Booking[]; onStart: (b: Booking) => void; showNotice: (msg: string) => void;
+function BookingCardList({ bookings, onStart, onAcknowledge, showNotice }: {
+    bookings: Booking[]; onStart: (b: Booking) => void; onAcknowledge: (taskId: string) => void; showNotice: (msg: string) => void;
 }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {bookings.map(b => {
                 const bookingId = b.booking_id || b.booking_ref || b.id || 'unknown';
+                const taskId = (b as any).task_id || bookingId;
                 return (
                     <WorkerTaskCard
                         key={bookingId}
@@ -188,6 +189,11 @@ function BookingCardList({ bookings, onStart, showNotice }: {
                         guestName={b.guest_name}
                         guestCount={b.guest_count}
                         onStart={() => onStart(b)}
+                        onAcknowledge={
+                            (b.status || 'PENDING').toUpperCase() === 'PENDING'
+                                ? () => onAcknowledge(taskId)
+                                : undefined
+                        }
                         onNavigate={() => {
                             if (b.property_latitude && b.property_longitude) {
                                 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -330,6 +336,19 @@ export default function MobileCheckinPage() {
         setPassportName(b.guest_name || '');
         setDepositMethod('cash');
         setDepositNote('');
+    };
+
+    // Phase 887c: Acknowledge — parity with Combined Tasks view.
+    const handleAcknowledgeTask = async (taskId: string) => {
+        try {
+            await apiFetch<any>(`/worker/tasks/${taskId}/acknowledge`, { method: 'PATCH' });
+            setNotice('✓ Task acknowledged');
+            setTimeout(() => setNotice(null), 3000);
+            load();
+        } catch {
+            setNotice('⚠ Acknowledge failed');
+            setTimeout(() => setNotice(null), 3000);
+        }
     };
 
     // Dynamic flow: skip deposit step when not required by property config
@@ -555,7 +574,7 @@ export default function MobileCheckinPage() {
                     {!loading && todayArrivals.length > 0 && (
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Today</div>
-                            <BookingCardList bookings={todayArrivals} onStart={startCheckin} showNotice={showNotice} />
+                            <BookingCardList bookings={todayArrivals} onStart={startCheckin} onAcknowledge={handleAcknowledgeTask} showNotice={showNotice} />
                         </div>
                     )}
 
@@ -563,7 +582,7 @@ export default function MobileCheckinPage() {
                     {!loading && upcomingArrivals.length > 0 && (
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Upcoming</div>
-                            <BookingCardList bookings={upcomingArrivals} onStart={startCheckin} showNotice={showNotice} />
+                            <BookingCardList bookings={upcomingArrivals} onStart={startCheckin} onAcknowledge={handleAcknowledgeTask} showNotice={showNotice} />
                         </div>
                     )}
 

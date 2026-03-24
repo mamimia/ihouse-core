@@ -188,7 +188,9 @@ export default function TasksPage() {
     const [filter, setFilter] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [detailId, setDetailId] = useState<string | null>(null);
+    // Phase 887c: store both display_name and approval status per property
     const [propertyMap, setPropertyMap] = useState<Record<string, string>>({});
+    const [propertyStatusMap, setPropertyStatusMap] = useState<Record<string, string>>({});
     const [staffMap, setStaffMap] = useState<Record<string, { name: string; photo: string }>>({});
 
     // Phase 882b — detect if we should render inside a staff shell
@@ -206,11 +208,14 @@ export default function TasksPage() {
             api.getPermissions?.()
         ]).then(([pRes, sRes]) => {
             if (pRes.status === 'fulfilled') {
-                const map: Record<string, string> = {};
+                const nameMap: Record<string, string> = {};
+                const statusMap: Record<string, string> = {};
                 for (const p of pRes.value?.properties || []) {
-                    map[p.property_id] = p.display_name || p.property_id;
+                    nameMap[p.property_id] = p.display_name || p.property_id;
+                    statusMap[p.property_id] = p.status || 'unknown';
                 }
-                setPropertyMap(map);
+                setPropertyMap(nameMap);
+                setPropertyStatusMap(statusMap);
             }
             if (sRes.status === 'fulfilled') {
                 const map: Record<string, { name: string; photo: string }> = {};
@@ -487,49 +492,54 @@ export default function TasksPage() {
                 )}
 
                 {/* Task list */}
-                {!loading && sorted.length === 0 && <EmptyState filter={filter} />}
+                {!loading && (() => {
+                    const approvedSorted = sorted.filter(t =>
+                        !propertyStatusMap[t.property_id] ||
+                        propertyStatusMap[t.property_id] === 'approved'
+                    );
+                    if (approvedSorted.length === 0) return <EmptyState filter={filter} />;
+                    return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                            {approvedSorted.map((t, idx) => {
+                                const propName = propertyMap[t.property_id] || t.property_id;
 
-                {!loading && sorted.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                        {sorted.map((t, idx) => {
-                            const propName = propertyMap[t.property_id] || t.property_id;
-                            
-                            // Determine route destination based on task kind
-                            let dest = '/tasks';
-                            if (t.kind.includes('CLEAN')) dest = `/ops/cleaner`;
-                            else if (t.kind.includes('CHECKIN') || t.kind.includes('GUEST')) dest = `/ops/checkin`;
-                            else if (t.kind.includes('CHECKOUT')) dest = `/ops/checkout`;
-                            else if (t.kind.includes('MAINTENANCE')) dest = `/ops/maintenance`;
+                                // Determine route destination based on task kind
+                                let dest = '/tasks';
+                                if (t.kind.includes('CLEAN')) dest = `/ops/cleaner`;
+                                else if (t.kind.includes('CHECKIN') || t.kind.includes('GUEST')) dest = `/ops/checkin`;
+                                else if (t.kind.includes('CHECKOUT')) dest = `/ops/checkout`;
+                                else if (t.kind.includes('MAINTENANCE')) dest = `/ops/maintenance`;
 
-                            return (
-                                <div key={t.task_id} className="task-card-enter" style={{ animationDelay: `${idx * 40}ms` }}>
-                                    <WorkerTaskCard
-                                        taskId={t.task_id}
-                                        kind={t.kind}
-                                        status={t.status}
-                                        priority={t.priority}
-                                        date={t.due_date || ''}
-                                        time={t.due_time || ''}
-                                        propertyName={propName}
-                                        propertyCode={t.property_id}
-                                        guestName={t.title || ''}
-                                        onStart={() => window.location.href = dest} // navigate straight to execution page
-                                        onAcknowledge={
-                                            t.status === 'PENDING' 
-                                                ? () => handleAcknowledge(t.task_id) 
-                                                : undefined
-                                        }
-                                        onNavigate={() => {
-                                            if (t.property_id) {
-                                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(propName + ' ' + t.property_id)}`, '_blank');
+                                return (
+                                    <div key={t.task_id} className="task-card-enter" style={{ animationDelay: `${idx * 40}ms` }}>
+                                        <WorkerTaskCard
+                                            taskId={t.task_id}
+                                            kind={t.kind}
+                                            status={t.status}
+                                            priority={t.priority}
+                                            date={t.due_date || ''}
+                                            time={t.due_time || ''}
+                                            propertyName={propName}
+                                            propertyCode={t.property_id}
+                                            guestName={t.title || ''}
+                                            onStart={() => window.location.href = dest}
+                                            onAcknowledge={
+                                                t.status === 'PENDING'
+                                                    ? () => handleAcknowledge(t.task_id)
+                                                    : undefined
                                             }
-                                        }}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                            onNavigate={() => {
+                                                if (t.property_id) {
+                                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(propName + ' ' + t.property_id)}`, '_blank');
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    );
+                })()}
 
                 {/* Task count footer */}
                 {!loading && sorted.length > 0 && (

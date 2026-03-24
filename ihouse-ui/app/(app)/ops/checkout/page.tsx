@@ -143,9 +143,10 @@ function CheckoutSummaryStrip({ todayCount, upcomingCount, overdueCount, nextDue
     );
 }
 
-function CheckoutTaskCard({ t, onStart, showNotice }: {
+function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
     t: CheckoutTask;
     onStart: (t: CheckoutTask) => void;
+    onAcknowledge?: () => void;
     showNotice: (msg: string) => void;
 }) {
     const handleNavigate = () => {
@@ -172,6 +173,7 @@ function CheckoutTaskCard({ t, onStart, showNotice }: {
             checkOut={t.check_out || t.due_date}
             guestName={t.guest_name}
             onStart={() => onStart(t)}
+            onAcknowledge={onAcknowledge}
             onNavigate={handleNavigate}
         />
     );
@@ -296,6 +298,18 @@ export default function MobileCheckoutPage() {
         const idx = flow.indexOf(step);
         if (idx <= 1) { setStep('list'); setSelected(null); }
         else setStep(flow[idx - 1]);
+    };
+
+    // Phase 887c: Acknowledge — matches the behavior now present in Combined Tasks.
+    // Allows a worker to acknowledge PENDING checkout tasks from the standalone page.
+    const handleAcknowledgeTask = async (taskId: string) => {
+        try {
+            await apiFetch<any>(`/worker/tasks/${taskId}/acknowledge`, { method: 'PATCH' });
+            showNotice('✓ Task acknowledged');
+            await load();
+        } catch {
+            showNotice('⚠ Acknowledge failed');
+        }
     };
 
     // Step 2: Submit an issue via existing problem_report_router
@@ -477,7 +491,7 @@ export default function MobileCheckoutPage() {
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-alert)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)', fontWeight: 700 }}>⚠ Overdue</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                                {overdueTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} showNotice={showNotice} />)}
+                                {overdueTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} onAcknowledge={t.status === 'PENDING' ? () => handleAcknowledgeTask(t.task_id) : undefined} showNotice={showNotice} />)}
                             </div>
                         </div>
                     )}
@@ -487,7 +501,7 @@ export default function MobileCheckoutPage() {
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Today</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                                {todayTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} showNotice={showNotice} />)}
+                                {todayTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} onAcknowledge={t.status === 'PENDING' ? () => handleAcknowledgeTask(t.task_id) : undefined} showNotice={showNotice} />)}
                             </div>
                         </div>
                     )}
@@ -497,7 +511,7 @@ export default function MobileCheckoutPage() {
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Upcoming</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                                {upcomingTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} showNotice={showNotice} />)}
+                                {upcomingTasks.map(t => <CheckoutTaskCard key={t.task_id} t={t} onStart={startCheckoutFromTask} onAcknowledge={t.status === 'PENDING' ? () => handleAcknowledgeTask(t.task_id) : undefined} showNotice={showNotice} />)}
                             </div>
                         </div>
                     )}
