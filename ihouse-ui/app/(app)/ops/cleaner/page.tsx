@@ -12,7 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, getWorkerId, getToken, API_BASE as BASE } from '@/lib/staffApi';
-import { STAFF_BOTTOM_NAV } from '@/components/BottomNav';
+import { CLEANER_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
 // Phase 864: apiFetch, getWorkerId, getToken imported from lib/staffApi.ts
@@ -610,7 +610,7 @@ export default function MobileCleanerPage() {
     const nextDeadline = activeTasks.length > 0 ? (activeTasks[0].due_date || activeTasks[0].deadline || '—') : '—';
 
     return (
-        <MobileStaffShell title="Cleaning" bottomNavItems={STAFF_BOTTOM_NAV}>
+        <MobileStaffShell title="Cleaning" bottomNavItems={CLEANER_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
             {/* Notice toast */}
             {notice && (

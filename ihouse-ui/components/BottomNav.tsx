@@ -28,16 +28,61 @@ const DEFAULT_ITEMS: BottomNavItem[] = [
 ];
 
 /**
- * Phase 864 — Canonical staff bottom nav for all worker-facing ops surfaces.
- * Used by: /ops/cleaner, /ops/maintenance, /ops/checkin, /ops/checkout
+ * Phase 882 — Role-correct bottom nav sets for all worker-facing ops surfaces.
+ *
+ * Each role gets its own nav where:
+ *   - "Home" is the role's own surface (not the admin /dashboard)
+ *   - Only tabs relevant to that role are shown
+ *   - No cross-role items (e.g. Cleaning never shows for Check-in Staff)
+ *
+ * Previously a single STAFF_BOTTOM_NAV was shared, causing every role to see
+ * Cleaning and Maintenance tabs even when previewing Check-in Staff, and
+ * "Home" resolved to /dashboard (admin world) breaking role isolation.
  */
-export const STAFF_BOTTOM_NAV: BottomNavItem[] = [
-    { href: '/dashboard',       label: 'Home',     icon: '🏠' },
-    { href: '/tasks',           label: 'Tasks',    icon: '✓' },
-    { href: '/ops/cleaner',     label: 'Cleaning', icon: '🧹' },
-    { href: '/ops/maintenance', label: 'Maint.',   icon: '🔧' },
-    { href: '/worker',          label: 'More',     icon: '⚙' },
+
+/** Check-in Staff: arrivals + tasks only */
+export const CHECKIN_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/ops/checkin', label: 'Check-in', icon: '📋' },
+    { href: '/tasks',       label: 'Tasks',    icon: '✓' },
+    { href: '/worker',      label: 'More',     icon: '⚙' },
 ];
+
+/** Check-out Staff: departures + tasks only */
+export const CHECKOUT_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/ops/checkout', label: 'Check-out', icon: '🚪' },
+    { href: '/tasks',        label: 'Tasks',     icon: '✓' },
+    { href: '/worker',       label: 'More',      icon: '⚙' },
+];
+
+/** Check-in & Check-out (combined role): hub + both flows + tasks */
+export const CHECKIN_CHECKOUT_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/ops/checkin-checkout', label: 'Today',      icon: '📅' },
+    { href: '/ops/checkin',          label: 'Arrivals',   icon: '📋' },
+    { href: '/ops/checkout',         label: 'Departures', icon: '🚪' },
+    { href: '/tasks',                label: 'Tasks',      icon: '✓' },
+];
+
+/** Cleaner: cleaning surface + tasks */
+export const CLEANER_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/ops/cleaner', label: 'Cleaning', icon: '🧹' },
+    { href: '/tasks',       label: 'Tasks',    icon: '✓' },
+    { href: '/worker',      label: 'More',     icon: '⚙' },
+];
+
+/** Maintenance: maintenance surface + tasks */
+export const MAINTENANCE_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/ops/maintenance', label: 'Maintenance', icon: '🔧' },
+    { href: '/tasks',           label: 'Tasks',       icon: '✓' },
+    { href: '/worker',          label: 'More',        icon: '⚙' },
+];
+
+/**
+ * @deprecated Phase 882: migrated to role-specific constants.
+ * Use CHECKIN_BOTTOM_NAV, CHECKOUT_BOTTOM_NAV, CHECKIN_CHECKOUT_BOTTOM_NAV,
+ * CLEANER_BOTTOM_NAV, or MAINTENANCE_BOTTOM_NAV instead.
+ * Kept as CLEANER_BOTTOM_NAV alias during migration.
+ */
+export const STAFF_BOTTOM_NAV = CLEANER_BOTTOM_NAV;
 
 interface BottomNavProps {
     items?: BottomNavItem[];

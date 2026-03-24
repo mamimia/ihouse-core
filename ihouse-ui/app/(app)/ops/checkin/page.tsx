@@ -12,7 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, getToken, API_BASE as BASE } from '@/lib/staffApi';
-import { STAFF_BOTTOM_NAV } from '@/components/BottomNav';
+import { CHECKIN_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
 // Phase 865: apiFetch, getToken imported from lib/staffApi.ts
@@ -360,7 +360,7 @@ export default function MobileCheckinPage() {
     };
 
     return (
-        <MobileStaffShell title="Check-in" bottomNavItems={STAFF_BOTTOM_NAV}>
+        <MobileStaffShell title="Check-in" bottomNavItems={CHECKIN_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
             {/* Notice toast */}
             {notice && (

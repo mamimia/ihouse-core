@@ -12,7 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/staffApi';
-import { STAFF_BOTTOM_NAV } from '@/components/BottomNav';
+import { CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
 // Phase 865: apiFetch imported from lib/staffApi.ts
@@ -262,7 +262,7 @@ export default function MobileCheckoutPage() {
     };
 
     return (
-        <MobileStaffShell title="Check-out" bottomNavItems={STAFF_BOTTOM_NAV}>
+        <MobileStaffShell title="Check-out" bottomNavItems={CHECKOUT_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto', paddingBottom: 80 }}>
             {/* Notice toast */}
             {notice && (

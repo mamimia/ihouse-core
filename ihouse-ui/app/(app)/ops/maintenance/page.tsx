@@ -13,7 +13,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, getWorkerId, getToken, API_BASE as BASE } from '@/lib/staffApi';
-import { STAFF_BOTTOM_NAV } from '@/components/BottomNav';
+import { MAINTENANCE_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 
 // Phase 864: apiFetch, getWorkerId, getToken imported from lib/staffApi.ts
@@ -177,7 +177,7 @@ export default function MobileMaintenancePage() {
     };
 
     return (
-        <MobileStaffShell title="Maintenance" bottomNavItems={STAFF_BOTTOM_NAV}>
+        <MobileStaffShell title="Maintenance" bottomNavItems={MAINTENANCE_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto', paddingBottom: 80 }}>
             {/* Notice toast */}
             {notice && (

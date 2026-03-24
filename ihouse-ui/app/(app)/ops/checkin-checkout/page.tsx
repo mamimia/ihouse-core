@@ -16,7 +16,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/staffApi';
-import { STAFF_BOTTOM_NAV } from '@/components/BottomNav';
+import { CHECKIN_CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 import Link from 'next/link';
 
@@ -58,7 +58,7 @@ export default function CheckinCheckoutHub() {
     };
 
     return (
-        <MobileStaffShell title="Check-in & Check-out" bottomNavItems={STAFF_BOTTOM_NAV}>
+        <MobileStaffShell title="Check-in & Check-out" bottomNavItems={CHECKIN_CHECKOUT_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto', padding: 'var(--space-4)' }}>
             {/* Date + title */}
             <div style={{ marginBottom: 'var(--space-5)' }}>
