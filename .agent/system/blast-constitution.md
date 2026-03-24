@@ -122,8 +122,6 @@ When a Tool fails or an error occurs:
 - **Local (`.tmp/`):** All scraped data, logs, and temporary files. These are ephemeral and can be deleted.
 - **Global (Cloud):** The "Payload." Google Sheets, Databases, or UI updates. **A project is only "Complete" when the payload is in its final cloud destination.**
 
-## 📂 File Structure Reference
-
 Plaintext
 
 `├── gemini.md          # Project Map & State Tracking
@@ -131,3 +129,23 @@ Plaintext
 ├── architecture/      # Layer 1: SOPs (The "How-To")
 ├── tools/             # Layer 3: Python Scripts (The "Engines")
 └── .tmp/              # Temporary Workbench (Intermediates)`
+
+---
+
+## 🔒 Phase 887d — Archive & Data Integrity Invariants
+
+These rules are inviolable. No code path, migration, or manual action may violate them.
+
+**INV-ARCHIVE-01 — Pruning requires verified archive:**
+> The system must never execute `DELETE` on `event_log` rows unless all five pruning safety checks pass and an `event_archives` row with `status = 'confirmed'` exists for the covered period.
+
+**INV-ARCHIVE-02 — Permanent business records:**
+> `BOOKING_CREATED` and `BOOKING_CANCELED` rows in `event_log` are permanent records. They must never be pruned under any condition, in any retention cycle.
+
+**INV-ARCHIVE-03 — Archive immutability:**
+> Archive packages stored in Supabase Storage are write-once. No application code path may overwrite or delete an archive object. Deletion requires direct engineering intervention with documented justification.
+
+**INV-ARCHIVE-04 — Failure-safe pruning:**
+> Archive generation failure, storage failure, or checksum mismatch must never trigger pruning. The live `event_log` table is always the safe state when an archive is absent or unverified. When in doubt, do nothing.
+
+*Added Phase 887d — 2026-03-25*
