@@ -19,7 +19,7 @@ export function PreviewPageContent() {
                 cleaner:          '/ops/cleaner',
                 checkin:          '/ops/checkin',
                 checkout:         '/ops/checkout',
-                checkin_checkout: '/ops/checkin',  // Combined target — routes to check-in surface
+                checkin_checkout: '/ops/checkin',  // TEMPORARY — no combined surface yet. Phase 865 will resolve this. Combined target is NOT identical to check-in.
                 maintenance:      '/ops/maintenance',
             };
             const target = PREVIEW_ROUTES[role] ?? '/dashboard';
