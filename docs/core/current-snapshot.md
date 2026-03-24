@@ -1,12 +1,12 @@
 ## Current Phase
-Phase 863 — Next Phase
+Phase 864 — Next Phase
 
 ## Last Closed Phase
-Phase 862 — Staff Onboarding Data Mapping Correction + Email Delivery UX
+Phase 863 — Media Storage Remediation + Canonical Retention Architecture
 
 ## System Status
 
-**[...System status through Phase 861 unchanged...] Phase 862 Staff Onboarding Data Mapping Correction + Email Delivery UX: mobile form layout fixed (CC no flags, DOB own row, emergency CC), staff card Full Name/Nickname separated, all compliance columns (DOB/ID/WP) read from dedicated DB columns, approval delivery UX upgraded, language-aware mailto templates en/th/he in both invite generator and staff card resend.**
+**[...System status through Phase 862 unchanged...] Phase 863 Media Storage Remediation: 4 live findings resolved — staff PII moved to private bucket, 29 misplaced staff files migrated, 12 orphaned files deleted, 32 staging files deleted, 5 DB references updated to signed URLs. `cleaning-photos` made private. `staff_onboarding_router.py` upload routing fixed (INV-MEDIA-02). Property delete cascade now cleans Storage. BOOKING_AMENDED noise loop eliminated. 6 canonical storage invariants anchored in blast-constitution + gemini.md. 6 buckets in correct state. Deployed `900dff3`.**
 
 ## Deferred Items — Managed Open Items Registry
 
@@ -19,7 +19,7 @@ Phase 862 — Staff Onboarding Data Mapping Correction + Email Delivery UX
 | 617 | Wire Form → Checkin Router | 🟡 Deferred | Requires live booking flow | Real check-in data flowing through `booking_checkin_router.py` | TBD — when live check-in activated |
 | 618 | Wire QR → Checkin Response | 🟡 Deferred | Requires live booking flow (same as 617) | Same as Phase 617 | TBD — together with Phase 617 |
 | — | Supabase Storage Buckets (5) | ✅ Resolved (Phase 764) | 4 buckets created: pii-documents, property-photos, guest-uploads, exports | N/A | Resolved |
-| 857-F1 | Staff photo bucket migration | 🟡 Partially done | `staff-documents` private bucket created. Upload pipeline works via `uploadPropertyPhoto` proxy. Existing file migration (8 files) from old bucket remains. | Migrate 8 existing files to `staff-documents`, optionally implement signed URLs | TBD |
+| 857-F1 | Staff photo bucket migration | ✅ Resolved (Phase 863) | All files migrated to `staff-documents`. Upload routing fixed. Signed URLs implemented. DB references updated. | N/A | Resolved |
 | 857-F2 | Full email click-through activation proof | 🟡 Pending | Supabase sent invite email to `phase857-test@domaniqo.com`. No real inbox available to verify click-through. | Human inbox verification of full activation flow | TBD |
 | 857-F3 | Pipeline A runtime proof (role validation, generate_link lookup, is_active) | ✅ Closed | All three items runtime-proven on staging | N/A | Resolved |
 | 859-F1 | Property URL extraction (scraping) | 🟡 Stub | UI field exists in Get Started wizard. No real scraping engine behind it — requires OTA API keys or reverse engineering. | OTA API access or headless scraping implementation | TBD |
@@ -417,7 +417,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. Phase 838 closed. Next: Phase 839.**
+**Backend: 7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 863 closed. Next: Phase 864.**
 
 ## Environment Variables (continued)
 

@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 863 — Next Phase. Phases 841–862 closed.
+Phase 864 — Next Phase. Phases 841–863 closed.
 
 ## Last Closed Phase
 
-Phase 862 — Staff Onboarding Data Mapping Correction + Email Delivery UX.
+Phase 863 — Media Storage Remediation + Canonical Retention Architecture.
 
 ## Current Objective
 
@@ -58,7 +58,8 @@ Phase 859 — Admin Intake + Login UX + Draft Expiration         ← CLOSED
 Phase 860 — Landing Page UI Fixes & Mobile Scrolling          ← CLOSED
 Phase 861 — Identity Merge & Auth Linking Closure              ← CLOSED
 Phase 862 — Staff Onboarding Data Mapping + mailto UX         ← CLOSED
-Phase 863 — Next Phase                                        ← ACTIVE
+Phase 863 — Media Storage Remediation + Canonical Retention   ← CLOSED
+Phase 864 — Next Phase                                        ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)
@@ -148,6 +149,12 @@ Phase 863 — Next Phase                                        ← ACTIVE
 - CRITICAL_ACK_SLA_MINUTES = 5 (locked)
 - PII documents (passport photos, signatures, cash deposit photos) retained minimum 1 year from check-out, admin-only access, audit-logged. No auto-deletion.
 - `GET /checkin-form` NEVER returns raw PII URLs — always redacted. Admin uses `GET /admin/pii-documents/{form_id}` exclusively.
+- **INV-MEDIA-01**: No binary data in Postgres. All files in Supabase Storage only.
+- **INV-MEDIA-02**: Staff files always go to `staff-documents` (private). Never to `property-photos` (public). Upload routing enforced in `staff_onboarding_router.py`.
+- **INV-STORAGE-01**: Guest identity docs (passport, check-in ID) — 90-day auto-delete after checkout. Staff employment docs — retained while employed + 12 months, never auto-deleted.
+- **INV-STORAGE-02**: `cleaning-photos` bucket is private. Signed URLs only.
+- **INV-STORAGE-03**: Archive verification before live event_log deletion.
+- Property delete cascades to Storage: `DELETE /properties/{id}` removes all objects under `property-photos/{id}/`.
 
 ## Key Files — Channel Layer (Phases 124, 168, 177, 196, 203, 212, 213)
 

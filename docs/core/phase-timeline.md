@@ -8356,3 +8356,29 @@ Resolved dual admin identity (admin@domaniqo.com + esegeve@gmail.com). Full depe
 `9a42c84`, `e8a206f`, `2d10d6d`, `1c5f9ea`, `069f670`, `411db64`
 
 **Result:** 0 TypeScript errors. Build passes. Deployed to staging. Pre-existing backend test failures unaffected.
+
+
+## Phase 863 — Media Storage Remediation + Canonical Retention Architecture (Closed)
+
+**Date:** 2026-03-25
+
+Four live storage violations were identified and fully remediated in this phase, enforcing the canonical media architecture:
+
+1. **Staff PII in public bucket** — 2 files moved from `property-photos` (public) to `staff-documents` (private). `cleaning-photos` also flipped to private.
+2. **Misplaced staff files** — 29 files (21 onboarding + 8 avatars) migrated from `property-photos` to `staff-documents`. 5 `tenant_permissions` DB references updated to signed URLs.
+3. **Orphaned files** — 12 files under deleted property folders `test-property-1/` and `18/` deleted from `property-photos`.
+4. **Staging pile-up** — 32 staging temp files deleted from `property-photos/staging/`.
+
+Code fixes shipped:
+- `staff_onboarding_router.py`: upload target changed from `property-photos` → `staff-documents` (private); returns signed URL (INV-MEDIA-02).
+- `properties_router.py`: `DELETE /properties/{property_id}` now cascades to Storage — lists and removes all objects under `property-photos/{property_id}/`.
+- `ical_sync_router.py`: BOOKING_AMENDED noise loop eliminated — hash-compare meaningful fields before writing event.
+
+Canonical architecture anchored:
+- `storage-retention.md` — 6 INV-MEDIA invariants + 3 INV-STORAGE invariants + New Media Category Onboarding Checklist.
+- `blast-constitution.md` — INV-STORAGE-01 updated: guest PII 90-day rule explicitly excludes staff employment documents.
+- `gemini.md` — Section 13 updated with mandatory canonical pointer.
+
+Deployed: Railway (auto via git push `900dff3`) + Vercel (`domaniqo-staging.vercel.app`).
+
+**Next Phase: 864.**

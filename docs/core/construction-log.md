@@ -5247,3 +5247,21 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - mailto delivery (temporary, until Resend): `Send by Email` button in invite generator (Link + QR) shown when email was filled; `Quick Send by Email` in staff card Access & Comms; language-aware templates (en/th/he) in `MAILTO_ONBOARDING` / `MAILTO_ACCESS` dictionaries; Hebrew body prefixed with U+200F RLM for RTL rendering.
 - `staff_onboarding_router.py`: `first_name`, `last_name`, `display_name` wired from submit through to approval record; magic link always generated and returned; `_extract_action_link` hardened.
 - 6 commits pushed to `checkpoint/supabase-single-write-20260305-1747`. Build: 0 TS errors.
+
+
+## Phase 863 — Media Storage Remediation + Canonical Retention Architecture — 2026-03-25
+
+- Live migration: 2 staff PII files moved from `property-photos` (public) → `staff-documents` (private).
+- Live migration: 21 staff onboarding photos moved from `property-photos/staff_onboarding/` → `staff-documents/staff_onboarding/`.
+- Live migration: 8 staff avatar photos moved from `property-photos/staff-avatars/reference/` → `staff-documents/staff-avatars/`.
+- Live deletion: 12 orphaned files under `property-photos/test-property-1/` and `property-photos/18/` removed.
+- Live deletion: 32 staging temp files removed from `property-photos/staging/`.
+- DB: 5 `tenant_permissions` rows updated — `photo_url` / `id_photo_url` now point to signed URLs on `staff-documents` (not public property-photos URLs).
+- DB: `cleaning-photos` bucket flipped from `public=true` to `public=false` (INV-STORAGE-02).
+- `staff_onboarding_router.py`: upload target changed from `property-photos` → `staff-documents`; signed URL returned instead of public URL.
+- `properties_router.py`: permanent property delete now lists and removes all Storage objects under `property-photos/{property_id}/` (subfolders included). Soft failure — never blocks delete.
+- `ical_sync_router.py` (earlier in session): BOOKING_AMENDED noise loop fixed — hash check on `check_in`, `check_out`, `guest_name`, `status` before emitting. KPG-500 before/after proof: 0 noise events post-fix.
+- Architecture: `storage-retention.md` finalized with INV-MEDIA-01–06 + INV-STORAGE-01–03 + retention policy (guest PII 90-day auto-delete; staff docs retained while employed + 12 months, never auto-deleted).
+- Architecture: `blast-constitution.md` and `gemini.md` updated to enforce distinction.
+- Deployed: commit `900dff3` → Railway (auto) + Vercel staging.
+- 6 storage buckets in canonical state. `property-photos` is the only public bucket.
