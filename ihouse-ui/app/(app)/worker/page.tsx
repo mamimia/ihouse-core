@@ -2,18 +2,77 @@
 
 /**
  * Phase 290 / 850 — Worker Mobile UI
+ * Phase 884 — Role-aware Home layer
  * Route: /worker
  *
- * Dedicated mobile-first app for field workers.
- * Fully polished Dashboard UI.
+ * Shared Home page for all field worker roles.
+ * Role is resolved from:
+ *   1. sessionStorage.ihouse_preview_role  (Preview As)
+ *   2. JWT payload.role                    (real worker login)
+ * Each role sees role-correct stats + a CTA linking to /ops/[role].
+ * Admin/unknown roles are redirected to /dashboard.
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api, apiFetch, WorkerTask, WorkerChannel } from '../../../lib/api';
+import { api, apiFetch, WorkerTask } from '../../../lib/api';
+
 import { useLanguage } from '../../../lib/LanguageContext';
 import CompactLangSwitcher from '../../../components/CompactLangSwitcher';
 import MobileStaffShell from '../../../components/MobileStaffShell';
 import { useRouter } from 'next/navigation';
+
+// ---------------------------------------------------------------------------
+// Phase 884 — Role Config
+// ---------------------------------------------------------------------------
+
+type WorkerRoleKey = 'cleaner' | 'checkin' | 'checkout' | 'maintenance';
+// Note: 'checkin_checkout' combined role uses /ops/checkin-checkout as its own hub/home
+// and does NOT use /worker as home. Those workers are handled by the hub page.
+
+interface WorkerRoleConfig {
+    key:         WorkerRoleKey;
+    displayName: string;   // shown in role badge
+    workHref:    string;   // /ops/[role] — the work/execution page
+    workLabel:   string;   // button label for the CTA
+    workIcon:    string;   // emoji
+    taskRole:    string;   // backend worker_role= filter for stats query
+}
+
+const ROLE_CONFIGS: Record<WorkerRoleKey, WorkerRoleConfig> = {
+    cleaner: {
+        key: 'cleaner', displayName: 'Cleaner',
+        workHref: '/ops/cleaner', workLabel: 'Go to Cleaning', workIcon: '🧹',
+        taskRole: 'CLEANER',
+    },
+    checkin: {
+        key: 'checkin', displayName: 'Check-in Staff',
+        workHref: '/ops/checkin', workLabel: 'Go to Check-ins', workIcon: '📋',
+        taskRole: 'CHECKIN',
+    },
+    checkout: {
+        key: 'checkout', displayName: 'Check-out Staff',
+        workHref: '/ops/checkout', workLabel: 'Go to Check-outs', workIcon: '🚪',
+        taskRole: 'CHECKOUT',
+    },
+    maintenance: {
+        key: 'maintenance', displayName: 'Maintenance',
+        workHref: '/ops/maintenance', workLabel: 'Go to Maintenance', workIcon: '🔧',
+        taskRole: 'MAINTENANCE',
+    },
+};
+
+/** Resolve the current worker role from preview session or JWT */
+function resolveWorkerRole(): WorkerRoleKey | 'admin' | 'checkin_checkout' | null {
+    if (typeof window === 'undefined') return null;
+    const preview = sessionStorage.getItem('ihouse_preview_role');
+    if (preview) return preview as WorkerRoleKey | 'admin' | 'checkin_checkout';
+    const token = localStorage.getItem('ihouse_token');
+    if (!token) return null;
+    try {
+        const p = JSON.parse(atob(token.split('.')[1]));
+        return (p.role as WorkerRoleKey | 'admin' | 'checkin_checkout') || null;
+    } catch { return null; }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -395,65 +454,60 @@ function DetailSheet({ task, propName, onClose, onAck, onComplete, loading }: Sh
 }
 
 // ---------------------------------------------------------------------------
-// Worker Tab Bottom Navigation
+// Phase 884 — Role-Aware Worker Home Bottom Nav
+// Tab pattern: Home (active) · Work → /ops/[role] · Tasks → /tasks · Profile (in-page)
 // ---------------------------------------------------------------------------
 
-type Tab = 'dashboard' | 'todo' | 'done' | 'settings';
+type Tab = 'dashboard' | 'settings';
+// 'todo' and 'done' tabs removed — Tasks routes to /tasks (role-filtered, Phase 883)
 
-function BottomNav({ tab, setTab, counts }: { tab: Tab; setTab: (t: Tab) => void; counts: Record<'todo' | 'done', number> }) {
-    const { t } = useLanguage();
-    const tabs = [
-        { id: 'dashboard', label: 'Home', icon: 'N' },
-        { id: 'todo', label: 'Tasks', icon: '📋' },
-        { id: 'done', label: 'Done', icon: '✅' },
-        { id: 'settings', label: 'Profile', icon: '⚙️' },
-    ];
+function WorkerHomeNav({
+    tab, setTab, roleConfig,
+}: {
+    tab: Tab; setTab: (t: Tab) => void; roleConfig: WorkerRoleConfig | null;
+}) {
+    const navStyle: React.CSSProperties = {
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: 'rgba(23,26,31,0.95)',
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', justifyContent: 'space-around', alignItems: 'center',
+        paddingBottom: 'env(safe-area-inset-bottom, 0)',
+        zIndex: 50,
+    };
+    const btnStyle = (active: boolean): React.CSSProperties => ({
+        flex: 1, background: 'none', border: 'none',
+        padding: '12px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+        color: active ? 'var(--color-accent)' : 'var(--color-text-faint)',
+        transition: 'color 0.15s', cursor: 'pointer',
+        fontSize: 10, fontWeight: active ? 700 : 500,
+    });
+    const iconStyle: React.CSSProperties = { fontSize: 20, lineHeight: 1 };
 
     return (
-        <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: 'rgba(23,26,31,0.85)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
-            display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-            paddingBottom: 'env(safe-area-inset-bottom, 0)',
-            zIndex: 50,
-        }}>
-            {tabs.map(item => {
-                const active = tab === item.id;
-                const showBadge = item.id === 'todo' && counts.todo > 0;
-                
-                return (
-                    <button
-                        key={item.id}
-                        onClick={() => setTab(item.id as Tab)}
-                        style={{
-                            flex: 1, background: 'none', border: 'none',
-                            padding: '12px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                            color: active ? 'var(--color-accent)' : 'var(--color-text-faint)',
-                            transition: 'color 0.2s', cursor: 'pointer', position: 'relative',
-                        }}
-                    >
-                        <div style={{ position: 'relative' }}>
-                            <div style={{ fontSize: 22, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: active ? 1 : 0.7 }}>
-                                {item.icon === 'N' ? (
-                                    <div style={{ width: 24, height: 24, borderRadius: 12, background: active ? 'var(--color-accent)' : 'var(--color-surface-3)', color: 'var(--color-bg)', fontWeight: 800, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>N</div>
-                                ) : item.icon}
-                            </div>
-                            {showBadge && (
-                                <div style={{
-                                    position: 'absolute', top: -6, right: -10,
-                                    background: 'var(--color-alert)', color: 'var(--color-text)',
-                                    fontSize: 10, fontWeight: 700,
-                                    padding: '2px 6px', borderRadius: 99,
-                                    border: '2px solid var(--color-bg)',
-                                }}>{counts.todo > 99 ? '99+' : counts.todo}</div>
-                            )}
-                        </div>
-                        <span style={{ fontSize: 10, fontWeight: active ? 600 : 500 }}>{item.label}</span>
-                    </button>
-                );
-            })}
+        <div style={navStyle}>
+            {/* Home — always active on this page */}
+            <button style={btnStyle(tab === 'dashboard')} onClick={() => setTab('dashboard')}>
+                <span style={iconStyle}>🏠</span>Home
+            </button>
+
+            {/* Work — routes out to /ops/[role] */}
+            {roleConfig && (
+                <a href={roleConfig.workHref} style={{ ...btnStyle(false), textDecoration: 'none' }}>
+                    <span style={iconStyle}>{roleConfig.workIcon}</span>
+                    {roleConfig.displayName.split(' ')[0]}
+                </a>
+            )}
+
+            {/* Tasks — routes to role-filtered /tasks */}
+            <a href="/tasks" style={{ ...btnStyle(false), textDecoration: 'none' }}>
+                <span style={iconStyle}>✓</span>Tasks
+            </a>
+
+            {/* Profile — in-page tab */}
+            <button style={btnStyle(tab === 'settings')} onClick={() => setTab('settings')}>
+                <span style={iconStyle}>⚙️</span>Profile
+            </button>
         </div>
     );
 }
@@ -502,7 +556,7 @@ function SettingsTab({ showToast, userName }: { showToast: (msg: string) => void
 }
 
 // ---------------------------------------------------------------------------
-// Main Page
+// Main Page — Phase 884 Role-Aware
 // ---------------------------------------------------------------------------
 
 export default function WorkerPage() {
@@ -515,7 +569,7 @@ export default function WorkerPage() {
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
     const [userName, setUserName] = useState('');
-    const [userRole, setUserRole] = useState('Staff Member');
+    const [roleConfig, setRoleConfig] = useState<WorkerRoleConfig | null>(null);
     const { lang, t } = useLanguage();
     const l = getLocale(lang);
     const router = useRouter();
@@ -525,11 +579,16 @@ export default function WorkerPage() {
         setTimeout(() => setToast(null), 2500);
     };
 
-    const load = useCallback(async () => {
+    // Phase 884 — role-scoped task query
+    const load = useCallback(async (taskRole?: string) => {
         try {
             setError(null);
-            const resp = await api.getWorkerTasks({ limit: 100 });
-            setTasks(resp.tasks ?? []);
+            const url = taskRole
+                ? `/worker/tasks?worker_role=${taskRole}&limit=100`
+                : '/worker/tasks?limit=100';
+            const res = await apiFetch<any>(url);
+            const list = res.tasks || res.data?.tasks || res.data || [];
+            setTasks(Array.isArray(list) ? list : []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to load');
         } finally {
@@ -538,10 +597,22 @@ export default function WorkerPage() {
     }, []);
 
     useEffect(() => {
+        // Phase 884 — resolve role, guard admin
+        const resolved = resolveWorkerRole();
+
+        // Admin and combined-role workers do not use /worker as home
+        if (resolved === 'admin' || resolved === 'checkin_checkout') {
+            router.replace(resolved === 'admin' ? '/dashboard' : '/ops/checkin-checkout');
+            return;
+        }
+
+        const config = resolved ? ROLE_CONFIGS[resolved as WorkerRoleKey] ?? null : null;
+        setRoleConfig(config);
+
         setLoading(true);
-        load();
-        
-        // Load properties
+        load(config?.taskRole);
+
+        // Load properties for task cards
         api.listProperties().then((res: any) => {
             const m: Record<string, string> = {};
             res.properties?.forEach((p: any) => m[p.property_id] = p.display_name);
@@ -549,20 +620,12 @@ export default function WorkerPage() {
         }).catch(() => {});
 
         // Parse token for greeting
-        const ROLE_DISPLAY_LABELS: Record<string, string> = {
-            admin: 'Admin', manager: 'Ops Manager', owner: 'Owner',
-            worker: 'Staff Member', cleaner: 'Cleaner',
-            checkin: 'Check-in', checkin_staff: 'Check-in',
-            checkout: 'Check-out', maintenance: 'Maintenance',
-            ops: 'Operations',
-        };
         const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
         if (token) {
             const p = parseJwt(token);
             if (p.email) setUserName(p.email.split('@')[0]);
-            if (p.role) setUserRole(ROLE_DISPLAY_LABELS[p.role] || 'Staff Member');
         }
-    }, [load]);
+    }, [load, router]);
 
     const handleAck = async (id: string) => {
         setActionLoading(true);
@@ -570,7 +633,7 @@ export default function WorkerPage() {
             await api.acknowledgeTask(id);
             showToast('✓ Task acknowledged');
             setSelected(null);
-            await load();
+            await load(roleConfig?.taskRole);
         } catch {
             showToast('⚠ Acknowledge failed');
         } finally {
@@ -584,7 +647,7 @@ export default function WorkerPage() {
             await api.completeTask(id, notes || undefined);
             showToast('✅ Task completed!');
             setSelected(null);
-            await load();
+            await load(roleConfig?.taskRole);
         } catch {
             showToast('⚠ Complete failed');
         } finally {
@@ -592,26 +655,16 @@ export default function WorkerPage() {
         }
     };
 
-    // Tab filters
-    const todo = tasks
-        .filter(t => t.status?.toUpperCase() !== 'COMPLETED' && t.status?.toUpperCase() !== 'CANCELED')
-        .sort((a, b) => {
-            const pm: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-            const pa = pm[a.priority] ?? 9;
-            const pb = pm[b.priority] ?? 9;
-            if (pa !== pb) return pa - pb;
-            return (a.due_time ?? '').localeCompare(b.due_time ?? '');
-        });
+    // Role-scoped task stats
+    const activeTasks = tasks.filter(t => t.status?.toUpperCase() !== 'COMPLETED' && t.status?.toUpperCase() !== 'CANCELED');
+    const openCount    = activeTasks.filter(t => t.status?.toUpperCase() === 'PENDING').length;
+    const overdueCount = activeTasks.filter(t => isOverdue(t)).length;
+    const dueTodayCount = activeTasks.filter(t => t.due_date === new Date().toISOString().split('T')[0]).length;
 
-    const done = tasks
-        .filter(t => t.status?.toUpperCase() === 'COMPLETED' || t.status?.toUpperCase() === 'CANCELED')
-        .slice(0, 30);
-
-    const openCount = tasks.filter(t => t.status?.toUpperCase() === 'PENDING').length;
-    const overdueCount = tasks.filter(t => isOverdue(t) && t.status?.toUpperCase() !== 'COMPLETED').length;
-    const dueTodayCount = todo.filter(t => t.due_date === new Date().toISOString().split('T')[0]).length;
-
-    const visible = tab === 'todo' ? todo : done;
+    const todo = activeTasks.sort((a, b) => {
+        const pm: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+        return (pm[a.priority] ?? 9) - (pm[b.priority] ?? 9);
+    });
 
     return (
         <MobileStaffShell hideHeader>
@@ -638,7 +691,7 @@ export default function WorkerPage() {
                     }}>
                         <div>
                             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.03em' }}>
-                                {tab === 'todo' ? 'Tasks' : tab === 'done' ? 'Done' : 'Profile'}
+                                Profile
                             </h1>
                             <p style={{ fontSize: 13, color: 'var(--color-sage)', margin: '2px 0 0' }}>
                                 {new Date().toLocaleDateString(getLocale(lang), { weekday: 'long', month: 'short', day: 'numeric' })}
@@ -647,13 +700,13 @@ export default function WorkerPage() {
                     </div>
                 )}
 
-                {/* Dashboard Tab */}
+                {/* ===== HOME / DASHBOARD TAB ===== */}
                 {tab === 'dashboard' && (
                     <div style={{ padding: '0', animation: 'fadeIn 200ms ease' }}>
-                        
-                        {/* Top Navbar */}
+
+                        {/* Top bar */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
-                            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Dashboard</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Home</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                 <CompactLangSwitcher theme="dark" position="inline" />
                                 <button
@@ -667,97 +720,93 @@ export default function WorkerPage() {
 
                         <div style={{ padding: '0 20px' }}>
 
-                            {/* Welcome Card */}
+                            {/* Welcome card */}
                             <div style={{ background: 'var(--color-surface-2)', borderRadius: 16, padding: 20, marginBottom: 24 }}>
                                 <div style={{ fontSize: 11, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Welcome</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     <div style={{ fontSize: 24, color: 'var(--color-text)' }}>
                                         Hello, <span style={{ fontWeight: 700 }}>{userName || 'Staff'}</span>
                                     </div>
-                                    <span style={{ background: 'var(--color-surface-3)', color: 'var(--color-text-dim)', fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>
-                                        {userRole}
-                                    </span>
+                                    {roleConfig && (
+                                        <span style={{ background: 'var(--color-surface-3)', color: 'var(--color-text-dim)', fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>
+                                            {roleConfig.displayName}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Quick Actions */}
+                            {/* Role-specific stats */}
                             <div style={{ marginBottom: 24 }}>
-                                <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Quick Actions</div>
-                                <div style={{ display: 'flex', gap: 12 }}>
-                                    <button onClick={() => setTab('todo')} style={{ flex: 1, background: 'var(--color-surface-2)', border: 'none', borderRadius: 12, padding: '16px', color: 'var(--color-text)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                                        📋 My Tasks
-                                    </button>
-                                    <button onClick={() => setTab('settings')} style={{ flex: 1, background: 'var(--color-surface-2)', border: 'none', borderRadius: 12, padding: '16px', color: 'var(--color-text)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                                        ⚙️ My Profile
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* My Status */}
-                            <div style={{ marginBottom: 32 }}>
                                 <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>My Status</div>
                                 <div style={{ display: 'flex', gap: 12 }}>
                                     <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>📋 Open Tasks</div>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>📋 Open</div>
                                         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text)' }}>{openCount}</div>
                                     </div>
                                     <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>🕒 Overdue</div>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>🕒 Overdue</div>
                                         <div style={{ fontSize: 28, fontWeight: 700, color: overdueCount > 0 ? 'var(--color-alert)' : 'var(--color-text)' }}>{overdueCount}</div>
                                     </div>
                                     <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>📅 Due Today</div>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>📅 Today</div>
                                         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text)' }}>{dueTodayCount}</div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Next Tasks */}
-                            <div>
-                                <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Next Tasks</div>
-                                <div style={{ background: 'var(--color-surface-2)', borderRadius: 16, padding: '32px 20px', textAlign: 'center' }}>
-                                    {todo.length === 0 ? (
-                                        <div style={{ color: 'var(--color-sage)', fontSize: 14 }}>No tasks yet.</div>
-                                    ) : (
-                                        <>
-                                            <div style={{ color: 'var(--color-text)', fontSize: 15, fontWeight: 600, marginBottom: 16 }}>You have {todo.length} tasks in your queue.</div>
-                                            <button onClick={() => setTab('todo')} style={{ background: 'var(--color-primary)', color: 'var(--color-text)', border: 'none', padding: '10px 20px', borderRadius: 99, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                                                View My Tasks ➔
-                                            </button>
-                                        </>
-                                    )}
+                            {/* Role Work CTA — links to /ops/[role] */}
+                            {roleConfig && (
+                                <div style={{ marginBottom: 24 }}>
+                                    <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Work</div>
+                                    <a href={roleConfig.workHref} style={{ textDecoration: 'none' }}>
+                                        <div style={{
+                                            background: 'var(--color-surface-2)', borderRadius: 16, padding: '20px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            border: '1px solid var(--color-border)',
+                                            transition: 'border-color 0.15s',
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                                <span style={{ fontSize: 32 }}>{roleConfig.workIcon}</span>
+                                                <div>
+                                                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>{roleConfig.workLabel}</div>
+                                                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>
+                                                        {openCount > 0 ? `${openCount} task${openCount > 1 ? 's' : ''} waiting` : 'No open tasks'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span style={{ fontSize: 20, color: 'var(--color-text-faint)' }}>›</span>
+                                        </div>
+                                    </a>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Upcoming tasks summary */}
+                            {todo.length > 0 && (
+                                <div style={{ marginBottom: 24 }}>
+                                    <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Next Up</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {todo.slice(0, 3).map(task => (
+                                            <TaskCard key={task.task_id} task={task} propName={propMap[task.property_id]} onTap={() => setSelected(task)} />
+                                        ))}
+                                        {todo.length > 3 && (
+                                            <a href="/tasks" style={{
+                                                display: 'block', textAlign: 'center', padding: '12px',
+                                                background: 'var(--color-surface-2)', borderRadius: 12,
+                                                color: 'var(--color-sage)', fontSize: 13, fontWeight: 600,
+                                                textDecoration: 'none',
+                                            }}>
+                                                View all {todo.length} tasks →
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                         </div>
                     </div>
                 )}
 
-                {/* Task list */}
-                {!loading && (tab === 'todo' || tab === 'done') && (
-                    <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {visible.length === 0 && (
-                            <div style={{
-                                textAlign: 'center', padding: '60px 20px',
-                                color: 'var(--color-muted)',
-                            }}>
-                                <div style={{ fontSize: 48, marginBottom: 12 }}>
-                                    {tab === 'done' ? '✅' : '🎉'}
-                                </div>
-                                <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-sage)' }}>
-                                    {tab === 'done' ? 'No completed tasks yet' : 'All clear!'}
-                                </div>
-                            </div>
-                        )}
-                        {visible.map(task => (
-                            <div key={task.task_id} style={{ animation: 'fadeIn 200ms ease' }}>
-                                <TaskCard task={task} propName={propMap[task.property_id]} onTap={() => setSelected(task)} />
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Settings tab */}
+                {/* ===== PROFILE TAB ===== */}
                 {tab === 'settings' && <SettingsTab showToast={showToast} userName={userName} />}
 
                 {/* Detail Sheet */}
@@ -787,7 +836,7 @@ export default function WorkerPage() {
                 </div>
             )}
 
-            <BottomNav tab={tab} setTab={setTab} counts={{ todo: todo.length, done: done.length }} />
+            <WorkerHomeNav tab={tab} setTab={setTab} roleConfig={roleConfig} />
         </MobileStaffShell>
     );
 }

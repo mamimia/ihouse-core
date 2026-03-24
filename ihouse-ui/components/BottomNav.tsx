@@ -40,19 +40,34 @@ const DEFAULT_ITEMS: BottomNavItem[] = [
  * "Home" resolved to /dashboard (admin world) breaking role isolation.
  */
 
-/** Check-in Staff: arrivals + tasks only */
+/**
+ * Phase 884 — Role-correct bottom navs with Home layer reconnected.
+ *
+ * Every single-role nav now has Home (/worker) as item 0.
+ * This allows "tap Home → see the worker's first landing/profile page"
+ * even when Preview lands directly on the work/execution page.
+ *
+ * Pattern: [ Home ]  [ Work ]  [ Tasks ]
+ *
+ * Combined is the exception — its hub IS the home layer.
+ * Pattern: [ Today-hub ] [ Arrivals ] [ Departures ] [ Tasks ]
+ */
+
+/** Check-in Staff: Home → arrivals work page → tasks */
 export const CHECKIN_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/worker',      label: 'Home',     icon: '🏠' },
     { href: '/ops/checkin', label: 'Check-in', icon: '📋' },
     { href: '/tasks',       label: 'Tasks',    icon: '✓' },
 ];
 
-/** Check-out Staff: departures + tasks only */
+/** Check-out Staff: Home → departures work page → tasks */
 export const CHECKOUT_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/worker',       label: 'Home',      icon: '🏠' },
     { href: '/ops/checkout', label: 'Check-out', icon: '🚪' },
     { href: '/tasks',        label: 'Tasks',     icon: '✓' },
 ];
 
-/** Check-in & Check-out (combined role): hub + both flows + tasks */
+/** Check-in & Check-out (combined role): hub IS home — no /worker needed */
 export const CHECKIN_CHECKOUT_BOTTOM_NAV: BottomNavItem[] = [
     { href: '/ops/checkin-checkout', label: 'Today',      icon: '📅' },
     { href: '/ops/checkin',          label: 'Arrivals',   icon: '📋' },
@@ -60,14 +75,16 @@ export const CHECKIN_CHECKOUT_BOTTOM_NAV: BottomNavItem[] = [
     { href: '/tasks',                label: 'Tasks',      icon: '✓' },
 ];
 
-/** Cleaner: cleaning surface + tasks */
+/** Cleaner: Home → cleaning work page → tasks */
 export const CLEANER_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/worker',      label: 'Home',     icon: '🏠' },
     { href: '/ops/cleaner', label: 'Cleaning', icon: '🧹' },
     { href: '/tasks',       label: 'Tasks',    icon: '✓' },
 ];
 
-/** Maintenance: maintenance surface + tasks */
+/** Maintenance: Home → maintenance work page → tasks */
 export const MAINTENANCE_BOTTOM_NAV: BottomNavItem[] = [
+    { href: '/worker',          label: 'Home',        icon: '🏠' },
     { href: '/ops/maintenance', label: 'Maintenance', icon: '🔧' },
     { href: '/tasks',           label: 'Tasks',       icon: '✓' },
 ];
