@@ -17,6 +17,7 @@ import LogoutButton from './LogoutButton';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
 import PreviewAsSelector from './PreviewAsSelector';
+import ActAsSelector from './ActAsSelector';
 import DMonogram from './DMonogram';
 import { TranslationKey } from '../lib/translations';
 
@@ -347,6 +348,7 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
           /* Expanded bottom: full controls */
           <>
             <PreviewAsSelector />
+            <ActAsSelector />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 var(--space-4)', marginTop: 8 }}>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Theme</span>
               <ThemeToggle />
