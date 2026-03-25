@@ -154,32 +154,10 @@ async def start_act_as(
     if not admin_user_id or not tenant_id:
         return err("INVALID_IDENTITY", "Missing user_id or tenant_id in JWT", status=403)
 
-    # Check for existing active session — only one at a time
-    try:
-        db = _get_supabase_client()
-        existing = (
-            db.table("acting_sessions")
-            .select("id,acting_as_role,expires_at")
-            .eq("real_admin_user_id", admin_user_id)
-            .eq("tenant_id", tenant_id)
-            .is_("ended_at", "null")
-            .execute()
-        )
-        active = [
-            s for s in (existing.data or [])
-            if datetime.fromisoformat(s["expires_at"].replace("Z", "+00:00")) > datetime.now(timezone.utc)
-        ]
-        if active:
-            return err(
-                "SESSION_ACTIVE",
-                f"You already have an active acting session as '{active[0]['acting_as_role']}'. "
-                f"End it first (session_id: {active[0]['id']}).",
-                status=409,
-            )
-    except Exception as exc:
-        logger.warning("act-as/start: active session check failed: %s", exc)
-        # Proceed anyway — worst case is duplicate session, not a security issue
-
+    # Phase 866 (Model B): 409 single-session check removed.
+    # An admin may open multiple concurrent Act As sessions. Each is independently
+    # tracked via its unique session_id and independently isolated in browser tabs.
+    
     # Create session record
     session_id = str(uuid.uuid4())
     now_utc = datetime.now(timezone.utc)
@@ -360,18 +338,29 @@ async def act_as_status(
     real_admin_id = identity.get("real_admin_id", user_id)
     tenant_id = identity.get("tenant_id", "")
 
+    # Phase 866: Under Model B, a single admin can have multiple active sessions.
+    # We must explicitly check the status of the caller's specific session.
+    acting_session_id = identity.get("acting_session_id")
+
     try:
         db = _get_supabase_client()
-        result = (
+        query = (
             db.table("acting_sessions")
             .select("id,acting_as_role,acting_as_context,created_at,expires_at,ended_at,end_reason")
             .eq("real_admin_user_id", real_admin_id)
             .eq("tenant_id", tenant_id)
             .is_("ended_at", "null")
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
         )
+        
+        # If calling from within an Act As tab, validate that specific session.
+        # If calling from Admin tab (no acting_session_id), fall back to most recent 
+        # (though Admin tabs no longer call this in Phase 865+).
+        if acting_session_id:
+            query = query.eq("id", acting_session_id)
+        else:
+            query = query.order("created_at", desc=True).limit(1)
+            
+        result = query.execute()
         rows = result.data or []
         if not rows:
             return ok({"active_session": None})
