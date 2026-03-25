@@ -817,6 +817,181 @@ async def list_staff_assignments(
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
 
 
+# ---------------------------------------------------------------------------
+# Phase 888: Task Assignment Backfill
+# ---------------------------------------------------------------------------
+# Product rules:
+#   ON ASSIGN:  Backfill future PENDING tasks where assigned_to IS NULL
+#               and worker_role matches the new assignee's roles.
+#   ON UNASSIGN: Clear assigned_to on future PENDING tasks that were
+#               assigned to the removed user. ACKNOWLEDGED / IN_PROGRESS
+#               tasks are NEVER touched (they require human decisions).
+#   SCOPE:      Only tasks with due_date >= today, status = PENDING,
+#               and matching property_id.
+# ---------------------------------------------------------------------------
+
+# Maps UI-stored lowercase roles → task system uppercase WorkerRole values
+_ROLE_TO_TASK_ROLES: dict = {
+    "cleaner":     ["CLEANER"],
+    "checkin":     ["CHECKIN", "PROPERTY_MANAGER"],
+    "checkout":    ["CHECKOUT", "INSPECTOR"],
+    "maintenance": ["MAINTENANCE", "MAINTENANCE_TECH"],
+}
+
+
+def _backfill_tasks_on_assign(
+    db: Any,
+    tenant_id: str,
+    user_id: str,
+    property_id: str,
+) -> dict:
+    """Backfill future PENDING unassigned tasks when a staff member is assigned to a property.
+
+    Returns: {"backfilled": int, "roles_matched": list, "task_ids": list}
+    """
+    from datetime import date
+    today = date.today().isoformat()
+
+    try:
+        # 1. Get the worker's roles from tenant_permissions
+        perm_res = (
+            db.table("tenant_permissions")
+            .select("worker_roles")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        perm_rows = perm_res.data or []
+        if not perm_rows:
+            return {"backfilled": 0, "roles_matched": [], "task_ids": [], "reason": "no_permissions_record"}
+
+        ui_roles = perm_rows[0].get("worker_roles") or []
+        if not ui_roles:
+            return {"backfilled": 0, "roles_matched": [], "task_ids": [], "reason": "no_worker_roles"}
+
+        # 2. Map UI roles to task-system worker_role values
+        task_roles = []
+        for ui_role in ui_roles:
+            task_roles.extend(_ROLE_TO_TASK_ROLES.get(ui_role.lower(), []))
+        task_roles = list(set(task_roles))  # deduplicate
+
+        if not task_roles:
+            return {"backfilled": 0, "roles_matched": [], "task_ids": [], "reason": "no_matching_task_roles"}
+
+        # 3. Find future PENDING unassigned tasks on this property with matching roles
+        query = (
+            db.table("tasks")
+            .select("task_id, worker_role, due_date")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .eq("status", "PENDING")
+            .is_("assigned_to", "null")
+            .gte("due_date", today)
+            .in_("worker_role", task_roles)
+            .limit(200)
+        )
+        task_res = query.execute()
+        matching_tasks = task_res.data or []
+
+        if not matching_tasks:
+            return {"backfilled": 0, "roles_matched": task_roles, "task_ids": []}
+
+        # 4. Batch update: assign all matching tasks to this worker
+        task_ids = [t["task_id"] for t in matching_tasks]
+        now = datetime.now(tz=timezone.utc).isoformat()
+
+        db.table("tasks").update({
+            "assigned_to": user_id,
+            "updated_at": now,
+        }).in_("task_id", task_ids).eq("status", "PENDING").is_("assigned_to", "null").execute()
+
+        logger.info(
+            "task_backfill: assigned %d future PENDING tasks to %s for property %s (roles: %s)",
+            len(task_ids), user_id, property_id, task_roles,
+        )
+
+        # 5. Audit
+        try:
+            from services.audit_writer import write_audit_event
+            write_audit_event(db, tenant_id=tenant_id, entity_type="task_backfill",
+                              entity_id=property_id, action="assignment_backfill",
+                              details={"user_id": user_id, "tasks_backfilled": len(task_ids),
+                                       "roles": task_roles, "task_ids": task_ids[:20]})
+        except Exception:
+            pass
+
+        return {"backfilled": len(task_ids), "roles_matched": task_roles, "task_ids": task_ids}
+
+    except Exception as exc:
+        logger.warning("task_backfill: assignment backfill failed for %s/%s: %s", user_id, property_id, exc)
+        return {"backfilled": 0, "error": str(exc)}
+
+
+def _clear_tasks_on_unassign(
+    db: Any,
+    tenant_id: str,
+    user_id: str,
+    property_id: str,
+) -> dict:
+    """Clear assigned_to on future PENDING tasks when a staff member is unassigned.
+
+    ONLY clears PENDING tasks. ACKNOWLEDGED and IN_PROGRESS tasks are never
+    touched — those represent active human commitments.
+
+    Returns: {"cleared": int, "task_ids": list}
+    """
+    from datetime import date
+    today = date.today().isoformat()
+
+    try:
+        # Find future PENDING tasks assigned to this user on this property
+        task_res = (
+            db.table("tasks")
+            .select("task_id, worker_role, due_date")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .eq("status", "PENDING")
+            .eq("assigned_to", user_id)
+            .gte("due_date", today)
+            .limit(200)
+            .execute()
+        )
+        matching_tasks = task_res.data or []
+
+        if not matching_tasks:
+            return {"cleared": 0, "task_ids": []}
+
+        task_ids = [t["task_id"] for t in matching_tasks]
+        now = datetime.now(tz=timezone.utc).isoformat()
+
+        db.table("tasks").update({
+            "assigned_to": None,
+            "updated_at": now,
+        }).in_("task_id", task_ids).eq("status", "PENDING").eq("assigned_to", user_id).execute()
+
+        logger.info(
+            "task_backfill: cleared %d future PENDING tasks from %s for property %s",
+            len(task_ids), user_id, property_id,
+        )
+
+        # Audit
+        try:
+            from services.audit_writer import write_audit_event
+            write_audit_event(db, tenant_id=tenant_id, entity_type="task_backfill",
+                              entity_id=property_id, action="unassignment_clear",
+                              details={"user_id": user_id, "tasks_cleared": len(task_ids),
+                                       "task_ids": task_ids[:20]})
+        except Exception:
+            pass
+
+        return {"cleared": len(task_ids), "task_ids": task_ids}
+
+    except Exception as exc:
+        logger.warning("task_backfill: unassignment clear failed for %s/%s: %s", user_id, property_id, exc)
+        return {"cleared": 0, "error": str(exc)}
+
+
 @router.post(
     "/staff/assignments",
     tags=["staff"],
@@ -899,12 +1074,18 @@ async def create_staff_assignment(
             .execute()
         )
         saved = (result.data or [{}])[0]
+
+        # Phase 888: Backfill future PENDING tasks
+        backfill_result = _backfill_tasks_on_assign(db, tenant_id, user_id, property_id)
+
         return JSONResponse(status_code=201, content={
             "status":      "assigned",
             "tenant_id":   tenant_id,
             "user_id":     user_id,
             "property_id": property_id,
             "id":          saved.get("id"),
+            "tasks_backfilled": backfill_result.get("backfilled", 0),
+            "backfill_detail": backfill_result,
         })
     except Exception as exc:
         logger.exception("POST /staff/assignments error: %s", exc)
@@ -956,11 +1137,16 @@ async def delete_staff_assignment(
             .eq("property_id", property_id) \
             .execute()
 
+        # Phase 888: Clear future PENDING tasks assigned to this user
+        clear_result = _clear_tasks_on_unassign(db, tenant_id, user_id, property_id)
+
         return JSONResponse(status_code=200, content={
             "status":      "unassigned",
             "tenant_id":   tenant_id,
             "user_id":     user_id,
             "property_id": property_id,
+            "tasks_cleared": clear_result.get("cleared", 0),
+            "clear_detail": clear_result,
         })
     except Exception as exc:
         logger.exception("DELETE /staff/assignments/%s/%s error: %s", user_id, property_id, exc)
