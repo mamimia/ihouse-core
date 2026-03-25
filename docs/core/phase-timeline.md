@@ -8382,3 +8382,26 @@ Canonical architecture anchored:
 Deployed: Railway (auto via git push `900dff3`) + Vercel (`domaniqo-staging.vercel.app`).
 
 **Next Phase: 864.**
+
+## Phase 864 — Act As Isolation Audit (Discovery)
+*(Tracked as Phase 865 Discovery)*
+
+## Phase 865 — Act As Isolation Proof
+**Status: Closed**
+**Verified:** Safari sessionStorage isolation.
+**Blocked:** `localStorage` pollution (Phase 866 Fixed).
+
+## Phase 866 — Model B Concurrent Act As Sessions
+
+**Status:** Closed
+**Prerequisite:** Phase 865
+**Date:** 2026-03-25
+
+Transitioned the "Act As" impersonation feature from a single-session policy to a concurrent Model B architecture.
+- Allowed multiple isolated worker tabs to coexist safely without backend 409 collisions.
+- Protected the main Admin's `localStorage` token from being overwritten maliciously to `__new_tab__` when worker tabs closed.
+- Altered async `window.open` flows to pre-claim the user-gesture by synchronously opening a placeholder popup, defeating Safari's "Pop-up blocked" errors.
+
+Deployed: Railway (auto via git push `c52b259`) + Vercel (`domaniqo-staging.vercel.app`).
+
+**Next Phase: 867.**

@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 864 — Next Phase. Phases 841–863 closed.
+Phase 867 — Next Phase. Phases 841–866 closed.
 
 ## Last Closed Phase
 
-Phase 863 — Media Storage Remediation + Canonical Retention Architecture.
+Phase 866 — Model B Concurrent Act As Sessions.
 
 ## Current Objective
 

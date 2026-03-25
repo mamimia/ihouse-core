@@ -1,12 +1,12 @@
 ## Current Phase
-Phase 864 — Next Phase
+Phase 867 — Next Phase
 
 ## Last Closed Phase
-Phase 863 — Media Storage Remediation + Canonical Retention Architecture
+Phase 866 — Model B Concurrent Act As Sessions
 
 ## System Status
 
-**[...System status through Phase 862 unchanged...] Phase 863 Media Storage Remediation: 4 live findings resolved — staff PII moved to private bucket, 29 misplaced staff files migrated, 12 orphaned files deleted, 32 staging files deleted, 5 DB references updated to signed URLs. `cleaning-photos` made private. `staff_onboarding_router.py` upload routing fixed (INV-MEDIA-02). Property delete cascade now cleans Storage. BOOKING_AMENDED noise loop eliminated. 6 canonical storage invariants anchored in blast-constitution + gemini.md. 6 buckets in correct state. Deployed `900dff3`.**
+**[...System status through Phase 863 unchanged...] Phase 866 Concurrent Act As Sessions: Replaced backend 409 limit with `acting_session_id`-scoped validation. Fixed client `localStorage` pollution bug where closing a tab deleted the Admin token. Switched async `window.open` to synchronous placeholder mode to prevent Safari "Pop-up blocked" errors. Model B concurrency fully verified via WebKit E2E tests and manual Safari execution. Deployed to Vercel production.**
 
 ## Deferred Items — Managed Open Items Registry
 

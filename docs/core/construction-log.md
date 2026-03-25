@@ -5265,3 +5265,10 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Architecture: `blast-constitution.md` and `gemini.md` updated to enforce distinction.
 - Deployed: commit `900dff3` → Railway (auto) + Vercel staging.
 - 6 storage buckets in canonical state. `property-photos` is the only public bucket.
+
+### Phase 866 Closure (Including 864/865) — 2026-03-25
+- Resolved Act As `localStorage` cross-tab pollution by isolating worker tokens inside `sessionStorage` purely, abandoning old React Context re-hydration variables.
+- Prevented backend `409` limit to allow 2+ concurrent worker tabs.
+- Solved canonical "Pop-up window blocked" Safari barrier by shifting `ActAsSelector` from an async `window.open` intercept to a synthetic synchronous blank popup creation inside the event loop tick.
+- `multi_tab_safari.spec.ts` proven against `webkit` engine in CI. 
+- Deployed: commit `ea8bbf8` → Railway + Vercel staging.
