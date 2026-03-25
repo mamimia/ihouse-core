@@ -45,6 +45,9 @@ const LABEL_MAP: Record<string, string> = {
     checkin: 'Check-In',
     checkout: 'Check-Out',
     statements: 'Statements',
+    intake: 'Add Booking',
+    new: 'Add New',
+    requests: 'Onboarding Requests',
 };
 
 function humanize(segment: string): string {

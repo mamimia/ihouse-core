@@ -238,8 +238,8 @@ export default function NewStaffPage() {
   // Tab 1 — Profile
   const [fullName, setFullName] = useState('');
   const [preferredName, setPreferredName] = useState(''); // nickname / display name
-  const [userId, setUserId] = useState(''); // Supabase Auth email — required for create
-  const [email, setEmail] = useState('');  // personal email (separate from auth)
+  const [staffEmail, setStaffEmail] = useState(''); // primary email — becomes the user_id key
+  const [personalEmail, setPersonalEmail] = useState('');  // optional secondary personal email
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [phoneCode, setPhoneCode] = useState('+66');
@@ -370,7 +370,11 @@ export default function NewStaffPage() {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!userId.trim()) { setError('Email / User ID is required.'); setActiveTab(0); return; }
+    if (!staffEmail.trim()) { setError('Staff email is required.'); setActiveTab(0); return; }
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffEmail.trim())) {
+      setError('Please enter a valid email address.'); setActiveTab(0); return;
+    }
     if (!role)          { setError('Role is required.'); setActiveTab(1); return; }
     if (role === 'worker' && workerRoles.length === 0) {
       setError('Select at least one worker role.'); setActiveTab(1); return;
@@ -378,8 +382,9 @@ export default function NewStaffPage() {
     setError(null);
     setSaving(true);
     try {
+      const resolvedUserId = staffEmail.trim();
       const body: Record<string, any> = {
-        user_id: userId.trim(),
+        user_id: resolvedUserId,
         role,
         display_name: (preferredName || fullName).trim() || undefined,
         phone: phoneNumber.trim() ? `${phoneCode}${phoneNumber.trim()}` : undefined,
@@ -398,7 +403,7 @@ export default function NewStaffPage() {
           telegram: telegram.trim() || undefined,
           line: line.trim() || undefined,
           sms: sms.trim() || undefined,
-          email: email.trim() || undefined,
+          email: personalEmail.trim() || staffEmail.trim() || undefined,
           date_of_birth: dateOfBirth || undefined,
           start_date: startDate || undefined,
           preferred_contact: preferredContact || undefined,
@@ -419,7 +424,7 @@ export default function NewStaffPage() {
       for (const propertyId of assignedProperties) {
         await apiFetch('/staff/assignments', {
           method: 'POST',
-          body: JSON.stringify({ user_id: userId.trim(), property_id: propertyId }),
+          body: JSON.stringify({ user_id: resolvedUserId, property_id: propertyId }),
         });
       }
 
@@ -506,17 +511,18 @@ export default function NewStaffPage() {
               </Field>
             </div>
 
-            {/* Auth email — required for create */}
-            <Field label="Email / User ID *">
+            {/* Staff email — required for create: becomes the user_id key */}
+            <Field label="Staff Email *">
               <input
-                style={{ ...inputStyle, borderColor: !userId.trim() && error ? '#f85149' : undefined }}
-                value={userId}
-                onChange={e => setUserId(e.target.value)}
-                placeholder="user@company.com"
+                style={{ ...inputStyle, borderColor: !staffEmail.trim() && error ? '#f85149' : undefined }}
+                value={staffEmail}
+                onChange={e => setStaffEmail(e.target.value)}
+                placeholder="worker@company.com"
                 type="email"
               />
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4 }}>
-                Must match the user's Supabase Auth email.
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4, lineHeight: 1.5 }}>
+                This will be the staff member's login email and system identifier.<br />
+                You can send them an onboarding link later from the <strong>Pending Requests</strong> page.
               </span>
             </Field>
 
@@ -525,8 +531,8 @@ export default function NewStaffPage() {
             </Field>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-              <Field label="Personal Email">
-                <input style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="worker@gmail.com" type="email" />
+              <Field label="Personal Email (Optional)">
+                <input style={inputStyle} value={personalEmail} onChange={e => setPersonalEmail(e.target.value)} placeholder="worker@gmail.com" type="email" />
               </Field>
               <Field label="Date of Birth">
                 <input style={inputStyle} type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
