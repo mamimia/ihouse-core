@@ -22,6 +22,20 @@ const ACTABLE_ROLES = [
     { value: 'maintenance', label: 'Maintenance' },
 ];
 
+/**
+ * Phase 864 — Canonical route map for Act As landing.
+ * Must match admin-preview-and-act-as.md and preview/page.tsx PREVIEW_ROUTES.
+ */
+const ROLE_ROUTES: Record<string, string> = {
+    manager:          '/dashboard',
+    owner:            '/owner',
+    cleaner:          '/ops/cleaner',
+    checkin:          '/ops/checkin',
+    checkout:         '/ops/checkout',
+    checkin_checkout: '/ops/checkin-checkout',
+    maintenance:      '/ops/maintenance',
+};
+
 export default function ActAsSelector() {
     const { isAvailable, isActing, session, startActAs, endActAs } = useActAs();
     const [loading, setLoading] = useState(false);
@@ -92,8 +106,9 @@ export default function ActAsSelector() {
                         setError(result.error || 'Failed');
                         setTimeout(() => setError(''), 5000);
                     } else {
-                        // Reload to apply new token context
-                        window.location.href = '/dashboard';
+                        // Phase 864 — redirect to role-appropriate surface
+                        const target = ROLE_ROUTES[val] || '/dashboard';
+                        window.location.href = target;
                     }
                 }}
                 disabled={loading}

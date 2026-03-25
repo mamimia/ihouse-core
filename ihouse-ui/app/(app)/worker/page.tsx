@@ -61,15 +61,20 @@ const ROLE_CONFIGS: Record<WorkerRoleKey, WorkerRoleConfig> = {
     },
 };
 
-/** Resolve the current worker role from preview session or JWT */
+/** Resolve the current worker role from preview session, act-as JWT, or real JWT */
 function resolveWorkerRole(): WorkerRoleKey | 'admin' | 'checkin_checkout' | null {
     if (typeof window === 'undefined') return null;
+    // 1. Preview As (sessionStorage override — read-only inspection)
     const preview = sessionStorage.getItem('ihouse_preview_role');
     if (preview) return preview as WorkerRoleKey | 'admin' | 'checkin_checkout';
+    // 2. JWT — handles both Act As (token_type=act_as) and normal login
     const token = localStorage.getItem('ihouse_token');
     if (!token) return null;
     try {
         const p = JSON.parse(atob(token.split('.')[1]));
+        // Act As JWT has token_type=act_as with role = target role
+        // Normal JWT has role = user's real role
+        // Both paths use p.role — no special branching needed
         return (p.role as WorkerRoleKey | 'admin' | 'checkin_checkout') || null;
     } catch { return null; }
 }
