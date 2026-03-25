@@ -105,15 +105,17 @@ export function ActAsProvider({ children }: { children: React.ReactNode }) {
     const cleanupActAs = useCallback((opts?: { reload?: boolean }) => {
         if (timerRef.current) clearInterval(timerRef.current);
 
-        // Restore original admin token
+        // Restore original admin token (only if valid, not a '__new_tab__' sentinel)
+        // Under Phase 865+ multi-tab, restoring to localStorage is generally skipped 
+        // because sessions live in isolated new tabs.
         try {
             const originalToken = sessionStorage.getItem(ORIGINAL_TOKEN_KEY)
                 ?? localStorage.getItem('ihouse_act_as_original_token');
-            if (originalToken) {
+            if (originalToken && originalToken !== '__new_tab__') {
                 setToken(originalToken);
-                sessionStorage.removeItem(ORIGINAL_TOKEN_KEY);
-                localStorage.removeItem('ihouse_act_as_original_token');
             }
+            sessionStorage.removeItem(ORIGINAL_TOKEN_KEY);
+            localStorage.removeItem('ihouse_act_as_original_token');
         } catch {}
 
         sessionStorage.removeItem(ACT_AS_SESSION_KEY);
