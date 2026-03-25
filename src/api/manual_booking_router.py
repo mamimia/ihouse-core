@@ -89,6 +89,30 @@ async def create_manual_booking(
     now_ms = int(time.time() * 1000)
     event_id = hashlib.sha256(f"EVT:{booking_id}:{now}".encode()).hexdigest()[:16]
 
+    # ── Property-status guard: only approved properties can receive bookings ──
+    try:
+        db_check = _get_db()
+        prop_res = (db_check.table("properties")
+                    .select("status")
+                    .eq("id", property_id)
+                    .limit(1)
+                    .execute())
+        prop_rows = prop_res.data or []
+        if not prop_rows:
+            return make_error_response(404, "NOT_FOUND",
+                                       extra={"detail": f"Property '{property_id}' not found."})
+        prop_status = (prop_rows[0].get("status") or "").lower()
+        if prop_status != "approved":
+            return make_error_response(422, ErrorCode.VALIDATION_ERROR,
+                                       extra={"detail": f"Cannot create booking: property is '{prop_status}', not approved.",
+                                              "property_status": prop_status})
+    except Exception as prop_exc:
+        logger.warning("Property status check failed for %s: %s", property_id, prop_exc)
+        # Fail open only if the table doesn't exist — otherwise reject
+        if "does not exist" not in str(prop_exc).lower():
+            return make_error_response(422, ErrorCode.VALIDATION_ERROR,
+                                       extra={"detail": "Could not verify property status."})
+
     row = {
         "booking_id": booking_id,
         "version": 1,

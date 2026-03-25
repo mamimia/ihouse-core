@@ -12,7 +12,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { getToken } from '@/lib/api';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -39,8 +39,9 @@ type IntakePath = 'select' | 'manual' | 'ical' | 'csv';
 function PropertySelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
     const [properties, setProperties] = useState<any[]>([]);
     useEffect(() => {
-        apiFetch('/properties?limit=100').then(res => {
-            setProperties(res.properties || res.data || []);
+        apiFetch('/properties?limit=100&status=approved').then(res => {
+            const all = res.properties || res.data || [];
+            setProperties(all.filter((p: any) => !p.status || p.status === 'approved'));
         }).catch(() => {});
     }, []);
     return (
@@ -69,10 +70,13 @@ const cardStyle: React.CSSProperties = {
 // ========== Main Component ==========
 function BookingIntakeContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const prefilledProperty = searchParams?.get('property') || '';
+    const isPropertyScoped = !!prefilledProperty;
     const [path, setPath] = useState<IntakePath>(prefilledProperty ? 'manual' : 'select');
     const [notice, setNotice] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [propertyName, setPropertyName] = useState<string>('');
 
     // Manual booking form state
     const [mPropertyId, setMPropertyId] = useState(prefilledProperty);
@@ -112,6 +116,14 @@ function BookingIntakeContent() {
     }, []);
 
     useEffect(() => { loadRecent(); }, [loadRecent]);
+
+    // If property-scoped, fetch the property name for the header
+    useEffect(() => {
+        if (!prefilledProperty) return;
+        apiFetch(`/properties/${prefilledProperty}`)
+            .then(res => setPropertyName(res.display_name || res.name || prefilledProperty))
+            .catch(() => setPropertyName(prefilledProperty));
+    }, [prefilledProperty]);
 
     // ======= Manual booking submit =======
     const submitManual = async () => {
@@ -218,16 +230,28 @@ function BookingIntakeContent() {
                 }}>{error}</div>
             )}
 
-            {/* Header */}
+            {/* Header — context-aware */}
             <div style={{ marginBottom: 'var(--space-5)' }}>
+                {isPropertyScoped && (
+                    <button
+                        onClick={() => router.push(`/admin/properties/${prefilledProperty}`)}
+                        style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)',
+                            padding: 0, marginBottom: 'var(--space-2)', display: 'block',
+                        }}
+                    >← Back to {propertyName || 'Property'}</button>
+                )}
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Booking Management
+                    {isPropertyScoped ? propertyName : 'Booking Management'}
                 </p>
                 <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.03em' }}>
                     New Booking
                 </h1>
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                    Manual entry, iCal import, or CSV upload
+                    {isPropertyScoped
+                        ? `Adding a booking for ${propertyName || 'this property'}`
+                        : 'Manual entry, iCal import, or CSV upload'}
                 </p>
             </div>
 
@@ -286,10 +310,16 @@ function BookingIntakeContent() {
                 <div style={cardStyle}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
                         <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)' }}>✍️ Manual Booking</h2>
-                        <button onClick={() => setPath('select')} style={{
+                        <button onClick={() => {
+                            if (isPropertyScoped) {
+                                router.push(`/admin/properties/${prefilledProperty}`);
+                            } else {
+                                setPath('select');
+                            }
+                        }} style={{
                             background: 'none', border: 'none', color: 'var(--color-text-dim)',
                             cursor: 'pointer', fontSize: 'var(--text-sm)',
-                        }}>← Back</button>
+                        }}>← {isPropertyScoped ? `Back to ${propertyName || 'Property'}` : 'Back'}</button>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

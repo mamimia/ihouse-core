@@ -438,7 +438,8 @@ export default function PropertyDetailPage() {
                         📍 Open in Maps
                     </a>
                 )}
-                {/* Add Booking button */}
+                {/* Add Booking button — only for operational (approved) properties */}
+                {p.status === 'approved' && (
                 <button
                     onClick={() => router.push(`/admin/bookings/intake?property=${propertyId}`)}
                     style={{
@@ -447,6 +448,7 @@ export default function PropertyDetailPage() {
                         color: '#fff', fontSize: 'var(--text-xs)', cursor: 'pointer', fontWeight: 600,
                     }}
                 >✍️ Add Booking</button>
+                )}
                 {/* Archive / Unarchive / Permanent Delete button */}
                 {p.status !== 'archived' && p.status !== 'rejected' ? (
                     <button
