@@ -3,18 +3,20 @@
 /**
  * Phase 290 / 850 — Worker Mobile UI
  * Phase 884 — Role-aware Home layer
+ * Phase 865 — Uses getTabToken for Act As tab isolation
  * Route: /worker
  *
  * Shared Home page for all field worker roles.
  * Role is resolved from:
  *   1. sessionStorage.ihouse_preview_role  (Preview As)
- *   2. JWT payload.role                    (real worker login)
+ *   2. JWT payload.role                    (real worker login or Act As)
  * Each role sees role-correct stats + a CTA linking to /ops/[role].
  * Admin/unknown roles are redirected to /dashboard.
  */
 
 import { useEffect, useState, useCallback } from 'react';
 import { api, apiFetch, WorkerTask } from '../../../lib/api';
+import { getTabToken } from '../../../lib/tokenStore';
 
 import { useLanguage } from '../../../lib/LanguageContext';
 import CompactLangSwitcher from '../../../components/CompactLangSwitcher';
@@ -68,13 +70,11 @@ function resolveWorkerRole(): WorkerRoleKey | 'admin' | 'checkin_checkout' | nul
     const preview = sessionStorage.getItem('ihouse_preview_role');
     if (preview) return preview as WorkerRoleKey | 'admin' | 'checkin_checkout';
     // 2. JWT — handles both Act As (token_type=act_as) and normal login
-    const token = localStorage.getItem('ihouse_token');
+    // Phase 865: use getTabToken() for sessionStorage-first isolation
+    const token = getTabToken();
     if (!token) return null;
     try {
         const p = JSON.parse(atob(token.split('.')[1]));
-        // Act As JWT has token_type=act_as with role = target role
-        // Normal JWT has role = user's real role
-        // Both paths use p.role — no special branching needed
         return (p.role as WorkerRoleKey | 'admin' | 'checkin_checkout') || null;
     } catch { return null; }
 }
@@ -616,7 +616,7 @@ export default function WorkerPage() {
         if (resolved === 'checkin_checkout') {
             // Stay on /worker — render combined profile view (handled in render below)
             setRoleConfig(null); // signals the render to show combined-role profile
-            const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
+            const token = typeof window !== 'undefined' ? getTabToken() : null;
             if (token) {
                 const p = parseJwt(token);
                 if (p.email) setUserName(p.email.split('@')[0]);
@@ -638,8 +638,8 @@ export default function WorkerPage() {
             setPropMap(m);
         }).catch(() => {});
 
-        // Parse token for greeting
-        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') : null;
+        // Phase 865: use getTabToken() for tab-aware greeting (act_as or real login)
+        const token = typeof window !== 'undefined' ? getTabToken() : null;
         if (token) {
             const p = parseJwt(token);
             if (p.email) setUserName(p.email.split('@')[0]);

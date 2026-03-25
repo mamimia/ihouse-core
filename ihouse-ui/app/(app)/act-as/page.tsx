@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { setActAsTabToken } from '../../../lib/tokenStore';
 
 /** Canonical route map — must match admin-preview-and-act-as.md and ROLE_ROUTES in ActAsSelector */
 const ROLE_ROUTES: Record<string, string> = {
@@ -40,10 +41,10 @@ function ActAsLandingContent() {
             return;
         }
 
-        // Store the act_as token as the active token in this tab
-        // Mark that this tab has NO original admin token (new-tab sentinel)
+        // Store the act_as token in sessionStorage ONLY — tab-scoped, never touches
+        // the admin's localStorage token. This is the root fix for parallel tab isolation.
         try {
-            localStorage.setItem('ihouse_token', token);
+            setActAsTabToken(token);
             sessionStorage.setItem('ihouse_act_as_original_token', '__new_tab__');
         } catch (e) {
             setMsg('Failed to set session. Check browser storage permissions.');

@@ -12,6 +12,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '../lib/LanguageContext';
+import { getTabToken } from '../lib/tokenStore';
 import { usePreview } from '../lib/PreviewContext';
 import LogoutButton from './LogoutButton';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -56,7 +57,7 @@ const NAV_ITEMS: { key: TranslationKey; href: string; icon: React.ReactNode; rol
 function getUserRole(): Role {
   if (typeof window === 'undefined') return 'manager';
   try {
-    const token = localStorage.getItem('ihouse_token');
+    const token = getTabToken();
     if (!token) return 'manager';
     const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
     return (payload.role as Role) || 'manager';
@@ -73,7 +74,7 @@ const ROLE_DISPLAY: Record<string, string> = {
 function getGreetingName(role: Role): string {
   if (typeof window === 'undefined') return ROLE_DISPLAY[role] || 'there';
   try {
-    const token = localStorage.getItem('ihouse_token');
+    const token = getTabToken();
     if (!token) return ROLE_DISPLAY[role] || 'there';
     const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
     if (payload.display_name && typeof payload.display_name === 'string')

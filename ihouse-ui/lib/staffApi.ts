@@ -1,29 +1,32 @@
 /**
  * Phase 864 — Shared Staff API Utilities
+ * Phase 865 — Tab-aware token reads via tokenStore (sessionStorage-first)
  *
  * Single source of truth for API helpers used by worker-facing ops surfaces:
  *   /ops/cleaner, /ops/maintenance, /ops/checkin, /ops/checkout
  *
- * Extracted to eliminate identical copies in each page file.
+ * Token reads use getTabToken() which prioritizes sessionStorage (Act As tab)
+ * over localStorage (normal login), enabling true parallel tab isolation.
  */
+
+import { getTabToken, decodeTabTokenPayload } from './tokenStore';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
-/** Extract worker identity from JWT stored in localStorage. */
+/** Extract worker identity from the tab-scoped token. */
 export function getWorkerId(): string {
     if (typeof window === 'undefined') return '';
     try {
-        const token = localStorage.getItem('ihouse_token');
-        if (!token) return '';
-        const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
-        return payload.user_id || payload.sub || payload.tenant_id || '';
+        const payload = decodeTabTokenPayload();
+        if (!payload) return '';
+        return (payload.user_id || payload.sub || payload.tenant_id || '') as string;
     } catch { return ''; }
 }
 
-/** Get auth token from localStorage. */
+/** Get auth token for the current tab (Act As or normal). */
 function getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('ihouse_token');
+    return getTabToken();
 }
 
 /** Authenticated fetch wrapper for staff API calls. */
@@ -54,3 +57,4 @@ export async function apiFetch<T = any>(path: string, init?: RequestInit): Promi
 /** Base URL for direct fetch calls (e.g. FormData uploads that skip apiFetch). */
 export { BASE as API_BASE };
 export { getToken };
+

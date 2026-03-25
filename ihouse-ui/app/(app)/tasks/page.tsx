@@ -15,6 +15,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { api, WorkerTask } from '../../../lib/api';
+import { getTabToken } from '../../../lib/tokenStore';
 import WorkerTaskCard from '@/components/WorkerTaskCard';
 import { useRouter } from 'next/navigation';
 
@@ -336,9 +337,9 @@ function getStaffRoleFromContext(): string | null {
         const previewRole = sessionStorage.getItem('ihouse_preview_role');
         if (previewRole) return previewRole;
     } catch {}
-    // Check real JWT role
+    // Check real JWT role — Phase 865: sessionStorage-first via getTabToken
     try {
-        const token = localStorage.getItem('ihouse_token');
+        const token = getTabToken();
         if (token) {
             const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
             const staffRoles = ['cleaner', 'checkin', 'checkout', 'checkin_checkout', 'maintenance', 'worker'];
@@ -479,7 +480,8 @@ export default function TasksPage() {
 
     // SSE for real-time task events (Phase 308)
     useEffect(() => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : '';
+        // Phase 865: use getTabToken() for tab-aware SSE auth
+        const token = typeof window !== 'undefined' ? getTabToken() ?? '' : '';
         const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
         const es = new EventSource(`${baseUrl}/events/stream?channels=tasks,alerts&token=${token}`);
         es.onmessage = (e) => {

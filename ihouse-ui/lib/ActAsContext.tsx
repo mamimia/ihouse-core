@@ -2,28 +2,28 @@
 
 /**
  * Phase 870/871 — Act As Context (Revised: Multi-Tab State Reconstruction)
+ * Phase 865  — Uses tab-aware tokenStore for session isolation
  *
  * State reconstruction priority (on every tab load):
- *   1. If ihouse_token in localStorage has token_type === 'act_as':
- *      → Acting is in progress. Reconstruct from JWT claims + call GET /auth/act-as/status
- *        for authoritative remaining time.
- *      → Banner appears. End Session control appears. No silent acting state possible.
+ *   1. If the tab-scoped token (sessionStorage first, then localStorage) has
+ *      token_type === 'act_as': Acting is in progress. Reconstruct from JWT claims
+ *      + call GET /auth/act-as/status for authoritative remaining time.
+ *      → Banner appears. End Session control appears.
  *   2. If sessionStorage has ACT_AS_SESSION_KEY but token is not act_as:
  *      → Stale sessionStorage (prior session ended externally). Clean up.
  *   3. Neither → Not acting. Show selector if admin.
  *
- * This ensures:
- *   - New tabs: banner always reconstructed from token (not sessionStorage alone)
- *   - Page reloads: same
- *   - Expiry: consistent with manual end (cleanup only, no page reload on timer expiry)
- *   - No silent acting state is possible
- *
- * sessionStorage is now used only as a fast-path cache (avoids /status fetch on same tab).
- * It is never the sole source of truth for whether acting is active.
+ * ISOLATION MODEL (Phase 865):
+ *   - Act As tabs store their token in sessionStorage via setActAsTabToken()
+ *   - getTabToken() reads sessionStorage first → correct per-tab isolation
+ *   - clearTabToken() removes sessionStorage only → admin localStorage is never mutated
+ *   - Admin logout (cookie + localStorage clear) propagates naturally: Act As tabs
+ *     will fail middleware on next navigation (expected product behavior)
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { setToken, getToken } from './api';
+import { getTabToken, clearTabToken } from './tokenStore';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
 
@@ -133,7 +133,8 @@ export function ActAsProvider({ children }: { children: React.ReactNode }) {
         if (typeof window === 'undefined') return;
 
         async function reconstruct() {
-            const storedToken = localStorage.getItem('ihouse_token');
+            // Phase 865: use getTabToken() — sessionStorage first (Act As tab), localStorage fallback
+            const storedToken = getTabToken();
             if (!storedToken) {
                 setInitializing(false);
                 return;
@@ -368,7 +369,9 @@ export function ActAsProvider({ children }: { children: React.ReactNode }) {
 
         if (isNewTab) {
             // Can't restore admin session in this tab — force re-login
-            localStorage.removeItem('ihouse_token');
+            // Phase 865: clearTabToken removes sessionStorage only.
+            // Do NOT touch localStorage — the admin tab's token lives there and must be preserved.
+            clearTabToken();
             window.location.href = '/login';
         }
     }, [session, cleanupActAs]);
