@@ -252,6 +252,7 @@ def get_identity(
             "tenant_id": str(tenant_id_claim).strip(),
             "role": str(payload.get("role", "manager")).strip(),
             "auth_method": auth_method,
+            "email": str(payload.get("email", "")).strip(),  # Phase 864 — needed by act_as_router
         }
 
         # Phase 868 — Act As token recognition
