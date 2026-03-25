@@ -8405,3 +8405,30 @@ Transitioned the "Act As" impersonation feature from a single-session policy to 
 Deployed: Railway (auto via git push `c52b259`) + Vercel (`domaniqo-staging.vercel.app`).
 
 **Next Phase: 867.**
+
+## Phase 888 — Staffing-to-Task Assignment Backfill (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-26
+
+Implemented and locked the canonical rule for staffing-to-task backfill. When staff-property assignments change, the system now automatically adjusts future PENDING tasks to reflect current staffing truth.
+
+Three scenarios proven on staging:
+1. **Add worker** → future PENDING unassigned tasks backfilled to new worker
+2. **Remove worker (no replacement)** → future PENDING tasks cleared to UNASSIGNED
+3. **Replace worker A with B** → future PENDING tasks end up on worker B (via remove→clear→assign path)
+
+State safety boundary: ACKNOWLEDGED, IN_PROGRESS, COMPLETED, CANCELED tasks are NEVER auto-mutated.
+
+Rule is role-agnostic: applies identically to Cleaner, Check-in, Check-out, Combined (dual-role), and Maintenance.
+
+"Combined Check-in/Check-out" is confirmed NOT a separate role value — it is a worker holding both `checkin` and `checkout` in their `worker_roles` array, processed independently by the same backfill logic.
+
+Also implemented in this session:
+- Property-scoped booking guards: non-approved properties blocked from booking creation (3-layer: UI, intake filter, backend 422)
+- Context-aware booking intake: property-scoped flow when initiated from Property Detail
+
+Canonical rule recorded in `docs/core/RULE_staffing_task_backfill.md`.
+
+Commits: `5803837`, `f881fc9`, `a222706`
+Deployed: Railway (auto via git push) + Vercel (manual CLI)

@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 867 — Next Phase. Phases 841–866 closed.
+Phase 889 — Next Phase. Phases 841–888 closed.
 
 ## Last Closed Phase
 
-Phase 866 — Model B Concurrent Act As Sessions.
+Phase 888 — Staffing-to-Task Assignment Backfill.
 
 ## Current Objective
 

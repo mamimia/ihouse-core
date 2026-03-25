@@ -5272,3 +5272,16 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Solved canonical "Pop-up window blocked" Safari barrier by shifting `ActAsSelector` from an async `window.open` intercept to a synthetic synchronous blank popup creation inside the event loop tick.
 - `multi_tab_safari.spec.ts` proven against `webkit` engine in CI. 
 - Deployed: commit `ea8bbf8` → Railway + Vercel staging.
+
+## Phase 888 — Staffing-to-Task Assignment Backfill — 2026-03-26
+
+- Audit: identified that task assignment used a pure generation-time snapshot model — staff-property changes after task creation never updated existing tasks.
+- Implemented `_backfill_tasks_on_assign()` and `_clear_tasks_on_unassign()` in `permissions_router.py`.
+- Added `_ROLE_TO_TASK_ROLES` mapping to bridge UI lowercase roles to task system uppercase enums.
+- 3-case staging proof: assign (9/9 backfilled), remove (9/9 cleared), replace A→B (9/9 on B).
+- State safety: only PENDING + future + matching role touched. ACKNOWLEDGED/IN_PROGRESS/COMPLETED/CANCELED never auto-mutated.
+- Canonical rule locked in `docs/core/RULE_staffing_task_backfill.md`.
+- Property booking guards: 3-layer enforcement — hidden UI button, filtered intake select, backend 422 for non-approved properties.
+- Context-aware booking intake flow: property-scoped header + back navigation when initiated from Property Detail.
+- Commits: `5803837` (guards + intake), `f881fc9` (backfill logic), `a222706` (locked rule doc).
+- Deployed: Railway (auto) + Vercel (manual CLI).

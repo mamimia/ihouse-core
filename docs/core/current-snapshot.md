@@ -1,12 +1,12 @@
 ## Current Phase
-Phase 867 — Next Phase
+Phase 889 — Next Phase
 
 ## Last Closed Phase
-Phase 866 — Model B Concurrent Act As Sessions
+Phase 888 — Staffing-to-Task Assignment Backfill
 
 ## System Status
 
-**[...System status through Phase 863 unchanged...] Phase 866 Concurrent Act As Sessions: Replaced backend 409 limit with `acting_session_id`-scoped validation. Fixed client `localStorage` pollution bug where closing a tab deleted the Admin token. Switched async `window.open` to synchronous placeholder mode to prevent Safari "Pop-up blocked" errors. Model B concurrency fully verified via WebKit E2E tests and manual Safari execution. Deployed to Vercel production.**
+**[...System status through Phase 866 unchanged...] Phase 888 Staffing-to-Task Assignment Backfill: Implemented canonical rule for staffing-to-future-task backfill. When staff-property assignments change, future PENDING tasks automatically adjust. ACKNOWLEDGED/IN_PROGRESS/COMPLETED/CANCELED never auto-mutated. 3-case staging proof (assign/remove/replace). Property booking guards: 3-layer enforcement blocking non-approved properties from booking creation. Context-aware booking intake flow. Canonical rule locked in `docs/core/RULE_staffing_task_backfill.md`. Deployed to Railway + Vercel.**
 
 ## Deferred Items — Managed Open Items Registry
 
