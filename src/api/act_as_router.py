@@ -164,6 +164,7 @@ async def start_act_as(
     expires_at = now_utc + timedelta(seconds=body.ttl_seconds)
 
     try:
+        db = _get_supabase_client()
         db.table("acting_sessions").insert({
             "id": session_id,
             "real_admin_user_id": admin_user_id,
