@@ -88,16 +88,20 @@ export default function ActAsSelector() {
     if (!isAvailable) return null;
 
     /**
-     * Phase 864 — Two-step flow (Safari-safe):
-     * 1. User selects role from dropdown
-     * 2. User clicks ↗ button → calls /auth/act-as/start → opens new tab with token
-     *
-     * window.open MUST be called from a direct button click handler,
-     * not from an async callback, otherwise Safari blocks it as a popup.
-     * So we call the API first, store the result, then open.
+     * Phase 864 — Safari Popup Fix:
+     * Safari blocks `window.open` if called *after* an `await`.
+     * To pass the user gesture requirement, we must open a placeholder tab
+     * synchronously during the click handler, then update its URL after the fetch.
      */
     const handleOpen = async () => {
         if (!selectedRole) return;
+
+        // 1. Open popup synchronously FIRST to claim the user gesture
+        const popup = window.open('about:blank', '_blank');
+        if (!popup) {
+            setError('Popup blocked by Safari. Please allow popups.');
+            return;
+        }
 
         setLoading(true);
         setError('');
@@ -105,6 +109,7 @@ export default function ActAsSelector() {
         try {
             const currentToken = localStorage.getItem('ihouse_token');
             if (!currentToken) {
+                popup.close();
                 setError('Not authenticated');
                 setLoading(false);
                 return;
@@ -123,6 +128,7 @@ export default function ActAsSelector() {
 
             if (!res.ok) {
                 const msg = body?.error?.message || body?.detail || 'Failed to start Act As';
+                popup.close();
                 setError(msg);
                 setTimeout(() => setError(''), 5000);
                 setLoading(false);
@@ -133,20 +139,21 @@ export default function ActAsSelector() {
             const actAsToken = data.token;
 
             if (!actAsToken) {
+                popup.close();
                 setError('No token received from server');
                 setLoading(false);
                 return;
             }
 
-            // Open the new tab with the token — admin tab is unchanged
-            // The /act-as landing page will store the token and redirect
+            // 2. Set the actual destination URL on the placeholder we opened earlier
             const url = `/act-as?token=${encodeURIComponent(actAsToken)}&role=${encodeURIComponent(selectedRole)}`;
-            window.open(url, '_blank');
+            popup.location.href = url;
 
             // Reset UI in admin tab
             setSelectedRole('');
             setLoading(false);
         } catch (exc) {
+            popup.close();
             setError(`Network error: ${exc}`);
             setTimeout(() => setError(''), 5000);
             setLoading(false);
