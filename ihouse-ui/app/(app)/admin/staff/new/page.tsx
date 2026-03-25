@@ -1,18 +1,22 @@
 'use client';
 /**
- * Phase 843 — Staff Full-Page Create
+ * Phase 843 / 887 — Staff Full-Page Create (aligned with edit model)
  * /admin/staff/new
  *
- * 3-tab full-page flow:
- * Tab 1 — Profile (name, photo, phone, address, emergency, language, status, notes)
+ * 4-tab full-page flow (matches [userId]/page.tsx):
+ * Tab 1 — Profile (name, photo, phone, address, emergency, language, status, notes, start date)
  * Tab 2 — Role & Assignment (role, worker_roles, specializations, assigned properties)
- * Tab 3 — Access & Comms (WhatsApp, Telegram, LINE, SMS)
+ * Tab 3 — Access & Comms (WhatsApp, Telegram, LINE, SMS, preferred channel)
+ * Tab 4 — Documents & Compliance (ID/Passport, Work Permit, compliance summary)
  *
- * Layout rules: back = top-left, save = sticky bottom-right footer
- * No modal fallback.
+ * Create-vs-edit differences preserved:
+ * - userId (Supabase email) is required on create; read-only after creation
+ * - No "Send Access Link" live call (no user_id until record exists); shows a post-creation reminder instead
+ * - No "Danger Zone" (no record to delete yet)
+ * - No legacy-role normalization banner (new records are always canonical)
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/api';
 import { uploadPropertyPhoto, ACCEPTED_IMAGE_TYPES } from '@/lib/uploadPhoto';
@@ -31,6 +35,47 @@ async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) throw new Error(`${res.status}`);
   return res.json();
+}
+
+// ── Doc compliance helpers (mirrors edit page) ───────────────────────────────
+
+const DOC_STATUSES = [
+  { value: 'missing', label: 'Missing' },
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'expiring_soon', label: 'Expiring Soon' },
+  { value: 'expired', label: 'Expired' },
+];
+
+function docStatusColor(status: string): string {
+  switch (status) {
+    case 'verified': return 'var(--color-ok, #4A7C59)';
+    case 'submitted': return 'var(--color-sage, #8FA39B)';
+    case 'expiring_soon': return 'var(--color-warn, #B56E45)';
+    case 'expired': return 'var(--color-alert, #C45B4A)';
+    case 'missing': default: return 'var(--color-text-faint, #9A958E)';
+  }
+}
+
+function expiryWarning(expiryDate: string): { label: string; color: string } | null {
+  if (!expiryDate) return null;
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0) return { label: 'Expired', color: 'var(--color-alert)' };
+  if (daysLeft <= 30) return { label: `${daysLeft}d left`, color: 'var(--color-alert)' };
+  if (daysLeft <= 90) return { label: `${daysLeft}d left`, color: 'var(--color-warn)' };
+  return null;
+}
+
+function autoDocStatus(status: string, expiryDate: string): string {
+  if (!expiryDate) return status;
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft < 0) return 'expired';
+  if (daysLeft <= 90 && (status === 'verified' || status === 'submitted')) return 'expiring_soon';
+  return status;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -77,16 +122,16 @@ const LANGUAGES = [
 
 const COUNTRY_CODES_OPTS = [
   { code: '+66', label: '🇹🇭 +66' },
-  { code: '+1', label: '🇺🇸 +1' },
+  { code: '+1',  label: '🇺🇸 +1' },
   { code: '+44', label: '🇬🇧 +44' },
-  { code: '+972', label: '🇮🇱 +972' },
+  { code: '+972',label: '🇮🇱 +972' },
   { code: '+95', label: '🇲🇲 +95' },
-  { code: '+856', label: '🇱🇦 +856' },
-  { code: '+855', label: '🇰🇭 +855' },
+  { code: '+856',label: '🇱🇦 +856' },
+  { code: '+855',label: '🇰🇭 +855' },
   { code: '+60', label: '🇲🇾 +60' },
   { code: '+65', label: '🇸🇬 +65' },
   { code: '+81', label: '🇯🇵 +81' },
-  { code: '+7', label: '🇷🇺 +7' },
+  { code: '+7',  label: '🇷🇺 +7' },
   { code: '+86', label: '🇨🇳 +86' },
   { code: '+91', label: '🇮🇳 +91' },
   { code: '+49', label: '🇩🇪 +49' },
@@ -97,77 +142,45 @@ const COUNTRY_CODES_OPTS = [
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: 'var(--color-surface-2)',
-  border: '1px solid var(--color-border)',
-  borderRadius: 'var(--radius-sm)',
-  padding: '9px 12px',
-  color: 'var(--color-text)',
-  fontSize: 'var(--text-sm)',
-  outline: 'none',
-  boxSizing: 'border-box',
+  width: '100%', background: 'var(--color-surface-2)',
+  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+  padding: '9px 12px', color: 'var(--color-text)',
+  fontSize: 'var(--text-sm)', outline: 'none', boxSizing: 'border-box',
 };
-
 const labelStyle: React.CSSProperties = {
-  fontSize: 'var(--text-xs)',
-  color: 'var(--color-text-dim)',
-  display: 'block',
-  marginBottom: 6,
-  fontWeight: 500,
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
+  fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)',
+  display: 'block', marginBottom: 6, fontWeight: 500,
+  textTransform: 'uppercase', letterSpacing: '0.04em',
 };
-
-const fieldStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-};
-
 const sectionHeadStyle: React.CSSProperties = {
-  fontSize: 'var(--text-xs)',
-  fontWeight: 700,
-  color: 'var(--color-text-faint)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.07em',
-  marginTop: 'var(--space-5)',
-  marginBottom: 'var(--space-3)',
-  paddingBottom: 'var(--space-2)',
-  borderBottom: '1px solid var(--color-border)',
+  fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)',
+  textTransform: 'uppercase', letterSpacing: '0.07em',
+  marginTop: 'var(--space-5)', marginBottom: 'var(--space-3)',
+  paddingBottom: 'var(--space-2)', borderBottom: '1px solid var(--color-border)',
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={fieldStyle}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       <label style={labelStyle}>{label}</label>
       {children}
     </div>
   );
 }
 
-function CheckGroup({
-  options,
-  selected,
-  onChange,
-}: {
+function CheckGroup({ options, selected, onChange }: {
   options: { value: string; label: string }[];
   selected: string[];
   onChange: (v: string[]) => void;
 }) {
   const toggle = (v: string) =>
-    onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
+    onChange(selected.includes(v) ? selected.filter(x => x !== v) : [...selected, v]);
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 20px' }}>
-      {options.map((o) => (
-        <label
-          key={o.value}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}
-        >
-          <input
-            type="checkbox"
-            checked={selected.includes(o.value)}
-            onChange={() => toggle(o.value)}
-            style={{ accentColor: 'var(--color-primary)', width: 16, height: 16 }}
-          />
+      {options.map(o => (
+        <label key={o.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+          <input type="checkbox" checked={selected.includes(o.value)} onChange={() => toggle(o.value)}
+            style={{ accentColor: 'var(--color-primary)', width: 16, height: 16 }} />
           {o.label}
         </label>
       ))}
@@ -175,10 +188,14 @@ function CheckGroup({
   );
 }
 
-// ── Avatar initials ─────────────────────────────────────────────────────────
-function AvatarPreview({ name, photoUrl, uploading, onAddClick, fileRef, onFileChange }: { name: string; photoUrl: string; uploading: boolean; onAddClick: () => void; fileRef: React.RefObject<HTMLInputElement | null>; onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) {
+function AvatarPreview({ name, photoUrl, uploading, onAddClick, fileRef, onFileChange }: {
+  name: string; photoUrl: string; uploading: boolean;
+  onAddClick: () => void;
+  fileRef: React.RefObject<HTMLInputElement | null>;
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
   const initials = name.trim()
-    ? name.trim().split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+    ? name.trim().split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
     : '?';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 'var(--space-4)' }}>
@@ -194,25 +211,12 @@ function AvatarPreview({ name, photoUrl, uploading, onAddClick, fileRef, onFileC
             ? <img src={photoUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : initials}
         </div>
-        
-        <input
-          type="file"
-          accept={ACCEPTED_IMAGE_TYPES}
-          ref={fileRef}
-          style={{ display: 'none' }}
-          onChange={onFileChange}
-        />
-        
-        <button 
-          type="button"
-          onClick={onAddClick}
-          disabled={uploading}
-          style={{
-            background: 'none', border: 'none', color: 'var(--color-primary)',
-            fontSize: '11px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer',
-            opacity: uploading ? 0.5 : 1, padding: 0, marginTop: -2,
-          }}
-        >
+        <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={fileRef} style={{ display: 'none' }} onChange={onFileChange} />
+        <button type="button" onClick={onAddClick} disabled={uploading} style={{
+          background: 'none', border: 'none', color: 'var(--color-primary)',
+          fontSize: '11px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer',
+          opacity: uploading ? 0.5 : 1, padding: 0, marginTop: -2,
+        }}>
           {uploading ? 'Uploading…' : 'Add photo'}
         </button>
       </div>
@@ -228,17 +232,16 @@ function AvatarPreview({ name, photoUrl, uploading, onAddClick, fileRef, onFileC
 export default function NewStaffPage() {
   const router = useRouter();
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<0 | 1 | 2>(0);
+  // Tab state — 4 tabs matching the edit model
+  const [activeTab, setActiveTab] = useState<0 | 1 | 2 | 3>(0);
 
   // Tab 1 — Profile
   const [fullName, setFullName] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [userId, setUserId] = useState('');  // email / user_id
-  const [email, setEmail] = useState('');
+  const [preferredName, setPreferredName] = useState(''); // nickname / display name
+  const [userId, setUserId] = useState(''); // Supabase Auth email — required for create
+  const [email, setEmail] = useState('');  // personal email (separate from auth)
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
-  const [idPhotoUrl, setIdPhotoUrl] = useState('');
   const [phoneCode, setPhoneCode] = useState('+66');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
@@ -248,6 +251,7 @@ export default function NewStaffPage() {
   const [language, setLanguage] = useState('en');
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState('');
+  const [startDate, setStartDate] = useState('');
 
   // Tab 2 — Role & Assignment
   const [role, setRole] = useState('worker');
@@ -256,11 +260,22 @@ export default function NewStaffPage() {
   const [assignedProperties, setAssignedProperties] = useState<string[]>([]);
   const [availableProperties, setAvailableProperties] = useState<{ id: string; name: string }[]>([]);
 
-  // Tab 3 — Comms
+  // Tab 3 — Access & Comms
   const [whatsapp, setWhatsapp] = useState('');
   const [telegram, setTelegram] = useState('');
   const [line, setLine] = useState('');
   const [sms, setSms] = useState('');
+  const [preferredContact, setPreferredContact] = useState('');
+
+  // Tab 4 — Documents & Compliance
+  const [idPhotoUrl, setIdPhotoUrl] = useState('');
+  const [idDocNumber, setIdDocNumber] = useState('');
+  const [idDocExpiry, setIdDocExpiry] = useState('');
+  const [idDocStatus, setIdDocStatus] = useState('missing');
+  const [workPermitPhotoUrl, setWorkPermitPhotoUrl] = useState('');
+  const [workPermitNumber, setWorkPermitNumber] = useState('');
+  const [workPermitExpiry, setWorkPermitExpiry] = useState('');
+  const [workPermitStatus, setWorkPermitStatus] = useState('missing');
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -272,40 +287,44 @@ export default function NewStaffPage() {
   const [uploadingIdPhoto, setUploadingIdPhoto] = useState(false);
   const idFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load properties for the assignment multi-select
+  const [uploadingPermitPhoto, setUploadingPermitPhoto] = useState(false);
+  const permitFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load approved properties only — mirrors edit page filter
   useEffect(() => {
-    apiFetch<any>('/admin/properties')
-      .then((res) => {
+    apiFetch<any>('/admin/properties?status=approved')
+      .then(res => {
         const props = res.properties || res.items || res.data || [];
         setAvailableProperties(
-          props.map((p: any) => ({ id: p.id || p.property_id, name: p.display_name || p.name || p.id }))
+          props
+            .filter((p: any) => !p.status || p.status === 'approved')
+            .map((p: any) => ({ id: p.id || p.property_id, name: p.display_name || p.name || p.id }))
         );
       })
       .catch(() => {});
   }, []);
 
   const toggleProperty = (id: string) =>
-    setAssignedProperties((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    setAssignedProperties(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
+
+  // ── Upload handlers ────────────────────────────────────────────────────────
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploadingPhoto(true);
     setError(null);
     try {
       const tok = getToken();
       if (!tok) throw new Error('Not authenticated');
-      
       const { url } = await uploadPropertyPhoto(file, 'staff-avatars', 'reference', tok);
       setPhotoUrl(url);
     } catch (err: any) {
       setError(err.message || 'Failed to upload photo');
     } finally {
       setUploadingPhoto(false);
-      // Reset input so the same file can be selected again
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -313,15 +332,14 @@ export default function NewStaffPage() {
   const handleIdPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploadingIdPhoto(true);
     setError(null);
     try {
       const tok = getToken();
       if (!tok) throw new Error('Not authenticated');
-      
-      const { url } = await uploadPropertyPhoto(file, 'staff-id-photos', 'reference', tok);
+      const { url } = await uploadPropertyPhoto(file, 'staff-pii', 'reference', tok);
       setIdPhotoUrl(url);
+      if (idDocStatus === 'missing') setIdDocStatus('submitted');
     } catch (err: any) {
       setError(err.message || 'Failed to upload ID photo');
     } finally {
@@ -330,23 +348,45 @@ export default function NewStaffPage() {
     }
   };
 
+  const handlePermitPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPermitPhoto(true);
+    setError(null);
+    try {
+      const tok = getToken();
+      if (!tok) throw new Error('Not authenticated');
+      const { url } = await uploadPropertyPhoto(file, 'staff-pii', 'reference', tok);
+      setWorkPermitPhotoUrl(url);
+      if (workPermitStatus === 'missing') setWorkPermitStatus('submitted');
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload work permit');
+    } finally {
+      setUploadingPermitPhoto(false);
+      if (permitFileInputRef.current) permitFileInputRef.current.value = '';
+    }
+  };
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+
   const handleSave = async () => {
     if (!userId.trim()) { setError('Email / User ID is required.'); setActiveTab(0); return; }
-    if (!role) { setError('Role is required.'); setActiveTab(1); return; }
+    if (!role)          { setError('Role is required.'); setActiveTab(1); return; }
     if (role === 'worker' && workerRoles.length === 0) {
       setError('Select at least one worker role.'); setActiveTab(1); return;
     }
     setError(null);
     setSaving(true);
     try {
-      // 1. Create permission record
       const body: Record<string, any> = {
         user_id: userId.trim(),
         role,
-        display_name: (displayName || fullName).trim() || undefined,
+        display_name: (preferredName || fullName).trim() || undefined,
         phone: phoneNumber.trim() ? `${phoneCode}${phoneNumber.trim()}` : undefined,
         address: address.trim() || undefined,
-        emergency_contact: emergencyName.trim() || emergencyNumber.trim() ? `${emergencyName.trim()} | ${emergencyCode}${emergencyNumber.trim()}` : undefined,
+        emergency_contact: emergencyName.trim() || emergencyNumber.trim()
+          ? `${emergencyName.trim()} | ${emergencyCode}${emergencyNumber.trim()}`
+          : undefined,
         photo_url: photoUrl.trim() || undefined,
         language,
         is_active: isActive,
@@ -360,12 +400,22 @@ export default function NewStaffPage() {
           sms: sms.trim() || undefined,
           email: email.trim() || undefined,
           date_of_birth: dateOfBirth || undefined,
+          start_date: startDate || undefined,
+          preferred_contact: preferredContact || undefined,
+          preferred_name: preferredName.trim() || undefined,
           id_photo_url: idPhotoUrl.trim() || undefined,
+          id_doc_number: idDocNumber.trim() || undefined,
+          id_doc_expiry: idDocExpiry || undefined,
+          id_doc_status: autoDocStatus(idDocStatus, idDocExpiry),
+          work_permit_photo_url: workPermitPhotoUrl.trim() || undefined,
+          work_permit_number: workPermitNumber.trim() || undefined,
+          work_permit_expiry: workPermitExpiry || undefined,
+          work_permit_status: autoDocStatus(workPermitStatus, workPermitExpiry),
         },
       };
       await apiFetch('/permissions', { method: 'POST', body: JSON.stringify(body) });
 
-      // 2. Assign properties
+      // Assign properties
       for (const propertyId of assignedProperties) {
         await apiFetch('/staff/assignments', {
           method: 'POST',
@@ -381,27 +431,23 @@ export default function NewStaffPage() {
     }
   };
 
-  const TABS = ['Profile', 'Role & Assignment', 'Access & Comms'];
+  const TABS = ['Profile', 'Role & Assignment', 'Access & Comms', 'Documents & Compliance'];
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* ── Page header ─────────────────────────────────────────────────── */}
+
+      {/* ── Page header ───────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 'var(--space-4)',
         padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--color-border)',
         background: 'var(--color-surface)',
       }}>
-        <button
-          onClick={() => router.back()}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)',
-            padding: '6px 10px', borderRadius: 'var(--radius-sm)',
-          }}
-        >
-          ← Back
-        </button>
+        <button onClick={() => router.back()} style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)',
+          padding: '6px 10px', borderRadius: 'var(--radius-sm)',
+        }}>← Back</button>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Staff
@@ -412,48 +458,39 @@ export default function NewStaffPage() {
         </div>
       </div>
 
-      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+      {/* ── Tab bar ───────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)',
         background: 'var(--color-surface)', padding: '0 var(--space-5)',
       }}>
         {TABS.map((t, i) => (
-          <button
-            key={t}
-            onClick={() => setActiveTab(i as 0 | 1 | 2)}
-            style={{
-              padding: '12px 20px',
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 'var(--text-sm)', fontWeight: activeTab === i ? 700 : 400,
-              color: activeTab === i ? 'var(--color-primary)' : 'var(--color-text-dim)',
-              borderBottom: activeTab === i ? '2px solid var(--color-primary)' : '2px solid transparent',
-              marginBottom: -1, transition: 'all 0.15s',
-            }}
-          >
-            {t}
-          </button>
+          <button key={t} onClick={() => setActiveTab(i as 0 | 1 | 2 | 3)} style={{
+            padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 'var(--text-sm)', fontWeight: activeTab === i ? 700 : 400,
+            color: activeTab === i ? 'var(--color-primary)' : 'var(--color-text-dim)',
+            borderBottom: activeTab === i ? '2px solid var(--color-primary)' : '2px solid transparent',
+            marginBottom: -1, transition: 'all 0.15s', whiteSpace: 'nowrap',
+          }}>{t}</button>
         ))}
       </div>
 
-      {/* ── Error banner ─────────────────────────────────────────────────── */}
+      {/* ── Error banner ──────────────────────────────────────────────────── */}
       {error && (
         <div style={{
           background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)',
           color: '#f85149', padding: '10px 20px', fontSize: 'var(--text-sm)',
-        }}>
-          {error}
-        </div>
+        }}>{error}</div>
       )}
 
-      {/* ── Content ─────────────────────────────────────────────────────── */}
+      {/* ── Content ───────────────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflow: 'auto', padding: 'var(--space-6) var(--space-5)', maxWidth: 720 }}>
 
         {/* ── Tab 1: Profile ────────────────────────────────────────────── */}
         {activeTab === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            <AvatarPreview 
-              name={displayName || fullName} 
-              photoUrl={photoUrl} 
+            <AvatarPreview
+              name={preferredName || fullName}
+              photoUrl={photoUrl}
               uploading={uploadingPhoto}
               onAddClick={() => fileInputRef.current?.click()}
               fileRef={fileInputRef}
@@ -464,11 +501,12 @@ export default function NewStaffPage() {
               <Field label="Full Name">
                 <input style={inputStyle} value={fullName} onChange={e => setFullName(e.target.value)} placeholder="e.g. สมชาย ใจดี" />
               </Field>
-              <Field label="Display Name">
-                <input style={inputStyle} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Nickname or short name" />
+              <Field label="Display Name / Nickname">
+                <input style={inputStyle} value={preferredName} onChange={e => setPreferredName(e.target.value)} placeholder="Optional — nickname at work" />
               </Field>
             </div>
 
+            {/* Auth email — required for create */}
             <Field label="Email / User ID *">
               <input
                 style={{ ...inputStyle, borderColor: !userId.trim() && error ? '#f85149' : undefined }}
@@ -482,12 +520,11 @@ export default function NewStaffPage() {
               </span>
             </Field>
 
-            <Field label="Photo URL">
+            <Field label="Photo URL / Avatar">
               <input style={inputStyle} value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="https://..." />
             </Field>
 
-            <div style={sectionHeadStyle}>Personally Identifiable Information (PII) 🔒</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 'var(--space-4)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Field label="Personal Email">
                 <input style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="worker@gmail.com" type="email" />
               </Field>
@@ -495,39 +532,14 @@ export default function NewStaffPage() {
                 <input style={inputStyle} type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
               </Field>
             </div>
-            
-            <Field label="ID / Passport Photo">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                {idPhotoUrl ? (
-                  <div style={{ position: 'relative', width: 140, height: 90, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                    <img src={idPhotoUrl} alt="ID Document" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                ) : (
-                  <div style={{ width: 140, height: 90, background: 'var(--color-surface-2)', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--color-text-dim)' }}>🪪</div>
-                )}
-                <div>
-                  <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={idFileInputRef} style={{ display: 'none' }} onChange={handleIdPhotoSelect} />
-                  <button 
-                    type="button" 
-                    onClick={() => idFileInputRef.current?.click()} 
-                    disabled={uploadingIdPhoto}
-                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', cursor: uploadingIdPhoto ? 'not-allowed' : 'pointer', fontSize: 'var(--text-ms)', color: 'var(--color-text)', opacity: uploadingIdPhoto ? 0.6 : 1 }}
-                  >
-                    {uploadingIdPhoto ? 'Uploading...' : 'Upload ID Photo'}
-                  </button>
-                  {idPhotoUrl && <button type="button" onClick={() => setIdPhotoUrl('')} style={{ background: 'none', border: 'none', color: '#f85149', fontSize: 'var(--text-xs)', cursor: 'pointer', marginLeft: 12 }}>Remove</button>}
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 8 }}>Securely stored for background checks.</div>
-                </div>
-              </div>
-            </Field>
 
             <div style={sectionHeadStyle}>Contact</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr)', gap: 'var(--space-4)' }}>
               <Field label="Phone">
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <select 
-                    style={{ ...inputStyle, width: '70px', cursor: 'pointer', padding: '9px 2px', textAlign: 'center' }} 
-                    value={phoneCode} 
+                  <select
+                    style={{ ...inputStyle, width: '70px', cursor: 'pointer', padding: '9px 2px', textAlign: 'center' }}
+                    value={phoneCode}
                     onChange={e => {
                       const code = e.target.value;
                       const oldFull = `${phoneCode}${phoneNumber}`.trim();
@@ -539,7 +551,7 @@ export default function NewStaffPage() {
                   >
                     {COUNTRY_CODES_OPTS.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
                   </select>
-                  <input style={{ ...inputStyle, flex: 1 }} value={phoneNumber} 
+                  <input style={{ ...inputStyle, flex: 1 }} value={phoneNumber}
                     onChange={e => {
                       const num = e.target.value;
                       const oldFull = `${phoneCode}${phoneNumber}`.trim();
@@ -547,8 +559,8 @@ export default function NewStaffPage() {
                       setPhoneNumber(num);
                       if (!whatsapp || whatsapp === oldFull) setWhatsapp(newFull);
                       if (!sms || sms === oldFull) setSms(newFull);
-                    }} 
-                    placeholder="81 234 5678" 
+                    }}
+                    placeholder="81 234 5678"
                   />
                 </div>
               </Field>
@@ -564,13 +576,16 @@ export default function NewStaffPage() {
             </div>
 
             <Field label="Address">
-              <textarea
-                style={{ ...inputStyle, resize: 'vertical', minHeight: 72 }}
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                placeholder="Home or work address"
-              />
+              <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 72 }} value={address} onChange={e => setAddress(e.target.value)} placeholder="Home or work address" />
             </Field>
+
+            <div style={sectionHeadStyle}>Employment</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <Field label="Start Date / Hired Date">
+                <input type="date" style={inputStyle} value={startDate} onChange={e => setStartDate(e.target.value)} />
+              </Field>
+              <div />
+            </div>
 
             <div style={sectionHeadStyle}>Preferences</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
@@ -581,39 +596,25 @@ export default function NewStaffPage() {
               </Field>
               <Field label="Status">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, cursor: 'pointer' }}>
-                  <div
-                    onClick={() => setIsActive(!isActive)}
-                    style={{
-                      width: 44, height: 24, borderRadius: 12,
-                      background: isActive ? 'var(--color-primary)' : 'var(--color-border)',
-                      position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute', top: 2, left: isActive ? 22 : 2,
-                      width: 20, height: 20, borderRadius: '50%',
-                      background: '#fff', transition: 'left 0.2s',
-                    }} />
+                  <div onClick={() => setIsActive(!isActive)} style={{
+                    width: 44, height: 24, borderRadius: 12,
+                    background: isActive ? 'var(--color-primary)' : 'var(--color-border)',
+                    position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
+                  }}>
+                    <div style={{ position: 'absolute', top: 2, left: isActive ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
                   </div>
-                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-                    {isActive ? 'Active' : 'Inactive'}
-                  </span>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{isActive ? 'Active' : 'Inactive'}</span>
                 </label>
               </Field>
             </div>
 
             <Field label="Internal Notes">
-              <textarea
-                style={{ ...inputStyle, resize: 'vertical', minHeight: 72 }}
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="Private notes visible to admin only"
-              />
+              <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 72 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Private notes visible to admin only" />
             </Field>
           </div>
         )}
 
-        {/* ── Tab 2: Role & Assignment ──────────────────────────────────── */}
+        {/* ── Tab 2: Role & Assignment ────────────────────────────────── */}
         {activeTab === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
             <Field label="Role *">
@@ -626,14 +627,9 @@ export default function NewStaffPage() {
                     border: `2px solid ${role === r.value ? 'var(--color-primary)' : 'var(--color-border)'}`,
                     borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.15s',
                   }}>
-                    <input
-                      type="radio"
-                      name="role"
-                      value={r.value}
-                      checked={role === r.value}
+                    <input type="radio" name="role" value={r.value} checked={role === r.value}
                       onChange={() => { setRole(r.value); setWorkerRoles([]); setMaintenanceSpecs([]); }}
-                      style={{ accentColor: 'var(--color-primary)' }}
-                    />
+                      style={{ accentColor: 'var(--color-primary)' }} />
                     <span style={{ fontWeight: role === r.value ? 700 : 400, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
                       {r.label}
                     </span>
@@ -642,7 +638,6 @@ export default function NewStaffPage() {
               </div>
             </Field>
 
-            {/* Worker Roles section */}
             {role === 'worker' && (
               <div>
                 <div style={sectionHeadStyle}>Staff Roles</div>
@@ -652,8 +647,6 @@ export default function NewStaffPage() {
                   </div>
                 )}
                 <CheckGroup options={WORKER_ROLES} selected={workerRoles} onChange={setWorkerRoles} />
-
-                {/* Maintenance specializations */}
                 {workerRoles.includes('maintenance') && (
                   <div style={{ marginTop: 'var(--space-4)' }}>
                     <div style={sectionHeadStyle}>Maintenance Specializations</div>
@@ -663,12 +656,18 @@ export default function NewStaffPage() {
               </div>
             )}
 
-            {/* Assigned Properties */}
             <div>
-              <div style={sectionHeadStyle}>Assigned Properties</div>
+              <div style={sectionHeadStyle}>
+                Assigned Properties
+                {assignedProperties.length > 0 && (
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', marginLeft: 8, fontWeight: 400 }}>
+                    {assignedProperties.length} assigned
+                  </span>
+                )}
+              </div>
               {availableProperties.length === 0 ? (
                 <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>
-                  No properties found. Add properties in Settings → Properties.
+                  No approved properties found. Add properties in Settings → Properties.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -680,12 +679,8 @@ export default function NewStaffPage() {
                       border: `1px solid ${assignedProperties.includes(p.id) ? 'var(--color-primary)' : 'var(--color-border)'}`,
                       borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.15s',
                     }}>
-                      <input
-                        type="checkbox"
-                        checked={assignedProperties.includes(p.id)}
-                        onChange={() => toggleProperty(p.id)}
-                        style={{ accentColor: 'var(--color-primary)' }}
-                      />
+                      <input type="checkbox" checked={assignedProperties.includes(p.id)} onChange={() => toggleProperty(p.id)}
+                        style={{ accentColor: 'var(--color-primary)' }} />
                       <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{p.name}</span>
                     </label>
                   ))}
@@ -724,17 +719,40 @@ export default function NewStaffPage() {
               </Field>
             </div>
 
-            {/* Owner visibility section — Phase 847 */}
+            <div style={sectionHeadStyle}>Contact Preferences</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <Field label="Preferred Contact Channel">
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={preferredContact} onChange={e => setPreferredContact(e.target.value)}>
+                  <option value="">— Not set —</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="telegram">Telegram</option>
+                  <option value="line">LINE</option>
+                  <option value="sms">SMS / Phone</option>
+                  <option value="email">Email</option>
+                </select>
+              </Field>
+            </div>
+
+            {/* Access Link — create-flow note (no live resend until record exists) */}
+            <div>
+              <div style={sectionHeadStyle}>Send Access Link</div>
+              <div style={{
+                background: 'var(--color-surface-2)', padding: 'var(--space-4)',
+                borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+              }}>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', margin: 0 }}>
+                  After creating this staff member, open their profile and use the <strong>Send Access Link</strong> button in the Access & Comms tab to generate and send their first-login link via email, WhatsApp, SMS, Telegram, or LINE.
+                </p>
+              </div>
+            </div>
+
             {role === 'owner' && (
               <div>
                 <div style={sectionHeadStyle}>Owner Visibility Controls</div>
                 <div style={{
-                  padding: 'var(--space-4)',
-                  background: 'var(--color-surface-2)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--color-text-dim)',
-                  fontSize: 'var(--text-sm)',
+                  padding: 'var(--space-4)', background: 'var(--color-surface-2)',
+                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                  color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)',
                 }}>
                   Visibility controls (financials, bookings, tasks) are configured in Phase 847.
                   Assign this owner to properties in the Role &amp; Assignment tab first.
@@ -743,41 +761,162 @@ export default function NewStaffPage() {
             )}
           </div>
         )}
+
+        {/* ── Tab 4: Documents & Compliance ─────────────────────────── */}
+        {activeTab === 3 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+
+            {/* ID / Passport */}
+            <div style={sectionHeadStyle}>ID / Passport</div>
+            <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                <Field label="Document Photo">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                    {idPhotoUrl ? (
+                      <div>
+                        <a href={idPhotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
+                          <img src={idPhotoUrl} alt="ID Document" style={{ maxWidth: 200, maxHeight: 120, objectFit: 'contain', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }} />
+                        </a>
+                        <div style={{ marginTop: 8 }}>
+                          <button type="button" onClick={() => setIdPhotoUrl('')} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-alert)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Remove</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>No ID uploaded.</div>
+                    )}
+                    <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={idFileInputRef} style={{ display: 'none' }} onChange={handleIdPhotoSelect} />
+                    <button type="button" onClick={() => idFileInputRef.current?.click()} disabled={uploadingIdPhoto} style={{
+                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)', color: 'var(--color-text)', cursor: uploadingIdPhoto ? 'not-allowed' : 'pointer',
+                      fontSize: 'var(--text-xs)', fontWeight: 600, width: 'fit-content',
+                    }}>
+                      {uploadingIdPhoto ? 'Uploading…' : 'Upload ID / Passport'}
+                    </button>
+                  </div>
+                </Field>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <Field label="Document Number">
+                    <input style={inputStyle} value={idDocNumber} onChange={e => setIdDocNumber(e.target.value)} placeholder="Passport / ID number" />
+                  </Field>
+                  <Field label="Expiry Date">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <input type="date" style={{ ...inputStyle, flex: 1 }} value={idDocExpiry} onChange={e => setIdDocExpiry(e.target.value)} />
+                      {(() => { const w = expiryWarning(idDocExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
+                    </div>
+                  </Field>
+                </div>
+
+                <Field label="Status">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <select style={{ ...inputStyle, flex: 1, cursor: 'pointer' }} value={autoDocStatus(idDocStatus, idDocExpiry)} onChange={e => setIdDocStatus(e.target.value)}>
+                      {DOC_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: docStatusColor(autoDocStatus(idDocStatus, idDocExpiry)), flexShrink: 0 }} />
+                  </div>
+                </Field>
+              </div>
+            </div>
+
+            {/* Work Permit */}
+            <div style={sectionHeadStyle}>Work Permit</div>
+            <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                <Field label="Document Photo">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                    {workPermitPhotoUrl ? (
+                      <div>
+                        <a href={workPermitPhotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
+                          <img src={workPermitPhotoUrl} alt="Work Permit" style={{ maxWidth: 200, maxHeight: 120, objectFit: 'contain', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)' }} />
+                        </a>
+                        <div style={{ marginTop: 8 }}>
+                          <button type="button" onClick={() => setWorkPermitPhotoUrl('')} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-alert)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Remove</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>No permit uploaded.</div>
+                    )}
+                    <input type="file" accept={ACCEPTED_IMAGE_TYPES} ref={permitFileInputRef} style={{ display: 'none' }} onChange={handlePermitPhotoSelect} />
+                    <button type="button" onClick={() => permitFileInputRef.current?.click()} disabled={uploadingPermitPhoto} style={{
+                      padding: '8px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)', color: 'var(--color-text)', cursor: uploadingPermitPhoto ? 'not-allowed' : 'pointer',
+                      fontSize: 'var(--text-xs)', fontWeight: 600, width: 'fit-content',
+                    }}>
+                      {uploadingPermitPhoto ? 'Uploading…' : 'Upload Work Permit'}
+                    </button>
+                  </div>
+                </Field>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <Field label="Permit Number">
+                    <input style={inputStyle} value={workPermitNumber} onChange={e => setWorkPermitNumber(e.target.value)} placeholder="Work permit number" />
+                  </Field>
+                  <Field label="Expiry Date">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <input type="date" style={{ ...inputStyle, flex: 1 }} value={workPermitExpiry} onChange={e => setWorkPermitExpiry(e.target.value)} />
+                      {(() => { const w = expiryWarning(workPermitExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
+                    </div>
+                  </Field>
+                </div>
+
+                <Field label="Status">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <select style={{ ...inputStyle, flex: 1, cursor: 'pointer' }} value={autoDocStatus(workPermitStatus, workPermitExpiry)} onChange={e => setWorkPermitStatus(e.target.value)}>
+                      {DOC_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: docStatusColor(autoDocStatus(workPermitStatus, workPermitExpiry)), flexShrink: 0 }} />
+                  </div>
+                </Field>
+              </div>
+            </div>
+
+            {/* Compliance Summary */}
+            <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginTop: 'var(--space-2)' }}>
+              <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>Compliance Overview</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                {[{ label: 'ID / Passport', status: autoDocStatus(idDocStatus, idDocExpiry), expiry: idDocExpiry },
+                  { label: 'Work Permit',  status: autoDocStatus(workPermitStatus, workPermitExpiry), expiry: workPermitExpiry }].map(doc => {
+                  const warning = expiryWarning(doc.expiry);
+                  return (
+                    <div key={doc.label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: docStatusColor(doc.status), flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>{doc.label}</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: docStatusColor(doc.status), textTransform: 'capitalize' }}>
+                          {doc.status.replace(/_/g, ' ')}
+                          {warning && <span style={{ marginLeft: 8, fontWeight: 700 }}>· {warning.label}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── Sticky footer: tab nav + save ───────────────────────────────── */}
+      {/* ── Sticky footer ─────────────────────────────────────────────────── */}
       <div style={{
         position: 'sticky', bottom: 0,
-        background: 'var(--color-surface)',
-        borderTop: '1px solid var(--color-border)',
+        background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)',
         padding: 'var(--space-3) var(--space-5)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        gap: 'var(--space-3)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)',
       }}>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {activeTab > 0 && (
-            <button
-              onClick={() => setActiveTab((activeTab - 1) as 0 | 1 | 2)}
-              style={{
-                padding: '8px 18px', borderRadius: 'var(--radius-sm)',
-                background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
-                color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 'var(--text-sm)',
-              }}
-            >
-              ← Previous
-            </button>
+            <button onClick={() => setActiveTab((activeTab - 1) as 0 | 1 | 2 | 3)} style={{
+              padding: '8px 18px', borderRadius: 'var(--radius-sm)',
+              background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+              color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 'var(--text-sm)',
+            }}>← Previous</button>
           )}
-          {activeTab < 2 && (
-            <button
-              onClick={() => setActiveTab((activeTab + 1) as 0 | 1 | 2)}
-              style={{
-                padding: '8px 18px', borderRadius: 'var(--radius-sm)',
-                background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
-                color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--text-sm)',
-              }}
-            >
-              Next →
-            </button>
+          {activeTab < 3 && (
+            <button onClick={() => setActiveTab((activeTab + 1) as 0 | 1 | 2 | 3)} style={{
+              padding: '8px 18px', borderRadius: 'var(--radius-sm)',
+              background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+              color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--text-sm)',
+            }}>Next →</button>
           )}
         </div>
 
