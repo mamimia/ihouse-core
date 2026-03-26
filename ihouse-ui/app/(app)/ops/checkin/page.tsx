@@ -271,7 +271,7 @@ export default function MobileCheckinPage() {
                         booking_id: bId,
                         booking_ref: t.task_id,
                         property_id: t.property_id,
-                        guest_name: t.title || undefined,
+                        guest_name: undefined, // CRITICAL FIX: never fallback to t.title, prevents operational garbage in UI
                         check_in: t.due_date || today,
                         check_out: undefined,
                         status: t.status || 'Upcoming',
@@ -299,13 +299,13 @@ export default function MobileCheckinPage() {
                         .then(res => {
                             const bk = res?.data || res;
                             if (bk && bk.booking_id) {
-                                b.check_out = bk.check_out || b.check_out;
-                                b.guest_name = bk.guest_name || b.guest_name;
+                                b.check_out = bk.check_out ?? b.check_out;
+                                b.guest_name = bk.guest_name ?? b.guest_name;
                                 b.guest_count = bk.guest_count ?? b.guest_count;
-                                b.check_in = bk.check_in || b.check_in;
-                                b.source = bk.source || b.source;
-                                b.reservation_ref = bk.reservation_ref || b.reservation_ref;
-                                b.guest_id = bk.guest_id || b.guest_id;
+                                b.check_in = bk.check_in ?? b.check_in;
+                                b.source = bk.source ?? b.source;
+                                b.reservation_ref = bk.reservation_ref ?? b.reservation_ref;
+                                b.guest_id = bk.guest_id ?? b.guest_id;
                             }
                         })
                         .catch(() => {
