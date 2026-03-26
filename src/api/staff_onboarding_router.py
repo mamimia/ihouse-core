@@ -593,6 +593,34 @@ async def resend_access(
             if not email:
                 return make_error_response(status_code=400, code="NO_EMAIL", extra={"detail": "User has no email on file."})
 
+            # ── Phase 947: Identity Preflight Check ──────────────────────────
+            # Guard: the auth account's email MUST match the worker's comm_preference email.
+            # If they diverge, the access link will be bound to the wrong identity.
+            # Block generation immediately with an explicit, admin-facing error.
+            comm_email = (comm.get("email") or "").lower().strip()
+            auth_email = email.lower().strip()
+            if comm_email and auth_email != comm_email:
+                logger.error(
+                    "Phase 947 IDENTITY_MISMATCH blocked access link: user_id=%s "
+                    "auth_email=%s comm_email=%s tenant=%s",
+                    user_id, auth_email, comm_email, tenant_id,
+                )
+                return make_error_response(
+                    status_code=409,
+                    code="IDENTITY_MISMATCH",
+                    extra={
+                        "detail": (
+                            f"Identity mismatch: the linked auth account ({auth_email}) does not match "
+                            f"the worker's communication email ({comm_email}). "
+                            "The worker identity must be repaired before an access link can be generated."
+                        ),
+                        "auth_email": auth_email,
+                        "comm_email": comm_email,
+                        "user_id": user_id,
+                    },
+                )
+            # ── End Identity Preflight ───────────────────────────────────────
+
             resolved_front = body.frontend_url or req.headers.get("origin") or os.environ.get("NEXT_PUBLIC_APP_URL") or "http://localhost:3000"
             frontend_url = resolved_front.rstrip("/")
             try:
@@ -710,12 +738,34 @@ async def get_staff_status(
         key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
         admin_client = create_client(url, key)
         
-        user = admin_client.auth.admin.get_user_by_id(user_id)
+        try:
+            user = admin_client.auth.admin.get_user_by_id(user_id)
+        except Exception:
+            return JSONResponse(status_code=200, content={
+                "user_id": user_id,
+                "force_reset": None,
+                "last_sign_in_at": None,
+                "invited_at": None,
+                "access_link_sent_at": None,
+                "access_link_opened_at": None
+            })
+            
         u = user.user
         
         meta = u.user_metadata or {}
         force_reset = meta.get("force_reset", False)
         last_sign_in = getattr(u, "last_sign_in_at", None)
+        auth_email = getattr(u, "email", None)
+
+        # Phase 947: Fetch comm_preference email from tenant_permissions for identity chain
+        perm_res = db.table("tenant_permissions").select("comm_preference").eq("tenant_id", tenant_id).eq("user_id", user_id).limit(1).execute()
+        comm_email = None
+        identity_mismatch = False
+        if perm_res.data:
+            comm = perm_res.data[0].get("comm_preference") or {}
+            comm_email = comm.get("email")
+            if comm_email and auth_email:
+                identity_mismatch = comm_email.lower().strip() != auth_email.lower().strip()
         
         return JSONResponse(status_code=200, content={
             "user_id": user_id,
@@ -723,7 +773,11 @@ async def get_staff_status(
             "last_sign_in_at": last_sign_in,
             "invited_at": getattr(u, "updated_at", None), # approximate
             "access_link_sent_at": meta.get("access_link_sent_at"),
-            "access_link_opened_at": meta.get("access_link_opened_at")
+            "access_link_opened_at": meta.get("access_link_opened_at"),
+            # Phase 947: Identity chain — auth_email, comm_email, and mismatch flag
+            "auth_email": auth_email,
+            "comm_email": comm_email,
+            "identity_mismatch": identity_mismatch,
         })
     except Exception as exc:
         logger.exception("Failed to fetch staff status for %s: %s", user_id, exc)

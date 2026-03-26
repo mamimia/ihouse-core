@@ -349,13 +349,17 @@ export default function EditStaffPage() {
   const [createdAt, setCreatedAt] = useState<string | undefined>();
   const [updatedAt, setUpdatedAt] = useState<string | undefined>();
   
-  // Phase 945: Activation Status
+  // Phase 945+947: Activation Status + Identity Chain
   const [authStatus, setAuthStatus] = useState<{ 
     force_reset?: boolean; 
     last_sign_in_at?: string | null; 
     invited_at?: string | null;
     access_link_sent_at?: string | null;
     access_link_opened_at?: string | null;
+    // Phase 947: identity chain
+    auth_email?: string | null;
+    comm_email?: string | null;
+    identity_mismatch?: boolean;
   } | null>(null);
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -366,6 +370,17 @@ export default function EditStaffPage() {
 
   const [uploadingPermitPhoto, setUploadingPermitPhoto] = useState(false);
   const permitFileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchAuthStatus = useCallback(async () => {
+    try {
+      const authStatusRes = await apiFetch<any>(`/admin/staff/${encodeURIComponent(rawUserId)}/status`);
+      if (authStatusRes && !authStatusRes.error) {
+        setAuthStatus(authStatusRes);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [rawUserId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1118,65 +1133,7 @@ export default function EditStaffPage() {
               overflow: 'hidden',
               marginBottom: 'var(--space-4)'
             }}>
-              {/* TOP HALF: Lifecycle Tracker */}
-              {authStatus && (
-                <div style={{ padding: 'var(--space-4)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface-1)' }}>
-                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {t('admin.activation_lifecycle')}
-                  </div>
-                  
-                  {/* Step 1: Sent */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.access_link_sent_at ? 'var(--color-ok)' : 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {authStatus.access_link_sent_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
-                    </div>
-                    <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.access_link_sent_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
-                      <span style={{ fontWeight: 600 }}>{t('admin.access_link_sent')}</span>
-                      {authStatus.access_link_sent_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 400 }}>{new Date(authStatus.access_link_sent_at).toLocaleString()}</span>}
-                    </div>
-                  </div>
-                  
-                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-2px 0 -2px 7px' }} />
-
-                  {/* Step 2: Opened */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.access_link_opened_at ? 'var(--color-ok)' : 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                       {authStatus.access_link_opened_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
-                    </div>
-                    <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.access_link_opened_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
-                      <span style={{ fontWeight: 600 }}>{t('admin.link_opened')}</span>
-                      {authStatus.access_link_opened_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 400 }}>{new Date(authStatus.access_link_opened_at).toLocaleString()}</span>}
-                    </div>
-                  </div>
-
-                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-2px 0 -2px 7px' }} />
-
-                  {/* Step 3: Activated */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.force_reset === false ? 'var(--color-ok)' : 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                       {authStatus.force_reset === false && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
-                    </div>
-                    <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.force_reset === false ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
-                      <span style={{ fontWeight: 600 }}>{t('admin.worker_activated')}</span>
-                    </div>
-                  </div>
-
-                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-2px 0 -2px 7px' }} />
-
-                  {/* Step 4: Last Login */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.last_sign_in_at ? 'var(--color-ok)' : 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                       {authStatus.last_sign_in_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
-                    </div>
-                    <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.last_sign_in_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
-                      <span style={{ fontWeight: 600 }}>{t('admin.active_session')}</span>
-                      {authStatus.last_sign_in_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 400 }}>{t('admin.last_login')}: {new Date(authStatus.last_sign_in_at).toLocaleString()}</span>}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* BOTTOM HALF: Actions */}
+              {/* TOP HALF: Actions */}
               <div style={{ padding: 'var(--space-4)' }}>
                 <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {authStatus?.force_reset === false ? t('admin.account_management') : t('admin.send_access_link_title')}
@@ -1197,12 +1154,12 @@ export default function EditStaffPage() {
                         setResendSending(true);
                         setResendResult(null);
                         try {
-                          // Force channel as email since it's a reset
                           const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
                             method: 'POST',
                             body: JSON.stringify({ channel: 'email', frontend_url: window.location.origin }),
                           });
                           setResendResult(resp);
+                          await fetchAuthStatus();
                           alert('Password recovery process initiated via email magic link.');
                         } catch (err: any) {
                           setResendResult({ status: 'error', message: err.message || 'Failed to send' });
@@ -1240,24 +1197,25 @@ export default function EditStaffPage() {
                   </div>
                 ) : (
                   // Pre-Activation Controls
-                  <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                     <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 160 }}>
+                      <div style={{ flex: 1, minWidth: 160, maxWidth: 300 }}>
                         <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Delivery Channel</label>
                         <select
                           style={{ ...inputStyle, cursor: 'pointer', width: '100%' }}
                           value={resendChannel}
                           onChange={e => setResendChannel(e.target.value)}
                         >
-                          <option value="email">Email</option>
-                          {whatsapp && <option value="whatsapp">WhatsApp</option>}
-                          {sms && <option value="sms">SMS / Phone</option>}
-                          {telegram && <option value="telegram">Telegram</option>}
-                          {line && <option value="line">LINE</option>}
+                          <option value="email">Email {email ? `(${email})` : ''}</option>
+                          {whatsapp && <option value="whatsapp">WhatsApp ({whatsapp})</option>}
+                          {sms && <option value="sms">SMS / Phone ({sms})</option>}
+                          {telegram && <option value="telegram">Telegram ({telegram})</option>}
+                          {line && <option value="line">LINE ({line})</option>}
                         </select>
                       </div>
+                      
                       <button
-                        disabled={resendSending}
+                        disabled={resendSending || !!authStatus?.identity_mismatch}
                         onClick={async () => {
                           setResendSending(true);
                           setResendResult(null);
@@ -1267,6 +1225,7 @@ export default function EditStaffPage() {
                               body: JSON.stringify({ channel: resendChannel, frontend_url: window.location.origin }),
                             });
                             setResendResult(resp);
+                            await fetchAuthStatus();
                           } catch (err: any) {
                             setResendResult({ status: 'error', message: err.message || 'Failed to send' });
                           } finally {
@@ -1275,62 +1234,82 @@ export default function EditStaffPage() {
                         }}
                         style={{
                           padding: '10px 20px', borderRadius: 'var(--radius-sm)',
-                          background: 'var(--color-primary, #4A7C59)', color: '#fff', border: 'none',
+                          background: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)',
                           cursor: resendSending ? 'not-allowed' : 'pointer', fontWeight: 600,
                           fontSize: 'var(--text-sm)', opacity: resendSending ? 0.6 : 1,
                           minHeight: 40, whiteSpace: 'nowrap' as const,
                         }}
                       >
-                        {resendSending ? 'Sending...' : 'Send Access Link'}
+                        {resendSending ? 'Sending...' : 'Generate Link'}
                       </button>
-                    </div>
 
-                    {/* mailto Send by Email — shown when email is known */}
-                    {email && (
-                      <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Quick Send by Email</p>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <span style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>To: {email}</span>
-                          <button
-                            type="button"
-                            disabled={resendSending}
-                            onClick={async () => {
-                              setResendSending(true);
-                              setResendResult(null);
-                              try {
-                                const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
-                                  method: 'POST',
-                                  body: JSON.stringify({ channel: 'email', frontend_url: window.location.origin }),
-                                });
-                                setResendResult(resp);
-                                if (resp.magic_link) {
-                                    window.location.href = getAccessMailto(language, email, resp.magic_link);
-                                } else {
-                                    alert('Could not generate the magic link. Check backend logs.');
-                                }
-                              } catch (err: any) {
-                                setResendResult({ status: 'error', message: err.message || 'Failed to generate link' });
-                              } finally {
-                                setResendSending(false);
+                      {email && (
+                        <button
+                          type="button"
+                          disabled={resendSending || !!authStatus?.identity_mismatch}
+                          onClick={async () => {
+                            setResendSending(true);
+                            setResendResult(null);
+                            try {
+                              const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
+                                method: 'POST',
+                                body: JSON.stringify({ channel: 'email', frontend_url: window.location.origin }),
+                              });
+                              setResendResult(resp);
+                              if (resp.magic_link) {
+                                  window.location.href = getAccessMailto(language, email, resp.magic_link);
+                              } else {
+                                  alert('Could not generate the magic link. Check backend logs.');
                               }
-                            }}
-                            style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: resendSending ? 'not-allowed' : 'pointer', opacity: resendSending ? 0.6 : 1, whiteSpace: 'nowrap' }}
-                          >
-                            {resendSending ? 'Generating Link...' : '✉ Send by Email'}
-                          </button>
-                          <span style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>Generates link and opens your mail client directly</span>
-                        </div>
-                        {resendResult?.magic_link && (
-                          <div style={{ marginTop: 10 }}>
-                            <p style={{ fontSize: 11, color: 'var(--color-text-faint)', margin: '0 0 6px' }}>Direct link (if your mail client didn't open):</p>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <input readOnly value={resendResult.magic_link} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, flex: 1 }} onClick={(e: any) => e.target.select()} />
-                            </div>
-                          </div>
-                        )}
+                              await fetchAuthStatus(); // INSTANT UI refresh to update Link Sent flag
+                            } catch (err: any) {
+                              setResendResult({ status: 'error', message: err.message || 'Failed to generate link' });
+                            } finally {
+                              setResendSending(false);
+                            }
+                          }}
+                          style={{
+                            padding: '10px 20px', borderRadius: 'var(--radius-sm)',
+                            background: 'var(--color-primary, #4A7C59)', color: '#fff', border: 'none',
+                            cursor: resendSending ? 'not-allowed' : 'pointer', fontWeight: 600,
+                            fontSize: 'var(--text-sm)', opacity: resendSending ? 0.6 : 1,
+                            minHeight: 40, whiteSpace: 'nowrap' as const,
+                          }}
+                        >
+                          {resendSending ? 'Generating Link...' : '✉ Quick Send by Email'}
+                        </button>
+                      )}
+                    </div>
+                    {email && <div style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>Quick Send generates the link and directly opens your native mail client draft.</div>}
+                  </div>
+                )}
+
+                {/* Phase 947: Identity Mismatch Warning — renders ABOVE action buttons */}
+                {authStatus?.identity_mismatch && (
+                  <div style={{
+                    marginBottom: 'var(--space-3)',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(196,91,74,0.1)',
+                    border: '2px solid var(--color-alert, #C45B4A)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 14 }}>⚠️</span>
+                      <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-alert, #C45B4A)' }}>
+                        Identity Mismatch — Access Link Blocked
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
+                      <div>The Supabase auth account linked to this worker does not match the worker's communication email.</div>
+                      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3, fontFamily: 'monospace', fontSize: 11 }}>
+                        <span><span style={{ color: 'var(--color-alert)' }}>Auth account:</span> {authStatus.auth_email}</span>
+                        <span><span style={{ color: 'var(--color-ok, #4A7C59)' }}>Comm email:</span> {authStatus.comm_email}</span>
                       </div>
-                    )}
-                  </>
+                      <div style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>
+                        No access link can be sent until the identity linkage is repaired. Contact your system administrator.
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {resendResult && (
@@ -1338,7 +1317,7 @@ export default function EditStaffPage() {
                     marginTop: 'var(--space-3)', padding: 'var(--space-3)',
                     borderRadius: 'var(--radius-sm)',
                     background: resendResult.status === 'error' ? 'rgba(196,91,74,0.1)' : 'rgba(74,124,89,0.1)',
-                    border: `1px solid ${resendResult.status === 'error' ? 'rgba(196,91,74,0.3)' : 'rgba(74,124,89,0.3)'}`,
+                    border: `1px solid ${resendResult.status === 'error' ? 'var(--color-alert)' : 'var(--color-ok, #4A7C59)'}`,
                     fontSize: 'var(--text-sm)',
                     color: resendResult.status === 'error' ? 'var(--color-alert)' : 'var(--color-ok, #4A7C59)',
                   }}>
@@ -1353,6 +1332,62 @@ export default function EditStaffPage() {
                   </div>
                 )}
               </div>
+
+              {/* BOTTOM HALF: Tracker */}
+              {(() => {
+                const isActivated = authStatus?.force_reset === false;
+                // If they have ever signed in (even partially via magic link), they opened it.
+                const isOpened = !!authStatus?.access_link_opened_at || !!authStatus?.last_sign_in_at || isActivated;
+                // If they exist in Supabase auth (invited_at) or opened it, then it was sent.
+                const isSent = !!authStatus?.access_link_sent_at || !!authStatus?.invited_at || isOpened;
+                // Strictly tracking active sessions AFTER activation. (If activated and signed in)
+                const isLastActive = isActivated && !!authStatus?.last_sign_in_at;
+                
+                return (
+                  <div style={{ padding: '12px 16px', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface-1)' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-faint)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      {t('admin.activation_lifecycle')}
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {/* Sent Pill */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isSent ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isSent ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isSent ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: isSent ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+                          {t('admin.access_link_sent')}
+                          {authStatus?.access_link_sent_at && <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.8 }}>{new Date(authStatus.access_link_sent_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} {new Date(authStatus.access_link_sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span>}
+                        </span>
+                      </div>
+
+                      {/* Opened Pill */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isOpened ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isOpened ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isOpened ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: isOpened ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+                          {t('admin.link_opened')}
+                          {authStatus?.access_link_opened_at && <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.8 }}>{new Date(authStatus.access_link_opened_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} {new Date(authStatus.access_link_opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span>}
+                        </span>
+                      </div>
+
+                      {/* Activated Pill */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isActivated ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isActivated ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isActivated ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: isActivated ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+                          {t('admin.worker_activated')}
+                        </span>
+                      </div>
+
+                      {/* Active Session Pill */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isLastActive ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isLastActive ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isLastActive ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: isLastActive ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+                          {t('admin.active_session')}
+                          {authStatus?.last_sign_in_at && <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.8 }}>{new Date(authStatus.last_sign_in_at).toLocaleDateString([], { month: 'short', day: 'numeric'})}</span>}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {role === 'owner' && (
