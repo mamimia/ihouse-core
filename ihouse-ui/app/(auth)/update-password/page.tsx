@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch, performClientLogout, getToken } from '../../../lib/api';
+import { apiFetch, performClientLogout, getToken, setToken } from '../../../lib/api';
+import { getRoleRoute } from '../../../lib/roleRoute';
 import AuthCard from '../../../components/auth/AuthCard';
 import PasswordInput from '../../../components/auth/PasswordInput';
 import { usePasswordRules } from '@/hooks/usePasswordRules';
@@ -46,12 +47,20 @@ export default function UpdatePasswordPage() {
     setError(null);
 
     try {
-      await apiFetch<{ message: string }>('/auth/change-password', {
+      const data = await apiFetch<{ message: string, token?: string, expires_in?: number }>('/auth/change-password', {
         method: 'POST',
         body: JSON.stringify({ new_password: password })
       });
-      alert('Password updated successfully. Please log in again.');
-      performClientLogout('/login');
+      
+      if (data.token) {
+        setToken(data.token);
+        const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+        document.cookie = `ihouse_token=${data.token}; path=/; max-age=${data.expires_in || 86400}; SameSite=Lax${isHttps ? '; Secure' : ''}`;
+        window.location.href = getRoleRoute(data.token);
+      } else {
+        alert('Password updated successfully. Please log in again.');
+        performClientLogout('/login');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to update password');
       setLoading(false);

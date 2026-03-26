@@ -539,6 +539,9 @@ async def change_password(
     try:
         payload = jwt.decode(token, jwt_secret, algorithms=[_ALGORITHM], options={"verify_aud": False})
         user_id = payload.get("sub")
+        tenant_id = payload.get("tenant_id", "")
+        role = payload.get("role", "")
+        email = payload.get("email", "")
     except Exception as e:
         return err("UNAUTHORIZED", f"Invalid token: {e}", status=401)
 
@@ -556,12 +559,30 @@ async def change_password(
         
         db.auth.admin.update_user_by_id(
             user_id,
-            {
-                "password": body.new_password,
-                "user_metadata": current_meta
-            }
+            {"password": body.new_password, "user_metadata": current_meta}
         )
-        return ok({"message": "Password updated successfully"})
+        
+        # Issue a fresh JWT so the user doesn't have to log in again
+        now = int(time.time())
+        new_payload = {
+            "sub": user_id,
+            "tenant_id": tenant_id,
+            "role": role,
+            "email": email,
+            "is_active": payload.get("is_active", True),
+            "force_reset": False,
+            "iat": now,
+            "exp": now + _TOKEN_TTL_SECONDS,
+            "token_type": "session",
+            "auth_method": payload.get("auth_method", "password_reset"),
+        }
+        new_token = jwt.encode(new_payload, jwt_secret, algorithm=_ALGORITHM)
+        
+        return ok({
+            "message": "Password updated successfully",
+            "token": new_token,
+            "expires_in": _TOKEN_TTL_SECONDS
+        })
     except Exception as exc:
         logger.warning("auth/change-password: failed for user %s — %s", user_id, exc)
         return err("UPDATE_FAILED", str(exc), status=400)
