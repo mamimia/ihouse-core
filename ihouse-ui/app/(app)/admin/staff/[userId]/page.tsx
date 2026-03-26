@@ -361,6 +361,11 @@ export default function EditStaffPage() {
     comm_email?: string | null;
     identity_mismatch?: boolean;
   } | null>(null);
+  // Phase 947d: explicit status load failure — prevents silent grey-pill degradation
+  const [statusLoadFailed, setStatusLoadFailed] = useState(false);
+  // Phase 947d: repair UI state
+  const [repairLoading, setRepairLoading] = useState(false);
+  const [repairResult, setRepairResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -376,9 +381,15 @@ export default function EditStaffPage() {
       const authStatusRes = await apiFetch<any>(`/admin/staff/${encodeURIComponent(rawUserId)}/status`);
       if (authStatusRes && !authStatusRes.error) {
         setAuthStatus(authStatusRes);
+        setStatusLoadFailed(false); // clear any previous failure
+      } else {
+        // Backend returned an error shape — explicit failure, not neutral grey
+        setStatusLoadFailed(true);
       }
     } catch (e) {
-      console.error(e);
+      // Network or 5xx — must show error, NOT silent grey pills
+      setStatusLoadFailed(true);
+      console.error('[lifecycle] status fetch failed:', e);
     }
   }, [rawUserId]);
 
@@ -1293,33 +1304,107 @@ export default function EditStaffPage() {
                   </div>
                 )}
 
-                {/* Phase 947: Identity Mismatch Warning — renders ABOVE action buttons */}
-                {authStatus?.identity_mismatch && (
-                  <div style={{
-                    marginBottom: 'var(--space-3)',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'rgba(196,91,74,0.1)',
-                    border: '2px solid var(--color-alert, #C45B4A)',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 14 }}>⚠️</span>
-                      <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-alert, #C45B4A)' }}>
-                        Identity Mismatch — Access Link Blocked
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
-                      <div>The Supabase auth account linked to this worker does not match the worker's communication email.</div>
-                      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3, fontFamily: 'monospace', fontSize: 11 }}>
-                        <span><span style={{ color: 'var(--color-alert)' }}>Auth account:</span> {authStatus.auth_email}</span>
-                        <span><span style={{ color: 'var(--color-ok, #4A7C59)' }}>Comm email:</span> {authStatus.comm_email}</span>
+                {/* Phase 947d: Identity Mismatch Banner — full repair UX */}
+                {authStatus?.identity_mismatch && (() => {
+                  // Classify the mismatch: same local part = typo (fixable here);
+                  // different local parts = deep mismatch (needs manual investigation)
+                  const authLocal = (authStatus.auth_email || '').split('@')[0].toLowerCase().trim();
+                  const commLocal = (authStatus.comm_email || '').split('@')[0].toLowerCase().trim();
+                  const isTypoCase = authLocal === commLocal && authLocal !== '';
+
+                  const handleRepair = async () => {
+                    if (!isTypoCase) return;
+                    setRepairLoading(true);
+                    setRepairResult(null);
+                    try {
+                      const res = await apiFetch<any>(`/admin/staff/${encodeURIComponent(rawUserId)}/repair-email`, {
+                        method: 'POST',
+                        body: JSON.stringify({ confirmed: true }),
+                      });
+                      if (res.status === 'repaired') {
+                        setRepairResult({ ok: true, message: `✓ Fixed: auth email updated to ${res.auth_email_after}. Refreshing status…` });
+                        setTimeout(() => { fetchAuthStatus(); setRepairResult(null); }, 2000);
+                      } else if (res.status === 'already_correct') {
+                        setRepairResult({ ok: true, message: '✓ Already correct — no repair needed.' });
+                        fetchAuthStatus();
+                      } else {
+                        setRepairResult({ ok: false, message: res.detail || 'Repair failed.' });
+                      }
+                    } catch {
+                      setRepairResult({ ok: false, message: 'Request failed. Please try again.' });
+                    } finally {
+                      setRepairLoading(false);
+                    }
+                  };
+
+                  return (
+                    <div style={{
+                      marginBottom: 'var(--space-3)',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(196,91,74,0.07)',
+                      border: '2px solid var(--color-alert, #C45B4A)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <span style={{ fontSize: 14 }}>⚠️</span>
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-alert, #C45B4A)' }}>
+                          Identity Mismatch — Access Link Blocked
+                        </span>
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>
-                        No access link can be sent until the identity linkage is repaired. Contact your system administrator.
+
+                      <div style={{ fontSize: 12, color: 'var(--color-text-dim)', lineHeight: 1.6 }}>
+                        <div style={{ marginBottom: 4 }}>
+                          {isTypoCase
+                            ? '⚠ The auth account email has a typo. The worker username matches, but the domain is wrong.'
+                            : '🚫 The auth account belongs to a different person. This requires manual database repair.'}
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontFamily: 'monospace', fontSize: 11, marginBottom: 8 }}>
+                          <span><span style={{ color: 'var(--color-alert)' }}>Auth account email:</span> {authStatus.auth_email}</span>
+                          <span><span style={{ color: 'var(--color-ok, #4A7C59)' }}>Comm email (correct):</span> {authStatus.comm_email}</span>
+                        </div>
+
+                        {isTypoCase ? (
+                          <div>
+                            <div style={{ marginBottom: 6, fontSize: 11 }}>
+                              <strong>What to do:</strong> Click "Fix Auth Email" to update the auth account email from
+                              <code style={{ margin: '0 4px', background: 'rgba(0,0,0,0.08)', padding: '1px 4px', borderRadius: 3 }}>{authStatus.auth_email}</code>
+                              to
+                              <code style={{ margin: '0 4px', background: 'rgba(0,0,0,0.08)', padding: '1px 4px', borderRadius: 3 }}>{authStatus.comm_email}</code>.
+                              The worker's account linkage stays the same.
+                            </div>
+                            {repairResult && (
+                              <div style={{ marginBottom: 8, padding: '6px 10px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                                background: repairResult.ok ? 'rgba(74,124,89,0.1)' : 'rgba(196,91,74,0.1)',
+                                color: repairResult.ok ? 'var(--color-ok)' : 'var(--color-alert)',
+                              }}>
+                                {repairResult.message}
+                              </div>
+                            )}
+                            <button
+                              onClick={handleRepair}
+                              disabled={repairLoading}
+                              style={{
+                                padding: '6px 14px', borderRadius: 'var(--radius-sm)',
+                                background: repairLoading ? 'var(--color-surface-3)' : 'var(--color-ok, #4A7C59)',
+                                border: 'none', color: '#fff', fontWeight: 700, fontSize: 12,
+                                cursor: repairLoading ? 'not-allowed' : 'pointer', opacity: repairLoading ? 0.6 : 1,
+                              }}
+                            >
+                              {repairLoading ? 'Fixing…' : '🔧 Fix Auth Email'}
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, opacity: 0.8 }}>
+                            <strong>What to do:</strong> This is a deep identity mismatch (different person linked).
+                            A system administrator must manually inspect and re-point the <code>tenant_permissions.user_id</code> FK to the correct auth account.
+                            The automatic repair tool cannot safely resolve this case.
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {resendResult && (
                   <div style={{
@@ -1342,14 +1427,42 @@ export default function EditStaffPage() {
                 )}
               </div>
 
-              {/* BOTTOM HALF: Tracker */}
+              {/* BOTTOM HALF: Lifecycle Tracker */}
               {(() => {
+                // Phase 947d: If status load explicitly failed, show error — never silent grey
+                if (statusLoadFailed) {
+                  return (
+                    <div style={{ padding: '12px 16px', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface-1)' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-faint)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {t('admin.activation_lifecycle')}
+                      </div>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                        background: 'rgba(181,110,69,0.08)', border: '1px solid rgba(181,110,69,0.3)',
+                      }}>
+                        <span style={{ fontSize: 13 }}>⚠</span>
+                        <span style={{ fontSize: 11, color: 'var(--color-warn, #B56E45)', fontWeight: 600 }}>
+                          Lifecycle status unavailable — backend returned an error.
+                          Pills are hidden to avoid showing misleading data.
+                        </span>
+                        <button
+                          onClick={fetchAuthStatus}
+                          style={{ marginLeft: 'auto', padding: '3px 10px', fontSize: 11, background: 'none',
+                            border: '1px solid var(--color-warn, #B56E45)', borderRadius: 4,
+                            color: 'var(--color-warn, #B56E45)', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Normal path — authStatus loaded successfully
                 const isActivated = authStatus?.force_reset === false;
-                // If they have ever signed in (even partially via magic link), they opened it.
                 const isOpened = !!authStatus?.access_link_opened_at || !!authStatus?.last_sign_in_at || isActivated;
-                // If they exist in Supabase auth (invited_at) or opened it, then it was sent.
                 const isSent = !!authStatus?.access_link_sent_at || !!authStatus?.invited_at || isOpened;
-                // Strictly tracking active sessions AFTER activation. (If activated and signed in)
                 const isLastActive = isActivated && !!authStatus?.last_sign_in_at;
                 
                 return (
@@ -1385,7 +1498,7 @@ export default function EditStaffPage() {
                         </span>
                       </div>
 
-                      {/* Active Session Pill */}
+                      {/* Last Active Pill */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isLastActive ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isLastActive ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: isLastActive ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
                         <span style={{ fontSize: 11, fontWeight: 600, color: isLastActive ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>

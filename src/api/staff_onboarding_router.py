@@ -826,3 +826,140 @@ async def get_staff_status(
     except Exception as exc:
         logger.exception("Failed to fetch staff status for %s: %s", user_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ── Phase 947d: Identity Repair Endpoint ─────────────────────────────────────
+
+class RepairEmailRequest(BaseModel):
+    confirmed: bool = Field(False, description="Must be True to execute the repair. Acts as a safety check.")
+
+
+@router.post(
+    "/admin/staff/{user_id}/repair-email",
+    tags=["admin"],
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def repair_worker_email(
+    user_id: str,
+    body: RepairEmailRequest,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Phase 947d: Repair an auth email typo for a worker.
+
+    Safe for: cases where auth_email ≠ comm_preference.email but the user_id
+    linkage is correct (same person, wrong email in auth.users).
+
+    NOT safe for: Tiki Toto-type cases where user_id points to a different person.
+    The endpoint classifies the mismatch before acting and rejects deep mismatches.
+
+    On success: updates auth.users email + writes to identity_repair_log.
+    """
+    if not body.confirmed:
+        return make_error_response(
+            status_code=400,
+            code="CONFIRMATION_REQUIRED",
+            extra={"detail": "Set confirmed=true to execute the repair."},
+        )
+
+    db = _get_db()
+
+    # 1. Load the worker from tenant_permissions
+    perm_res = db.table("tenant_permissions").select("comm_preference, display_name").eq("tenant_id", tenant_id).eq("user_id", user_id).limit(1).execute()
+    if not perm_res.data:
+        return make_error_response(status_code=404, code="NOT_FOUND", extra={"detail": "Staff member not found."})
+
+    comm = perm_res.data[0].get("comm_preference") or {}
+    comm_email = (comm.get("email") or "").strip()
+    if not comm_email:
+        return make_error_response(status_code=400, code="NO_COMM_EMAIL", extra={"detail": "Worker has no comm_preference.email to repair to."})
+
+    from supabase import create_client
+    url = os.environ["SUPABASE_URL"]
+    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+    try:
+        admin_client = create_client(url, key)
+        user = admin_client.auth.admin.get_user_by_id(user_id).user
+        auth_email = (getattr(user, "email", None) or "").strip()
+
+        if not auth_email:
+            return make_error_response(status_code=400, code="NO_AUTH_EMAIL", extra={"detail": "Auth account has no email to repair from."})
+
+        if auth_email.lower() == comm_email.lower():
+            return JSONResponse(status_code=200, content={
+                "status": "already_correct",
+                "message": "Auth email already matches comm_preference email. No repair needed.",
+                "auth_email": auth_email,
+                "comm_email": comm_email,
+            })
+
+        # ── Safety classification: is this an email-typo case or a deep mismatch? ──
+        # Deep mismatch: completely different names (Tiki Toto class) — BLOCK.
+        # Typo mismatch: same name, minor variation (.com missing, extra space, etc.)
+        # Heuristic: the local part (before @) must be identical (case-insensitive).
+        auth_local  = auth_email.split("@")[0].lower().strip()
+        comm_local  = comm_email.split("@")[0].lower().strip()
+        auth_domain = auth_email.split("@")[-1].lower().strip() if "@" in auth_email else ""
+        comm_domain = comm_email.split("@")[-1].lower().strip() if "@" in comm_email else ""
+
+        if auth_local != comm_local:
+            logger.error(
+                "Phase 947d: repair-email BLOCKED for deep mismatch: user_id=%s "
+                "auth_email=%s comm_email=%s — local parts differ",
+                user_id, auth_email, comm_email,
+            )
+            return make_error_response(
+                status_code=409,
+                code="DEEP_IDENTITY_MISMATCH",
+                extra={
+                    "detail": (
+                        f"This mismatch cannot be repaired with a simple email update. "
+                        f"The auth account local name '{auth_email}' differs significantly "
+                        f"from the comm email '{comm_email}'. This may be a wrong-user linkage "
+                        f"(like the Tiki Toto case) and requires manual investigation."
+                    ),
+                    "auth_email": auth_email,
+                    "comm_email": comm_email,
+                    "mismatch_class": "deep_mismatch",
+                },
+            )
+
+        mismatch_class = "email_typo" if auth_domain != comm_domain else "case_difference"
+
+        # ── Perform the repair ──
+        import time
+        admin_client.auth.admin.update_user_by_id(user_id, {"email": comm_email})
+
+        # ── Write to audit log ──
+        try:
+            db.table("identity_repair_log").insert({
+                "tenant_id": tenant_id,
+                "user_id_from": user_id,
+                "user_id_to": user_id,        # same user_id — this is an email-only repair
+                "auth_email_from": auth_email,
+                "auth_email_to": comm_email,
+                "repaired_by": tenant_id,     # admin's tenant JWT identity
+                "repair_method": "api/repair-email",
+                "notes": f"Email typo repair: '{auth_email}' → '{comm_email}' (class: {mismatch_class})",
+            }).execute()
+        except Exception as log_exc:
+            logger.warning("Phase 947d: could not write identity_repair_log: %s", log_exc)
+
+        logger.info(
+            "Phase 947d: email repair applied: user_id=%s %s -> %s (class: %s)",
+            user_id, auth_email, comm_email, mismatch_class,
+        )
+
+        return JSONResponse(status_code=200, content={
+            "status": "repaired",
+            "user_id": user_id,
+            "auth_email_before": auth_email,
+            "auth_email_after": comm_email,
+            "mismatch_class": mismatch_class,
+            "message": f"Auth email updated from '{auth_email}' to '{comm_email}'. Identity mismatch is resolved.",
+        })
+
+    except Exception as exc:
+        logger.exception("Phase 947d: repair-email failed for user_id=%s: %s", user_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
