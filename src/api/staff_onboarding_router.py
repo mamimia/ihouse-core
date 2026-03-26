@@ -785,8 +785,21 @@ async def get_staff_status(
         
         meta = u.user_metadata or {}
         force_reset = meta.get("force_reset", False)
-        last_sign_in = getattr(u, "last_sign_in_at", None)
         auth_email = getattr(u, "email", None)
+
+        # ── Datetime serialization: Supabase SDK returns datetime objects, ──
+        # ── not strings. JSONResponse cannot serialize datetime, so we must ──
+        # ── convert explicitly. This was the root cause of the silent 500.  ──
+        def _to_str(val):
+            """Convert a datetime (or any) to ISO string, or return as-is if already str/None."""
+            if val is None:
+                return None
+            if hasattr(val, "isoformat"):
+                return val.isoformat()
+            return str(val)
+
+        last_sign_in = _to_str(getattr(u, "last_sign_in_at", None))
+        invited_at   = _to_str(getattr(u, "updated_at", None))  # approximate
 
         # Phase 947: Fetch comm_preference email from tenant_permissions for identity chain
         perm_res = db.table("tenant_permissions").select("comm_preference").eq("tenant_id", tenant_id).eq("user_id", user_id).limit(1).execute()
@@ -802,7 +815,7 @@ async def get_staff_status(
             "user_id": user_id,
             "force_reset": force_reset,
             "last_sign_in_at": last_sign_in,
-            "invited_at": getattr(u, "updated_at", None), # approximate
+            "invited_at": invited_at,
             "access_link_sent_at": meta.get("access_link_sent_at"),
             "access_link_opened_at": meta.get("access_link_opened_at"),
             # Phase 947: Identity chain — auth_email, comm_email, and mismatch flag

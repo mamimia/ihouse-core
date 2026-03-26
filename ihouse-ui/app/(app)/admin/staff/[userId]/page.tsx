@@ -382,6 +382,15 @@ export default function EditStaffPage() {
     }
   }, [rawUserId]);
 
+  // Phase 947c: Poll the status block every 30s so lifecycle pills reflect reality
+  // without requiring a full page reload. Scoped only to fetchAuthStatus — does
+  // not re-fetch trade data, tabs, or form state.
+  useEffect(() => {
+    fetchAuthStatus(); // immediate call on mount
+    const interval = setInterval(fetchAuthStatus, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchAuthStatus]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -1381,7 +1390,7 @@ export default function EditStaffPage() {
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: isLastActive ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
                         <span style={{ fontSize: 11, fontWeight: 600, color: isLastActive ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
                           {t('admin.active_session')}
-                          {authStatus?.last_sign_in_at && <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.8 }}>{new Date(authStatus.last_sign_in_at).toLocaleDateString([], { month: 'short', day: 'numeric'})}</span>}
+                          {authStatus?.last_sign_in_at && <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.8 }}>{new Date(authStatus.last_sign_in_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} {new Date(authStatus.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span>}
                         </span>
                       </div>
                     </div>
