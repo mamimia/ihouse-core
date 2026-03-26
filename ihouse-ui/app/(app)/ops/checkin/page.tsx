@@ -10,7 +10,7 @@
  * Flow: 4-step check-out (Inspection → Issues → Deposit Resolution → Complete)
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { apiFetch, getToken, API_BASE as BASE } from '@/lib/staffApi';
 import { useCountdown } from '@/lib/useCountdown';
 import { CHECKIN_BOTTOM_NAV } from '@/components/BottomNav';
@@ -229,7 +229,79 @@ export default function MobileCheckinPage() {
     const [passportNumber, setPassportNumber] = useState('');
     const [passportName, setPassportName] = useState('');
     const [passportExpiry, setPassportExpiry] = useState('');
+    const [documentType, setDocumentType] = useState('PASSPORT');
+    const [dateOfBirth, setDateOfBirth] = useState('');
+    const [nationality, setNationality] = useState('');
+
     const [passportPhotoUrl, setPassportPhotoUrl] = useState<string | null>(null);
+    const [isCameraActive, setIsCameraActive] = useState(false);
+    const [isExtracting, setIsExtracting] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    const startCamera = async () => {
+        setIsCameraActive(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error('Camera access denied', err);
+            showNotice('Camera denied. Using fallback.');
+            setIsCameraActive(false);
+        }
+    };
+
+    const stopCamera = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+        }
+        setIsCameraActive(false);
+    };
+
+    const captureFrame = async () => {
+        if (!videoRef.current) return;
+        const video = videoRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        canvas.toBlob(async (blob) => {
+            if (!blob) return;
+            const previewUrl = URL.createObjectURL(blob);
+            setPassportPhotoUrl(previewUrl);
+            stopCamera();
+
+            setIsExtracting(true);
+            try {
+                // Mock OCR Endpoint for Phase 2 guided capture
+                const res = await apiFetch<any>('/worker/documents/extract', {
+                    method: 'POST',
+                    body: JSON.stringify({ type: 'image' }) 
+                });
+                
+                if (res.document_type) setDocumentType(res.document_type || 'PASSPORT');
+                if (res.first_name || res.last_name) setPassportName(`${res.first_name || ''} ${res.last_name || ''}`.trim());
+                if (res.document_number) setPassportNumber(res.document_number);
+                if (res.expiration_date) setPassportExpiry(res.expiration_date);
+                if (res.date_of_birth) setDateOfBirth(res.date_of_birth);
+                if (res.nationality) setNationality(res.nationality);
+                
+                showNotice('✨ Identity fields auto-extracted');
+            } catch (err) {
+                console.warn('Extraction failed', err);
+                showNotice('⚠️ Auto-extract failed. Please type manually.');
+            } finally {
+                setIsExtracting(false);
+            }
+        }, 'image/jpeg', 0.9);
+    };
     const [guestPortalUrl, setGuestPortalUrl] = useState<string | null>(null);
     const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
 
@@ -445,7 +517,11 @@ export default function MobileCheckinPage() {
                     body: JSON.stringify({ 
                         passport_no: passportNumber.trim(), 
                         full_name: passportName.trim() || undefined,
-                        passport_expiry: passportExpiry || undefined
+                        passport_expiry: passportExpiry || undefined,
+                        document_type: documentType,
+                        date_of_birth: dateOfBirth || undefined,
+                        nationality: nationality || undefined
+
                     }),
                 });
             } else {
@@ -456,7 +532,11 @@ export default function MobileCheckinPage() {
                     body: JSON.stringify({ 
                         passport_no: passportNumber.trim(), 
                         full_name: passportName.trim() || undefined,
-                        passport_expiry: passportExpiry || undefined
+                        passport_expiry: passportExpiry || undefined,
+                        document_type: documentType,
+                        date_of_birth: dateOfBirth || undefined,
+                        nationality: nationality || undefined
+
                     }),
                 });
             }
@@ -734,72 +814,120 @@ export default function MobileCheckinPage() {
                 </div>
             )}
 
-            {/* ========== STEP 3: Passport Capture ========== */}
+            {/* ========== STEP 3: Passport / Identity Capture ========== */}
             {step === 'passport' && selected && (
                 <div style={card}>
-                    <StepHeader step={getStepNumber('passport')} total={getStepTotal()} title="Passport / ID Capture" onBack={goBack} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                        <div>
-                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
-                                Passport Number *
-                            </label>
-                            <input value={passportNumber} onChange={e => setPassportNumber(e.target.value)} placeholder="AB1234567" style={inputStyle} />
+                    <StepHeader step={getStepNumber('passport')} total={getStepTotal()} title="Identify Guest" onBack={goBack} />
+                    
+                    {/* Camera / Capture Section */}
+                    {isCameraActive ? (
+                        <div style={{ position: 'relative', width: '100%', height: 300, background: '#000', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-4)' }}>
+                            <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {/* Overlay Guide */}
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+                                <div style={{ position: 'absolute', top: '20%', left: '10%', right: '10%', bottom: '20%', border: '2px solid rgba(255,255,255,0.8)', borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }} />
+                                <div style={{ position: 'absolute', bottom: '10%', width: '100%', textAlign: 'center', color: '#fff', fontSize: 'var(--text-xs)', fontWeight: 600 }}>
+                                    Align MRZ / Document within frame
+                                </div>
+                            </div>
+                            <button onClick={captureFrame} style={{
+                                position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+                                width: 56, height: 56, borderRadius: '50%', background: '#fff', border: 'none',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+                            }}>
+                                <div style={{ width: 44, height: 44, borderRadius: '50%', border: '2px solid #000' }} />
+                            </button>
+                            <button onClick={stopCamera} style={{
+                                position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.5)',
+                                color: '#fff', border: 'none', borderRadius: 16, padding: '4px 12px', fontSize: '12px'
+                            }}>Cancel</button>
                         </div>
-                        <div>
-                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
-                                Guest Full Name
-                            </label>
-                            <input value={passportName} onChange={e => setPassportName(e.target.value)} placeholder="As on passport" style={inputStyle} />
-                        </div>
-                        <div>
-                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
-                                Expiry Date
-                            </label>
-                            <input type="date" value={passportExpiry} onChange={e => setPassportExpiry(e.target.value)} style={inputStyle} />
-                        </div>
-                        <label style={{
-                            padding: 'var(--space-6)', border: `2px dashed ${passportPhotoUrl ? 'transparent' : 'var(--color-border)'}`,
-                            borderRadius: 'var(--radius-md)', textAlign: 'center',
+                    ) : (
+                        <div style={{
+                            padding: 'var(--space-3)', border: `2px dashed ${passportPhotoUrl ? 'transparent' : 'var(--color-border)'}`,
+                            borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: 'var(--space-4)',
                             cursor: 'pointer', display: 'block', position: 'relative',
                             overflow: 'hidden', background: passportPhotoUrl ? '#000' : 'transparent',
                         }}>
-                            <input 
-                                type="file" 
-                                accept="image/*" 
-                                capture="environment" 
-                                onChange={e => {
-                                    if (e.target.files && e.target.files[0]) {
-                                        setPassportPhotoUrl(URL.createObjectURL(e.target.files[0]));
-                                    }
-                                }}
-                                style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
-                            />
                             {passportPhotoUrl ? (
-                                <img src={passportPhotoUrl} alt="Passport preview" style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} />
+                                <div style={{ position: 'relative' }}>
+                                    <img src={passportPhotoUrl} alt="Document" style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} />
+                                    <button onClick={() => setPassportPhotoUrl(null)} style={{
+                                        position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)',
+                                        color: '#fff', border: 'none', borderRadius: 16, padding: '4px 12px', fontSize: '11px'
+                                    }}>Retake</button>
+                                </div>
                             ) : (
-                                <>
-                                    <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>📷</div>
-                                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
-                                        Tap to capture passport photo {DEV_PHOTO_BYPASS ? '' : '*'}
+                                <div onClick={() => startCamera()}>
+                                    <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>📸</div>
+                                    <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text)' }}>
+                                        Scan Document
                                     </div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4 }}>
-                                        Camera only · Admin visible only · Retained 90 days
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 4 }}>
+                                        Autofills identity details (Fallback available)
                                     </div>
-                                    {DEV_PHOTO_BYPASS && (
-                                        <div style={{
-                                            marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--color-warn)',
-                                            padding: '4px 8px', background: 'rgba(210,153,34,0.08)',
-                                            border: '1px solid rgba(210,153,34,0.15)', borderRadius: 'var(--radius-sm)',
-                                            display: 'inline-block',
-                                        }}>
-                                            🔧 Dev/testing — photo not required yet
-                                        </div>
-                                    )}
-                                </>
+                                </div>
                             )}
-                        </label>
-                    </div>
-                    <div style={{ marginTop: 'var(--space-4)' }}>
+                            {/* Hidden file fallback for desktop/denied permissions */}
+                            {!isCameraActive && !passportPhotoUrl && (
+                                <input 
+                                    type="file" accept="image/*" capture="environment" 
+                                    onChange={e => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setPassportPhotoUrl(URL.createObjectURL(e.target.files[0]));
+                                        }
+                                    }}
+                                    style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '10%', height: '10%', cursor: 'pointer' }}
+                                />
+                            )}
+                        </div>
+                    )}
+                    
+                    {/* Extracted Data Fields */}
+                    {isExtracting ? (
+                        <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
+                            <div className="spinner" style={{ margin: '0 auto var(--space-3)' }} />
+                            <div>Extracting identity data...</div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', opacity: isCameraActive ? 0.3 : 1, pointerEvents: isCameraActive ? 'none' : 'auto' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                                <div>
+                                    <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Doc Type</label>
+                                    <select value={documentType} onChange={e => setDocumentType(e.target.value)} style={inputStyle}>
+                                        <option value="PASSPORT">Passport</option>
+                                        <option value="NATIONAL_ID">National ID</option>
+                                        <option value="DRIVING_LICENSE">Driver's License</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Doc Number *</label>
+                                    <input value={passportNumber} onChange={e => setPassportNumber(e.target.value)} placeholder="AB1234567" style={inputStyle} />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Guest Full Name</label>
+                                <input value={passportName} onChange={e => setPassportName(e.target.value)} placeholder="As on document" style={inputStyle} />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                                <div>
+                                    <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Nationality</label>
+                                    <input value={nationality} onChange={e => setNationality(e.target.value)} placeholder="E.g. GBR" style={inputStyle} />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Birth Date</label>
+                                    <input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} style={inputStyle} />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Expiry Date</label>
+                                <input type="date" value={passportExpiry} onChange={e => setPassportExpiry(e.target.value)} style={inputStyle} />
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{ marginTop: 'var(--space-4)', opacity: isCameraActive || isExtracting ? 0 : 1 }}>
                         <ActionButton label="Save & Continue →" onClick={savePassport} />
                     </div>
                 </div>
