@@ -75,9 +75,21 @@ function resolveWorkerRole(): WorkerRoleKey | 'admin' | 'checkin_checkout' | nul
     if (!token) return null;
     try {
         const p = JSON.parse(atob(token.split('.')[1]));
-        return (p.role as WorkerRoleKey | 'admin' | 'checkin_checkout') || null;
+        const outerRole = (p.role as string || '').toLowerCase();
+
+        // Phase 948a: For role=worker, read the actual sub-role from worker_role or worker_roles[0].
+        // Without this, every worker with role='worker' returned null roleConfig and
+        // triggered the combined check-in/check-out profile view incorrectly.
+        if (outerRole === 'worker') {
+            const subRole = (p.worker_role || (p.worker_roles ?? [])[0] || '') as string;
+            if (subRole) return subRole.toLowerCase() as WorkerRoleKey | 'checkin_checkout';
+            return 'worker' as unknown as WorkerRoleKey; // no sub-role: generic worker home
+        }
+
+        return (outerRole as WorkerRoleKey | 'admin' | 'checkin_checkout') || null;
     } catch { return null; }
 }
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -471,6 +483,7 @@ function WorkerHomeNav({
 }: {
     tab: Tab; setTab: (t: Tab) => void; roleConfig: WorkerRoleConfig | null;
 }) {
+    const { t } = useLanguage();
     const navStyle: React.CSSProperties = {
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: 'rgba(23,26,31,0.95)',
@@ -493,20 +506,20 @@ function WorkerHomeNav({
         <div style={navStyle}>
             {/* Home — always active on this page */}
             <button style={btnStyle(tab === 'dashboard')} onClick={() => setTab('dashboard')}>
-                <span style={iconStyle}>🏠</span>Home
+                <span style={iconStyle}>🏠</span>{t('worker.home' as any)}
             </button>
 
             {/* Work — routes out to /ops/[role] */}
             {roleConfig && (
                 <a href={roleConfig.workHref} style={{ ...btnStyle(false), textDecoration: 'none' }}>
                     <span style={iconStyle}>{roleConfig.workIcon}</span>
-                    {roleConfig.displayName.split(' ')[0]}
+                    {t('worker.work' as any)}
                 </a>
             )}
 
             {/* Tasks — routes to role-filtered /tasks */}
             <a href="/tasks" style={{ ...btnStyle(false), textDecoration: 'none' }}>
-                <span style={iconStyle}>✓</span>Tasks
+                <span style={iconStyle}>✓</span>{t('nav.tasks' as any)}
             </a>
 
             {/* Profile — in-page tab */}
@@ -554,7 +567,7 @@ function SettingsTab({ showToast, userName }: { showToast: (msg: string) => void
                     cursor: 'pointer'
                 }}
             >
-                Sign Out
+                {t('worker.sign_out' as any)}
             </button>
         </div>
     );
@@ -725,14 +738,14 @@ export default function WorkerPage() {
 
                         {/* Top bar */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
-                            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>Home</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>{t('worker.home' as any)}</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                 <CompactLangSwitcher theme="dark" position="inline" />
                                 <button
                                     onClick={() => { localStorage.removeItem('ihouse_token'); router.push('/login'); }}
                                     style={{ background: 'none', border: 'none', color: 'var(--color-sage)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                                 >
-                                    ➔ Sign Out
+                                    ➔ {t('worker.sign_out' as any)}
                                 </button>
                             </div>
                         </div>
@@ -741,7 +754,7 @@ export default function WorkerPage() {
 
                             {/* Welcome card */}
                             <div style={{ background: 'var(--color-surface-2)', borderRadius: 16, padding: 20, marginBottom: 24 }}>
-                                <div style={{ fontSize: 11, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Welcome</div>
+                                <div style={{ fontSize: 11, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{t('worker.welcome_label' as any)}</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     <div style={{ fontSize: 24, color: 'var(--color-text)' }}>
                                         Hello, <span style={{ fontWeight: 700 }}>{userName || 'Staff'}</span>
@@ -761,7 +774,7 @@ export default function WorkerPage() {
                             {/* Phase 887: Combined-role workers get a direct Work link back to their hub */}
                             {!roleConfig && (
                                 <div style={{ marginBottom: 24 }}>
-                                    <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Work</div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>{t('worker.work' as any)}</div>
                                     <a href="/ops/checkin-checkout" style={{ textDecoration: 'none' }}>
                                         <div style={{
                                             background: 'var(--color-surface-2)', borderRadius: 16, padding: '20px',
@@ -771,8 +784,8 @@ export default function WorkerPage() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                                                 <span style={{ fontSize: 32 }}>🏠🚪</span>
                                                 <div>
-                                                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>Go to Check-in &amp; Check-out</div>
-                                                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>Your combined operations hub</div>
+                                                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>{t('worker.combined_hub' as any)}</div>
+                                                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>{t('worker.combined_hub_sub' as any)}</div>
                                                 </div>
                                             </div>
                                             <span style={{ fontSize: 20, color: 'var(--color-text-faint)' }}>›</span>
@@ -783,18 +796,18 @@ export default function WorkerPage() {
 
                             {/* Role-specific stats */}
                             <div style={{ marginBottom: 24 }}>
-                                <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>My Status</div>
+                                <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>{t('worker.my_status' as any)}</div>
                                 <div style={{ display: 'flex', gap: 12 }}>
                                     <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>📋 Open</div>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>📋 {t('worker.stat_open' as any)}</div>
                                         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text)' }}>{openCount}</div>
                                     </div>
                                     <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>🕒 Overdue</div>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>🕒 {t('worker.stat_overdue' as any)}</div>
                                         <div style={{ fontSize: 28, fontWeight: 700, color: overdueCount > 0 ? 'var(--color-alert)' : 'var(--color-text)' }}>{overdueCount}</div>
                                     </div>
                                     <div style={{ flex: 1, background: 'var(--color-surface-2)', borderRadius: 12, padding: 16 }}>
-                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>📅 Today</div>
+                                        <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 8 }}>📅 {t('worker.stat_today' as any)}</div>
                                         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text)' }}>{dueTodayCount}</div>
                                     </div>
                                 </div>
@@ -803,7 +816,7 @@ export default function WorkerPage() {
                             {/* Role Work CTA — links to /ops/[role] */}
                             {roleConfig && (
                                 <div style={{ marginBottom: 24 }}>
-                                    <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Work</div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>{t('worker.work' as any)}</div>
                                     <a href={roleConfig.workHref} style={{ textDecoration: 'none' }}>
                                         <div style={{
                                             background: 'var(--color-surface-2)', borderRadius: 16, padding: '20px',

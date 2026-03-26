@@ -4,10 +4,9 @@
  * AuthCard — Shared wrapper for all auth screens.
  * Phase 839 — Full localization (EN / TH / HE)
  *
- * Auth layout rule (permanent):
- *   Form elements always direction: ltr, text-align: left.
- *   RTL is NOT applied here — auth is not yet fully RTL-aware.
- *   title/subtitle content will be translated per language via t().
+ * Auth layout rule:
+ *   If language is Hebrew, apply RTL direction and right-alignment.
+ *   Otherwise defaults to LTR and left-alignment.
  */
 
 import DMonogram from '../DMonogram';
@@ -32,7 +31,7 @@ export default function AuthCard({
     title,
     subtitle,
 }: AuthCardProps) {
-    const { t } = useLanguage();
+    const { t, lang: language, isRTL: isRtl } = useLanguage();
 
     const resolvedTitle = titleKey ? t(titleKey) : (title ?? 'Welcome');
     const resolvedSubtitle = subtitleKey ? t(subtitleKey) : subtitle;
@@ -63,7 +62,7 @@ export default function AuthCard({
                     fontFamily: 'var(--font-sans, system-ui, sans-serif)',
                 }}
             >
-                <div className="auth-card" style={{ width: '100%', maxWidth: 420, direction: 'ltr', textAlign: 'left' }}>
+                <div className="auth-card" style={{ width: '100%', maxWidth: 420, direction: isRtl ? 'rtl' : 'ltr', textAlign: isRtl ? 'right' : 'left' }}>
                     {/* Monogram + Brand */}
                     <div style={{ textAlign: 'center', marginBottom: 'var(--space-10, 40px)' }}>
                         <div style={{

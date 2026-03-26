@@ -372,10 +372,19 @@ async def google_callback(body: GoogleCallbackRequest, request: Request) -> JSON
         force_reset = False
 
     now = int(time.time())
+    # Phase 948a: Include worker_roles so the frontend can resolve the
+    # worker's specific sub-role (cleaner/checkin/checkout/maintenance).
+    # The outer `role` stays 'worker' for access-control purposes.
+    worker_roles = tenant_info.get("worker_roles") or []
+    # Derive effective sub-role: use worker_role (singular) if set, else first element of worker_roles
+    effective_worker_role = tenant_info.get("worker_role") or (worker_roles[0] if worker_roles else None)
+
     payload = {
         "sub": user_id,
         "tenant_id": tenant_id,
         "role": role,
+        "worker_roles": worker_roles,           # Phase 948a: sub-roles array
+        "worker_role": effective_worker_role,   # Phase 948a: primary sub-role (nullable)
         "email": user_email,
         "is_active": is_active,
         "force_reset": force_reset,

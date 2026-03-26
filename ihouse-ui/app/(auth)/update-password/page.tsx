@@ -9,9 +9,28 @@ import PasswordInput from '../../../components/auth/PasswordInput';
 import { usePasswordRules } from '@/hooks/usePasswordRules';
 import { useLanguage } from '../../../lib/LanguageContext';
 
+// Phase 948c: Pre-seed language from the Supabase JWT in the URL hash.
+// Fires at module-load time (before React/LanguageContext render) so workers
+// with language=th land in Thai immediately, without waiting for a round-trip.
+if (typeof window !== 'undefined') {
+  try {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const rawToken = hashParams.get('access_token');
+    if (rawToken) {
+      const jwtPayload = JSON.parse(atob(rawToken.split('.')[1]));
+      const lang = jwtPayload?.user_metadata?.language as string | undefined;
+      const SUPPORTED = ['en', 'th', 'he'];
+      if (lang && SUPPORTED.includes(lang)) {
+        localStorage.setItem('domaniqo_lang', lang);
+      }
+    }
+  } catch { /* silent — never crash the page */ }
+}
+
+
 export default function UpdatePasswordPage() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +38,7 @@ export default function UpdatePasswordPage() {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
 
   // Decode JWT to extract role for welcome copy
   useEffect(() => {
@@ -28,10 +48,11 @@ export default function UpdatePasswordPage() {
       const payload = JSON.parse(atob(token.split('.')[1]));
       setUserRole(payload.role || '');
       setUserName(payload.full_name || payload.display_name || '');
+      setUserEmail(payload.email || '');
     } catch { /* ignore decode errors */ }
   }, []);
 
-  const pwRules = usePasswordRules(password);
+  const pwRules = usePasswordRules(password, t as (key: string) => string);
   const allRulesPass = pwRules.every(r => r.pass);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,6 +132,57 @@ export default function UpdatePasswordPage() {
     <AuthCard title={welcomeTitle} subtitle={welcomeSubtitle}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4, 16px)' }}>
         
+        {/* Phase 874: Display locked account email */}
+        {userEmail && (
+          <div>
+            <label style={{
+                display: 'block',
+                fontSize: 'var(--text-xs, 12px)',
+                fontWeight: 600,
+                color: 'rgba(234,229,222,0.5)',
+                marginBottom: 'var(--space-2, 8px)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+            }}>
+              {t('auth.account_email')}
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={userEmail}
+                readOnly
+                disabled
+                style={{
+                  ...inputStyle,
+                  padding: '12px 48px 12px 14px',
+                  background: 'var(--color-midnight, #171A1F)', // Exact match to Password field
+                  borderColor: 'rgba(234,229,222,0.06)', // Slightly faded border
+                  color: 'var(--color-stone, #EAE5DE)', // Exact match to Password text
+                  opacity: 0.8, // 20% less to look inaccessible
+                  cursor: 'not-allowed',
+                  direction: 'ltr',
+                  textAlign: 'left',
+                }}
+              />
+              <div style={{
+                position: 'absolute',
+                right: 14, // Always on the right side for this LTR block
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--color-copper, #B56E45)', // Bronze accent
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.8, // subtle but clear
+              }}>
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                 </svg>
+              </div>
+            </div>
+          </div>
+        )}
+
         {error && (
             <div style={{
                 background: 'rgba(155,58,58,0.1)',
@@ -185,10 +257,10 @@ export default function UpdatePasswordPage() {
             </div>
         )}
         {confirmPassword.length > 0 && password !== confirmPassword && (
-            <div style={{ fontSize: 12, color: '#D64545' }}>✗ Passwords do not match</div>
+            <div style={{ fontSize: 12, color: '#D64545' }}>✗ {t('auth.passwords_no_match' as any)}</div>
         )}
         {confirmPassword.length > 0 && password === confirmPassword && password.length > 0 && (
-            <div style={{ fontSize: 12, color: '#4A7C59' }}>✓ Passwords match</div>
+            <div style={{ fontSize: 12, color: '#4A7C59' }}>✓ {t('auth.passwords_match' as any)}</div>
         )}
 
         <button
@@ -213,7 +285,7 @@ export default function UpdatePasswordPage() {
                 minHeight: 48,
             }}
         >
-          {loading ? 'Updating...' : 'Update Password'}
+          {loading ? t('worker.saving') : t('auth.update_password_btn')}
         </button>
       </form>
     </AuthCard>

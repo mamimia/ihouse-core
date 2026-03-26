@@ -8,6 +8,7 @@
  */
 
 import { useState } from 'react';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface PasswordInputProps {
   id: string;
@@ -36,11 +37,13 @@ export default function PasswordInput({
   className = 'auth-input',
   style,
 }: PasswordInputProps) {
+  const { isRTL } = useLanguage();
   const [show, setShow] = useState(false);
 
   const baseStyle: React.CSSProperties = {
     width: '100%',
-    padding: '12px 44px 12px 14px', // extra right padding for toggle button
+    padding: isRTL ? '12px 14px 12px 44px' : '12px 44px 12px 14px', // extra padding for toggle button
+
     background: 'var(--color-midnight, #171A1F)',
     border: '1px solid rgba(234,229,222,0.1)',
     borderRadius: 'var(--radius-md, 12px)',
@@ -75,7 +78,7 @@ export default function PasswordInput({
         onClick={() => setShow(s => !s)}
         style={{
           position: 'absolute',
-          right: 12,
+          ...(isRTL ? { left: 12 } : { right: 12 }),
           top: '50%',
           transform: 'translateY(-50%)',
           background: 'none',
