@@ -114,7 +114,7 @@ export default function PendingRequestsPage() {
     try {
       const resp = await apiFetch<{ magic_link?: string }>(`/admin/staff-onboarding/${id}/approve`, {
         method: 'POST',
-        body: JSON.stringify({ role, worker_roles: workerRoles })
+        body: JSON.stringify({ role, worker_roles: workerRoles, frontend_url: window.location.origin })
       });
       // Remove from list
       setRequests(r => r.filter(x => x.id !== id));

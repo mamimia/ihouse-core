@@ -1123,7 +1123,7 @@ export default function EditStaffPage() {
                       try {
                         const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
                           method: 'POST',
-                          body: JSON.stringify({ channel: resendChannel }),
+                          body: JSON.stringify({ channel: resendChannel, frontend_url: window.location.origin }),
                         });
                         setResendResult(resp);
                       } catch (err: any) {
@@ -1159,7 +1159,7 @@ export default function EditStaffPage() {
                           try {
                             const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
                               method: 'POST',
-                              body: JSON.stringify({ channel: 'email' }),
+                              body: JSON.stringify({ channel: 'email', frontend_url: window.location.origin }),
                             });
                             setResendResult(resp);
                             if (resp.magic_link) {

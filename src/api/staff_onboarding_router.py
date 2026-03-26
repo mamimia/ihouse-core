@@ -324,6 +324,7 @@ async def list_pending_onboarding(tenant_id: str = Depends(jwt_auth)) -> JSONRes
 class ApproveOnboardingRequest(BaseModel):
     role: str = "worker"
     worker_roles: list[str] = Field(default_factory=list)  # empty = use submitted roles from form
+    frontend_url: Optional[str] = Field(None, description="Frontend origin URL for auth redirect")
 
 
 def _extract_action_link(link_res: Any) -> str:
@@ -350,6 +351,8 @@ def _extract_action_link(link_res: Any) -> str:
                 return getattr(props, "action_link")
     return ""
 
+from fastapi import Request
+
 @router.post(
     "/admin/staff-onboarding/{request_id}/approve",
     tags=["admin"],
@@ -358,6 +361,7 @@ def _extract_action_link(link_res: Any) -> str:
 async def approve_onboarding(
     request_id: str,
     body: ApproveOnboardingRequest,
+    req: Request,
     tenant_id: str = Depends(jwt_auth)
 ) -> JSONResponse:
     db = _get_db()
@@ -385,7 +389,8 @@ async def approve_onboarding(
             return make_error_response(status_code=400, code="VALIDATION_ERROR", extra={"detail": "Missing email for invited user. Worker must provide an email."})
 
         try:
-            frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
+            resolved_front = body.frontend_url or req.headers.get("origin") or os.environ.get("NEXT_PUBLIC_APP_URL") or "http://localhost:3000"
+            frontend_url = resolved_front.rstrip("/")
             user_id: Optional[str] = None
             delivery_method = "unknown"
             action_link = ""
@@ -549,6 +554,7 @@ async def reject_onboarding(request_id: str, tenant_id: str = Depends(jwt_auth))
 
 class ResendAccessRequest(BaseModel):
     channel: str = Field("email", description="Delivery channel: email, whatsapp, sms, telegram, line")
+    frontend_url: Optional[str] = Field(None, description="Frontend origin URL for auth redirect")
 
 
 @router.post(
@@ -559,6 +565,7 @@ class ResendAccessRequest(BaseModel):
 async def resend_access(
     user_id: str,
     body: ResendAccessRequest,
+    req: Request,
     tenant_id: str = Depends(jwt_auth),
 ) -> JSONResponse:
     """Resend/send first-access link for an approved staff member."""
@@ -586,7 +593,8 @@ async def resend_access(
             if not email:
                 return make_error_response(status_code=400, code="NO_EMAIL", extra={"detail": "User has no email on file."})
 
-            frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
+            resolved_front = body.frontend_url or req.headers.get("origin") or os.environ.get("NEXT_PUBLIC_APP_URL") or "http://localhost:3000"
+            frontend_url = resolved_front.rstrip("/")
             try:
                 auth_res = admin_client.auth.admin.invite_user_by_email(
                     email,
@@ -641,7 +649,8 @@ async def resend_access(
             if not email:
                 return make_error_response(status_code=400, code="NO_EMAIL", extra={"detail": "User has no email on file."})
 
-            frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
+            resolved_front = body.frontend_url or req.headers.get("origin") or os.environ.get("NEXT_PUBLIC_APP_URL") or "http://localhost:3000"
+            frontend_url = resolved_front.rstrip("/")
             link_res = admin_client.auth.admin.generate_link(
                 {"type": "magiclink", "email": email,
                  "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
