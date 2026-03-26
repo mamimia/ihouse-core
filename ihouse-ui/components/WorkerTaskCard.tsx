@@ -71,12 +71,22 @@ export function LiveCountdown({ targetDate, targetTime, status }: CountdownProps
     const mins    = Math.floor((abs % 3600000) / 60000);
     const secs    = Math.floor((abs % 60000) / 1000);
 
-    const isUrgent = !overdue && hours < 2;
-    const color = overdue
-        ? 'var(--color-alert)'
-        : isUrgent
-            ? 'var(--color-warn)'
-            : 'var(--color-text-dim)';
+    const isWarning = !overdue && diff <= 25 * 60000;
+    const isCriticalWarning = !overdue && diff <= 5 * 60000;
+    const isActiveTask = upper === 'PENDING' || upper === 'ACKNOWLEDGED';
+
+    let color = 'var(--color-text-dim)';
+    let animation = 'none';
+
+    if (overdue) {
+        color = 'var(--color-alert)';
+        if (isActiveTask) animation = 'pulse-fast 1s ease-in-out infinite';
+    } else if (isCriticalWarning) {
+        color = 'var(--color-alert)';
+        if (isActiveTask) animation = 'pulse-soft 2s ease-in-out infinite';
+    } else if (isWarning) {
+        color = 'var(--color-warn)';
+    }
 
     // Always show seconds
     const display = overdue
@@ -86,13 +96,61 @@ export function LiveCountdown({ targetDate, targetTime, status }: CountdownProps
     return (
         <span style={{
             color,
-            fontWeight: overdue || isUrgent ? 700 : 500,
+            fontWeight: overdue || isWarning || isCriticalWarning ? 700 : 500,
             fontVariantNumeric: 'tabular-nums',
             fontSize: 'inherit',
             letterSpacing: '-0.01em',
+            animation,
         }}>
             {overdue ? '⚠ ' : '⏱ '}{display}
         </span>
+    );
+}
+
+function AckButton({ date, time, onAcknowledge }: { date: string, time: string, onAcknowledge: () => void }) {
+    const [msg, setMsg] = useState('');
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (msg) return; // Prevent multiple clicks during cooldown
+        
+        if (!date) {
+            onAcknowledge();
+            return;
+        }
+        const target = new Date(`${date}T${time.length === 5 ? time + ':00' : time}`).getTime();
+        const diff = target - Date.now();
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        
+        if (diff > twentyFourHours) {
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const days = Math.floor(h / 24);
+            const remainingH = h % 24;
+            
+            let timeStr = '';
+            if (days > 0) timeStr = `${days}d ${remainingH}h`;
+            else timeStr = `${h}h ${m}m`;
+            
+            setMsg(`Available in ${timeStr}`);
+            setTimeout(() => setMsg(''), 5000);
+        } else {
+            onAcknowledge();
+        }
+    };
+
+    return (
+        <button onClick={handleClick} style={{
+            flex: 1, padding: '8px 6px',
+            background: msg ? 'var(--color-surface-2)' : 'rgba(212,149,106,0.1)',
+            color: msg ? 'var(--color-text-dim)' : 'var(--color-warn)',
+            border: msg ? '1px solid var(--color-border)' : '1px solid rgba(212,149,106,0.3)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 11, fontWeight: 600, cursor: msg ? 'default' : 'pointer',
+            transition: 'all 0.2s',
+        }}>
+            {msg || 'Acknowledge'}
+        </button>
     );
 }
 
@@ -198,6 +256,18 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
                 e.currentTarget.style.boxShadow = 'none';
             }}
         >
+            <style>{`
+            @keyframes pulse-soft {
+                0% { opacity: 1; }
+                50% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
+            @keyframes pulse-fast {
+                0% { opacity: 1; }
+                50% { opacity: 0.2; }
+                100% { opacity: 1; }
+            }
+            `}</style>
             {/* ── Row 1: Property name (left) + Countdown + Status (right) ── */}
             <div style={{
                 display: 'flex',
@@ -275,12 +345,11 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
                     onClick={e => e.stopPropagation()}
                 >
                     {isPending && onAcknowledge && (
-                        <button onClick={onAcknowledge} style={{
-                            flex: 1, padding: '8px 6px',
-                            background: 'rgba(212,149,106,0.1)', color: 'var(--color-warn)',
-                            border: '1px solid rgba(212,149,106,0.3)', borderRadius: 'var(--radius-sm)',
-                            fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                        }}>Acknowledge</button>
+                        <AckButton
+                            date={date}
+                            time={countdownTime}
+                            onAcknowledge={onAcknowledge}
+                        />
                     )}
                     {onStart && (
                         <button onClick={onStart} style={{

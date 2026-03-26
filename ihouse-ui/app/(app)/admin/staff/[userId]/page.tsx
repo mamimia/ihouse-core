@@ -1484,40 +1484,64 @@ export default function EditStaffPage() {
                       {t('admin.activation_lifecycle')}
                     </div>
                     
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', width: '100%', gap: 'var(--space-2)' }}>
                       {/* Sent Pill */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isSent ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isSent ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isSent ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
-                        <span style={{ fontSize: 11, fontWeight: 600, color: isSent ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
-                          {t('admin.access_link_sent')}
-                          {authStatus?.access_link_sent_at && <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.8 }}>{new Date(authStatus.access_link_sent_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} {new Date(authStatus.access_link_sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span>}
-                        </span>
+                      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isSent ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isSent ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: isSent ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: isSent ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+                            {t('admin.access_link_sent')}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', minHeight: 16 }}>
+                          {authStatus?.access_link_sent_at ? (
+                            <>{new Date(authStatus.access_link_sent_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.access_link_sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span></>
+                          ) : '—'}
+                        </div>
                       </div>
 
                       {/* Opened Pill */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isOpened ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isOpened ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isOpened ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
-                        <span style={{ fontSize: 11, fontWeight: 600, color: isOpened ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
-                          {t('admin.link_opened')}
-                          {authStatus?.access_link_opened_at && <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.8 }}>{new Date(authStatus.access_link_opened_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} {new Date(authStatus.access_link_opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span>}
-                        </span>
+                      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isOpened ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isOpened ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: isOpened ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: isOpened ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+                            {t('admin.link_opened')}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', minHeight: 16 }}>
+                          {authStatus?.access_link_opened_at ? (
+                            <>{new Date(authStatus.access_link_opened_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.access_link_opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span></>
+                          ) : '—'}
+                        </div>
                       </div>
 
                       {/* Activated Pill */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isActivated ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isActivated ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isActivated ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
-                        <span style={{ fontSize: 11, fontWeight: 600, color: isActivated ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
-                          {t('admin.worker_activated')}
-                        </span>
+                      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isActivated ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isActivated ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: isActivated ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: isActivated ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+                            {t('admin.worker_activated')}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', minHeight: 16 }}>
+                          {/* Activated typically does not have a timestamp */}
+                          {isActivated ? '—' : '—'}
+                        </div>
                       </div>
 
                       {/* Last Active Pill */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isLastActive ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isLastActive ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isLastActive ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
-                        <span style={{ fontSize: 11, fontWeight: 600, color: isLastActive ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
-                          {t('admin.active_session')}
-                          {authStatus?.last_sign_in_at && <span style={{ fontWeight: 400, marginLeft: 6, opacity: 0.8 }}>{new Date(authStatus.last_sign_in_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} {new Date(authStatus.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span>}
-                        </span>
+                      <div style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: isLastActive ? 'rgba(74,124,89,0.1)' : 'var(--color-surface-3)', padding: '4px 10px', borderRadius: 100, border: `1px solid ${isLastActive ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}` }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: isLastActive ? 'var(--color-ok)' : 'var(--color-text-faint)' }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: isLastActive ? 'var(--color-ok)' : 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+                            {t('admin.active_session')}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', minHeight: 16 }}>
+                          {authStatus?.last_sign_in_at ? (
+                            <>{new Date(authStatus.last_sign_in_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span></>
+                          ) : '—'}
+                        </div>
                       </div>
                     </div>
                   </div>
