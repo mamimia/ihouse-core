@@ -348,7 +348,13 @@ export default function EditStaffPage() {
   const [updatedAt, setUpdatedAt] = useState<string | undefined>();
   
   // Phase 945: Activation Status
-  const [authStatus, setAuthStatus] = useState<{ force_reset?: boolean; last_sign_in_at?: string | null; invited_at?: string | null } | null>(null);
+  const [authStatus, setAuthStatus] = useState<{ 
+    force_reset?: boolean; 
+    last_sign_in_at?: string | null; 
+    invited_at?: string | null;
+    access_link_sent_at?: string | null;
+    access_link_opened_at?: string | null;
+  } | null>(null);
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1103,28 +1109,59 @@ export default function EditStaffPage() {
               <div>
                 <div style={sectionHeadStyle}>Activation Status</div>
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--space-3)',
+                  display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
                   background: 'var(--color-surface-2)', padding: 'var(--space-4)',
                   borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
                   marginBottom: 'var(--space-4)'
                 }}>
-                  <div>
-                    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 2 }}>Lifecycle Stage</div>
-                    <div style={{ color: authStatus.force_reset ? 'var(--color-copper)' : 'var(--color-ok)', fontWeight: 600, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: authStatus.force_reset ? 'var(--color-copper)' : 'var(--color-ok)' }} />
-                      {authStatus.force_reset ? 'Pending Activation' : 'Worker Activated'}
+                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Worker Onboarding Lifecycle</div>
+                  
+                  {/* Step 1: Sent */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.access_link_sent_at ? 'var(--color-ok)' : 'var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {authStatus.access_link_sent_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
+                    </div>
+                    <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.access_link_sent_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
+                      <span style={{ fontWeight: 600 }}>Access Link Sent</span>
+                      {authStatus.access_link_sent_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{new Date(authStatus.access_link_sent_at).toLocaleString()}</span>}
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 2 }}>Invited / Updated</div>
-                    <div style={{ color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>
-                      {authStatus.invited_at ? new Date(authStatus.invited_at).toLocaleDateString() : 'N/A'}
+                  
+                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-8px 0 -8px 7px' }} />
+
+                  {/* Step 2: Opened */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.access_link_opened_at ? 'var(--color-ok)' : 'var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                       {authStatus.access_link_opened_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
+                    </div>
+                    <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.access_link_opened_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
+                      <span style={{ fontWeight: 600 }}>Link Opened</span>
+                      {authStatus.access_link_opened_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{new Date(authStatus.access_link_opened_at).toLocaleString()}</span>}
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 2 }}>Last Sign In</div>
-                    <div style={{ color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>
-                      {authStatus.last_sign_in_at ? new Date(authStatus.last_sign_in_at).toLocaleDateString() : 'Never'}
+
+                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-8px 0 -8px 7px' }} />
+
+                  {/* Step 3: Activated */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.force_reset === false ? 'var(--color-ok)' : 'var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                       {authStatus.force_reset === false && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
+                    </div>
+                    <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.force_reset === false ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
+                      <span style={{ fontWeight: 600 }}>Activated (Password Set)</span>
+                    </div>
+                  </div>
+
+                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-8px 0 -8px 7px' }} />
+
+                  {/* Step 4: Last Login */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.last_sign_in_at ? 'var(--color-ok)' : 'var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                       {authStatus.last_sign_in_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
+                    </div>
+                    <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.last_sign_in_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
+                      <span style={{ fontWeight: 600 }}>Active Session</span>
+                      {authStatus.last_sign_in_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Last login: {new Date(authStatus.last_sign_in_at).toLocaleString()}</span>}
                     </div>
                   </div>
                 </div>

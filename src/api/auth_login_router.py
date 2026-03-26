@@ -359,11 +359,17 @@ async def google_callback(body: GoogleCallbackRequest, request: Request) -> JSON
     try:
         user_obj = supa_service.auth.admin.get_user_by_id(user_id)
         user_metadata = user_obj.user.user_metadata or {}
+        force_reset = user_metadata.get("force_reset", False)
+        
+        # Phase 945: Record explicit "Link Opened" step if in first-time onboarding
+        if force_reset and "access_link_opened_at" not in user_metadata:
+            user_metadata["access_link_opened_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            supa_service.auth.admin.update_user_by_id(user_id, {"user_metadata": user_metadata})
+            
     except Exception as exc:
         logger.warning("auth/google-callback: failed to fetch user %s metadata: %s", user_id, exc)
         user_metadata = {}
-    
-    force_reset = user_metadata.get("force_reset", False)
+        force_reset = False
 
     now = int(time.time())
     payload = {

@@ -620,8 +620,12 @@ async def resend_access(
                     raise inv_exc
 
             # Ensure force_reset is set
+            import time
             existing_meta = user.user.user_metadata or {}
             existing_meta["force_reset"] = True
+            existing_meta["access_link_sent_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            existing_meta.pop("access_link_opened_at", None)
+            
             admin_client.auth.admin.update_user_by_id(user_id, {
                 "user_metadata": existing_meta
             })
@@ -657,8 +661,12 @@ async def resend_access(
             )
 
             # Ensure force_reset
+            import time
             existing_meta = user.user.user_metadata or {}
             existing_meta["force_reset"] = True
+            existing_meta["access_link_sent_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            existing_meta.pop("access_link_opened_at", None)
+            
             admin_client.auth.admin.update_user_by_id(user_id, {
                 "user_metadata": existing_meta
             })
@@ -713,7 +721,9 @@ async def get_staff_status(
             "user_id": user_id,
             "force_reset": force_reset,
             "last_sign_in_at": last_sign_in,
-            "invited_at": getattr(u, "updated_at", None) # approximate
+            "invited_at": getattr(u, "updated_at", None), # approximate
+            "access_link_sent_at": meta.get("access_link_sent_at"),
+            "access_link_opened_at": meta.get("access_link_opened_at")
         })
     except Exception as exc:
         logger.exception("Failed to fetch staff status for %s: %s", user_id, exc)
