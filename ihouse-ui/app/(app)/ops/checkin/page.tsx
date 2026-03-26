@@ -133,7 +133,7 @@ function CheckinSummaryStrip({ todayCount, upcomingCount, completedCount, nextAr
     todayCount: number; upcomingCount: number; completedCount: number; nextArrivalIso: string | null;
 }) {
     const { label, isOverdue, isUrgent } = useCountdown(nextArrivalIso, '14:00');
-    const urgencyColor = isOverdue ? 'var(--color-alert)' : isUrgent ? 'var(--color-warn)' : 'var(--color-sage)';
+    const urgencyColor = isOverdue ? 'var(--color-danger)' : isUrgent ? 'var(--color-warn)' : 'var(--color-sage)';
     const card: React.CSSProperties = {
         background: 'var(--color-surface)', border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',

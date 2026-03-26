@@ -79,10 +79,10 @@ export function LiveCountdown({ targetDate, targetTime, status }: CountdownProps
     let animation = 'none';
 
     if (overdue) {
-        color = 'var(--color-alert)';
+        color = 'var(--color-danger)';
         if (isActiveTask) animation = 'pulse-fast 1s ease-in-out infinite';
     } else if (isCriticalWarning) {
-        color = 'var(--color-alert)';
+        color = 'var(--color-danger)';
         if (isActiveTask) animation = 'pulse-soft 2s ease-in-out infinite';
     } else if (isWarning) {
         color = 'var(--color-warn)';
@@ -118,7 +118,12 @@ function AckButton({ date, time, onAcknowledge }: { date: string, time: string, 
             onAcknowledge();
             return;
         }
-        const target = new Date(`${date}T${time.length === 5 ? time + ':00' : time}`).getTime();
+        const parsedDate = date && date !== 'Unknown' ? date : new Date().toISOString().split('T')[0];
+        const target = new Date(`${parsedDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
+        if (isNaN(target)) {
+            onAcknowledge();
+            return;
+        }
         const diff = target - Date.now();
         const twentyFourHours = 24 * 60 * 60 * 1000;
         

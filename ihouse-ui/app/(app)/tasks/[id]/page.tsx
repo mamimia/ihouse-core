@@ -210,6 +210,7 @@ export default function TaskDetailPage() {
     const [showNotes, setShowNotes] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [ackMsg, setAckMsg] = useState('');
 
     useEffect(() => {
         if (!id) return;
@@ -413,10 +414,33 @@ export default function TaskDetailPage() {
                         {task.status === 'pending' && (
                             <ActionButton
                                 id="action-acknowledge"
-                                label={task.priority === 'CRITICAL' ? '⚡ Acknowledge Now' : '✓ Acknowledge Task'}
-                                onClick={() => doAction('acknowledge')}
-                                disabled={actionLoading}
-                                danger={task.priority === 'CRITICAL'}
+                                label={ackMsg || (task.priority === 'CRITICAL' ? '⚡ Acknowledge Now' : '✓ Acknowledge Task')}
+                                onClick={() => {
+                                    if (ackMsg) return;
+                                    const date = task.due_date;
+                                    const time = task.due_time || '12:00';
+                                    const parsedDate = date && date !== 'Unknown' ? date : new Date().toISOString().split('T')[0];
+                                    const target = new Date(`${parsedDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
+                                    
+                                    if (!isNaN(target)) {
+                                        const diff = target - Date.now();
+                                        const twentyFourHours = 24 * 60 * 60 * 1000;
+                                        if (diff > twentyFourHours) {
+                                            const h = Math.floor(diff / 3600000);
+                                            const m = Math.floor((diff % 3600000) / 60000);
+                                            const days = Math.floor(h / 24);
+                                            const remainingH = h % 24;
+                                            
+                                            let timeStr = days > 0 ? `${days}d ${remainingH}h` : `${h}h ${m}m`;
+                                            setAckMsg(`Available in ${timeStr}`);
+                                            setTimeout(() => setAckMsg(''), 5000);
+                                            return;
+                                        }
+                                    }
+                                    doAction('acknowledge');
+                                }}
+                                disabled={actionLoading || !!ackMsg}
+                                danger={task.priority === 'CRITICAL' && !ackMsg}
                             />
                         )}
 
