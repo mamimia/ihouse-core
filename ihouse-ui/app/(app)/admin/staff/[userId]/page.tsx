@@ -328,7 +328,8 @@ export default function EditStaffPage() {
   const [preferredContact, setPreferredContact] = useState('');
   const [resendChannel, setResendChannel] = useState('email');
   const [resendSending, setResendSending] = useState(false);
-  const [resendResult, setResendResult] = useState<{ status: string; message?: string; magic_link?: string } | null>(null);
+  // delivery_method and email are returned by resend-access and needed to show correct success message
+  const [resendResult, setResendResult] = useState<{ status: string; message?: string; magic_link?: string; delivery_method?: string; email?: string } | null>(null);
   const [sms, setSms] = useState('');
 
   // Tab 4 — Documents & Compliance
@@ -1276,12 +1277,18 @@ export default function EditStaffPage() {
                                 body: JSON.stringify({ channel: 'email', frontend_url: window.location.origin }),
                               });
                               setResendResult(resp);
-                              if (resp.magic_link) {
-                                  window.location.href = getAccessMailto(language, email, resp.magic_link);
-                              } else {
-                                  alert('Could not generate the magic link. Check backend logs.');
+                              if (resp.status === 'sent' && resp.delivery_method === 'email_invite') {
+                                // Supabase sent the invite email directly to the worker.
+                                // No action_link is returned or needed — the worker gets it in their inbox.
+                              } else if (resp.status === 'sent' && resp.magic_link) {
+                                // Fallback: magic link resent via email — open mailto draft
+                                window.location.href = getAccessMailto(language, email, resp.magic_link);
+                              } else if (resp.status === 'link_generated' && resp.magic_link) {
+                                window.location.href = getAccessMailto(language, email, resp.magic_link);
+                              } else if (!resp.error && resp.status !== 'error') {
+                                console.warn('[Quick Send] unexpected response shape:', resp);
                               }
-                              await fetchAuthStatus(); // INSTANT UI refresh to update Link Sent flag
+                              await fetchAuthStatus(); // refresh lifecycle pills
                             } catch (err: any) {
                               setResendResult({ status: 'error', message: err.message || 'Failed to generate link' });
                             } finally {
@@ -1415,7 +1422,13 @@ export default function EditStaffPage() {
                     fontSize: 'var(--text-sm)',
                     color: resendResult.status === 'error' ? 'var(--color-alert)' : 'var(--color-ok, #4A7C59)',
                   }}>
-                    {resendResult.status === 'sent' && '✓ Access link sent via email.'}
+                    {resendResult.status === 'sent' && resendResult.delivery_method === 'email_invite' && (
+                      <span>✓ Invite email sent by Supabase directly to <strong>{resendResult.email || email}</strong>. The worker will receive it in their inbox.</span>
+                    )}
+                    {resendResult.status === 'sent' && resendResult.delivery_method === 'magic_link_resent' && (
+                      <span>✓ Access link resent. Mail client draft opened.</span>
+                    )}
+                    {resendResult.status === 'sent' && !resendResult.delivery_method && '✓ Access link sent via email.'}
                     {resendResult.status === 'link_generated' && (
                       <div>
                         <div style={{ marginBottom: 8 }}>✓ Magic link generated. Copy and send via {resendResult.message?.split('via ')[1] || resendChannel}:</div>
