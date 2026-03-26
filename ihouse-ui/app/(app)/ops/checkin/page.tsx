@@ -235,6 +235,8 @@ export default function MobileCheckinPage() {
     const [nationality, setNationality] = useState('');
 
     const [passportPhotoUrl, setPassportPhotoUrl] = useState<string | null>(null);
+    const [documentStoragePath, setDocumentStoragePath] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -273,35 +275,36 @@ export default function MobileCheckinPage() {
         const ctx = canvas.getContext('2d');
         if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        canvas.toBlob(async (blob) => {
-            if (!blob) return;
-            const previewUrl = URL.createObjectURL(blob);
-            setPassportPhotoUrl(previewUrl);
-            stopCamera();
+        // Convert canvas to JPEG base64 and upload to Supabase Storage
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const previewUrl = dataUrl; // use data URL for preview (survives page state)
+        setPassportPhotoUrl(previewUrl);
+        stopCamera();
 
-            setIsExtracting(true);
-            try {
-                // Mock OCR Endpoint for Phase 2 guided capture
-                const res = await apiFetch<any>('/worker/documents/extract', {
-                    method: 'POST',
-                    body: JSON.stringify({ type: 'image' }) 
-                });
-                
-                if (res.document_type) setDocumentType(res.document_type || 'PASSPORT');
-                if (res.first_name || res.last_name) setPassportName(`${res.first_name || ''} ${res.last_name || ''}`.trim());
-                if (res.document_number) setPassportNumber(res.document_number);
-                if (res.expiration_date) setPassportExpiry(res.expiration_date);
-                if (res.date_of_birth) setDateOfBirth(res.date_of_birth);
-                if (res.nationality) setNationality(res.nationality);
-                
-                showNotice('✨ Identity fields auto-extracted');
-            } catch (err) {
-                console.warn('Extraction failed', err);
-                showNotice('⚠️ Auto-extract failed. Please type manually.');
-            } finally {
-                setIsExtracting(false);
+        // Upload to real storage
+        setIsUploading(true);
+        try {
+            const bookingId = selected ? getBookingId(selected) : undefined;
+            const res = await apiFetch<any>('/worker/documents/upload', {
+                method: 'POST',
+                body: JSON.stringify({
+                    image_base64: dataUrl,
+                    side: 'front',
+                    booking_id: bookingId,
+                }),
+            });
+            if (res.storage_path) {
+                setDocumentStoragePath(res.storage_path);
+                showNotice('✅ Document captured & stored');
+            } else {
+                showNotice('⚠️ Upload completed but no path returned');
             }
-        }, 'image/jpeg', 0.9);
+        } catch (err) {
+            console.warn('Document upload failed', err);
+            showNotice('⚠️ Upload failed — document will not be stored. Please fill fields manually.');
+        } finally {
+            setIsUploading(false);
+        }
     };
     const [guestPortalUrl, setGuestPortalUrl] = useState<string | null>(null);
     const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
@@ -504,47 +507,42 @@ export default function MobileCheckinPage() {
     const DEV_PHOTO_BYPASS = true; // ← only controls photo, number always blocks
     const savePassport = async () => {
         if (!selected) return;
-        // Passport number is always mandatory — no bypass
-        if (!passportNumber.trim()) {
-            showNotice('⚠️ Passport number is required');
+        const bookingId = getBookingId(selected);
+
+        // Full name is always mandatory (document number recommended but not blocking)
+        if (!passportName.trim()) {
+            showNotice('⚠️ Guest name is required');
             return;
         }
+
         try {
-            // Best-effort: update guest passport_no via guests API
-            const guestId = selected.guest_id;
-            if (guestId) {
-                await apiFetch(`/guests/${guestId}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ 
-                        passport_no: passportNumber.trim(), 
-                        full_name: passportName.trim() || undefined,
-                        passport_expiry: passportExpiry || undefined,
-                        document_type: documentType,
-                        date_of_birth: dateOfBirth || undefined,
-                        nationality: nationality || undefined
+            // Phase 949d — save-guest-identity: creates/updates guest,
+            // links to booking, backfills booking_state.guest_name
+            const res = await apiFetch<any>('/worker/checkin/save-guest-identity', {
+                method: 'POST',
+                body: JSON.stringify({
+                    booking_id: bookingId,
+                    full_name: passportName.trim(),
+                    document_type: documentType,
+                    document_number: passportNumber.trim() || undefined,
+                    nationality: nationality.trim() || undefined,
+                    date_of_birth: dateOfBirth || undefined,
+                    passport_expiry: passportExpiry || undefined,
+                    document_photo_url: documentStoragePath || undefined,
+                }),
+            });
 
-                    }),
-                });
-            } else {
-                // No guest_id — try booking-level guest update
-                const bookingId = getBookingId(selected);
-                await apiFetch(`/guests/${bookingId}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ 
-                        passport_no: passportNumber.trim(), 
-                        full_name: passportName.trim() || undefined,
-                        passport_expiry: passportExpiry || undefined,
-                        document_type: documentType,
-                        date_of_birth: dateOfBirth || undefined,
-                        nationality: nationality || undefined
-
-                    }),
-                });
+            // Update local booking state with the persisted guest identity
+            if (res.guest_id) {
+                setSelected(prev => prev ? { ...prev, guest_id: res.guest_id, guest_name: res.full_name } : prev);
             }
-            showNotice('📄 Passport number saved');
-        } catch {
-            // Guest endpoint may not match booking_id — save attempt logged
-            console.warn('Passport save: guest endpoint may require guest_id, not booking_id');
+
+            const actionLabel = res.action === 'matched' ? 'Returning guest matched' : 'Guest record created';
+            showNotice(`✅ ${actionLabel} — identity saved`);
+        } catch (err) {
+            console.error('save-guest-identity failed', err);
+            showNotice('⚠️ Could not save guest identity. Please try again.');
+            return; // Don't advance step on failure
         }
         nextStep();
     };
@@ -844,19 +842,29 @@ export default function MobileCheckinPage() {
                             {passportPhotoUrl ? (
                                 <div style={{ position: 'relative' }}>
                                     <img src={passportPhotoUrl} alt="Document" style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} />
-                                    <button onClick={() => setPassportPhotoUrl(null)} style={{
+                                    <button onClick={() => { setPassportPhotoUrl(null); setDocumentStoragePath(null); }} style={{
                                         position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)',
                                         color: '#fff', border: 'none', borderRadius: 16, padding: '4px 12px', fontSize: '11px'
                                     }}>Retake</button>
+                                    {documentStoragePath && (
+                                        <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(63,185,80,0.9)', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: '10px', fontWeight: 600 }}>
+                                            ✓ Stored
+                                        </div>
+                                    )}
+                                    {isUploading && (
+                                        <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(210,153,34,0.9)', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: '10px', fontWeight: 600 }}>
+                                            Uploading…
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div onClick={() => startCamera()}>
                                     <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>📸</div>
                                     <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text)' }}>
-                                        Scan Document
+                                        Capture Document
                                     </div>
                                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 4 }}>
-                                        Autofills identity details (Fallback available)
+                                        Tap to open camera — or use file picker below
                                     </div>
                                 </div>
                             )}
@@ -875,11 +883,11 @@ export default function MobileCheckinPage() {
                         </div>
                     )}
                     
-                    {/* Extracted Data Fields */}
-                    {isExtracting ? (
+                    {/* Identity Fields — manual-first entry */}
+                    {isUploading ? (
                         <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
                             <div className="spinner" style={{ margin: '0 auto var(--space-3)' }} />
-                            <div>Extracting identity data...</div>
+                            <div>Storing document image…</div>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', opacity: isCameraActive ? 0.3 : 1, pointerEvents: isCameraActive ? 'none' : 'auto' }}>
@@ -898,7 +906,7 @@ export default function MobileCheckinPage() {
                                 </div>
                             </div>
                             <div>
-                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Guest Full Name</label>
+                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Guest Full Name *</label>
                                 <input value={passportName} onChange={e => setPassportName(e.target.value)} placeholder="As on document" style={inputStyle} />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>

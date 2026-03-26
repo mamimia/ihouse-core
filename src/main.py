@@ -492,6 +492,9 @@ app.include_router(guest_messages_router)
 from api.booking_checkin_router import router as booking_checkin_router  # noqa: E402  # Phase 398
 app.include_router(booking_checkin_router)
 
+from api.checkin_identity_router import router as checkin_identity_router  # noqa: E402  # Phase 949
+app.include_router(checkin_identity_router)
+
 from api.access_token_router import router as access_token_router  # noqa: E402  # Phase 399
 app.include_router(access_token_router)
 
