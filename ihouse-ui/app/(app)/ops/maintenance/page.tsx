@@ -17,6 +17,7 @@ import { useElapsed, useCountdown } from '@/lib/useCountdown';
 import { MAINTENANCE_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 import WorkerTaskCard from '@/components/WorkerTaskCard';
+import WorkerHeader from '@/components/WorkerHeader';
 
 // Phase 864: apiFetch, getWorkerId, getToken imported from lib/staffApi.ts
 
@@ -223,14 +224,7 @@ export default function MobileMaintenancePage() {
             {/* ========== LIST VIEW ========== */}
             {view === 'list' && (
                 <>
-                    <div style={{ marginBottom: 'var(--space-5)' }}>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {dateStr}
-                        </p>
-                        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.03em' }}>
-                            Maintenance
-                        </h1>
-                    </div>
+                    <WorkerHeader title="Maintenance" />
 
                     {/* Summary strip */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>

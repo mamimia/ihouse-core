@@ -18,6 +18,22 @@ function getDefaultTime(kind: string): string {
     return map[kind] || '12:00';
 }
 
+function FormattedDate({ dateString }: { dateString: string }) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>📅 {dateString}</span>;
+    }
+    const [year, month, day] = dateString.split('-');
+    
+    return (
+        <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '1px', color: 'var(--color-text)' }}>
+            <span style={{ fontSize: '1.05em', marginRight: 4 }}>📅</span>
+            <span style={{ fontSize: '1em', fontWeight: 500, color: 'var(--color-text-dim)' }}>{year}-</span>
+            <span style={{ fontSize: '1.05em', fontWeight: 600 }}>{month}-</span>
+            <span style={{ fontSize: '1.25em', fontWeight: 800 }}>{day}</span>
+        </span>
+    );
+}
+
 function isOpaqueRef(s: string): boolean {
     if (!s) return false;
     if (/^ICAL-/i.test(s)) return true;
@@ -334,7 +350,7 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
             }}>
                 <span style={{ color: baseColor, fontWeight: 700 }}>{kindLabel}</span>
                 {date && (
-                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>📅 {date}</span>
+                    <FormattedDate dateString={date} />
                 )}
                 {displayGuest && <span>👤 {displayGuest}</span>}
                 {guestCount    && <span>👥 {guestCount}</span>}

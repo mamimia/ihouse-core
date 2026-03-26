@@ -24,6 +24,7 @@ import { useCountdown } from '@/lib/useCountdown';
 import { CHECKIN_CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 import Link from 'next/link';
+import WorkerHeader from '@/components/WorkerHeader';
 
 export default function CheckinCheckoutHub() {
     const [arrivals, setArrivals] = useState(0);
@@ -110,17 +111,7 @@ export default function CheckinCheckoutHub() {
         <MobileStaffShell title="Check-in & Check-out" bottomNavItems={CHECKIN_CHECKOUT_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto', padding: 'var(--space-4)' }}>
             {/* Date + title */}
-            <div style={{ marginBottom: 'var(--space-5)' }}>
-                <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {dateStr}
-                </p>
-                <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.03em', marginTop: 4 }}>
-                    Your Shifts
-                </h1>
-                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                    Check-ins (7 days) &amp; Check-outs (task world)
-                </p>
-            </div>
+            <WorkerHeader title="Your Shifts" subtitle="Check-ins (7 days) & Check-outs (task world)" />
 
             {loading && (
                 <div style={{ ...card, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading…</div>

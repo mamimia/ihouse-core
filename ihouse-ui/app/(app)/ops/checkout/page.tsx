@@ -16,6 +16,7 @@ import { useCountdown } from '@/lib/useCountdown';
 import { CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 import WorkerTaskCard from '@/components/WorkerTaskCard';
+import WorkerHeader from '@/components/WorkerHeader';
 
 // Phase 865: apiFetch imported from lib/staffApi.ts
 
@@ -485,17 +486,7 @@ export default function MobileCheckoutPage() {
 
             {step === 'list' && (
                 <>
-                    <div style={{ marginBottom: 'var(--space-5)' }}>
-                        <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {dateStr}
-                        </p>
-                        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.03em', marginTop: 4 }}>
-                            Check-out
-                        </h1>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                            Departures · task world
-                        </p>
-                    </div>
+                    <WorkerHeader title="Check-out" subtitle="Departures · task world" />
 
                     <CheckoutSummaryStrip
                         todayCount={todayTasks.length}

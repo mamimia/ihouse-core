@@ -16,6 +16,7 @@ import { useCountdown } from '@/lib/useCountdown';
 import { CLEANER_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 import WorkerTaskCard from '@/components/WorkerTaskCard';
+import WorkerHeader from '@/components/WorkerHeader';
 
 // Phase 864: apiFetch, getWorkerId, getToken imported from lib/staffApi.ts
 
@@ -684,17 +685,7 @@ export default function MobileCleanerPage() {
             {/* ========== SCREEN 1: HOME — Today's Cleaning Tasks ========== */}
             {screen === 'list' && (
                 <>
-                    <div style={{ marginBottom: 'var(--space-5)' }}>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {dateStr}
-                        </p>
-                        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.03em' }}>
-                            Today&apos;s Tasks
-                        </h1>
-                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
-                            Cleaning tasks assigned to you
-                        </p>
-                    </div>
+                    <WorkerHeader title="Today's Tasks" subtitle="Cleaning tasks assigned to you" />
 
                     {/* Summary strip */}
                     <CleanerSummaryStrip
