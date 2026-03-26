@@ -588,7 +588,7 @@ async def resend_access(
 
             frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
             try:
-                admin_client.auth.admin.invite_user_by_email(
+                auth_res = admin_client.auth.admin.invite_user_by_email(
                     email,
                     options={
                         "data": {
@@ -599,13 +599,15 @@ async def resend_access(
                     }
                 )
                 delivery_method = "email_invite"
+                action_link = _extract_action_link(auth_res)
             except Exception as inv_exc:
                 if "already" in str(inv_exc).lower() or "exists" in str(inv_exc).lower():
-                    admin_client.auth.admin.generate_link(
+                    link_res = admin_client.auth.admin.generate_link(
                         {"type": "magiclink", "email": email,
                          "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
                     )
                     delivery_method = "magic_link_resent"
+                    action_link = _extract_action_link(link_res)
                 else:
                     raise inv_exc
 
@@ -621,6 +623,7 @@ async def resend_access(
                 "channel": "email",
                 "email": email,
                 "delivery_method": delivery_method,
+                "magic_link": action_link,
             })
         except Exception as exc:
             logger.exception("Failed to resend access via email: %s", exc)

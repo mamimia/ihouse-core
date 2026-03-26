@@ -1150,25 +1150,40 @@ export default function EditStaffPage() {
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Quick Send by Email</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>To: {email}</span>
-                      <a
-                        href={getAccessMailto(language, email, '[Generate a link above first, then paste it here]')}
-                        style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                      <button
+                        type="button"
+                        disabled={resendSending}
+                        onClick={async () => {
+                          setResendSending(true);
+                          setResendResult(null);
+                          try {
+                            const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
+                              method: 'POST',
+                              body: JSON.stringify({ channel: 'email' }),
+                            });
+                            setResendResult(resp);
+                            if (resp.magic_link) {
+                                window.location.href = getAccessMailto(language, email, resp.magic_link);
+                            } else {
+                                alert('Could not generate the magic link. Check backend logs.');
+                            }
+                          } catch (err: any) {
+                            setResendResult({ status: 'error', message: err.message || 'Failed to generate link' });
+                          } finally {
+                            setResendSending(false);
+                          }
+                        }}
+                        style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: resendSending ? 'not-allowed' : 'pointer', opacity: resendSending ? 0.6 : 1, whiteSpace: 'nowrap' }}
                       >
-                        ✉ Send by Email
-                      </a>
-                      <span style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>Opens your mail client</span>
+                        {resendSending ? 'Generating Link...' : '✉ Send by Email'}
+                      </button>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>Generates link and opens your mail client directly</span>
                     </div>
                     {resendResult?.magic_link && (
                       <div style={{ marginTop: 10 }}>
-                        <p style={{ fontSize: 11, color: 'var(--color-text-faint)', margin: '0 0 6px' }}>Or copy the link and paste it into the email body:</p>
+                        <p style={{ fontSize: 11, color: 'var(--color-text-faint)', margin: '0 0 6px' }}>Direct link (if your mail client didn't open):</p>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <input readOnly value={resendResult.magic_link} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, flex: 1 }} onClick={(e: any) => e.target.select()} />
-                          <a
-                            href={getAccessMailto(language, email, resendResult.magic_link)}
-                            style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
-                          >
-                            ✉ Send by Email
-                          </a>
                         </div>
                       </div>
                     )}
