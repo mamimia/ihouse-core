@@ -7,9 +7,11 @@ import { getRoleRoute } from '../../../lib/roleRoute';
 import AuthCard from '../../../components/auth/AuthCard';
 import PasswordInput from '../../../components/auth/PasswordInput';
 import { usePasswordRules } from '@/hooks/usePasswordRules';
+import { useLanguage } from '../../../lib/LanguageContext';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -95,12 +97,15 @@ export default function UpdatePasswordPage() {
     owner: 'Property Owner',
   };
   const roleLabel = ROLE_LABELS[userRole] || '';
-  const welcomeTitle = userName
-    ? `Welcome, ${userName}`
-    : 'Set Your Password';
-  const welcomeSubtitle = roleLabel
+  const defaultWelcomeTitle = userName ? `Welcome, ${userName}` : 'Set Your Password';
+  const defaultWelcomeSubtitle = roleLabel
     ? `You're joining Domaniqo as ${roleLabel}. Please set a secure password to continue.`
     : 'Please set a new password for your account to continue.';
+
+  const welcomeTitle = userName ? t('auth.welcome_name').replace('{name}', userName) : t('auth.set_your_password');
+  const welcomeSubtitle = roleLabel 
+    ? t('auth.joining_as_role').replace('{role}', roleLabel)
+    : t('auth.set_password_desc');
 
   return (
     <AuthCard title={welcomeTitle} subtitle={welcomeSubtitle}>
@@ -129,7 +134,7 @@ export default function UpdatePasswordPage() {
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
           }}>
-            New Password
+            {t('auth.new_password')}
           </label>
           <PasswordInput
             id="input-new-password"
@@ -137,7 +142,7 @@ export default function UpdatePasswordPage() {
             onChange={(e) => { setPassword(e.target.value); setError(null); }}
             onFocus={() => setPasswordFocused(true)}
             onBlur={() => setPasswordFocused(false)}
-            placeholder="Create a strong password"
+            placeholder={t('auth.create_strong_password')}
             autoComplete="new-password"
             autoFocus
           />
@@ -153,13 +158,13 @@ export default function UpdatePasswordPage() {
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
           }}>
-            Confirm Password
+            {t('auth.confirm_password')}
           </label>
           <PasswordInput
             id="input-confirm-password"
             value={confirmPassword}
             onChange={(e) => { setConfirmPassword(e.target.value); setError(null); }}
-            placeholder="Re-enter password"
+            placeholder={t('auth.reenter_password')}
             autoComplete="new-password"
           />
         </div>

@@ -18,6 +18,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getToken } from '@/lib/api';
 import { uploadPropertyPhoto, ACCEPTED_IMAGE_TYPES } from '@/lib/uploadPhoto';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // Temporary mailto email copy — language-aware (until Resend is wired)
 const MAILTO_ACCESS: Record<string, { subject: string; body: (link: string) => string }> = {
@@ -282,6 +283,7 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl: string }) {
 export default function EditStaffPage() {
   const router = useRouter();
   const params = useParams();
+  const { t } = useLanguage();
   const rawUserId = decodeURIComponent(params.userId as string);
 
   // Loading state
@@ -1104,82 +1106,86 @@ export default function EditStaffPage() {
               </Field>
             </div>
 
-            {/* Send / Resend Access Link or Password Update */}
-            {authStatus && (
-              <div>
-                <div style={sectionHeadStyle}>Activation Status</div>
-                <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
-                  background: 'var(--color-surface-2)', padding: 'var(--space-4)',
-                  borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-                  marginBottom: 'var(--space-4)'
-                }}>
-                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Worker Onboarding Lifecycle</div>
+            {/* Unified Access & Onboarding Card */}
+            <div style={sectionHeadStyle}>{t('admin.worker_onboarding_access')}</div>
+            
+            <div style={{
+              background: 'var(--color-surface-2)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--color-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              marginBottom: 'var(--space-4)'
+            }}>
+              {/* TOP HALF: Lifecycle Tracker */}
+              {authStatus && (
+                <div style={{ padding: 'var(--space-4)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface-1)' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {t('admin.activation_lifecycle')}
+                  </div>
                   
                   {/* Step 1: Sent */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.access_link_sent_at ? 'var(--color-ok)' : 'var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.access_link_sent_at ? 'var(--color-ok)' : 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {authStatus.access_link_sent_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
                     </div>
                     <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.access_link_sent_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
-                      <span style={{ fontWeight: 600 }}>Access Link Sent</span>
-                      {authStatus.access_link_sent_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{new Date(authStatus.access_link_sent_at).toLocaleString()}</span>}
+                      <span style={{ fontWeight: 600 }}>{t('admin.access_link_sent')}</span>
+                      {authStatus.access_link_sent_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 400 }}>{new Date(authStatus.access_link_sent_at).toLocaleString()}</span>}
                     </div>
                   </div>
                   
-                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-8px 0 -8px 7px' }} />
+                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-2px 0 -2px 7px' }} />
 
                   {/* Step 2: Opened */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.access_link_opened_at ? 'var(--color-ok)' : 'var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.access_link_opened_at ? 'var(--color-ok)' : 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                        {authStatus.access_link_opened_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
                     </div>
                     <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.access_link_opened_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
-                      <span style={{ fontWeight: 600 }}>Link Opened</span>
-                      {authStatus.access_link_opened_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{new Date(authStatus.access_link_opened_at).toLocaleString()}</span>}
+                      <span style={{ fontWeight: 600 }}>{t('admin.link_opened')}</span>
+                      {authStatus.access_link_opened_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 400 }}>{new Date(authStatus.access_link_opened_at).toLocaleString()}</span>}
                     </div>
                   </div>
 
-                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-8px 0 -8px 7px' }} />
+                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-2px 0 -2px 7px' }} />
 
                   {/* Step 3: Activated */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.force_reset === false ? 'var(--color-ok)' : 'var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.force_reset === false ? 'var(--color-ok)' : 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                        {authStatus.force_reset === false && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
                     </div>
                     <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.force_reset === false ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
-                      <span style={{ fontWeight: 600 }}>Activated (Password Set)</span>
+                      <span style={{ fontWeight: 600 }}>{t('admin.worker_activated')}</span>
                     </div>
                   </div>
 
-                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-8px 0 -8px 7px' }} />
+                  <div style={{ width: 2, height: 16, background: 'var(--color-border)', margin: '-2px 0 -2px 7px' }} />
 
                   {/* Step 4: Last Login */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.last_sign_in_at ? 'var(--color-ok)' : 'var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: authStatus.last_sign_in_at ? 'var(--color-ok)' : 'var(--color-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                        {authStatus.last_sign_in_at && <span style={{ color: '#fff', fontSize: 10, fontWeight: 800 }}>✓</span>}
                     </div>
                     <div style={{ flex: 1, fontSize: 'var(--text-sm)', color: authStatus.last_sign_in_at ? 'var(--color-text)' : 'var(--color-text-faint)' }}>
-                      <span style={{ fontWeight: 600 }}>Active Session</span>
-                      {authStatus.last_sign_in_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Last login: {new Date(authStatus.last_sign_in_at).toLocaleString()}</span>}
+                      <span style={{ fontWeight: 600 }}>{t('admin.active_session')}</span>
+                      {authStatus.last_sign_in_at && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 400 }}>{t('admin.last_login')}: {new Date(authStatus.last_sign_in_at).toLocaleString()}</span>}
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div>
-              <div style={sectionHeadStyle}>
-                {authStatus?.force_reset === false ? 'Account Management' : 'Send Access Link'}
-              </div>
-              <div style={{
-                background: 'var(--color-surface-2)', padding: 'var(--space-4)',
-                borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
-              }}>
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', margin: '0 0 var(--space-3) 0' }}>
+              {/* BOTTOM HALF: Actions */}
+              <div style={{ padding: 'var(--space-4)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {authStatus?.force_reset === false ? t('admin.account_management') : t('admin.send_access_link_title')}
+                </div>
+                
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', margin: '0 0 var(--space-4) 0', lineHeight: 1.4 }}>
                   {authStatus?.force_reset === false
-                    ? 'Generate a recovery password link or copy instructions to help the worker regain access to their account.'
-                    : 'Send or re-send a first-access link to this staff member. They can use this to set their password and log into their role-specific app.'}
+                    ? t('admin.account_management_desc')
+                    : t('admin.send_access_link_desc')}
                 </p>
                 
                 {authStatus?.force_reset === false ? (
