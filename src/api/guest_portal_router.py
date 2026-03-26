@@ -194,17 +194,20 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
     # 2. Look up property + booking data
     if db:
         try:
-            # 2a. Resolve property_id if not in token context
-            if not property_id:
-                booking_res = (
-                    db.table("booking_state")
-                    .select("property_id")
-                    .eq("booking_id", booking_ref)
-                    .limit(1)
-                    .execute()
-                )
-                if booking_res.data:
-                    property_id = booking_res.data[0].get("property_id", "")
+            # 2a. Resolve property_id + guest_id from booking_state
+            guest_id_from_state: Optional[str] = None
+            bs_res = (
+                db.table("booking_state")
+                .select("property_id, guest_id, guest_name")
+                .eq("booking_id", booking_ref)
+                .limit(1)
+                .execute()
+            )
+            if bs_res.data:
+                bs_row = bs_res.data[0]
+                if not property_id:
+                    property_id = bs_row.get("property_id", "")
+                guest_id_from_state = bs_row.get("guest_id")
 
             # 2b. Property info
             prop_data: dict = {}
@@ -240,6 +243,26 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
             except Exception:
                 pass
 
+            # 2c-2. Phase 949d-2 — Canonical guest identity resolution
+            # When guest_id exists (set by document intake at Step 2),
+            # resolve guests.full_name as the canonical name.
+            # Critical for iCal bookings where booking-level guest_name
+            # may be "Reserved" or "Airbnb (Not available)".
+            canonical_guest_name = booking_data.get("guest_name")
+            if guest_id_from_state:
+                try:
+                    guest_res = (
+                        db.table("guests")
+                        .select("full_name")
+                        .eq("id", guest_id_from_state)
+                        .limit(1)
+                        .execute()
+                    )
+                    if guest_res.data and guest_res.data[0].get("full_name"):
+                        canonical_guest_name = guest_res.data[0]["full_name"]
+                except Exception:
+                    pass  # fall back to booking-level name
+
             # 2d. Phase 64 — Deposit status for Your Stay section
             deposit_status: Optional[str] = None
             try:
@@ -257,7 +280,7 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
 
             return JSONResponse(status_code=200, content={
                 # Section 1 — Welcome / Stay Header
-                "guest_name": booking_data.get("guest_name"),
+                "guest_name": canonical_guest_name,
                 "check_in": booking_data.get("check_in"),
                 "check_out": booking_data.get("check_out"),
                 "booking_status": booking_data.get("status"),
@@ -585,6 +608,31 @@ async def checkout_worker_view(
         booking = booking_rows[0]
         property_id = booking.get("property_id", "")
 
+        # Phase 949d-2: Resolve canonical guest name via guest_id
+        canonical_guest_name = booking.get("guest_name")
+        try:
+            bs_res = (
+                db.table("booking_state")
+                .select("guest_id")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+            guest_id = (bs_res.data[0].get("guest_id") if bs_res.data else None)
+            if guest_id:
+                guest_res = (
+                    db.table("guests")
+                    .select("full_name")
+                    .eq("id", guest_id)
+                    .limit(1)
+                    .execute()
+                )
+                if guest_res.data and guest_res.data[0].get("full_name"):
+                    canonical_guest_name = guest_res.data[0]["full_name"]
+        except Exception:
+            pass  # fall back to booking-level name
+
         # Get property info
         prop_data: dict = {}
         try:
@@ -645,7 +693,7 @@ async def checkout_worker_view(
         return JSONResponse(status_code=200, content={
             "booking": {
                 "booking_id": booking.get("booking_id"),
-                "guest_name": booking.get("guest_name"),
+                "guest_name": canonical_guest_name,
                 "check_in": booking.get("check_in"),
                 "check_out": booking.get("check_out"),
                 "number_of_guests": booking.get("number_of_guests"),
