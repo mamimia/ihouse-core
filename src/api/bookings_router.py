@@ -352,6 +352,7 @@ async def list_bookings(
                 "check_in":        r.get("check_in"),
                 "check_out":       r.get("check_out"),
                 "guest_name":      r.get("guest_name"),
+                "guest_count":     r.get("guest_count"),
                 "version":         r.get("version"),
                 "created_at":      r.get("created_at"),
                 "updated_at":      r.get("updated_at_ms"),

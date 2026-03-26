@@ -263,23 +263,57 @@ export default function MobileCheckinPage() {
             checkinTasks.forEach(t => {
                 if (t.status === 'COMPLETED' || t.status === 'CANCELED') return;
                 const bId = t.booking_id || t.task_id;
-                // Synthetic booking from task: we know the check-in date from due_date
-                // but don't know check-out. Leave check_out undefined so nights
-                // computation returns null (hidden) rather than showing wrong value.
+                // Phase 889: For tasks without a matching booking in the bookings
+                // list, create a placeholder. We will enrich it from the booking API
+                // in the next step so check_out/guest_name/guest_count are real.
                 if (!bookingMap.has(bId)) {
                     bookingMap.set(bId, {
                         booking_id: bId,
                         booking_ref: t.task_id,
                         property_id: t.property_id,
-                        guest_name: t.title || undefined,  // will be sanitated by WorkerTaskCard
+                        guest_name: t.title || undefined,
                         check_in: t.due_date || today,
-                        check_out: undefined,              // unknown — do not guess
-                        status: 'Upcoming',
+                        check_out: undefined,
+                        status: t.status || 'Upcoming',
                         deposit_required: false,
                         operator_note: t.description || undefined,
+                        _needs_booking_enrichment: true,  // flag for enrichment
                     });
+                } else {
+                    // Task exists AND booking exists — attach task metadata
+                    const existing = bookingMap.get(bId);
+                    if (existing) {
+                        existing.status = existing.status || t.status || 'Upcoming';
+                        existing.task_id = t.task_id;
+                    }
                 }
             });
+
+            // Phase 889: Enrich synthetic bookings with real booking data
+            // (check_out, guest_name, guest_count) from booking_state via API
+            const enrichPromises: Promise<void>[] = [];
+            bookingMap.forEach((b, bId) => {
+                if (!b._needs_booking_enrichment) return;
+                enrichPromises.push(
+                    apiFetch<any>(`/bookings/${bId}`)
+                        .then(res => {
+                            const bk = res?.data || res;
+                            if (bk && bk.booking_id) {
+                                b.check_out = bk.check_out || b.check_out;
+                                b.guest_name = bk.guest_name || b.guest_name;
+                                b.guest_count = bk.guest_count ?? b.guest_count;
+                                b.check_in = bk.check_in || b.check_in;
+                                b.source = bk.source || b.source;
+                                b.reservation_ref = bk.reservation_ref || b.reservation_ref;
+                                b.guest_id = bk.guest_id || b.guest_id;
+                            }
+                        })
+                        .catch(() => {
+                            // Booking lookup failed — keep synthetic data as-is
+                        })
+                );
+            });
+            await Promise.all(enrichPromises);
 
             const merged = Array.from(bookingMap.values());
 
@@ -645,11 +679,15 @@ export default function MobileCheckinPage() {
                         </span>
                     </div>
 
-                    <InfoRow label="Guest" value={selected.guest_name} />
+                    <InfoRow label="Guest" value={
+                        selected.guest_name && !/^ICAL-/i.test(selected.guest_name) && !/^[0-9a-f]{8}-/i.test(selected.guest_name)
+                            ? selected.guest_name
+                            : undefined
+                    } />
                     <InfoRow label="Guests" value={selected.guest_count ? `${selected.guest_count} guests` : undefined} />
-                    <InfoRow label="Property" value={selected.property_id} />
-                    <InfoRow label="Check-in" value={selected.check_in} />
-                    <InfoRow label="Check-out" value={selected.check_out} />
+                    <InfoRow label="Property" value={(selected as any).property_name || selected.property_id} />
+                    <InfoRow label="Check-in" value={selected.check_in ? new Date(selected.check_in + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
+                    <InfoRow label="Check-out" value={selected.check_out ? new Date(selected.check_out + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
                     <InfoRow label="Nights" value={selected.nights} />
                     {selected.source && <InfoRow label="Source" value={selected.source} />}
                     {selected.reservation_ref && <InfoRow label="Reservation" value={selected.reservation_ref} />}
