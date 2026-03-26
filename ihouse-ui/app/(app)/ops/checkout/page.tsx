@@ -34,10 +34,12 @@ type CheckoutTask = {
     due_date?: string;         // ISO date — the checkout date
     status: string;
     title?: string;
-    // Enriched (Phase 886)
+    // Enriched (Phase 886/889)
     guest_name?: string;
+    guest_count?: number;
     check_in?: string;
     check_out?: string;
+    nights?: number;
     property_name?: string;
     property_latitude?: number | null;
     property_longitude?: number | null;
@@ -172,6 +174,7 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
             checkIn={t.check_in}
             checkOut={t.check_out || t.due_date}
             guestName={t.guest_name}
+            guestCount={t.guest_count}
             onStart={() => onStart(t)}
             onAcknowledge={onAcknowledge}
             onNavigate={handleNavigate}
@@ -213,23 +216,44 @@ export default function MobileCheckoutPage() {
             const taskList = taskRes.tasks || taskRes.data?.tasks || taskRes.data || [];
             const rawTasks: CheckoutTask[] = Array.isArray(taskList) ? taskList : [];
 
-            // Phase 886: Enrich each task with real property name + location (worker-safe).
-            // This fixes the title showing "Checkout verification for …" instead of villa name.
+            // Phase 886/889: Enrich each task with property + booking data.
+            // Property: display name, GPS location.
+            // Booking: check_in, check_out, guest_name, guest_count → enables nights.
             const enriched = await Promise.all(rawTasks.map(async (t) => {
+                let result: CheckoutTask = { ...t, property_name: t.property_id };
+
+                // Enrich with property data
                 try {
                     const propRes = await apiFetch<any>(`/properties/${t.property_id}`);
                     const prop = propRes.data || propRes;
-                    const rawName = prop.name || prop.display_name || prop.short_name || null;
-                    return {
-                        ...t,
-                        property_name: rawName || t.property_id,
-                        property_latitude:  prop.latitude  ?? null,
-                        property_longitude: prop.longitude ?? null,
-                        property_address:   prop.address   ?? null,
-                    };
-                } catch {
-                    return { ...t, property_name: t.property_id };
+                    result.property_name = prop.display_name || prop.name || prop.short_name || t.property_id;
+                    result.property_latitude  = prop.latitude  ?? null;
+                    result.property_longitude = prop.longitude ?? null;
+                    result.property_address   = prop.address   ?? null;
+                } catch { /* keep defaults */ }
+
+                // Phase 889: Enrich with booking data (check_in, check_out, guest_name, guest_count)
+                if (t.booking_id) {
+                    try {
+                        const bkRes = await apiFetch<any>(`/bookings/${t.booking_id}`);
+                        const bk = bkRes?.data || bkRes;
+                        if (bk && bk.booking_id) {
+                            result.check_in    = bk.check_in || result.check_in;
+                            result.check_out   = bk.check_out || result.check_out || t.due_date;
+                            result.guest_name  = bk.guest_name || result.guest_name;
+                            result.guest_count = bk.guest_count ?? result.guest_count;
+                            // Compute nights from canonical booking dates
+                            if (bk.check_in && bk.check_out && bk.check_out !== bk.check_in) {
+                                const d1 = new Date(bk.check_in).getTime();
+                                const d2 = new Date(bk.check_out).getTime();
+                                const n = Math.round((d2 - d1) / 86400000);
+                                if (n > 0) result.nights = n;
+                            }
+                        }
+                    } catch { /* booking lookup failed — keep task-only data */ }
                 }
+
+                return result;
             }));
 
             // Sort: overdue first, then ascending by date.
@@ -272,12 +296,15 @@ export default function MobileCheckoutPage() {
     };
 
     const startCheckoutFromTask = (t: CheckoutTask) => {
-        // Convert task to a minimal Booking-like object for the checkout flow
+        // Convert task to a Booking-like object enriched with real booking data
         const syntheticBooking: Booking = {
             booking_id: t.booking_id || t.task_id,
             property_id: t.property_id,
             guest_name: t.guest_name || 'Guest',
-            check_out: t.due_date,
+            guest_count: t.guest_count,
+            check_in: t.check_in,
+            check_out: t.check_out || t.due_date,
+            nights: t.nights,
             status: 'checked_in',
         };
         setSelected(syntheticBooking);
@@ -523,8 +550,11 @@ export default function MobileCheckoutPage() {
                 <div style={card}>
                     <StepHeader step={1} total={4} title="Property Inspection" onBack={goBack} />
                     <InfoRow label="Guest" value={selected.guest_name} />
-                    <InfoRow label="Property" value={selected.property_id} />
-                    <InfoRow label="Check-out" value={selected.check_out} />
+                    <InfoRow label="Guests" value={selected.guest_count ? `${selected.guest_count} guests` : undefined} />
+                    <InfoRow label="Property" value={(selectedTask?.property_name) || selected.property_id} />
+                    <InfoRow label="Check-in" value={selected.check_in ? new Date(selected.check_in + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
+                    <InfoRow label="Check-out" value={selected.check_out ? new Date(selected.check_out + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : selected.check_out} />
+                    <InfoRow label="Nights" value={selected.nights} />
 
                     <div style={{ marginTop: 'var(--space-4)' }}>
                         <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
@@ -717,7 +747,8 @@ export default function MobileCheckoutPage() {
                     </div>
 
                     <InfoRow label="Guest" value={selected.guest_name} />
-                    <InfoRow label="Property" value={selected.property_id} />
+                    <InfoRow label="Property" value={(selectedTask?.property_name) || selected.property_id} />
+                    <InfoRow label="Nights" value={selected.nights} />
                     <InfoRow label="Issues Reported" value={issues.length > 0 ? `${issues.length} issue(s)` : 'None'} />
                     {settlement && (
                         <>
@@ -746,7 +777,8 @@ export default function MobileCheckoutPage() {
                             Check-out Complete
                         </div>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
-                            {selected.guest_name || 'Guest'} checked out from <strong>{selected.property_id}</strong>
+                            {selected.guest_name || 'Guest'} checked out from <strong>{(selectedTask?.property_name) || selected.property_id}</strong>
+                            {selected.nights ? ` · ${selected.nights} night${selected.nights > 1 ? 's' : ''}` : ''}
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-3)' }}>
                             A CLEANING task has been automatically created for this property.

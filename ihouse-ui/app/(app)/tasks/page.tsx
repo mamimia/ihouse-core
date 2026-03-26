@@ -16,7 +16,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, WorkerTask } from '../../../lib/api';
 import { getTabToken } from '../../../lib/tokenStore';
-import WorkerTaskCard from '@/components/WorkerTaskCard';
+import WorkerTaskCard, { computeNights } from '@/components/WorkerTaskCard';
+import { apiFetch } from '@/lib/staffApi';
 import { useRouter } from 'next/navigation';
 
 // ---------------------------------------------------------------------------
@@ -214,6 +215,7 @@ function DayPropertyCard({ propertyId, date, tasks, onOpen, propertyMap, staffMa
                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, paddingRight: 8 }}>
                                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                      {kindLabel(task.kind)}
+                                     {(() => { const bk = (task as any)._bookingCache; const n = bk ? computeNights(bk.check_in, bk.check_out) : null; return n ? <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-text-faint)', marginLeft: 6 }}>🌙 {n}</span> : null; })()}
                                  </span>
                                  <span 
                                     onClick={(e) => { e.stopPropagation(); router.push(`/bookings/${task.booking_id}`); }}
@@ -394,6 +396,8 @@ export default function TasksPage() {
     const [propertyMap, setPropertyMap] = useState<Record<string, string>>({});
     const [propertyStatusMap, setPropertyStatusMap] = useState<Record<string, string>>({});
     const [staffMap, setStaffMap] = useState<Record<string, { name: string; photo: string }>>({});
+    // Phase 889: booking cache for nights computation on stay-linked tasks
+    const [bookingCache, setBookingCache] = useState<Record<string, { check_in?: string; check_out?: string; guest_name?: string; guest_count?: number }>>({});
 
     // Phase 882b — detect if we should render inside a staff shell
     // Phase 882c fix: undefined = "not yet resolved from sessionStorage"
@@ -438,6 +442,7 @@ export default function TasksPage() {
         try {
             setError(null);
             const backendRole = getBackendWorkerRole(staffRole);
+            let loadedTasks: WorkerTask[] = [];
 
             if (staffRole === 'checkin_checkout') {
                 // Special: combined role needs CHECKIN + CHECKOUT tasks merged
@@ -450,14 +455,45 @@ export default function TasksPage() {
                 for (const t of [...(checkinResp.tasks ?? []), ...(checkoutResp.tasks ?? [])]) {
                     merged.set(t.task_id, t);
                 }
-                setTasks(Array.from(merged.values()));
+                loadedTasks = Array.from(merged.values());
             } else {
                 const resp = await api.getWorkerTasks({
                     status: filter || undefined,
                     limit: 50,
                     worker_role: backendRole,
                 });
-                setTasks(resp.tasks ?? []);
+                loadedTasks = resp.tasks ?? [];
+            }
+            setTasks(loadedTasks);
+
+            // Phase 889: Enrich with booking data for nights indicator.
+            // Only fetch for stay-linked task kinds with a booking_id.
+            const stayKinds = new Set(['CHECKIN_PREP', 'CHECKOUT_VERIFY', 'CHECKOUT_PREP', 'CLEANING', 'GUEST_WELCOME']);
+            const bookingIds = new Set<string>();
+            for (const t of loadedTasks) {
+                if (t.booking_id && stayKinds.has(t.kind) && !bookingCache[t.booking_id]) {
+                    bookingIds.add(t.booking_id);
+                }
+            }
+            if (bookingIds.size > 0) {
+                const cache: Record<string, { check_in?: string; check_out?: string; guest_name?: string; guest_count?: number }> = { ...bookingCache };
+                await Promise.allSettled(
+                    Array.from(bookingIds).map(async (bId) => {
+                        try {
+                            const res = await apiFetch<any>(`/bookings/${bId}`);
+                            const bk = res?.data || res;
+                            if (bk && bk.booking_id) {
+                                cache[bId] = {
+                                    check_in: bk.check_in,
+                                    check_out: bk.check_out,
+                                    guest_name: bk.guest_name,
+                                    guest_count: bk.guest_count,
+                                };
+                            }
+                        } catch { /* best-effort */ }
+                    })
+                );
+                setBookingCache(cache);
             }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to load tasks');
@@ -707,7 +743,12 @@ export default function TasksPage() {
                         if (sorted.length === 0) return <EmptyState filter={filter} />;
                         const groupedTasks: { key: string; date: string; propertyId: string; tasks: WorkerTask[] }[] = [];
                         const groupMap = new Map<string, WorkerTask[]>();
-                        for (const t of sorted) {
+                        // Phase 889: attach booking data to tasks for nights display
+                        const enrichedSorted = sorted.map(t => {
+                            const bk = t.booking_id ? bookingCache[t.booking_id] : undefined;
+                            return bk ? Object.assign({}, t, { _bookingCache: bk }) : t;
+                        });
+                        for (const t of enrichedSorted) {
                             const key = `${t.due_date}_${t.property_id}`;
                             if (!groupMap.has(key)) {
                                 groupMap.set(key, []);
@@ -739,6 +780,7 @@ export default function TasksPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
                             {approvedSorted.map((t, idx) => {
                                 const propName = propertyMap[t.property_id] || t.property_id;
+                                const bk = t.booking_id ? bookingCache[t.booking_id] : undefined;
 
                                 // Determine route destination based on task kind
                                 let dest = '/tasks';
@@ -758,7 +800,10 @@ export default function TasksPage() {
                                             time={t.due_time || ''}
                                             propertyName={propName}
                                             propertyCode={t.property_id}
-                                            guestName={t.title || ''}
+                                            guestName={bk?.guest_name || t.title || ''}
+                                            guestCount={bk?.guest_count}
+                                            checkIn={bk?.check_in}
+                                            checkOut={bk?.check_out}
                                             onStart={() => window.location.href = dest}
                                             onAcknowledge={
                                                 t.status === 'PENDING'
