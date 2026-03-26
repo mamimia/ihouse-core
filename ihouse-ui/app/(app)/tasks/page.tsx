@@ -14,10 +14,9 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api, WorkerTask } from '../../../lib/api';
+import { api, apiFetch as adminApiFetch, WorkerTask } from '../../../lib/api';
 import { getTabToken } from '../../../lib/tokenStore';
 import WorkerTaskCard, { computeNights } from '@/components/WorkerTaskCard';
-import { apiFetch } from '@/lib/staffApi';
 import { useRouter } from 'next/navigation';
 
 // ---------------------------------------------------------------------------
@@ -438,11 +437,13 @@ export default function TasksPage() {
     }, []);
 
     // Phase 882c — Role-scoped task loading
+    // IMPORTANT: This callback is invoked by polling (30s) and SSE events.
+    // It must NOT contain booking enrichment — that belongs in a separate
+    // one-shot effect to avoid infinite request loops (Phase 889 fix).
     const loadTasks = useCallback(async () => {
         try {
             setError(null);
             const backendRole = getBackendWorkerRole(staffRole);
-            let loadedTasks: WorkerTask[] = [];
 
             if (staffRole === 'checkin_checkout') {
                 // Special: combined role needs CHECKIN + CHECKOUT tasks merged
@@ -455,45 +456,14 @@ export default function TasksPage() {
                 for (const t of [...(checkinResp.tasks ?? []), ...(checkoutResp.tasks ?? [])]) {
                     merged.set(t.task_id, t);
                 }
-                loadedTasks = Array.from(merged.values());
+                setTasks(Array.from(merged.values()));
             } else {
                 const resp = await api.getWorkerTasks({
                     status: filter || undefined,
                     limit: 50,
                     worker_role: backendRole,
                 });
-                loadedTasks = resp.tasks ?? [];
-            }
-            setTasks(loadedTasks);
-
-            // Phase 889: Enrich with booking data for nights indicator.
-            // Only fetch for stay-linked task kinds with a booking_id.
-            const stayKinds = new Set(['CHECKIN_PREP', 'CHECKOUT_VERIFY', 'CHECKOUT_PREP', 'CLEANING', 'GUEST_WELCOME']);
-            const bookingIds = new Set<string>();
-            for (const t of loadedTasks) {
-                if (t.booking_id && stayKinds.has(t.kind) && !bookingCache[t.booking_id]) {
-                    bookingIds.add(t.booking_id);
-                }
-            }
-            if (bookingIds.size > 0) {
-                const cache: Record<string, { check_in?: string; check_out?: string; guest_name?: string; guest_count?: number }> = { ...bookingCache };
-                await Promise.allSettled(
-                    Array.from(bookingIds).map(async (bId) => {
-                        try {
-                            const res = await apiFetch<any>(`/bookings/${bId}`);
-                            const bk = res?.data || res;
-                            if (bk && bk.booking_id) {
-                                cache[bId] = {
-                                    check_in: bk.check_in,
-                                    check_out: bk.check_out,
-                                    guest_name: bk.guest_name,
-                                    guest_count: bk.guest_count,
-                                };
-                            }
-                        } catch { /* best-effort */ }
-                    })
-                );
-                setBookingCache(cache);
+                setTasks(resp.tasks ?? []);
             }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to load tasks');
@@ -501,6 +471,47 @@ export default function TasksPage() {
             setLoading(false);
         }
     }, [filter, staffRole]);
+
+    // Phase 889 fix: Booking enrichment as a SEPARATE one-shot effect.
+    // Fires when tasks change. Uses a ref-based dedup guard to avoid re-fetching
+    // the same booking_ids on every render. Uses the ADMIN api client (not staffApi).
+    useEffect(() => {
+        const stayKinds = new Set(['CHECKIN_PREP', 'CHECKOUT_VERIFY', 'CHECKOUT_PREP', 'CLEANING', 'GUEST_WELCOME']);
+        const newIds: string[] = [];
+        for (const t of tasks) {
+            if (t.booking_id && stayKinds.has(t.kind)) {
+                newIds.push(t.booking_id);
+            }
+        }
+        // Dedup: only fetch ids we haven't cached yet
+        const toFetch = newIds.filter(id => !bookingCache[id]);
+        if (toFetch.length === 0) return;
+
+        let cancelled = false;
+        (async () => {
+            const patch: Record<string, { check_in?: string; check_out?: string; guest_name?: string; guest_count?: number }> = {};
+            await Promise.allSettled(
+                [...new Set(toFetch)].map(async (bId) => {
+                    try {
+                        const bk = await adminApiFetch<any>(`/bookings/${bId}`);
+                        if (bk && (bk.booking_id || bk.check_in)) {
+                            patch[bId] = {
+                                check_in: bk.check_in,
+                                check_out: bk.check_out,
+                                guest_name: bk.guest_name,
+                                guest_count: bk.guest_count,
+                            };
+                        }
+                    } catch { /* best-effort — admin token used */ }
+                })
+            );
+            if (!cancelled && Object.keys(patch).length > 0) {
+                setBookingCache(prev => ({ ...prev, ...patch }));
+            }
+        })();
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tasks]);
 
     // Poll every 30s as fallback.
     // IMPORTANT: only start loading after staffRole has been resolved from
