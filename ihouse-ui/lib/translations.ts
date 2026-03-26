@@ -110,6 +110,10 @@ const en = {
   'channel.recent':         'Recent Notifications',
   'channel.no_history':     'No notifications sent yet.',
 
+  // ── Worker – First Time Welcome ──────────────────────
+  'worker.welcome_first_time':    'Welcome, {name}',
+  'worker.welcome_first_time_sub':'We are so glad to have you on the team. Your account is all set up.',
+
   // ── Worker – Tutorial ────────────────────────────────
   'tutorial.welcome_title':   'Welcome to Domaniqo! 🏠',
   'tutorial.welcome_content': 'This app is designed to help you manage your tasks efficiently. Let us show you around!',
@@ -218,6 +222,9 @@ const th: TranslationPack = {
   'channel.recent':          'การแจ้งเตือนล่าสุด',
   'channel.no_history':      'ยังไม่มีการแจ้งเตือนที่ส่งออกไป',
 
+  'worker.welcome_first_time':    'ยินดีต้อนรับ, {name}',
+  'worker.welcome_first_time_sub':'ดีใจที่ได้ร่วมงานกับคุณ บัญชีของคุณพร้อมใช้งานแล้ว',
+
   'tutorial.welcome_title':   'ยินดีต้อนรับสู่ Domaniqo! 🏠',
   'tutorial.welcome_content': 'แอปนี้ออกแบบมาเพื่อช่วยคุณจัดการงานได้อย่างมีประสิทธิภาพ ให้เราแนะนำคุณเลย!',
   'tutorial.tasks_title':     'เมนูงานของฉัน',
@@ -323,6 +330,9 @@ const he: TranslationPack = {
   'channel.info':            'הגדר את הערוץ המועדף לקבלת התראות משימה.',
   'channel.recent':          'התראות אחרונות',
   'channel.no_history':      'לא נשלחו התראות עדיין.',
+
+  'worker.welcome_first_time':    'ברוך הבא, {name}',
+  'worker.welcome_first_time_sub':'אנחנו כל כך שמחים שאתה כאן. החשבון שלך מוכן.',
 
   'tutorial.welcome_title':   'ברוך הבא ל-Domaniqo! 🏠',
   'tutorial.welcome_content': 'אפליקציה זו נועדה לעזור לך לנהל משימות ביעילות. בוא נעשה סיור קצר!',

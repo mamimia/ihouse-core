@@ -25,8 +25,11 @@
  *   - Touch targets: var(--touch-target-min) = 44px
  */
 
+import { useEffect, useState } from 'react';
 import { useIsMobile, useIsDesktop } from '../hooks/useMediaQuery';
 import BottomNav, { BottomNavItem } from './BottomNav';
+import { useLanguage } from '../lib/LanguageContext';
+import { getToken } from '../lib/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -145,6 +148,28 @@ export default function MobileStaffShell({
 }: MobileStaffShellProps) {
     const isMobile = useIsMobile();
     const isDesktop = useIsDesktop();
+    const { t } = useLanguage();
+    
+    // First-time welcome state
+    const [showWelcome, setShowWelcome] = useState(false);
+    const [welcomeName, setWelcomeName] = useState('');
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && sessionStorage.getItem('ihouse_welcome') === 'true') {
+            sessionStorage.removeItem('ihouse_welcome');
+            
+            const token = getToken();
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    // Extract first name or use a default
+                    const fullName = payload.full_name || payload.display_name || payload.name || '';
+                    setWelcomeName(fullName.split(' ')[0] || '');
+                } catch { /* ignore */ }
+            }
+            setShowWelcome(true);
+        }
+    }, []);
 
     const hasBottomNav = bottomNavItems && bottomNavItems.length > 0;
     const bottomNavHeight = hasBottomNav ? 72 : 0;
@@ -235,6 +260,56 @@ export default function MobileStaffShell({
                 {/* Bottom navigation */}
                 {hasBottomNav && (
                     <BottomNav items={bottomNavItems} />
+                )}
+
+                {/* Phase 945: First-time Welcome Overlay */}
+                {showWelcome && (
+                    <div style={{
+                        position: 'fixed', inset: 0, zIndex: 9999,
+                        background: 'rgba(13, 17, 23, 0.9)',
+                        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        animation: 'fadeIn 400ms ease',
+                    }}>
+                        <div style={{
+                            background: 'var(--color-surface, #1F2329)',
+                            borderRadius: 'var(--radius-lg, 24px)',
+                            padding: 'var(--space-8, 32px) var(--space-6, 24px)',
+                            maxWidth: 340, width: '90%',
+                            textAlign: 'center',
+                            boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+                            border: '1px solid rgba(248,246,242,0.1)',
+                            animation: 'slideUp 500ms cubic-bezier(0.16, 1, 0.3, 1)',
+                        }}>
+                            <div style={{ fontSize: 48, marginBottom: 'var(--space-4, 16px)' }}>🎉</div>
+                            <h2 style={{
+                                fontSize: 'var(--text-2xl, 24px)', fontWeight: 800,
+                                color: 'var(--color-text, #F8F6F2)', marginBottom: 'var(--space-2, 8px)',
+                                fontFamily: 'var(--font-brand, inherit)', letterSpacing: '-0.02em',
+                            }}>
+                                {t('worker.welcome_first_time').replace('{name}', welcomeName)}
+                            </h2>
+                            <p style={{
+                                fontSize: 'var(--text-base, 16px)', color: 'var(--color-sage, #8C9990)',
+                                marginBottom: 'var(--space-8, 32px)', lineHeight: 1.5,
+                            }}>
+                                {t('worker.welcome_first_time_sub')}
+                            </p>
+                            <button
+                                onClick={() => setShowWelcome(false)}
+                                className="auth-btn"
+                                style={{
+                                    width: '100%', padding: '16px',
+                                    background: 'var(--color-copper, #B56E45)',
+                                    color: 'var(--color-white, #FFF)', border: 'none',
+                                    borderRadius: 'var(--radius-md, 12px)', fontSize: 'var(--text-base, 16px)',
+                                    fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s',
+                                }}
+                            >
+                                Let's get started
+                            </button>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

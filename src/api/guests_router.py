@@ -236,7 +236,10 @@ async def get_guest(
 # PATCH /guests/{id}
 # ---------------------------------------------------------------------------
 
-_PATCHABLE_FIELDS = frozenset({"full_name", "email", "phone", "nationality", "passport_no", "notes"})
+_PATCHABLE_FIELDS = frozenset({
+    "full_name", "email", "phone", "nationality", "passport_no", "notes",
+    "document_type", "passport_expiry", "date_of_birth", "document_photo_url"
+})
 
 
 @router.patch(
@@ -334,14 +337,18 @@ async def patch_guest(
 def _serialize(row: dict) -> dict:
     """Return a clean JSON-safe representation of a guests row."""
     return {
-        "id":          row.get("id"),
-        "tenant_id":   row.get("tenant_id"),
-        "full_name":   row.get("full_name"),
-        "email":       row.get("email"),
-        "phone":       row.get("phone"),
-        "nationality": row.get("nationality"),
-        "passport_no": row.get("passport_no"),
-        "notes":       row.get("notes"),
-        "created_at":  row.get("created_at"),
-        "updated_at":  row.get("updated_at"),
+        "id":                 row.get("id"),
+        "tenant_id":          row.get("tenant_id"),
+        "full_name":          row.get("full_name"),
+        "email":              row.get("email"),
+        "phone":              row.get("phone"),
+        "nationality":        row.get("nationality"),
+        "passport_no":        row.get("passport_no"),
+        "notes":              row.get("notes"),
+        "document_type":      row.get("document_type"),
+        "passport_expiry":    row.get("passport_expiry"),
+        "date_of_birth":      row.get("date_of_birth"),
+        "document_photo_url": row.get("document_photo_url"),
+        "created_at":         row.get("created_at"),
+        "updated_at":         row.get("updated_at"),
     }

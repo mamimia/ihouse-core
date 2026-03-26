@@ -56,6 +56,9 @@ export default function UpdatePasswordPage() {
         setToken(data.token);
         const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
         document.cookie = `ihouse_token=${data.token}; path=/; max-age=${data.expires_in || 86400}; SameSite=Lax${isHttps ? '; Secure' : ''}`;
+        
+        sessionStorage.setItem('ihouse_welcome', 'true');
+        
         window.location.href = getRoleRoute(data.token);
       } else {
         alert('Password updated successfully. Please log in again.');

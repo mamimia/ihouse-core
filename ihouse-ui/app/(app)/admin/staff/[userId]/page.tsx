@@ -346,6 +346,9 @@ export default function EditStaffPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | undefined>();
   const [updatedAt, setUpdatedAt] = useState<string | undefined>();
+  
+  // Phase 945: Activation Status
+  const [authStatus, setAuthStatus] = useState<{ force_reset?: boolean; last_sign_in_at?: string | null; invited_at?: string | null } | null>(null);
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -360,14 +363,19 @@ export default function EditStaffPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [raw, assignmentsRes, propsRes] = await Promise.all([
+      const [raw, assignmentsRes, propsRes, authStatusRes] = await Promise.all([
         apiFetch<RawRecord>(`/permissions/${encodeURIComponent(rawUserId)}`),
         apiFetch<any>(`/staff/assignments/${encodeURIComponent(rawUserId)}`).catch(() => ({ property_ids: [] })),
         apiFetch<any>('/admin/properties?status=approved').catch(() => ({ properties: [] })),
+        apiFetch<any>(`/admin/staff/${encodeURIComponent(rawUserId)}/status`).catch(() => null),
       ]);
 
       const record = normalizeLegacyRole(raw);
       setLegacyRole(record._legacyRole);
+      
+      if (authStatusRes && !authStatusRes.error) {
+        setAuthStatus(authStatusRes);
+      }
 
       // Populate Tab 1
       setFullName(record.display_name || '');
@@ -1090,68 +1098,122 @@ export default function EditStaffPage() {
               </Field>
             </div>
 
-            {/* Send / Resend Access Link */}
+            {/* Send / Resend Access Link or Password Update */}
+            {authStatus && (
+              <div>
+                <div style={sectionHeadStyle}>Activation Status</div>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--space-3)',
+                  background: 'var(--color-surface-2)', padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                  marginBottom: 'var(--space-4)'
+                }}>
+                  <div>
+                    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 2 }}>Lifecycle Stage</div>
+                    <div style={{ color: authStatus.force_reset ? 'var(--color-copper)' : 'var(--color-ok)', fontWeight: 600, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: authStatus.force_reset ? 'var(--color-copper)' : 'var(--color-ok)' }} />
+                      {authStatus.force_reset ? 'Pending Activation' : 'Worker Activated'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 2 }}>Invited / Updated</div>
+                    <div style={{ color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>
+                      {authStatus.invited_at ? new Date(authStatus.invited_at).toLocaleDateString() : 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 2 }}>Last Sign In</div>
+                    <div style={{ color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>
+                      {authStatus.last_sign_in_at ? new Date(authStatus.last_sign_in_at).toLocaleDateString() : 'Never'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
-              <div style={sectionHeadStyle}>Send / Resend Access Link</div>
+              <div style={sectionHeadStyle}>
+                {authStatus?.force_reset === false ? 'Account Management' : 'Send Access Link'}
+              </div>
               <div style={{
                 background: 'var(--color-surface-2)', padding: 'var(--space-4)',
                 borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
               }}>
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', margin: '0 0 var(--space-3) 0' }}>
-                  Send or re-send a first-access link to this staff member. They can use this to set their password and log into their role-specific app.
+                  {authStatus?.force_reset === false
+                    ? 'Generate a recovery password link or copy instructions to help the worker regain access to their account.'
+                    : 'Send or re-send a first-access link to this staff member. They can use this to set their password and log into their role-specific app.'}
                 </p>
-                <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Delivery Channel</label>
-                    <select
-                      style={{ ...inputStyle, cursor: 'pointer', width: '100%' }}
-                      value={resendChannel}
-                      onChange={e => setResendChannel(e.target.value)}
+                
+                {authStatus?.force_reset === false ? (
+                  // Post-Activation Controls
+                  <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      disabled={resendSending}
+                      onClick={async () => {
+                        setResendSending(true);
+                        setResendResult(null);
+                        try {
+                          // Force channel as email since it's a reset
+                          const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
+                            method: 'POST',
+                            body: JSON.stringify({ channel: 'email', frontend_url: window.location.origin }),
+                          });
+                          setResendResult(resp);
+                          alert('Password recovery process initiated via email magic link.');
+                        } catch (err: any) {
+                          setResendResult({ status: 'error', message: err.message || 'Failed to send' });
+                        } finally {
+                          setResendSending(false);
+                        }
+                      }}
+                      style={{
+                        padding: '10px 20px', borderRadius: 'var(--radius-sm)',
+                        background: 'var(--color-primary, #4A7C59)', color: '#fff', border: 'none',
+                        cursor: resendSending ? 'not-allowed' : 'pointer', fontWeight: 600,
+                        fontSize: 'var(--text-sm)', opacity: resendSending ? 0.6 : 1,
+                        whiteSpace: 'nowrap' as const,
+                      }}
                     >
-                      <option value="email">Email</option>
-                      {whatsapp && <option value="whatsapp">WhatsApp</option>}
-                      {sms && <option value="sms">SMS / Phone</option>}
-                      {telegram && <option value="telegram">Telegram</option>}
-                      {line && <option value="line">LINE</option>}
-                    </select>
+                      {resendSending ? 'Sending...' : 'Send Password Reset Link'}
+                    </button>
+                    <button
+                      disabled={resendSending}
+                      onClick={() => {
+                        const loginUrl = `${window.location.origin}/login`;
+                        const emailInput = email ? `Your login email is: ${email}` : `Use your registered email.`;
+                        alert(`Login Instructions:\n1. Go to ${loginUrl}\n2. ${emailInput}\n3. Enter the password you created.\n\n(Tip: Save these instructions or copy them directly to clipboard in the future!)`);
+                      }}
+                      style={{
+                        padding: '10px 20px', borderRadius: 'var(--radius-sm)',
+                        background: 'transparent', color: 'var(--color-primary, #4A7C59)',
+                        border: '1px solid var(--color-primary, #4A7C59)',
+                        cursor: 'pointer', fontWeight: 600,
+                        fontSize: 'var(--text-sm)', whiteSpace: 'nowrap' as const,
+                      }}
+                    >
+                      Copy Login Instructions
+                    </button>
                   </div>
-                  <button
-                    disabled={resendSending}
-                    onClick={async () => {
-                      setResendSending(true);
-                      setResendResult(null);
-                      try {
-                        const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
-                          method: 'POST',
-                          body: JSON.stringify({ channel: resendChannel, frontend_url: window.location.origin }),
-                        });
-                        setResendResult(resp);
-                      } catch (err: any) {
-                        setResendResult({ status: 'error', message: err.message || 'Failed to send' });
-                      } finally {
-                        setResendSending(false);
-                      }
-                    }}
-                    style={{
-                      padding: '10px 20px', borderRadius: 'var(--radius-sm)',
-                      background: 'var(--color-primary, #4A7C59)', color: '#fff', border: 'none',
-                      cursor: resendSending ? 'not-allowed' : 'pointer', fontWeight: 600,
-                      fontSize: 'var(--text-sm)', opacity: resendSending ? 0.6 : 1,
-                      minHeight: 40, whiteSpace: 'nowrap' as const,
-                    }}
-                  >
-                    {resendSending ? 'Sending...' : 'Send Access Link'}
-                  </button>
-                </div>
-
-                {/* mailto Send by Email — shown when email is known */}
-                {email && (
-                  <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
-                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Quick Send by Email</p>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>To: {email}</span>
+                ) : (
+                  // Pre-Activation Controls
+                  <>
+                    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Delivery Channel</label>
+                        <select
+                          style={{ ...inputStyle, cursor: 'pointer', width: '100%' }}
+                          value={resendChannel}
+                          onChange={e => setResendChannel(e.target.value)}
+                        >
+                          <option value="email">Email</option>
+                          {whatsapp && <option value="whatsapp">WhatsApp</option>}
+                          {sms && <option value="sms">SMS / Phone</option>}
+                          {telegram && <option value="telegram">Telegram</option>}
+                          {line && <option value="line">LINE</option>}
+                        </select>
+                      </div>
                       <button
-                        type="button"
                         disabled={resendSending}
                         onClick={async () => {
                           setResendSending(true);
@@ -1159,35 +1221,73 @@ export default function EditStaffPage() {
                           try {
                             const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
                               method: 'POST',
-                              body: JSON.stringify({ channel: 'email', frontend_url: window.location.origin }),
+                              body: JSON.stringify({ channel: resendChannel, frontend_url: window.location.origin }),
                             });
                             setResendResult(resp);
-                            if (resp.magic_link) {
-                                window.location.href = getAccessMailto(language, email, resp.magic_link);
-                            } else {
-                                alert('Could not generate the magic link. Check backend logs.');
-                            }
                           } catch (err: any) {
-                            setResendResult({ status: 'error', message: err.message || 'Failed to generate link' });
+                            setResendResult({ status: 'error', message: err.message || 'Failed to send' });
                           } finally {
                             setResendSending(false);
                           }
                         }}
-                        style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: resendSending ? 'not-allowed' : 'pointer', opacity: resendSending ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                        style={{
+                          padding: '10px 20px', borderRadius: 'var(--radius-sm)',
+                          background: 'var(--color-primary, #4A7C59)', color: '#fff', border: 'none',
+                          cursor: resendSending ? 'not-allowed' : 'pointer', fontWeight: 600,
+                          fontSize: 'var(--text-sm)', opacity: resendSending ? 0.6 : 1,
+                          minHeight: 40, whiteSpace: 'nowrap' as const,
+                        }}
                       >
-                        {resendSending ? 'Generating Link...' : '✉ Send by Email'}
+                        {resendSending ? 'Sending...' : 'Send Access Link'}
                       </button>
-                      <span style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>Generates link and opens your mail client directly</span>
                     </div>
-                    {resendResult?.magic_link && (
-                      <div style={{ marginTop: 10 }}>
-                        <p style={{ fontSize: 11, color: 'var(--color-text-faint)', margin: '0 0 6px' }}>Direct link (if your mail client didn't open):</p>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <input readOnly value={resendResult.magic_link} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, flex: 1 }} onClick={(e: any) => e.target.select()} />
+
+                    {/* mailto Send by Email — shown when email is known */}
+                    {email && (
+                      <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Quick Send by Email</p>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>To: {email}</span>
+                          <button
+                            type="button"
+                            disabled={resendSending}
+                            onClick={async () => {
+                              setResendSending(true);
+                              setResendResult(null);
+                              try {
+                                const resp = await apiFetch<any>(`/admin/staff/${rawUserId}/resend-access`, {
+                                  method: 'POST',
+                                  body: JSON.stringify({ channel: 'email', frontend_url: window.location.origin }),
+                                });
+                                setResendResult(resp);
+                                if (resp.magic_link) {
+                                    window.location.href = getAccessMailto(language, email, resp.magic_link);
+                                } else {
+                                    alert('Could not generate the magic link. Check backend logs.');
+                                }
+                              } catch (err: any) {
+                                setResendResult({ status: 'error', message: err.message || 'Failed to generate link' });
+                              } finally {
+                                setResendSending(false);
+                              }
+                            }}
+                            style={{ display: 'inline-block', padding: '7px 14px', background: 'var(--color-primary)', borderRadius: 'var(--radius-sm)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: resendSending ? 'not-allowed' : 'pointer', opacity: resendSending ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                          >
+                            {resendSending ? 'Generating Link...' : '✉ Send by Email'}
+                          </button>
+                          <span style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>Generates link and opens your mail client directly</span>
                         </div>
+                        {resendResult?.magic_link && (
+                          <div style={{ marginTop: 10 }}>
+                            <p style={{ fontSize: 11, color: 'var(--color-text-faint)', margin: '0 0 6px' }}>Direct link (if your mail client didn't open):</p>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <input readOnly value={resendResult.magic_link} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, flex: 1 }} onClick={(e: any) => e.target.select()} />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
 
                 {resendResult && (

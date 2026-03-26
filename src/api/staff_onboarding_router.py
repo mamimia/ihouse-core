@@ -669,9 +669,52 @@ async def resend_access(
             return JSONResponse(status_code=200, content={
                 "status": "link_generated",
                 "channel": body.channel,
+                "email": email,
+                "delivery_method": "manual_copy",
                 "magic_link": action_link,
                 "message": f"Copy this link and send it to the worker via {body.channel}.",
             })
         except Exception as exc:
             logger.exception("Failed to generate resend link: %s", exc)
             return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+@router.get(
+    "/admin/staff/{user_id}/status",
+    tags=["admin"],
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_staff_status(
+    user_id: str,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """Fetch real-time activation status from Supabase Auth and DB."""
+    db = _get_db()
+    
+    # 1. Verify existence in tenant
+    res = db.table("tenant_permissions").select("user_id").eq("tenant_id", tenant_id).eq("user_id", user_id).limit(1).execute()
+    if not res.data:
+        return make_error_response(status_code=404, code="NOT_FOUND", extra={"detail": "Staff member not found."})
+        
+    try:
+        from supabase import create_client
+        url = os.environ["SUPABASE_URL"]
+        key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+        admin_client = create_client(url, key)
+        
+        user = admin_client.auth.admin.get_user_by_id(user_id)
+        u = user.user
+        
+        meta = u.user_metadata or {}
+        force_reset = meta.get("force_reset", False)
+        last_sign_in = getattr(u, "last_sign_in_at", None)
+        
+        return JSONResponse(status_code=200, content={
+            "user_id": user_id,
+            "force_reset": force_reset,
+            "last_sign_in_at": last_sign_in,
+            "invited_at": getattr(u, "updated_at", None) # approximate
+        })
+    except Exception as exc:
+        logger.exception("Failed to fetch staff status for %s: %s", user_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

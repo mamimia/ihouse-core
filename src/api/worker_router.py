@@ -890,3 +890,39 @@ async def delete_worker_assignment(
     except Exception as exc:
         logger.exception("delete_worker_assignment error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to delete assignment")
+
+# ---------------------------------------------------------------------------
+# Phase 890 — Mock Document Extraction Proxy
+# ---------------------------------------------------------------------------
+
+import asyncio
+
+@router.post(
+    "/worker/documents/extract",
+    tags=["worker"],
+    summary="Mock WebRTC ID Extract Endpoint",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def extract_document(
+    body: dict,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Mock endpoint simulating an async call to an OCR/MRZ Provider (e.g. BlinkID / Azure).
+    It artificially delays to replicate extraction latency, then returns a simulated payload.
+    When OCR keys are provisioned, swap this to proxy the real API.
+    """
+    # Simulate network/OCR processing latency
+    await asyncio.sleep(1.5)
+
+    # Simulated MRZ output from a typical passport
+    return JSONResponse(status_code=200, content={
+        "document_type": "PASSPORT",
+        "first_name": "JOHN ALBERT",
+        "last_name": "DOE",
+        "document_number": "A12345678",
+        "date_of_birth": "1985-11-20",
+        "expiration_date": "2032-05-15",
+        "nationality": "GBR",
+        "confidence_score": 0.98
+    })
