@@ -140,9 +140,10 @@ export default function AuthCallbackPage() {
 
             // Store token and redirect
             setToken(result.token);
-            if (result.language) {
-                localStorage.setItem('domaniqo_lang', result.language);
-            }
+            // Phase 948h: ALWAYS set language from the authenticated worker's identity.
+            // This prevents cross-user leakage on shared devices. If Worker A (th)
+            // logs out and Worker B (en) logs in, we must reset to 'en', not inherit 'th'.
+            localStorage.setItem('domaniqo_lang', result.language || 'en');
             const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
             document.cookie = `ihouse_token=${result.token}; path=/; max-age=${result.expires_in || 86400}; SameSite=Lax${isHttps ? '; Secure' : ''}`;
             window.location.href = getRoleRoute(result.token);

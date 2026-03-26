@@ -63,7 +63,22 @@ const ROLE_CONFIGS: Record<WorkerRoleKey, WorkerRoleConfig> = {
     },
 };
 
-/** Resolve the current worker role from preview session, act-as JWT, or real JWT */
+/**
+ * Phase 948g — Canonical Worker Role Resolution
+ *
+ * Routing Rules:
+ *   1. Preview As override  → returns exact preview role
+ *   2. JWT worker_role      → primary sub-role (set by admin, e.g. "cleaner")
+ *   3. JWT worker_roles[0]  → first entry if worker_role is null
+ *   4. JWT role == "admin"  → redirect to /dashboard
+ *   5. JWT role == "checkin_checkout" → explicit combined role (NOT a fallback)
+ *   6. No sub-role found & role == "worker" → returns null (generic home)
+ *      This is NOT 'checkin_checkout'. The generic worker home shows
+ *      a "no role assigned" state, not the combined check-in/check-out surface.
+ *
+ * INVARIANT: A worker NEVER enters the 'checkin_checkout' surface unless their
+ * explicit stored worker_role or worker_roles includes 'checkin_checkout'.
+ */
 function resolveWorkerRole(): WorkerRoleKey | 'admin' | 'checkin_checkout' | null {
     if (typeof window === 'undefined') return null;
     // 1. Preview As (sessionStorage override — read-only inspection)
@@ -77,16 +92,34 @@ function resolveWorkerRole(): WorkerRoleKey | 'admin' | 'checkin_checkout' | nul
         const p = JSON.parse(atob(token.split('.')[1]));
         const outerRole = (p.role as string || '').toLowerCase();
 
-        // Phase 948a: For role=worker, read the actual sub-role from worker_role or worker_roles[0].
-        // Without this, every worker with role='worker' returned null roleConfig and
-        // triggered the combined check-in/check-out profile view incorrectly.
+        // Admin/manager → redirect out
+        if (outerRole === 'admin' || outerRole === 'manager') return 'admin';
+
+        // Explicit combined role (only if stored as such — never a fallback)
+        if (outerRole === 'checkin_checkout') return 'checkin_checkout';
+
+        // For role=worker, resolve from the real stored sub-role
         if (outerRole === 'worker') {
-            const subRole = (p.worker_role || (p.worker_roles ?? [])[0] || '') as string;
-            if (subRole) return subRole.toLowerCase() as WorkerRoleKey | 'checkin_checkout';
-            return 'worker' as unknown as WorkerRoleKey; // no sub-role: generic worker home
+            const subRole = (
+                (p.worker_role as string) ||
+                ((p.worker_roles as string[] | undefined) ?? [])[0] ||
+                ''
+            ).toLowerCase();
+
+            // Only accept recognized configs or explicit 'checkin_checkout'
+            if (subRole && (ROLE_CONFIGS[subRole as WorkerRoleKey] || subRole === 'checkin_checkout')) {
+                return subRole as WorkerRoleKey | 'checkin_checkout';
+            }
+            // No recognized sub-role → null (generic home, NOT combined view)
+            return null;
         }
 
-        return (outerRole as WorkerRoleKey | 'admin' | 'checkin_checkout') || null;
+        // Direct sub-role login (e.g., role=cleaner directly in JWT)
+        if (ROLE_CONFIGS[outerRole as WorkerRoleKey]) {
+            return outerRole as WorkerRoleKey;
+        }
+
+        return null;
     } catch { return null; }
 }
 
@@ -588,6 +621,9 @@ export default function WorkerPage() {
     const [toast, setToast] = useState<string | null>(null);
     const [userName, setUserName] = useState('');
     const [roleConfig, setRoleConfig] = useState<WorkerRoleConfig | null>(null);
+    // Phase 948g: Explicit flag — true ONLY for workers whose stored role is 'checkin_checkout'.
+    // Prevents accidental combined-view rendering for workers with missing sub-roles.
+    const [isCombinedRole, setIsCombinedRole] = useState(false);
     const { lang, t } = useLanguage();
     const l = getLocale(lang);
     const router = useRouter();
@@ -627,8 +663,9 @@ export default function WorkerPage() {
             return;
         }
         if (resolved === 'checkin_checkout') {
-            // Stay on /worker — render combined profile view (handled in render below)
-            setRoleConfig(null); // signals the render to show combined-role profile
+            // Stay on /worker — render combined profile view (only for explicit checkin_checkout)
+            setRoleConfig(null);
+            setIsCombinedRole(true);
             const token = typeof window !== 'undefined' ? getTabToken() : null;
             if (token) {
                 const p = parseJwt(token);
@@ -763,16 +800,16 @@ export default function WorkerPage() {
                                         <span style={{ background: 'var(--color-surface-3)', color: 'var(--color-text-dim)', fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>
                                             {roleConfig.displayName}
                                         </span>
-                                    ) : (
+                                    ) : isCombinedRole ? (
                                         <span style={{ background: 'var(--color-surface-3)', color: 'var(--color-sage)', fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 99 }}>
                                             Check-in &amp; Check-out
                                         </span>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
 
                             {/* Phase 887: Combined-role workers get a direct Work link back to their hub */}
-                            {!roleConfig && (
+                            {isCombinedRole && (
                                 <div style={{ marginBottom: 24 }}>
                                     <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>{t('worker.work' as any)}</div>
                                     <a href="/ops/checkin-checkout" style={{ textDecoration: 'none' }}>

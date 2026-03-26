@@ -204,11 +204,18 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
         role = "worker"  # Phase 867: least-privilege fallback (unified with invite_router)
 
     # Step 3: Issue iHouse JWT with real identity
+    # Phase 948g: Include worker_roles so the frontend can resolve the
+    # worker's specific sub-role (cleaner/checkin/checkout/maintenance).
+    worker_roles = tenant_info.get("worker_roles") or []
+    effective_worker_role = tenant_info.get("worker_role") or (worker_roles[0] if worker_roles else None)
+
     now = int(time.time())
     payload = {
         "sub": user_id,           # Supabase Auth UUID — the REAL user identity
         "tenant_id": tenant_id,   # Resolved from tenant_permissions
         "role": role,             # Resolved from tenant_permissions
+        "worker_roles": worker_roles,           # Phase 948g: sub-roles array
+        "worker_role": effective_worker_role,   # Phase 948g: primary sub-role (nullable)
         "email": user_email,
         "is_active": is_active,
         "force_reset": force_reset,
