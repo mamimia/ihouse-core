@@ -7,6 +7,11 @@
  *
  * Token reads use getTabToken() which prioritizes sessionStorage (Act As tab)
  * over localStorage (normal login), enabling true parallel tab isolation.
+ *
+ * ⚠️  GUARDRAIL: This module must ONLY be imported from /ops/* worker surfaces.
+ *  NEVER import this from admin pages (/tasks, /bookings, /admin/*, /dashboard).
+ *  Admin pages use lib/api.ts which authenticates via localStorage token.
+ *  Mixing the two causes silent 401 errors (2026-03-26 staging incident).
  */
 
 import { getTabToken, decodeTabTokenPayload } from './tokenStore';

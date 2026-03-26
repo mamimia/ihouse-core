@@ -11,6 +11,14 @@
  *  - One-tap Acknowledge action
  *  - Overdue indicator
  *  - Tap task card to go to detail view
+ *
+ * ⚠️  GUARDRAILS (from 2026-03-26 staging incident):
+ *  1. NEVER put async enrichment (booking cache, property lookups, etc.)
+ *     inside loadTasks or any polled/SSE callback. Use a separate useEffect.
+ *  2. NEVER import staffApi on admin surfaces. This page uses lib/api (admin
+ *     auth via localStorage), NOT lib/staffApi (worker auth via sessionStorage).
+ *  Violation of either rule causes infinite request loops that exhaust the
+ *  browser connection pool and take down ALL admin pages.
  */
 
 import { useEffect, useState, useCallback } from 'react';
