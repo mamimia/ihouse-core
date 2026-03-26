@@ -436,17 +436,48 @@ async def approve_onboarding(
             # Step 3: Always set force_reset on the user metadata
             if user_id:
                 try:
-                    existing_meta = admin_client.auth.admin.get_user_by_id(user_id).user.user_metadata or {}
+                    resolved_user = admin_client.auth.admin.get_user_by_id(user_id).user
+                    existing_meta = resolved_user.user_metadata or {}
                     existing_meta["force_reset"] = True
                     admin_client.auth.admin.update_user_by_id(user_id, {"user_metadata": existing_meta})
+
+                    # ── Phase 947: Write-path identity guard ──────────────────
+                    # Verify the Supabase auth account we just resolved has the SAME
+                    # email as the onboarding form. This prevents the exact class of
+                    # mismatch where user_id points to a different person's auth record.
+                    resolved_auth_email = (getattr(resolved_user, "email", None) or "").lower().strip()
+                    onboarding_email = email.lower().strip()
+                    if resolved_auth_email and resolved_auth_email != onboarding_email:
+                        logger.critical(
+                            "Phase 947 IDENTITY_MISMATCH_AT_APPROVAL blocked provisioning: "
+                            "user_id=%s resolved_auth_email=%s onboarding_email=%s tenant=%s",
+                            user_id, resolved_auth_email, onboarding_email, tenant_id,
+                        )
+                        return make_error_response(
+                            status_code=409,
+                            code="IDENTITY_MISMATCH_AT_APPROVAL",
+                            extra={
+                                "detail": (
+                                    f"Identity mismatch detected at approval time. "
+                                    f"The Supabase auth account for user_id={user_id} has email "
+                                    f"'{resolved_auth_email}', but the onboarding form was submitted "
+                                    f"for '{onboarding_email}'. Provisioning blocked to prevent "
+                                    f"a broken worker identity linkage."
+                                ),
+                                "user_id": user_id,
+                                "auth_email": resolved_auth_email,
+                                "onboarding_email": onboarding_email,
+                            },
+                        )
+                    # ── End write-path identity guard ────────────────────────
                 except Exception as meta_exc:
                     logger.warning("staff-onboarding/approve: could not set force_reset for %s: %s", user_id, meta_exc)
 
         except Exception as e:
             if "rate limit" in str(e).lower():
                 return make_error_response(
-                    status_code=429, 
-                    code="RATE_LIMIT", 
+                    status_code=429,
+                    code="RATE_LIMIT",
                     extra={"detail": f"Supabase email rate limit exceeded for {email}. Please wait ~60 minutes or use a different email for testing."}
                 )
             raise e

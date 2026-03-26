@@ -280,6 +280,17 @@ export default function NewStaffPage() {
   // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Phase 947: email validation state
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const validateEmail = (v: string) => {
+    if (!v.trim()) { setEmailError(null); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) {
+      setEmailError('Invalid email format — check for typos like missing .com or extra spaces.');
+    } else {
+      setEmailError(null);
+    }
+  };
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -371,9 +382,10 @@ export default function NewStaffPage() {
 
   const handleSave = async () => {
     if (!staffEmail.trim()) { setError('Staff email is required.'); setActiveTab(0); return; }
-    // Basic email validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffEmail.trim())) {
-      setError('Please enter a valid email address.'); setActiveTab(0); return;
+    // Strict email format check — this email becomes the auth identity
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(staffEmail.trim())) {
+      setError('Invalid email address. The staff email is the auth identity — please double-check for typos.'); setActiveTab(0); return;
     }
     if (!role)          { setError('Role is required.'); setActiveTab(1); return; }
     if (role === 'worker' && workerRoles.length === 0) {
@@ -403,7 +415,10 @@ export default function NewStaffPage() {
           telegram: telegram.trim() || undefined,
           line: line.trim() || undefined,
           sms: sms.trim() || undefined,
-          email: personalEmail.trim() || staffEmail.trim() || undefined,
+          // Phase 947: comm_preference.email MUST equal staffEmail (the auth identity).
+          // If personalEmail differs, it goes in a separate field, not here.
+          // This prevents the FK/comm_email divergence that broke the Tiki Toto flow.
+          email: staffEmail.trim(),
           date_of_birth: dateOfBirth || undefined,
           start_date: startDate || undefined,
           preferred_contact: preferredContact || undefined,
@@ -514,15 +529,21 @@ export default function NewStaffPage() {
             {/* Staff email — required for create: becomes the user_id key */}
             <Field label="Staff Email *">
               <input
-                style={{ ...inputStyle, borderColor: !staffEmail.trim() && error ? '#f85149' : undefined }}
+                style={{ ...inputStyle, borderColor: emailError ? '#f85149' : (!staffEmail.trim() && error ? '#f85149' : undefined) }}
                 value={staffEmail}
-                onChange={e => setStaffEmail(e.target.value)}
+                onChange={e => { setStaffEmail(e.target.value); validateEmail(e.target.value); }}
+                onBlur={e => validateEmail(e.target.value)}
                 placeholder="worker@company.com"
                 type="email"
               />
+              {emailError && (
+                <span style={{ fontSize: 'var(--text-xs)', color: '#f85149', marginTop: 4, display: 'block' }}>
+                  ⚠ {emailError}
+                </span>
+              )}
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4, lineHeight: 1.5 }}>
-                This will be the staff member's login email and system identifier.<br />
-                You can send them an onboarding link later from the <strong>Pending Requests</strong> page.
+                This email becomes the worker's Supabase Auth identity and login credential.
+                It must exactly match the email they will use to log in. Typos here cannot be corrected without a database repair.
               </span>
             </Field>
 
