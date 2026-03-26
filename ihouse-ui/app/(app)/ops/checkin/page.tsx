@@ -228,6 +228,8 @@ export default function MobileCheckinPage() {
     const [depositNote, setDepositNote] = useState('');
     const [passportNumber, setPassportNumber] = useState('');
     const [passportName, setPassportName] = useState('');
+    const [passportExpiry, setPassportExpiry] = useState('');
+    const [passportPhotoUrl, setPassportPhotoUrl] = useState<string | null>(null);
     const [guestPortalUrl, setGuestPortalUrl] = useState<string | null>(null);
     const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
 
@@ -371,6 +373,8 @@ export default function MobileCheckinPage() {
         setStep('arrival');
         setPassportNumber('');
         setPassportName(b.guest_name || '');
+        setPassportExpiry('');
+        setPassportPhotoUrl(null);
         setDepositMethod('cash');
         setDepositNote('');
     };
@@ -438,14 +442,22 @@ export default function MobileCheckinPage() {
             if (guestId) {
                 await apiFetch(`/guests/${guestId}`, {
                     method: 'PATCH',
-                    body: JSON.stringify({ passport_no: passportNumber.trim(), full_name: passportName.trim() || undefined }),
+                    body: JSON.stringify({ 
+                        passport_no: passportNumber.trim(), 
+                        full_name: passportName.trim() || undefined,
+                        passport_expiry: passportExpiry || undefined
+                    }),
                 });
             } else {
                 // No guest_id — try booking-level guest update
                 const bookingId = getBookingId(selected);
                 await apiFetch(`/guests/${bookingId}`, {
                     method: 'PATCH',
-                    body: JSON.stringify({ passport_no: passportNumber.trim(), full_name: passportName.trim() || undefined }),
+                    body: JSON.stringify({ 
+                        passport_no: passportNumber.trim(), 
+                        full_name: passportName.trim() || undefined,
+                        passport_expiry: passportExpiry || undefined
+                    }),
                 });
             }
             showNotice('📄 Passport number saved');
@@ -739,29 +751,53 @@ export default function MobileCheckinPage() {
                             </label>
                             <input value={passportName} onChange={e => setPassportName(e.target.value)} placeholder="As on passport" style={inputStyle} />
                         </div>
-                        <div style={{
-                            padding: 'var(--space-6)', border: '2px dashed var(--color-border)',
-                            borderRadius: 'var(--radius-md)', textAlign: 'center',
-                            opacity: DEV_PHOTO_BYPASS ? 0.5 : 1,
-                        }}>
-                            <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>📷</div>
-                            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
-                                Tap to capture passport photo {DEV_PHOTO_BYPASS ? '' : '*'}
-                            </div>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4 }}>
-                                Camera only · Admin visible only · Retained 90 days
-                            </div>
-                            {DEV_PHOTO_BYPASS && (
-                                <div style={{
-                                    marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--color-warn)',
-                                    padding: '4px 8px', background: 'rgba(210,153,34,0.08)',
-                                    border: '1px solid rgba(210,153,34,0.15)', borderRadius: 'var(--radius-sm)',
-                                    display: 'inline-block',
-                                }}>
-                                    🔧 Dev/testing — photo not required yet
-                                </div>
-                            )}
+                        <div>
+                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
+                                Expiry Date
+                            </label>
+                            <input type="date" value={passportExpiry} onChange={e => setPassportExpiry(e.target.value)} style={inputStyle} />
                         </div>
+                        <label style={{
+                            padding: 'var(--space-6)', border: `2px dashed ${passportPhotoUrl ? 'transparent' : 'var(--color-border)'}`,
+                            borderRadius: 'var(--radius-md)', textAlign: 'center',
+                            cursor: 'pointer', display: 'block', position: 'relative',
+                            overflow: 'hidden', background: passportPhotoUrl ? '#000' : 'transparent',
+                        }}>
+                            <input 
+                                type="file" 
+                                accept="image/*" 
+                                capture="environment" 
+                                onChange={e => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        setPassportPhotoUrl(URL.createObjectURL(e.target.files[0]));
+                                    }
+                                }}
+                                style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                            />
+                            {passportPhotoUrl ? (
+                                <img src={passportPhotoUrl} alt="Passport preview" style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} />
+                            ) : (
+                                <>
+                                    <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>📷</div>
+                                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
+                                        Tap to capture passport photo {DEV_PHOTO_BYPASS ? '' : '*'}
+                                    </div>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4 }}>
+                                        Camera only · Admin visible only · Retained 90 days
+                                    </div>
+                                    {DEV_PHOTO_BYPASS && (
+                                        <div style={{
+                                            marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--color-warn)',
+                                            padding: '4px 8px', background: 'rgba(210,153,34,0.08)',
+                                            border: '1px solid rgba(210,153,34,0.15)', borderRadius: 'var(--radius-sm)',
+                                            display: 'inline-block',
+                                        }}>
+                                            🔧 Dev/testing — photo not required yet
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </label>
                     </div>
                     <div style={{ marginTop: 'var(--space-4)' }}>
                         <ActionButton label="Save & Continue →" onClick={savePassport} />
