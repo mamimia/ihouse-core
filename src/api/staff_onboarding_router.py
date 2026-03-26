@@ -353,6 +353,46 @@ def _extract_action_link(link_res: Any) -> str:
 
 from fastapi import Request
 
+
+def _resolve_frontend_url(body_url: Optional[str], origin_header: Optional[str]) -> str:
+    """
+    Phase 947f: Canonical frontend URL resolver for invite / link generation.
+    
+    Priority:
+    1. IHOUSE_FRONTEND_URL env var (authoritative — set per environment on Railway)
+    2. body.frontend_url from the admin browser (window.location.origin)
+    3. Origin header from the request
+    4. NEXT_PUBLIC_APP_URL env var
+    5. Explicit error — never silently fall back to localhost in a staging/prod env.
+    
+    The historic fallback to hard-coded 'http://localhost:3000' was the root cause
+    of the malformed Site URL in invite emails.
+    """
+    env_canonical = (
+        os.environ.get("IHOUSE_FRONTEND_URL") or          # Railway: set this per env
+        os.environ.get("NEXT_PUBLIC_APP_URL")              # Legacy alias
+    )
+    candidates = [
+        env_canonical,
+        body_url,
+        origin_header,
+    ]
+    for candidate in candidates:
+        url = (candidate or "").strip().rstrip("/")
+        if url and url.startswith("http"):
+            return url
+    # If running in a non-production environment (e.g., local Docker), allow localhost
+    env = os.environ.get("IHOUSE_ENV", "development")
+    if env in ("development", "local"):
+        return "http://localhost:3000"
+    # Staging/production: never inject localhost — raise so the caller knows
+    raise ValueError(
+        "Cannot resolve frontend URL for invite email generation. "
+        "Set IHOUSE_FRONTEND_URL (e.g. https://domaniqo-staging.vercel.app) "
+        "in the Railway environment config."
+    )
+
+
 @router.post(
     "/admin/staff-onboarding/{request_id}/approve",
     tags=["admin"],
@@ -389,8 +429,8 @@ async def approve_onboarding(
             return make_error_response(status_code=400, code="VALIDATION_ERROR", extra={"detail": "Missing email for invited user. Worker must provide an email."})
 
         try:
-            resolved_front = body.frontend_url or req.headers.get("origin") or os.environ.get("NEXT_PUBLIC_APP_URL") or "http://localhost:3000"
-            frontend_url = resolved_front.rstrip("/")
+            resolved_front = _resolve_frontend_url(body.frontend_url, req.headers.get("origin"))
+            frontend_url = resolved_front
             user_id: Optional[str] = None
             delivery_method = "unknown"
             action_link = ""
@@ -652,8 +692,8 @@ async def resend_access(
                 )
             # ── End Identity Preflight ───────────────────────────────────────
 
-            resolved_front = body.frontend_url or req.headers.get("origin") or os.environ.get("NEXT_PUBLIC_APP_URL") or "http://localhost:3000"
-            frontend_url = resolved_front.rstrip("/")
+            resolved_front = _resolve_frontend_url(body.frontend_url, req.headers.get("origin"))
+            frontend_url = resolved_front
             try:
                 auth_res = admin_client.auth.admin.invite_user_by_email(
                     email,
@@ -712,8 +752,8 @@ async def resend_access(
             if not email:
                 return make_error_response(status_code=400, code="NO_EMAIL", extra={"detail": "User has no email on file."})
 
-            resolved_front = body.frontend_url or req.headers.get("origin") or os.environ.get("NEXT_PUBLIC_APP_URL") or "http://localhost:3000"
-            frontend_url = resolved_front.rstrip("/")
+            resolved_front = _resolve_frontend_url(body.frontend_url, req.headers.get("origin"))
+            frontend_url = resolved_front
             link_res = admin_client.auth.admin.generate_link(
                 {"type": "magiclink", "email": email,
                  "options": {"redirect_to": f"{frontend_url}/auth/callback"}}

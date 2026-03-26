@@ -279,7 +279,13 @@ async def accept_invite(token: str, body: AcceptInviteRequest) -> JSONResponse:
                     "to resolve user_id (Phase 857 fix)", email,
                 )
                 try:
-                    frontend_url = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
+                    # Phase 947f: use canonical URL \u2014 never inject localhost in staging
+                    _ihouse_env = os.environ.get("IHOUSE_ENV", "development")
+                    frontend_url = (
+                        os.environ.get("IHOUSE_FRONTEND_URL")
+                        or os.environ.get("NEXT_PUBLIC_APP_URL")
+                        or ("http://localhost:3000" if _ihouse_env in ("development", "local") else "https://domaniqo-staging.vercel.app")
+                    )
                     link_res = supa_admin.auth.admin.generate_link(
                         {"type": "magiclink", "email": email,
                          "options": {"redirect_to": f"{frontend_url}/auth/callback"}}
