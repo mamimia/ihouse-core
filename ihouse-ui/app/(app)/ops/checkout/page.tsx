@@ -235,12 +235,12 @@ export default function MobileCheckoutPage() {
                 // Phase 889: Enrich with booking data (check_in, check_out, guest_name, guest_count)
                 if (t.booking_id) {
                     try {
-                        const bkRes = await apiFetch<any>(`/bookings/${t.booking_id}`);
+                        const bkRes = await apiFetch<any>(`/worker/bookings/${t.booking_id}`);
                         const bk = bkRes?.data || bkRes;
                         if (bk && bk.booking_id) {
-                            result.check_in    = bk.check_in || result.check_in;
-                            result.check_out   = bk.check_out || result.check_out || t.due_date;
-                            result.guest_name  = bk.guest_name || result.guest_name;
+                            result.check_in    = bk.check_in ?? result.check_in;
+                            result.check_out   = bk.check_out ?? result.check_out ?? t.due_date;
+                            result.guest_name  = bk.guest_name ?? result.guest_name;
                             result.guest_count = bk.guest_count ?? result.guest_count;
                             // Compute nights from canonical booking dates
                             if (bk.check_in && bk.check_out && bk.check_out !== bk.check_in) {

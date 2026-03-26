@@ -255,6 +255,54 @@ async def list_worker_tasks(
 
 
 # ---------------------------------------------------------------------------
+# GET /worker/bookings/{booking_id}
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/worker/bookings/{booking_id}",
+    tags=["worker"],
+    summary="Fetch limited booking details for operational tasks",
+    responses={
+        200: {"description": "Returns limited stay context for workers"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "Booking not found"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_worker_booking(
+    booking_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Fetch limited booking details necessary for operational context (e.g. check-in/check-out).
+    Returns ONLY check-in, check-out, guest_name, guest_count, source, and status.
+    No financial information or extended PII is exposed.
+
+    **Role scoping:** Accessible to any authenticated worker. Does NOT require
+    the manager-only 'bookings' capability.
+    """
+    try:
+        db = client or _get_supabase_client()
+        result = (
+            db.table("booking_state")
+            .select("booking_id, tenant_id, property_id, status, guest_name, guest_count, check_in, check_out, source, reservation_ref")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not result.data:
+            return make_error_response(404, ErrorCode.NOT_FOUND, "Booking not found")
+            
+        return JSONResponse(status_code=200, content=result.data[0])
+    except Exception as exc:
+        logger.exception("get_worker_booking error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to fetch booking details")
+
+
+# ---------------------------------------------------------------------------
 # PATCH /worker/tasks/{task_id}/acknowledge
 # ---------------------------------------------------------------------------
 

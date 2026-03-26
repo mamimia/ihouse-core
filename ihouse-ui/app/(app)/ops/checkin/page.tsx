@@ -295,7 +295,10 @@ export default function MobileCheckinPage() {
             bookingMap.forEach((b, bId) => {
                 if (!b._needs_booking_enrichment) return;
                 enrichPromises.push(
-                    apiFetch<any>(`/bookings/${bId}`)
+                    // CRITICAL FIX FOR ACT-AS ROLES:
+                    // Workers do not have the 'bookings' capability, so /bookings/ {id} returns 403.
+                    // Instead, use the isolated /worker/bookings/{id} endpoint which permits workers.
+                    apiFetch<any>(`/worker/bookings/${bId}`)
                         .then(res => {
                             const bk = res?.data || res;
                             if (bk && bk.booking_id) {
