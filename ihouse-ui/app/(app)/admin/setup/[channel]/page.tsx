@@ -28,6 +28,17 @@ interface SetupStep {
     troubleshooting?: string;
 }
 
+interface TestStep {
+    n: number;
+    title: string;
+    body: string;
+}
+
+interface TestInstructions {
+    steps: TestStep[];
+    troubleshooting: React.ReactNode;
+}
+
 interface ChannelDefinition {
     id: string;
     name: string;
@@ -38,6 +49,7 @@ interface ChannelDefinition {
     systemFlows: string[];
     prerequisites: { text: string; link?: { url: string; label: string } }[];
     steps: SetupStep[];
+    testInstructions?: TestInstructions;
     comingSoon?: boolean;
 }
 
@@ -135,6 +147,38 @@ const LINE_CHANNEL: ChannelDefinition = {
             troubleshooting: '"Use webhook" must be toggled ON. If it is OFF, events from LINE will not reach our system and notifications will not work. The webhook URL must be a public HTTPS address — LINE will not accept plain HTTP or localhost addresses.',
         },
     ],
+    testInstructions: {
+        steps: [
+            {
+                n: 1,
+                title: 'Open LINE on your phone',
+                body: 'Open the LINE app on your mobile device. Make sure you are logged in with the same account as your LINE Official Account.',
+            },
+            {
+                n: 2,
+                title: 'Find your Official Account',
+                body: 'In LINE, go to the "Chats" tab and search for the name of your LINE Official Account (the one you set up in this configuration). Add it as a friend if you have not already.',
+            },
+            {
+                n: 3,
+                title: 'Trigger a test notification',
+                body: 'Go to a task or booking in Domaniqo and perform an action that triggers a notification — for example, assign a task to a worker who has LINE linked, or create a test check-in.',
+            },
+            {
+                n: 4,
+                title: 'What success looks like',
+                body: 'Within a few seconds, you should receive a LINE message from your Official Account. The message will contain the task or notification details.',
+            },
+        ],
+        troubleshooting: (
+            <>
+                1. Go back to the LINE Developers Console and check that "Use webhook" is ON under Messaging API → Webhook settings.<br />
+                2. Check that the Webhook URL saved in LINE matches the one shown in Step 5 of this setup.<br />
+                3. Make sure the worker has their LINE User ID linked in Domaniqo under their staff profile.<br />
+                4. If all of the above are correct, contact support.
+            </>
+        ),
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -154,21 +198,22 @@ const TELEGRAM_CHANNEL: ChannelDefinition = {
         'Task status confirmations',
     ],
     prerequisites: [
-        { text: 'A Telegram account (personal is fine)', link: { url: 'https://telegram.org/', label: 'Get Telegram →' } },
+        { text: 'A personal Telegram account on your phone or desktop', link: { url: 'https://telegram.org/', label: 'Get Telegram →' } },
     ],
     steps: [
         {
             id: 'create-bot',
-            title: 'Create a bot with @BotFather',
-            description: 'Open Telegram and search for @BotFather. Send /newbot and follow the prompts to choose a name and username for your bot.',
+            title: 'Step 1 — Create a new bot with @BotFather',
+            description: 'Open your Telegram app. Search for the official @BotFather account (it has a blue verification tick). Send him the command /newbot.\n\nHe will ask for a name for your bot (e.g. "My Property Bot"). Then he will ask for a username, which must end with "bot" and be unique (e.g. "MyProperty123_bot").',
             providerLink: { url: 'https://t.me/BotFather', label: 'Open @BotFather in Telegram →' },
             fields: [],
-            troubleshooting: 'BotFather will ask for a name (human-readable, can be anything) and then a username (must end with "bot", e.g. MyPropertyBot). The username must be unique across all of Telegram.',
+            troubleshooting: 'BotFather will only accept usernames that end with "bot" or "_bot". If the username is already taken by someone else on Telegram, you will need to try a different one.',
         },
         {
             id: 'bot-token',
-            title: 'Copy the Bot Token',
-            description: 'After creating the bot, BotFather will reply with a message containing your HTTP API token. It looks like: 123456789:ABCDefGhIJKlmnOPQRsTUVwxyz. Copy the entire token.',
+            title: 'Step 2 — Copy the HTTP API Token',
+            description: 'Once you successfully choose a username, BotFather will reply with a long congratulatory message. In the middle of that message, you will see your HTTP API token.\n\nIt looks like this: 123456789:ABCDefGhIJKlmnOPQRsTUVwxyz. Copy the entire token and paste it here.',
+            providerLink: { url: 'https://t.me/BotFather', label: 'Open @BotFather in Telegram →' },
             fields: [
                 {
                     key: 'bot_token',
@@ -178,9 +223,41 @@ const TELEGRAM_CHANNEL: ChannelDefinition = {
                     validation: { pattern: /^\d+:[A-Za-z0-9_-]{35,}$/, message: 'Bot token should look like: 123456789:ABCDefGhIJKlmnOPQRsTUVwxyz' },
                 },
             ],
-            troubleshooting: 'If you lost the token, you can send /token to @BotFather, select your bot, and it will show the token again. You can also revoke and regenerate it with /revoke.',
+            troubleshooting: 'If you lost the token, you can send /token or /mybots to @BotFather to view it again. You can also revoke and regenerate it with /revoke if you believe it was compromised.',
         },
     ],
+    testInstructions: {
+        steps: [
+            {
+                n: 1,
+                title: 'Open Telegram and find your bot',
+                body: 'Open the Telegram app and search for the bot username you just created. Select it to open the chat.',
+            },
+            {
+                n: 2,
+                title: 'Press START',
+                body: 'Bots cannot initiate conversations with users. You must press the "Start" button (or send /start) at the bottom of the screen to allow the bot to message you.',
+            },
+            {
+                n: 3,
+                title: 'Trigger a test notification',
+                body: 'Go to a task or booking in Domaniqo and perform an action that triggers a notification — for example, assign a task to a worker who has their Telegram ID linked.',
+            },
+            {
+                n: 4,
+                title: 'What success looks like',
+                body: 'Within a few seconds, you should receive a Telegram message from your new bot containing the task details.',
+            },
+        ],
+        troubleshooting: (
+            <>
+                1. Make sure you pressed Start or sent <code>/start</code> in the Telegram bot chat. The bot cannot message you otherwise.<br />
+                2. Check that the worker has their correct Telegram User ID linked in Domaniqo under their staff profile.<br />
+                3. Check that the bot token is copied perfectly, without extra spaces.<br />
+                4. If all of the above are correct, contact support.
+            </>
+        ),
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -765,7 +842,7 @@ export default function ChannelSetupPage() {
                         </div>
                     </div>
                     {/* Test guide toggle */}
-                    {channelId === 'line' && (
+                    {channel.testInstructions && (
                         <div style={{ marginBottom: 20, padding: '16px 20px', background: 'var(--color-surface-2)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                             <button
                                 onClick={() => setShowTestGuide(v => !v)}
@@ -773,34 +850,13 @@ export default function ChannelSetupPage() {
                             >
                                 <div style={{ textAlign: 'left' }}>
                                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Let&apos;s test it — send your first message</div>
-                                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>Follow these steps to confirm LINE is working correctly.</div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>Follow these steps to confirm {channel.name} is working correctly.</div>
                                 </div>
                                 <span style={{ fontSize: 18, color: 'var(--color-text-faint)', transform: showTestGuide ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
                             </button>
                             {showTestGuide && (
                                 <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                    {[
-                                        {
-                                            n: 1,
-                                            title: 'Open LINE on your phone',
-                                            body: 'Open the LINE app on your mobile device. Make sure you are logged in with the same account as your LINE Official Account.',
-                                        },
-                                        {
-                                            n: 2,
-                                            title: 'Find your Official Account',
-                                            body: 'In LINE, go to the "Chats" tab and search for the name of your LINE Official Account (the one you set up in this configuration). Add it as a friend if you have not already.',
-                                        },
-                                        {
-                                            n: 3,
-                                            title: 'Trigger a test notification',
-                                            body: 'Go to a task or booking in Domaniqo and perform an action that triggers a notification — for example, assign a task to a worker who has LINE linked, or create a test check-in.',
-                                        },
-                                        {
-                                            n: 4,
-                                            title: 'What success looks like',
-                                            body: 'Within a few seconds, you should receive a LINE message from your Official Account. The message will contain the task or notification details.',
-                                        },
-                                    ].map(s => (
+                                    {channel.testInstructions.steps.map(s => (
                                         <div key={s.n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                                             <div style={{ minWidth: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{s.n}</div>
                                             <div>
@@ -812,10 +868,7 @@ export default function ChannelSetupPage() {
                                     <div style={{ marginTop: 4, padding: '12px 14px', background: 'var(--color-surface)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
                                         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>Message did not arrive?</div>
                                         <div style={{ fontSize: 12, color: 'var(--color-text-dim)', lineHeight: 1.6 }}>
-                                            1. Go back to the LINE Developers Console and check that "Use webhook" is ON under Messaging API → Webhook settings.<br />
-                                            2. Check that the Webhook URL saved in LINE matches the one shown in Step 5 of this setup.<br />
-                                            3. Make sure the worker has their LINE User ID linked in Domaniqo under their staff profile.<br />
-                                            4. If all of the above are correct, contact support.
+                                            {channel.testInstructions.troubleshooting}
                                         </div>
                                     </div>
                                 </div>
