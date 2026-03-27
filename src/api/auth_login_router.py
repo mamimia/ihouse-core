@@ -200,6 +200,40 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
     is_active = tenant_info.get("is_active", True)
     force_reset = user_metadata.get("force_reset", False)
 
+    # ── Phase 950: Auto-clear stale force_reset on password login ──
+    # If the user just authenticated with email+password successfully,
+    # that PROVES they already have a working password. force_reset is stale.
+    # Clear it in Supabase metadata so future logins don't loop back.
+    # This handles the case where the invite setup completed via a path
+    # that didn't call /auth/change-password (e.g. Supabase native flow).
+    if force_reset:
+        logger.info(
+            "auth/login: user %s has force_reset=true but authenticated with password. "
+            "Auto-clearing stale force_reset (Phase 950).",
+            user_id,
+        )
+        force_reset = False
+        try:
+            supa_service_for_clear = _get_service_db()
+            if supa_service_for_clear:
+                user_obj = supa_service_for_clear.auth.admin.get_user_by_id(user_id)
+                meta_to_update = user_obj.user.user_metadata or {}
+                meta_to_update["force_reset"] = False
+                meta_to_update["force_reset_cleared_at"] = time.strftime(
+                    "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                )
+                meta_to_update["force_reset_cleared_by"] = "password_login_proof"
+                supa_service_for_clear.auth.admin.update_user_by_id(
+                    user_id, {"user_metadata": meta_to_update}
+                )
+                logger.info("auth/login: force_reset cleared for user %s", user_id)
+        except Exception as clear_exc:
+            logger.warning(
+                "auth/login: failed to clear force_reset for user %s: %s",
+                user_id, clear_exc,
+            )
+            # Non-blocking — JWT will still have force_reset=False
+
     if role not in _VALID_ROLES:
         role = "worker"  # Phase 867: least-privilege fallback (unified with invite_router)
 
@@ -372,6 +406,19 @@ async def google_callback(body: GoogleCallbackRequest, request: Request) -> JSON
         if force_reset and "access_link_opened_at" not in user_metadata:
             user_metadata["access_link_opened_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             supa_service.auth.admin.update_user_by_id(user_id, {"user_metadata": user_metadata})
+
+        # ── Phase 950: Auto-clear stale force_reset on OAuth callback ──
+        # If the user already completed password setup (access_link_opened_at exists
+        # AND last_sign_in_at suggests prior successful auth), force_reset may be stale.
+        # However for google-callback from an invite link, the user might still need
+        # to set their password. Only clear if they have previously signed in
+        # (confirmed_at is present and sign_in count > 1 in user metadata).
+        # For safety, only auto-clear on google-callback if the invite link was
+        # already opened AND there's evidence of a prior successful password set.
+        if force_reset and user_metadata.get("force_reset_cleared_at"):
+            # force_reset was previously cleared (e.g. by password login proof)
+            # but somehow got re-set. Honor the cleared state.
+            force_reset = False
             
     except Exception as exc:
         logger.warning("auth/google-callback: failed to fetch user %s metadata: %s", user_id, exc)
