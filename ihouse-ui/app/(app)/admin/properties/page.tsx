@@ -432,14 +432,18 @@ function AdminPropertiesContent() {
     };
 
     const filters = [
-        { key: null, label: 'All', count: summary.pending + summary.approved + summary.rejected },
+        { key: null, label: 'All', count: summary.pending + summary.approved },
         { key: 'pending', label: 'Pending', count: summary.pending },
         { key: 'approved', label: 'Approved', count: summary.approved },
         { key: 'rejected', label: 'Rejected', count: summary.rejected },
     ];
 
-    // Exclude archived from the main list — archived properties live at /admin/properties/archived
-    const visibleProperties = properties.filter(p => p.status !== 'archived');
+    // Phase 397s: Exclude archived and rejected from the default 'All' list
+    const visibleProperties = properties.filter(p => {
+        if (p.status === 'archived') return false;
+        if (!statusFilter && p.status === 'rejected') return false;
+        return true;
+    });
 
     return (
         <div style={{ maxWidth: 1100 }}>

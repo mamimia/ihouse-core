@@ -145,6 +145,8 @@ def _format_property(row: Dict[str, Any]) -> Dict[str, Any]:
     summary="List all property records for this tenant (Phase 156)",
     description=(
         "Returns all property metadata records for the authenticated tenant.\\n\\n"
+        "By default, this endpoint enforces an active operational boundary by returning ONLY "
+        "`approved` properties. To include pending or rejected properties, use `?status=all`.\\n\\n"
         "Results are sorted by `property_id` ascending.\\n\\n"
         "**Source:** `properties` table — tenant-scoped. Read-only."
     ),
@@ -157,20 +159,21 @@ def _format_property(row: Dict[str, Any]) -> Dict[str, Any]:
 )
 async def list_properties(
     tenant_id: str = Depends(jwt_auth),
-    status: Optional[str] = Query(None, description="Filter by status: 'active', 'archived', or 'all'. Default excludes archived."),
+    status: Optional[str] = Query(None, description="Filter by status: 'approved' (default), 'archived', or 'all'."),
     client: Optional[Any] = None,
 ) -> JSONResponse:
-    """GET /properties — list properties. Excludes archived by default. Use ?status=archived or ?status=all."""
+    """GET /properties — list properties. By default, exclusively returns 'approved' properties for operational safety."""
     try:
         db = client if client is not None else _get_supabase_client()
         q = db.table("properties").select("*").eq("tenant_id", tenant_id)
         if status == "archived":
             q = q.eq("status", "archived")
         elif status == "all":
-            pass  # no filter
-        else:
-            # Default: exclude archived
+            # Exclude archived from 'all'
             q = q.neq("status", "archived")
+        else:
+            # Default: enforce boundary (only approved properties)
+            q = q.eq("status", "approved")
         result = q.order("property_id", desc=False).execute()
         rows: List[Dict[str, Any]] = result.data or []
         return JSONResponse(
