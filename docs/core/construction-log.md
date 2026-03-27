@@ -5357,3 +5357,21 @@ System-level fix (4 files):
 Result: default = Light globally. Toggle switches entire product to Dark. No page independently overrides.
 Deployed: Vercel staging.
 
+
+## Phase 958 — Worker Check-in Audit & Root-Cause Isolation — 2026-03-28
+
+Evidence-based audit of the worker-side check-in flow on staging. Isolated exact root causes for 3 critical failures:
+
+**Root Cause #1 — Task completion lifecycle:** Backend `PATCH /worker/tasks/{task_id}/complete` works correctly (ACKNOWLEDGED→COMPLETED verified via TestClient). Failure is frontend-only: `task_id` degrades to `undefined` during booking data merge in `checkin/page.tsx`, causing the PATCH call to be silently skipped.
+
+**Root Cause #2 — Guest name duplication:** `guests.full_name = "Sam LongieSam Longie"` is storage-level truth. Written by `POST /worker/checkin/save-guest-identity` from frontend payload. No backend trigger or processing duplicates the name. The doubled string originated from the UI input layer.
+
+**Root Cause #3 — QR 503:** `qrcode` Python library not installed in staging container. Route catches `ImportError`, returns 503. UI falls back to raw portal URL string.
+
+**DB evidence captured:**
+- `booking_state` row: `booking_id = "MAN-KPG-502-20260326-f360"`, `guest_name = "Sam LongieSam Longie"`, `status = "checked_in"`
+- `guests` row: `id = "fbe72e04-..."`, `full_name = "Sam LongieSam Longie"`, `identity_source = "document_scan"`
+- `tasks` row: `task_id = "6688f6ee75ae38f6"`, backend accepts ACKNOWLEDGED→COMPLETED transition (200 OK)
+
+No code changes in this phase — audit and root-cause isolation only.
+Spec: `docs/archive/phases/phase-958-spec.md`.

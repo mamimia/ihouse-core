@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 958 — Next Phase. Phases 841–957 closed.
+Phase 959 — Next Phase. Phases 841–958 closed.
 
 ## Last Closed Phase
 
-Phase 957 — Global Theme Consistency.
+Phase 958 — Worker Check-in Audit & Root-Cause Isolation.
 
 ## Current Objective
 

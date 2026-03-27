@@ -8522,3 +8522,44 @@ Invariants locked:
 Files: `admin/layout.tsx`, `ForceLight.tsx`, `tokens.css`, `ThemeProvider.tsx`
 Spec: `docs/archive/phases/phase-957-spec.md`
 
+
+## Phase 958 — Worker Check-in Audit & Root-Cause Isolation (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-28
+
+Evidence-based audit of the worker-side check-in flow on staging. Investigated three critical failures reported from manual testing of the Zen Pool Villa (KPG-502) check-in task in the Check-in/Checkout Combine app.
+
+### Root Cause #1 — Task Completion Lifecycle Failure
+
+**Symptom:** Task stays ACKNOWLEDGED after wizard completion — never transitions to COMPLETED.
+**Proof:** Backend route PATCH /worker/tasks/{task_id}/complete works perfectly. TestClient verification returned 200 OK, task mutated to COMPLETED in DB. The VALID_TASK_TRANSITIONS[ACKNOWLEDGED] explicitly includes COMPLETED.
+**Root cause:** Frontend in checkin/page.tsx reads task_id from (selected as any).task_id. During the booking data merge phase (synthetic bookings + API enrichment), the task_id attribute degrades to undefined. The code wraps the PATCH call in if (taskId), so the entire completion block is silently skipped.
+**Evidence:** DB row task_id = "6688f6ee75ae38f6", status = "ACKNOWLEDGED" before fix, transitions cleanly to "COMPLETED" via direct API call.
+
+### Root Cause #2 — Guest Name Duplication
+
+**Symptom:** guests.full_name = "Sam LongieSam Longie" (doubled string).
+**Proof:** Storage-level truth confirmed:
+- booking_state.guest_name = "Sam LongieSam Longie"
+- guests.full_name = "Sam LongieSam Longie"
+- guests.identity_source = "document_scan", updated_at = 09:43:03
+- booking_state.original_booking_name = "Kiko Papir" (pre-checkin state)
+**Root cause:** Frontend payload sent {"full_name": "Sam LongieSam Longie"} to POST /worker/checkin/save-guest-identity. Backend faithfully committed exactly what was received. No backend duplication mechanism exists (verified by inserting test row — no trigger-based duplication).
+
+### Root Cause #3 — QR Image 503 Error
+
+**Symptom:** GET /bookings/{booking_id}/qr-image returns 503.
+**Root cause:** The qrcode Python library is not installed in the staging container. The route catches the ImportError and returns {"code": "QR_NOT_AVAILABLE", "detail": "qrcode library not installed."}.
+**UI fallback:** checkin/page.tsx wraps the QR fetch in try/catch, falls back to displaying the raw guest portal URL string.
+
+### Open Remediation Items
+
+| # | Item | Severity | Fix Required |
+|---|------|----------|-------------|
+| 1 | Frontend task_id loss during booking merge | Critical | Ensure task_id persists through enrichment chain in checkin/page.tsx |
+| 2 | qrcode dependency missing in staging | Medium | Add qrcode[pil] to requirements.txt or pyproject.toml |
+| 3 | Guest name input validation | Medium | Add duplicate-string detection or trim guard in identity save path |
+| 4 | Success screen shows raw URL instead of QR | Medium | After fixing #2, QR image will render; verify fallback hierarchy |
+
+Spec: docs/archive/phases/phase-958-spec.md
