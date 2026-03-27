@@ -60,71 +60,79 @@ const LINE_CHANNEL: ChannelDefinition = {
     ],
     prerequisites: [
         {
-            text: 'A LINE Official Account (free tier is fine to start)',
-            link: { url: 'https://manager.line.biz/', label: 'Create LINE Official Account →' }
+            text: 'A LINE Official Account. The free "Light" plan is enough to start.',
+            link: { url: 'https://manager.line.biz/', label: 'Create a LINE Official Account →' }
         },
         {
-            text: 'Access to the LINE Developers Console',
+            text: 'You must be logged into the LINE Developers Console with the same account.',
             link: { url: 'https://developers.line.biz/console/', label: 'Open LINE Developers Console →' }
         },
     ],
     steps: [
         {
             id: 'enable-api',
-            title: 'Enable the Messaging API',
-            description: 'In your LINE Official Account Manager, go to Settings → Messaging API and click "Enable Messaging API." If prompted to choose a provider, select your existing one — do not create a second.',
+            title: 'Step 1 — Enable the Messaging API on your Official Account',
+            description: 'Open the LINE Official Account Manager. In the left sidebar, click "Settings" → "Messaging API". Click the "Enable Messaging API" button.\n\nWhen prompted to link a Provider, choose an existing one if you have one, or create a new Provider (e.g. your company name). Do not create a second Provider if one already exists — just select it.',
             providerLink: { url: 'https://manager.line.biz/', label: 'Open LINE Official Account Manager →' },
             fields: [],
-            troubleshooting: 'If you don\'t see "Messaging API" in settings, make sure you\'re using a LINE Official Account (not a personal account). The option appears under Settings → Messaging API.',
+            troubleshooting: 'If you do not see "Messaging API" in the Settings menu, check that you are logged in with a LINE Official Account (not a personal LINE account). You must use the business manager at manager.line.biz, not the regular LINE app.',
+        },
+        {
+            id: 'open-channel',
+            title: 'Step 2 — Open your channel in the LINE Developers Console',
+            description: 'Now open the LINE Developers Console. In the left sidebar you will see "Providers". Click your Provider name to expand it.\n\nUnder your Provider, you will see one or more Channels. Find the channel that matches your LINE Official Account — it will be labelled "Messaging API". Click on it to open the channel settings.',
+            providerLink: { url: 'https://developers.line.biz/console/', label: 'Open LINE Developers Console →' },
+            fields: [],
+            troubleshooting: 'If you do not see any Providers or Channels, it means the Messaging API was not enabled yet in Step 1, or you are logged in with a different account. Make sure you use the same LINE account in both the Official Account Manager and the Developers Console.',
         },
         {
             id: 'channel-secret',
-            title: 'Copy your Channel Secret',
-            description: 'In the LINE Developers Console, open your channel and go to the "Basic Settings" tab. Find "Channel Secret" and copy the full value.',
+            title: 'Step 3 — Copy the Channel Secret',
+            description: 'Inside your channel (from Step 2), click the "Basic settings" tab at the top.\n\nScroll down until you see "Channel secret". Click "Copy" next to it, then paste it into the field below.\n\nThis is a 32-character code that looks like: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
             providerLink: { url: 'https://developers.line.biz/console/', label: 'Open LINE Developers Console →' },
             fields: [
                 {
                     key: 'channel_secret',
                     label: 'Channel Secret',
-                    placeholder: 'Paste your Channel Secret here',
-                    helpText: 'This is a hexadecimal string used to verify webhook signatures. Found under Basic Settings in the LINE Developers Console.',
-                    validation: { pattern: /^[0-9a-f]{32}$/i, message: 'Channel Secret should be a 32-character hexadecimal string' },
+                    placeholder: 'Paste the 32-character Channel Secret here',
+                    helpText: 'Found under the "Basic settings" tab of your Messaging API channel. It is a 32-character hexadecimal string.',
+                    validation: { pattern: /^[0-9a-f]{32}$/i, message: 'Channel Secret should be exactly 32 hex characters (letters a–f and numbers)' },
                 },
             ],
-            troubleshooting: 'The Channel Secret is NOT the same as the Channel Access Token. It\'s shorter (32 characters) and found under "Basic Settings", not "Messaging API".',
+            troubleshooting: 'Important: the Channel Secret is NOT the same as the Channel Access Token. The secret is shorter (32 characters) and is found under "Basic settings", not "Messaging API". If the value you copied is very long (100+ characters), you have the wrong value — that is the access token from Step 4.',
         },
         {
             id: 'access-token',
-            title: 'Issue and copy your Channel Access Token',
-            description: 'In the same channel, go to the "Messaging API" tab. Scroll down to "Channel access token (long-lived)" and click "Issue" if you haven\'t already. Copy the full token.',
+            title: 'Step 4 — Issue and copy the Channel Access Token',
+            description: 'Still inside your channel in the Developers Console, click the "Messaging API" tab at the top.\n\nScroll down to the section called "Channel access token (long-lived)". If the field is empty, click "Issue" to generate the token. Then click "Copy" next to the token and paste it into the field below.\n\nThis is a very long code (100+ characters).',
             providerLink: { url: 'https://developers.line.biz/console/', label: 'Open LINE Developers Console →' },
             fields: [
                 {
                     key: 'channel_access_token',
                     label: 'Channel Access Token (long-lived)',
-                    placeholder: 'Paste your Channel Access Token here',
-                    helpText: 'This is a long string (100+ characters) that authorizes our system to send messages on behalf of your LINE account.',
-                    validation: { pattern: /^[A-Za-z0-9+/=]{50,}$/, message: 'Access Token should be a long Base64-encoded string (100+ characters)' },
+                    placeholder: 'Paste the long Channel Access Token here',
+                    helpText: 'Found under the "Messaging API" tab → "Channel access token (long-lived)". It is over 100 characters long.',
+                    validation: { pattern: /^[A-Za-z0-9+/=]{50,}$/, message: 'The access token should be a very long string (100+ characters). If it is short, you may have copied the wrong value.' },
                 },
             ],
-            troubleshooting: 'If the "Issue" button is grayed out, you may need to accept the LINE Developers terms of service first. If you already issued a token but lost it, you can re-issue a new one (the old one will stop working).',
+            troubleshooting: 'If the "Issue" button is grayed out: check that you accepted the LINE Developers terms of service when logging in. If you already issued a token before but cannot find it, you can click "Issue" again — this will generate a new token and the old one will stop working immediately.',
         },
         {
             id: 'webhook',
-            title: 'Set the webhook URL in LINE',
-            description: 'Copy the webhook URL below and paste it into your LINE channel settings under "Messaging API" → "Webhook URL". Make sure "Use webhook" is turned ON.',
+            title: 'Step 5 — Paste the webhook URL into LINE and enable it',
+            description: 'You are still in the "Messaging API" tab of your channel in the Developers Console.\n\nScroll up slightly to the section called "Webhook settings". You will see a field labelled "Webhook URL".\n\n1. Copy the URL shown below\n2. Paste it into the "Webhook URL" field in LINE\n3. Click "Update" to save it\n4. Make sure the toggle for "Use webhook" is turned ON — it is OFF by default\n\nOnce you have done all four steps, come back here and click "Save & Activate".',
             providerLink: { url: 'https://developers.line.biz/console/', label: 'Open LINE Developers Console →' },
             fields: [
                 {
                     key: 'webhook_url',
-                    label: 'Your Webhook URL (copy this into LINE)',
+                    label: 'Your Webhook URL — copy this and paste it into LINE',
                     placeholder: '',
-                    helpText: 'This is the URL where LINE will send incoming events. Copy it and paste it into your LINE channel webhook settings.',
+                    helpText: 'Paste this URL into the "Webhook URL" field in the LINE Developers Console under Messaging API → Webhook settings.',
                     readOnly: true,
                     copyable: true,
                 },
             ],
-            troubleshooting: 'Make sure "Use webhook" is toggled ON in LINE (it\'s off by default). The webhook URL must use HTTPS — LINE does not support plain HTTP.',
+            troubleshooting: '"Use webhook" must be toggled ON. If it is OFF, events from LINE will not reach our system and notifications will not work. The webhook URL must be a public HTTPS address — LINE will not accept plain HTTP or localhost addresses.',
         },
     ],
 };
@@ -421,6 +429,8 @@ export default function ChannelSetupPage() {
     const [activeStep, setActiveStep] = useState(0);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [justActivated, setJustActivated] = useState(false);
+    const [showTestGuide, setShowTestGuide] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [expandedTroubleshooting, setExpandedTroubleshooting] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
@@ -483,7 +493,7 @@ export default function ChannelSetupPage() {
             });
             setSaved(true);
             setIsConfigured(true);
-            setTimeout(() => setSaved(false), 3000);
+            setJustActivated(true);
         } catch (err) {
             console.error('Save failed:', err);
         }
@@ -744,40 +754,135 @@ export default function ChannelSetupPage() {
             </div>
 
             {/* Save + completion */}
-            <div style={{ marginTop: 24, padding: 24, background: 'var(--color-surface)', border: `1px solid ${allStepsComplete ? 'var(--color-ok)33' : 'var(--color-border)'}`, borderRadius: 12 }}>
-                {allStepsComplete ? (
-                    <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                            <span style={{ fontSize: 24 }}>🎉</span>
-                            <div>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>All steps complete</div>
-                                <div style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>Save your configuration to activate this channel.</div>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 10 }}>
-                            <button onClick={handleSave} disabled={saving} style={{
-                                padding: '12px 28px', fontSize: 14, fontWeight: 700, border: 'none', borderRadius: 8, cursor: saving ? 'wait' : 'pointer',
-                                background: saved ? 'var(--color-ok)' : 'var(--color-text)', color: 'var(--color-background)',
-                            }}>
-                                {saving ? 'Saving…' : saved ? '✓ Saved & Activated' : 'Save & Activate Channel'}
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {justActivated ? (
+                /* ── Success state ── */
+                <div style={{ marginTop: 24, padding: 28, background: 'var(--color-surface)', border: '1px solid var(--color-ok)44', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--color-ok)1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>✓</div>
                         <div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Setup in progress</div>
-                            <div style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>{completedSteps} of {totalSteps} steps complete. You can save your progress and continue later.</div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-ok)' }}>{channel.name} is now connected</div>
+                            <div style={{ fontSize: 13, color: 'var(--color-text-dim)', marginTop: 2 }}>Your configuration has been saved and this channel is active.</div>
                         </div>
-                        <button onClick={handleSave} disabled={saving} style={{
-                            padding: '10px 20px', fontSize: 13, fontWeight: 600, border: '1px solid var(--color-border)', borderRadius: 8,
-                            cursor: saving ? 'wait' : 'pointer', background: 'transparent', color: 'var(--color-text)',
-                        }}>
-                            {saving ? 'Saving…' : saved ? '✓ Progress saved' : 'Save progress'}
+                    </div>
+                    {/* Test guide toggle */}
+                    {channelId === 'line' && (
+                        <div style={{ marginBottom: 20, padding: '16px 20px', background: 'var(--color-surface-2)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                            <button
+                                onClick={() => setShowTestGuide(v => !v)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+                            >
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>Let&apos;s test it — send your first message</div>
+                                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>Follow these steps to confirm LINE is working correctly.</div>
+                                </div>
+                                <span style={{ fontSize: 18, color: 'var(--color-text-faint)', transform: showTestGuide ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+                            </button>
+                            {showTestGuide && (
+                                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {[
+                                        {
+                                            n: 1,
+                                            title: 'Open LINE on your phone',
+                                            body: 'Open the LINE app on your mobile device. Make sure you are logged in with the same account as your LINE Official Account.',
+                                        },
+                                        {
+                                            n: 2,
+                                            title: 'Find your Official Account',
+                                            body: 'In LINE, go to the "Chats" tab and search for the name of your LINE Official Account (the one you set up in this configuration). Add it as a friend if you have not already.',
+                                        },
+                                        {
+                                            n: 3,
+                                            title: 'Trigger a test notification',
+                                            body: 'Go to a task or booking in Domaniqo and perform an action that triggers a notification — for example, assign a task to a worker who has LINE linked, or create a test check-in.',
+                                        },
+                                        {
+                                            n: 4,
+                                            title: 'What success looks like',
+                                            body: 'Within a few seconds, you should receive a LINE message from your Official Account. The message will contain the task or notification details.',
+                                        },
+                                    ].map(s => (
+                                        <div key={s.n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                            <div style={{ minWidth: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{s.n}</div>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{s.title}</div>
+                                                <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 3, lineHeight: 1.55 }}>{s.body}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div style={{ marginTop: 4, padding: '12px 14px', background: 'var(--color-surface)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>Message did not arrive?</div>
+                                        <div style={{ fontSize: 12, color: 'var(--color-text-dim)', lineHeight: 1.6 }}>
+                                            1. Go back to the LINE Developers Console and check that "Use webhook" is ON under Messaging API → Webhook settings.<br />
+                                            2. Check that the Webhook URL saved in LINE matches the one shown in Step 5 of this setup.<br />
+                                            3. Make sure the worker has their LINE User ID linked in Domaniqo under their staff profile.<br />
+                                            4. If all of the above are correct, contact support.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <button
+                            onClick={() => router.push('/admin')}
+                            style={{ padding: '11px 24px', fontSize: 13, fontWeight: 700, background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                        >
+                            ← Back to System Delivery Configuration
+                        </button>
+                        <button
+                            onClick={() => { setSaved(false); setJustActivated(false); }}
+                            style={{ padding: '11px 20px', fontSize: 13, fontWeight: 600, background: 'transparent', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer' }}
+                        >
+                            Edit configuration
                         </button>
                     </div>
-                )}
-            </div>
+                </div>
+            ) : (
+                <div style={{ marginTop: 24, padding: 24, background: 'var(--color-surface)', border: `1px solid ${allStepsComplete ? 'var(--color-ok)33' : 'var(--color-border)'}`, borderRadius: 12 }}>
+                    {allStepsComplete ? (
+                        <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                                <span style={{ fontSize: 24 }}>🎉</span>
+                                <div>
+                                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>All steps complete</div>
+                                    <div style={{ fontSize: 13, color: 'var(--color-text-dim)', marginTop: 2 }}>Save your configuration to activate this channel.</div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    style={{
+                                        padding: '12px 28px', fontSize: 14, fontWeight: 700, borderRadius: 8,
+                                        border: 'none', cursor: saving ? 'wait' : 'pointer',
+                                        background: 'var(--color-primary)', color: '#fff',
+                                        opacity: saving ? 0.7 : 1,
+                                    }}
+                                >
+                                    {saving ? 'Saving…' : 'Save & Activate Channel'}
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                            <div>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Setup in progress</div>
+                                <div style={{ fontSize: 13, color: 'var(--color-text-dim)', marginTop: 2 }}>{completedSteps} of {totalSteps} steps complete. You can save progress and continue later.</div>
+                            </div>
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                style={{
+                                    padding: '10px 20px', fontSize: 13, fontWeight: 600, border: '1px solid var(--color-border)', borderRadius: 8,
+                                    cursor: saving ? 'wait' : 'pointer', background: 'transparent', color: 'var(--color-text)', whiteSpace: 'nowrap',
+                                }}
+                            >
+                                {saving ? 'Saving…' : saved ? '✓ Progress saved' : 'Save progress'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Footer */}
             <div style={{ marginTop: 40, fontSize: 11, color: 'var(--color-text-faint)', display: 'flex', justifyContent: 'space-between' }}>
