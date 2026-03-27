@@ -337,6 +337,8 @@ async def checkin_booking(
 
     Phase 63: Restricted to admin / manager / checkin roles only.
     """
+    tenant_id = identity.get("tenant_id", "")
+    now = datetime.now(tz=timezone.utc).isoformat()
     try:
         db = _client if _client is not None else _get_supabase_client()
         _assert_checkin_role(identity, db)
@@ -450,6 +452,8 @@ async def checkout_booking(
 
     Phase 63: Restricted to admin / manager / checkin / checkout roles only.
     """
+    tenant_id = identity.get("tenant_id", "")
+    now = datetime.now(tz=timezone.utc).isoformat()
     try:
         db = _client if _client is not None else _get_supabase_client()
         _assert_checkout_role(identity, db)
