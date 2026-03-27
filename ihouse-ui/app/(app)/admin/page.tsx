@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
@@ -604,7 +605,13 @@ function IntegrationRow({ intg, onToggle, onConfigure }: {
     onToggle: (id: string, active: boolean) => void;
     onConfigure: (id: string) => void;
 }) {
+    const router = useRouter();
     const isComingSoon = intg.comingSoon === true;
+    // Phase 952a: Navigate to dedicated setup page instead of floating panel
+    const handleConfigure = () => {
+        if (isComingSoon) return;
+        router.push(`/admin/setup/${intg.id}`);
+    };
     return (
         <div style={{
             padding: '16px',
@@ -659,7 +666,7 @@ function IntegrationRow({ intg, onToggle, onConfigure }: {
                     )}
                     
                     <button
-                        onClick={() => !isComingSoon && onConfigure(intg.id)}
+                        onClick={handleConfigure}
                         disabled={isComingSoon}
                         style={{
                             padding: '6px 14px',
