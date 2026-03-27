@@ -152,6 +152,8 @@ function ManageStaffContent() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [notice, setNotice] = useState<string | null>(null);
 
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
   const showNotice = (msg: string) => {
     setNotice(msg);
     setTimeout(() => setNotice(null), 3500);
@@ -166,8 +168,12 @@ function ManageStaffContent() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch<any>('/permissions');
+      const [res, pendingRes] = await Promise.all([
+        apiFetch<any>('/permissions').catch(() => ({ permissions: [] })),
+        apiFetch<{ requests: any[] }>('/admin/staff-onboarding').catch(() => ({ requests: [] }))
+      ]);
       setUsers(res.permissions || []);
+      setPendingCount(pendingRes.requests?.length || 0);
     } catch { /* graceful */ }
     setLoading(false);
   }, []);
@@ -234,7 +240,7 @@ function ManageStaffContent() {
               cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)', transition: 'all 0.1s'
             }}
           >
-            Pending Requests
+            Invite Staff
           </button>
           {/* Phase 843: full-page create instead of modal */}
           <button
@@ -264,6 +270,13 @@ function ManageStaffContent() {
             <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: ROLE_COLORS[r]?.text || 'var(--color-text)', marginTop: 4 }}>{roleCounts[r] || 0}</div>
           </div>
         ))}
+        <div 
+          style={{ ...cardStyle, cursor: 'pointer', borderColor: 'var(--color-border)' }}
+          onClick={() => router.push('/admin/staff/requests')}
+        >
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Waiting for Approval</div>
+          <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', marginTop: 4 }}>{pendingCount}</div>
+        </div>
         {legacyCount > 0 && (
           <div style={{ ...cardStyle, cursor: 'pointer', borderColor: roleFilter === 'legacy' ? '#d29922' : 'var(--color-border)' }}
             onClick={() => setRoleFilter(roleFilter === 'legacy' ? 'all' : 'legacy')}>
