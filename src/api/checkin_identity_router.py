@@ -1,5 +1,5 @@
 """
-Phase 949b-d — Check-in Document Intake & Guest Identity Persistence
+Phase 949b-d-h — Check-in Document Intake & Guest Identity Persistence
 
 Endpoints:
     POST /worker/documents/upload     — Upload document image(s) to Supabase Storage
@@ -12,6 +12,15 @@ Architecture:
     - Guest dedup by passport_no + tenant_id.
     - booking_state.guest_id AND guest_name backfilled on save.
     - Manual-first: no OCR dependency. Staff types/reviews fields.
+
+Canonical Identity Hierarchy (Phase 949h — LOCKED RULE):
+    Document-verified identity ALWAYS wins over booking/imported names.
+    When save-guest-identity is called:
+      1. The original booking/import name is preserved in original_booking_name
+      2. The document full_name becomes the canonical guest_name
+      3. guests.identity_source and identity_verified_at are set
+    Booking names may be aliases, nicknames, placeholders, or low-quality OTA values.
+    Only the document-verified name is canonical.
 """
 from __future__ import annotations
 
@@ -237,7 +246,11 @@ async def save_guest_identity(
 
         if guest_id:
             # UPDATE existing guest — merge non-null fields only
-            updates: dict = {"updated_at": now_iso}
+            updates: dict = {
+                "updated_at": now_iso,
+                "identity_verified_at": now_iso,
+                "identity_source": "document_scan",
+            }
             if full_name:
                 updates["full_name"] = full_name
             if document_type:
@@ -272,22 +285,57 @@ async def save_guest_identity(
                 "passport_expiry": passport_expiry,
                 "issuing_country": issuing_country,
                 "document_photo_url": document_photo_url,
+                "identity_verified_at": now_iso,
+                "identity_source": "document_scan",
             }
             db.table("guests").insert(row).execute()
             logger.info("save_guest_identity: CREATED new guest=%s for booking=%s",
                         guest_id, booking_id)
 
-        # ── Step 2: Link guest to booking (booking_state.guest_id) ──
-        # ── Step 3: Backfill guest_name into booking_state ──
+        # ── Step 2: Preserve original booking name (Phase 949h) ──
+        # Before overwriting guest_name with document-verified identity,
+        # save the original booking/import name for search/audit/reference.
+        original_name_preserved = False
+        try:
+            bs_row = (
+                db.table("booking_state")
+                .select("guest_name, original_booking_name")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+            if bs_row.data:
+                current = bs_row.data[0]
+                old_name = current.get("guest_name", "")
+                already_preserved = current.get("original_booking_name")
+                # Only preserve if not already preserved (first document verification)
+                if old_name and not already_preserved:
+                    db.table("booking_state").update({
+                        "original_booking_name": old_name,
+                    }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
+                    original_name_preserved = True
+                    logger.info(
+                        "save_guest_identity: preserved original_booking_name='%s' "
+                        "before overwriting with document name='%s'",
+                        old_name, full_name,
+                    )
+        except Exception as preserve_exc:
+            logger.warning(
+                "save_guest_identity: could not preserve original booking name: %s",
+                preserve_exc,
+            )
+
+        # ── Step 3: Link guest + set canonical name (document-verified) ──
         try:
             db.table("booking_state").update({
                 "guest_id": guest_id,
-                "guest_name": full_name,
+                "guest_name": full_name,  # canonical document-verified name
             }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
             logger.info(
                 "save_guest_identity: linked guest=%s to booking=%s, "
-                "backfilled guest_name='%s'",
+                "canonical guest_name='%s' (document-verified)",
                 guest_id, booking_id, full_name,
             )
         except Exception as link_exc:
@@ -325,6 +373,8 @@ async def save_guest_identity(
             "booking_id": booking_id,
             "linked": True,
             "guest_name_backfilled": True,
+            "original_name_preserved": original_name_preserved,
+            "identity_source": "document_scan",
         })
 
     except Exception as exc:
