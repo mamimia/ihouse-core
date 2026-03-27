@@ -630,6 +630,22 @@ export default function ChannelSetupPage() {
     const [isConfigured, setIsConfigured] = useState(false);
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+    const [testingConnection, setTestingConnection] = useState(false);
+    const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+    const handleTestConnection = async () => {
+        setTestingConnection(true);
+        setTestResult(null);
+        try {
+            const res = await api.testTenantIntegration(channelId, credentials);
+            setTestResult(res);
+        } catch (e: any) {
+            setTestResult({ success: false, message: e.message || 'Connection test failed.' });
+        } finally {
+            setTestingConnection(false);
+        }
+    };
+
     // Load existing credentials
     const loadExisting = useCallback(async () => {
         setLoading(true);
@@ -991,10 +1007,31 @@ export default function ChannelSetupPage() {
                             )}
                         </div>
                     )}
+                    
+                    {testResult && (
+                        <div style={{ marginBottom: 20, padding: 16, borderRadius: 8, background: testResult.success ? 'var(--color-ok)11' : 'var(--color-danger)11', border: `1px solid ${testResult.success ? 'var(--color-ok)44' : 'var(--color-danger)44'}`, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                            <div style={{ fontSize: 18 }}>{testResult.success ? '✓' : '⚠'}</div>
+                            <div>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: testResult.success ? 'var(--color-ok)' : 'var(--color-danger)' }}>
+                                    {testResult.success ? 'Connection Successful' : 'Connection Failed'}
+                                </div>
+                                <div style={{ fontSize: 13, color: 'var(--color-text)', marginTop: 4, lineHeight: 1.5 }}>
+                                    {testResult.message}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <button
+                            onClick={handleTestConnection}
+                            disabled={testingConnection}
+                            style={{ padding: '11px 24px', fontSize: 13, fontWeight: 700, background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: testingConnection ? 'wait' : 'pointer', opacity: testingConnection ? 0.7 : 1 }}
+                        >
+                            {testingConnection ? 'Testing...' : 'Test Connection'}
+                        </button>
+                        <button
                             onClick={() => router.push('/admin')}
-                            style={{ padding: '11px 24px', fontSize: 13, fontWeight: 700, background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                            style={{ padding: '11px 24px', fontSize: 13, fontWeight: 700, background: 'transparent', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer' }}
                         >
                             ← Back to System Delivery Configuration
                         </button>

@@ -574,6 +574,15 @@ export const api = {
             body: JSON.stringify(updates),
         }),
 
+    testTenantIntegration: (
+        provider: string,
+        credentials: Record<string, unknown>
+    ): Promise<{ success: boolean; message: string }> =>
+        apiFetch(`/admin/integrations/${encodeURIComponent(provider)}/test`, {
+            method: "POST",
+            body: JSON.stringify({ credentials }),
+        }),
+
     // Phase 190 — Audit Events (Manager UI)
     getAuditEvents: (params?: {
         entity_type?: string;

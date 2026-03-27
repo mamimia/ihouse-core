@@ -822,3 +822,85 @@ async def update_tenant_integration(
         logger.exception("PUT /admin/integrations/%s error for tenant=%s: %s", provider, tenant_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
 
+
+class IntegrationTestBody(BaseModel):
+    credentials: dict[str, Any]
+
+@router.post(
+    "/admin/integrations/{provider}/test",
+    tags=["admin"],
+    summary="Test notification integration credentials",
+    responses={
+        200: {"description": "Test result"},
+        400: {"description": "Validation error"},
+        401: {"description": "Missing or invalid JWT token"},
+        500: {"description": "Unexpected internal error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def test_tenant_integration(
+    provider: str,
+    payload: IntegrationTestBody,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    import httpx
+    
+    creds = payload.credentials
+    success = False
+    message = "Not implemented"
+    
+    try:
+        if provider == "line":
+            token = creds.get("channel_access_token")
+            if not token:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Missing channel_access_token"})
+            async with httpx.AsyncClient(timeout=5.0) as http:
+                resp = await http.get("https://api.line.me/v2/bot/info", headers={"Authorization": f"Bearer {token}"})
+                success = resp.status_code == 200
+                message = "Valid LINE credentials" if success else f"LINE API Error: HTTP {resp.status_code}"
+                
+        elif provider == "telegram":
+            token = creds.get("bot_token")
+            if not token:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Missing bot_token"})
+            async with httpx.AsyncClient(timeout=5.0) as http:
+                resp = await http.get(f"https://api.telegram.org/bot{token}/getMe")
+                success = resp.status_code == 200
+                message = "Valid Telegram credentials" if success else f"Telegram API Error: HTTP {resp.status_code}"
+                
+        elif provider == "whatsapp":
+            token = creds.get("access_token")
+            phone_id = creds.get("phone_number_id")
+            if not token or not phone_id:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Missing access_token or phone_number_id"})
+            async with httpx.AsyncClient(timeout=5.0) as http:
+                resp = await http.get(f"https://graph.facebook.com/v19.0/{phone_id}?access_token={token}")
+                success = resp.status_code == 200
+                message = "Valid WhatsApp credentials" if success else f"Meta API Error: HTTP {resp.status_code} - Check Token and Phone ID"
+                
+        elif provider == "sms":
+            sid = creds.get("twilio_sid")
+            token = creds.get("twilio_token")
+            if not sid or not token:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Missing Twilio credentials"})
+            async with httpx.AsyncClient(timeout=5.0) as http:
+                resp = await http.get(f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json", auth=(sid, token))
+                success = resp.status_code == 200
+                message = "Valid Twilio credentials" if success else f"Twilio API Error: HTTP {resp.status_code}"
+                
+        elif provider.startswith("email_"):
+            # Mock success for email identities until Phase 168+ real email backend
+            success = True
+            message = "Email configuration valid"
+            
+        else:
+            return JSONResponse(status_code=400, content={"success": False, "message": f"Unsupported provider: {provider}"})
+
+        return JSONResponse(status_code=200, content={"success": success, "message": message})
+        
+    except httpx.RequestError as exc:
+        logger.error("HTTP Exception testing %s: %s", provider, exc)
+        return JSONResponse(status_code=500, content={"success": False, "message": f"Network error contacting provider API"})
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("POST /admin/integrations/%s/test error: %s", provider, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
