@@ -395,6 +395,9 @@ function AdminPropertiesContent() {
     const [loading, setLoading] = useState(true);
     const [notice, setNotice] = useState<string | null>(null);
 
+    // Phase 954s: Real Intake Queue Count across boundaries (un-scoped to admin tenant)
+    const [intakeCount, setIntakeCount] = useState<number>(0);
+
     const showNotice = (msg: string) => {
         setNotice(msg);
         setTimeout(() => setNotice(null), 3000);
@@ -405,6 +408,20 @@ function AdminPropertiesContent() {
         if (searchParams?.get('created') === '1') showNotice('✓ Property created successfully');
     }, [searchParams]);
 
+    const loadIntakeCount = useCallback(async () => {
+        try {
+            const token = typeof window !== 'undefined' ? document.cookie.split('; ').find(c => c.startsWith('ihouse_token='))?.split('=')[1] ?? '' : '';
+            if (!token) return;
+            const res = await fetch(`/api/admin/intake?status=pending_review`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setIntakeCount(data.count || 0);
+            }
+        } catch { /* non-fatal, fail silently */ }
+    }, []);
+
     const load = useCallback(async () => {
         setLoading(true);
         try {
@@ -412,12 +429,15 @@ function AdminPropertiesContent() {
             const data = await fetchAPI(`/admin/properties${params}`);
             setProperties(data.properties || []);
             if (data.status_summary) setSummary(data.status_summary);
+
+            // Phase 954s: Fetch actual Intake Queue count independent of tenant scoping
+            await loadIntakeCount();
         } catch {
             showNotice('✗ Failed to load properties');
         } finally {
             setLoading(false);
         }
-    }, [statusFilter]);
+    }, [statusFilter, loadIntakeCount]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -509,9 +529,9 @@ function AdminPropertiesContent() {
                     </div>
                 ))}
 
-                {/* Phase 953s: Actionable Stat Cards for Queues */}
+                {/* Phase 953s/954s: Actionable Stat Cards for Queues */}
                 <div onClick={() => router.push('/admin/intake')}>
-                    <StatCard label="Intake Queue" value={summary.pending} active={false} />
+                    <StatCard label="Intake Queue" value={intakeCount} active={false} />
                 </div>
                 <div onClick={() => router.push('/admin/properties/archived')}>
                     <StatCard label="Archive" value={summary.archived} active={false} />
