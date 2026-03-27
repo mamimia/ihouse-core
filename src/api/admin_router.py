@@ -777,11 +777,18 @@ async def update_tenant_integration(
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
-    if provider not in {"line", "whatsapp", "telegram", "sms"}:
+    # Phase 951b: extended to include email sender identities
+    _VALID_PROVIDERS = {
+        # Messaging channels (Phase 842)
+        "line", "whatsapp", "telegram", "sms",
+        # Email senders (Phase 951b)
+        "email_general", "email_onboarding", "email_password", "email_guest", "email_owner",
+    }
+    if provider not in _VALID_PROVIDERS:
         return make_error_response(
             status_code=400,
             code=ErrorCode.VALIDATION_ERROR,
-            extra={"detail": "Invalid provider"},
+            extra={"detail": f"Invalid provider: {provider}"},
         )
     try:
         db = client if client is not None else _get_supabase_client()

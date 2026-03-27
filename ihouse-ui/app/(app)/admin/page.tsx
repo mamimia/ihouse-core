@@ -43,13 +43,17 @@ interface Integration {
     configured: boolean;
     active: boolean;
     credentials?: Record<string, string>; // Cached credentials
+    group: 'messaging' | 'email'; // Phase 951a: channel grouping
+    purpose?: string; // Phase 951a: what this channel is used for
+    comingSoon?: boolean; // Phase 951a: not yet actionable
 }
 
 // Map integration IDs to the fields they require for configuration
-const INTEGRATION_FIELDS: Record<string, { key: string; label: string; placeholder: string; type?: string }[]> = {
+const INTEGRATION_FIELDS: Record<string, { key: string; label: string; placeholder: string; type?: string; readOnly?: boolean; copyable?: boolean }[]> = {
     line: [
         { key: 'channel_secret', label: 'Channel Secret', placeholder: 'Webhook verification secret from LINE Basic Settings' },
         { key: 'channel_access_token', label: 'Channel Access Token (long-lived)', placeholder: 'Issue from LINE Developers Console → Messaging API' },
+        { key: 'webhook_url', label: 'Your Webhook URL', placeholder: '', type: 'text', readOnly: true, copyable: true },
     ],
     whatsapp: [
         { key: 'access_token', label: 'Access Token', placeholder: 'Enter Meta Cloud API bearer token' },
@@ -64,7 +68,30 @@ const INTEGRATION_FIELDS: Record<string, { key: string; label: string; placehold
         { key: 'twilio_sid', label: 'Twilio Account SID', placeholder: 'AC...' },
         { key: 'twilio_token', label: 'Twilio Auth Token', placeholder: 'Enter token' },
         { key: 'twilio_from', label: 'Twilio Number', placeholder: '+1234567890' }
-    ]
+    ],
+    // Phase 951a — Email sender identities
+    email_general: [
+        { key: 'from_name', label: 'From Name', placeholder: 'e.g. Domaniqo' },
+        { key: 'from_email', label: 'From Email', placeholder: 'e.g. noreply@domaniqo.com' },
+        { key: 'reply_to', label: 'Reply-To Email', placeholder: 'e.g. support@domaniqo.com' },
+    ],
+    email_onboarding: [
+        { key: 'from_name', label: 'From Name', placeholder: 'e.g. Domaniqo Team' },
+        { key: 'from_email', label: 'From Email', placeholder: 'e.g. onboarding@domaniqo.com' },
+    ],
+    email_password: [
+        { key: 'from_name', label: 'From Name', placeholder: 'e.g. Domaniqo Security' },
+        { key: 'from_email', label: 'From Email', placeholder: 'e.g. security@domaniqo.com' },
+    ],
+    email_guest: [
+        { key: 'from_name', label: 'From Name', placeholder: 'e.g. Domaniqo Concierge' },
+        { key: 'from_email', label: 'From Email', placeholder: 'e.g. guest@domaniqo.com' },
+        { key: 'reply_to', label: 'Reply-To Email', placeholder: 'e.g. concierge@domaniqo.com' },
+    ],
+    email_owner: [
+        { key: 'from_name', label: 'From Name', placeholder: 'e.g. Domaniqo Reports' },
+        { key: 'from_email', label: 'From Email', placeholder: 'e.g. reports@domaniqo.com' },
+    ],
 };
 
 const INTEGRATION_INSTRUCTIONS: Record<string, { title: string; steps: React.ReactNode[] }> = {
@@ -111,7 +138,47 @@ const INTEGRATION_INSTRUCTIONS: Record<string, { title: string; steps: React.Rea
             <span key="2">Purchase a Twilio Phone Number capable of sending SMS.</span>,
             <span key="3">Copy your <strong>Account SID</strong> and <strong>Auth Token</strong>.</span>
         ]
-    }
+    },
+    // Phase 951a — Email sender instructions
+    email_general: {
+        title: 'System Email Sender',
+        steps: [
+            <span key="1">This is the <strong>default sender identity</strong> for all system-generated emails.</span>,
+            <span key="2">Configure this first — other senders inherit from this if not configured separately.</span>,
+            <span key="3">The <strong>Reply-To</strong> address determines where recipients' replies go.</span>,
+        ]
+    },
+    email_onboarding: {
+        title: 'Staff Onboarding Sender',
+        steps: [
+            <span key="1">Emails from this sender include <strong>invite links</strong>, <strong>access setup</strong>, and <strong>welcome messages</strong> for new staff.</span>,
+            <span key="2">If not configured, the system general sender will be used instead.</span>,
+        ]
+    },
+    email_password: {
+        title: 'Password & Account Sender',
+        steps: [
+            <span key="1">Used for <strong>password reset</strong>, <strong>account recovery</strong>, and <strong>security alert</strong> emails.</span>,
+            <span key="2">If not configured, the system general sender will be used instead.</span>,
+            <span key="3" style={{display:'block', marginTop:'8px', padding:'10px 12px', background:'#f59e0b0f', border:'1px solid #f59e0b33', borderRadius:'6px', color:'var(--color-text)', fontSize:'12px'}}>
+                <strong>Note:</strong> Password reset emails are currently handled by Supabase Auth. This sender identity will be used when custom email templates are enabled.
+            </span>
+        ]
+    },
+    email_guest: {
+        title: 'Guest Communication Sender',
+        steps: [
+            <span key="1">Used for <strong>guest portal links</strong>, <strong>check-in instructions</strong>, and <strong>stay information</strong> emails.</span>,
+            <span key="2">The <strong>Reply-To</strong> address should go to a monitored inbox for guest inquiries.</span>,
+        ]
+    },
+    email_owner: {
+        title: 'Owner Reports Sender',
+        steps: [
+            <span key="1">Used for <strong>financial statements</strong>, <strong>property reports</strong>, and <strong>owner notifications</strong>.</span>,
+            <span key="2">If not configured, the system general sender will be used instead.</span>,
+        ]
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -537,75 +604,97 @@ function IntegrationRow({ intg, onToggle, onConfigure }: {
     onToggle: (id: string, active: boolean) => void;
     onConfigure: (id: string) => void;
 }) {
+    const isComingSoon = intg.comingSoon === true;
     return (
         <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
             padding: '16px',
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-md)',
             marginBottom: '10px',
             transition: 'border-color 0.2s',
+            opacity: isComingSoon ? 0.6 : 1,
         }}
         onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-border-hover)'}
         onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{
+                        width: 40, height: 40, borderRadius: '8px', 
+                        background: 'var(--color-surface-2)', display: 'flex', 
+                        alignItems: 'center', justifyContent: 'center', fontSize: '20px'
+                    }}>
+                        {intg.icon}
+                    </div>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>
+                                {intg.name}
+                            </span>
+                            {isComingSoon && (
+                                <Chip label="Coming soon" color="var(--color-accent)" />
+                            )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-dim)' }}>
+                            {intg.description}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '130px', display: 'flex', justifyContent: 'flex-end' }}>
+                        <Chip 
+                            label={intg.configured ? '✓ Configured' : '⊗ Not configured'} 
+                            color={intg.configured ? 'var(--color-ok)' : 'var(--color-text-dim)'} 
+                        />
+                    </div>
+                    
+                    {!isComingSoon && (
+                        <ToggleBtn 
+                            active={intg.active} 
+                            onToggle={() => onToggle(intg.id, !intg.active)} 
+                            label={`Toggle ${intg.name}`}
+                        />
+                    )}
+                    
+                    <button
+                        onClick={() => !isComingSoon && onConfigure(intg.id)}
+                        disabled={isComingSoon}
+                        style={{
+                            padding: '6px 14px',
+                            background: 'transparent',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: isComingSoon ? 'var(--color-text-faint)' : 'var(--color-text)',
+                            cursor: isComingSoon ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={e => !isComingSoon && (e.currentTarget.style.background = 'var(--color-surface-2)')}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                        Configure <span style={{ fontSize: '14px', lineHeight: 1 }}>→</span>
+                    </button>
+                </div>
+            </div>
+            {/* Phase 951a: Purpose text — shows what this channel is used for in the system */}
+            {intg.purpose && (
                 <div style={{
-                    width: 40, height: 40, borderRadius: '8px', 
-                    background: 'var(--color-surface-2)', display: 'flex', 
-                    alignItems: 'center', justifyContent: 'center', fontSize: '20px'
+                    marginTop: '10px',
+                    marginLeft: '56px',
+                    fontSize: '11px',
+                    lineHeight: 1.5,
+                    color: 'var(--color-text-faint)',
+                    fontStyle: 'italic',
                 }}>
-                    {intg.icon}
+                    {intg.purpose}
                 </div>
-                <div>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '4px' }}>
-                        {intg.name}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-text-dim)' }}>
-                        {intg.description}
-                    </div>
-                </div>
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ width: '130px', display: 'flex', justifyContent: 'flex-end' }}>
-                    <Chip 
-                        label={intg.configured ? '✓ Configured' : '⊗ Not configured'} 
-                        color={intg.configured ? 'var(--color-ok)' : 'var(--color-text-dim)'} 
-                    />
-                </div>
-                
-                <ToggleBtn 
-                    active={intg.active} 
-                    onToggle={() => onToggle(intg.id, !intg.active)} 
-                    label={`Toggle ${intg.name}`}
-                />
-                
-                <button
-                    onClick={() => onConfigure(intg.id)}
-                    style={{
-                        padding: '6px 14px',
-                        background: 'transparent',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: 'var(--color-text)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-2)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                    Configure <span style={{ fontSize: '14px', lineHeight: 1 }}>→</span>
-                </button>
-            </div>
+            )}
         </div>
     );
 }
@@ -666,11 +755,20 @@ export default function AdminPage() {
     const [providers, setProviders] = useState<Provider[]>([]);
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [dlq, setDlq] = useState<DlqEntry[]>([]);
+    // Phase 951a: System Delivery Configuration — messaging + email senders
+    const emailIcon = <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
     const [integrations, setIntegrations] = useState<Integration[]>([
-        { id: 'line', name: 'LINE Notify', description: 'Send task alerts and notifications via LINE', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>, configured: false, active: false, credentials: {} },
-        { id: 'whatsapp', name: 'WhatsApp', description: 'Send alerts via WhatsApp Business (Twilio/Meta)', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, configured: false, active: false, credentials: {} },
-        { id: 'telegram', name: 'Telegram', description: 'Send alerts via Telegram bot', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>, configured: false, active: false, credentials: {} },
-        { id: 'sms', name: 'SMS', description: 'Send alerts via standard SMS', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>, configured: false, active: false, credentials: {} },
+        // ── Messaging Channels ──
+        { id: 'line', name: 'LINE Messaging API', description: 'Task alerts, SLA escalations, worker notifications', purpose: 'Primary real-time channel for operational staff. Delivers task assignments, acknowledgement prompts, and escalation alerts.', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>, configured: false, active: false, credentials: {}, group: 'messaging' },
+        { id: 'whatsapp', name: 'WhatsApp Business', description: 'Guest communication, booking confirmations', purpose: 'Guest-facing messaging via WhatsApp Business API (Meta Cloud). Used for check-in instructions and stay-related communication.', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, configured: false, active: false, credentials: {}, group: 'messaging' },
+        { id: 'telegram', name: 'Telegram Bot', description: 'Task alerts for workers who prefer Telegram', purpose: 'Alternative messaging channel for task alerts and escalations. Workers link their Telegram account via bot.', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>, configured: false, active: false, credentials: {}, group: 'messaging' },
+        { id: 'sms', name: 'SMS (Twilio)', description: 'Fallback delivery when primary channels unreachable', purpose: 'Last-resort delivery channel via Twilio. Used when LINE/WhatsApp/Telegram are unavailable or undelivered.', icon: <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>, configured: false, active: false, credentials: {}, group: 'messaging' },
+        // ── Email Senders ──
+        { id: 'email_general', name: 'System / General', description: 'Default sender for all system emails', purpose: 'Fallback sender identity when no specific sender is configured. All other email senders inherit from this.', icon: emailIcon, configured: false, active: false, credentials: {}, group: 'email' },
+        { id: 'email_onboarding', name: 'Staff Onboarding', description: 'Invite emails, access links, password setup', purpose: 'Sent to new workers during the onboarding process. Includes invite links, setup instructions, and welcome messages.', icon: emailIcon, configured: false, active: false, credentials: {}, group: 'email', comingSoon: true },
+        { id: 'email_password', name: 'Password & Account', description: 'Password reset, recovery, security alerts', purpose: 'Account security emails including password reset links and recovery. Currently handled by Supabase Auth.', icon: emailIcon, configured: false, active: false, credentials: {}, group: 'email', comingSoon: true },
+        { id: 'email_guest', name: 'Guest Communication', description: 'Portal links, check-in instructions, stay info', purpose: 'Guest-facing emails with portal access links, check-in details, and stay-related information.', icon: emailIcon, configured: false, active: false, credentials: {}, group: 'email', comingSoon: true },
+        { id: 'email_owner', name: 'Owner Reports', description: 'Financial statements, property reports', purpose: 'Owner-facing emails with financial statements, property reports, and periodic notifications.', icon: emailIcon, configured: false, active: false, credentials: {}, group: 'email', comingSoon: true },
     ]);
     const [loading, setLoading] = useState(true);
     const [notice, setNotice] = useState<string | null>(null);
@@ -746,10 +844,16 @@ export default function AdminPage() {
     const handleConfigureIntegration = (id: string) => {
         const intg = integrations.find(i => i.id === id);
         if (!intg) return;
+        // Phase 951a: auto-populate webhook_url for LINE
+        const creds = { ...(intg.credentials || {}) };
+        if (id === 'line' && !creds.webhook_url) {
+            const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+            creds.webhook_url = `${apiUrl}/line/webhook`;
+        }
         setConfigModal({
             isOpen: true,
             integrationId: id,
-            credentials: intg.credentials || {}
+            credentials: creds
         });
     };
 
@@ -757,17 +861,24 @@ export default function AdminPage() {
         const { integrationId, credentials } = configModal;
         if (!integrationId) return;
 
+        // Phase 951a: strip read-only fields (e.g. webhook_url) — they are derived, not persisted
+        const fieldDefs = INTEGRATION_FIELDS[integrationId] || [];
+        const readOnlyKeys = new Set(fieldDefs.filter(f => f.readOnly).map(f => f.key));
+        const saveCreds = Object.fromEntries(
+            Object.entries(credentials).filter(([k]) => !readOnlyKeys.has(k))
+        );
+
         const intg = integrations.find(i => i.id === integrationId);
         // Optimistic UI update
         const prevIntegrations = [...integrations];
-        const newHasCreds = Object.keys(credentials).some(k => !!credentials[k]);
+        const newHasCreds = Object.keys(saveCreds).some(k => !!saveCreds[k]);
         
-        setIntegrations(prev => prev.map(i => i.id === integrationId ? { ...i, configured: newHasCreds, credentials } : i));
+        setIntegrations(prev => prev.map(i => i.id === integrationId ? { ...i, configured: newHasCreds, credentials: saveCreds } : i));
         
         try {
             await api.updateTenantIntegration(integrationId, { 
                 is_active: intg?.active ?? false, 
-                credentials 
+                credentials: saveCreds 
             });
             showNotice(`✓ Integration configuration saved`);
             setConfigModal({ isOpen: false, integrationId: null, credentials: {} });
@@ -855,29 +966,62 @@ export default function AdminPage() {
                 )}
             </CollapsibleSection>
 
-            {/* Section 2 — Notification Integrations (collapsed — config, not daily) */}
+            {/* Section 2 — System Delivery Configuration (Phase 951a — evolved from Notification Integrations) */}
             <CollapsibleSection
-                title="Notification Integrations"
-                subtitle="Messaging channels for task alerts and worker notifications"
+                title="System Delivery Configuration"
+                subtitle="Messaging channels and email senders for all outbound system communication"
                 icon={<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>}
                 badge={(() => {
-                    const active = integrations.filter(i => i.active).length;
-                    return active > 0 ? `${active} active` : 'none active';
+                    const active = integrations.filter(i => i.active && !i.comingSoon).length;
+                    const configured = integrations.filter(i => i.configured && !i.comingSoon).length;
+                    return configured > 0 ? `${configured} configured · ${active} active` : 'none configured';
                 })()}
-                badgeColor={integrations.some(i => i.active) ? 'var(--color-ok)' : 'var(--color-text-faint)'}
+                badgeColor={integrations.some(i => i.active && !i.comingSoon) ? 'var(--color-ok)' : 'var(--color-text-faint)'}
             >
                 <p style={{ fontSize: '12px', color: 'var(--color-text-dim)', padding: '12px 8px 4px', margin: 0 }}>
                     Integration tokens are encrypted at rest and scoped per organization.
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', padding: '8px 0' }}>
-                    {integrations.map(intg => (
-                        <IntegrationRow 
-                            key={intg.id} 
-                            intg={intg} 
-                            onToggle={handleToggleIntegration} 
-                            onConfigure={handleConfigureIntegration} 
-                        />
-                    ))}
+
+                {/* ── Messaging Channels ── */}
+                <div style={{ padding: '12px 8px 4px' }}>
+                    <div style={{
+                        fontSize: '11px', fontWeight: 700, color: 'var(--color-text-faint)',
+                        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+                        paddingBottom: '6px', borderBottom: '1px solid var(--color-border)',
+                    }}>
+                        Messaging Channels
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {integrations.filter(i => i.group === 'messaging').map(intg => (
+                            <IntegrationRow 
+                                key={intg.id} 
+                                intg={intg} 
+                                onToggle={handleToggleIntegration} 
+                                onConfigure={handleConfigureIntegration} 
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {/* ── Email Senders ── */}
+                <div style={{ padding: '12px 8px 4px' }}>
+                    <div style={{
+                        fontSize: '11px', fontWeight: 700, color: 'var(--color-text-faint)',
+                        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+                        paddingBottom: '6px', borderBottom: '1px solid var(--color-border)',
+                    }}>
+                        Email Senders
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {integrations.filter(i => i.group === 'email').map(intg => (
+                            <IntegrationRow 
+                                key={intg.id} 
+                                intg={intg} 
+                                onToggle={handleToggleIntegration} 
+                                onConfigure={handleConfigureIntegration} 
+                            />
+                        ))}
+                    </div>
                 </div>
             </CollapsibleSection>
 
@@ -949,22 +1093,53 @@ export default function AdminPage() {
                     {configModal.integrationId && INTEGRATION_FIELDS[configModal.integrationId]?.map(field => (
                         <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>{field.label}</label>
-                            <input
-                                type={field.type || 'text'}
-                                placeholder={field.placeholder}
-                                value={configModal.credentials[field.key] || ''}
-                                onChange={(e) => setConfigModal(prev => ({
-                                    ...prev,
-                                    credentials: { ...prev.credentials, [field.key]: e.target.value }
-                                }))}
-                                style={{
-                                    padding: '8px 12px', fontSize: '13px', borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--color-border)', background: 'var(--color-background)',
-                                    color: 'var(--color-text)', outline: 'none'
-                                }}
-                                onFocus={(e) => e.target.style.borderColor = 'var(--color-brand)'}
-                                onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
-                            />
+                            {field.readOnly ? (
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    <input
+                                        type="text"
+                                        value={configModal.credentials[field.key] || ''}
+                                        readOnly
+                                        style={{
+                                            flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid var(--color-border)', background: 'var(--color-surface-2)',
+                                            color: 'var(--color-text-dim)', outline: 'none', fontFamily: 'var(--font-mono)',
+                                        }}
+                                    />
+                                    {field.copyable && (
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(configModal.credentials[field.key] || '');
+                                                showNotice('✓ Copied to clipboard');
+                                            }}
+                                            style={{
+                                                padding: '8px 12px', fontSize: '12px', fontWeight: 600,
+                                                background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                                                borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--color-text)',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                        >
+                                            Copy
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <input
+                                    type={field.type || 'text'}
+                                    placeholder={field.placeholder}
+                                    value={configModal.credentials[field.key] || ''}
+                                    onChange={(e) => setConfigModal(prev => ({
+                                        ...prev,
+                                        credentials: { ...prev.credentials, [field.key]: e.target.value }
+                                    }))}
+                                    style={{
+                                        padding: '8px 12px', fontSize: '13px', borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--color-border)', background: 'var(--color-background)',
+                                        color: 'var(--color-text)', outline: 'none'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = 'var(--color-brand)'}
+                                    onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
+                                />
+                            )}
                         </div>
                     ))}
                     {configModal.integrationId && INTEGRATION_INSTRUCTIONS[configModal.integrationId] && (
@@ -1013,8 +1188,8 @@ export default function AdminPage() {
                 display: 'flex',
                 justifyContent: 'space-between',
             }}>
-                <span>Domaniqo — Admin Settings · Phase 169</span>
-                <span>Permissions: Phase 165–167 · Provider Registry: Phase 136</span>
+                <span>Domaniqo — Admin Settings · Phase 951</span>
+                <span>Delivery Config: Phase 951 · Provider Registry: Phase 136</span>
             </div>
         </div>
     );
