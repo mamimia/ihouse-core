@@ -283,63 +283,99 @@ const WHATSAPP_CHANNEL: ChannelDefinition = {
     ],
     steps: [
         {
+            id: 'meta-app',
+            title: 'Step 1 — Create a Meta App',
+            description: 'Go to the Meta for Developers dashboard. Click "Create App", select "Other", then "Business". Once your app is created, scroll down to "Add products to your app" and set up WhatsApp.',
+            providerLink: { url: 'https://developers.facebook.com/apps/', label: 'Open Meta Apps Dashboard →' },
+            fields: [],
+            troubleshooting: 'If your business is not verified, Meta will limit your messaging tiers. We recommend verifying your Facebook Business Manager early.',
+        },
+        {
             id: 'access-token',
-            title: 'Copy your Access Token',
-            description: 'In the Meta for Developers dashboard, open your app → WhatsApp → API Setup. Copy the "Temporary access token" for testing, or generate a permanent System User token for production.',
-            providerLink: { url: 'https://developers.facebook.com/apps/', label: 'Open Meta for Developers →' },
+            title: 'Step 2 — Generate System User Access Token',
+            description: 'In your Meta App, go to WhatsApp → API Setup. If you are using a permanent System User Token (recommended for production), generate and copy it here. It is a long string that usually starts with "EAxxx...".',
+            providerLink: { url: 'https://developers.facebook.com/apps/', label: 'Open Meta Apps Dashboard →' },
             fields: [
                 {
                     key: 'access_token',
                     label: 'Access Token',
-                    placeholder: 'Paste your Meta Cloud API Access Token',
-                    helpText: 'This token authorizes sending messages. Temporary tokens expire after 24 hours — use a System User token for production.',
+                    placeholder: 'e.g. EAAGm0PX4ZC... (temporary or permanent)',
+                    helpText: 'Used to authenticate API requests to Meta. Keep it secret.',
+                    validation: { pattern: /^EAA.+$/, message: 'Access token should start with EAA...' },
                 },
             ],
-            troubleshooting: 'Temporary tokens expire quickly. For production, create a System User in Meta Business Suite → Business Settings → System Users, generate a token with whatsapp_business_messaging permission.',
+            troubleshooting: 'Temporary access tokens expire every 24 hours. For a production environment, you must create a System User in your Business Manager settings and generate a permanent token with "whatsapp_business_messaging" and "whatsapp_business_management" permissions.',
         },
         {
-            id: 'phone-number-id',
-            title: 'Copy your Phone Number ID',
-            description: 'In the same WhatsApp API Setup page, find your "Phone number ID" (not the phone number itself — the ID is a numeric string).',
+            id: 'phone-id',
+            title: 'Step 3 — Copy your Phone Number ID',
+            description: 'Still in WhatsApp → API Setup, look for the "Phone number ID" under the Send and Receive messages section. Copy that number here.',
+            providerLink: { url: 'https://developers.facebook.com/apps/', label: 'Open Meta Apps Dashboard →' },
             fields: [
                 {
                     key: 'phone_number_id',
                     label: 'Phone Number ID',
-                    placeholder: 'e.g. 112345678901234',
-                    helpText: 'This identifies which WhatsApp number messages are sent from. Found in WhatsApp → API Setup.',
-                    validation: { pattern: /^\d{10,20}$/, message: 'Phone Number ID should be a 10-20 digit number' },
+                    placeholder: 'e.g. 10452345823',
+                    helpText: 'The unique ID for the specific WhatsApp number you are sending from.',
+                    validation: { pattern: /^\d{10,}$/, message: 'Phone number ID should be numeric and typically 14-16 digits' },
+                },
+                {
+                    key: 'business_account_id',
+                    label: 'WhatsApp Business Account ID',
+                    placeholder: 'e.g. 10234234234',
+                    helpText: 'Located directly above the Phone Number ID in the Meta dashboard.',
+                    validation: { pattern: /^\d{10,}$/, message: 'Account ID should be numeric' },
                 },
             ],
         },
         {
             id: 'app-secret',
-            title: 'Copy your App Secret',
-            description: 'Go to your Meta App → Settings → Basic. Find "App Secret" and click "Show." Copy it.',
-            providerLink: { url: 'https://developers.facebook.com/apps/', label: 'Open Meta for Developers →' },
+            title: 'Step 4 — Copy your App Secret',
+            description: 'Go to your Meta App Settings → Basic in the left sidebar. Click "Show" next to App Secret. You may need to enter your Facebook password.',
+            providerLink: { url: 'https://developers.facebook.com/apps/', label: 'Open Meta Apps Dashboard →' },
             fields: [
                 {
                     key: 'app_secret',
                     label: 'App Secret',
-                    placeholder: 'Paste your Meta App Secret',
-                    helpText: 'Used to verify webhook payloads with HMAC-SHA256 signatures, ensuring messages actually come from Meta.',
-                },
-            ],
-            troubleshooting: 'The App Secret is different from the Access Token. It\'s found under App Settings → Basic, not under WhatsApp API Setup.',
-        },
-        {
-            id: 'verify-token',
-            title: 'Set a Verify Token',
-            description: 'Choose any secret phrase. You\'ll paste this same phrase into Meta\'s webhook configuration so they can verify our endpoint.',
-            fields: [
-                {
-                    key: 'verify_token',
-                    label: 'Verify Token',
-                    placeholder: 'e.g. my-secret-verify-phrase',
-                    helpText: 'This is a string you create yourself. It must match exactly in both our system and Meta\'s webhook config. Use any password-like string.',
+                    placeholder: 'e.g. a1b2c3d4e5f6...',
+                    helpText: 'Used to verify webhook payloads from Meta to ensure they are legitimate.',
+                    validation: { pattern: /^[a-f0-9]{32}$/, message: 'App Secret must be a 32-character hex string' },
                 },
             ],
         },
     ],
+    testInstructions: {
+        steps: [
+            {
+                n: 1,
+                title: 'Ensure your number is listed',
+                body: 'Make sure your personal WhatsApp number is correctly linked in your Domaniqo staff profile in international E.164 format (e.g., +66...).',
+            },
+            {
+                n: 2,
+                title: 'Send a message to the bot (Test Numbers only)',
+                body: 'If you are using Meta\'s free test phone number, you MUST send a WhatsApp message to that test number first. This opens a 24-hour customer service window allowing the test number to message you back.',
+            },
+            {
+                n: 3,
+                title: 'Trigger a test notification',
+                body: 'Go to a task or booking in Domaniqo and perform an action that triggers a notification for your linked user profile.',
+            },
+            {
+                n: 4,
+                title: 'What success looks like',
+                body: 'Within a few seconds, you should receive a WhatsApp message from your configured business number with the system notification.',
+            },
+        ],
+        troubleshooting: (
+            <>
+                1. Check that the Access Token hasn't expired (if it was a 24-hour temporary token).<br />
+                2. Check that the Phone Number ID is correct (do not confuse it with the Business Account ID or the actual phone number).<br />
+                3. Ensure your receiving phone number is registered as a recipient device if your Meta app is still in Development mode.<br />
+                4. If all of the above are correct, contact support.
+            </>
+        ),
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -365,8 +401,8 @@ const SMS_CHANNEL: ChannelDefinition = {
     steps: [
         {
             id: 'account-sid',
-            title: 'Copy your Account SID',
-            description: 'On the Twilio Console dashboard, your Account SID is displayed prominently. It starts with "AC".',
+            title: 'Step 1 — Copy your Account SID',
+            description: 'On the Twilio Console dashboard, your Account SID is displayed prominently under your account credentials. It always starts with "AC".',
             providerLink: { url: 'https://console.twilio.com/', label: 'Open Twilio Console →' },
             fields: [
                 {
@@ -380,8 +416,9 @@ const SMS_CHANNEL: ChannelDefinition = {
         },
         {
             id: 'auth-token',
-            title: 'Copy your Auth Token',
-            description: 'On the same Twilio Console dashboard, click "Show" next to your Auth Token and copy it.',
+            title: 'Step 2 — Copy your Auth Token',
+            description: 'On the same Twilio Console dashboard, click "Show" next to your Auth Token and copy it securely. This acts as the password for your Twilio API requests.',
+            providerLink: { url: 'https://console.twilio.com/', label: 'Open Twilio Console →' },
             fields: [
                 {
                     key: 'twilio_token',
@@ -394,8 +431,9 @@ const SMS_CHANNEL: ChannelDefinition = {
         },
         {
             id: 'from-number',
-            title: 'Enter your Twilio phone number',
-            description: 'Enter the phone number you purchased from Twilio. This is the number that SMS messages will be sent from.',
+            title: 'Step 3 — Enter your Twilio phone number',
+            description: 'Navigate to Phone Numbers → Manage → Active Numbers in the Twilio Console. Copy the phone number you purchased. This is the explicit sender ID that SMS messages will appear to originate from.',
+            providerLink: { url: 'https://console.twilio.com/us1/develop/phone-numbers/manage/active-numbers', label: 'View Active Twilio Numbers →' },
             fields: [
                 {
                     key: 'twilio_from',
@@ -407,6 +445,33 @@ const SMS_CHANNEL: ChannelDefinition = {
             ],
         },
     ],
+    testInstructions: {
+        steps: [
+            {
+                n: 1,
+                title: 'Ensure your phone number is correct',
+                body: 'Make sure your personal phone number is correctly linked in your Domaniqo staff profile in international E.164 format (e.g., +66...).',
+            },
+            {
+                n: 2,
+                title: 'Trigger a test notification',
+                body: 'Because SMS is a tier-2 escalation channel, triggering a standard assignment won\'t immediately send an SMS. You must explicitly trigger a manual test or wait for a critical (5-minute) escalation SLA to expire.',
+            },
+            {
+                n: 3,
+                title: 'What success looks like',
+                body: 'You should receive an SMS text message from your Twilio number containing the escalation alert. Note that Twilio trial accounts will prepend a "Sent from your Twilio trial account" string.',
+            },
+        ],
+        troubleshooting: (
+            <>
+                1. Check the Twilio Console "Error Logs" or "Programmable Messaging Logs". If the SID and Token are correct, Twilio will show exactly why delivery failed.<br />
+                2. Make sure you are not messaging a destination country that you have disabled in your Twilio Geo-Permissions settings.<br />
+                3. If using a Twilio Trial account, you MUST manually verify the destination phone number in the Twilio console before it can receive texts.<br />
+                4. If all of the above are correct, contact support.
+            </>
+        ),
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -474,10 +539,61 @@ const EMAIL_GENERAL_CHANNEL: ChannelDefinition = {
     ],
 };
 
-// Coming-soon email senders (minimal definitions)
-const makeComingSoonEmail = (id: string, name: string, whatItDoes: string, flows: string[]): ChannelDefinition => ({
-    id, name, icon: '✉️', group: 'email', whatItDoes, whoReceives: '', systemFlows: flows,
-    prerequisites: [], steps: [], comingSoon: true,
+// Helper for the other 4 standard email sender identities
+const makeEmailSenderDefinition = (id: string, name: string, whatItDoes: string, flows: string[]): ChannelDefinition => ({
+    id,
+    name,
+    icon: '✉️',
+    group: 'email',
+    whatItDoes,
+    whoReceives: 'Users matching the specified system flows.',
+    systemFlows: flows,
+    prerequisites: [
+        { text: 'A business email address you want to send from' },
+    ],
+    steps: [
+        {
+            id: 'from-name',
+            title: 'Step 1 — Set the sender name',
+            description: 'This is the name recipients will see in their inbox. Use your company or brand name. If left blank, defaults to Domaniqo.',
+            fields: [
+                {
+                    key: 'from_name',
+                    label: 'From Name',
+                    placeholder: 'e.g. Domaniqo',
+                    helpText: 'Recipients will see this as the sender name.',
+                },
+            ],
+        },
+        {
+            id: 'from-email',
+            title: 'Step 2 — Set the sender email address',
+            description: 'The email address that messages will appear to come from.',
+            fields: [
+                {
+                    key: 'from_email',
+                    label: 'From Email',
+                    placeholder: 'e.g. noreply@domaniqo.com',
+                    helpText: 'Use a professional address on your own domain.',
+                    validation: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Please enter a valid email address' },
+                },
+            ],
+        },
+        {
+            id: 'reply-to',
+            title: 'Step 3 — Set the reply-to address',
+            description: 'When someone replies to an email from this sender, it will route here. Use a monitored team inbox or support address.',
+            fields: [
+                {
+                    key: 'reply_to',
+                    label: 'Reply-To Email',
+                    placeholder: 'e.g. support@domaniqo.com',
+                    helpText: 'This should be an inbox your team actively monitors.',
+                    validation: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Please enter a valid email address' },
+                },
+            ],
+        },
+    ],
 });
 
 const CHANNEL_REGISTRY: Record<string, ChannelDefinition> = {
@@ -486,10 +602,10 @@ const CHANNEL_REGISTRY: Record<string, ChannelDefinition> = {
     whatsapp: WHATSAPP_CHANNEL,
     sms: SMS_CHANNEL,
     email_general: EMAIL_GENERAL_CHANNEL,
-    email_onboarding: makeComingSoonEmail('email_onboarding', 'Staff Onboarding Sender', 'Sends invite emails, access links, and welcome messages to new staff.', ['Invite links', 'Setup instructions', 'Welcome messages']),
-    email_password: makeComingSoonEmail('email_password', 'Password & Account Sender', 'Sends password reset and account recovery emails.', ['Password reset', 'Account recovery', 'Security alerts']),
-    email_guest: makeComingSoonEmail('email_guest', 'Guest Communication Sender', 'Sends guest portal links, check-in instructions, and stay information.', ['Portal links', 'Check-in instructions', 'Stay updates']),
-    email_owner: makeComingSoonEmail('email_owner', 'Owner Reports Sender', 'Sends financial statements, property reports, and owner notifications.', ['Financial statements', 'Property reports', 'Periodic summaries']),
+    email_onboarding: makeEmailSenderDefinition('email_onboarding', 'Staff Onboarding Sender', 'Sends invite emails, access links, and welcome messages to new staff.', ['Invite links', 'Setup instructions', 'Welcome messages']),
+    email_password: makeEmailSenderDefinition('email_password', 'Password & Account Sender', 'Sends password reset and account recovery emails.', ['Password reset', 'Account recovery', 'Security alerts']),
+    email_guest: makeEmailSenderDefinition('email_guest', 'Guest Communication Sender', 'Sends guest portal links, check-in instructions, and stay information.', ['Portal links', 'Check-in instructions', 'Stay updates']),
+    email_owner: makeEmailSenderDefinition('email_owner', 'Owner Reports Sender', 'Sends financial statements, property reports, and owner notifications.', ['Financial statements', 'Property reports', 'Periodic summaries']),
 };
 
 // ---------------------------------------------------------------------------
