@@ -5285,3 +5285,28 @@ Retroactive assignment of numeric IDs to 8 un-numbered work items (Phases 813–
 - Context-aware booking intake flow: property-scoped header + back navigation when initiated from Property Detail.
 - Commits: `5803837` (guards + intake), `f881fc9` (backfill logic), `a222706` (locked rule doc).
 - Deployed: Railway (auto) + Vercel (manual CLI).
+
+## Phase 953 — Check-in Flow Bug Fix: Task Completion, Booking State Guard, Guest Dedup — 2026-03-27
+
+Full audit of 3 critical check-in bugs discovered in real staging test (booking MAN-KPG-502-20260326-f360):
+
+**Bug A — Complete Check-in silently failing (409):**
+- Root cause: `booking_checkin_router.py` only accepted `active`/`observed` statuses. Manually-created bookings always have `status = confirmed`. Every press of Complete Check-in returned 409, was caught silently by the frontend, and fell through to `setStep('list')`.
+- Fix: Added `confirmed` to the allowed check-in states (Phase C).
+
+**Bug B — CHECKIN task never removed from worker surface:**
+- Root cause: `completeCheckin()` in `page.tsx` called `/bookings/{id}/checkin` but never called `PATCH /worker/tasks/{task_id}/complete`. The task remained `ACKNOWLEDGED` and stayed visible in the arrival queue forever.
+- Fix: After successful checkin call, also PATCH the linked task to COMPLETED (Phase D). Best-effort, non-blocking.
+
+**Bug C — Duplicate guest records on repeat wizard runs:**
+- Root cause: Guest dedup keyed only on `passport_no`. If operator omitted the passport number, dedup block skipped entirely and `INSERT` always ran. No booking-anchor fallback existed.
+- Fix: Added dedup anchor #2: if no passport_no match and `booking_state.guest_id` already exists for this booking, reuse that guest record instead of inserting (Phase B).
+
+**Staging data repair (Phase A):**
+- Deleted 2 orphan guest records (Kiko Papir ghost + Sam Longie second-run duplicate)
+- Fixed booking_state.status from `confirmed` → `active`
+- Confirmed 1 canonical guest record remains (Sam Longie + GT2345432)
+
+Files changed: `booking_checkin_router.py`, `checkin_identity_router.py`, `ihouse-ui/app/(app)/ops/checkin/page.tsx`.
+Spec: `docs/archive/phases/phase-953-spec.md`.
+

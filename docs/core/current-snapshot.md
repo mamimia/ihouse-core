@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 889 — Next Phase
+Phase 954 — Next Phase
 
 ## Last Closed Phase
-Phase 888 — Staffing-to-Task Assignment Backfill
+Phase 953 — Check-in Flow Bug Fix: Task Completion, Booking State Guard, Guest Dedup
 
 ## System Status
 

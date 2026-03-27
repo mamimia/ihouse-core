@@ -8432,3 +8432,28 @@ Canonical rule recorded in `docs/core/RULE_staffing_task_backfill.md`.
 
 Commits: `5803837`, `f881fc9`, `a222706`
 Deployed: Railway (auto via git push) + Vercel (manual CLI)
+
+## Phase 953 — Check-in Flow Bug Fix: Task Completion, Booking State Guard, Guest Dedup (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-27
+**Prerequisite:** Phase 949 (Check-in Document Intake & Guest Identity Persistence)
+
+Three critical check-in bugs audited and fixed from real staging test on booking `MAN-KPG-502-20260326-f360`:
+
+1. **Complete Check-in silently 409'd** — `booking_checkin_router.py` only allowed `active`/`observed` states. Manually-created bookings have `status = confirmed`. Fix: added `confirmed` to allowed states.
+
+2. **CHECKIN task remained on worker surface** — `completeCheckin()` in page.tsx called `/bookings/{id}/checkin` but never completed the task. Fix: added `PATCH /worker/tasks/{task_id}/complete` after successful checkin.
+
+3. **Duplicate guest records on repeat wizard runs** — guest dedup only keyed on `passport_no`. Missing passport number → dedup skipped → new INSERT always. Fix: added booking-anchor fallback: if `booking_state.guest_id` already set for this booking, reuse that record.
+
+Staging data cleaned: 2 orphan guest rows deleted, booking status fixed, canonical identity chain confirmed (1 guest: Sam Longie + GT2345432).
+
+Invariants locked:
+- `confirmed` = valid pre-arrival state for check-in (operationally == `active`)
+- Guest dedup priority: (1) passport_no match → (2) booking guest_id anchor → (3) new create
+- CHECKIN task MUST be explicitly completed by wizard — not auto-completed by `/bookings/{id}/checkin`
+
+Files: `booking_checkin_router.py`, `checkin_identity_router.py`, `ihouse-ui/app/(app)/ops/checkin/page.tsx`
+Spec: `docs/archive/phases/phase-953-spec.md`
+

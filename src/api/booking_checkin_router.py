@@ -320,12 +320,13 @@ async def checkin_booking(
                 "guest_portal_url": portal_url,
             })
 
-        # Only 'active' or 'observed' bookings can be checked in
-        # 'observed' = iCal-imported bookings that are valid arrivals
-        if current_status not in ("active", "observed"):
+        # Only 'active', 'confirmed', or 'observed' bookings can be checked in.
+        # 'confirmed' = manually-created bookings (operationally equivalent to 'active').
+        # 'observed' = iCal-imported bookings that are valid arrivals.
+        if current_status not in ("active", "observed", "confirmed"):
             return err(
                 "INVALID_STATE",
-                f"Cannot check in booking with status '{current_status}'. Must be 'active' or 'observed'.",
+                f"Cannot check in booking with status '{current_status}'. Must be 'active', 'confirmed', or 'observed'.",
                 status=409,
                 booking_id=booking_id,
                 current_status=current_status,

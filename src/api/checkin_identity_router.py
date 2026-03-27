@@ -244,6 +244,44 @@ async def save_guest_identity(
                 guest_id = existing.data[0]["id"]
                 action = "matched"
 
+        # ── Dedup anchor #2: booking-linked guest (Phase B fix) ──
+        # If no passport_no match was found, check whether this booking already
+        # has a guest linked. A second wizard run on the same booking should ALWAYS
+        # update the existing guest record, not create a new one.
+        if not guest_id:
+            try:
+                bs_check = (
+                    db.table("booking_state")
+                    .select("guest_id")
+                    .eq("booking_id", booking_id)
+                    .eq("tenant_id", tenant_id)
+                    .limit(1)
+                    .execute()
+                )
+                if bs_check.data and bs_check.data[0].get("guest_id"):
+                    existing_guest_id = str(bs_check.data[0]["guest_id"])
+                    # Verify the guest record still exists
+                    gcheck = (
+                        db.table("guests")
+                        .select("id")
+                        .eq("id", existing_guest_id)
+                        .eq("tenant_id", tenant_id)
+                        .limit(1)
+                        .execute()
+                    )
+                    if gcheck.data:
+                        guest_id = existing_guest_id
+                        action = "relinked"
+                        logger.info(
+                            "save_guest_identity: booking %s already has guest %s — reusing (no passport_no supplied)",
+                            booking_id, guest_id,
+                        )
+            except Exception as _link_check_exc:
+                logger.warning(
+                    "save_guest_identity: booking-anchor dedup check failed (non-blocking): %s",
+                    _link_check_exc,
+                )
+
         if guest_id:
             # UPDATE existing guest — merge non-null fields only
             updates: dict = {

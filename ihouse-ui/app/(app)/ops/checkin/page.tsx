@@ -588,6 +588,21 @@ export default function MobileCheckinPage() {
                 showNotice('✅ Check-in completed — booking is now InStay');
             }
 
+            // Phase D: Complete the associated CHECKIN task so it leaves the worker surface.
+            // task_id is attached during load() enrichment (from checkinTasks overlay).
+            const taskId = (selected as any).task_id;
+            if (taskId) {
+                try {
+                    await apiFetch<any>(`/worker/tasks/${taskId}/complete`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ notes: 'Check-in completed via wizard' }),
+                    });
+                } catch (taskErr) {
+                    // Non-blocking — checkin succeeded, task completion is best-effort.
+                    console.warn('completeCheckin: task completion PATCH failed (non-blocking)', taskErr);
+                }
+            }
+
             // Phase 58: Extract guest portal URL from response
             const portalUrl = data?.guest_portal_url || null;
             setGuestPortalUrl(portalUrl);
