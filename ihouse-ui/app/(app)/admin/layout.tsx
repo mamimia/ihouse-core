@@ -13,12 +13,7 @@ import { useEffect } from 'react';
 import AdminNav from '../../../components/AdminNav';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', 'light');
-        return () => {
-            document.documentElement.removeAttribute('data-theme');
-        };
-    }, []);
+    // Phase 957: Disabled structural data-theme override to let ThemeProvider govern everything globally.
 
     return (
         <div style={{ width: '100%' }}>

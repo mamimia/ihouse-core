@@ -148,33 +148,5 @@
   --shadow-lg:  0 8px 32px rgba(0,0,0,0.5);
 }
 
-/* Auto dark for users who prefer dark at OS level */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --color-bg:           var(--color-midnight);
-    --color-surface:      var(--color-elevated);
-    --color-surface-2:    #252830;
-    --color-surface-3:    #2C2F38;
-    --color-border:       rgba(234,229,222,0.08);
-    --color-border-light: rgba(234,229,222,0.05);
-
-    --color-primary:      var(--color-moss);
-    --color-primary-dim:  var(--color-olive);
-    --color-accent:       var(--color-copper);
-
-    --color-text:         var(--color-stone);
-    --color-text-dim:     #B5AFA6;
-    --color-text-faint:   rgba(234,229,222,0.4);
-    --color-text-inverse: var(--color-midnight);
-
-    --color-ok:      #4ADE80;
-    --color-warn:    var(--color-glow);
-    --color-danger:  #EF4444;
-
-    --shadow-sm:  0 1px 3px rgba(0,0,0,0.3);
-    --shadow-md:  0 4px 16px rgba(0,0,0,0.4);
-    --shadow-lg:  0 8px 32px rgba(0,0,0,0.5);
-  }
-}
+/* Phase 957: OS-level theme hijacking (prefers-color-scheme) removed. Theme is now strictly controlled by data-theme attribute populated by ThemeProvider and User Toggle. */
 

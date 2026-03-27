@@ -12,21 +12,8 @@
 import { useEffect, useRef } from 'react';
 
 export default function ForceLight() {
-    const prevTheme = useRef<string | null>(null);
-
-    useEffect(() => {
-        // Save previous theme and apply light once
-        prevTheme.current = document.documentElement.getAttribute('data-theme');
-        document.documentElement.setAttribute('data-theme', 'light');
-
-        return () => {
-            // Restore on unmount (navigating away from app section)
-            const stored = localStorage.getItem('domaniqo-theme');
-            const fallback = (stored === 'light' || stored === 'dark') ? stored : 'dark';
-            document.documentElement.setAttribute('data-theme', fallback);
-        };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run once only
+    // Phase 957: Disabled structural forcing to respect ThemeProvider globally.
+    return null;
 
     return null;
 }

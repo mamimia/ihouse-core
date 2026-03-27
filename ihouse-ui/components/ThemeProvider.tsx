@@ -29,8 +29,9 @@ export function useTheme() {
 }
 
 function getSystemPreference(): 'dark' | 'light' {
-    if (typeof window === 'undefined') return 'dark';
-    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    if (typeof window === 'undefined') return 'light';
+    // Phase 957: Default theme must be Light globally, ignoring OS prefers-color-scheme.
+    return 'light';
 }
 
 function resolveTheme(theme: Theme): 'dark' | 'light' {
