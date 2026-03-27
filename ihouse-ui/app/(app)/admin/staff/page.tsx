@@ -203,6 +203,10 @@ function ManageStaffContent() {
     border: '1px solid var(--color-border)',
     borderRadius: 'var(--radius-lg)',
     padding: 'var(--space-4)',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    minHeight: '94px',
   };
 
   return (
@@ -260,28 +264,28 @@ function ManageStaffContent() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
         <div style={cardStyle}>
           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Total</div>
-          <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-primary)', marginTop: 4 }}>{users.length}</div>
+          <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-primary)' }}>{users.length}</div>
         </div>
         {CANONICAL_ROLES.map(r => (
           <div key={r}
             style={{ ...cardStyle, cursor: 'pointer', borderColor: roleFilter === r ? (ROLE_COLORS[r]?.text || 'var(--color-border)') : 'var(--color-border)' }}
             onClick={() => setRoleFilter(roleFilter === r ? 'all' : r)}>
             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>{ROLE_LABELS[r]}</div>
-            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: ROLE_COLORS[r]?.text || 'var(--color-text)', marginTop: 4 }}>{roleCounts[r] || 0}</div>
+            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: ROLE_COLORS[r]?.text || 'var(--color-text)' }}>{roleCounts[r] || 0}</div>
           </div>
         ))}
         <div 
           style={{ ...cardStyle, cursor: 'pointer', borderColor: 'var(--color-border)' }}
           onClick={() => router.push('/admin/staff/requests')}
         >
-          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Waiting for Approval</div>
-          <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', marginTop: 4 }}>{pendingCount}</div>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Pending Approval</div>
+          <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)' }}>{pendingCount}</div>
         </div>
         {legacyCount > 0 && (
           <div style={{ ...cardStyle, cursor: 'pointer', borderColor: roleFilter === 'legacy' ? '#d29922' : 'var(--color-border)' }}
             onClick={() => setRoleFilter(roleFilter === 'legacy' ? 'all' : 'legacy')}>
             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Legacy ⚠</div>
-            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: '#d29922', marginTop: 4 }}>{legacyCount}</div>
+            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: '#d29922' }}>{legacyCount}</div>
           </div>
         )}
       </div>
