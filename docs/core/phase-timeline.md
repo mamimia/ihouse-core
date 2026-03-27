@@ -8470,3 +8470,55 @@ Fixed severe structural bugs preventing full worker-driven check-in logic:
 Files: `booking_checkin_router.py`, `task_model.py`
 Spec: `docs/archive/phases/phase-954-spec.md`
 
+## Phase 955 — Admin Manage Staff: Invite Button + Pending Approval Stat Box (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-27
+
+Surfaced the pending staff onboarding approval state as a first-class summary box on the Admin Manage Staff page.
+
+- Renamed top-right "Pending Requests" button to **"Invite Staff"** for clearer product language.
+- Added **"Pending Approval"** StatCard to the summary stat row, wired to real count from `/admin/staff-onboarding` endpoint (concurrent fetch alongside permissions).
+- Clicking the new stat box navigates to `/admin/staff/requests` (the onboarding queue).
+- Count is guaranteed accurate — uses the same API endpoint as the requests page list.
+
+Files: `ihouse-ui/app/(app)/admin/staff/page.tsx`
+Spec: `docs/archive/phases/phase-955-spec.md`
+
+## Phase 956 — Manage Staff Stat Box Visual Alignment (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-27
+
+Fixed visual rhythm breakage in the Manage Staff stat row.
+
+- Renamed label from "Waiting for Approval" to **"Pending Approval"** (shorter, prevents wrapping).
+- Rebuilt shared `cardStyle` at the system level: flexbox column + `justifyContent: space-between` + `minHeight: 94px`.
+- Removed all fixed `marginTop` from number values — numbers now anchor to the bottom via flexbox.
+- All stat boxes (Total, Admin, Manager, Staff Member, Owner, Pending Approval, Legacy) share the same layout structure.
+
+Files: `ihouse-ui/app/(app)/admin/staff/page.tsx`
+Spec: `docs/archive/phases/phase-956-spec.md`
+
+## Phase 957 — Global Theme Consistency (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-27
+
+Eliminated mixed-theme behavior across the admin product. Root cause: three competing mechanisms (admin layout forcing light, ForceLight component, OS prefers-color-scheme CSS block) creating split-brain theme state.
+
+Fix applied at system level:
+1. **Removed** `useEffect` theme override from `admin/layout.tsx` — theme now governed exclusively by ThemeProvider.
+2. **Disabled** `ForceLight.tsx` DOM manipulation — component returns null.
+3. **Removed** `@media (prefers-color-scheme: dark)` CSS block from `tokens.css` — dark mode now ONLY activates via explicit `[data-theme="dark"]` attribute.
+4. **Set** `getSystemPreference()` in `ThemeProvider.tsx` to always return `'light'` — default theme is unconditionally Light, OS preference ignored.
+
+Invariants locked:
+- Default theme = Light globally
+- Dark mode only via explicit user toggle
+- No component may independently override `data-theme`
+- Toggle switches entire product uniformly
+
+Files: `admin/layout.tsx`, `ForceLight.tsx`, `tokens.css`, `ThemeProvider.tsx`
+Spec: `docs/archive/phases/phase-957-spec.md`
+

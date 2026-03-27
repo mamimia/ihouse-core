@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 889 — Next Phase. Phases 841–888 closed.
+Phase 958 — Next Phase. Phases 841–957 closed.
 
 ## Last Closed Phase
 
-Phase 888 — Staffing-to-Task Assignment Backfill.
+Phase 957 — Global Theme Consistency.
 
 ## Current Objective
 

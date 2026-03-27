@@ -1,12 +1,12 @@
 ## Current Phase
-Phase 955 — Next Phase
+Phase 958 — Next Phase
 
 ## Last Closed Phase
-Phase 954 — Check-in Validation & QR Handoff Fix
+Phase 957 — Global Theme Consistency
 
 ## System Status
 
-**[...System status through Phase 866 unchanged...] Phase 888 Staffing-to-Task Assignment Backfill: Implemented canonical rule for staffing-to-future-task backfill. When staff-property assignments change, future PENDING tasks automatically adjust. ACKNOWLEDGED/IN_PROGRESS/COMPLETED/CANCELED never auto-mutated. 3-case staging proof (assign/remove/replace). Property booking guards: 3-layer enforcement blocking non-approved properties from booking creation. Context-aware booking intake flow. Canonical rule locked in `docs/core/RULE_staffing_task_backfill.md`. Deployed to Railway + Vercel.**
+**[...System status through Phase 888 unchanged...] Phase 955–957 Admin UI Hardening: Manage Staff "Invite Staff" button + "Pending Approval" stat box (real count from `/admin/staff-onboarding`). Stat box visual alignment via shared flexbox card system. Global theme consistency fix — eliminated split-brain theme state (admin=light, non-admin=dark). Root cause: 3 competing theme overrides (`admin/layout.tsx`, `ForceLight.tsx`, `tokens.css @media`). Fix: removed all page-level overrides, default=Light globally, Dark only via explicit toggle. Property approval boundary hardened: rejected/unapproved properties excluded from booking dropdowns and operational surfaces. Intake Queue + Archive promoted to stat boxes on Admin Properties. Deployed to Railway + Vercel.**
 
 ## Deferred Items — Managed Open Items Registry
 

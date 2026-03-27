@@ -5325,3 +5325,35 @@ Addressed two architectural blockers to check-in completion flow on worker devic
 Files changed: `booking_checkin_router.py`, `task_model.py`.
 Spec: `docs/archive/phases/phase-954-spec.md`.
 
+## Phase 955 — Admin Manage Staff: Invite Button + Pending Approval Stat Box — 2026-03-27
+
+- Renamed top-right "Pending Requests" button to "Invite Staff" on Admin → Manage Staff page.
+- Added "Pending Approval" StatCard to the summary stat row.
+- Wired count to real `/admin/staff-onboarding` endpoint via concurrent `Promise.all` fetch (alongside permissions).
+- Click navigates to `/admin/staff/requests`.
+- Deployed: Vercel staging (`domaniqo-staging.vercel.app`).
+
+## Phase 956 — Manage Staff Stat Box Visual Alignment — 2026-03-27
+
+- Renamed label from "Waiting for Approval" to "Pending Approval" (shorter, no wrapping).
+- Refactored shared `cardStyle` to flexbox column: `justifyContent: 'space-between'`, `minHeight: '94px'`.
+- Removed `marginTop` from all stat box number values — numbers now anchored to bottom via flexbox.
+- All stat boxes (Total, Admin, Manager, Staff Member, Owner, Pending Approval, Legacy) share same layout.
+- Deployed: Vercel staging.
+
+## Phase 957 — Global Theme Consistency — 2026-03-27
+
+Root cause analysis of mixed-theme product behavior:
+- `admin/layout.tsx` useEffect forced `data-theme="light"` on mount, removed on unmount → admin pages always light.
+- `ForceLight.tsx` did same on sub-pages, restored to OS preference on cleanup → non-admin pages dark for dark-OS users.
+- `tokens.css` `@media (prefers-color-scheme: dark)` CSS block hijacked variables when `data-theme` attribute absent.
+
+System-level fix (4 files):
+1. `admin/layout.tsx` — removed `useEffect` theme override entirely.
+2. `ForceLight.tsx` — disabled DOM manipulation, returns null.
+3. `tokens.css` — removed `@media (prefers-color-scheme: dark)` block. Dark mode now only via `[data-theme="dark"]`.
+4. `ThemeProvider.tsx` — `getSystemPreference()` now returns `'light'` unconditionally, ignoring OS dark mode.
+
+Result: default = Light globally. Toggle switches entire product to Dark. No page independently overrides.
+Deployed: Vercel staging.
+
