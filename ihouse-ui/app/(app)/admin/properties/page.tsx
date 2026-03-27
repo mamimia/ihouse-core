@@ -480,40 +480,6 @@ function AdminPropertiesContent() {
                             + Add Property
                         </button>
                         <button
-                            onClick={() => router.push('/admin/intake')}
-                            style={{
-                                background: '#f59e0b18',
-                                color: '#f59e0b',
-                                border: '1px solid #f59e0b40',
-                                borderRadius: 'var(--radius-md)',
-                                padding: 'var(--space-2) var(--space-5)',
-                                fontSize: 'var(--text-sm)',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all var(--transition-fast)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                            }}
-                        >
-                            <span style={{ fontSize: '1.05em' }}>📋</span> Intake Queue
-                        </button>
-                        <button
-                            onClick={() => router.push('/admin/properties/archived')}
-                            style={{
-                                background: 'none',
-                                color: 'var(--color-warn)',
-                                border: '1px solid rgba(181,110,69,0.35)',
-                                borderRadius: 'var(--radius-md)',
-                                padding: 'var(--space-2) var(--space-5)',
-                                fontSize: 'var(--text-sm)',
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                            }}
-                        >
-                            🗄 Archived{summary.archived > 0 ? ` (${summary.archived})` : ''}
-                        </button>
-                        <button
                             onClick={load}
                             disabled={loading}
                             style={{
@@ -542,6 +508,14 @@ function AdminPropertiesContent() {
                         <StatCard label={f.label} value={f.count} active={statusFilter === f.key} />
                     </div>
                 ))}
+
+                {/* Phase 953s: Actionable Stat Cards for Queues */}
+                <div onClick={() => router.push('/admin/intake')}>
+                    <StatCard label="Intake Queue" value={summary.pending} active={false} />
+                </div>
+                <div onClick={() => router.push('/admin/properties/archived')}>
+                    <StatCard label="Archive" value={summary.archived} active={false} />
+                </div>
             </div>
 
             {/* Table header */}
