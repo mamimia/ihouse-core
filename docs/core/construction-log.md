@@ -5310,3 +5310,18 @@ Full audit of 3 critical check-in bugs discovered in real staging test (booking 
 Files changed: `booking_checkin_router.py`, `checkin_identity_router.py`, `ihouse-ui/app/(app)/ops/checkin/page.tsx`.
 Spec: `docs/archive/phases/phase-953-spec.md`.
 
+## Phase 954 — Check-in Validation & QR Handoff Fix — 2026-03-27
+
+Addressed two architectural blockers to check-in completion flow on worker devices:
+
+**Bug A — QR Generator failing to execute (403 Forbidden):**
+- Root cause: Check-in API endpoints explicitly demanded `role` claim to literally equal `"checkin"`, `"admin"`, or `"manager"`. However, the app authenticates workers under generic `"worker"` roles and assigns specific capabilities (`CHECKIN`) through the `tenant_permissions` JSONB structures. Therefore, legitimate check-in staff received 403 authorization rejections and were prematurely ejected backwards into the task list, missing the intended handoff QR generation stage.
+- Fix: Intercepted `role="worker"` identities directly inside `_assert_checkin_role` and `_assert_checkout_role`. Evaluated DB-hosted capability claims dynamically instead to prove valid authority.
+
+**Bug B — Missing task closures (422 Unprocessable Entity):**
+- Root cause: Mobile app staff inherently use completion flows as one-shot actions. The canonical internal task system strictly prevented completion operations targeting newly-pulled `ACKNOWLEDGED` tasks; it specifically required a state of `IN_PROGRESS` first. Attempting complete straight from list view caused a silent backend crash on standard worker devices, causing CHECKIN tasks to loop endlessly on list screens despite real work being completed.
+- Fix: Modified internal state-machine arrays in `VALID_TASK_TRANSITIONS` (`task_model.py`) to classify `COMPLETED` as a directly reachable state from `ACKNOWLEDGED`.
+
+Files changed: `booking_checkin_router.py`, `task_model.py`.
+Spec: `docs/archive/phases/phase-954-spec.md`.
+

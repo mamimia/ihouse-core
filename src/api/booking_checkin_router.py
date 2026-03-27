@@ -53,32 +53,74 @@ _CHECKIN_ALLOWED_ROLES = frozenset({"admin", "manager", "checkin"})
 _CHECKOUT_ALLOWED_ROLES = frozenset({"admin", "manager", "checkin", "checkout"})
 
 
-def _assert_checkin_role(identity: dict) -> None:
+def _assert_checkin_role(identity: dict, db: Any) -> None:
     """Raise 403 if identity role is not permitted to perform check-in."""
     role = identity.get("role", "")
-    if role not in _CHECKIN_ALLOWED_ROLES:
-        logger.warning(
-            "role_guard: role=%s denied for checkin user=%s",
-            role, identity.get("user_id", ""),
-        )
-        raise HTTPException(
-            status_code=403,
-            detail=f"CHECKIN_DENIED: role '{role}' cannot perform checkin.",
-        )
+    if role in _CHECKIN_ALLOWED_ROLES:
+        return
+
+    # Check worker capabilities via DB lookup
+    if role == "worker":
+        user_id = identity.get("user_id")
+        tenant_id = identity.get("tenant_id")
+        if user_id and tenant_id:
+            try:
+                res = db.table("tenant_permissions").select("worker_roles, permissions").eq("user_id", user_id).eq("tenant_id", tenant_id).execute()
+                if res.data:
+                    rec = res.data[0]
+                    # Check Phase 850 array format
+                    w_roles = [str(r).upper() for r in (rec.get("worker_roles") or [])]
+                    if "CHECKIN" in w_roles:
+                        return
+                    # Check legacy object format
+                    old_role = str((rec.get("permissions") or {}).get("worker_role", "")).upper()
+                    if old_role == "CHECKIN":
+                        return
+            except Exception as exc:
+                logger.warning("role_guard: db loopup failed for user=%s: %s", user_id, exc)
+
+    logger.warning(
+        "role_guard: role=%s denied for checkin user=%s",
+        role, identity.get("user_id", ""),
+    )
+    raise HTTPException(
+        status_code=403,
+        detail=f"CHECKIN_DENIED: role '{role}' cannot perform checkin.",
+    )
 
 
-def _assert_checkout_role(identity: dict) -> None:
+def _assert_checkout_role(identity: dict, db: Any) -> None:
     """Raise 403 if identity role is not permitted to perform check-out."""
     role = identity.get("role", "")
-    if role not in _CHECKOUT_ALLOWED_ROLES:
-        logger.warning(
-            "role_guard: role=%s denied for checkout user=%s",
-            role, identity.get("user_id", ""),
-        )
-        raise HTTPException(
-            status_code=403,
-            detail=f"CHECKOUT_DENIED: role '{role}' cannot perform checkout.",
-        )
+    if role in _CHECKOUT_ALLOWED_ROLES:
+        return
+
+    # Check worker capabilities via DB lookup
+    if role == "worker":
+        user_id = identity.get("user_id")
+        tenant_id = identity.get("tenant_id")
+        if user_id and tenant_id:
+            try:
+                res = db.table("tenant_permissions").select("worker_roles, permissions").eq("user_id", user_id).eq("tenant_id", tenant_id).execute()
+                if res.data:
+                    rec = res.data[0]
+                    w_roles = [str(r).upper() for r in (rec.get("worker_roles") or [])]
+                    if "CHECKOUT" in w_roles:
+                        return
+                    old_role = str((rec.get("permissions") or {}).get("worker_role", "")).upper()
+                    if old_role == "CHECKOUT":
+                        return
+            except Exception as exc:
+                logger.warning("role_guard: db lookup failed for user=%s: %s", user_id, exc)
+
+    logger.warning(
+        "role_guard: role=%s denied for checkout user=%s",
+        role, identity.get("user_id", ""),
+    )
+    raise HTTPException(
+        status_code=403,
+        detail=f"CHECKOUT_DENIED: role '{role}' cannot perform checkout.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -295,12 +337,9 @@ async def checkin_booking(
 
     Phase 63: Restricted to admin / manager / checkin roles only.
     """
-    _assert_checkin_role(identity)
-    tenant_id: str = identity["tenant_id"]
-    now = datetime.now(tz=timezone.utc).isoformat()
-
     try:
         db = _client if _client is not None else _get_supabase_client()
+        _assert_checkin_role(identity, db)
 
         booking = _get_booking(db, booking_id, tenant_id)
         if not booking:
@@ -411,12 +450,9 @@ async def checkout_booking(
 
     Phase 63: Restricted to admin / manager / checkin / checkout roles only.
     """
-    _assert_checkout_role(identity)
-    tenant_id: str = identity["tenant_id"]
-    now = datetime.now(tz=timezone.utc).isoformat()
-
     try:
         db = _client if _client is not None else _get_supabase_client()
+        _assert_checkout_role(identity, db)
 
         booking = _get_booking(db, booking_id, tenant_id)
         if not booking:

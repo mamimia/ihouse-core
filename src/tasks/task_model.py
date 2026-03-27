@@ -203,7 +203,7 @@ KIND_DEFAULT_PRIORITY: dict[TaskKind, TaskPriority] = {
 #: Valid status transitions. Key = current state, value = allowed next states.
 VALID_TASK_TRANSITIONS: dict[TaskStatus, frozenset[TaskStatus]] = {
     TaskStatus.PENDING: frozenset({TaskStatus.ACKNOWLEDGED, TaskStatus.CANCELED}),
-    TaskStatus.ACKNOWLEDGED: frozenset({TaskStatus.IN_PROGRESS, TaskStatus.CANCELED}),
+    TaskStatus.ACKNOWLEDGED: frozenset({TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskStatus.CANCELED}),
     TaskStatus.IN_PROGRESS: frozenset({TaskStatus.COMPLETED, TaskStatus.CANCELED}),
     TaskStatus.COMPLETED: frozenset(),     # terminal
     TaskStatus.CANCELED: frozenset(),      # terminal

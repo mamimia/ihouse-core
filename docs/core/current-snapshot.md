@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 954 — Next Phase
+Phase 955 — Next Phase
 
 ## Last Closed Phase
-Phase 953 — Check-in Flow Bug Fix: Task Completion, Booking State Guard, Guest Dedup
+Phase 954 — Check-in Validation & QR Handoff Fix
 
 ## System Status
 

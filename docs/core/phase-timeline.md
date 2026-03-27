@@ -8457,3 +8457,16 @@ Invariants locked:
 Files: `booking_checkin_router.py`, `checkin_identity_router.py`, `ihouse-ui/app/(app)/ops/checkin/page.tsx`
 Spec: `docs/archive/phases/phase-953-spec.md`
 
+## Phase 954 — Check-in Validation & QR Handoff Fix (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-27
+
+Fixed severe structural bugs preventing full worker-driven check-in logic:
+1. **Fix 403 Forbidden Worker Roles:** Fixed `POST /bookings/{id}/checkin` explicitly rejecting workers who had valid `CHECKIN` capability in `tenant_permissions` because they lacked the exact role string `"checkin"`. Guard now properly asserts against assigned dynamic worker_roles array.
+  - This unblocked the frontend QR display logic (which immediately bailed onto list generation after failing on the 403).
+2. **Fix 422 Task Transition Error:** Enabled operations users to mark check-in tasks complete directly from `ACKNOWLEDGED`. `task_model.py` originally hard-enforced `ACKNOWLEDGED` to `IN_PROGRESS` only, resulting in the app repeatedly reporting success but the task persisting in the arrival list indefinitely. 
+
+Files: `booking_checkin_router.py`, `task_model.py`
+Spec: `docs/archive/phases/phase-954-spec.md`
+
