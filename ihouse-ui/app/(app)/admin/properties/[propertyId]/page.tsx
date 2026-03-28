@@ -7,7 +7,7 @@
  * Operations sub-tabs:  Tasks | Issues
  * Media sub-tabs:       Reference Photos | Gallery
  * Settings sub-tabs:    General | House & Access | Rules | Integrations
- * History:              Audit (no sub-tabs)
+ * History sub-tabs:     Audit | Settlements (future)
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -26,7 +26,7 @@ const PRIMARY_TABS: { key: PrimaryTab; label: string }[] = [
     { key: 'history',    label: 'History' },
 ];
 
-const SUB_TABS: Partial<Record<PrimaryTab, { key: string; label: string }[]>> = {
+const SUB_TABS: Partial<Record<PrimaryTab, { key: string; label: string; disabled?: boolean }[]>> = {
     operations: [
         { key: 'tasks',  label: 'Tasks' },
         { key: 'issues', label: 'Issues' },
@@ -41,13 +41,18 @@ const SUB_TABS: Partial<Record<PrimaryTab, { key: string; label: string }[]>> = 
         { key: 'rules',        label: 'Rules' },
         { key: 'integrations', label: 'Integrations' },
     ],
+    history: [
+        { key: 'audit',       label: 'Audit' },
+        { key: 'settlements', label: 'Settlements', disabled: true },
+    ],
 };
 
 // Default sub-tab for each primary tab
 const DEFAULT_SUB: Partial<Record<PrimaryTab, string>> = {
-    operations: 'tasks',
-    media:      'ref-photos',
-    settings:   'general',
+    operations:  'tasks',
+    media:       'ref-photos',
+    settings:    'general',
+    history:     'audit',
 };
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
@@ -562,7 +567,17 @@ export default function PropertyDetailPage() {
             {SUB_TABS[tab] && (
                 <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)', padding: '4px', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-lg)', width: 'fit-content', flexWrap: 'wrap' }}>
                     {SUB_TABS[tab]!.map(s => (
-                        <button key={s.key} onClick={() => setSubTab(s.key)} style={subTabStyle(s.key)}>{s.label}</button>
+                        <button
+                            key={s.key}
+                            onClick={() => !s.disabled && setSubTab(s.key)}
+                            title={s.disabled ? 'Coming soon' : undefined}
+                            style={{
+                                ...subTabStyle(s.key),
+                                ...(s.disabled ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
+                            }}
+                        >
+                            {s.label}{s.disabled ? ' ·· soon' : ''}
+                        </button>
                     ))}
                 </div>
             )}
@@ -609,16 +624,31 @@ export default function PropertyDetailPage() {
                         </div>
                     )}
 
-                    {/* ── Row 2: Deposit · Reference Photos · House Rules ── */}
+                    {/* ── Row 2: Settlement Policy · Reference Photos · House Rules ── */}
 
-                    <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>Deposit</div>
-                        <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: p.deposit_required ? 'var(--color-warn)' : 'var(--color-text-faint)' }}>
-                            {p.deposit_required ? `${p.deposit_currency || 'THB'} ${p.deposit_amount || '—'}` : 'Not required'}
+                    <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 'var(--space-2)' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-1)' }}>Settlement Policy</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{
+                                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0, display: 'inline-block',
+                                    background: crDepositEnabled ? 'var(--color-primary)' : 'var(--color-border)',
+                                }} />
+                                <span style={{ fontSize: 'var(--text-xs)', color: crDepositEnabled ? 'var(--color-text)' : 'var(--color-text-faint)', fontWeight: crDepositEnabled ? 600 : 400 }}>
+                                    {crDepositEnabled ? `Deposit: ${crDepositAmount || '—'} ${crDepositCurrency}` : 'No deposit'}
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{
+                                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0, display: 'inline-block',
+                                    background: crElecEnabled ? '#f59e0b' : 'var(--color-border)',
+                                }} />
+                                <span style={{ fontSize: 'var(--text-xs)', color: crElecEnabled ? 'var(--color-text)' : 'var(--color-text-faint)', fontWeight: crElecEnabled ? 600 : 400 }}>
+                                    {crElecEnabled ? `Electricity: ${crElecRate || '—'} ${crElecCurrency}/kWh` : 'Electricity not billed'}
+                                </span>
+                            </div>
                         </div>
-                        {p.deposit_required && (
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 4 }}>Method: {p.deposit_method || 'cash'}</div>
-                        )}
+                        {!crLoaded && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontStyle: 'italic' }}>Loading…</div>}
                     </div>
 
                     <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -991,11 +1021,22 @@ export default function PropertyDetailPage() {
             )}
 
             {/* ============ HISTORY / Audit ============ */}
-            {tab === 'history' && !loading && (
+            {tab === 'history' && subTab === 'audit' && !loading && (
                 <div>
+                    {/* Section header */}
+                    <div style={{ marginBottom: 'var(--space-4)' }}>
+                        <div style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--color-text)' }}>Audit Log</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 2 }}>
+                            All admin actions on this property — changes to settings, photos, tasks, and charge rules
+                        </div>
+                    </div>
                     {auditEntries.length === 0 ? (
                         <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--space-6)' }}>
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>No audit entries for this property</p>
+                            <div style={{ fontSize: 20, marginBottom: 'var(--space-2)' }}>📋</div>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', fontWeight: 600 }}>No audit entries yet</p>
+                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4 }}>
+                                Actions on this property will appear here automatically.
+                            </p>
                         </div>
                     ) : (
                         <div style={{ ...cardStyle, overflow: 'hidden', padding: 0 }}>
@@ -1024,6 +1065,26 @@ export default function PropertyDetailPage() {
                             ))}
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* ============ HISTORY / Settlements (future) ============ */}
+            {tab === 'history' && subTab === 'settlements' && !loading && (
+                <div>
+                    <div style={{ marginBottom: 'var(--space-4)' }}>
+                        <div style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--color-text)' }}>Settlement History</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 2 }}>
+                            Per-booking settlement records: deposit, electricity, damage, refunds
+                        </div>
+                    </div>
+                    <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--space-8)' }}>
+                        <div style={{ fontSize: 28, marginBottom: 'var(--space-3)' }}>🔒</div>
+                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>Coming soon</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', maxWidth: 340, margin: '0 auto', lineHeight: 1.6 }}>
+                            Full settlement history — deposit collection status, meter readings, electricity charges,
+                            damage deductions, and refund amounts — will be visible here once the settlement engine is active.
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -1325,57 +1386,11 @@ export default function PropertyDetailPage() {
                 return (
                     <div style={{ maxWidth: 680 }}>
 
-                        {/* ── House Rules ─────────────────────────────────────────── */}
-                        <div style={sHead}>House Rules</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-                            {editHouseRules.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                                    {editHouseRules.map((rule, idx) => (
-                                        <div key={idx} style={{
-                                            display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                                            background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)',
-                                            padding: '6px 10px', border: '1px solid var(--color-border)',
-                                        }}>
-                                            <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{rule}</span>
-                                            <button
-                                                onClick={() => setEditHouseRules(prev => prev.filter((_, i) => i !== idx))}
-                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
-                                            >✕</button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                                <input
-                                    value={newRule}
-                                    onChange={e => setNewRule(e.target.value)}
-                                    onKeyDown={e => { if (e.key === 'Enter' && newRule.trim()) { setEditHouseRules(prev => [...prev, newRule.trim()]); setNewRule(''); } }}
-                                    placeholder="e.g. No smoking · No parties · Shoes off indoors"
-                                    style={{ flex: 1, ...iStyle }}
-                                />
-                                <button
-                                    onClick={() => { if (!newRule.trim()) return; setEditHouseRules(prev => [...prev, newRule.trim()]); setNewRule(''); }}
-                                    style={{ padding: '0 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}
-                                >+</button>
-                            </div>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Press Enter or + to add. ✕ to remove.</div>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-6)' }}>
-                            <button
-                                onClick={async () => {
-                                    setEditSaving(true);
-                                    try {
-                                        await apiFetch(`/properties/${propertyId}`, { method: 'PATCH', body: JSON.stringify({ house_rules: editHouseRules }) });
-                                        showNotice('✓ House rules saved');
-                                    } catch { showNotice('Save failed'); }
-                                    setEditSaving(false);
-                                }}
-                                disabled={editSaving}
-                                style={{ padding: '8px 22px', borderRadius: 'var(--radius-md)', background: editSaving ? 'var(--color-border)' : 'var(--color-primary)', color: '#fff', border: 'none', cursor: editSaving ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)', boxShadow: editSaving ? 'none' : '0 2px 10px rgba(99,102,241,0.35)' }}
-                            >{editSaving ? 'Saving…' : 'Save House Rules'}</button>
-                        </div>
-
                         {/* ── Settlement Rules (Phase 968) ─────────────────────────── */}
+                        {/* NOTE: Settlement Rules are above House Rules intentionally.
+                             Settlement Rules = operational/property policy engine.
+                             House Rules = guest-facing behavioural rules.
+                             They are different in nature and the operational one leads. */}
                         <div style={sHead}>Settlement Rules</div>
                         <div style={{
                             background: 'var(--color-surface-2)',
@@ -1460,6 +1475,7 @@ export default function PropertyDetailPage() {
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)' }}>
                                 <button
+                                    title="Saves deposit and electricity rules only"
                                     onClick={async () => {
                                         setCrSaving(true);
                                         try {
@@ -1484,6 +1500,60 @@ export default function PropertyDetailPage() {
                                     style={{ padding: '9px 22px', borderRadius: 'var(--radius-md)', background: crSaving ? 'var(--color-border)' : 'var(--color-primary)', color: '#fff', border: 'none', cursor: crSaving ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)', boxShadow: crSaving ? 'none' : '0 2px 12px rgba(99,102,241,0.35)' }}
                                 >{crSaving ? 'Saving…' : 'Save Settlement Rules'}</button>
                             </div>
+                        </div>
+
+                        {/* ── House Rules ──────────────────────────────────────────── */}
+                        <div style={{ ...sHead, marginTop: 'var(--space-7)' }}>House Rules</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-3)' }}>
+                            Guest-facing behavioural guidelines shown on booking confirmation.
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                            {editHouseRules.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                    {editHouseRules.map((rule, idx) => (
+                                        <div key={idx} style={{
+                                            display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+                                            background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)',
+                                            padding: '6px 10px', border: '1px solid var(--color-border)',
+                                        }}>
+                                            <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{rule}</span>
+                                            <button
+                                                onClick={() => setEditHouseRules((prev: string[]) => prev.filter((_: string, i: number) => i !== idx))}
+                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
+                                            >✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                                <input
+                                    value={newRule}
+                                    onChange={e => setNewRule(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter' && newRule.trim()) { setEditHouseRules((prev: string[]) => [...prev, newRule.trim()]); setNewRule(''); } }}
+                                    placeholder="e.g. No smoking · No parties · Shoes off indoors"
+                                    style={{ flex: 1, ...iStyle }}
+                                />
+                                <button
+                                    onClick={() => { if (!newRule.trim()) return; setEditHouseRules((prev: string[]) => [...prev, newRule.trim()]); setNewRule(''); }}
+                                    style={{ padding: '0 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}
+                                >+</button>
+                            </div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Press Enter or + to add. ✕ to remove.</div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-2)' }}>
+                            <button
+                                title="Saves house rules only"
+                                onClick={async () => {
+                                    setEditSaving(true);
+                                    try {
+                                        await apiFetch(`/properties/${propertyId}`, { method: 'PATCH', body: JSON.stringify({ house_rules: editHouseRules }) });
+                                        showNotice('✓ House rules saved');
+                                    } catch { showNotice('Save failed'); }
+                                    setEditSaving(false);
+                                }}
+                                disabled={editSaving}
+                                style={{ padding: '8px 22px', borderRadius: 'var(--radius-md)', background: editSaving ? 'var(--color-border)' : 'var(--color-primary)', color: '#fff', border: 'none', cursor: editSaving ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)', boxShadow: editSaving ? 'none' : '0 2px 10px rgba(99,102,241,0.35)' }}
+                            >{editSaving ? 'Saving…' : 'Save House Rules'}</button>
                         </div>
 
                     </div>
