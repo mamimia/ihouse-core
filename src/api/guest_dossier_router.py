@@ -1,16 +1,22 @@
 """
-Phase 972 — Guest Dossier Composite API
-========================================
+Phase 972 — Guest Dossier Composite API (upgraded Phase 976)
+=============================================================
 
 Single composite endpoint that returns everything needed to render the
 Guest Dossier UI in one round-trip:
 
   GET /guests/{guest_id}/dossier
 
+Phase 976 additions:
+  - checkin_record per stay: photos (booking_checkin_photos),
+    checked_in_at (booking_state), worker (from audit log)
+  - portal state per stay: URL + qr_generated + issued_at (guest_tokens)
+  - checkout_record per stay: from booking_state (checkout fields)
+
 Returns:
   - Full guest identity record (including document fields)
   - Signed URL for passport/document photo (15-min expiry)
-  - Current active stay (if any): booking + settlement + portal state
+  - Current active stay (if any): booking + checkin_record + portal + settlement
   - Stay history: all linked bookings with settlement summaries
   - Activity trail: recent audit events for this guest
 
@@ -54,7 +60,7 @@ def _get_db() -> Any:
 
 @router.get(
     "/guests/{guest_id}/dossier",
-    summary="Full guest dossier: identity + stays + settlement + activity (Phase 972)",
+    summary="Full guest dossier: identity + stays + checkin_record + portal + settlement + activity (Phase 972/976)",
     responses={
         200: {"description": "Composite guest dossier"},
         401: {"description": "Missing or invalid JWT"},
@@ -72,8 +78,8 @@ async def get_guest_dossier(
     """
     Composite dossier for a guest, aggregating all related data.
 
-    Returns identity, document signed URL, current stay, stay history,
-    and activity timeline in one response.
+    Returns identity, document signed URL, current stay (with checkin record,
+    portal state, settlement), stay history, and activity timeline.
     """
     role = identity.get("role", "")
     if role not in _ALLOWED_ROLES:
@@ -123,7 +129,8 @@ async def get_guest_dossier(
             db.table("booking_state")
             .select(
                 "booking_id, property_id, status, check_in, check_out, "
-                "source, reservation_ref, guest_name, created_at, updated_at"
+                "source, reservation_ref, guest_name, checked_in_at, "
+                "checked_out_at, created_at, updated_at"
             )
             .eq("tenant_id", tenant_id)
             .eq("guest_id", guest_id)
@@ -147,7 +154,7 @@ async def get_guest_dossier(
                 for p in (props_res.data or []):
                     prop_names[p["property_id"]] = p.get("display_name") or p["property_id"]
             except Exception:
-                pass  # Fall back to property_id
+                pass
 
         # ── 4. Settlement data per booking ─────────────────────────────
         booking_ids = [b["booking_id"] for b in bookings]
@@ -155,7 +162,6 @@ async def get_guest_dossier(
         meters_by_booking: dict[str, list] = {}
 
         if booking_ids:
-            # Cash deposits
             try:
                 dep_res = (
                     db.table("cash_deposits")
@@ -172,7 +178,6 @@ async def get_guest_dossier(
             except Exception as exc:
                 logger.warning("dossier: deposits fetch failed: %s", exc)
 
-            # Electricity meter readings
             try:
                 meter_res = (
                     db.table("electricity_meter_readings")
@@ -191,28 +196,107 @@ async def get_guest_dossier(
             except Exception as exc:
                 logger.warning("dossier: meters fetch failed: %s", exc)
 
-        # ── 5. Build stay records ──────────────────────────────────────
-        active_statuses = {"InStay", "Confirmed", "CheckedIn"}
+        # ── 5. Check-in photos per booking ─────────────────────────────
+        photos_by_booking: dict[str, list] = {}
+        if booking_ids:
+            try:
+                photos_res = (
+                    db.table("booking_checkin_photos")
+                    .select("*")
+                    .eq("tenant_id", tenant_id)
+                    .in_("booking_id", booking_ids)
+                    .order("captured_at", desc=False)
+                    .execute()
+                )
+                for ph in (photos_res.data or []):
+                    bid = ph.get("booking_id")
+                    if bid:
+                        if bid not in photos_by_booking:
+                            photos_by_booking[bid] = []
+                        photos_by_booking[bid].append({
+                            "id":           ph.get("id"),
+                            "room_label":   ph.get("room_label"),
+                            "purpose":      ph.get("purpose"),
+                            "storage_path": ph.get("storage_path"),
+                            "captured_at":  ph.get("captured_at"),
+                            "uploaded_by":  ph.get("uploaded_by"),
+                        })
+            except Exception as exc:
+                logger.warning("dossier: photos fetch failed: %s", exc)
+
+        # ── 6. Portal / guest token per booking ────────────────────────
+        portal_by_booking: dict[str, dict] = {}
+        if booking_ids:
+            try:
+                # guest_tokens uses booking_ref = booking_id
+                for bid in booking_ids:
+                    token_res = (
+                        db.table("guest_tokens")
+                        .select("portal_url, created_at, expires_at")
+                        .eq("booking_ref", bid)
+                        .eq("tenant_id", tenant_id)
+                        .order("created_at", desc=True)
+                        .limit(1)
+                        .execute()
+                    )
+                    if token_res.data:
+                        t = token_res.data[0]
+                        portal_by_booking[bid] = {
+                            "qr_generated": True,
+                            "portal_url":   t.get("portal_url"),
+                            "issued_at":    t.get("created_at"),
+                            "expires_at":   t.get("expires_at"),
+                        }
+            except Exception as exc:
+                logger.warning("dossier: guest_tokens fetch failed: %s", exc)
+
+        # ── 7. Build stay records ──────────────────────────────────────
+        active_statuses = {"InStay", "Confirmed", "CheckedIn", "checked_in", "active"}
         current_stay = None
         stay_history = []
 
         for b in bookings:
             bid = b["booking_id"]
             pid = b.get("property_id", "")
+
+            # Separate photos by purpose
+            all_photos = photos_by_booking.get(bid, [])
+            walkthrough_photos = [p for p in all_photos if p.get("purpose") == "walkthrough"]
+            meter_photos = [p for p in all_photos if p.get("purpose") == "meter"]
+
+            meters = meters_by_booking.get(bid, [])
+            opening_meter = next((m for m in meters if m.get("reading_type") == "opening"), None)
+            closing_meter = next((m for m in meters if m.get("reading_type") == "closing"), None)
+
+            checkin_record = {
+                "checked_in_at":      b.get("checked_in_at"),
+                "walkthrough_photos": walkthrough_photos,
+                "meter_photos":       meter_photos,
+                "opening_meter":      opening_meter,
+            }
+
+            checkout_record = {
+                "checked_out_at": b.get("checked_out_at"),
+                "closing_meter":  closing_meter,
+            } if b.get("checked_out_at") else None
+
             stay = {
-                "booking_id": bid,
-                "property_id": pid,
-                "property_name": prop_names.get(pid, pid),
-                "check_in": b.get("check_in"),
-                "check_out": b.get("check_out"),
-                "status": b.get("status"),
-                "source": b.get("source"),
+                "booking_id":      bid,
+                "property_id":     pid,
+                "property_name":   prop_names.get(pid, pid),
+                "check_in":        b.get("check_in"),
+                "check_out":       b.get("check_out"),
+                "status":          b.get("status"),
+                "source":          b.get("source"),
                 "reservation_ref": b.get("reservation_ref"),
-                "guest_name": b.get("guest_name"),
-                "created_at": b.get("created_at"),
+                "guest_name":      b.get("guest_name"),
+                "created_at":      b.get("created_at"),
+                "checkin_record":  checkin_record,
+                "checkout_record": checkout_record,
+                "portal":          portal_by_booking.get(bid, {"qr_generated": False, "portal_url": None}),
                 "settlement": {
-                    "deposit": deposits_by_booking.get(bid),
-                    "meter_readings": meters_by_booking.get(bid, []),
+                    "deposit":       deposits_by_booking.get(bid),
+                    "meter_readings": meters,
                 },
             }
 
@@ -221,7 +305,7 @@ async def get_guest_dossier(
             else:
                 stay_history.append(stay)
 
-        # ── 6. Activity trail (audit events) ───────────────────────────
+        # ── 8. Activity trail (audit events) ───────────────────────────
         activity = []
         try:
             audit_res = (
@@ -234,19 +318,11 @@ async def get_guest_dossier(
                 .limit(50)
                 .execute()
             )
-            activity = [
-                {
-                    "action": a.get("action"),
-                    "performed_at": a.get("performed_at"),
-                    "actor_id": a.get("actor_id"),
-                    "details": a.get("details"),
-                }
-                for a in (audit_res.data or [])
-            ]
+            activity = [_serialize_audit(a) for a in (audit_res.data or [])]
         except Exception as exc:
             logger.warning("dossier: audit fetch failed: %s", exc)
 
-        # Also fetch booking-level audit events (deposit, meter, checkin)
+        # Booking-level audit events
         if booking_ids:
             try:
                 booking_audit_res = (
@@ -259,34 +335,26 @@ async def get_guest_dossier(
                         "meter_opening_recorded",
                         "checkin_completed",
                         "guest_identity_saved",
+                        "booking.checkin",
+                        "checkin_override_deposit_skipped",
+                        "checkin_override_meter_skipped",
                     ])
                     .order("performed_at", desc=True)
                     .limit(50)
                     .execute()
                 )
-                activity.extend([
-                    {
-                        "action": a.get("action"),
-                        "performed_at": a.get("performed_at"),
-                        "actor_id": a.get("actor_id"),
-                        "details": a.get("details"),
-                    }
-                    for a in (booking_audit_res.data or [])
-                ])
-                # Sort combined activity by performed_at descending
-                activity.sort(
-                    key=lambda x: x.get("performed_at") or "", reverse=True
-                )
+                activity.extend([_serialize_audit(a) for a in (booking_audit_res.data or [])])
+                activity.sort(key=lambda x: x.get("performed_at") or "", reverse=True)
             except Exception:
                 pass
 
-        # ── 7. Compose response ────────────────────────────────────────
+        # ── 9. Compose response ────────────────────────────────────────
         return JSONResponse(status_code=200, content={
-            "guest": _serialize_guest(guest),
-            "document_photo_signed_url": document_photo_signed_url,
-            "current_stay": current_stay,
-            "stay_history": stay_history,
-            "activity": activity[:50],  # cap at 50
+            "guest":                      _serialize_guest(guest),
+            "document_photo_signed_url":  document_photo_signed_url,
+            "current_stay":               current_stay,
+            "stay_history":               stay_history,
+            "activity":                   activity[:50],
         })
 
     except Exception as exc:
@@ -312,6 +380,9 @@ def _serialize_guest(row: dict) -> dict:
         "passport_expiry":     row.get("passport_expiry"),
         "date_of_birth":       row.get("date_of_birth"),
         "document_photo_url":  row.get("document_photo_url"),
+        "issuing_country":     row.get("issuing_country"),
+        "identity_source":     row.get("identity_source"),
+        "identity_verified_at": row.get("identity_verified_at"),
         "whatsapp":            row.get("whatsapp"),
         "line_id":             row.get("line_id"),
         "telegram":            row.get("telegram"),
@@ -346,4 +417,15 @@ def _serialize_meter(row: dict) -> dict:
         "recorded_by":     row.get("recorded_by"),
         "recorded_at":     row.get("recorded_at"),
         "notes":           row.get("notes"),
+    }
+
+
+def _serialize_audit(row: dict) -> dict:
+    return {
+        "action":       row.get("action"),
+        "performed_at": row.get("performed_at"),
+        "actor_id":     row.get("actor_id"),
+        "details":      row.get("details"),
+        "entity_type":  row.get("entity_type"),
+        "entity_id":    row.get("entity_id"),
     }

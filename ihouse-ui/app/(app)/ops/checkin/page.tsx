@@ -646,6 +646,30 @@ export default function MobileCheckinPage() {
         if (!selected) return;
         const bookingId = getBookingId(selected);
         try {
+            // Phase 977: Persist walkthrough photo references to DB before completing.
+            // The bytes are already in Storage from /worker/documents/upload.
+            // This creates the durable index in booking_checkin_photos.
+            if (capturedPhotos.length > 0 || meterStoragePath) {
+                const photoRefs: { room_label: string; storage_path: string; purpose: string; captured_at: string }[] = [];
+                capturedPhotos.forEach(p => {
+                    photoRefs.push({ room_label: p.room_label, storage_path: p.storage_path, purpose: 'walkthrough', captured_at: p.captured_at });
+                });
+                if (meterStoragePath) {
+                    photoRefs.push({ room_label: 'meter_reading', storage_path: meterStoragePath, purpose: 'meter', captured_at: new Date().toISOString() });
+                }
+                if (documentStoragePath) {
+                    photoRefs.push({ room_label: 'passport_front', storage_path: documentStoragePath, purpose: 'passport', captured_at: new Date().toISOString() });
+                }
+                try {
+                    await apiFetch<any>(`/worker/bookings/${bookingId}/checkin-photos`, {
+                        method: 'POST',
+                        body: JSON.stringify({ photos: photoRefs }),
+                    });
+                } catch (photoErr) {
+                    console.warn('Photo index save failed (non-blocking):', photoErr);
+                }
+            }
+
             const res = await apiFetch<any>(`/bookings/${bookingId}/checkin`, {
                 method: 'POST',
             });
@@ -717,6 +741,7 @@ export default function MobileCheckinPage() {
         setSelected(null);
         load();
     };
+
 
     const returnToList = () => {
         setStep('list');

@@ -368,6 +368,9 @@ export interface Guest {
     passport_expiry: string | null;
     date_of_birth: string | null;
     document_photo_url: string | null;
+    issuing_country: string | null;
+    identity_source: string | null;
+    identity_verified_at: string | null;
     // Phase 972 — Messaging channels
     whatsapp: string | null;
     line_id: string | null;
@@ -382,7 +385,7 @@ export interface GuestListResponse {
     guests: Guest[];
 }
 
-// Phase 972 — Guest Dossier composite types
+// Phase 972/976 — Guest Dossier composite types
 export interface DossierDeposit {
     id: string;
     booking_id: string;
@@ -407,6 +410,34 @@ export interface DossierMeter {
     notes: string | null;
 }
 
+export interface DossierPhoto {
+    id: string;
+    room_label: string;
+    purpose: 'walkthrough' | 'meter' | 'passport' | 'damage';
+    storage_path: string;
+    captured_at: string | null;
+    uploaded_by: string | null;
+}
+
+export interface DossierPortal {
+    qr_generated: boolean;
+    portal_url: string | null;
+    issued_at: string | null;
+    expires_at: string | null;
+}
+
+export interface DossierCheckinRecord {
+    checked_in_at: string | null;
+    walkthrough_photos: DossierPhoto[];
+    meter_photos: DossierPhoto[];
+    opening_meter: DossierMeter | null;
+}
+
+export interface DossierCheckoutRecord {
+    checked_out_at: string | null;
+    closing_meter: DossierMeter | null;
+}
+
 export interface DossierStay {
     booking_id: string;
     property_id: string;
@@ -418,6 +449,9 @@ export interface DossierStay {
     reservation_ref: string | null;
     guest_name: string | null;
     created_at: string | null;
+    checkin_record: DossierCheckinRecord;
+    checkout_record: DossierCheckoutRecord | null;
+    portal: DossierPortal;
     settlement: {
         deposit: DossierDeposit | null;
         meter_readings: DossierMeter[];
@@ -429,6 +463,8 @@ export interface DossierActivity {
     performed_at: string;
     actor_id: string;
     details: Record<string, unknown> | null;
+    entity_type?: string;
+    entity_id?: string;
 }
 
 export interface GuestDossier {
