@@ -129,8 +129,8 @@ async def get_guest_dossier(
             db.table("booking_state")
             .select(
                 "booking_id, property_id, status, check_in, check_out, "
-                "source, reservation_ref, guest_name, checked_in_at, "
-                "checked_out_at, created_at, updated_at"
+                "booking_source, reservation_ref, guest_name, checked_in_at, "
+                "checked_out_at, updated_at_ms"
             )
             .eq("tenant_id", tenant_id)
             .eq("guest_id", guest_id)
@@ -146,7 +146,7 @@ async def get_guest_dossier(
         if prop_ids:
             try:
                 props_res = (
-                    db.table("property_config")
+                    db.table("properties")
                     .select("property_id, display_name")
                     .in_("property_id", prop_ids)
                     .execute()
@@ -228,19 +228,19 @@ async def get_guest_dossier(
         portal_by_booking: dict[str, dict] = {}
         if booking_ids:
             try:
-                # guest_tokens uses booking_ref = booking_id
+                # portal URL is in guest_qr_tokens (not guest_tokens)
                 for bid in booking_ids:
-                    token_res = (
-                        db.table("guest_tokens")
+                    qr_res = (
+                        db.table("guest_qr_tokens")
                         .select("portal_url, created_at, expires_at")
-                        .eq("booking_ref", bid)
+                        .eq("booking_id", bid)
                         .eq("tenant_id", tenant_id)
                         .order("created_at", desc=True)
                         .limit(1)
                         .execute()
                     )
-                    if token_res.data:
-                        t = token_res.data[0]
+                    if qr_res.data:
+                        t = qr_res.data[0]
                         portal_by_booking[bid] = {
                             "qr_generated": True,
                             "portal_url":   t.get("portal_url"),
@@ -248,7 +248,7 @@ async def get_guest_dossier(
                             "expires_at":   t.get("expires_at"),
                         }
             except Exception as exc:
-                logger.warning("dossier: guest_tokens fetch failed: %s", exc)
+                logger.warning("dossier: guest_qr_tokens fetch failed: %s", exc)
 
         # ── 7. Build stay records ──────────────────────────────────────
         active_statuses = {"InStay", "Confirmed", "CheckedIn", "checked_in", "active"}
@@ -287,10 +287,10 @@ async def get_guest_dossier(
                 "check_in":        b.get("check_in"),
                 "check_out":       b.get("check_out"),
                 "status":          b.get("status"),
-                "source":          b.get("source"),
+                "source":          b.get("booking_source") or b.get("source"),
                 "reservation_ref": b.get("reservation_ref"),
                 "guest_name":      b.get("guest_name"),
-                "created_at":      b.get("created_at"),
+                "created_at":      b.get("created_at") or b.get("updated_at_ms"),
                 "checkin_record":  checkin_record,
                 "checkout_record": checkout_record,
                 "portal":          portal_by_booking.get(bid, {"qr_generated": False, "portal_url": None}),
