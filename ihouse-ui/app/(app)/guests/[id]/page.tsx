@@ -78,23 +78,36 @@ function fmtSource(source: string | null | undefined, bookingId?: string): strin
     return source ? source.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Unknown';
 }
 
-/** Inline copy-to-clipboard button */
+/** Micro copy-to-clipboard button — inline utility, not a full button */
 function CopyBtn({ value }: { value: string }) {
     const [copied, setCopied] = useState(false);
     return (
-        <button
-            onClick={() => { navigator.clipboard.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }}
-            style={{
-                padding: '1px 7px', fontSize: 10, fontWeight: 600,
-                border: '1px solid var(--color-border)', borderRadius: 6,
-                background: copied ? 'rgba(63,185,80,0.12)' : 'var(--color-surface-2)',
-                color: copied ? '#3fb850' : 'var(--color-text-dim)', cursor: 'pointer',
-                transition: 'all .15s', marginLeft: 6, lineHeight: '18px',
+        <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(value).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                });
             }}
-            title="Copy full value"
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
+            style={{
+                display: 'inline-flex', alignItems: 'center',
+                padding: '0 4px', marginLeft: 4,
+                fontSize: 9, fontWeight: 700, lineHeight: '14px',
+                borderRadius: 4,
+                border: `1px solid ${copied ? 'rgba(63,185,80,0.4)' : 'var(--color-border)'}`,
+                background: copied ? 'rgba(63,185,80,0.08)' : 'transparent',
+                color: copied ? '#3fb850' : 'var(--color-muted)',
+                cursor: 'pointer', userSelect: 'none', transition: 'all .12s',
+                letterSpacing: '0.02em',
+            }}
+            title={`Copy: ${value}`}
         >
             {copied ? '✓' : 'copy'}
-        </button>
+        </span>
     );
 }
 
@@ -178,11 +191,26 @@ function statusColor(status: string | null | undefined): { bg: string; fg: strin
 function StatusBadge({ status }: { status?: string | null }) {
     const s = status || 'Unknown';
     const c = statusColor(s);
+    // Human-readable display label
+    const displayMap: Record<string, string> = {
+        checked_in: 'In Stay',
+        CheckedIn:  'In Stay',
+        instay:     'In Stay',
+        active:     'In Stay',
+        completed:  'Completed',
+        CheckedOut: 'Checked Out',
+        checked_out:'Checked Out',
+        Cancelled:  'Cancelled',
+        cancelled:  'Cancelled',
+        Confirmed:  'Upcoming',
+        confirmed:  'Upcoming',
+    };
+    const label = displayMap[s] ?? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return (
         <span style={{
             display: 'inline-block', padding: '2px 10px', borderRadius: 999,
             background: c.bg, color: c.fg, fontSize: 12, fontWeight: 700,
-        }}>{s}</span>
+        }}>{label}</span>
     );
 }
 
@@ -808,40 +836,47 @@ export default function GuestDossierPage() {
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                         <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
                             {guest.full_name}
                         </h1>
-                        {hasActiveStay ? (
-                            <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                padding: '3px 12px', borderRadius: 999,
-                                background: 'rgba(63,185,80,0.1)', color: '#3fb850',
-                                fontSize: 12, fontWeight: 700,
-                            }}>
-                                🟢 In Stay — {dossier.current_stay!.property_name}
-                            </span>
-                        ) : (
-                            <span style={{
-                                padding: '3px 12px', borderRadius: 999,
-                                background: 'var(--color-surface-2)', color: 'var(--color-text-dim)',
-                                fontSize: 12, fontWeight: 600,
-                            }}>No Active Stay</span>
-                        )}
+                        {/* Header badge — only show when a genuinely current/upcoming stay exists */}
+                        {dossier.current_stay && (() => {
+                            const s = (dossier.current_stay.status || '').toLowerCase();
+                            const isActive   = ['checked_in', 'instay', 'checkedin', 'active'].includes(s);
+                            const isUpcoming = ['confirmed', 'booked', 'approved'].includes(s);
+                            if (isActive) return (
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    padding: '3px 12px', borderRadius: 999,
+                                    background: 'rgba(63,185,80,0.1)', color: '#3fb850',
+                                    fontSize: 12, fontWeight: 700,
+                                }}>
+                                    🟢 In Stay — {dossier.current_stay.property_name}
+                                </span>
+                            );
+                            if (isUpcoming) return (
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    padding: '3px 12px', borderRadius: 999,
+                                    background: 'rgba(88,166,255,0.1)', color: '#58a6ff',
+                                    fontSize: 12, fontWeight: 700,
+                                }}>
+                                    📅 Upcoming — {dossier.current_stay.property_name}
+                                </span>
+                            );
+                            return null;
+                        })()}
                     </div>
+
+                    {/* Sub-line: guest record metadata only, no stay-level signals */}
                     <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
                         {guest.id}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 2, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                        <span>Created {fmtDate(guest.created_at, true)}</span>
+                    <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 2, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        <span>Guest record created {fmtDate(guest.created_at, true)}</span>
                         {guest.identity_verified_at && (
                             <span style={{ color: '#3fb850' }}>✔ Identity verified {fmtDate(guest.identity_verified_at)}</span>
-                        )}
-                        {hasActiveStay && dossier.current_stay!.checkin_record.checked_in_at && (
-                            <span style={{ color: '#3fb850' }}>✔ Checked in {fmtDate(dossier.current_stay!.checkin_record.checked_in_at, true)}</span>
-                        )}
-                        {hasActiveStay && isCheckedIn(dossier.current_stay!) && !dossier.current_stay!.checkin_record.checked_in_at && (
-                            <span style={{ color: '#3fb850' }}>✔ Checked in</span>
                         )}
                     </div>
                 </div>

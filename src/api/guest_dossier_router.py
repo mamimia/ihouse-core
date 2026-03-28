@@ -272,8 +272,50 @@ async def get_guest_dossier(
             except Exception as exc:
                 logger.warning("dossier: checkin worker fetch failed: %s", exc)
 
-        # ── 8. Build stay records ──────────────────────────────────────
-        active_statuses = {"InStay", "Confirmed", "CheckedIn", "checked_in", "active"}
+        # ── 8. Build stay records (date-aware classification) ────────
+        #
+        # A stay is "current" only when ALL of the following hold:
+        #   1. The booking status indicates it is active (checked-in, confirmed, etc.)
+        #   2. The checkout date is today or in the future  (date-wall guard)
+        #   3. No current_stay has been picked yet  (first match wins)
+        #
+        # If a stay has an "active" status but its checkout date is in the
+        # past (stale / DB not updated), we classify it as history and
+        # normalise its status to "completed" so the UI renders it correctly.
+
+        active_statuses = {"InStay", "CheckedIn", "checked_in", "active"}
+        # Confirmed = future / upcoming, not yet checked-in
+        upcoming_statuses = {"Confirmed", "confirmed", "booked", "approved"}
+
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")  # YYYY-MM-DD
+
+        def _checkout_is_future_or_today(checkout: str | None) -> bool:
+            """Return True when checkout >= today (i.e. stay is not over yet)."""
+            if not checkout:
+                return True  # unknown — give benefit of the doubt
+            try:
+                co = checkout[:10]  # accept both 'YYYY-MM-DD' and ISO timestamps
+                return co >= today_str
+            except Exception:
+                return True
+
+        def _normalise_status(raw_status: str | None, checkout: str | None) -> str:
+            """Return a clean, unambiguous lifecycle label."""
+            s = (raw_status or "").lower()
+            # Past stay that was never marked completed by the system
+            if s in {"active", "instay", "checkedin", "checked_in"} and not _checkout_is_future_or_today(checkout):
+                return "completed"
+            # Map DB variants to canonical labels
+            mapping = {
+                "instay":     "checked_in",
+                "checkedin":  "checked_in",
+                "active":     "checked_in",
+                "confirmed":  "Confirmed",
+                "booked":     "Confirmed",
+                "approved":   "Confirmed",
+            }
+            return mapping.get(s, raw_status or "unknown")
+
         current_stay = None
         stay_history = []
 
@@ -306,13 +348,17 @@ async def get_guest_dossier(
                 "closing_meter":  closing_meter,
             } if b.get("checked_out_at") else None
 
+            raw_status = b.get("status")
+            checkout_date = b.get("check_out")
+            normalised_status = _normalise_status(raw_status, checkout_date)
+
             stay = {
                 "booking_id":      bid,
                 "property_id":     pid,
                 "property_name":   prop_names.get(pid, pid),
                 "check_in":        b.get("check_in"),
-                "check_out":       b.get("check_out"),
-                "status":          b.get("status"),
+                "check_out":       checkout_date,
+                "status":          normalised_status,
                 "source":          b.get("booking_source") or b.get("source"),
                 "reservation_ref": b.get("reservation_ref"),
                 "guest_name":      b.get("guest_name"),
@@ -326,7 +372,15 @@ async def get_guest_dossier(
                 },
             }
 
-            if b.get("status") in active_statuses and current_stay is None:
+            # A booking is "current" only if status is active AND checkout is future/today
+            raw_s_lower = (raw_status or "").lower()
+            is_genuinely_active = (
+                raw_s_lower in {"instay", "checkedin", "checked_in", "active"}
+                and _checkout_is_future_or_today(checkout_date)
+            )
+            is_upcoming = raw_s_lower in {"confirmed", "booked", "approved"}
+
+            if (is_genuinely_active or is_upcoming) and current_stay is None:
                 current_stay = stay
             else:
                 stay_history.append(stay)
