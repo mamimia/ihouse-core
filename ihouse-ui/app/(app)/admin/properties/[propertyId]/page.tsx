@@ -1,10 +1,13 @@
 'use client';
 
 /**
- * Operational Core — Phase A: Property Detail (6-Tab View)
- * Architecture source: .agent/architecture/property-detail.md
+ * Phase 969 — Property Detail: 5-Section IA
  *
- * Tabs: Overview | Reference Photos | House Info | Tasks | Issues | Audit
+ * Primary: Overview | Operations | Media | Settings | History
+ * Operations sub-tabs:  Tasks | Issues
+ * Media sub-tabs:       Reference Photos | Gallery
+ * Settings sub-tabs:    General | House & Access | Rules | Integrations
+ * History:              Audit (no sub-tabs)
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -13,18 +16,38 @@ import { getToken } from '@/lib/api';
 import { uploadPropertyPhoto, ACCEPTED_IMAGE_TYPES } from '@/lib/uploadPhoto';
 import OtaSettingsTab from './OtaSettingsTab';
 
-type Tab = 'overview' | 'photos' | 'house-info' | 'tasks' | 'issues' | 'audit' | 'edit' | 'gallery' | 'ota';
+type PrimaryTab = 'overview' | 'operations' | 'media' | 'settings' | 'history';
 
-const TAB_LABELS: Record<Tab, string> = {
-    overview: 'Overview',
-    photos: 'Reference Photos',
-    'house-info': 'House Info',
-    tasks: 'Tasks',
-    issues: 'Issues',
-    audit: 'Audit',
-    edit: '✎ Edit Details',
-    gallery: '🖼 Gallery',
-    ota: '📡 OTA Settings',
+const PRIMARY_TABS: { key: PrimaryTab; label: string }[] = [
+    { key: 'overview',    label: 'Overview' },
+    { key: 'operations', label: 'Operations' },
+    { key: 'media',      label: 'Media' },
+    { key: 'settings',   label: 'Settings' },
+    { key: 'history',    label: 'History' },
+];
+
+const SUB_TABS: Partial<Record<PrimaryTab, { key: string; label: string }[]>> = {
+    operations: [
+        { key: 'tasks',  label: 'Tasks' },
+        { key: 'issues', label: 'Issues' },
+    ],
+    media: [
+        { key: 'ref-photos', label: 'Reference Photos' },
+        { key: 'gallery',    label: 'Gallery' },
+    ],
+    settings: [
+        { key: 'general',      label: 'General' },
+        { key: 'house-access', label: 'House & Access' },
+        { key: 'rules',        label: 'Rules' },
+        { key: 'integrations', label: 'Integrations' },
+    ],
+};
+
+// Default sub-tab for each primary tab
+const DEFAULT_SUB: Partial<Record<PrimaryTab, string>> = {
+    operations: 'tasks',
+    media:      'ref-photos',
+    settings:   'general',
 };
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
@@ -125,7 +148,8 @@ export default function PropertyDetailPage() {
     const params = useParams();
     const router = useRouter();
     const propertyId = params?.propertyId as string;
-    const [tab, setTab] = useState<Tab>('overview');
+    const [tab, setTab] = useState<PrimaryTab>('overview');
+    const [subTab, setSubTab] = useState<string>('');
     const [property, setProperty] = useState<any>(null);
     const [photos, setPhotos] = useState<any[]>([]);
     const [galleryPhotos, setGalleryPhotos] = useState<any[]>([]);
@@ -152,10 +176,7 @@ export default function PropertyDetailPage() {
     const [editCheckoutTime, setEditCheckoutTime] = useState('');
     const [editDescription, setEditDescription] = useState('');
     const [editSourceUrl, setEditSourceUrl] = useState('');
-    // Deposit fields (Phase 844 correction)
-    const [editDepositRequired, setEditDepositRequired] = useState(false);
-    const [editDepositAmount, setEditDepositAmount] = useState('');
-    const [editDepositCurrency, setEditDepositCurrency] = useState('THB');
+    // (Phase 969: old deposit_required fields removed — Settlement Rules is the source of truth)
     // Geolocation feedback
     const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle');
     const [editSaving, setEditSaving] = useState(false);
@@ -271,10 +292,7 @@ export default function PropertyDetailPage() {
                 setEditCheckoutTime(pp.checkout_time || '11:00');
                 setEditDescription(pp.description || '');
                 setEditSourceUrl(pp.source_url || '');
-                // Deposit (Phase 844)
-                setEditDepositRequired(!!pp.deposit_required);
-                setEditDepositAmount(pp.deposit_amount != null ? String(pp.deposit_amount) : '');
-                setEditDepositCurrency(pp.deposit_currency || 'THB');
+                // (Phase 969: deposit fields moved to Settlement Rules / charge-rules API)
                 // House Rules, Owner Contact, Amenities (Phase 844 v2)
                 setEditHouseRules(Array.isArray(pp.house_rules) ? pp.house_rules : []);
                 setEditOwnerPhone(pp.owner_phone || '');
@@ -325,10 +343,10 @@ export default function PropertyDetailPage() {
         setSaving(false);
     };
 
-    const tabStyle = (t: Tab) => ({
+    const primaryTabStyle = (t: PrimaryTab): React.CSSProperties => ({
         padding: 'var(--space-2) var(--space-4)',
         fontSize: 'var(--text-sm)',
-        fontWeight: tab === t ? 600 : 400,
+        fontWeight: tab === t ? 700 : 400,
         color: tab === t ? 'var(--color-primary)' : 'var(--color-text-dim)',
         borderBottom: tab === t ? '2px solid var(--color-primary)' : '2px solid transparent',
         background: 'none',
@@ -337,6 +355,26 @@ export default function PropertyDetailPage() {
         whiteSpace: 'nowrap' as const,
         flexShrink: 0,
     });
+
+    const subTabStyle = (s: string): React.CSSProperties => ({
+        padding: '6px 14px',
+        fontSize: 'var(--text-xs)',
+        fontWeight: subTab === s ? 600 : 400,
+        color: subTab === s ? 'var(--color-text)' : 'var(--color-text-faint)',
+        background: subTab === s ? 'var(--color-surface)' : 'transparent',
+        border: `1px solid ${subTab === s ? 'var(--color-border)' : 'transparent'}`,
+        borderRadius: 'var(--radius-md)',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap' as const,
+        flexShrink: 0,
+        boxShadow: subTab === s ? 'var(--shadow-sm)' : 'none',
+        transition: 'all 0.15s',
+    });
+
+    const switchTab = (t: PrimaryTab) => {
+        setTab(t);
+        setSubTab(DEFAULT_SUB[t] ?? '');
+    };
 
     const cardStyle = {
         background: 'var(--color-surface)',
@@ -513,12 +551,21 @@ export default function PropertyDetailPage() {
                 )}
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: 'var(--space-1)', borderBottom: '1px solid var(--color-border)', marginBottom: 'var(--space-6)', overflowX: 'auto' }}>
-                {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
-                    <button key={t} onClick={() => setTab(t)} style={tabStyle(t)}>{TAB_LABELS[t]}</button>
+            {/* Primary Tab Bar */}
+            <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: SUB_TABS[tab] ? 'var(--space-3)' : 'var(--space-6)', overflowX: 'auto' }}>
+                {PRIMARY_TABS.map(t => (
+                    <button key={t.key} onClick={() => switchTab(t.key)} style={primaryTabStyle(t.key)}>{t.label}</button>
                 ))}
             </div>
+
+            {/* Sub-Tab Bar — shown only for tabs that have sub-tabs */}
+            {SUB_TABS[tab] && (
+                <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)', padding: '4px', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-lg)', width: 'fit-content', flexWrap: 'wrap' }}>
+                    {SUB_TABS[tab]!.map(s => (
+                        <button key={s.key} onClick={() => setSubTab(s.key)} style={subTabStyle(s.key)}>{s.label}</button>
+                    ))}
+                </div>
+            )}
 
             {loading && <p style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>Loading…</p>}
 
@@ -593,8 +640,8 @@ export default function PropertyDetailPage() {
                 </div>
             )}
 
-            {/* ============ TAB 2: Reference Photos ============ */}
-            {tab === 'photos' && !loading && (
+            {/* ============ MEDIA / Reference Photos ============ */}
+            {tab === 'media' && subTab === 'ref-photos' && !loading && (
                 <div>
                     {/* Phase 844 v2: Real file upload — supabase.storage (property-photos bucket) */}
                     <div style={{
@@ -758,8 +805,8 @@ export default function PropertyDetailPage() {
                 </div>
             )}
 
-            {/* ============ TAB 3: House Info ============ */}
-            {tab === 'house-info' && !loading && (
+            {/* ============ SETTINGS / House & Access ============ */}
+            {tab === 'settings' && subTab === 'house-access' && !loading && (
                 <div>
                     {saving && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', marginBottom: 'var(--space-3)' }}>Saving…</div>}
 
@@ -816,8 +863,8 @@ export default function PropertyDetailPage() {
                 </div>
             )}
 
-            {/* ============ TAB 4: Tasks ============ */}
-            {tab === 'tasks' && !loading && (
+            {/* ============ OPERATIONS / Tasks ============ */}
+            {tab === 'operations' && subTab === 'tasks' && !loading && (
                 <div>
                     {tasks.length === 0 ? (
                         <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--space-6)' }}>
@@ -898,8 +945,8 @@ export default function PropertyDetailPage() {
                 </div>
             )}
 
-            {/* ============ TAB 5: Issues ============ */}
-            {tab === 'issues' && !loading && (
+            {/* ============ OPERATIONS / Issues ============ */}
+            {tab === 'operations' && subTab === 'issues' && !loading && (
                 <div>
                     {issues.length === 0 ? (
                         <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--space-6)' }}>
@@ -943,8 +990,8 @@ export default function PropertyDetailPage() {
                 </div>
             )}
 
-            {/* ============ TAB 6: Audit ============ */}
-            {tab === 'audit' && !loading && (
+            {/* ============ HISTORY / Audit ============ */}
+            {tab === 'history' && !loading && (
                 <div>
                     {auditEntries.length === 0 ? (
                         <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--space-6)' }}>
@@ -980,8 +1027,8 @@ export default function PropertyDetailPage() {
                 </div>
             )}
 
-            {/* ============ TAB 7: Edit Details (Phase 844) ============ */}
-            {tab === 'edit' && !loading && (() => {
+            {/* ============ SETTINGS / General ============ */}
+            {tab === 'settings' && subTab === 'general' && !loading && (() => {
                 const iStyle: React.CSSProperties = {
                     width: '100%', background: 'var(--color-surface-2)',
                     border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
@@ -1000,7 +1047,6 @@ export default function PropertyDetailPage() {
                     paddingBottom: 'var(--space-2)', borderBottom: '1px solid var(--color-border)',
                 };
                 const PROPERTY_TYPES = ['apartment','villa','house','condo','studio','resort','hostel','hotel','other'];
-                const DEPOSIT_CURRENCIES = ['THB','USD','EUR','GBP','SGD','AUD','HKD','JPY','AED'];
 
                 const handleEditSave = async () => {
                     setEditSaving(true);
@@ -1021,12 +1067,8 @@ export default function PropertyDetailPage() {
                             checkout_time: editCheckoutTime || undefined,
                             description: editDescription.trim() || undefined,
                             source_url: editSourceUrl.trim() || undefined,
-                            // Deposit (Phase 844)
-                            deposit_required: editDepositRequired,
-                            deposit_amount: editDepositRequired && editDepositAmount ? parseFloat(editDepositAmount) : null,
-                            deposit_currency: editDepositRequired ? editDepositCurrency : null,
-                            // House Rules, Owner Contact, Amenities (Phase 844 v2)
-                            house_rules: editHouseRules,
+                            // Phase 969: deposit fields removed (now in Settlement Rules)
+                            // House rules saved separately in Settings/Rules tab
                             owner_phone: editOwnerPhone.trim() || null,
                             owner_email: editOwnerEmail.trim() || null,
                             amenities: editAmenities,
@@ -1193,104 +1235,9 @@ export default function PropertyDetailPage() {
                             )}
                         </div>{/* ── close Operation column ── */}
 
-                        {/* ── Section: Deposit ───────────────────────────────────── */}
-                        <div style={sHead}>Deposit</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                            {/* Toggle */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                                <button
-                                    onClick={() => setEditDepositRequired(v => !v)}
-                                    style={{
-                                        position: 'relative', width: 44, height: 24, borderRadius: 12,
-                                        background: editDepositRequired ? 'var(--color-primary)' : 'var(--color-border)',
-                                        border: 'none', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
-                                    }}
-                                >
-                                    <span style={{
-                                        position: 'absolute', top: 3, left: editDepositRequired ? 22 : 3,
-                                        width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                                        transition: 'left 0.2s', display: 'block',
-                                    }} />
-                                </button>
-                                <div>
-                                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
-                                        {editDepositRequired ? 'Deposit Required' : 'Deposit Not Required'}
-                                    </div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                                        Workers will be prompted to collect a deposit during check-in when enabled
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Deposit + House Rules + Settlement Rules moved to Settings → Rules tab */}
 
-                            {/* Amount + currency — shown only when enabled */}
-                            {editDepositRequired && (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 'var(--space-3)' }}>
-                                    <div>
-                                        <label style={lStyle}>Deposit Amount</label>
-                                        <input style={iStyle} value={editDepositAmount} onChange={e => setEditDepositAmount(e.target.value)} type="number" min="0" step="1" placeholder="e.g. 5000" />
-                                    </div>
-                                    <div>
-                                        <label style={lStyle}>Currency</label>
-                                        <select style={{ ...iStyle, cursor: 'pointer', minWidth: 90 }} value={editDepositCurrency} onChange={e => setEditDepositCurrency(e.target.value)}>
-                                            {DEPOSIT_CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
 
-                        {/* ── Section: House Rules ────────────────────────────────── */}
-                        <div style={sHead}>House Rules</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                            {editHouseRules.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                                    {editHouseRules.map((rule, idx) => (
-                                        <div key={idx} style={{
-                                            display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
-                                            background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)',
-                                            padding: '6px 10px', border: '1px solid var(--color-border)',
-                                        }}>
-                                            <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-                                                {rule}
-                                            </span>
-                                            <button
-                                                onClick={() => setEditHouseRules(prev => prev.filter((_, i) => i !== idx))}
-                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
-                                            >✕</button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                                <input
-                                    value={newRule}
-                                    onChange={e => setNewRule(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter' && newRule.trim()) {
-                                            setEditHouseRules(prev => [...prev, newRule.trim()]);
-                                            setNewRule('');
-                                        }
-                                    }}
-                                    placeholder="Add a rule — e.g. No smoking, No parties, Shoes off indoors…"
-                                    style={{ flex: 1, ...iStyle }}
-                                />
-                                <button
-                                    onClick={() => {
-                                        if (!newRule.trim()) return;
-                                        setEditHouseRules(prev => [...prev, newRule.trim()]);
-                                        setNewRule('');
-                                    }}
-                                    style={{
-                                        padding: '0 16px', borderRadius: 'var(--radius-sm)', border: 'none',
-                                        background: 'var(--color-primary)', color: '#fff', fontWeight: 700,
-                                        fontSize: 'var(--text-sm)', cursor: 'pointer',
-                                    }}
-                                >+</button>
-                            </div>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                                Press Enter or + to add. ✕ to remove. Saved when you click Save Changes.
-                            </div>
-                        </div>
 
                         {/* ── Section: Owner Contact Snapshot ────────────────────── */}
                         <div style={sHead}>Owner Contact (Snapshot)</div>
@@ -1339,7 +1286,96 @@ export default function PropertyDetailPage() {
                             })}
                         </div>
 
-                        {/* ── Section: Settlement Rules (Phase 968) ──────────────── */}
+
+
+                        {/* Save button — General property details */}
+                        <div style={{ marginTop: 'var(--space-6)', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button onClick={handleEditSave} disabled={editSaving} style={{
+                                padding: '10px 28px', borderRadius: 'var(--radius-md)',
+                                background: editSaving ? 'var(--color-border)' : 'var(--color-primary)',
+                                color: '#fff', border: 'none',
+                                cursor: editSaving ? 'not-allowed' : 'pointer',
+                                fontWeight: 700, fontSize: 'var(--text-sm)',
+                                boxShadow: editSaving ? 'none' : '0 2px 12px rgba(99,102,241,0.4)',
+                            }}>{editSaving ? 'Saving…' : 'Save Changes'}</button>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ============ SETTINGS / Rules ============ */}
+            {tab === 'settings' && subTab === 'rules' && !loading && (() => {
+                const iStyle: React.CSSProperties = {
+                    width: '100%', background: 'var(--color-surface-2)',
+                    border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                    padding: '9px 12px', color: 'var(--color-text)',
+                    fontSize: 'var(--text-sm)', outline: 'none', boxSizing: 'border-box' as const,
+                };
+                const lStyle: React.CSSProperties = {
+                    fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)',
+                    display: 'block', marginBottom: 6, fontWeight: 500,
+                    textTransform: 'uppercase' as const, letterSpacing: '0.04em',
+                };
+                const sHead: React.CSSProperties = {
+                    fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)',
+                    textTransform: 'uppercase' as const, letterSpacing: '0.07em',
+                    marginTop: 'var(--space-5)', marginBottom: 'var(--space-3)',
+                    paddingBottom: 'var(--space-2)', borderBottom: '1px solid var(--color-border)',
+                };
+                return (
+                    <div style={{ maxWidth: 680 }}>
+
+                        {/* ── House Rules ─────────────────────────────────────────── */}
+                        <div style={sHead}>House Rules</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                            {editHouseRules.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                    {editHouseRules.map((rule, idx) => (
+                                        <div key={idx} style={{
+                                            display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+                                            background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)',
+                                            padding: '6px 10px', border: '1px solid var(--color-border)',
+                                        }}>
+                                            <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{rule}</span>
+                                            <button
+                                                onClick={() => setEditHouseRules(prev => prev.filter((_, i) => i !== idx))}
+                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
+                                            >✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                                <input
+                                    value={newRule}
+                                    onChange={e => setNewRule(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter' && newRule.trim()) { setEditHouseRules(prev => [...prev, newRule.trim()]); setNewRule(''); } }}
+                                    placeholder="e.g. No smoking · No parties · Shoes off indoors"
+                                    style={{ flex: 1, ...iStyle }}
+                                />
+                                <button
+                                    onClick={() => { if (!newRule.trim()) return; setEditHouseRules(prev => [...prev, newRule.trim()]); setNewRule(''); }}
+                                    style={{ padding: '0 16px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer' }}
+                                >+</button>
+                            </div>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Press Enter or + to add. ✕ to remove.</div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-6)' }}>
+                            <button
+                                onClick={async () => {
+                                    setEditSaving(true);
+                                    try {
+                                        await apiFetch(`/properties/${propertyId}`, { method: 'PATCH', body: JSON.stringify({ house_rules: editHouseRules }) });
+                                        showNotice('✓ House rules saved');
+                                    } catch { showNotice('Save failed'); }
+                                    setEditSaving(false);
+                                }}
+                                disabled={editSaving}
+                                style={{ padding: '8px 22px', borderRadius: 'var(--radius-md)', background: editSaving ? 'var(--color-border)' : 'var(--color-primary)', color: '#fff', border: 'none', cursor: editSaving ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)', boxShadow: editSaving ? 'none' : '0 2px 10px rgba(99,102,241,0.35)' }}
+                            >{editSaving ? 'Saving…' : 'Save House Rules'}</button>
+                        </div>
+
+                        {/* ── Settlement Rules (Phase 968) ─────────────────────────── */}
                         <div style={sHead}>Settlement Rules</div>
                         <div style={{
                             background: 'var(--color-surface-2)',
@@ -1350,136 +1386,81 @@ export default function PropertyDetailPage() {
                             flexDirection: 'column',
                             gap: 'var(--space-5)',
                         }}>
-                            {!crLoaded && (
-                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Loading settlement rules…</div>
-                            )}
+                            {!crLoaded && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Loading settlement rules…</div>}
 
-                            {/* ── Deposit sub-section ── */}
+                            {/* Deposit */}
                             <div>
                                 <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>Deposit</div>
-
-                                {/* Toggle */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
-                                    <button
-                                        onClick={() => setCrDepositEnabled(v => !v)}
-                                        style={{
-                                            position: 'relative', width: 44, height: 24, borderRadius: 12,
-                                            background: crDepositEnabled ? 'var(--color-primary)' : 'var(--color-border)',
-                                            border: 'none', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
-                                        }}
-                                    >
-                                        <span style={{
-                                            position: 'absolute', top: 3, left: crDepositEnabled ? 22 : 3,
-                                            width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                                            transition: 'left 0.2s', display: 'block',
-                                        }} />
+                                    <button onClick={() => setCrDepositEnabled(v => !v)} style={{ position: 'relative', width: 44, height: 24, borderRadius: 12, background: crDepositEnabled ? 'var(--color-primary)' : 'var(--color-border)', border: 'none', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
+                                        <span style={{ position: 'absolute', top: 3, left: crDepositEnabled ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', display: 'block' }} />
                                     </button>
                                     <div>
-                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
-                                            {crDepositEnabled ? 'Deposit Required' : 'No Deposit'}
-                                        </div>
-                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                                            Worker must collect deposit at check-in when enabled
-                                        </div>
+                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>{crDepositEnabled ? 'Deposit Required' : 'No Deposit'}</div>
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Worker must collect deposit at check-in when enabled</div>
                                     </div>
                                 </div>
-
-                                {/* Amount + currency — shown only when enabled */}
                                 {crDepositEnabled && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 'var(--space-3)' }}>
                                             <div>
                                                 <label style={lStyle}>Deposit Amount</label>
-                                                <input style={iStyle} value={crDepositAmount}
-                                                    onChange={e => setCrDepositAmount(e.target.value)}
-                                                    type="number" min="0" step="1" placeholder="e.g. 5000" />
+                                                <input style={iStyle} value={crDepositAmount} onChange={e => setCrDepositAmount(e.target.value)} type="number" min="0" step="1" placeholder="e.g. 5000" />
                                             </div>
                                             <div>
                                                 <label style={lStyle}>Currency</label>
-                                                <select style={{ ...iStyle, cursor: 'pointer', minWidth: 90 }}
-                                                    value={crDepositCurrency} onChange={e => setCrDepositCurrency(e.target.value)}>
+                                                <select style={{ ...iStyle, cursor: 'pointer', minWidth: 90 }} value={crDepositCurrency} onChange={e => setCrDepositCurrency(e.target.value)}>
                                                     {['THB','USD','EUR','GBP','SGD','AUD','HKD','JPY','AED'].map(c => <option key={c} value={c}>{c}</option>)}
                                                 </select>
                                             </div>
                                         </div>
                                         <div>
                                             <label style={lStyle}>Notes (optional)</label>
-                                            <input style={iStyle} value={crDepositNotes}
-                                                onChange={e => setCrDepositNotes(e.target.value)}
-                                                placeholder="e.g. Refundable by bank transfer within 7 days" />
+                                            <input style={iStyle} value={crDepositNotes} onChange={e => setCrDepositNotes(e.target.value)} placeholder="e.g. Refundable by bank transfer within 7 days" />
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Divider */}
                             <div style={{ borderTop: '1px solid var(--color-border)' }} />
 
-                            {/* ── Electricity sub-section ── */}
+                            {/* Electricity Billing */}
                             <div>
                                 <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>Electricity Billing</div>
-
-                                {/* Toggle */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
-                                    <button
-                                        onClick={() => setCrElecEnabled(v => !v)}
-                                        style={{
-                                            position: 'relative', width: 44, height: 24, borderRadius: 12,
-                                            background: crElecEnabled ? 'var(--color-primary)' : 'var(--color-border)',
-                                            border: 'none', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
-                                        }}
-                                    >
-                                        <span style={{
-                                            position: 'absolute', top: 3, left: crElecEnabled ? 22 : 3,
-                                            width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                                            transition: 'left 0.2s', display: 'block',
-                                        }} />
+                                    <button onClick={() => setCrElecEnabled(v => !v)} style={{ position: 'relative', width: 44, height: 24, borderRadius: 12, background: crElecEnabled ? 'var(--color-primary)' : 'var(--color-border)', border: 'none', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
+                                        <span style={{ position: 'absolute', top: 3, left: crElecEnabled ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', display: 'block' }} />
                                     </button>
                                     <div>
-                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
-                                            {crElecEnabled ? 'Electricity Billed to Guest' : 'Electricity Not Billed'}
-                                        </div>
-                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                                            Worker captures meter readings at check-in/out when enabled
-                                        </div>
+                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>{crElecEnabled ? 'Electricity Billed to Guest' : 'Electricity Not Billed'}</div>
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Worker captures meter readings at check-in/out when enabled</div>
                                     </div>
                                 </div>
-
-                                {/* Rate + currency — shown only when enabled */}
                                 {crElecEnabled && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 'var(--space-3)' }}>
                                             <div>
                                                 <label style={lStyle}>Rate per kWh</label>
-                                                <input style={iStyle} value={crElecRate}
-                                                    onChange={e => setCrElecRate(e.target.value)}
-                                                    type="number" min="0" step="0.01" placeholder="e.g. 8.50" />
+                                                <input style={iStyle} value={crElecRate} onChange={e => setCrElecRate(e.target.value)} type="number" min="0" step="0.01" placeholder="e.g. 8.50" />
                                             </div>
                                             <div>
                                                 <label style={lStyle}>Currency</label>
-                                                <select style={{ ...iStyle, cursor: 'pointer', minWidth: 90 }}
-                                                    value={crElecCurrency} onChange={e => setCrElecCurrency(e.target.value)}>
+                                                <select style={{ ...iStyle, cursor: 'pointer', minWidth: 90 }} value={crElecCurrency} onChange={e => setCrElecCurrency(e.target.value)}>
                                                     {['THB','USD','EUR','GBP','SGD','AUD','HKD','JPY','AED'].map(c => <option key={c} value={c}>{c}</option>)}
                                                 </select>
                                             </div>
                                         </div>
                                         <div>
                                             <label style={lStyle}>Notes (optional)</label>
-                                            <input style={iStyle} value={crElecNotes}
-                                                onChange={e => setCrElecNotes(e.target.value)}
-                                                placeholder="e.g. Bill split based on days occupied" />
+                                            <input style={iStyle} value={crElecNotes} onChange={e => setCrElecNotes(e.target.value)} placeholder="e.g. Bill split based on days occupied" />
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Save Settlement Rules — separate from main property save */}
                             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)' }}>
                                 <button
                                     onClick={async () => {
-                                        if (!crDepositEnabled && !crElecEnabled) {
-                                            // Both off is valid — save zeros
-                                        }
                                         setCrSaving(true);
                                         try {
                                             await apiFetch(`/admin/properties/${propertyId}/charge-rules`, {
@@ -1500,37 +1481,17 @@ export default function PropertyDetailPage() {
                                         setCrSaving(false);
                                     }}
                                     disabled={crSaving}
-                                    style={{
-                                        padding: '9px 22px', borderRadius: 'var(--radius-md)',
-                                        background: crSaving ? 'var(--color-border)' : 'var(--color-primary)',
-                                        color: '#fff', border: 'none',
-                                        cursor: crSaving ? 'not-allowed' : 'pointer',
-                                        fontWeight: 700, fontSize: 'var(--text-sm)',
-                                        boxShadow: crSaving ? 'none' : '0 2px 12px rgba(99,102,241,0.35)',
-                                    }}
-                                >
-                                    {crSaving ? 'Saving…' : 'Save Settlement Rules'}
-                                </button>
+                                    style={{ padding: '9px 22px', borderRadius: 'var(--radius-md)', background: crSaving ? 'var(--color-border)' : 'var(--color-primary)', color: '#fff', border: 'none', cursor: crSaving ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)', boxShadow: crSaving ? 'none' : '0 2px 12px rgba(99,102,241,0.35)' }}
+                                >{crSaving ? 'Saving…' : 'Save Settlement Rules'}</button>
                             </div>
                         </div>
 
-                        {/* Save button (main property details) */}
-                        <div style={{ marginTop: 'var(--space-6)', display: 'flex', justifyContent: 'flex-end' }}>
-                            <button onClick={handleEditSave} disabled={editSaving} style={{
-                                padding: '10px 28px', borderRadius: 'var(--radius-md)',
-                                background: editSaving ? 'var(--color-border)' : 'var(--color-primary)',
-                                color: '#fff', border: 'none',
-                                cursor: editSaving ? 'not-allowed' : 'pointer',
-                                fontWeight: 700, fontSize: 'var(--text-sm)',
-                                boxShadow: editSaving ? 'none' : '0 2px 12px rgba(99,102,241,0.4)',
-                            }}>{editSaving ? 'Saving…' : 'Save Changes'}</button>
-                        </div>
                     </div>
                 );
             })()}
 
-            {/* ============ TAB 8: Gallery — Marketing Photos (Phase 844) ============ */}
-            {tab === 'gallery' && !loading && (
+            {/* ============ MEDIA / Gallery ============ */}
+            {tab === 'media' && subTab === 'gallery' && !loading && (
                 <div>
                     {/* Phase 844 v2: Real file upload for gallery */}
                     <div style={{
@@ -1711,8 +1672,8 @@ export default function PropertyDetailPage() {
                 </div>
             )}
 
-            {/* ============ TAB 9: OTA Settings ============ */}
-            {tab === 'ota' && !loading && (
+            {/* ============ SETTINGS / Integrations ============ */}
+            {tab === 'settings' && subTab === 'integrations' && !loading && (
                 <OtaSettingsTab propertyId={propertyId} />
             )}
         </div>
