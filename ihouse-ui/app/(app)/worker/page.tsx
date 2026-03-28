@@ -102,9 +102,16 @@ function resolveWorkerRole(): WorkerRoleKey | 'admin' | 'checkin_checkout' | nul
 
         // For role=worker, resolve from the real stored sub-role
         if (outerRole === 'worker') {
+            // Phase 989: Check for combined checkin+checkout first
+            const workerRolesArr: string[] = (p.worker_roles as string[] | undefined) ?? [];
+            const rolesSet = new Set(workerRolesArr.map((r: string) => r.toLowerCase()));
+            if (rolesSet.has('checkin') && rolesSet.has('checkout')) {
+                return 'checkin_checkout';
+            }
+
             const subRole = (
                 (p.worker_role as string) ||
-                ((p.worker_roles as string[] | undefined) ?? [])[0] ||
+                (workerRolesArr[0]) ||
                 ''
             ).toLowerCase();
 

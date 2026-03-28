@@ -241,7 +241,12 @@ async def login(body: LoginRequest, request: Request) -> JSONResponse:
     # Phase 948g: Include worker_roles so the frontend can resolve the
     # worker's specific sub-role (cleaner/checkin/checkout/maintenance).
     worker_roles = tenant_info.get("worker_roles") or []
-    effective_worker_role = tenant_info.get("worker_role") or (worker_roles[0] if worker_roles else None)
+    # Phase 989: Detect combined checkin+checkout → emit 'checkin_checkout'
+    _wr_set = {r.lower() for r in worker_roles}
+    if 'checkin' in _wr_set and 'checkout' in _wr_set:
+        effective_worker_role = 'checkin_checkout'
+    else:
+        effective_worker_role = tenant_info.get("worker_role") or (worker_roles[0] if worker_roles else None)
 
     now = int(time.time())
     payload = {
@@ -430,8 +435,12 @@ async def google_callback(body: GoogleCallbackRequest, request: Request) -> JSON
     # worker's specific sub-role (cleaner/checkin/checkout/maintenance).
     # The outer `role` stays 'worker' for access-control purposes.
     worker_roles = tenant_info.get("worker_roles") or []
-    # Derive effective sub-role: use worker_role (singular) if set, else first element of worker_roles
-    effective_worker_role = tenant_info.get("worker_role") or (worker_roles[0] if worker_roles else None)
+    # Phase 989: Detect combined checkin+checkout → emit 'checkin_checkout'
+    _wr_set2 = {r.lower() for r in worker_roles}
+    if 'checkin' in _wr_set2 and 'checkout' in _wr_set2:
+        effective_worker_role = 'checkin_checkout'
+    else:
+        effective_worker_role = tenant_info.get("worker_role") or (worker_roles[0] if worker_roles else None)
 
     payload = {
         "sub": user_id,
