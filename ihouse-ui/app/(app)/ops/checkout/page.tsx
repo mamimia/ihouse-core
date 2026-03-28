@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/staffApi';
+import { apiFetch, getToken, API_BASE as BASE } from '@/lib/staffApi';
 import { useCountdown } from '@/lib/useCountdown';
 import { CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
@@ -239,11 +239,16 @@ export default function MobileCheckoutPage() {
             const taskRes = await apiFetch<any>('/worker/tasks?worker_role=CHECKOUT&limit=100');
             const taskList = taskRes.tasks || taskRes.data?.tasks || taskRes.data || [];
             const rawTasks: CheckoutTask[] = Array.isArray(taskList) ? taskList : [];
+            // Phase 989: Exclude COMPLETED/CANCELED tasks — they must not appear in the active list
+            const activeTasks = rawTasks.filter(t => {
+                const s = (t.status || '').toUpperCase();
+                return s !== 'COMPLETED' && s !== 'CANCELED';
+            });
 
             // Phase 886/889: Enrich each task with property + booking data.
             // Property: display name, GPS location.
             // Booking: check_in, check_out, guest_name, guest_count → enables nights.
-            const enriched = await Promise.all(rawTasks.map(async (t) => {
+            const enriched = await Promise.all(activeTasks.map(async (t) => {
                 let result: CheckoutTask = { ...t, property_name: t.property_id };
 
                 // Enrich with property data
@@ -515,6 +520,45 @@ export default function MobileCheckoutPage() {
         }
     };
 
+    /**
+     * Phase 989: forceCompleteTask — walks task through ack → start → complete.
+     * Each step catches INVALID_TRANSITION (task already past that state)
+     * and continues. Mirrors the checkin wizard pattern.
+     */
+    async function forceCompleteTask(taskId: string): Promise<void> {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const tok = getToken();
+        if (tok) headers['Authorization'] = `Bearer ${tok}`;
+
+        const patch = async (endpoint: string, body?: object) => {
+            try {
+                const r = await fetch(`${BASE}${endpoint}`, {
+                    method: 'PATCH',
+                    headers,
+                    body: body ? JSON.stringify(body) : undefined,
+                });
+                return r.status;
+            } catch {
+                return 0;
+            }
+        };
+
+        // Step 1: acknowledge (PENDING → ACKNOWLEDGED). 422 = already past, fine.
+        const ackStatus = await patch(`/worker/tasks/${taskId}/acknowledge`);
+        console.log(`[checkout] task ${taskId} ack → HTTP ${ackStatus}`);
+
+        // Step 2: start (ACKNOWLEDGED → IN_PROGRESS). 422 = already past, fine.
+        const startStatus = await patch(`/worker/tasks/${taskId}/start`);
+        console.log(`[checkout] task ${taskId} start → HTTP ${startStatus}`);
+
+        // Step 3: complete (IN_PROGRESS → COMPLETED). This must succeed.
+        const doneStatus = await patch(`/worker/tasks/${taskId}/complete`, { notes: 'Check-out completed via wizard' });
+        console.log(`[checkout] task ${taskId} complete → HTTP ${doneStatus}`);
+        if (doneStatus < 200 || doneStatus >= 300) {
+            console.warn(`[checkout] task ${taskId} complete returned ${doneStatus}`);
+        }
+    }
+
     // Step 4: Complete checkout via POST /bookings/{id}/checkout
     const completeCheckout = async () => {
         if (!selected) return;
@@ -523,6 +567,14 @@ export default function MobileCheckoutPage() {
             await apiFetch<any>(`/bookings/${bookingId}/checkout`, {
                 method: 'POST',
             });
+
+            // Phase 989: Force CHECKOUT_VERIFY task to COMPLETED
+            // This is the same pattern used by the checkin wizard.
+            const taskId = selectedTask?.task_id;
+            if (taskId) {
+                await forceCompleteTask(taskId);
+            }
+
             showNotice('✅ Check-out completed');
             setStep('success');
         } catch {
@@ -644,7 +696,7 @@ export default function MobileCheckoutPage() {
             {/* ========== STEP 1: Inspection ========== */}
             {step === 'inspection' && selected && (
                 <div style={card}>
-                    <StepHeader step={1} total={4} title="Property Inspection" onBack={goBack} />
+                    <StepHeader step={1} total={5} title="Property Inspection" onBack={goBack} />
                     <InfoRow label="Guest" value={selected.guest_name} />
                     <InfoRow label="Guests" value={selected.guest_count ? `${selected.guest_count} guests` : undefined} />
                     <InfoRow label="Property" value={(selectedTask?.property_name) || selected.property_id} />
@@ -778,7 +830,7 @@ export default function MobileCheckoutPage() {
             {/* ========== STEP 3: Issue Flagging ========== */}
             {step === 'issues' && selected && (
                 <div style={card}>
-                    <StepHeader step={2} total={4} title="Report Issues" onBack={goBack} />
+                    <StepHeader step={3} total={5} title="Report Issues" onBack={goBack} />
 
                     {issues.length > 0 && (
                         <div style={{ marginBottom: 'var(--space-4)' }}>
@@ -840,7 +892,7 @@ export default function MobileCheckoutPage() {
             {/* ========== STEP 3: Deposit Resolution ========== */}
             {step === 'deposit' && selected && (
                 <div style={card}>
-                    <StepHeader step={3} total={4} title="Deposit Resolution" onBack={goBack} />
+                    <StepHeader step={4} total={5} title="Deposit Resolution" onBack={goBack} />
 
                     {selected.deposit_amount ? (
                         <>
@@ -919,7 +971,7 @@ export default function MobileCheckoutPage() {
             {/* ========== STEP 4: Complete ========== */}
             {step === 'complete' && selected && (
                 <div style={card}>
-                    <StepHeader step={4} total={4} title="Complete Check-out" onBack={goBack} />
+                    <StepHeader step={5} total={5} title="Complete Check-out" onBack={goBack} />
 
                     <div style={{
                         padding: 'var(--space-6)', textAlign: 'center',
