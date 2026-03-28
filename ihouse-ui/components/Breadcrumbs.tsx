@@ -58,6 +58,11 @@ export default function Breadcrumbs() {
     const pathname = usePathname();
     if (!pathname || pathname === '/dashboard') return null;
 
+    // Suppress breadcrumbs on mobile staff surfaces — they have their own
+    // MobileStaffShell and breadcrumb links can leak to manager-level routes
+    const MOBILE_STAFF_PREFIXES = ['/worker', '/ops/cleaner', '/ops/checkin', '/ops/checkout', '/ops/maintenance'];
+    if (MOBILE_STAFF_PREFIXES.some(p => pathname.startsWith(p))) return null;
+
     const segments = pathname.split('/').filter(Boolean);
     if (segments.length <= 1) return null;
 

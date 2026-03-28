@@ -396,15 +396,41 @@ export default function MobileCheckinPage() {
                         deposit_required: false,
                         operator_note: t.description || undefined,
                         _needs_booking_enrichment: true,
+                        task_id: t.task_id,
+                        _task_status: t.status,
                     });
                 } else {
                     const existing = bookingMap.get(bId);
                     if (existing) {
                         existing.status = existing.status || t.status || 'Upcoming';
                         existing.task_id = t.task_id;
+                        existing._task_status = t.status;
                     }
                 }
             });
+
+            // ── Phase 979e self-healing: auto-complete orphaned CHECKIN tasks ──
+            // If a booking is already checked_in but the task is still active,
+            // the previous (buggy) check-in flow left the task orphaned.
+            // Fire forceCompleteTask in background to heal the DB state.
+            const healPromises: Promise<void>[] = [];
+            bookingMap.forEach((b) => {
+                const bStatus = (b.status || '').toLowerCase();
+                const tStatus = (b._task_status || '').toUpperCase();
+                const taskId = b.task_id;
+                if (
+                    taskId &&
+                    bStatus === 'checked_in' &&
+                    tStatus !== 'COMPLETED' && tStatus !== 'CANCELED'
+                ) {
+                    console.log(`[checkin-heal] booking ${b.booking_id} is checked_in but task ${taskId} is ${tStatus} — auto-completing`);
+                    healPromises.push(forceCompleteTask(taskId));
+                }
+            });
+            if (healPromises.length > 0) {
+                // Fire and forget — don't block the UI load
+                Promise.all(healPromises).catch(() => {});
+            }
 
             const enrichPromises: Promise<void>[] = [];
             bookingMap.forEach((b, bId) => {
