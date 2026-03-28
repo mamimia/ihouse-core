@@ -377,6 +377,7 @@ async def checkin_booking(
         now_ms = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
         db.table("booking_state").update({
             "status": "checked_in",
+            "checked_in_at": now,  # Phase 989c: persist timestamp for dossier
             "updated_at_ms": now_ms,
         }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
@@ -489,6 +490,7 @@ async def checkout_booking(
         now_ms = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
         db.table("booking_state").update({
             "status": "checked_out",
+            "checked_out_at": now,  # Phase 989c: persist timestamp for dossier
             "updated_at_ms": now_ms,
         }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 

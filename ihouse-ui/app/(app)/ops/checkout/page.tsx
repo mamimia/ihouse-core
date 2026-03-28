@@ -378,10 +378,10 @@ export default function MobileCheckoutPage() {
         }
         const bookingId = getBookingId(selected);
         try {
-            await apiFetch<any>(`/worker/bookings/${bookingId}/checkout-settlement`, {
+            await apiFetch<any>(`/worker/bookings/${bookingId}/closing-meter`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    closing_meter_reading: reading,
+                    meter_reading: reading,
                     ocr_result_id: meterFields?.ocr_result_id ?? ocrClosingMeterResultId ?? undefined,
                 }),
             });
