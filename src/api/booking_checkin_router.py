@@ -517,7 +517,9 @@ async def checkout_booking(
             "property_id": booking.get("property_id"),
             "cleaning_tasks_created": cleaning_task_count,
         })
-        _write_audit_event_table(db, tenant_id, tenant_id, "booking.checkout", "booking", booking_id, {
+        # Phase 989d: Use actual user_id for worker attribution in dossier
+        checkout_actor = identity.get("user_id") or tenant_id
+        _write_audit_event_table(db, tenant_id, checkout_actor, "booking.checkout", "booking", booking_id, {
             "previous_status": current_status,
             "property_id": booking.get("property_id"),
             "cleaning_tasks_created": cleaning_task_count,

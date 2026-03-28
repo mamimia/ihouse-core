@@ -258,6 +258,35 @@ async def get_guest_dossier(
             except Exception as exc:
                 logger.warning("dossier: photos fetch failed: %s", exc)
 
+        # ── 5b. Checkout photos from checkout_photos table (Phase 692 uploads) ──
+        #     These are real uploaded files stored in Supabase Storage.
+        #     Merge them into photos_by_booking with purpose=checkout_condition.
+        if booking_ids:
+            try:
+                co_photos_res = (
+                    db.table("checkout_photos")
+                    .select("id, booking_id, room_label, photo_url, notes, taken_by, created_at")
+                    .in_("booking_id", booking_ids)
+                    .order("created_at", desc=False)
+                    .execute()
+                )
+                for ph in (co_photos_res.data or []):
+                    bid = ph.get("booking_id")
+                    if bid:
+                        if bid not in photos_by_booking:
+                            photos_by_booking[bid] = []
+                        photos_by_booking[bid].append({
+                            "id":           ph.get("id"),
+                            "room_label":   ph.get("room_label"),
+                            "purpose":      "checkout_condition",
+                            "storage_path": ph.get("photo_url"),
+                            "captured_at":  ph.get("created_at"),
+                            "uploaded_by":  ph.get("taken_by"),
+                            "notes":        ph.get("notes"),
+                        })
+            except Exception as exc:
+                logger.warning("dossier: checkout_photos fetch failed: %s", exc)
+
         # ── 6. Portal / guest token per booking ────────────────────────
         portal_by_booking: dict[str, dict] = {}
         if booking_ids:

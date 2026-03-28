@@ -80,7 +80,7 @@ router = APIRouter(tags=["checkout-settlement"])
 
 _WRITE_ROLES     = frozenset({"admin", "ops", "worker", "checkin", "checkout"})
 _DEDUCT_ROLES    = frozenset({"admin", "ops", "checkout"})
-_FINALIZE_ROLES  = frozenset({"admin", "ops"})
+_FINALIZE_ROLES  = frozenset({"admin", "ops", "worker", "checkout"})
 _VOID_ROLES      = frozenset({"admin"})
 _READ_ADMIN      = frozenset({"admin", "manager"})
 
