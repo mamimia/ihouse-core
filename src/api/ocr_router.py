@@ -479,6 +479,7 @@ async def get_provider_config(
     """
     Admin: get all OCR provider configs for the tenant.
     API keys are MASKED in the response (INV-OCR-03).
+    Returns has_endpoint/has_api_key booleans so Admin UI can show configured state.
     """
     tenant_id = identity.get("tenant_id", "")
     role = identity.get("role", "")
@@ -489,13 +490,170 @@ async def get_provider_config(
     db = _get_supabase_client()
     resp = (
         db.table("ocr_provider_config")
-        .select("id, provider_name, enabled, priority, is_primary, is_fallback, last_test_at, last_test_result, created_at, updated_at")
+        .select("*")
         .eq("tenant_id", tenant_id)
         .order("priority", desc=False)
         .execute()
     )
-    # Note: config (with api_key) is deliberately NOT selected — masked at DB query level
-    return make_success_response(resp.data or [])
+
+    # Sanitize: mask api_key, show has_endpoint / has_api_key booleans
+    configs = []
+    for row in (resp.data or []):
+        config_json = row.get("config") or {}
+        if isinstance(config_json, str):
+            import json as _json
+            try:
+                config_json = _json.loads(config_json)
+            except Exception:
+                config_json = {}
+
+        api_key = config_json.get("api_key", "")
+        endpoint = config_json.get("endpoint", "")
+
+        sanitized = {
+            "id": row.get("id"),
+            "provider_name": row.get("provider_name"),
+            "enabled": row.get("enabled", False),
+            "priority": row.get("priority", 99),
+            "is_primary": row.get("is_primary", False),
+            "is_fallback": row.get("is_fallback", False),
+            "last_test_at": row.get("last_test_at"),
+            "last_test_result": row.get("last_test_result"),
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+            # Masked config info — never expose raw values
+            "has_endpoint": bool(endpoint),
+            "has_api_key": bool(api_key),
+            "endpoint_preview": (endpoint[:30] + "…") if len(endpoint) > 30 else endpoint if endpoint else "",
+            "api_key_preview": (api_key[:4] + "****" + api_key[-4:]) if len(api_key) >= 8 else ("****" if api_key else ""),
+        }
+        configs.append(sanitized)
+
+    return make_success_response(configs)
+
+
+# ─── PUT /admin/ocr/provider-config/{provider_name} ─────────────
+
+@router.put("/admin/ocr/provider-config/{provider_name}")
+async def upsert_provider_config(
+    provider_name: str,
+    body: dict,
+    identity: dict = Depends(jwt_identity),
+):
+    """
+    Admin: create or update an OCR provider config.
+
+    Body fields:
+        enabled      — bool
+        priority     — int (lower = higher priority)
+        is_primary   — bool
+        is_fallback  — bool
+        config       — { endpoint, api_key, timeout } (sensitive — stored in JSONB)
+
+    If config.api_key is "****" or empty, the existing key is preserved
+    (allows saving non-credential fields without rotating the key).
+
+    INV-OCR-03: credentials are stored in DB only, never logged, never
+    returned except as masked previews.
+    """
+    tenant_id = identity.get("tenant_id", "")
+    role = identity.get("role", "")
+
+    if role not in ("admin", "manager"):
+        return make_error_response(403, ErrorCode.FORBIDDEN, "Admin or manager role required")
+
+    _KNOWN_PROVIDERS = {"azure_document_intelligence", "local_mrz", "local_meter", "local_tesseract"}
+    if provider_name not in _KNOWN_PROVIDERS:
+        return make_error_response(422, "VALIDATION_ERROR",
+                                   f"Unknown provider '{provider_name}'. Known: {', '.join(sorted(_KNOWN_PROVIDERS))}")
+
+    now = datetime.now(timezone.utc).isoformat()
+    db = _get_supabase_client()
+
+    # Check if row exists for this tenant + provider
+    existing_resp = (
+        db.table("ocr_provider_config")
+        .select("id, config")
+        .eq("tenant_id", tenant_id)
+        .eq("provider_name", provider_name)
+        .maybe_single()
+        .execute()
+    )
+    existing = existing_resp.data
+
+    # Build config JSONB — preserve existing api_key if not provided
+    incoming_config = body.get("config") or {}
+    if existing:
+        old_config = existing.get("config") or {}
+        if isinstance(old_config, str):
+            import json as _json
+            try:
+                old_config = _json.loads(old_config)
+            except Exception:
+                old_config = {}
+        # Preserve existing api_key if incoming is masked or empty
+        new_api_key = incoming_config.get("api_key", "")
+        if not new_api_key or new_api_key == "****" or "****" in new_api_key:
+            incoming_config["api_key"] = old_config.get("api_key", "")
+        # Preserve existing endpoint if not provided
+        if not incoming_config.get("endpoint"):
+            incoming_config["endpoint"] = old_config.get("endpoint", "")
+
+    row_data = {
+        "enabled": bool(body.get("enabled", False)),
+        "priority": int(body.get("priority", 99)),
+        "is_primary": bool(body.get("is_primary", False)),
+        "is_fallback": bool(body.get("is_fallback", False)),
+        "config": incoming_config,
+        "updated_at": now,
+    }
+
+    if existing:
+        # Update
+        db.table("ocr_provider_config").update(row_data).eq("id", existing["id"]).execute()
+        logger.info("OCR config updated: tenant=%s provider=%s", tenant_id, provider_name)
+    else:
+        # Insert
+        row_data["tenant_id"] = tenant_id
+        row_data["provider_name"] = provider_name
+        row_data["created_at"] = now
+        db.table("ocr_provider_config").insert(row_data).execute()
+        logger.info("OCR config created: tenant=%s provider=%s", tenant_id, provider_name)
+
+    return make_success_response({
+        "provider_name": provider_name,
+        "saved": True,
+    })
+
+
+# ─── DELETE /admin/ocr/provider-config/{provider_name} ───────────
+
+@router.delete("/admin/ocr/provider-config/{provider_name}")
+async def delete_provider_config(
+    provider_name: str,
+    identity: dict = Depends(jwt_identity),
+):
+    """
+    Admin: remove an OCR provider config for this tenant.
+    This disables the provider entirely — it won't be used in the fallback chain.
+    """
+    tenant_id = identity.get("tenant_id", "")
+    role = identity.get("role", "")
+
+    if role not in ("admin", "manager"):
+        return make_error_response(403, ErrorCode.FORBIDDEN, "Admin or manager role required")
+
+    db = _get_supabase_client()
+    db.table("ocr_provider_config").delete().eq(
+        "tenant_id", tenant_id
+    ).eq("provider_name", provider_name).execute()
+
+    logger.info("OCR config deleted: tenant=%s provider=%s", tenant_id, provider_name)
+
+    return make_success_response({
+        "provider_name": provider_name,
+        "deleted": True,
+    })
 
 
 # ─── GET /worker/ocr/prefill/{booking_id}/{capture_type} ─────────
