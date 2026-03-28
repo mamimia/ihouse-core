@@ -25,6 +25,7 @@ import MobileStaffShell from '@/components/MobileStaffShell';
 import WorkerTaskCard from '@/components/WorkerTaskCard';
 import WorkerHeader from '@/components/WorkerHeader';
 import QRCode from 'qrcode';
+import OcrCaptureFlow, { type IdentityFields, type MeterFields } from '@/components/OcrCaptureFlow';
 
 type Booking = {
     booking_ref?: string;
@@ -266,6 +267,9 @@ export default function MobileCheckinPage() {
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
+    // Phase 988 — OCR audit linkage
+    const [ocrIdentityResultId, setOcrIdentityResultId] = useState<string | null>(null);
+    const [ocrMeterResultId, setOcrMeterResultId] = useState<string | null>(null);
 
     // Phase 971 — new wizard state
     const [chargeConfig, setChargeConfig] = useState<ChargeConfig>({ deposit_enabled: false, deposit_amount: null, deposit_currency: 'THB', electricity_enabled: false, electricity_rate_kwh: null });
@@ -571,54 +575,7 @@ export default function MobileCheckinPage() {
         if (idx < flow.length - 1) setStep(flow[idx + 1]);
     };
 
-    // ── D-1: Save identity fields + document photo path to guest record ──
-    // Guest name is always mandatory. Document photo is captured via camera UI
-    // and uploaded to Supabase Storage (/worker/documents/upload) — the
-    // storage path is sent as document_photo_url. If no photo was captured,
-    // the field is omitted (backend accepts it as optional).
-    const savePassport = async () => {
-        if (!selected) return;
-        const bookingId = getBookingId(selected);
-
-        // Full name is always mandatory (document number recommended but not blocking)
-        if (!passportName.trim()) {
-            showNotice('⚠️ Guest name is required');
-            return;
-        }
-
-        try {
-            // Phase 949d — save-guest-identity: creates/updates guest,
-            // links to booking, backfills booking_state.guest_name
-            const res = await apiFetch<any>('/worker/checkin/save-guest-identity', {
-                method: 'POST',
-                body: JSON.stringify({
-                    booking_id: bookingId,
-                    full_name: passportName.trim(),
-                    document_type: documentType,
-                    document_number: passportNumber.trim() || undefined,
-                    nationality: nationality.trim() || undefined,
-                    date_of_birth: dateOfBirth || undefined,
-                    passport_expiry: passportExpiry || undefined,
-                    document_photo_url: documentStoragePath || undefined,
-                }),
-            });
-
-            // Update local booking state with the persisted guest identity
-            if (res.guest_id) {
-                setSelected(prev => prev ? { ...prev, guest_id: res.guest_id, guest_name: res.full_name } : prev);
-            }
-
-            const actionLabel = res.action === 'matched' ? 'Returning guest matched' : 'Guest record created';
-            showNotice(`✅ ${actionLabel} — identity saved`);
-        } catch (err) {
-            console.error('save-guest-identity failed', err);
-            showNotice('⚠️ Could not save guest identity. Please try again.');
-            return; // Don't advance step on failure
-        }
-        nextStep();
-    };
-
-    // ── Phase 971: Persist deposit + meter via checkin-settlement API ──
+    // ── Phase 971: Persist deposit via checkin-settlement API ──
     const collectDeposit = async () => {
         if (!selected) { nextStep(); return; }
         if (!chargeConfig.deposit_enabled) { nextStep(); return; }
@@ -641,13 +598,71 @@ export default function MobileCheckinPage() {
         nextStep();
     };
 
-    // ── Phase 971: Save meter reading ──
-    const saveMeterReading = async () => {
+
+    // Called by OcrCaptureFlow.onComplete with confirmed/corrected fields.
+    const savePassport = async (identityFields?: IdentityFields) => {
+        if (!selected) return;
+        const bookingId = getBookingId(selected);
+
+        const name = (identityFields?.full_name ?? passportName).trim();
+        if (!name) {
+            showNotice('⚠️ Guest name is required');
+            return;
+        }
+
+        // If called from OcrCaptureFlow, sync state for summary display
+        if (identityFields) {
+            setPassportName(identityFields.full_name);
+            setPassportNumber(identityFields.document_number);
+            setDocumentType(identityFields.document_type);
+            setDateOfBirth(identityFields.date_of_birth);
+            setPassportExpiry(identityFields.passport_expiry);
+            setNationality(identityFields.nationality);
+            if (identityFields.ocr_result_id) setOcrIdentityResultId(identityFields.ocr_result_id);
+        }
+
+        try {
+            const res = await apiFetch<any>('/worker/checkin/save-guest-identity', {
+                method: 'POST',
+                body: JSON.stringify({
+                    booking_id: bookingId,
+                    full_name: name,
+                    document_type: identityFields?.document_type ?? documentType,
+                    document_number: (identityFields?.document_number ?? passportNumber).trim() || undefined,
+                    nationality: (identityFields?.nationality ?? nationality).trim() || undefined,
+                    date_of_birth: (identityFields?.date_of_birth ?? dateOfBirth) || undefined,
+                    passport_expiry: (identityFields?.passport_expiry ?? passportExpiry) || undefined,
+                    document_photo_url: documentStoragePath || undefined,
+                    ocr_result_id: identityFields?.ocr_result_id ?? ocrIdentityResultId ?? undefined,
+                }),
+            });
+
+            if (res.guest_id) {
+                setSelected(prev => prev ? { ...prev, guest_id: res.guest_id, guest_name: res.full_name } : prev);
+            }
+
+            const actionLabel = res.action === 'matched' ? 'Returning guest matched' : 'Guest record created';
+            showNotice(`✅ ${actionLabel} — identity saved`);
+        } catch (err) {
+            console.error('save-guest-identity failed', err);
+            showNotice('⚠️ Could not save guest identity. Please try again.');
+            return;
+        }
+        nextStep();
+    };
+
+    // ── Phase 971 + 988: Save meter reading (with OCR audit linkage) ──
+    const saveMeterReading = async (meterFields?: MeterFields) => {
         if (!selected) { nextStep(); return; }
-        const reading = parseFloat(meterReading);
+        const val = meterFields?.meter_value ?? meterReading;
+        const reading = parseFloat(val);
         if (isNaN(reading) || reading <= 0) {
             showNotice('⚠️ Please enter a valid meter reading');
             return;
+        }
+        if (meterFields) {
+            setMeterReading(meterFields.meter_value);
+            if (meterFields.ocr_result_id) setOcrMeterResultId(meterFields.ocr_result_id);
         }
         const bookingId = getBookingId(selected);
         try {
@@ -656,7 +671,8 @@ export default function MobileCheckinPage() {
                 body: JSON.stringify({
                     meter_reading: reading,
                     meter_photo_url: meterStoragePath || undefined,
-                    deposit_collected: false, // meter-only submission
+                    deposit_collected: false,
+                    ocr_result_id: meterFields?.ocr_result_id ?? ocrMeterResultId ?? undefined,
                 }),
             });
             showNotice('⚡ Meter reading saved');
@@ -1104,74 +1120,26 @@ export default function MobileCheckinPage() {
                 </div>
             )}
 
-            {/* ========== STEP 3: Electricity Meter (conditional, Phase 971) ========== */}
+            {/* ========== STEP 3: Electricity Meter Capture (Phase 971 + 988 OCR) ========== */}
             {step === 'meter' && selected && (
                 <div style={card}>
                     <StepHeader step={getStepNumber('meter')} total={getStepTotal()} title="Electricity Meter" onBack={goBack} />
                     <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)' }}>
                         Capture the opening meter reading for electricity billing.
                     </div>
-                    {/* Meter photo capture */}
-                    <div style={{
-                        padding: 'var(--space-3)', border: `2px dashed ${meterPhotoUrl ? 'transparent' : 'var(--color-border)'}`,
-                        borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: 'var(--space-4)',
-                        background: meterPhotoUrl ? '#000' : 'transparent', position: 'relative', overflow: 'hidden',
-                    }}>
-                        {meterPhotoUrl ? (
-                            <div style={{ position: 'relative' }}>
-                                <img src={meterPhotoUrl} alt="Meter" style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} />
-                                <button onClick={() => { setMeterPhotoUrl(null); setMeterStoragePath(null); }} style={{
-                                    position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)',
-                                    color: '#fff', border: 'none', borderRadius: 16, padding: '4px 12px', fontSize: '11px', cursor: 'pointer',
-                                }}>Retake</button>
-                                {meterStoragePath && (
-                                    <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(63,185,80,0.9)', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: '10px', fontWeight: 600 }}>
-                                        ✓ Stored
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <label style={{ cursor: 'pointer', display: 'block' }}>
-                                <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>⚡📸</div>
-                                <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text)' }}>Capture Meter Photo</div>
-                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 4 }}>Tap to open camera</div>
-                                <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-                                    onChange={async (e) => {
-                                        if (!e.target.files?.[0]) return;
-                                        const file = e.target.files[0];
-                                        const reader = new FileReader();
-                                        reader.onload = async () => {
-                                            const dataUrl = reader.result as string;
-                                            setMeterPhotoUrl(dataUrl);
-                                            setIsUploading(true);
-                                            try {
-                                                const bookingId = selected ? getBookingId(selected) : undefined;
-                                                const res = await apiFetch<any>('/worker/documents/upload', {
-                                                    method: 'POST',
-                                                    body: JSON.stringify({ image_base64: dataUrl, side: 'meter_reading', booking_id: bookingId }),
-                                                });
-                                                if (res.storage_path) { setMeterStoragePath(res.storage_path); showNotice('✅ Meter photo stored'); }
-                                            } catch { showNotice('⚠️ Upload failed'); }
-                                            finally { setIsUploading(false); }
-                                        };
-                                        reader.readAsDataURL(file);
-                                    }}
-                                />
-                            </label>
-                        )}
-                    </div>
-                    {/* Reading input */}
-                    <div style={{ marginBottom: 'var(--space-3)' }}>
-                        <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Meter Reading (kWh) *</label>
-                        <input type="number" value={meterReading} onChange={e => setMeterReading(e.target.value)}
-                            placeholder="e.g. 12345.6" style={inputStyle} inputMode="decimal" step="0.1" />
-                    </div>
+                    <OcrCaptureFlow
+                        captureType="checkin_opening_meter_capture"
+                        bookingId={getBookingId(selected)}
+                        onComplete={(fields) => {
+                            void saveMeterReading(fields as MeterFields);
+                        }}
+                        onSkip={() => nextStep()}
+                    />
                     {chargeConfig.electricity_rate_kwh && (
-                        <div style={{ padding: 'var(--space-2) var(--space-3)', background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.2)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-sage)', marginBottom: 'var(--space-4)' }}>
-                            ⚡ Rate: {chargeConfig.electricity_rate_kwh} {chargeConfig.deposit_currency}/kWh (configured in admin)
+                        <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-2) var(--space-3)', background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.2)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-sage)' }}>
+                            ⚡ Rate: {chargeConfig.electricity_rate_kwh} {chargeConfig.deposit_currency}/kWh
                         </div>
                     )}
-                    <ActionButton label="Save & Continue →" onClick={saveMeterReading} />
                 </div>
             )}
 
@@ -1201,136 +1169,24 @@ export default function MobileCheckinPage() {
                 </div>
             )}
 
-            {/* ========== STEP 6: Passport / Identity Capture ========== */}
+            {/* ========== STEP 6: Identity / Document Capture (Phase 988 OCR) ========== */}
             {step === 'passport' && selected && (
                 <div style={card}>
                     <StepHeader step={getStepNumber('passport')} total={getStepTotal()} title="Identify Guest" onBack={goBack} />
-                    
-                    {/* Camera / Capture Section */}
-                    {isCameraActive ? (
-                        <div style={{ position: 'relative', width: '100%', height: 300, background: '#000', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--space-4)' }}>
-                            <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            {/* Overlay Guide */}
-                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-                                <div style={{ position: 'absolute', top: '20%', left: '10%', right: '10%', bottom: '20%', border: '2px solid rgba(255,255,255,0.8)', borderRadius: 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)' }} />
-                                <div style={{ position: 'absolute', bottom: '10%', width: '100%', textAlign: 'center', color: '#fff', fontSize: 'var(--text-xs)', fontWeight: 600 }}>
-                                    Align MRZ / Document within frame
-                                </div>
-                            </div>
-                            <button onClick={() => captureFrame('passport')} style={{
-                                position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
-                                width: 56, height: 56, borderRadius: '50%', background: '#fff', border: 'none',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                                boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
-                            }}>
-                                <div style={{ width: 44, height: 44, borderRadius: '50%', border: '2px solid #000' }} />
-                            </button>
-                            <button onClick={stopCamera} style={{
-                                position: 'absolute', top: 12, right: 12, background: 'rgba(0,0,0,0.5)',
-                                color: '#fff', border: 'none', borderRadius: 16, padding: '4px 12px', fontSize: '12px'
-                            }}>Cancel</button>
-                        </div>
-                    ) : (
-                        <div style={{
-                            padding: 'var(--space-3)', border: `2px dashed ${passportPhotoUrl ? 'transparent' : 'var(--color-border)'}`,
-                            borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: 'var(--space-4)',
-                            cursor: 'pointer', display: 'block', position: 'relative',
-                            overflow: 'hidden', background: passportPhotoUrl ? '#000' : 'transparent',
-                        }}>
-                            {passportPhotoUrl ? (
-                                <div style={{ position: 'relative' }}>
-                                    <img src={passportPhotoUrl} alt="Document" style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} />
-                                    <button onClick={() => { setPassportPhotoUrl(null); setDocumentStoragePath(null); }} style={{
-                                        position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)',
-                                        color: '#fff', border: 'none', borderRadius: 16, padding: '4px 12px', fontSize: '11px'
-                                    }}>Retake</button>
-                                    {documentStoragePath && (
-                                        <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(63,185,80,0.9)', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: '10px', fontWeight: 600 }}>
-                                            ✓ Stored
-                                        </div>
-                                    )}
-                                    {isUploading && (
-                                        <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(210,153,34,0.9)', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: '10px', fontWeight: 600 }}>
-                                            Uploading…
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div onClick={() => startCamera()}>
-                                    <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>📸</div>
-                                    <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text)' }}>
-                                        Capture Document
-                                    </div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 4 }}>
-                                        Tap to open camera — or use file picker below
-                                    </div>
-                                </div>
-                            )}
-                            {/* Hidden file fallback for desktop/denied permissions */}
-                            {!isCameraActive && !passportPhotoUrl && (
-                                <input 
-                                    type="file" accept="image/*" capture="environment" 
-                                    onChange={e => {
-                                        if (e.target.files && e.target.files[0]) {
-                                            setPassportPhotoUrl(URL.createObjectURL(e.target.files[0]));
-                                        }
-                                    }}
-                                    style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '10%', height: '10%', cursor: 'pointer' }}
-                                />
-                            )}
-                        </div>
-                    )}
-                    
-                    {/* Identity Fields — manual-first entry */}
-                    {isUploading ? (
-                        <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
-                            <div className="spinner" style={{ margin: '0 auto var(--space-3)' }} />
-                            <div>Storing document image…</div>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', opacity: isCameraActive ? 0.3 : 1, pointerEvents: isCameraActive ? 'none' : 'auto' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-                                <div>
-                                    <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Doc Type</label>
-                                    <select value={documentType} onChange={e => setDocumentType(e.target.value)} style={inputStyle}>
-                                        <option value="PASSPORT">Passport</option>
-                                        <option value="NATIONAL_ID">National ID</option>
-                                        <option value="DRIVING_LICENSE">Driver's License</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Doc Number *</label>
-                                    <input value={passportNumber} onChange={e => setPassportNumber(e.target.value)} placeholder="AB1234567" style={inputStyle} />
-                                </div>
-                            </div>
-                            <div>
-                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Guest Full Name *</label>
-                                <input value={passportName} onChange={e => setPassportName(e.target.value)} placeholder="As on document" style={inputStyle} />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-                                <div>
-                                    <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Nationality</label>
-                                    <input value={nationality} onChange={e => setNationality(e.target.value)} placeholder="E.g. GBR" style={inputStyle} />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Birth Date</label>
-                                    <input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} style={inputStyle} />
-                                </div>
-                            </div>
-                            <div>
-                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Expiry Date</label>
-                                <input type="date" value={passportExpiry} onChange={e => setPassportExpiry(e.target.value)} style={inputStyle} />
-                            </div>
-                        </div>
-                    )}
-
-                    <div style={{ marginTop: 'var(--space-4)', opacity: isCameraActive || isExtracting ? 0 : 1 }}>
-                        <ActionButton label="Save & Continue →" onClick={savePassport} />
-                    </div>
+                    <OcrCaptureFlow
+                        captureType="identity_document_capture"
+                        bookingId={getBookingId(selected)}
+                        initialDocType={(documentType as any) || 'PASSPORT'}
+                        onComplete={(fields) => {
+                            void savePassport(fields as IdentityFields);
+                        }}
+                        onSkip={() => nextStep()}
+                    />
                 </div>
             )}
 
             {/* ========== STEP 5: Deposit Handling (Phase 971 — from chargeConfig) ========== */}
+
             {step === 'deposit' && selected && (
                 <div style={card}>
                     <StepHeader step={getStepNumber('deposit')} total={getStepTotal()} title="Deposit Collection" onBack={goBack} />

@@ -251,6 +251,8 @@ async def create_checkin_settlement(
     deposit_collected = bool(body.get("deposit_collected", False))
     deposit_amount    = body.get("deposit_amount")
     meter_value       = body.get("meter_reading")
+    # OCR linkage: present when worker used OCR capture for meter (Phase 986)
+    meter_ocr_result_id = body.get("ocr_result_id") or None
 
     if charge_rule:
         # Deposit required?
@@ -381,6 +383,7 @@ async def create_checkin_settlement(
             "recorded_by":     actor_id,
             "recorded_at":     now,
             "notes":           body.get("meter_notes") or None,
+            "ocr_result_id":   meter_ocr_result_id,  # None if manually entered
         }
         try:
             db.table("electricity_meter_readings").insert(meter_row).execute()

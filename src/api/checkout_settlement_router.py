@@ -355,6 +355,8 @@ async def capture_closing_meter(
     actor_id  = identity.get("user_id", "unknown")
 
     meter_value = body.get("meter_reading")
+    # OCR linkage: present when worker used OCR capture for closing meter (Phase 986)
+    meter_ocr_result_id = body.get("ocr_result_id") or None
     if meter_value is None:
         return make_error_response(
             status_code=400, code=ErrorCode.VALIDATION_ERROR,
@@ -408,6 +410,7 @@ async def capture_closing_meter(
             "recorded_by":     actor_id,
             "recorded_at":     now,
             "notes":           body.get("notes") or None,
+            "ocr_result_id":   meter_ocr_result_id,  # None if manually entered
         }
         db.table("electricity_meter_readings").insert(row).execute()
 

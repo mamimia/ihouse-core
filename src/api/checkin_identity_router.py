@@ -220,6 +220,8 @@ async def save_guest_identity(
     passport_expiry = body.get("passport_expiry") or None
     issuing_country = (body.get("issuing_country") or "").strip() or None
     document_photo_url = body.get("document_photo_url") or None
+    # OCR linkage: optional — present when wizard used OCR pre-fill (Phase 986)
+    ocr_result_id = body.get("ocr_result_id") or None
 
     try:
         db = client if client is not None else _get_supabase_client()
@@ -305,6 +307,8 @@ async def save_guest_identity(
                 updates["issuing_country"] = issuing_country
             if document_photo_url:
                 updates["document_photo_url"] = document_photo_url
+            if ocr_result_id:
+                updates["ocr_result_id"] = ocr_result_id
 
             db.table("guests").update(updates).eq("id", guest_id).execute()
             logger.info("save_guest_identity: MATCHED existing guest=%s for booking=%s",
@@ -325,6 +329,7 @@ async def save_guest_identity(
                 "document_photo_url": document_photo_url,
                 "identity_verified_at": now_iso,
                 "identity_source": "document_scan",
+                "ocr_result_id": ocr_result_id,  # None if manual entry
             }
             db.table("guests").insert(row).execute()
             logger.info("save_guest_identity: CREATED new guest=%s for booking=%s",

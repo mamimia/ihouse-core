@@ -516,6 +516,9 @@ app.include_router(settlement_history_router)
 from api.checkin_photos_router import router as checkin_photos_router  # noqa: E402  # Phase 975
 app.include_router(checkin_photos_router)
 
+from api.ocr_router import router as ocr_router  # noqa: E402  # Phase 985
+app.include_router(ocr_router)
+
 from api.access_token_router import router as access_token_router  # noqa: E402  # Phase 399
 app.include_router(access_token_router)
 

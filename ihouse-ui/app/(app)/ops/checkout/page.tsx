@@ -17,6 +17,7 @@ import { CHECKOUT_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 import WorkerTaskCard from '@/components/WorkerTaskCard';
 import WorkerHeader from '@/components/WorkerHeader';
+import OcrCaptureFlow, { type MeterFields } from '@/components/OcrCaptureFlow';
 
 // Phase 865: apiFetch imported from lib/staffApi.ts
 
@@ -51,7 +52,7 @@ function getBookingId(b: Booking): string {
     return b.booking_id || b.booking_ref || b.id || 'unknown';
 }
 
-type CheckoutStep = 'list' | 'inspection' | 'issues' | 'deposit' | 'complete' | 'success';
+type CheckoutStep = 'list' | 'inspection' | 'closing_meter' | 'issues' | 'deposit' | 'complete' | 'success';
 
 // ========== Components ==========
 
@@ -225,6 +226,9 @@ export default function MobileCheckoutPage() {
     // Phase 692: Checkout condition photos
     const [checkoutPhotos, setCheckoutPhotos] = useState<Array<{ room_label: string; photo_url: string; local?: boolean }>>([]);
     const [photoUploading, setPhotoUploading] = useState(false);
+    // Phase 988 — OCR audit linkage for closing meter
+    const [ocrClosingMeterResultId, setOcrClosingMeterResultId] = useState<string | null>(null);
+    const [closingMeterValue, setClosingMeterValue] = useState('');
 
     const showNotice = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(null), 3000); };
 
@@ -347,10 +351,41 @@ export default function MobileCheckoutPage() {
     };
 
     const goBack = () => {
-        const flow: CheckoutStep[] = ['list', 'inspection', 'issues', 'deposit', 'complete'];
+        const flow: CheckoutStep[] = ['list', 'inspection', 'closing_meter', 'issues', 'deposit', 'complete'];
         const idx = flow.indexOf(step);
         if (idx <= 1) { setStep('list'); setSelected(null); }
         else setStep(flow[idx - 1]);
+    };
+
+    // Phase 988: Save closing meter reading with OCR audit linkage
+    const saveClosingMeter = async (meterFields?: MeterFields) => {
+        if (!selected) { setStep('issues'); return; }
+        const val = meterFields?.meter_value ?? closingMeterValue;
+        const reading = parseFloat(val);
+        if (isNaN(reading) || reading <= 0) {
+            // Skip silently if no valid reading
+            setStep(inspectionOk ? 'deposit' : 'issues');
+            return;
+        }
+        if (meterFields) {
+            setClosingMeterValue(meterFields.meter_value);
+            if (meterFields.ocr_result_id) setOcrClosingMeterResultId(meterFields.ocr_result_id);
+        }
+        const bookingId = getBookingId(selected);
+        try {
+            await apiFetch<any>(`/worker/bookings/${bookingId}/checkout-settlement`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    closing_meter_reading: reading,
+                    ocr_result_id: meterFields?.ocr_result_id ?? ocrClosingMeterResultId ?? undefined,
+                }),
+            });
+            showNotice('⚡ Closing meter saved');
+        } catch {
+            // Non-blocking — meter failure must not block checkout
+            showNotice('⚠️ Meter reading not saved — continue anyway');
+        }
+        setStep(inspectionOk ? 'deposit' : 'issues');
     };
 
     // Phase 887c: Acknowledge — matches the behavior now present in Combined Tasks.
@@ -714,15 +749,33 @@ export default function MobileCheckoutPage() {
                     </div>
 
                     <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                        <ActionButton label={inspectionOk ? 'Continue → Deposit' : 'Continue → Report Issues'} onClick={() => {
-                            setStep(inspectionOk ? 'deposit' : 'issues');
+                        <ActionButton label={inspectionOk ? 'Continue → Meter' : 'Continue → Meter'} onClick={() => {
+                            setStep('closing_meter');
                         }} />
                         <ActionButton label="📍 Navigate to Property" onClick={() => navigateToProperty(selected.property_id)} variant="outline" />
                     </div>
                 </div>
             )}
 
-            {/* ========== STEP 2: Issue Flagging ========== */}
+            {/* ========== STEP 2: Closing Meter Capture (Phase 988 OCR) ========== */}
+            {step === 'closing_meter' && selected && (
+                <div style={card}>
+                    <StepHeader step={2} total={5} title="Closing Meter" onBack={goBack} />
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)' }}>
+                        Capture the closing electricity meter reading for accurate billing.
+                    </div>
+                    <OcrCaptureFlow
+                        captureType="checkout_closing_meter_capture"
+                        bookingId={getBookingId(selected)}
+                        onComplete={(fields) => {
+                            void saveClosingMeter(fields as MeterFields);
+                        }}
+                        onSkip={() => setStep(inspectionOk ? 'deposit' : 'issues')}
+                    />
+                </div>
+            )}
+
+            {/* ========== STEP 3: Issue Flagging ========== */}
             {step === 'issues' && selected && (
                 <div style={card}>
                     <StepHeader step={2} total={4} title="Report Issues" onBack={goBack} />
