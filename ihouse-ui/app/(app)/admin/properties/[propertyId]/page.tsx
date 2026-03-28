@@ -183,6 +183,18 @@ export default function PropertyDetailPage() {
     const [listingPulling, setListingPulling] = useState(false);
     const [listingResult, setListingResult] = useState<null | { imported: Record<string, any>, could_not_import: string[], warning?: string }>(null);
 
+    // Settlement charge rules — Phase 968 (wires property_charge_rules table into UI)
+    const [crDepositEnabled, setCrDepositEnabled] = useState(false);
+    const [crDepositAmount, setCrDepositAmount] = useState('');
+    const [crDepositCurrency, setCrDepositCurrency] = useState('THB');
+    const [crDepositNotes, setCrDepositNotes] = useState('');
+    const [crElecEnabled, setCrElecEnabled] = useState(false);
+    const [crElecRate, setCrElecRate] = useState('');
+    const [crElecCurrency, setCrElecCurrency] = useState('THB');
+    const [crElecNotes, setCrElecNotes] = useState('');
+    const [crSaving, setCrSaving] = useState(false);
+    const [crLoaded, setCrLoaded] = useState(false); // false = not yet fetched
+
     const showNotice = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(null), 3000); };
 
     // Archive / Unarchive
@@ -277,6 +289,23 @@ export default function PropertyDetailPage() {
             }
             if (auditRes.status === 'fulfilled') setAuditEntries(auditRes.value?.entries || auditRes.value?.events || []);
             if (issuesRes.status === 'fulfilled') setIssues(issuesRes.value?.reports || issuesRes.value?.data || []);
+
+            // Load charge rules — Phase 968 (404 = no rule configured yet, that's fine)
+            try {
+                const cr = await apiFetch(`/admin/properties/${propertyId}/charge-rules`);
+                setCrDepositEnabled(!!cr.deposit_enabled);
+                setCrDepositAmount(cr.deposit_amount != null ? String(cr.deposit_amount) : '');
+                setCrDepositCurrency(cr.deposit_currency || 'THB');
+                setCrDepositNotes(cr.deposit_notes || '');
+                setCrElecEnabled(!!cr.electricity_enabled);
+                setCrElecRate(cr.electricity_rate_kwh != null ? String(cr.electricity_rate_kwh) : '');
+                setCrElecCurrency(cr.electricity_currency || 'THB');
+                setCrElecNotes(cr.electricity_notes || '');
+                setCrLoaded(true);
+            } catch {
+                // 404 = no charge rule yet — leave defaults, still allow save
+                setCrLoaded(true);
+            }
         } catch { /* graceful */ }
         setLoading(false);
     }, [propertyId]);
@@ -1310,7 +1339,182 @@ export default function PropertyDetailPage() {
                             })}
                         </div>
 
-                        {/* Save button */}
+                        {/* ── Section: Settlement Rules (Phase 968) ──────────────── */}
+                        <div style={sHead}>Settlement Rules</div>
+                        <div style={{
+                            background: 'var(--color-surface-2)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: 'var(--space-4)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 'var(--space-5)',
+                        }}>
+                            {!crLoaded && (
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Loading settlement rules…</div>
+                            )}
+
+                            {/* ── Deposit sub-section ── */}
+                            <div>
+                                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>Deposit</div>
+
+                                {/* Toggle */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+                                    <button
+                                        onClick={() => setCrDepositEnabled(v => !v)}
+                                        style={{
+                                            position: 'relative', width: 44, height: 24, borderRadius: 12,
+                                            background: crDepositEnabled ? 'var(--color-primary)' : 'var(--color-border)',
+                                            border: 'none', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
+                                        }}
+                                    >
+                                        <span style={{
+                                            position: 'absolute', top: 3, left: crDepositEnabled ? 22 : 3,
+                                            width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                                            transition: 'left 0.2s', display: 'block',
+                                        }} />
+                                    </button>
+                                    <div>
+                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
+                                            {crDepositEnabled ? 'Deposit Required' : 'No Deposit'}
+                                        </div>
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+                                            Worker must collect deposit at check-in when enabled
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Amount + currency — shown only when enabled */}
+                                {crDepositEnabled && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 'var(--space-3)' }}>
+                                            <div>
+                                                <label style={lStyle}>Deposit Amount</label>
+                                                <input style={iStyle} value={crDepositAmount}
+                                                    onChange={e => setCrDepositAmount(e.target.value)}
+                                                    type="number" min="0" step="1" placeholder="e.g. 5000" />
+                                            </div>
+                                            <div>
+                                                <label style={lStyle}>Currency</label>
+                                                <select style={{ ...iStyle, cursor: 'pointer', minWidth: 90 }}
+                                                    value={crDepositCurrency} onChange={e => setCrDepositCurrency(e.target.value)}>
+                                                    {['THB','USD','EUR','GBP','SGD','AUD','HKD','JPY','AED'].map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style={lStyle}>Notes (optional)</label>
+                                            <input style={iStyle} value={crDepositNotes}
+                                                onChange={e => setCrDepositNotes(e.target.value)}
+                                                placeholder="e.g. Refundable by bank transfer within 7 days" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Divider */}
+                            <div style={{ borderTop: '1px solid var(--color-border)' }} />
+
+                            {/* ── Electricity sub-section ── */}
+                            <div>
+                                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)' }}>Electricity Billing</div>
+
+                                {/* Toggle */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+                                    <button
+                                        onClick={() => setCrElecEnabled(v => !v)}
+                                        style={{
+                                            position: 'relative', width: 44, height: 24, borderRadius: 12,
+                                            background: crElecEnabled ? 'var(--color-primary)' : 'var(--color-border)',
+                                            border: 'none', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
+                                        }}
+                                    >
+                                        <span style={{
+                                            position: 'absolute', top: 3, left: crElecEnabled ? 22 : 3,
+                                            width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                                            transition: 'left 0.2s', display: 'block',
+                                        }} />
+                                    </button>
+                                    <div>
+                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
+                                            {crElecEnabled ? 'Electricity Billed to Guest' : 'Electricity Not Billed'}
+                                        </div>
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+                                            Worker captures meter readings at check-in/out when enabled
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Rate + currency — shown only when enabled */}
+                                {crElecEnabled && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 'var(--space-3)' }}>
+                                            <div>
+                                                <label style={lStyle}>Rate per kWh</label>
+                                                <input style={iStyle} value={crElecRate}
+                                                    onChange={e => setCrElecRate(e.target.value)}
+                                                    type="number" min="0" step="0.01" placeholder="e.g. 8.50" />
+                                            </div>
+                                            <div>
+                                                <label style={lStyle}>Currency</label>
+                                                <select style={{ ...iStyle, cursor: 'pointer', minWidth: 90 }}
+                                                    value={crElecCurrency} onChange={e => setCrElecCurrency(e.target.value)}>
+                                                    {['THB','USD','EUR','GBP','SGD','AUD','HKD','JPY','AED'].map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style={lStyle}>Notes (optional)</label>
+                                            <input style={iStyle} value={crElecNotes}
+                                                onChange={e => setCrElecNotes(e.target.value)}
+                                                placeholder="e.g. Bill split based on days occupied" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Save Settlement Rules — separate from main property save */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)' }}>
+                                <button
+                                    onClick={async () => {
+                                        if (!crDepositEnabled && !crElecEnabled) {
+                                            // Both off is valid — save zeros
+                                        }
+                                        setCrSaving(true);
+                                        try {
+                                            await apiFetch(`/admin/properties/${propertyId}/charge-rules`, {
+                                                method: 'PUT',
+                                                body: JSON.stringify({
+                                                    deposit_enabled: crDepositEnabled,
+                                                    deposit_amount: crDepositEnabled && crDepositAmount ? parseFloat(crDepositAmount) : null,
+                                                    deposit_currency: crDepositCurrency,
+                                                    deposit_notes: crDepositNotes.trim() || null,
+                                                    electricity_enabled: crElecEnabled,
+                                                    electricity_rate_kwh: crElecEnabled && crElecRate ? parseFloat(crElecRate) : null,
+                                                    electricity_currency: crElecCurrency,
+                                                    electricity_notes: crElecNotes.trim() || null,
+                                                }),
+                                            });
+                                            showNotice('✓ Settlement rules saved');
+                                        } catch { showNotice('Save failed — check your inputs'); }
+                                        setCrSaving(false);
+                                    }}
+                                    disabled={crSaving}
+                                    style={{
+                                        padding: '9px 22px', borderRadius: 'var(--radius-md)',
+                                        background: crSaving ? 'var(--color-border)' : 'var(--color-primary)',
+                                        color: '#fff', border: 'none',
+                                        cursor: crSaving ? 'not-allowed' : 'pointer',
+                                        fontWeight: 700, fontSize: 'var(--text-sm)',
+                                        boxShadow: crSaving ? 'none' : '0 2px 12px rgba(99,102,241,0.35)',
+                                    }}
+                                >
+                                    {crSaving ? 'Saving…' : 'Save Settlement Rules'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Save button (main property details) */}
                         <div style={{ marginTop: 'var(--space-6)', display: 'flex', justifyContent: 'flex-end' }}>
                             <button onClick={handleEditSave} disabled={editSaving} style={{
                                 padding: '10px 28px', borderRadius: 'var(--radius-md)',
