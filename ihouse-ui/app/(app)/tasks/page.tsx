@@ -45,6 +45,7 @@ function statusColor(status: string): string {
         case 'completed': return 'var(--color-ok)';
         case 'in_progress': return 'var(--color-primary)';
         case 'acknowledged': return 'var(--color-accent)';
+        case 'canceled': return 'var(--color-text-faint)';
         default: return 'var(--color-muted)';
     }
 }
@@ -69,7 +70,9 @@ function formatTime(iso: string | undefined): string {
 function isOverdue(task: WorkerTask): boolean {
     if (!task.due_date) return false;
     const due = new Date(task.due_time ? `${task.due_date}T${task.due_time}` : `${task.due_date}T23:59:59`);
-    return new Date() > due && task.status !== 'completed';
+    // Normalize: backend returns uppercase (COMPLETED, CANCELED)
+    const s = task.status?.toLowerCase();
+    return new Date() > due && s !== 'completed' && s !== 'canceled';
 }
 
 function getTargetTime(task: WorkerTask): Date {
@@ -86,17 +89,19 @@ function getTargetTime(task: WorkerTask): Date {
 
 function TaskCountdown({ task }: { task: WorkerTask }) {
     const [now, setNow] = useState(Date.now());
+    // Normalize: backend returns uppercase statuses (COMPLETED, CANCELED, PENDING, etc.)
+    const normalizedStatus = task.status?.toLowerCase();
     
     useEffect(() => {
-        if (task.status === 'completed' || task.status === 'canceled') return;
+        if (normalizedStatus === 'completed' || normalizedStatus === 'canceled') return;
         const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);
-    }, [task.status]);
+    }, [normalizedStatus]);
     
-    if (task.status === 'completed') {
+    if (normalizedStatus === 'completed') {
         return <span style={{ color: 'var(--color-ok)', fontSize: 11, fontWeight: 700 }}>✔ DONE</span>;
     }
-    if (task.status === 'canceled') {
+    if (normalizedStatus === 'canceled') {
         return <span style={{ color: 'var(--color-text-faint)', fontSize: 11, fontWeight: 700 }}>CANCELED</span>;
     }
     
@@ -278,7 +283,7 @@ function DayPropertyCard({ propertyId, date, tasks, onOpen, propertyMap, staffMa
 // ---------------------------------------------------------------------------
 
 function EmptyState({ filter }: { filter: string }) {
-    const isDone = filter === 'completed';
+    const isDone = filter === 'COMPLETED';
     return (
         <div style={{
             display: 'flex',
@@ -304,18 +309,19 @@ function EmptyState({ filter }: { filter: string }) {
 // Status filter tabs
 // ---------------------------------------------------------------------------
 
-// Admin: full 4-tab filter set (All / Pending / In Progress / Done)
+// Admin: full 4-tab filter set — Pending first (default), All last.
+// Status values MUST be uppercase to match backend TaskStatus enum.
 const ADMIN_FILTERS = [
+    { label: 'Pending',     value: 'PENDING' },
+    { label: 'In Progress', value: 'ACKNOWLEDGED' },
+    { label: 'Done',        value: 'COMPLETED' },
     { label: 'All',         value: '' },
-    { label: 'Pending',     value: 'pending' },
-    { label: 'In Progress', value: 'in_progress' },
-    { label: 'Done',        value: 'completed' },
 ];
 
 // Worker: simplified 2-tab filter set
 const WORKER_FILTERS = [
     { label: 'Pending', value: '' },
-    { label: 'Done',    value: 'completed' },
+    { label: 'Done',    value: 'COMPLETED' },
 ];
 
 import {
@@ -396,7 +402,8 @@ export default function TasksPage() {
     const [tasks, setTasks] = useState<WorkerTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
-    const [filter, setFilter] = useState('');
+    // Default to PENDING so the most actionable tab is shown on load
+    const [filter, setFilter] = useState('PENDING');
     const [error, setError] = useState<string | null>(null);
     const [detailId, setDetailId] = useState<string | null>(null);
     // Phase 887c: store both display_name and approval status per property
