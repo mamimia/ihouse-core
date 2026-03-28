@@ -495,6 +495,21 @@ app.include_router(booking_checkin_router)
 from api.checkin_identity_router import router as checkin_identity_router  # noqa: E402  # Phase 949
 app.include_router(checkin_identity_router)
 
+from api.property_charge_rules_router import router as property_charge_rules_router  # noqa: E402  # Phase 952
+app.include_router(property_charge_rules_router)
+
+from api.deposit_suggestion_router import router as deposit_suggestion_router  # noqa: E402  # Phase 954-955
+app.include_router(deposit_suggestion_router)
+
+from api.checkin_settlement_router import router as checkin_settlement_router  # noqa: E402  # Phase 957-958
+app.include_router(checkin_settlement_router)
+
+from api.checkout_settlement_router import router as checkout_settlement_router  # noqa: E402  # Phase 959-961
+app.include_router(checkout_settlement_router)
+
+from api.settlement_history_router import router as settlement_history_router  # noqa: E402  # Phase 962
+app.include_router(settlement_history_router)
+
 from api.access_token_router import router as access_token_router  # noqa: E402  # Phase 399
 app.include_router(access_token_router)
 
