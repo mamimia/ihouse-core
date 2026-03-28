@@ -230,6 +230,7 @@ export default function MobileStaffShell({
                     style={{
                         flex: 1,
                         overflowY: 'auto',
+                        paddingInline: 'var(--space-4)',
                         paddingBottom: contentPaddingBottom,
                     }}
                 >
