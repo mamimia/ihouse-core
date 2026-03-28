@@ -456,8 +456,21 @@ export default function GuestDossierPage() {
                 preferred_channel: d.guest.preferred_channel || '',
             });
             if (d.current_stay) setTab('stay');
-        } catch {
-            setError('Guest not found or access denied.');
+        } catch (err: unknown) {
+            // Surface the real HTTP status rather than masking all errors
+            const apiErr = err as { status?: number; code?: string; message?: string };
+            const status = apiErr?.status;
+            if (status === 404) {
+                setError('Guest not found (ID may be invalid).');
+            } else if (status === 403) {
+                setError('Access denied — insufficient permissions to view this dossier.');
+            } else if (status === 500) {
+                setError(`Server error loading dossier (HTTP 500). The backend may be deploying — please retry in a moment.`);
+            } else if (status === 0 || !status) {
+                setError('Cannot reach backend — check your connection or try again shortly.');
+            } else {
+                setError(`Failed to load dossier (HTTP ${status}). Please try again.`);
+            }
         } finally {
             setLoading(false);
         }
