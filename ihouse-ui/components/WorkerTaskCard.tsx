@@ -55,15 +55,40 @@ export function computeNights(checkIn?: string, checkOut?: string): number | nul
 
 interface CountdownProps { targetDate?: string; targetTime?: string; status: string; }
 
+/** Human-readable duration string, tiered by magnitude:
+ *  > 48h  → "13d"
+ *  24–48h → "1d 6h"
+ *  <24h   → "18h 20m"
+ *  <60m   → "42m 08s"  (precision matters here)
+ */
+function fmtDuration(absMs: number): string {
+    const totalMins = Math.floor(absMs / 60000);
+    const secs      = Math.floor((absMs % 60000) / 1000);
+    const totalHrs  = Math.floor(totalMins / 60);
+    const mins      = totalMins % 60;
+    const days      = Math.floor(totalHrs / 24);
+    const hrs       = totalHrs % 24;
+
+    if (days >= 2)  return `${days}d`;
+    if (days === 1) return hrs > 0 ? `${days}d ${hrs}h` : `${days}d`;
+    if (totalHrs >= 1) return `${totalHrs}h ${String(mins).padStart(2, '0')}m`;
+    return `${mins}m ${String(secs).padStart(2, '0')}s`;
+}
+
 export function LiveCountdown({ targetDate, targetTime, status }: CountdownProps) {
     const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
         const upper = status.toUpperCase();
         if (upper === 'COMPLETED' || upper === 'CANCELED') return;
-        const t = setInterval(() => setNow(Date.now()), 1000);
+        
+        // Adaptive tick rate: 1s if < 1h, else 60s
+        const diff = targetDate ? new Date(`${targetDate}T${targetTime || '12:00'}`).getTime() - Date.now() : Infinity;
+        const interval = (diff < 3600000) ? 1000 : 60000;
+        
+        const t = setInterval(() => setNow(Date.now()), interval);
         return () => clearInterval(t);
-    }, [status]);
+    }, [status, targetDate, targetTime]);
 
     const upper = status.toUpperCase();
     if (upper === 'COMPLETED') return (
@@ -83,9 +108,6 @@ export function LiveCountdown({ targetDate, targetTime, status }: CountdownProps
     const diff    = target - now;
     const abs     = Math.abs(diff);
     const overdue = diff < 0;
-    const hours   = Math.floor(abs / 3600000);
-    const mins    = Math.floor((abs % 3600000) / 60000);
-    const secs    = Math.floor((abs % 60000) / 1000);
 
     const isWarning = !overdue && diff <= 25 * 60000;
     const isCriticalWarning = !overdue && diff <= 5 * 60000;
@@ -104,10 +126,8 @@ export function LiveCountdown({ targetDate, targetTime, status }: CountdownProps
         color = 'var(--color-warn)';
     }
 
-    // Always show seconds
-    const display = overdue
-        ? `${hours}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`
-        : `${hours}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+    const display = fmtDuration(abs);
+    const prefix  = overdue ? '⚠ overdue ' : 'in ';
 
     return (
         <span style={{
@@ -118,7 +138,7 @@ export function LiveCountdown({ targetDate, targetTime, status }: CountdownProps
             letterSpacing: '-0.01em',
             animation,
         }}>
-            {overdue ? '⚠ ' : '⏱ '}{display}
+            {prefix}{display}
         </span>
     );
 }
