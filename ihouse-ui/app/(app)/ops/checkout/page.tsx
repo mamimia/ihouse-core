@@ -230,6 +230,19 @@ export default function MobileCheckoutPage() {
     const [ocrClosingMeterResultId, setOcrClosingMeterResultId] = useState<string | null>(null);
     const [closingMeterValue, setClosingMeterValue] = useState('');
 
+    // Phase 993-994: Checkout baseline (before/after comparison data)
+    type CheckoutBaseline = {
+        property_reference_photos: Array<{ photo_url: string; room_label?: string; caption?: string }>;
+        checkin_walkthrough_photos: Array<{ storage_path: string; room_label?: string; purpose?: string; captured_at?: string }>;
+        checkin_meter_photos: Array<{ storage_path: string; room_label?: string }>;
+        opening_meter: { id: string; meter_value: number | null; meter_unit: string; meter_photo_url: string | null; recorded_at: string | null } | null;
+        deposit: { amount: number; currency: string } | null;
+        charge_rules: { electricity_rate_kwh: number | null; electricity_currency: string | null; electricity_enabled: boolean } | null;
+    };
+    const [baseline, setBaseline] = useState<CheckoutBaseline | null>(null);
+    const [baselineLoading, setBaselineLoading] = useState(false);
+    const [baselineTab, setBaselineTab] = useState<'reference' | 'checkin' | 'checkout'>('checkout');
+
     const showNotice = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(null), 3000); };
 
     const load = useCallback(async () => {
@@ -315,6 +328,24 @@ export default function MobileCheckoutPage() {
 
     useEffect(() => { load(); }, [load]);
 
+    // Phase 993: Load baseline data when checkout starts
+    const loadBaseline = async (bookingId: string) => {
+        setBaselineLoading(true);
+        try {
+            const res = await apiFetch<any>(`/worker/bookings/${bookingId}/checkout-baseline`);
+            const data = res?.data || res;
+            setBaseline({
+                property_reference_photos: data.property_reference_photos || [],
+                checkin_walkthrough_photos: data.checkin_walkthrough_photos || [],
+                checkin_meter_photos: data.checkin_meter_photos || [],
+                opening_meter: data.opening_meter || null,
+                deposit: data.deposit || null,
+                charge_rules: data.charge_rules || null,
+            });
+        } catch { setBaseline(null); }
+        setBaselineLoading(false);
+    };
+
     const startCheckout = (b: Booking) => {
         setSelected(b);
         setStep('inspection');
@@ -327,10 +358,11 @@ export default function MobileCheckoutPage() {
         setDeductionReason('');
         setSettlement(null);
         setCheckoutPhotos([]);
+        setBaselineTab('checkout');
+        void loadBaseline(getBookingId(b));
     };
 
     const startCheckoutFromTask = (t: CheckoutTask) => {
-        // Convert task to a Booking-like object enriched with real booking data
         const syntheticBooking: Booking = {
             booking_id: t.booking_id || t.task_id,
             property_id: t.property_id,
@@ -353,6 +385,8 @@ export default function MobileCheckoutPage() {
         setDeductionReason('');
         setSettlement(null);
         setCheckoutPhotos([]);
+        setBaselineTab('checkout');
+        void loadBaseline(t.booking_id || t.task_id);
     };
 
     const goBack = () => {
@@ -757,77 +791,114 @@ export default function MobileCheckoutPage() {
                     <InfoRow label="Check-out" value={selected.check_out ? new Date(selected.check_out + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : selected.check_out} />
                     <InfoRow label="Nights" value={selected.nights} />
 
-                    {/* Phase 692 — Checkout condition photo capture */}
+                    {/* Phase 993-994: Before/After Photo Comparison */}
                     <div style={{ marginTop: 'var(--space-4)' }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)', fontWeight: 600 }}>
-                            📷 Condition Photos
-                        </div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-3)' }}>
-                            Photograph each room before leaving. Photos are saved to the property condition record.
-                        </div>
-
-                        {/* Room photo buttons */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-                            {['Living Room', 'Bedroom', 'Bathroom', 'Kitchen', 'Balcony', 'Other'].map(room => {
-                                const roomKey = room.toLowerCase().replace(' ', '_');
-                                const taken = checkoutPhotos.some(p => p.room_label === roomKey);
-                                return (
-                                    <label key={room} style={{
-                                        display: 'flex', alignItems: 'center', gap: 8,
-                                        padding: '10px 12px',
-                                        background: taken ? 'rgba(63,185,80,0.08)' : 'var(--color-surface-2)',
-                                        border: `1px solid ${taken ? 'rgba(63,185,80,0.3)' : 'var(--color-border)'}`,
-                                        borderRadius: 'var(--radius-sm)',
-                                        cursor: photoUploading ? 'not-allowed' : 'pointer',
-                                        opacity: photoUploading ? 0.6 : 1,
-                                        fontSize: 'var(--text-xs)', fontWeight: 600,
-                                        color: taken ? 'var(--color-ok)' : 'var(--color-text-dim)',
-                                    }}>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            capture="environment"
-                                            style={{ display: 'none' }}
-                                            disabled={photoUploading}
-                                            onChange={e => {
-                                                const f = e.target.files?.[0];
-                                                if (f) uploadCheckoutPhoto(f, roomKey);
-                                                e.target.value = '';
-                                            }}
-                                        />
-                                        <span>{taken ? '✅' : '📷'}</span>
-                                        <span>{room}</span>
-                                    </label>
-                                );
-                            })}
+                        {/* Tab bar: Reference / Check-in / Checkout */}
+                        <div style={{ display: 'flex', gap: 0, marginBottom: 'var(--space-3)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                            {[
+                                { key: 'reference' as const, label: '🏠 Reference', count: baseline?.property_reference_photos?.length || 0 },
+                                { key: 'checkin' as const, label: '📋 Check-in', count: baseline?.checkin_walkthrough_photos?.length || 0 },
+                                { key: 'checkout' as const, label: '📷 Checkout', count: checkoutPhotos.length },
+                            ].map(tab => (
+                                <button key={tab.key} onClick={() => setBaselineTab(tab.key)} style={{
+                                    flex: 1, padding: '8px 4px', border: 'none', cursor: 'pointer',
+                                    background: baselineTab === tab.key ? 'var(--color-primary)' : 'var(--color-surface-2)',
+                                    color: baselineTab === tab.key ? '#fff' : 'var(--color-text-dim)',
+                                    fontSize: 11, fontWeight: 600, transition: 'background 0.2s',
+                                }}>
+                                    {tab.label} {tab.count > 0 && `(${tab.count})`}
+                                </button>
+                            ))}
                         </div>
 
-                        {/* Thumbnail strip for captured photos */}
-                        {checkoutPhotos.length > 0 && (
-                            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-3)' }}>
-                                {checkoutPhotos.map((p, i) => (
-                                    <div key={i} style={{ position: 'relative' }}>
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img
-                                            src={p.photo_url}
-                                            alt={p.room_label}
-                                            style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
-                                        />
-                                        {p.local && (
-                                            <div style={{
-                                                position: 'absolute', bottom: 2, right: 2,
-                                                background: 'rgba(210,153,34,0.9)', borderRadius: 2,
-                                                fontSize: 8, color: '#fff', padding: '1px 3px',
-                                            }}>local</div>
-                                        )}
-                                    </div>
-                                ))}
+                        {/* Reference photos tab */}
+                        {baselineTab === 'reference' && (
+                            <div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-2)' }}>
+                                    Property standard — how each room should look.
+                                </div>
+                                {baselineLoading ? <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Loading…</div> :
+                                    (baseline?.property_reference_photos?.length ?? 0) === 0 ?
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontStyle: 'italic', padding: 'var(--space-3) 0' }}>No reference photos configured for this property.</div> :
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
+                                            {baseline!.property_reference_photos.map((ph, i) => (
+                                                <div key={i} style={{ position: 'relative' }}>
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={ph.photo_url} alt={ph.room_label || 'ref'} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }} />
+                                                    <div style={{ fontSize: 9, color: 'var(--color-text-faint)', marginTop: 2, textAlign: 'center' }}>{ph.room_label || ph.caption || ''}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                }
                             </div>
                         )}
 
-                        {photoUploading && (
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-2)' }}>
-                                ⏳ Uploading photo…
+                        {/* Check-in walkthrough photos tab */}
+                        {baselineTab === 'checkin' && (
+                            <div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-2)' }}>
+                                    Condition at arrival — captured during check-in walkthrough.
+                                </div>
+                                {baselineLoading ? <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Loading…</div> :
+                                    (baseline?.checkin_walkthrough_photos?.length ?? 0) === 0 ?
+                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontStyle: 'italic', padding: 'var(--space-3) 0' }}>No check-in walkthrough photos found for this stay.</div> :
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
+                                            {baseline!.checkin_walkthrough_photos.map((ph, i) => (
+                                                <div key={i} style={{ position: 'relative' }}>
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={ph.storage_path} alt={ph.room_label || 'checkin'} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(88,166,255,0.3)' }} />
+                                                    <div style={{ fontSize: 9, color: 'var(--color-text-faint)', marginTop: 2, textAlign: 'center' }}>{ph.room_label || ''}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                }
+                            </div>
+                        )}
+
+                        {/* Checkout capture tab (existing functionality) */}
+                        {baselineTab === 'checkout' && (
+                            <div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-2)' }}>
+                                    Current condition — photograph each room now for before/after comparison.
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                                    {['Living Room', 'Bedroom', 'Bathroom', 'Kitchen', 'Balcony', 'Other'].map(room => {
+                                        const roomKey = room.toLowerCase().replace(' ', '_');
+                                        const taken = checkoutPhotos.some(p => p.room_label === roomKey);
+                                        return (
+                                            <label key={room} style={{
+                                                display: 'flex', alignItems: 'center', gap: 8,
+                                                padding: '10px 12px',
+                                                background: taken ? 'rgba(63,185,80,0.08)' : 'var(--color-surface-2)',
+                                                border: `1px solid ${taken ? 'rgba(63,185,80,0.3)' : 'var(--color-border)'}`,
+                                                borderRadius: 'var(--radius-sm)',
+                                                cursor: photoUploading ? 'not-allowed' : 'pointer',
+                                                opacity: photoUploading ? 0.6 : 1,
+                                                fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                color: taken ? 'var(--color-ok)' : 'var(--color-text-dim)',
+                                            }}>
+                                                <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} disabled={photoUploading}
+                                                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadCheckoutPhoto(f, roomKey); e.target.value = ''; }} />
+                                                <span>{taken ? '✅' : '📷'}</span>
+                                                <span>{room}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+
+                                {checkoutPhotos.length > 0 && (
+                                    <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-3)' }}>
+                                        {checkoutPhotos.map((p, i) => (
+                                            <div key={i} style={{ position: 'relative' }}>
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={p.photo_url} alt={p.room_label} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {photoUploading && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-2)' }}>⏳ Uploading photo…</div>}
                             </div>
                         )}
                     </div>
@@ -864,10 +935,60 @@ export default function MobileCheckoutPage() {
                 </div>
             )}
 
-            {/* ========== STEP 2: Closing Meter Capture (Phase 988 OCR) ========== */}
+            {/* ========== STEP 2: Closing Meter Capture (Phase 988 OCR + Phase 994 baseline) ========== */}
             {step === 'closing_meter' && selected && (
                 <div style={card}>
                     <StepHeader step={2} total={5} title="Closing Meter" onBack={goBack} />
+
+                    {/* Phase 994: Show opening meter from check-in as baseline context */}
+                    {baseline?.opening_meter && baseline.opening_meter.meter_value !== null && (
+                        <div style={{
+                            padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-4)',
+                            background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.2)',
+                            borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                        }}>
+                            {baseline.opening_meter.meter_photo_url && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={baseline.opening_meter.meter_photo_url} alt="Opening meter" style={{
+                                    width: 56, height: 56, objectFit: 'cover', borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid rgba(88,166,255,0.3)', flexShrink: 0,
+                                }} />
+                            )}
+                            <div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', fontWeight: 600 }}>
+                                    ⚡ Opening Meter (from check-in)
+                                </div>
+                                <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-sage)', fontFamily: 'var(--font-mono)' }}>
+                                    {Number(baseline.opening_meter.meter_value).toLocaleString()} {baseline.opening_meter.meter_unit || 'kWh'}
+                                </div>
+                                {baseline.opening_meter.recorded_at && (
+                                    <div style={{ fontSize: 10, color: 'var(--color-text-faint)' }}>
+                                        Recorded {new Date(baseline.opening_meter.recorded_at).toLocaleDateString()}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Live delta preview if closing meter has been entered */}
+                    {closingMeterValue && baseline?.opening_meter?.meter_value != null && parseFloat(closingMeterValue) > 0 && (
+                        <div style={{
+                            padding: 'var(--space-2) var(--space-3)', marginBottom: 'var(--space-3)',
+                            background: 'rgba(210,153,34,0.06)', border: '1px solid rgba(210,153,34,0.2)',
+                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-sm)',
+                        }}>
+                            <span style={{ color: 'var(--color-text-dim)' }}>Usage: </span>
+                            <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-warn)' }}>
+                                {Math.max(0, parseFloat(closingMeterValue) - Number(baseline.opening_meter.meter_value)).toLocaleString()} kWh
+                            </strong>
+                            {baseline.charge_rules?.electricity_rate_kwh != null && baseline.charge_rules.electricity_rate_kwh > 0 && (
+                                <span style={{ color: 'var(--color-text-faint)', marginLeft: 8 }}>
+                                    ≈ {(Math.max(0, parseFloat(closingMeterValue) - Number(baseline.opening_meter.meter_value)) * baseline.charge_rules.electricity_rate_kwh).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {baseline.charge_rules.electricity_currency || 'THB'}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)' }}>
                         Capture the closing electricity meter reading for accurate billing.
                     </div>

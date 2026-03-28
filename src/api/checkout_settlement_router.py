@@ -1270,3 +1270,144 @@ async def admin_list_settlements(
         logger.exception("GET settlements property=%s error tenant=%s: %s",
                          property_id, tenant_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 993 — GET /worker/bookings/{booking_id}/checkout-baseline
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/worker/bookings/{booking_id}/checkout-baseline",
+    summary="Composite checkout baseline for the before/after worker flow (Phase 993)",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_checkout_baseline(
+    booking_id: str,
+    identity: dict = Depends(jwt_identity),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Returns everything the checkout wizard needs to display the before/after
+    comparison flow in a single round-trip:
+
+      - property_reference_photos  — what the property SHOULD look like
+      - checkin_walkthrough_photos  — what it actually looked like at check-in
+      - checkin_meter_photos        — meter photos from check-in
+      - opening_meter               — { value, photo_url, recorded_at }
+      - deposit                     — { amount, currency }
+      - charge_rules                — { electricity_rate_kwh, electricity_currency, ... }
+
+    Auth: worker, checkin, checkout, ops, admin.
+    """
+    role = identity.get("role", "")
+    if role not in _WRITE_ROLES and role not in _READ_ADMIN and role != "manager":
+        return make_error_response(
+            status_code=403, code="FORBIDDEN",
+            extra={"detail": f"Role '{role}' cannot access checkout baseline."},
+        )
+    tenant_id = identity["tenant_id"]
+
+    try:
+        db = client or _get_db()
+
+        # 1. Resolve property_id from booking_state
+        property_id = None
+        try:
+            bs = (
+                db.table("booking_state")
+                .select("property_id")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+            if bs.data:
+                property_id = bs.data[0].get("property_id")
+        except Exception:
+            pass
+
+        # 2. Property reference photos
+        reference_photos: list[dict] = []
+        if property_id:
+            try:
+                ref_res = (
+                    db.table("property_reference_photos")
+                    .select("id, photo_url, room_label, caption, display_order")
+                    .eq("property_id", property_id)
+                    .order("display_order", desc=False)
+                    .execute()
+                )
+                reference_photos = ref_res.data or []
+            except Exception as exc:
+                logger.warning("checkout-baseline: ref photos failed: %s", exc)
+
+        # 3. Check-in walkthrough photos for this booking
+        checkin_walkthrough_photos: list[dict] = []
+        checkin_meter_photos: list[dict] = []
+        try:
+            photos_res = (
+                db.table("booking_checkin_photos")
+                .select("id, room_label, storage_path, purpose, captured_at, uploaded_by, notes")
+                .eq("tenant_id", tenant_id)
+                .eq("booking_id", booking_id)
+                .order("captured_at", desc=False)
+                .execute()
+            )
+            for ph in (photos_res.data or []):
+                purpose = ph.get("purpose", "")
+                if purpose == "walkthrough":
+                    checkin_walkthrough_photos.append(ph)
+                elif purpose == "meter":
+                    checkin_meter_photos.append(ph)
+        except Exception as exc:
+            logger.warning("checkout-baseline: checkin photos failed: %s", exc)
+
+        # 4. Opening meter reading
+        opening_meter = _get_opening_meter(db, tenant_id, booking_id)
+        opening_meter_data = None
+        if opening_meter:
+            opening_meter_data = {
+                "id":            str(opening_meter.get("id", "")),
+                "meter_value":   float(opening_meter["meter_value"]) if opening_meter.get("meter_value") is not None else None,
+                "meter_unit":    opening_meter.get("meter_unit", "kWh"),
+                "meter_photo_url": opening_meter.get("meter_photo_url"),
+                "recorded_by":   opening_meter.get("recorded_by"),
+                "recorded_at":   opening_meter.get("recorded_at") or opening_meter.get("created_at"),
+            }
+
+        # 5. Deposit held
+        deposit_amount, deposit_currency = _get_deposit_held(db, tenant_id, booking_id)
+        deposit_data = {
+            "amount":   deposit_amount,
+            "currency": deposit_currency,
+        } if deposit_amount > 0 else None
+
+        # 6. Property charge rules
+        charge_rules = None
+        if property_id:
+            cr = _get_charge_rule(db, tenant_id, property_id)
+            if cr:
+                charge_rules = {
+                    "deposit_enabled":      cr.get("deposit_enabled", False),
+                    "deposit_amount":       float(cr["deposit_amount"]) if cr.get("deposit_amount") is not None else None,
+                    "deposit_currency":     cr.get("deposit_currency"),
+                    "electricity_enabled":  cr.get("electricity_enabled", False),
+                    "electricity_rate_kwh": float(cr["electricity_rate_kwh"]) if cr.get("electricity_rate_kwh") is not None else None,
+                    "electricity_currency": cr.get("electricity_currency"),
+                }
+
+        return JSONResponse(status_code=200, content={
+            "booking_id":                booking_id,
+            "property_id":               property_id,
+            "property_reference_photos": reference_photos,
+            "checkin_walkthrough_photos": checkin_walkthrough_photos,
+            "checkin_meter_photos":       checkin_meter_photos,
+            "opening_meter":             opening_meter_data,
+            "deposit":                   deposit_data,
+            "charge_rules":              charge_rules,
+        })
+
+    except Exception as exc:
+        logger.exception("GET checkout-baseline %s error tenant=%s: %s",
+                         booking_id, tenant_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
