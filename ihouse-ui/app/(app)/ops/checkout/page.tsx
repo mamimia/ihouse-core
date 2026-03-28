@@ -475,47 +475,92 @@ export default function MobileCheckoutPage() {
     };
 
 
-    // Step 3: Handle deposit — deduction or full return
-    // Correct flow: GET /deposits?booking_id= → get deposit_id → POST /deposits/{deposit_id}/deductions
+    // Phase 989d: Persist inspection data (notes + photos) to backend
+    const saveCheckoutInspection = async () => {
+        if (!selected) return;
+        const bookingId = getBookingId(selected);
+        // Save inspection notes as a photo record with purpose=checkout_inspection
+        // This reuses the existing checkin-photos endpoint with expanded purpose
+        if (inspectionNotes.trim()) {
+            try {
+                await apiFetch<any>(`/worker/bookings/${bookingId}/checkin-photos`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        photos: [{
+                            room_label: 'inspection_summary',
+                            storage_path: `checkout/${bookingId}/inspection_notes.txt`,
+                            purpose: 'checkout_inspection',
+                            notes: inspectionNotes.trim(),
+                        }],
+                    }),
+                });
+            } catch { /* non-blocking */ }
+        }
+        // Save checkout photos with checkout_condition purpose
+        if (checkoutPhotos.length > 0) {
+            try {
+                await apiFetch<any>(`/worker/bookings/${bookingId}/checkin-photos`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        photos: checkoutPhotos.map((p: any) => ({
+                            room_label: p.room_label || 'checkout_photo',
+                            storage_path: p.photo_url || p.storage_path || `checkout/${bookingId}/photo_${Date.now()}.jpg`,
+                            purpose: 'checkout_condition',
+                        })),
+                    }),
+                });
+            } catch { /* non-blocking */ }
+        }
+    };
+
+    // Phase 989d: Handle deposit — uses real settlement engine
+    // Flow: settlement/start → settlement/calculate → show results → add deductions if needed
     const handleDeposit = async () => {
         if (!selected) return;
         const bookingId = getBookingId(selected);
         try {
-            // Step 1: Find the deposit record for this booking
-            let depositId: string | null = null;
+            // Step 1: Start the settlement (creates draft record)
             try {
-                const depositLookup = await apiFetch<any>(`/deposits?booking_id=${bookingId}`);
-                const deposits = depositLookup.deposits || [];
-                if (deposits.length > 0) {
-                    depositId = deposits[0].id;
-                }
-            } catch { /* no deposit found — skip deductions */ }
-
-            // Step 2: If deducting and we have a deposit_id, add the deduction
-            if (depositAction === 'deduct' && deductionAmount && depositId) {
-                await apiFetch(`/deposits/${depositId}/deductions`, {
+                await apiFetch<any>(`/worker/bookings/${bookingId}/settlement/start`, {
                     method: 'POST',
-                    body: JSON.stringify({
-                        description: deductionReason || 'Damage/cleaning deduction',
-                        amount: parseFloat(deductionAmount),
-                        category: 'damage',
-                    }),
+                    body: JSON.stringify({}),
                 });
-                showNotice('💰 Deduction recorded');
-            } else if (depositAction === 'deduct' && deductionAmount && !depositId) {
-                showNotice('⚠️ No deposit on file — deduction skipped');
+            } catch {
+                // 409 = settlement already exists, which is fine
             }
 
-            // Step 3: Get settlement breakdown (if deposit exists)
-            if (depositId) {
+            // Step 2: If worker chose to add a manual damage deduction, add it first
+            if (depositAction === 'deduct' && deductionAmount && parseFloat(deductionAmount) > 0) {
                 try {
-                    const s = await apiFetch<any>(`/deposits/${depositId}/settlement`);
-                    setSettlement(s.data || s);
-                } catch { /* settlement unavailable */ }
+                    await apiFetch<any>(`/worker/bookings/${bookingId}/settlement/deductions`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            description: deductionReason || 'Damage/cleaning deduction',
+                            amount: parseFloat(deductionAmount),
+                            category: 'damage',
+                        }),
+                    });
+                    showNotice('💰 Damage deduction recorded');
+                } catch {
+                    showNotice('⚠️ Deduction may not have saved');
+                }
             }
+
+            // Step 3: Calculate settlement — triggers auto-electricity deduction
+            try {
+                const calcResult = await apiFetch<any>(`/worker/bookings/${bookingId}/settlement/calculate`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                });
+                setSettlement(calcResult);
+            } catch {
+                // Calculation failed — we can still proceed with what we have
+                showNotice('⚠️ Settlement calculation unavailable');
+            }
+
             setStep('complete');
         } catch {
-            showNotice('Deposit action failed — proceeding');
+            showNotice('Settlement setup failed — proceeding');
             setStep('complete');
         }
     };
@@ -559,11 +604,19 @@ export default function MobileCheckoutPage() {
         }
     }
 
-    // Step 4: Complete checkout via POST /bookings/{id}/checkout
+    // Step 4: Complete checkout via POST /bookings/{id}/checkout + finalize settlement
     const completeCheckout = async () => {
         if (!selected) return;
         const bookingId = getBookingId(selected);
         try {
+            // Finalize settlement before completing checkout (best-effort)
+            try {
+                await apiFetch<any>(`/worker/bookings/${bookingId}/settlement/finalize`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                });
+            } catch { /* non-blocking — settlement may not exist or may already be finalized */ }
+
             await apiFetch<any>(`/bookings/${bookingId}/checkout`, {
                 method: 'POST',
             });
@@ -801,7 +854,9 @@ export default function MobileCheckoutPage() {
                     </div>
 
                     <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                        <ActionButton label={inspectionOk ? 'Continue → Meter' : 'Continue → Meter'} onClick={() => {
+                        <ActionButton label={'Continue → Meter'} onClick={() => {
+                            // Persist inspection data in background (non-blocking)
+                            void saveCheckoutInspection();
                             setStep('closing_meter');
                         }} />
                         <ActionButton label="📍 Navigate to Property" onClick={() => navigateToProperty(selected.property_id)} variant="outline" />
@@ -889,7 +944,7 @@ export default function MobileCheckoutPage() {
                 </div>
             )}
 
-            {/* ========== STEP 3: Deposit Resolution ========== */}
+            {/* ========== STEP 4: Deposit Resolution (Phase 989d — real settlement) ========== */}
             {step === 'deposit' && selected && (
                 <div style={card}>
                     <StepHeader step={4} total={5} title="Deposit Resolution" onBack={goBack} />
@@ -907,20 +962,35 @@ export default function MobileCheckoutPage() {
                                 </div>
                             </div>
 
+                            {/* Electricity info from closing meter */}
+                            {closingMeterValue && (
+                                <div style={{
+                                    padding: 'var(--space-3)', background: 'rgba(88,166,255,0.06)',
+                                    border: '1px solid rgba(88,166,255,0.2)', borderRadius: 'var(--radius-sm)',
+                                    fontSize: 'var(--text-xs)', marginBottom: 'var(--space-3)',
+                                }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>⚡ Electricity</div>
+                                    <div style={{ color: 'var(--color-text-dim)' }}>Closing meter: {closingMeterValue} kWh</div>
+                                    <div style={{ color: 'var(--color-text-faint)', marginTop: 2 }}>
+                                        Electricity deduction will be auto-calculated from the property rate.
+                                    </div>
+                                </div>
+                            )}
+
                             {issues.length > 0 && (
                                 <div style={{
                                     padding: 'var(--space-3)', background: 'rgba(248,81,73,0.05)',
                                     border: '1px solid rgba(248,81,73,0.15)', borderRadius: 'var(--radius-sm)',
                                     fontSize: 'var(--text-xs)', color: 'var(--color-alert)', marginBottom: 'var(--space-4)',
                                 }}>
-                                    ⚠ {issues.length} issue(s) reported — consider deduction
+                                    ⚠ {issues.length} issue(s) reported — consider adding a damage deduction
                                 </div>
                             )}
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
                                 {[
-                                    { action: 'full_return' as const, label: '💵 Full Return', desc: 'Return entire deposit' },
-                                    { action: 'deduct' as const, label: '📉 Deduct from Deposit', desc: 'Deduct for damages/cleaning' },
+                                    { action: 'full_return' as const, label: '💵 Full Return', desc: 'Return deposit (electricity deducted automatically)' },
+                                    { action: 'deduct' as const, label: '📉 Add Damage Deduction', desc: 'Add extra deduction for damages/cleaning' },
                                 ].map(opt => (
                                     <label key={opt.action} onClick={() => setDepositAction(opt.action)} style={{
                                         display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px',
@@ -941,7 +1011,7 @@ export default function MobileCheckoutPage() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
                                     <div>
                                         <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
-                                            Deduction Amount ({selected.deposit_currency || 'THB'})
+                                            Damage Amount ({selected.deposit_currency || 'THB'})
                                         </label>
                                         <input type="number" value={deductionAmount} onChange={e => setDeductionAmount(e.target.value)}
                                             placeholder="0" style={inputStyle} max={selected.deposit_amount} />
@@ -951,7 +1021,7 @@ export default function MobileCheckoutPage() {
                                             Reason
                                         </label>
                                         <input value={deductionReason} onChange={e => setDeductionReason(e.target.value)}
-                                            placeholder="Damage to bathroom mirror..." style={inputStyle} />
+                                            placeholder="Describe the damage..." style={inputStyle} />
                                     </div>
                                 </div>
                             )}
@@ -963,44 +1033,119 @@ export default function MobileCheckoutPage() {
                     )}
 
                     <div style={{ marginTop: 'var(--space-4)' }}>
-                        <ActionButton label="Confirm & Continue →" onClick={handleDeposit} />
+                        <ActionButton label="Calculate & Continue →" onClick={handleDeposit} />
                     </div>
                 </div>
             )}
 
-            {/* ========== STEP 4: Complete ========== */}
+            {/* ========== STEP 5: Settlement Summary + Complete (Phase 989d) ========== */}
             {step === 'complete' && selected && (
                 <div style={card}>
-                    <StepHeader step={5} total={5} title="Complete Check-out" onBack={goBack} />
+                    <StepHeader step={5} total={5} title="Checkout Summary" onBack={goBack} />
 
                     <div style={{
-                        padding: 'var(--space-6)', textAlign: 'center',
+                        padding: 'var(--space-4)', textAlign: 'center',
                         background: 'rgba(248,81,73,0.03)', borderRadius: 'var(--radius-md)',
                         border: '1px solid rgba(248,81,73,0.15)', marginBottom: 'var(--space-4)',
                     }}>
                         <div style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-2)' }}>🚪</div>
                         <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)' }}>
-                            Ready to complete check-out
+                            Review & Complete
                         </div>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
-                            This will mark the booking as <strong>Completed</strong> and create a <strong>CLEANING</strong> task.
+                            This will finalize the settlement and mark the booking as <strong>Checked Out</strong>.
                         </div>
                     </div>
 
+                    {/* Guest & Property */}
                     <InfoRow label="Guest" value={selected.guest_name} />
                     <InfoRow label="Property" value={(selectedTask?.property_name) || selected.property_id} />
                     <InfoRow label="Nights" value={selected.nights} />
+                    <InfoRow label="Inspection" value={inspectionOk ? '✓ All OK' : `⚠ Issues: ${inspectionNotes || 'See reports'}`} />
+                    {closingMeterValue && <InfoRow label="Closing Meter" value={`${closingMeterValue} kWh`} />}
                     <InfoRow label="Issues Reported" value={issues.length > 0 ? `${issues.length} issue(s)` : 'None'} />
+
+                    {/* Settlement Breakdown */}
                     {settlement && (
-                        <>
-                            <InfoRow label="Deposit Held" value={`${selected.deposit_currency || 'THB'} ${settlement.total_deposit || selected.deposit_amount || 0}`} />
-                            <InfoRow label="Deductions" value={`${selected.deposit_currency || 'THB'} ${settlement.total_deductions || 0}`} />
-                            <InfoRow label="Return Amount" value={`${selected.deposit_currency || 'THB'} ${settlement.return_amount || settlement.total_deposit || 0}`} />
-                        </>
+                        <div style={{
+                            marginTop: 'var(--space-4)', padding: 'var(--space-4)',
+                            background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--color-border)',
+                        }}>
+                            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', marginBottom: 'var(--space-3)' }}>
+                                💳 Settlement Breakdown
+                            </div>
+                            <InfoRow label="Deposit Held" value={`${settlement.deposit_currency || selected.deposit_currency || 'THB'} ${settlement.deposit_held ?? selected.deposit_amount ?? 0}`} />
+
+                            {/* Electricity */}
+                            {settlement.electricity && (
+                                <>
+                                    {settlement.electricity.kwh_used != null && (
+                                        <InfoRow label="⚡ Electricity Used" value={`${settlement.electricity.kwh_used} kWh`} />
+                                    )}
+                                    {settlement.electricity.rate_kwh != null && (
+                                        <InfoRow label="Rate" value={`${settlement.electricity.rate_kwh} /kWh`} />
+                                    )}
+                                    {settlement.electricity.charged != null && settlement.electricity.charged > 0 && (
+                                        <InfoRow label="⚡ Electricity Charge" value={`${settlement.electricity.currency || 'THB'} ${settlement.electricity.charged}`} />
+                                    )}
+                                </>
+                            )}
+
+                            {/* Deductions by category */}
+                            {settlement.deductions_by_category && (
+                                <>
+                                    {settlement.deductions_by_category.damage?.total > 0 && (
+                                        <InfoRow label="🔨 Damage Deductions" value={`${selected.deposit_currency || 'THB'} ${settlement.deductions_by_category.damage.total}`} />
+                                    )}
+                                    {settlement.deductions_by_category.miscellaneous?.total > 0 && (
+                                        <InfoRow label="📋 Other Deductions" value={`${selected.deposit_currency || 'THB'} ${settlement.deductions_by_category.miscellaneous.total}`} />
+                                    )}
+                                </>
+                            )}
+
+                            <div style={{ borderTop: '2px solid var(--color-border)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)' }}>
+                                <InfoRow label="Total Deductions" value={`${selected.deposit_currency || 'THB'} ${settlement.total_deductions ?? 0}`} />
+                                <div style={{
+                                    display: 'flex', justifyContent: 'space-between', padding: '10px 0',
+                                    fontSize: 'var(--text-md)', fontWeight: 700,
+                                }}>
+                                    <span style={{ color: 'var(--color-ok)' }}>💵 Refund to Guest</span>
+                                    <span style={{ color: 'var(--color-ok)' }}>
+                                        {selected.deposit_currency || 'THB'} {settlement.refund_amount ?? 0}
+                                    </span>
+                                </div>
+                                {(settlement.retained_amount ?? 0) > 0 && (
+                                    <InfoRow label="Retained by Property" value={`${selected.deposit_currency || 'THB'} ${settlement.retained_amount}`} />
+                                )}
+                            </div>
+
+                            {/* Warnings */}
+                            {settlement.warnings && settlement.warnings.length > 0 && (
+                                <div style={{ marginTop: 'var(--space-2)' }}>
+                                    {settlement.warnings.map((w: string, i: number) => (
+                                        <div key={i} style={{
+                                            fontSize: 'var(--text-xs)', color: 'var(--color-warn)',
+                                            padding: '4px 0',
+                                        }}>⚠ {w}</div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {!settlement && (
+                        <div style={{
+                            marginTop: 'var(--space-4)', padding: 'var(--space-3)',
+                            background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)',
+                            fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', textAlign: 'center',
+                        }}>
+                            💳 No deposit on file — no settlement required
+                        </div>
                     )}
 
                     <div style={{ marginTop: 'var(--space-5)' }}>
-                        <ActionButton label="✅ Complete Check-out" onClick={completeCheckout} variant="danger" />
+                        <ActionButton label="✅ Finalize & Complete Check-out" onClick={completeCheckout} variant="danger" />
                     </div>
                 </div>
             )}
@@ -1021,9 +1166,29 @@ export default function MobileCheckoutPage() {
                             {selected.guest_name || 'Guest'} checked out from <strong>{(selectedTask?.property_name) || selected.property_id}</strong>
                             {selected.nights ? ` · ${selected.nights} night${selected.nights > 1 ? 's' : ''}` : ''}
                         </div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-3)' }}>
-                            A CLEANING task has been automatically created for this property.
+                    </div>
+
+                    {/* Settlement result summary */}
+                    {settlement && (
+                        <div style={{
+                            padding: 'var(--space-4)', background: 'var(--color-surface-2)',
+                            borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                            marginBottom: 'var(--space-4)',
+                        }}>
+                            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>
+                                Settlement Result
+                            </div>
+                            <InfoRow label="Deposit Held" value={`${selected.deposit_currency || 'THB'} ${settlement.deposit_held ?? 0}`} />
+                            <InfoRow label="Total Deductions" value={`${selected.deposit_currency || 'THB'} ${settlement.total_deductions ?? 0}`} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--color-ok)' }}>
+                                <span>💵 Refund Amount</span>
+                                <span>{selected.deposit_currency || 'THB'} {settlement.refund_amount ?? 0}</span>
+                            </div>
                         </div>
+                    )}
+
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center', marginBottom: 'var(--space-3)' }}>
+                        A CLEANING task has been automatically created for this property.
                     </div>
                     <ActionButton label="Done — Return to List" onClick={returnToList} />
                 </div>

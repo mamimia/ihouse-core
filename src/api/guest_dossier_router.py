@@ -54,6 +54,39 @@ def _get_db() -> Any:
     )
 
 
+def _serialize_settlement_record(sr: dict) -> dict:
+    """Flatten a booking_settlement_records row for API output."""
+    return {
+        "id":                          sr.get("id"),
+        "status":                      sr.get("status"),
+        "deposit_held":                _safe_float(sr.get("deposit_held")),
+        "deposit_currency":            sr.get("deposit_currency"),
+        "opening_meter_value":         _safe_float(sr.get("opening_meter_value")),
+        "closing_meter_value":         _safe_float(sr.get("closing_meter_value")),
+        "electricity_kwh_used":        _safe_float(sr.get("electricity_kwh_used")),
+        "electricity_rate_kwh":        _safe_float(sr.get("electricity_rate_kwh")),
+        "electricity_charged":         _safe_float(sr.get("electricity_charged")),
+        "electricity_currency":        sr.get("electricity_currency"),
+        "damage_deductions_total":     _safe_float(sr.get("damage_deductions_total")),
+        "miscellaneous_deductions_total": _safe_float(sr.get("miscellaneous_deductions_total")),
+        "total_deductions":            _safe_float(sr.get("total_deductions")),
+        "refund_amount":               _safe_float(sr.get("refund_amount")),
+        "retained_amount":             _safe_float(sr.get("retained_amount")),
+        "finalized_by":                sr.get("finalized_by"),
+        "finalized_at":                sr.get("finalized_at"),
+        "created_at":                  sr.get("created_at"),
+    }
+
+
+def _safe_float(v: Any) -> float | None:
+    if v is None:
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 # ---------------------------------------------------------------------------
 # GET /guests/{guest_id}/dossier
 # ---------------------------------------------------------------------------
@@ -220,6 +253,7 @@ async def get_guest_dossier(
                             "storage_path": ph.get("storage_path"),
                             "captured_at":  ph.get("captured_at"),
                             "uploaded_by":  ph.get("uploaded_by"),
+                            "notes":        ph.get("notes"),
                         })
             except Exception as exc:
                 logger.warning("dossier: photos fetch failed: %s", exc)
@@ -271,6 +305,46 @@ async def get_guest_dossier(
                         checkin_at_from_audit[bid] = evt.get("occurred_at", "")
             except Exception as exc:
                 logger.warning("dossier: checkin worker fetch failed: %s", exc)
+
+        # ── 7b. Checkout worker from audit_events ─────────────────────
+        checkout_worker_by_booking: dict[str, str] = {}
+        if booking_ids:
+            try:
+                checkout_audit = (
+                    db.table("audit_events")
+                    .select("entity_id, actor_id")
+                    .eq("tenant_id", tenant_id)
+                    .in_("entity_id", booking_ids)
+                    .eq("action", "booking.checkout")
+                    .order("occurred_at", desc=True)
+                    .execute()
+                )
+                for evt in (checkout_audit.data or []):
+                    bid = evt.get("entity_id")
+                    if bid and bid not in checkout_worker_by_booking:
+                        checkout_worker_by_booking[bid] = evt.get("actor_id", "")
+            except Exception as exc:
+                logger.warning("dossier: checkout worker fetch failed: %s", exc)
+
+        # ── 7c. Settlement records per booking ────────────────────────
+        settlement_by_booking: dict[str, dict] = {}
+        if booking_ids:
+            try:
+                sr_res = (
+                    db.table("booking_settlement_records")
+                    .select("*")
+                    .eq("tenant_id", tenant_id)
+                    .in_("booking_id", booking_ids)
+                    .neq("status", "voided")
+                    .order("created_at", desc=True)
+                    .execute()
+                )
+                for sr in (sr_res.data or []):
+                    bid = sr.get("booking_id")
+                    if bid and bid not in settlement_by_booking:
+                        settlement_by_booking[bid] = _serialize_settlement_record(sr)
+            except Exception as exc:
+                logger.warning("dossier: settlement records fetch failed: %s", exc)
 
         # ── 8. Build stay records (date-aware classification) ────────
         #
@@ -327,6 +401,7 @@ async def get_guest_dossier(
             all_photos = photos_by_booking.get(bid, [])
             walkthrough_photos = [p for p in all_photos if p.get("purpose") == "walkthrough"]
             meter_photos = [p for p in all_photos if p.get("purpose") == "meter"]
+            checkout_photos = [p for p in all_photos if (p.get("purpose") or "").startswith("checkout_")]
 
             meters = meters_by_booking.get(bid, [])
             opening_meter = next((m for m in meters if m.get("reading_type") == "opening"), None)
@@ -343,10 +418,20 @@ async def get_guest_dossier(
                 "opening_meter":      opening_meter,
             }
 
-            checkout_record = {
-                "checked_out_at": b.get("checked_out_at"),
-                "closing_meter":  closing_meter,
-            } if b.get("checked_out_at") else None
+            # Phase 989d: Richer checkout record with settlement, photos, worker
+            sr = settlement_by_booking.get(bid)
+            checkout_record = None
+            checked_out_at = b.get("checked_out_at")
+            if checked_out_at or (b.get("status") or "").lower() == "checked_out":
+                checkout_record = {
+                    "checked_out_at":    checked_out_at,
+                    "checked_out_by":    checkout_worker_by_booking.get(bid),
+                    "closing_meter":     closing_meter,
+                    "checkout_photos":   checkout_photos,
+                    "inspection_notes":  next((p.get("notes") for p in checkout_photos
+                                               if p.get("purpose") == "checkout_inspection" and p.get("notes")), None),
+                    "settlement":        sr,
+                }
 
             raw_status = b.get("status")
             checkout_date = b.get("check_out")
@@ -367,8 +452,9 @@ async def get_guest_dossier(
                 "checkout_record": checkout_record,
                 "portal":          portal_by_booking.get(bid, {"qr_generated": False, "portal_url": None}),
                 "settlement": {
-                    "deposit":       deposits_by_booking.get(bid),
+                    "deposit":        deposits_by_booking.get(bid),
                     "meter_readings": meters,
+                    "settlement_record": sr,
                 },
             }
 

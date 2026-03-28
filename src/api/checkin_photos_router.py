@@ -34,10 +34,10 @@ from api.error_models import ErrorCode, make_error_response
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["checkin-photos"])
 
-_WRITE_ROLES = frozenset({"admin", "manager", "ops", "worker", "checkin"})
+_WRITE_ROLES = frozenset({"admin", "manager", "ops", "worker", "checkin", "checkout"})
 _READ_ROLES  = frozenset({"admin", "manager", "ops", "worker", "checkin", "checkout"})
 
-_VALID_PURPOSES = frozenset({"walkthrough", "meter", "passport", "damage"})
+_VALID_PURPOSES = frozenset({"walkthrough", "meter", "passport", "damage", "checkout_inspection", "checkout_condition"})
 
 
 def _get_db() -> Any:

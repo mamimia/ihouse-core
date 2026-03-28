@@ -413,10 +413,11 @@ export interface DossierMeter {
 export interface DossierPhoto {
     id: string;
     room_label: string;
-    purpose: 'walkthrough' | 'meter' | 'passport' | 'damage';
+    purpose: 'walkthrough' | 'meter' | 'passport' | 'damage' | 'checkout_inspection' | 'checkout_condition';
     storage_path: string;
     captured_at: string | null;
     uploaded_by: string | null;
+    notes: string | null;
 }
 
 export interface DossierPortal {
@@ -433,9 +434,34 @@ export interface DossierCheckinRecord {
     opening_meter: DossierMeter | null;
 }
 
+export interface DossierSettlementRecord {
+    id: string;
+    status: string;
+    deposit_held: number | null;
+    deposit_currency: string | null;
+    opening_meter_value: number | null;
+    closing_meter_value: number | null;
+    electricity_kwh_used: number | null;
+    electricity_rate_kwh: number | null;
+    electricity_charged: number | null;
+    electricity_currency: string | null;
+    damage_deductions_total: number | null;
+    miscellaneous_deductions_total: number | null;
+    total_deductions: number | null;
+    refund_amount: number | null;
+    retained_amount: number | null;
+    finalized_by: string | null;
+    finalized_at: string | null;
+    created_at: string | null;
+}
+
 export interface DossierCheckoutRecord {
     checked_out_at: string | null;
+    checked_out_by: string | null;
     closing_meter: DossierMeter | null;
+    checkout_photos: DossierPhoto[];
+    inspection_notes: string | null;
+    settlement: DossierSettlementRecord | null;
 }
 
 export interface DossierStay {
@@ -455,6 +481,7 @@ export interface DossierStay {
     settlement: {
         deposit: DossierDeposit | null;
         meter_readings: DossierMeter[];
+        settlement_record: DossierSettlementRecord | null;
     };
 }
 

@@ -585,17 +585,121 @@ function ExtrasOrdersBlock() {
 
 function CheckoutRecordBlock({ stay }: { stay: DossierStay }) {
     const record = stay.checkout_record;
-    const checkedOut = record?.checked_out_at;
+    const checkedOut = record?.checked_out_at || (stay.status?.toLowerCase() === 'checked_out');
+    const [showDetail, setShowDetail] = useState(false);
 
-    if (checkedOut) {
+    if (checkedOut && record) {
+        const sr = record.settlement;
+        const hasSettlement = !!sr;
+        const hasPhotos = record.checkout_photos && record.checkout_photos.length > 0;
+        const hasMeter = !!record.closing_meter;
+
         return (
             <div style={{ ...cardStyle, padding: '14px 20px' }}>
-                <SectionHeader title="🚪 Checkout Record" />
-                <InfoRow label="Checked Out At" value={fmtDate(checkedOut, true)} />
-                {record?.closing_meter && (
-                    <InfoRow label="Closing Meter" value={`${record.closing_meter.meter_value} ${record.closing_meter.meter_unit}`} />
+                {/* Header row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        🚪 Checkout Record
+                    </span>
+                    <button
+                        onClick={() => setShowDetail(d => !d)}
+                        style={{ ...btnSecondary, padding: '2px 10px', fontSize: 11 }}
+                    >
+                        {showDetail ? 'Less ▲' : 'Details ▼'}
+                    </button>
+                </div>
+
+                {/* Summary line */}
+                <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginBottom: 8 }}>
+                    {record.checked_out_at
+                        ? fmtDate(record.checked_out_at, true)
+                        : 'Timestamp not recorded'}
+                    {record.checked_out_by && (
+                        <span style={{ marginLeft: 8, color: 'var(--color-muted)' }}>
+                            · by {record.checked_out_by.length > 20 ? record.checked_out_by.slice(0, 16) + '…' : record.checked_out_by}
+                        </span>
+                    )}
+                </div>
+
+                {/* Coverage chips */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <CheckinChip ok label="Check-out" />
+                    <CheckinChip ok={hasMeter} label="Closing Meter" />
+                    <CheckinChip ok={hasSettlement} label="Settlement" />
+                    <CheckinChip ok={hasPhotos} label="Evidence" />
+                </div>
+
+                {/* Expanded detail */}
+                {showDetail && (
+                    <div style={{ marginTop: 14, borderTop: '1px solid var(--color-border)', paddingTop: 14, animation: 'fadeIn .15s ease' }}>
+                        {/* Inspection notes */}
+                        {record.inspection_notes && (
+                            <>
+                                <div style={{ ...sectionTitleStyle, marginBottom: 8 }}>📋 Inspection Notes</div>
+                                <div style={{
+                                    padding: '8px 12px', background: 'var(--color-surface-2)',
+                                    borderRadius: 8, fontSize: 12, color: 'var(--color-text)',
+                                    marginBottom: 12, whiteSpace: 'pre-wrap',
+                                }}>
+                                    {record.inspection_notes}
+                                </div>
+                            </>
+                        )}
+
+                        {/* Closing Meter */}
+                        {hasMeter && (
+                            <>
+                                <div style={{ ...sectionTitleStyle, marginBottom: 8 }}>⚡ Closing Meter</div>
+                                <InfoRow label="Reading" value={`${record.closing_meter!.meter_value} ${record.closing_meter!.meter_unit}`} />
+                                <InfoRow label="Recorded" value={fmtDate(record.closing_meter!.recorded_at, true)} />
+                            </>
+                        )}
+
+                        {/* Settlement */}
+                        {hasSettlement && sr && (
+                            <>
+                                <div style={{ ...sectionTitleStyle, marginBottom: 8, marginTop: hasMeter ? 16 : 0 }}>💳 Settlement</div>
+                                <InfoRow label="Status" value={sr.status} />
+                                <InfoRow label="Deposit Held" value={sr.deposit_held != null ? `${sr.deposit_currency || 'THB'} ${sr.deposit_held}` : undefined} />
+                                {sr.electricity_kwh_used != null && sr.electricity_kwh_used > 0 && (
+                                    <>
+                                        <InfoRow label="⚡ kWh Used" value={`${sr.electricity_kwh_used}`} />
+                                        <InfoRow label="Rate" value={sr.electricity_rate_kwh != null ? `${sr.electricity_rate_kwh} /kWh` : undefined} />
+                                        <InfoRow label="Electricity Charge" value={sr.electricity_charged != null ? `${sr.electricity_currency || 'THB'} ${sr.electricity_charged}` : undefined} />
+                                    </>
+                                )}
+                                {sr.damage_deductions_total != null && sr.damage_deductions_total > 0 && (
+                                    <InfoRow label="🔨 Damage" value={`${sr.deposit_currency || 'THB'} ${sr.damage_deductions_total}`} />
+                                )}
+                                {sr.miscellaneous_deductions_total != null && sr.miscellaneous_deductions_total > 0 && (
+                                    <InfoRow label="📋 Miscellaneous" value={`${sr.deposit_currency || 'THB'} ${sr.miscellaneous_deductions_total}`} />
+                                )}
+                                <InfoRow label="Total Deductions" value={sr.total_deductions != null ? `${sr.deposit_currency || 'THB'} ${sr.total_deductions}` : undefined} />
+                                <div style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '8px 0', borderTop: '2px solid var(--color-border)', marginTop: 8,
+                                    fontWeight: 700, fontSize: 13, color: 'var(--color-text)',
+                                }}>
+                                    <span style={{ color: '#3fb850' }}>💵 Refund</span>
+                                    <span style={{ color: '#3fb850' }}>
+                                        {sr.deposit_currency || 'THB'} {sr.refund_amount ?? 0}
+                                    </span>
+                                </div>
+                                {(sr.retained_amount ?? 0) > 0 && (
+                                    <InfoRow label="Retained" value={`${sr.deposit_currency || 'THB'} ${sr.retained_amount}`} />
+                                )}
+                                {sr.finalized_at && (
+                                    <InfoRow label="Finalized" value={fmtDate(sr.finalized_at, true)} />
+                                )}
+                            </>
+                        )}
+
+                        {/* Checkout Photos */}
+                        {hasPhotos && (
+                            <PhotoGrid photos={record.checkout_photos} title="Checkout Photos" />
+                        )}
+                    </div>
                 )}
-                {/* Future: checkout photos, damage evidence, electricity usage, final settlement */}
             </div>
         );
     }
