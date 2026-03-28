@@ -681,30 +681,13 @@ export default function MobileCheckinPage() {
                 showNotice('✅ Check-in completed — booking is now InStay');
             }
 
-            // Phase 971 fix: Auto-transition task through required states
+            // Phase 979e: Force task to COMPLETED via state-machine walk.
+            // apiFetch throws ApiError on 4xx — we cannot inspect res.status.
+            // Strategy: attempt each transition, treat INVALID_TRANSITION (422)
+            // as "already past that state" and continue. Stop when COMPLETED.
             const taskId = (selected as any).task_id;
             if (taskId) {
-                try {
-                    // Try complete directly first
-                    const completeRes = await apiFetch<any>(`/worker/tasks/${taskId}/complete`, {
-                        method: 'PATCH', body: JSON.stringify({ notes: 'Check-in completed via wizard' }),
-                    });
-                    // If 422, task might be PENDING — acknowledge first
-                    if (completeRes?.error?.code === 'INVALID_TRANSITION' || completeRes?.status === 422) {
-                        await apiFetch<any>(`/worker/tasks/${taskId}/acknowledge`, { method: 'PATCH' });
-                        await apiFetch<any>(`/worker/tasks/${taskId}/complete`, {
-                            method: 'PATCH', body: JSON.stringify({ notes: 'Check-in completed via wizard' }),
-                        });
-                    }
-                } catch {
-                    // Try acknowledge→complete chain as fallback
-                    try {
-                        await apiFetch<any>(`/worker/tasks/${taskId}/acknowledge`, { method: 'PATCH' });
-                        await apiFetch<any>(`/worker/tasks/${taskId}/complete`, {
-                            method: 'PATCH', body: JSON.stringify({ notes: 'Check-in completed via wizard' }),
-                        });
-                    } catch { console.warn('Task completion failed (non-blocking)'); }
-                }
+                await forceCompleteTask(taskId);
             }
 
             // Extract guest portal URL from response
@@ -746,8 +729,50 @@ export default function MobileCheckinPage() {
     const returnToList = () => {
         setStep('list');
         setSelected(null);
-        load();
+        load();  // always refresh on return — completed task must disappear
     };
+
+    /**
+     * forceCompleteTask: walks ack → start → complete unconditionally.
+     * Each step catches INVALID_TRANSITION (task already past that state)
+     * and continues. Uses raw fetch so we can inspect HTTP status without
+     * relying on apiFetch throw shape.
+     */
+    async function forceCompleteTask(taskId: string): Promise<void> {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const tok = getToken();
+        if (tok) headers['Authorization'] = `Bearer ${tok}`;
+        const previewRole = typeof window !== 'undefined' ? sessionStorage.getItem('ihouse_preview_role') : null;
+        if (previewRole) headers['X-Preview-Role'] = previewRole;
+
+        const patch = async (endpoint: string, body?: object) => {
+            try {
+                const r = await fetch(`${BASE}${endpoint}`, {
+                    method: 'PATCH',
+                    headers,
+                    body: body ? JSON.stringify(body) : undefined,
+                });
+                return r.status;
+            } catch {
+                return 0;
+            }
+        };
+
+        // Step 1: acknowledge (PENDING → ACKNOWLEDGED). 422 = already past, fine.
+        const ackStatus = await patch(`/worker/tasks/${taskId}/acknowledge`);
+        console.log(`[checkin] task ${taskId} ack → HTTP ${ackStatus}`);
+
+        // Step 2: start (ACKNOWLEDGED → IN_PROGRESS). 422 = already past, fine.
+        const startStatus = await patch(`/worker/tasks/${taskId}/start`);
+        console.log(`[checkin] task ${taskId} start → HTTP ${startStatus}`);
+
+        // Step 3: complete (IN_PROGRESS → COMPLETED). This must succeed.
+        const doneStatus = await patch(`/worker/tasks/${taskId}/complete`, { notes: 'Check-in completed via wizard' });
+        console.log(`[checkin] task ${taskId} complete → HTTP ${doneStatus}`);
+        if (doneStatus < 200 || doneStatus >= 300) {
+            console.warn(`[checkin] task ${taskId} complete returned ${doneStatus}`);
+        }
+    }
 
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
