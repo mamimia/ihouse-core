@@ -389,7 +389,7 @@ class TestE2EReportToTask:
         assert inserted["kind"] == "MAINTENANCE"
         assert inserted["priority"] == "CRITICAL"
         assert inserted["ack_sla_minutes"] == 5  # 5-min ACK SLA!
-        assert inserted["worker_role"] == "MAINTENANCE_TECH"
+        assert inserted["worker_role"] == "MAINTENANCE"
         assert inserted["status"] == "PENDING"
 
     def test_full_flow_normal_priority(self):

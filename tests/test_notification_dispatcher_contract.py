@@ -61,7 +61,7 @@ def _make_db(channels: list[dict] | None = None, db_error: bool = False) -> Magi
 
 def _stub_adapter(success: bool, error: str | None = None):
     """Return an adapter that always returns the given success value."""
-    def _adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+    def _adapter(channel_id: str, message: NotificationMessage, db=None, tenant_id=None) -> ChannelAttempt:
         return ChannelAttempt(
             channel_type="stub",
             channel_id=channel_id,
@@ -73,7 +73,7 @@ def _stub_adapter(success: bool, error: str | None = None):
 
 def _raising_adapter(exc: Exception):
     """Return an adapter that always raises."""
-    def _adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+    def _adapter(channel_id: str, message: NotificationMessage, db=None, tenant_id=None) -> ChannelAttempt:
         raise exc
     return _adapter
 
@@ -122,7 +122,7 @@ def test_b2_line_dispatch_attempt_recorded():
 def test_b3_line_adapter_receives_message():
     received = []
 
-    def _capture_adapter(channel_id: str, msg: NotificationMessage) -> ChannelAttempt:
+    def _capture_adapter(channel_id: str, msg: NotificationMessage, db=None, tenant_id=None) -> ChannelAttempt:
         received.append((channel_id, msg))
         return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=channel_id, success=True)
 
@@ -145,15 +145,15 @@ def test_c1_all_three_channels_all_attempted():
     ])
     order = []
 
-    def _line(cid, msg):
+    def _line(cid, msg, db=None, tenant_id=None):
         order.append(CHANNEL_LINE)
         return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=cid, success=True)
 
-    def _fcm(cid, msg):
+    def _fcm(cid, msg, db=None, tenant_id=None):
         order.append(CHANNEL_FCM)
         return ChannelAttempt(channel_type=CHANNEL_FCM, channel_id=cid, success=True)
 
-    def _email(cid, msg):
+    def _email(cid, msg, db=None, tenant_id=None):
         order.append(CHANNEL_EMAIL)
         return ChannelAttempt(channel_type=CHANNEL_EMAIL, channel_id=cid, success=True)
 

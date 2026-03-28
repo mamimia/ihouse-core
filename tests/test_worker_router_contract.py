@@ -413,15 +413,15 @@ class TestGroupF_CompleteHappy:
             resp = c.patch("/worker/tasks/task-001/complete", json={})
         assert resp.status_code == 200
 
-    def test_f2_complete_from_acknowledged_returns_422(self) -> None:
-        """F2: ACKNOWLEDGED → COMPLETED → 422 (must go through IN_PROGRESS first)."""
+    def test_f2_complete_from_acknowledged_returns_200(self) -> None:
+        """F2: ACKNOWLEDGED → COMPLETED → 200 (shortcut transition now allowed)."""
         c = _make_app()
         row = _task_row(status="ACKNOWLEDGED")
-        db, _, _ = _mock_db_for_patch([row])
+        db, _, update_chain = _mock_db_for_patch([row])
+        update_chain.execute.return_value = MagicMock(data=[{**row, "status": "COMPLETED"}])
         with patch("api.worker_router._get_supabase_client", return_value=db):
             resp = c.patch("/worker/tasks/task-001/complete", json={})
-        assert resp.status_code == 422
-        assert resp.json()["code"] == "INVALID_TRANSITION"
+        assert resp.status_code == 200
 
     def test_f3_complete_response_has_task(self) -> None:
         """F3: complete response body has 'task' key."""

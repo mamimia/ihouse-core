@@ -480,6 +480,7 @@ class TestGroupH_PerWorkerChannelArchitecture:
         """Worker registered with channel_type=whatsapp gets WhatsApp dispatch, not LINE."""
         from channels.notification_dispatcher import (
             CHANNEL_WHATSAPP,
+            ChannelAttempt,
             NotificationMessage,
             dispatch_notification,
         )
@@ -488,7 +489,12 @@ class TestGroupH_PerWorkerChannelArchitecture:
             {"channel_type": "whatsapp", "channel_id": "+66812345678"}
         ]
         msg = NotificationMessage(title="Task SLA", body="Please acknowledge")
-        result = dispatch_notification(db, "tenant-1", "worker-wa", msg)
+
+        def mock_wa_adapter(ch_id, message, db_arg=None, tid=None):
+            return ChannelAttempt(channel_type=CHANNEL_WHATSAPP, channel_id=ch_id, success=True)
+
+        result = dispatch_notification(db, "tenant-1", "worker-wa", msg,
+                                        adapters={"whatsapp": mock_wa_adapter})
         assert result.sent is True
         assert result.channels[0].channel_type == CHANNEL_WHATSAPP
         assert result.channels[0].channel_id == "+66812345678"
@@ -498,6 +504,7 @@ class TestGroupH_PerWorkerChannelArchitecture:
         from channels.notification_dispatcher import (
             CHANNEL_LINE,
             CHANNEL_WHATSAPP,
+            ChannelAttempt,
             NotificationMessage,
             dispatch_notification,
         )
@@ -506,7 +513,12 @@ class TestGroupH_PerWorkerChannelArchitecture:
             {"channel_type": "line", "channel_id": "U-line-user-abc"}
         ]
         msg = NotificationMessage(title="Task SLA", body="Please acknowledge")
-        result = dispatch_notification(db, "tenant-1", "worker-line", msg)
+
+        def mock_line_adapter(ch_id, message, db_arg=None, tid=None):
+            return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=ch_id, success=True)
+
+        result = dispatch_notification(db, "tenant-1", "worker-line", msg,
+                                        adapters={"line": mock_line_adapter})
         assert result.sent is True
         channel_types = [a.channel_type for a in result.channels]
         assert CHANNEL_LINE in channel_types

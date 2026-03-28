@@ -213,17 +213,24 @@ class TestGroupC_CreateProperty:
 
 class TestGroupD_CreateValidation:
 
-    def test_d1_missing_property_id_returns_400(self, monkeypatch):
-        db, _ = _mock_db()
+    def test_d1_missing_property_id_auto_generates(self, monkeypatch):
+        """property_id is now auto-generated when absent → 201."""
+        row = _make_property_row("KPG-500")
+        db, chain = _mock_db()
+        chain.execute.return_value = MagicMock(data=[row])
+        # Auto-gen calls multiple queries (config + max id)
         monkeypatch.setattr("api.properties_router._get_supabase_client", lambda: db)
         resp = _client.post("/properties", json={"display_name": "No ID"})
-        assert resp.status_code == 400
+        assert resp.status_code == 201
 
-    def test_d2_empty_property_id_returns_400(self, monkeypatch):
-        db, _ = _mock_db()
+    def test_d2_whitespace_property_id_auto_generates(self, monkeypatch):
+        """Whitespace-only property_id is treated as absent → auto-gen → 201."""
+        row = _make_property_row("KPG-500")
+        db, chain = _mock_db()
+        chain.execute.return_value = MagicMock(data=[row])
         monkeypatch.setattr("api.properties_router._get_supabase_client", lambda: db)
         resp = _client.post("/properties", json={"property_id": "  "})
-        assert resp.status_code == 400
+        assert resp.status_code == 201
 
     def test_d3_non_dict_body_returns_400(self, monkeypatch):
         db, _ = _mock_db()

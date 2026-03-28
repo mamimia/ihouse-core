@@ -99,12 +99,11 @@ class TestAuthTokenRole:
             assert resp.status_code == 200, f"Role '{role}' should be accepted from DB"
             assert resp.json()["data"]["role"] == role
 
-    def test_empty_role_defaults_to_manager(self, client):
-        """Empty string role with no DB record normalizes to default manager."""
+    def test_empty_role_returns_422(self, client):
+        """Empty string role is now rejected as invalid."""
         with _mock_resolve_role(None):
             resp = client.post("/auth/token", json={"tenant_id": "t1", "secret": "dev", "role": ""})
-        assert resp.status_code == 200
-        assert resp.json()["data"]["role"] == "manager"
+        assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------

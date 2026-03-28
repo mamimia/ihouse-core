@@ -148,8 +148,10 @@ class TestProfileProviderListing:
         # Simulate two identities (email + google)
         id_email = MagicMock()
         id_email.provider = "email"
+        id_email.identity_data = {"email": "test@example.com"}
         id_google = MagicMock()
         id_google.provider = "google"
+        id_google.identity_data = {"email": "test@gmail.com"}
         mock_user.identities = [id_email, id_google]
 
         mock_user_obj = MagicMock()
@@ -165,8 +167,9 @@ class TestProfileProviderListing:
         assert resp.status_code == 200
         data = resp.json().get("data", resp.json())
         providers = data.get("providers", [])
-        assert "email" in providers
-        assert "google" in providers
+        provider_names = [p["provider"] if isinstance(p, dict) else p for p in providers]
+        assert "email" in provider_names
+        assert "google" in provider_names
         assert len(providers) == 2
 
     def test_profile_lists_single_provider(self):
@@ -184,6 +187,7 @@ class TestProfileProviderListing:
         mock_user.user_metadata = {}
         id_email = MagicMock()
         id_email.provider = "email"
+        id_email.identity_data = {"email": "test@example.com"}
         mock_user.identities = [id_email]
 
         mock_user_obj = MagicMock()
@@ -197,7 +201,9 @@ class TestProfileProviderListing:
                 resp = client.get("/auth/profile", headers={"Authorization": f"Bearer {token}"})
 
         data = resp.json().get("data", resp.json())
-        assert data["providers"] == ["email"]
+        providers = data.get("providers", [])
+        provider_names = [p["provider"] if isinstance(p, dict) else p for p in providers]
+        assert provider_names == ["email"]
 
 
 # ---------------------------------------------------------------------------

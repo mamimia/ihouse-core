@@ -101,7 +101,7 @@ def _make_db_with_users(user_ids: List[str]) -> MagicMock:
     return db
 
 
-def _noop_adapter(channel_id: str, message: NotificationMessage) -> ChannelAttempt:
+def _noop_adapter(channel_id: str, message: NotificationMessage, db=None, tenant_id=None) -> ChannelAttempt:
     return ChannelAttempt(channel_type="push", channel_id=channel_id, success=True, error=None)
 
 

@@ -255,7 +255,7 @@ class TestFullSLADispatchChain:
         ]
 
         from channels.notification_dispatcher import ChannelAttempt, CHANNEL_LINE
-        def line_adapter(ch_id, msg):
+        def line_adapter(ch_id, msg, db_arg=None, tid=None):
             return ChannelAttempt(channel_type=CHANNEL_LINE, channel_id=ch_id, success=True)
 
         bridge_results = dispatch_escalations(

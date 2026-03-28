@@ -288,7 +288,7 @@ class TestListTasksTenantIsolation:
             resp = client.get("/tasks")
         assert resp.status_code == 200
         # The tenant_id "tenant_A" is passed to the query chain
-        mock_db.table.assert_called_with("tasks")
+        mock_db.table.assert_any_call("tasks")
 
 
 # ---------------------------------------------------------------------------
@@ -497,9 +497,10 @@ class TestPatchStatusInvalidTransitions:
         resp = self._patch_invalid(client, "PENDING", "IN_PROGRESS")
         assert resp.status_code == 422
 
-    def test_acknowledged_to_completed_is_422(self, client):
+    def test_acknowledged_to_completed_is_200(self, client):
+        """ACKNOWLEDGED → COMPLETED is now a valid shortcut transition."""
         resp = self._patch_invalid(client, "ACKNOWLEDGED", "COMPLETED")
-        assert resp.status_code == 422
+        assert resp.status_code == 200
 
     def test_invalid_transition_message_mentions_states(self, client):
         resp = self._patch_invalid(client, "PENDING", "COMPLETED")

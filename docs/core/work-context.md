@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 959 — Next Phase. Phases 841–958 closed.
+Phase 982 — Next Phase. Phases 841–981 closed.
 
 ## Last Closed Phase
 
-Phase 958 — Worker Check-in Audit & Root-Cause Isolation.
+Phase 981 — Test Suite Full Green.
 
 ## Current Objective
 
@@ -351,4 +351,4 @@ Phase 864 — Next Phase                                        ← ACTIVE
 
 ## Tests
 
-**7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 4 storage buckets. System at true zero-state. Phase 832 closed. Next: Phase 833 intake proof.**
+**7,975 passed, 0 failed, 22 skipped. Full Green. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phase 981 closed. Next: Phase 982.**

@@ -34,16 +34,25 @@ class TestPhase713_ManualBookingCreate(unittest.TestCase):
     def test_create_with_ota_blocking(self):
         from api.manual_booking_router import create_manual_booking
         mock_db = MagicMock()
-        # Mock overlap detection to return no conflicts
-        mock_db.table.return_value.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
-        # insert booking
-        mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(
-            data=[{"booking_id": "MAN-X-20260320-ab12", "guest_name": "John", "source": "direct"}]
-        )
-        # channel_map query for OTA blocking
-        mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
-            data=[{"channel_id": "ch1", "provider": "airbnb"}]
-        )
+        call_idx = {"i": 0}
+        def table_side(name):
+            chain = MagicMock()
+            call_idx["i"] += 1
+            if name == "properties":
+                chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(data=[{"status": "approved"}])
+            elif name == "booking_state":
+                chain.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+                chain.insert.return_value.execute.return_value = MagicMock(
+                    data=[{"booking_id": "MAN-X-20260320-ab12", "guest_name": "John", "source": "direct"}]
+                )
+            elif name == "channel_map":
+                chain.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+                    data=[{"channel_id": "ch1", "provider": "airbnb"}]
+                )
+            else:
+                chain.insert.return_value.execute.return_value = MagicMock(data=[])
+            return chain
+        mock_db.table = table_side
         resp = asyncio.run(create_manual_booking(
             {"property_id": "PROP-X", "check_in": "2026-03-20", "check_out": "2026-03-25",
              "guest_name": "John", "booking_source": "direct"},
@@ -87,14 +96,14 @@ class TestPhase715_SelectiveTaskOptOut(unittest.TestCase):
 
     def test_maintenance_block_no_tasks(self):
         from api.manual_booking_router import _create_tasks_for_manual_booking
-        result = _create_tasks_for_manual_booking(MagicMock(), "B1", "P1", "2026-03-20", "maintenance_block", [], "t1")
+        result = _create_tasks_for_manual_booking(MagicMock(), "B1", "P1", "2026-03-20", "2026-03-25", "maintenance_block", [], "t1")
         self.assertEqual(result, [])
 
     def test_self_use_with_checkin_optout(self):
         from api.manual_booking_router import _create_tasks_for_manual_booking
         # Self-use with checkin opt-out → should create cleaning + checkout
         mock_db = MagicMock()
-        result = _create_tasks_for_manual_booking(mock_db, "B1", "P1", "2026-03-20", "self_use", ["checkin"], "t1")
+        result = _create_tasks_for_manual_booking(mock_db, "B1", "P1", "2026-03-20", "2026-03-25", "self_use", ["checkin"], "t1")
         # Will contain cleaning and checkout (if task_automator doesn't error)
         self.assertNotIn("checkin", result)
 
@@ -102,7 +111,7 @@ class TestPhase715_SelectiveTaskOptOut(unittest.TestCase):
         from api.manual_booking_router import _create_tasks_for_manual_booking
         mock_db = MagicMock()
         # Direct bookings ignore opt-out and create all tasks
-        result = _create_tasks_for_manual_booking(mock_db, "B1", "P1", "2026-03-20", "direct", ["checkin"], "t1")
+        result = _create_tasks_for_manual_booking(mock_db, "B1", "P1", "2026-03-20", "2026-03-25", "direct", ["checkin"], "t1")
         # All task kinds attempted (may fail due to mocks but logic is correct)
         self.assertIsInstance(result, list)
 
@@ -249,11 +258,21 @@ class TestPhase719_E2E_SelfUseBooking(unittest.TestCase):
 
         # Create self-use booking
         mock_db1 = MagicMock()
-        # Mock overlap detection to return no conflicts
-        mock_db1.table.return_value.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
-        mock_db1.table.return_value.insert.return_value.execute.return_value = MagicMock(
-            data=[{"booking_id": "MAN-X-20260320", "guest_name": "Owner", "source": "self_use"}])
-        mock_db1.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+        call_idx1 = {"i": 0}
+        def table_side1(name):
+            chain = MagicMock()
+            call_idx1["i"] += 1
+            if name == "properties":
+                chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(data=[{"status": "approved"}])
+            elif name == "booking_state":
+                chain.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+                chain.insert.return_value.execute.return_value = MagicMock(
+                    data=[{"booking_id": "MAN-X-20260320", "guest_name": "Owner", "source": "self_use"}])
+            else:
+                chain.insert.return_value.execute.return_value = MagicMock(data=[])
+                chain.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+            return chain
+        mock_db1.table = table_side1
         resp = asyncio.run(create_manual_booking(
             {"property_id": "P1", "check_in": "2026-03-20", "check_out": "2026-03-25",
              "guest_name": "Owner", "booking_source": "self_use", "tasks_opt_out": ["checkin"]},

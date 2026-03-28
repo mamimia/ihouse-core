@@ -91,7 +91,7 @@ async def create_manual_booking(
 
     # ── Property-status guard: only approved properties can receive bookings ──
     try:
-        db_check = _get_db()
+        db_check = client if client is not None else _get_db()
         prop_res = (db_check.table("properties")
                     .select("status")
                     .eq("id", property_id)

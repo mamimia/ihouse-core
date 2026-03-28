@@ -143,7 +143,8 @@ class TestAuthFlowE2E:
         """
         E2E: /auth/signup → /auth/signin → tenant_id + role returned
 
-        Verifies the full Supabase Auth chain with tenant bridge.
+        Phase 862: signup is identity-only (no tenant provisioning).
+        Signin includes tenant lookup via tenant_bridge.
         """
         mock_user = MagicMock()
         mock_user.id = "supabase-user-uuid"
@@ -164,11 +165,8 @@ class TestAuthFlowE2E:
         mock_db.auth.admin.create_user.return_value = mock_create_result
         mock_db.auth.sign_in_with_password.return_value = mock_signin_result
 
-        # Step 1: Signup → auto-provisions tenant mapping
-        with patch("api.auth_router._get_supabase_admin", return_value=mock_db), \
-             patch("services.tenant_bridge.provision_user_tenant", return_value={
-                 "tenant_id": "tenant_e2e_amended", "role": "manager",
-             }):
+        # Step 1: Signup → identity-only (no tenant_id/role in response)
+        with patch("api.auth_router._get_supabase_admin", return_value=mock_db):
             signup_resp = client.post("/auth/signup", json={
                 "email": "new@domaniqo.com",
                 "password": "Pass123!",
@@ -176,8 +174,10 @@ class TestAuthFlowE2E:
             })
         assert signup_resp.status_code == 200
         signup_data = signup_resp.json()["data"]
-        assert signup_data["tenant_id"] == "tenant_e2e_amended"
-        assert signup_data["role"] == "manager"
+        assert signup_data["user_id"] == "supabase-user-uuid"
+        assert signup_data["email"] == "new@domaniqo.com"
+        # Phase 862: signup no longer provisions tenant → no tenant_id/role in response
+        assert "access_token" in signup_data
 
         # Step 2: Signin → includes tenant lookup
         with patch("api.auth_router._get_supabase_admin", return_value=mock_db), \

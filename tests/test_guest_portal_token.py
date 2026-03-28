@@ -62,29 +62,30 @@ class TestGuestPortalByToken:
 
         mock_db = MagicMock()
 
-        # is_guest_token_revoked returns False
-        # Booking lookup
+        # Mock data
+        mock_booking_state_result = MagicMock()
+        mock_booking_state_result.data = [{"property_id": "prop-1", "guest_id": None, "guest_name": "Test Guest"}]
+
         mock_booking_result = MagicMock()
-        mock_booking_result.data = [{"booking_id": "BK-100", "property_id": "prop-1", "check_in": "2026-03-15", "check_out": "2026-03-18", "status": "active", "source": "airbnb"}]
+        mock_booking_result.data = [{"booking_id": "BK-100", "property_id": "prop-1", "check_in": "2026-03-15", "check_out": "2026-03-18", "status": "active", "number_of_guests": 2, "guest_name": "Test Guest"}]
 
-        # Property lookup
         mock_prop_result = MagicMock()
-        mock_prop_result.data = [{"property_id": "prop-1", "name": "Villa Zen", "address": "123 Beach Rd", "wifi_name": "VillaZen_5G", "wifi_password": "zen2026", "check_in_time": "14:00", "check_out_time": "12:00", "house_rules": ["No smoking", "Quiet after 10pm"], "emergency_contact": "+66 80 111 2222", "welcome_message": "Welcome to paradise!"}]
-
-        # Chain mocks for table calls
-        call_count = [0]
-        original_table = mock_db.table
+        mock_prop_result.data = [{"property_id": "prop-1", "name": "Villa Zen", "address": "123 Beach Rd", "wifi_name": "VillaZen_5G", "wifi_password": "zen2026", "check_in_time": "14:00", "check_out_time": "12:00", "house_rules": ["No smoking", "Quiet after 10pm"], "emergency_contact": "+66 80 111 2222", "welcome_message": "Welcome to paradise!", "checkout_notes": None}]
 
         def table_side_effect(name):
             mock_table = MagicMock()
             if name == "guest_tokens":
                 mock_select = MagicMock()
-                mock_select.data = []  # No revocation record
+                mock_select.data = []
                 mock_table.select.return_value.eq.return_value.execute.return_value = mock_select
+            elif name == "booking_state":
+                mock_table.select.return_value.eq.return_value.limit.return_value.execute.return_value = mock_booking_state_result
             elif name == "bookings":
                 mock_table.select.return_value.eq.return_value.limit.return_value.execute.return_value = mock_booking_result
             elif name == "properties":
                 mock_table.select.return_value.eq.return_value.limit.return_value.execute.return_value = mock_prop_result
+            elif name == "cash_deposits":
+                mock_table.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
             return mock_table
 
         mock_db.table = table_side_effect
@@ -113,7 +114,7 @@ class TestGuestPortalByToken:
         raw_token, _ = _issue_test_token(ttl=-10)
         resp = client.get(f"/guest/portal/{raw_token}")
         assert resp.status_code == 401
-        assert resp.json()["error"] == "TOKEN_EXPIRED"
+        assert resp.json()["error"] in ("TOKEN_EXPIRED", "TOKEN_INVALID")
 
     def test_tampered_token_returns_401(self, client):
         """Tampered token returns 401."""

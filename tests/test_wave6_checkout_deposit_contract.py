@@ -239,14 +239,16 @@ class TestPhase695_PhotoComparison(unittest.TestCase):
 
 
 # ======================================================================
-# Phase 696: E2E — full checkout flow
+# Phase 696: E2E — full deposit+deduction flow
+# NOTE: complete_checkout was removed from deposit_settlement_router.
+# Canonical checkout is in booking_checkin_router.py (Phase 398).
 # ======================================================================
 
 class TestPhase696_E2E_FullCheckout(unittest.TestCase):
-    """E2E: deposit → deductions → settlement → checkout."""
+    """E2E: deposit → deductions verified. Checkout is tested in booking_checkin_router tests."""
 
-    def test_full_flow(self):
-        from api.deposit_settlement_router import collect_deposit, add_deduction, complete_checkout
+    def test_full_flow_deposit_and_deduction(self):
+        from api.deposit_settlement_router import collect_deposit, add_deduction
 
         # Step 1: Collect deposit
         mock_db1 = MagicMock()
@@ -281,108 +283,19 @@ class TestPhase696_E2E_FullCheckout(unittest.TestCase):
             tenant_id="t1", client=mock_db2
         ))
         self.assertEqual(resp.status_code, 201)
-
-        # Step 3: Checkout (force=True to skip deposit pre-check in mock)
-        mock_db3 = MagicMock()
-        call_idx3 = {"i": 0}
-        def table_side3(name):
-            chain = MagicMock()
-            call_idx3["i"] += 1
-            if call_idx3["i"] == 1:  # booking lookup
-                chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-                    data=[{"booking_id": "B-E2E", "status": "confirmed", "property_id": "P1"}])
-            elif call_idx3["i"] == 2:  # deposits lookup
-                chain.select.return_value.eq.return_value.execute.return_value = MagicMock(
-                    data=[{"id": "dep-1", "status": "returned", "refund_amount": 4000}])
-            else:  # booking update
-                chain.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
-            return chain
-        mock_db3.table = table_side3
-        resp = asyncio.run(complete_checkout(
-            "B-E2E", {"worker_id": "W1"},
-            tenant_id="t1", client=mock_db3
-        ))
-        self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
-        self.assertEqual(body["status"], "checked_out")
+        self.assertEqual(body["total_deductions"], 1000)
+        self.assertEqual(body["refund_amount"], 4000)
 
 
 # ======================================================================
-# Phase 697: Edge — checkout with no deposit
+# Phase 697-698 — Checkout-specific tests removed
+# complete_checkout removed from deposit_settlement_router (Phase 690).
+# See booking_checkin_router tests for checkout coverage.
 # ======================================================================
 
-class TestPhase697_CheckoutNoDeposit(unittest.TestCase):
-    """Checkout should succeed when no deposit exists."""
-
-    def test_checkout_no_deposit(self):
-        from api.deposit_settlement_router import complete_checkout
-        mock_db = MagicMock()
-        call_idx = {"i": 0}
-        def table_side(name):
-            chain = MagicMock()
-            call_idx["i"] += 1
-            if call_idx["i"] == 1:
-                chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-                    data=[{"booking_id": "B-ND", "status": "confirmed", "property_id": "P1"}])
-            elif call_idx["i"] == 2:
-                chain.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[])  # no deposits
-            else:
-                chain.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
-            return chain
-        mock_db.table = table_side
-        resp = asyncio.run(complete_checkout("B-ND", tenant_id="t1", client=mock_db))
-        self.assertEqual(resp.status_code, 200)
-        body = json.loads(resp.body)
-        self.assertEqual(body["status"], "checked_out")
-        self.assertIsNone(body["deposit_warning"])
 
 
-# ======================================================================
-# Phase 698: Edge — checkout with zero refund
-# ======================================================================
-
-class TestPhase698_ZeroRefund(unittest.TestCase):
-    """Checkout blocked when deposit is still collected (unsettled)."""
-
-    def test_unsettled_deposit_blocks_checkout(self):
-        from api.deposit_settlement_router import complete_checkout
-        mock_db = MagicMock()
-        call_idx = {"i": 0}
-        def table_side(name):
-            chain = MagicMock()
-            call_idx["i"] += 1
-            if call_idx["i"] == 1:
-                chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-                    data=[{"booking_id": "B-ZR", "status": "confirmed", "property_id": "P1"}])
-            elif call_idx["i"] == 2:
-                chain.select.return_value.eq.return_value.execute.return_value = MagicMock(
-                    data=[{"id": "dep-1", "status": "collected", "refund_amount": 0}])
-            else:
-                chain.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
-            return chain
-        mock_db.table = table_side
-        resp = asyncio.run(complete_checkout("B-ZR", tenant_id="t1", client=mock_db))
-        self.assertEqual(resp.status_code, 400)
-
-    def test_force_checkout_with_unsettled_deposit(self):
-        from api.deposit_settlement_router import complete_checkout
-        mock_db = MagicMock()
-        call_idx = {"i": 0}
-        def table_side(name):
-            chain = MagicMock()
-            call_idx["i"] += 1
-            if call_idx["i"] == 1:
-                chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-                    data=[{"booking_id": "B-ZR", "status": "confirmed", "property_id": "P1"}])
-            elif call_idx["i"] == 2:
-                chain.select.return_value.eq.return_value.execute.return_value = MagicMock(
-                    data=[{"id": "dep-1", "status": "collected", "refund_amount": 0}])
-            else:
-                chain.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
-            return chain
-        mock_db.table = table_side
-        resp = asyncio.run(complete_checkout("B-ZR", {"force": True}, tenant_id="t1", client=mock_db))
-        self.assertEqual(resp.status_code, 200)
 
 
 # ======================================================================
@@ -395,11 +308,23 @@ class TestPhase706_ManualBooking(unittest.TestCase):
     def test_create_direct_booking(self):
         from api.manual_booking_router import create_manual_booking
         mock_db = MagicMock()
-        # Mock overlap detection to return no conflicts
-        mock_db.table.return_value.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
-        mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(
-            data=[{"booking_id": "MAN-KOH-20260320-ab12", "guest_name": "John", "status": "confirmed", "source": "direct"}]
-        )
+        def table_side(name):
+            chain = MagicMock()
+            if name == "properties":
+                chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(data=[{"status": "approved"}])
+            elif name == "booking_state":
+                # overlap check — no conflicts
+                chain.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+                # insert
+                chain.insert.return_value.execute.return_value = MagicMock(
+                    data=[{"booking_id": "MAN-KOH-20260320-ab12", "guest_name": "John", "status": "confirmed", "source": "direct"}]
+                )
+            else:
+                # event_log, channel_map, tasks, etc.
+                chain.insert.return_value.execute.return_value = MagicMock(data=[])
+                chain.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+            return chain
+        mock_db.table = table_side
         resp = asyncio.run(create_manual_booking(
             {"property_id": "PROP-KOH-01", "check_in": "2026-03-20", "check_out": "2026-03-25",
              "guest_name": "John", "booking_source": "direct"},
@@ -412,11 +337,21 @@ class TestPhase706_ManualBooking(unittest.TestCase):
     def test_maintenance_block_no_guest_name(self):
         from api.manual_booking_router import create_manual_booking
         mock_db = MagicMock()
-        # Mock overlap detection to return no conflicts
-        mock_db.table.return_value.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
-        mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(
-            data=[{"booking_id": "MAN-X-20260320-ab12", "guest_name": "[maintenance_block]", "source": "maintenance_block"}]
-        )
+        call_idx = {"i": 0}
+        def table_side(name):
+            chain = MagicMock()
+            call_idx["i"] += 1
+            if name == "properties":
+                chain.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(data=[{"status": "approved"}])
+            elif name == "booking_state":
+                chain.select.return_value.eq.return_value.in_.return_value.lt.return_value.gt.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+                chain.insert.return_value.execute.return_value = MagicMock(
+                    data=[{"booking_id": "MAN-X-20260320-ab12", "guest_name": "[maintenance_block]", "source": "maintenance_block"}]
+                )
+            else:
+                chain.insert.return_value.execute.return_value = MagicMock(data=[])
+            return chain
+        mock_db.table = table_side
         resp = asyncio.run(create_manual_booking(
             {"property_id": "PROP-X", "check_in": "2026-03-20", "check_out": "2026-03-25",
              "booking_source": "maintenance_block"},
@@ -453,7 +388,7 @@ class TestPhase706_ManualBooking(unittest.TestCase):
     def test_task_creation_logic(self):
         from api.manual_booking_router import _create_tasks_for_manual_booking
         # maintenance_block → no tasks
-        result = _create_tasks_for_manual_booking(MagicMock(), "B1", "P1", "2026-03-20", "maintenance_block", [], "t1")
+        result = _create_tasks_for_manual_booking(MagicMock(), "B1", "P1", "2026-03-20", "2026-03-25", "maintenance_block", [], "t1")
         self.assertEqual(result, [])
 
     def test_booking_id_format(self):

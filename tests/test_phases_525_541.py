@@ -28,10 +28,10 @@ class TestFrontendStructure:
         """Phase 525 — AdminNav component exists."""
         content = self._read_file("components/AdminNav.tsx")
         assert "AdminNav" in content
-        assert "Operations" in content
-        assert "Financial" in content
-        assert "Integration" in content
-        assert "System" in content
+        assert "ops" in content
+        assert "finance" in content
+        assert "integration" in content
+        assert "system" in content
 
     def test_sidebar_has_active_highlighting(self):
         """Phase 526 — Sidebar uses usePathname for active state."""

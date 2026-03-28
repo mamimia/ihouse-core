@@ -417,6 +417,8 @@ async def checkin_booking(
             "guest_portal_url": guest_portal_url,
         })
 
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("POST /bookings/%s/checkin error: %s", booking_id, exc)
         return err("INTERNAL_ERROR", "Check-in failed", status=500)
@@ -543,6 +545,8 @@ async def checkout_booking(
             "noop": False,
         })
 
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("POST /bookings/%s/checkout error: %s", booking_id, exc)
         return err("INTERNAL_ERROR", "Check-out failed", status=500)

@@ -108,7 +108,7 @@ def _make_db(
 
         elif name == "properties":
             prop_r = MagicMock()
-            prop_r.data = [{"name": "Sunset Villa", "access_code": "7890"}]
+            prop_r.data = [{"name": "Sunset Villa", "access_code": "7890", "status": "approved"}]
             t.execute.return_value = prop_r
 
         else:

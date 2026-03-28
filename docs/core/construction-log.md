@@ -5375,3 +5375,29 @@ Evidence-based audit of the worker-side check-in flow on staging. Isolated exact
 
 No code changes in this phase — audit and root-cause isolation only.
 Spec: `docs/archive/phases/phase-958-spec.md`.
+
+
+## Phase 979 Closure — Guest Dossier & Worker Check-in Hardening
+
+**Date:** 2026-03-28
+
+Phase 979 closed. Built full Guest Dossier system (backend endpoint + tabbed frontend). Fixed critical worker check-in task lifecycle bug (orphaned ACKNOWLEDGED tasks self-healed on load). Suppressed breadcrumb navigation leak on mobile staff surfaces. Added horizontal gutter to MobileStaffShell. Replaced raw hour countdown (326h) with human-readable tiered format (13d / 1d 6h / 18h 20m). Removed broken worker Home DetailSheet modal that leaked `worker.btn_complete` i18n token — Next Up cards now navigate directly to role-specific task flows.
+
+Key files: `guests/[id]/page.tsx`, `guest_router.py`, `ops/checkin/page.tsx`, `Breadcrumbs.tsx`, `MobileStaffShell.tsx`, `WorkerTaskCard.tsx`, `worker/page.tsx`.
+
+Tests: 7,888 passed, 95 failed (pre-existing), 22 skipped.
+
+
+## Phase 981 Closure — Test Suite Full Green
+
+**Date:** 2026-03-29
+
+Phase 981 closed. Achieved **7,975 passed, 0 failed, 22 skipped** — first time the full backend test suite reaches zero failures.
+
+All 95 pre-existing failures were contract drift between tests and evolved API behavior (Phases 859–979). Fixed: Phase 862 identity-only signup contract, provider listing dict format, guest portal enriched lookup chain (booking_state + cash_deposits), whitespace property_id auto-gen, PasswordInput component assertion, AdminNav group code rename, login page (auth) route group migration, bookings_router SUPABASE_URL injection guard, role validation 422 for empty strings, name-based table routing in checkout deposit tests.
+
+No production code changed. The test suite now serves as live, accurate contract documentation for all API endpoints.
+
+Key files: `tests/test_auth_flow_e2e.py`, `tests/test_identity_linking_proof.py`, `tests/test_guest_portal_token.py`, `tests/test_properties_router_contract.py`, `tests/test_invite_flow_e2e.py`, `tests/test_audit_events_contract.py`, `tests/test_jwt_role_enforcement.py`, `tests/test_wave6_checkout_deposit_contract.py`, `tests/test_e2e_smoke.py`, `tests/test_phases_525_541.py`.
+
+Tests: 7,975 passed, 0 failed, 22 skipped.

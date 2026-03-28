@@ -256,7 +256,8 @@ class TestGroupCInjectionGuard:
              "operator_note": None, "flagged_by": None, "updated_at": "2026-03-10T00:00:00Z"},
         ])
 
-        with patch("api.bookings_router.write_audit_event") as mock_write:
+        with patch("api.bookings_router.write_audit_event") as mock_write, \
+             patch("api.bookings_router._get_supabase_client", return_value=mock_db):
             from api.bookings_router import patch_booking_flags
             asyncio.run(
                 patch_booking_flags("bk-1", {"is_vip": True}, "t1", mock_db)

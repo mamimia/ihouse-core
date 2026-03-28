@@ -5,7 +5,7 @@ Tests the task_model.py module:
   - TaskKind enum (5 values)
   - TaskStatus enum (5 values)
   - TaskPriority enum (4 values)
-  - WorkerRole enum (5 values)
+  - WorkerRole enum (8 values — 5 original + CHECKIN, CHECKOUT, MAINTENANCE)
   - Canonical mapping tables (urgency, ack_sla_minutes, roles, priorities, transitions)
   - Task.build() factory
   - Task.is_terminal(), can_transition_to(), with_status()
@@ -61,13 +61,13 @@ class TestEnumCompleteness:
         actual = {p.value for p in TaskPriority}
         assert actual == expected
 
-    def test_worker_role_has_5_values(self):
+    def test_worker_role_has_8_values(self):
         from tasks.task_model import WorkerRole
-        assert len(WorkerRole) == 5
+        assert len(WorkerRole) == 8
 
     def test_worker_role_values(self):
         from tasks.task_model import WorkerRole
-        expected = {"CLEANER", "PROPERTY_MANAGER", "MAINTENANCE_TECH", "INSPECTOR", "GENERAL_STAFF"}
+        expected = {"CLEANER", "PROPERTY_MANAGER", "MAINTENANCE_TECH", "INSPECTOR", "GENERAL_STAFF", "CHECKIN", "CHECKOUT", "MAINTENANCE"}
         actual = {r.value for r in WorkerRole}
         assert actual == expected
 
@@ -179,15 +179,15 @@ class TestTaskBuild:
         task = self._build(kind=TaskKind.CLEANING)
         assert task.worker_role == WorkerRole.CLEANER
 
-    def test_default_worker_role_for_checkin_prep_is_property_manager(self):
+    def test_default_worker_role_for_checkin_prep_is_checkin(self):
         from tasks.task_model import WorkerRole, TaskKind
         task = self._build(kind=TaskKind.CHECKIN_PREP)
-        assert task.worker_role == WorkerRole.PROPERTY_MANAGER
+        assert task.worker_role == WorkerRole.CHECKIN
 
-    def test_default_worker_role_for_checkout_verify_is_inspector(self):
+    def test_default_worker_role_for_checkout_verify_is_checkout(self):
         from tasks.task_model import WorkerRole, TaskKind
         task = self._build(kind=TaskKind.CHECKOUT_VERIFY)
-        assert task.worker_role == WorkerRole.INSPECTOR
+        assert task.worker_role == WorkerRole.CHECKOUT
 
     def test_override_priority_respected(self):
         from tasks.task_model import TaskPriority

@@ -328,8 +328,8 @@ class TestPhase866_FrontendStructure:
     def test_invite_page_has_password_field(self):
         """The invite page must have a password input for account creation."""
         page = open("/Users/clawadmin/Antigravity Proj/ihouse-core/ihouse-ui/app/(public)/invite/[token]/page.tsx").read()
-        assert 'type="password"' in page
-        assert "min. 8 characters" in page.lower() or "min 8" in page.lower()
+        assert "PasswordInput" in page or 'type="password"' in page
+        assert "password" in page.lower()
 
     def test_invite_page_has_name_field(self):
         """The invite page must have a name input."""

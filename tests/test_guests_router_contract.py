@@ -7,6 +7,9 @@ Groups:
   C — GET  /guests/{id}: found → 200, unknown → 404, cross-tenant → 404
   D — PATCH /guests/{id}: partial update, blanked full_name → 400, unknown → 404
   E — Tenant isolation: guest from tenant-A not visible to tenant-B
+
+Phase 979 — Fixed: tests now pass identity= dict (matching JWT shape) instead
+of the removed tenant_id= kwarg. Added role='admin' to satisfy role guard.
 """
 from __future__ import annotations
 
@@ -21,6 +24,10 @@ import pytest
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
+
+def _identity(tenant="t1", role="admin", user_id="test-user"):
+    return {"tenant_id": tenant, "role": role, "user_id": user_id}
+
 
 @pytest.fixture
 def mock_db():
@@ -46,6 +53,14 @@ def _guest(gid=None, tenant="t1", full_name="Alice Smith", email="alice@ex.com")
         "nationality": None,
         "passport_no": None,
         "notes": None,
+        "document_type": None,
+        "passport_expiry": None,
+        "date_of_birth": None,
+        "document_photo_url": None,
+        "whatsapp": None,
+        "line_id": None,
+        "telegram": None,
+        "preferred_channel": None,
         "created_at": "2026-03-10T00:00:00Z",
         "updated_at": "2026-03-10T00:00:00Z",
     }
@@ -63,7 +78,7 @@ class TestGroupA_CreateGuest:
         from api.guests_router import create_guest
         result = asyncio.run(create_guest(
             body={"full_name": "Alice Smith", "email": "alice@ex.com"},
-            tenant_id="t1", client=mock_db,
+            identity=_identity(), client=mock_db,
         ))
         assert result.status_code == 201
 
@@ -73,7 +88,7 @@ class TestGroupA_CreateGuest:
         from api.guests_router import create_guest
         result = asyncio.run(create_guest(
             body={"full_name": "Alice Smith"},
-            tenant_id="t1", client=mock_db,
+            identity=_identity(), client=mock_db,
         ))
         data = json.loads(result.body)
         assert data["full_name"] == "Alice Smith"
@@ -83,14 +98,14 @@ class TestGroupA_CreateGuest:
     def test_a3_missing_full_name_returns_400(self, mock_db):
         from api.guests_router import create_guest
         result = asyncio.run(create_guest(
-            body={}, tenant_id="t1", client=mock_db,
+            body={}, identity=_identity(), client=mock_db,
         ))
         assert result.status_code == 400
 
     def test_a4_empty_full_name_returns_400(self, mock_db):
         from api.guests_router import create_guest
         result = asyncio.run(create_guest(
-            body={"full_name": "   "}, tenant_id="t1", client=mock_db,
+            body={"full_name": "   "}, identity=_identity(), client=mock_db,
         ))
         assert result.status_code == 400
 
@@ -105,7 +120,7 @@ class TestGroupA_CreateGuest:
                 "nationality": "TH",
                 "notes": "VIP",
             },
-            tenant_id="t1", client=mock_db,
+            identity=_identity(), client=mock_db,
         ))
         assert result.status_code == 201
 
@@ -119,13 +134,13 @@ class TestGroupB_ListGuests:
     def test_b1_list_returns_200(self, mock_db):
         mock_db.execute.return_value = MagicMock(data=[_guest()])
         from api.guests_router import list_guests
-        result = asyncio.run(list_guests(tenant_id="t1", client=mock_db))
+        result = asyncio.run(list_guests(identity=_identity(), client=mock_db))
         assert result.status_code == 200
 
     def test_b2_empty_returns_empty_list(self, mock_db):
         mock_db.execute.return_value = MagicMock(data=[])
         from api.guests_router import list_guests
-        result = asyncio.run(list_guests(tenant_id="t1", client=mock_db))
+        result = asyncio.run(list_guests(identity=_identity(), client=mock_db))
         data = json.loads(result.body)
         assert data["guests"] == []
         assert data["count"] == 0
@@ -136,14 +151,14 @@ class TestGroupB_ListGuests:
             _guest(full_name="Bob Jones", email="bob@ex.com"),
         ])
         from api.guests_router import list_guests
-        result = asyncio.run(list_guests(search="alice", tenant_id="t1", client=mock_db))
+        result = asyncio.run(list_guests(search="alice", identity=_identity(), client=mock_db))
         data = json.loads(result.body)
         assert data["count"] == 1
         assert data["guests"][0]["full_name"] == "Alice Smith"
 
     def test_b4_invalid_limit_returns_400(self, mock_db):
         from api.guests_router import list_guests
-        result = asyncio.run(list_guests(limit=999, tenant_id="t1", client=mock_db))
+        result = asyncio.run(list_guests(limit=999, identity=_identity(), client=mock_db))
         assert result.status_code == 400
 
 
@@ -157,20 +172,20 @@ class TestGroupC_GetGuest:
         gid = str(uuid.uuid4())
         mock_db.execute.return_value = MagicMock(data=[_guest(gid=gid)])
         from api.guests_router import get_guest
-        result = asyncio.run(get_guest(guest_id=gid, tenant_id="t1", client=mock_db))
+        result = asyncio.run(get_guest(guest_id=gid, identity=_identity(), client=mock_db))
         assert result.status_code == 200
 
     def test_c2_unknown_id_returns_404(self, mock_db):
         mock_db.execute.return_value = MagicMock(data=[])
         from api.guests_router import get_guest
-        result = asyncio.run(get_guest(guest_id=str(uuid.uuid4()), tenant_id="t1", client=mock_db))
+        result = asyncio.run(get_guest(guest_id=str(uuid.uuid4()), identity=_identity(), client=mock_db))
         assert result.status_code == 404
 
     def test_c3_cross_tenant_returns_404(self, mock_db):
         # DB returns empty because tenant_id filter excludes the row
         mock_db.execute.return_value = MagicMock(data=[])
         from api.guests_router import get_guest
-        result = asyncio.run(get_guest(guest_id=str(uuid.uuid4()), tenant_id="t2", client=mock_db))
+        result = asyncio.run(get_guest(guest_id=str(uuid.uuid4()), identity=_identity(tenant="t2"), client=mock_db))
         assert result.status_code == 404
 
 
@@ -192,7 +207,7 @@ class TestGroupD_PatchGuest:
         result = asyncio.run(patch_guest(
             guest_id=gid,
             body={"full_name": "Alice Updated"},
-            tenant_id="t1", client=mock_db,
+            identity=_identity(), client=mock_db,
         ))
         assert result.status_code == 200
 
@@ -207,7 +222,7 @@ class TestGroupD_PatchGuest:
         result = asyncio.run(patch_guest(
             guest_id=gid,
             body={"notes": "Updated note"},
-            tenant_id="t1", client=mock_db,
+            identity=_identity(), client=mock_db,
         ))
         data = json.loads(result.body)
         # email field must still be present in the returned row
@@ -218,7 +233,7 @@ class TestGroupD_PatchGuest:
         result = asyncio.run(patch_guest(
             guest_id=str(uuid.uuid4()),
             body={"full_name": ""},
-            tenant_id="t1", client=mock_db,
+            identity=_identity(), client=mock_db,
         ))
         assert result.status_code == 400
 
@@ -227,7 +242,7 @@ class TestGroupD_PatchGuest:
         result = asyncio.run(patch_guest(
             guest_id=str(uuid.uuid4()),
             body={},
-            tenant_id="t1", client=mock_db,
+            identity=_identity(), client=mock_db,
         ))
         assert result.status_code == 400
 
@@ -237,7 +252,7 @@ class TestGroupD_PatchGuest:
         result = asyncio.run(patch_guest(
             guest_id=str(uuid.uuid4()),
             body={"notes": "x"},
-            tenant_id="t1", client=mock_db,
+            identity=_identity(), client=mock_db,
         ))
         assert result.status_code == 404
 
@@ -252,6 +267,6 @@ class TestGroupE_TenantIsolation:
         """GET /guests for tenant-B should not return tenant-A's guests."""
         mock_db.execute.return_value = MagicMock(data=[])
         from api.guests_router import list_guests
-        result = asyncio.run(list_guests(tenant_id="t-b", client=mock_db))
+        result = asyncio.run(list_guests(identity=_identity(tenant="t-b"), client=mock_db))
         data = json.loads(result.body)
         assert data["guests"] == []

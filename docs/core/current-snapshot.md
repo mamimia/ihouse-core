@@ -1,12 +1,12 @@
 ## Current Phase
-Phase 959 — Next Phase
+Phase 982 — Next Phase
 
 ## Last Closed Phase
-Phase 958 — Worker Check-in Audit & Root-Cause Isolation
+Phase 981 — Test Suite Full Green
 
 ## System Status
 
-**[...System status through Phase 888 unchanged...] Phase 955–957 Admin UI Hardening: Manage Staff "Invite Staff" button + "Pending Approval" stat box (real count from `/admin/staff-onboarding`). Stat box visual alignment via shared flexbox card system. Global theme consistency fix — eliminated split-brain theme state (admin=light, non-admin=dark). Root cause: 3 competing theme overrides (`admin/layout.tsx`, `ForceLight.tsx`, `tokens.css @media`). Fix: removed all page-level overrides, default=Light globally, Dark only via explicit toggle. Property approval boundary hardened: rejected/unapproved properties excluded from booking dropdowns and operational surfaces. Intake Queue + Archive promoted to stat boxes on Admin Properties. Phase 958 Worker Check-in Audit: rigorous evidence-based audit of worker-side check-in flow on staging. Isolated 3 root causes: (1) Task completion — backend route works correctly (ACKNOWLEDGED→COMPLETED verified), UI silently skips PATCH because `task_id` degrades to undefined during booking data merge; (2) Guest name duplication — storage-level truth, `guests.full_name = "Sam LongieSam Longie"` written by `POST /worker/checkin/save-guest-identity` from frontend payload, not a backend bug; (3) QR 503 — `qrcode` python dependency missing in staging container, forces fallback to raw portal link. Phases 953-954 already committed fixes for authorization (403→worker capability check) and task transition rules (ACKNOWLEDGED→COMPLETED allowed). Deployed to Railway + Vercel.**
+**[...System status through Phase 958 unchanged...] Phase 979 Guest Dossier & Worker Check-in Hardening: Full Guest Dossier system — `/guests/{guest_id}` backend endpoint with denormalized response (stays, check-in records, portal data), tabbed frontend dossier page (Current Stay, Activity, Contact), timeline-aware status badges (In Stay / Past Stay / Upcoming), compact metadata layout, Guest Portal QR/Send Link actions, full-row clickability on Guest Directory. Worker check-in lifecycle: self-healing mechanism auto-completes orphaned ACKNOWLEDGED tasks via `forceCompleteTask()` state-machine walk when booking is already `checked_in`. Breadcrumb navigation leak suppressed on all mobile staff routes. MobileStaffShell horizontal gutter (`paddingInline: var(--space-4)`). LiveCountdown human-readable tiered format: `>48h→13d`, `24-48h→1d 6h`, `<24h→18h 20m`, `<1h→42m 08s`; adaptive tick rate. Worker Home broken modal removed (source of `worker.btn_complete` i18n token leak) — Next Up cards now navigate to role-specific task flows. Deployed to Railway + Vercel.**
 
 ## Deferred Items — Managed Open Items Registry
 
@@ -417,7 +417,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,765 tests passing, 0 failed, 12 skipped. 281 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 863 closed. Next: Phase 864.**
+**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Next: Phase 982.**
 
 ## Environment Variables (continued)
 

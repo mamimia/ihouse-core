@@ -111,54 +111,64 @@ class TestRoleGuardSets:
 # ---------------------------------------------------------------------------
 
 class TestGuardHelpers:
-    """Call _assert_checkin_role / _assert_checkout_role directly."""
+    """Call _assert_checkin_role / _assert_checkout_role directly.
+    Production signature: (identity: dict, db: Any).
+    For allowed roles, db is never accessed (early return).
+    For denied roles with 'worker', db is queried — use MagicMock returning empty data.
+    """
+
+    def _mock_db(self):
+        """Return a mock DB that simulates no worker_roles found."""
+        db = MagicMock()
+        db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+        return db
 
     def test_assert_checkin_allows_admin(self):
-        checkin_mod._assert_checkin_role(_make_identity("admin"))  # no raise
+        checkin_mod._assert_checkin_role(_make_identity("admin"), self._mock_db())  # no raise
 
     def test_assert_checkin_allows_manager(self):
-        checkin_mod._assert_checkin_role(_make_identity("manager"))
+        checkin_mod._assert_checkin_role(_make_identity("manager"), self._mock_db())
 
     def test_assert_checkin_allows_checkin(self):
-        checkin_mod._assert_checkin_role(_make_identity("checkin"))
+        checkin_mod._assert_checkin_role(_make_identity("checkin"), self._mock_db())
 
     def test_assert_checkin_denies_checkout(self):
         with pytest.raises(HTTPException) as exc_info:
-            checkin_mod._assert_checkin_role(_make_identity("checkout"))
+            checkin_mod._assert_checkin_role(_make_identity("checkout"), self._mock_db())
         assert exc_info.value.status_code == 403
         assert "CHECKIN_DENIED" in exc_info.value.detail
 
     def test_assert_checkin_denies_cleaner(self):
         with pytest.raises(HTTPException) as exc_info:
-            checkin_mod._assert_checkin_role(_make_identity("cleaner"))
+            checkin_mod._assert_checkin_role(_make_identity("cleaner"), self._mock_db())
         assert exc_info.value.status_code == 403
 
     def test_assert_checkin_denies_worker(self):
         with pytest.raises(HTTPException):
-            checkin_mod._assert_checkin_role(_make_identity("worker"))
+            checkin_mod._assert_checkin_role(_make_identity("worker"), self._mock_db())
 
     def test_assert_checkin_denies_owner(self):
         with pytest.raises(HTTPException):
-            checkin_mod._assert_checkin_role(_make_identity("owner"))
+            checkin_mod._assert_checkin_role(_make_identity("owner"), self._mock_db())
 
     def test_assert_checkout_allows_admin(self):
-        checkin_mod._assert_checkout_role(_make_identity("admin"))
+        checkin_mod._assert_checkout_role(_make_identity("admin"), self._mock_db())
 
     def test_assert_checkout_allows_checkout(self):
-        checkin_mod._assert_checkout_role(_make_identity("checkout"))
+        checkin_mod._assert_checkout_role(_make_identity("checkout"), self._mock_db())
 
     def test_assert_checkout_allows_checkin(self):
-        checkin_mod._assert_checkout_role(_make_identity("checkin"))
+        checkin_mod._assert_checkout_role(_make_identity("checkin"), self._mock_db())
 
     def test_assert_checkout_denies_cleaner(self):
         with pytest.raises(HTTPException) as exc_info:
-            checkin_mod._assert_checkout_role(_make_identity("cleaner"))
+            checkin_mod._assert_checkout_role(_make_identity("cleaner"), self._mock_db())
         assert exc_info.value.status_code == 403
         assert "CHECKOUT_DENIED" in exc_info.value.detail
 
     def test_assert_checkout_denies_owner(self):
         with pytest.raises(HTTPException):
-            checkin_mod._assert_checkout_role(_make_identity("owner"))
+            checkin_mod._assert_checkout_role(_make_identity("owner"), self._mock_db())
 
 
 # ---------------------------------------------------------------------------

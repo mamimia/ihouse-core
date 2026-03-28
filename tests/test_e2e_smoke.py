@@ -24,7 +24,7 @@ class TestFrontendPageRoutes:
         "(app)/admin/properties/page.tsx",
         "(app)/admin/properties/[propertyId]/page.tsx",
         "(app)/admin/page.tsx",
-        "(public)/login/page.tsx",
+        "(auth)/login/page.tsx",
         "(public)/page.tsx",
     ]
 
