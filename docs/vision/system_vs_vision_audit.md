@@ -16,7 +16,7 @@
 | Task Automation | 6 kinds, SLA engine ✅ | Checklists, photos, take-over | 🟡 45% |
 | Guest QR Portal | Basic structure ✅ | Extras, chat, QR gen, i18n | 🔴 25% |
 | Owner Portal | Rich data ✅ | Configurable transparency toggles | 🟡 60% |
-| Problem Reporting | ❌ | Everything | 🔴 0% |
+| Problem Reporting | Backend ✅ (6 endpoints, auto-task, SSE, audit, i18n) | Admin UI, photo storage pipeline | 🟡 60% |
 | Guest Extras | ❌ | Everything | 🔴 0% |
 | Maintenance | Task kind exists | Dashboard, split by specialty | 🔴 15% |
 | Channels | 6 channels ✅ | Guest chat, WhatsApp for guests | 🟢 70% |
@@ -192,7 +192,7 @@ Channels: LINE, WhatsApp, Telegram, SMS, Email ✅
 | 📦 Supply check (sheets, towels, soap) | חסר | 🔴 Critical |
 | ⛔ "Complete" blocked until all done | חסר | 🔴 Critical |
 | 📸 Reference photo comparison | חסר | 🟡 High |
-| ⚠️ Problem Reporting (from task) | חסר | 🔴 Critical |
+| ⚠️ Problem Reporting (from task) | **Backend built** (Phase 598 + 647–652). Auto-creates MAINTENANCE task. | 🟡 UI needed |
 | 🔀 Task Take-Over (Ops Manager) | חסר | 🟡 High |
 | 📍 Navigate to property (GPS link) | חסר | 🟡 High |
 | 🧹 CHECKOUT task auto-creation | **Partial** — created on checkout API call | 🟡 |
@@ -267,20 +267,35 @@ owner_portal_data.py (Phase 301):
 
 ---
 
-## 8. ⚠️ Problem Reporting — חסר לגמרי
+## 8. ⚠️ Problem Reporting — Backend Built (Phases 598, 647–652)
 
-שום דבר לא קיים. צריך לבנות מאפס:
+> **Update (2026-03-28):** This section previously said "חסר לגמרי" (0%). That was wrong.
+> The backend was built across Phases 598, 647–652. See `src/api/problem_report_router.py`.
+
+### ✅ מה יש:
 ```
-├── Problem Report Model (category, description, photos, priority)
-├── Problem Report API (create, list, update)
-├── Auto-create Maintenance Task from report
-├── Alert to Admin + Ops Manager dashboard
-├── Photo storage (Supabase Storage)
-├── Category enum (Pool, Plumbing, Electrical, AC...)
-├── i18n (Thai → English auto-translate)
-└── History + resolution tracking
+├── problem_report_router.py — 6 endpoints (POST/GET/PATCH + photos)
+├── 14 categories (pool, plumbing, electrical, ac_heating, ...)
+├── 4 statuses (open, in_progress, resolved, dismissed)
+├── Auto-create MAINTENANCE task (Phase 648) — urgent→CRITICAL, normal→MEDIUM
+├── SSE alert on urgent reports (Phase 651) — PROBLEM_URGENT event
+├── Audit event on status change (Phase 650) — PROBLEM_REPORT_STATUS_CHANGED
+├── Category→specialty routing (Phase 652)
+├── i18n labels (Phase 652) — EN/TH/HE for 14 categories
+├── DB: problem_reports + problem_report_photos tables (RLS enabled)
+├── Frontend: /ops/maintenance page calls these endpoints
+└── Mounted in main.py (always active, no feature flag)
 ```
-**עדיפות: 🔴 Critical**
+
+### ❌ מה חסר:
+| פיצ'ר | סטטוס | עדיפות |
+|-------|--------|-------|
+| Admin UI — cross-property report dashboard | חסר | 🟡 High |
+| Photo Storage pipeline (Supabase Storage upload) | לא מאומת | 🟡 High |
+| RLS policy verification on problem_reports | לא מאומת | 🟡 High |
+| Auto-translate (description_original_lang) | שדה קיים, pipeline חסר | 🟢 Medium |
+
+**עדיפות: 🟡 High (backend done, UI + storage gaps remain)**
 
 ---
 
@@ -355,7 +370,7 @@ owner_portal_data.py (Phase 301):
 | A2 | Guest Check-in Form (Tourist/Resident, passport photo, deposit) | API + Model חדש |
 | A3 | QR Code Generation → Guest Portal link | Endpoint חדש |
 | A4 | Cleaning Checklist (per property, mandatory photos, supply check) | Model + API חדש |
-| A5 | Problem Reporting (category, photo, priority, alert) | Module חדש לגמרי |
+| A5 | Problem Reporting — **Admin UI + photo storage** | Backend built (Phases 598, 647–652). Needs admin dashboard + storage pipeline |
 | A6 | Guest Portal: extras + chat | הרחבת guest_portal.py |
 | A7 | Manual Booking (by manager, with task opt-out) | Endpoint חדש |
 

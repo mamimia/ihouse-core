@@ -120,7 +120,7 @@ Test suite stabilization, Supabase RLS audit, conflict auto-resolution engine, o
 | — | **Checkpoint: Operational Awareness** | — | ✅ Passed |
 | D | Mobile Check-in Flow (6-step) | `.agent/architecture/mobile-checkin.md` | ✅ Done (gaps D-1 to D-7) |
 | E | Mobile Cleaner Flow (checklist+photos) | `.agent/architecture/mobile-cleaner.md` | 🔧 In Progress |
-| F | Problem Reporting | `.agent/architecture/mobile-maintenance.md` | ⬜ Next |
+| F | Problem Reporting UI _(backend built: Phases 598, 647–652)_ | `.agent/architecture/mobile-maintenance.md` | ⬜ Next |
 | — | **Checkpoint: One Property, End-to-End** | — | ⬜ Pending |
 
 ### PMS / Channel Manager — DEFERRED (NOT DISCARDED)

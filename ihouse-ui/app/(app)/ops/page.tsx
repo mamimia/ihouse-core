@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api } from '@/lib/api';
+import { apiFetch } from '@/lib/staffApi';
 import { toast } from '@/components/Toast';
 import Link from 'next/link';
 
@@ -19,7 +19,7 @@ export default function OperationsTodayPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await api.getOperationsToday?.() || {} as any;
+            const res = await apiFetch<any>('/operations/today');
             setData(res);
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Failed to load operations');

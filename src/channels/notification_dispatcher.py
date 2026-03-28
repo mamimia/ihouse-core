@@ -20,8 +20,8 @@ Per-worker channel preference:
     Each worker has their own channel registered in notification_channels.
     Worker A → channel_type="line"      → LINE only
     Worker B → channel_type="whatsapp"  → WhatsApp only
-    Worker C → channel_type="telegram"  → Telegram only (future)
-    Worker D → channel_type="sms"       → SMS only (tier-2 escalation)
+    Worker C → channel_type="telegram"  → Telegram (live since Phase 842)
+    Worker D → channel_type="sms"       → SMS only (stub — not yet wired)
     No global fallback chain — each worker gets their preferred channel.
 
 Escalation tiers (SLA engine responsibility, not this module):
@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 # Tier 1 — Preferred external channels (per-worker, registered at onboarding)
 CHANNEL_LINE     = "line"       # LINE Messaging API — dominant in Thailand/JP
 CHANNEL_WHATSAPP = "whatsapp"   # WhatsApp Cloud API — dominant in SEA/EU markets
-CHANNEL_TELEGRAM = "telegram"   # Telegram Bot API — future phase
+CHANNEL_TELEGRAM = "telegram"   # Telegram Bot API — live since Phase 842
 
 # Tier 1 — App/device push
 CHANNEL_FCM   = "fcm"           # Firebase Cloud Messaging
@@ -196,12 +196,13 @@ def _default_fcm_adapter(
     db: Any = None,
     tenant_id: str = "",
 ) -> ChannelAttempt:
-    """FCM stub — reserved for Phase 168+ wiring."""
-    logger.info("FCM dispatch to token=%s (stub)", channel_id)
+    """FCM stub — not yet wired. Returns failure to prevent false delivery signals."""
+    logger.warning("FCM dispatch to token=%s — STUB, not delivered", channel_id)
     return ChannelAttempt(
         channel_type=CHANNEL_FCM,
         channel_id=channel_id,
-        success=True,
+        success=False,
+        error="STUB_NOT_IMPLEMENTED: FCM adapter is not yet wired",
     )
 
 
@@ -211,12 +212,13 @@ def _default_email_adapter(
     db: Any = None,
     tenant_id: str = "",
 ) -> ChannelAttempt:
-    """Email stub — reserved for Phase 168+ wiring."""
-    logger.info("Email dispatch to=%s (stub)", channel_id)
+    """Email stub — not yet wired. Returns failure to prevent false delivery signals."""
+    logger.warning("Email dispatch to=%s — STUB, not delivered", channel_id)
     return ChannelAttempt(
         channel_type=CHANNEL_EMAIL,
         channel_id=channel_id,
-        success=True,
+        success=False,
+        error="STUB_NOT_IMPLEMENTED: Email adapter is not yet wired",
     )
 
 
@@ -229,16 +231,18 @@ def _default_whatsapp_adapter(
     """
     WhatsApp Cloud API adapter stub (Phase 196).
 
-    In production: HTTP POST to graph.facebook.com/v19.0/{phone_number_id}/messages
+    When wired: HTTP POST to graph.facebook.com/v19.0/{phone_number_id}/messages
     with Authorization: Bearer {IHOUSE_WHATSAPP_TOKEN}.
-    Stub returns success=True; tests inject mocks via `adapters` parameter.
+    Currently returns failure to prevent false delivery signals.
+    Tests inject mocks via `adapters` parameter.
     """
     text = f"{message.title}\n{message.body}"
-    logger.info("WhatsApp dispatch to number=%s text_len=%d", channel_id, len(text))
+    logger.warning("WhatsApp dispatch to number=%s text_len=%d — STUB, not delivered", channel_id, len(text))
     return ChannelAttempt(
         channel_type=CHANNEL_WHATSAPP,
         channel_id=channel_id,
-        success=True,
+        success=False,
+        error="STUB_NOT_IMPLEMENTED: WhatsApp adapter is not yet wired",
     )
 
 
@@ -303,14 +307,16 @@ def _default_sms_adapter(
     """
     SMS adapter stub — tier-2 last-resort escalation (future phase).
 
-    In production: Twilio / AWS SNS. Only triggered after longer unresponsive
-    window than tier-1 channels. Stub reserved for future SLA tier wiring.
+    When wired: Twilio / AWS SNS. Only triggered after longer unresponsive
+    window than tier-1 channels. Currently returns failure to prevent
+    false delivery signals.
     """
-    logger.info("SMS dispatch to number=%s (stub)", channel_id)
+    logger.warning("SMS dispatch to number=%s — STUB, not delivered", channel_id)
     return ChannelAttempt(
         channel_type=CHANNEL_SMS,
         channel_id=channel_id,
-        success=True,
+        success=False,
+        error="STUB_NOT_IMPLEMENTED: SMS adapter is not yet wired",
     )
 
 

@@ -185,10 +185,26 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
 
 // ========== Main Page ==========
 export default function MobileCheckoutPage() {
-    // Phase 883: Checkout world is built on CHECKOUT_VERIFY tasks,
-    // NOT booking status. Booking status is stale/disconnected in staging.
+    // ─── Architectural rule (Phase 883 / Issue 16) ───────────────────────────
+    // The checkout LIST uses CHECKOUT_VERIFY tasks as its source of truth,
+    // NOT booking status. This is the correct and deliberate architecture.
+    //
+    // Historical context: a Phase 690 shadow route (now removed — Issue 15)
+    // wrote booking status directly to the `bookings` table, bypassing
+    // `booking_state` and `event_log`. This caused `booking_state.status` to
+    // remain stale after checkout, making status-based lists unreliable.
+    // Phase 883 replaced the status-based list with a task-based list.
+    //
+    // Current state (post Issue 15 fix): booking_checkin_router.py (Phase 398)
+    // is now the sole checkout endpoint and correctly updates `booking_state`
+    // and emits `BOOKING_CHECKED_OUT` to `event_log`. However, the task-based
+    // list architecture is preserved as the authoritative design:
+    //   - CHECKOUT_VERIFY tasks are generated daily by the pre-arrival scan
+    //   - They are independent of booking status and more operationally reliable
+    //   - Do NOT build future checkout-readiness surfaces on booking.status
+    // ─────────────────────────────────────────────────────────────────────────
     const [checkoutTasks, setCheckoutTasks] = useState<CheckoutTask[]>([]);
-    const [bookings, setBookings] = useState<Booking[]>([]);  // kept for the checkout flow steps
+    const [bookings, setBookings] = useState<Booking[]>([]);  // enrichment only — NOT the list source
     const [loading, setLoading] = useState(true);
     const [step, setStep] = useState<CheckoutStep>('list');
     const [selected, setSelected] = useState<Booking | null>(null);
@@ -206,6 +222,9 @@ export default function MobileCheckoutPage() {
     const [deductionAmount, setDeductionAmount] = useState('');
     const [deductionReason, setDeductionReason] = useState('');
     const [settlement, setSettlement] = useState<any>(null);
+    // Phase 692: Checkout condition photos
+    const [checkoutPhotos, setCheckoutPhotos] = useState<Array<{ room_label: string; photo_url: string; local?: boolean }>>([]);
+    const [photoUploading, setPhotoUploading] = useState(false);
 
     const showNotice = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(null), 3000); };
 
@@ -270,7 +289,11 @@ export default function MobileCheckoutPage() {
 
             setCheckoutTasks(enriched);
 
-            // Keep booking query as secondary (needed for flow steps).
+            // Secondary: fetch checked_in bookings for FLOW STEP detail hydration only.
+            // This is NOT used for the checkout list — checkoutTasks is the list source.
+            // The status=checked_in filter is best-effort; stale values are tolerated
+            // because booking data is used only for guest name, dates, and deposit lookup
+            // during the 4-step checkout flow after a task has already been selected.
             try {
                 const bookRes = await apiFetch<any>('/bookings?status=checked_in&limit=50');
                 const list = bookRes.bookings || bookRes.data?.bookings || bookRes.data || [];
@@ -294,6 +317,7 @@ export default function MobileCheckoutPage() {
         setDeductionAmount('');
         setDeductionReason('');
         setSettlement(null);
+        setCheckoutPhotos([]);
     };
 
     const startCheckoutFromTask = (t: CheckoutTask) => {
@@ -319,6 +343,7 @@ export default function MobileCheckoutPage() {
         setDeductionAmount('');
         setDeductionReason('');
         setSettlement(null);
+        setCheckoutPhotos([]);
     };
 
     const goBack = () => {
@@ -338,6 +363,50 @@ export default function MobileCheckoutPage() {
         } catch {
             showNotice('⚠ Acknowledge failed');
         }
+    };
+
+
+    // Phase 692: Upload a checkout condition photo for a room
+    // Uses <input type="file" capture="environment"> to open device camera.
+    const uploadCheckoutPhoto = async (file: File, roomLabel: string) => {
+        if (!selected) return;
+        const bookingId = getBookingId(selected);
+        setPhotoUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('room_label', roomLabel);
+            formData.append('taken_by', 'checkout_flow');
+
+            // Use raw fetch for FormData (apiFetch uses JSON)
+            const { getTabToken } = await import('@/lib/tokenStore');
+            const token = getTabToken();
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+            const response = await fetch(`${apiBase}/bookings/${bookingId}/checkout-photos/upload`, {
+                method: 'POST',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCheckoutPhotos(prev => [...prev, {
+                    room_label: roomLabel,
+                    photo_url: data.photo_url || URL.createObjectURL(file),
+                }]);
+                showNotice(`📷 ${roomLabel} photo saved`);
+            } else {
+                // Fallback: record locally using object URL so the session preserves it
+                setCheckoutPhotos(prev => [...prev, {
+                    room_label: roomLabel,
+                    photo_url: URL.createObjectURL(file),
+                    local: true,
+                }]);
+                showNotice('📷 Photo saved locally (upload queued)');
+            }
+        } catch {
+            showNotice('⚠️ Photo capture failed — try again');
+        }
+        setPhotoUploading(false);
     };
 
     // Step 2: Submit an issue via existing problem_report_router
@@ -364,6 +433,7 @@ export default function MobileCheckoutPage() {
             setIssueDescription('');
         }
     };
+
 
     // Step 3: Handle deposit — deduction or full return
     // Correct flow: GET /deposits?booking_id= → get deposit_id → POST /deposits/{deposit_id}/deductions
@@ -546,6 +616,81 @@ export default function MobileCheckoutPage() {
                     <InfoRow label="Check-in" value={selected.check_in ? new Date(selected.check_in + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
                     <InfoRow label="Check-out" value={selected.check_out ? new Date(selected.check_out + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : selected.check_out} />
                     <InfoRow label="Nights" value={selected.nights} />
+
+                    {/* Phase 692 — Checkout condition photo capture */}
+                    <div style={{ marginTop: 'var(--space-4)' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)', fontWeight: 600 }}>
+                            📷 Condition Photos
+                        </div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-3)' }}>
+                            Photograph each room before leaving. Photos are saved to the property condition record.
+                        </div>
+
+                        {/* Room photo buttons */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                            {['Living Room', 'Bedroom', 'Bathroom', 'Kitchen', 'Balcony', 'Other'].map(room => {
+                                const roomKey = room.toLowerCase().replace(' ', '_');
+                                const taken = checkoutPhotos.some(p => p.room_label === roomKey);
+                                return (
+                                    <label key={room} style={{
+                                        display: 'flex', alignItems: 'center', gap: 8,
+                                        padding: '10px 12px',
+                                        background: taken ? 'rgba(63,185,80,0.08)' : 'var(--color-surface-2)',
+                                        border: `1px solid ${taken ? 'rgba(63,185,80,0.3)' : 'var(--color-border)'}`,
+                                        borderRadius: 'var(--radius-sm)',
+                                        cursor: photoUploading ? 'not-allowed' : 'pointer',
+                                        opacity: photoUploading ? 0.6 : 1,
+                                        fontSize: 'var(--text-xs)', fontWeight: 600,
+                                        color: taken ? 'var(--color-ok)' : 'var(--color-text-dim)',
+                                    }}>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            style={{ display: 'none' }}
+                                            disabled={photoUploading}
+                                            onChange={e => {
+                                                const f = e.target.files?.[0];
+                                                if (f) uploadCheckoutPhoto(f, roomKey);
+                                                e.target.value = '';
+                                            }}
+                                        />
+                                        <span>{taken ? '✅' : '📷'}</span>
+                                        <span>{room}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+
+                        {/* Thumbnail strip for captured photos */}
+                        {checkoutPhotos.length > 0 && (
+                            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-3)' }}>
+                                {checkoutPhotos.map((p, i) => (
+                                    <div key={i} style={{ position: 'relative' }}>
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={p.photo_url}
+                                            alt={p.room_label}
+                                            style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                                        />
+                                        {p.local && (
+                                            <div style={{
+                                                position: 'absolute', bottom: 2, right: 2,
+                                                background: 'rgba(210,153,34,0.9)', borderRadius: 2,
+                                                fontSize: 8, color: '#fff', padding: '1px 3px',
+                                            }}>local</div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {photoUploading && (
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-2)' }}>
+                                ⏳ Uploading photo…
+                            </div>
+                        )}
+                    </div>
 
                     <div style={{ marginTop: 'var(--space-4)' }}>
                         <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>

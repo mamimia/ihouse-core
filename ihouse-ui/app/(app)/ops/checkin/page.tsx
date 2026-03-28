@@ -1,13 +1,20 @@
 'use client';
 
 /**
- * Operational Core — Phase D: Mobile Check-in Flow
- * Architecture source: .agent/architecture/mobile-checkin.md
- * Scope rule: Tenant-wide arrivals, NOT assignment-aware (B-1 gap).
+ * Phase 971 — Check-in Wizard Rebuild
+ * Route: /ops/checkin
+ *
+ * Corrected 7-step operational check-in flow:
+ *   1. Arrival Confirmation
+ *   2. Property Walk-Through Photos (match reference photos)
+ *   3. Electricity Meter Capture (conditional: electricity_enabled)
+ *   4. Guest Contact Info
+ *   5. Deposit Collection (conditional: deposit_enabled)
+ *   6. Passport / Identity Capture
+ *   7. Complete + Generate Guest Portal QR
  *
  * Home: Today's arrivals list for the entire tenant
- * Flow: 6-step check-in (Arrival → Status → Passport → Deposit → Welcome → Complete)
- * Flow: 4-step check-out (Inspection → Issues → Deposit Resolution → Complete)
+ * Conditional steps auto-skip based on property_charge_rules.
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -17,8 +24,7 @@ import { CHECKIN_BOTTOM_NAV } from '@/components/BottomNav';
 import MobileStaffShell from '@/components/MobileStaffShell';
 import WorkerTaskCard from '@/components/WorkerTaskCard';
 import WorkerHeader from '@/components/WorkerHeader';
-
-// Phase 865: apiFetch, getToken imported from lib/staffApi.ts
+import QRCode from 'qrcode';
 
 type Booking = {
     booking_ref?: string;
@@ -38,18 +44,38 @@ type Booking = {
     source?: string;
     reservation_ref?: string;
     operator_note?: string;
-    property_status?: string; // from property enrichment
+    property_status?: string;
     property_latitude?: number;
     property_longitude?: number;
     property_address?: string;
 };
 
-// Resolve the correct booking ID from various field names
+type ChargeConfig = {
+    deposit_enabled: boolean;
+    deposit_amount: number | null;
+    deposit_currency: string;
+    electricity_enabled: boolean;
+    electricity_rate_kwh: number | null;
+};
+
+type RefPhoto = { id: string; photo_url: string; room_label: string; caption?: string };
+type CapturedPhoto = { room_label: string; storage_path: string; captured_at: string; preview_url?: string };
+
 function getBookingId(b: Booking): string {
     return b.booking_id || b.booking_ref || b.id || 'unknown';
 }
 
-type CheckInStep = 'list' | 'arrival' | 'passport' | 'deposit' | 'welcome' | 'complete' | 'success';
+/** Strip internal metadata from operator notes (e.g. "(auto, Phase 232)") */
+function cleanNote(note: string): string {
+    return note.replace(/\s*\(auto,.*?\)\s*/gi, '').replace(/\s*—\s*pre-arrival preparation/gi, '').trim();
+}
+
+/** Truncate long strings with ellipsis */
+function truncate(s: string, max: number): string {
+    return s.length > max ? s.slice(0, max) + '…' : s;
+}
+
+type CheckInStep = 'list' | 'arrival' | 'walkthrough' | 'meter' | 'contact' | 'deposit' | 'passport' | 'complete' | 'success';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
     Upcoming: { bg: 'rgba(88,166,255,0.15)', text: 'var(--color-sage)' },
@@ -241,6 +267,16 @@ export default function MobileCheckinPage() {
     const [isExtracting, setIsExtracting] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
 
+    // Phase 971 — new wizard state
+    const [chargeConfig, setChargeConfig] = useState<ChargeConfig>({ deposit_enabled: false, deposit_amount: null, deposit_currency: 'THB', electricity_enabled: false, electricity_rate_kwh: null });
+    const [refPhotos, setRefPhotos] = useState<RefPhoto[]>([]);
+    const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([]);
+    const [meterReading, setMeterReading] = useState('');
+    const [meterPhotoUrl, setMeterPhotoUrl] = useState<string | null>(null);
+    const [meterStoragePath, setMeterStoragePath] = useState<string | null>(null);
+    const [guestPhone, setGuestPhone] = useState('');
+    const [guestEmail, setGuestEmail] = useState('');
+
     const startCamera = async () => {
         setIsCameraActive(true);
         try {
@@ -266,7 +302,7 @@ export default function MobileCheckinPage() {
         setIsCameraActive(false);
     };
 
-    const captureFrame = async () => {
+    const captureFrame = async (purpose: 'passport' | 'meter' | 'walkthrough' = 'passport', roomLabel?: string) => {
         if (!videoRef.current) return;
         const video = videoRef.current;
         const canvas = document.createElement('canvas');
@@ -275,13 +311,16 @@ export default function MobileCheckinPage() {
         const ctx = canvas.getContext('2d');
         if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Convert canvas to JPEG base64 and upload to Supabase Storage
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        const previewUrl = dataUrl; // use data URL for preview (survives page state)
-        setPassportPhotoUrl(previewUrl);
         stopCamera();
 
-        // Upload to real storage
+        if (purpose === 'passport') {
+            setPassportPhotoUrl(dataUrl);
+        } else if (purpose === 'meter') {
+            setMeterPhotoUrl(dataUrl);
+        }
+
+        // Upload to storage
         setIsUploading(true);
         try {
             const bookingId = selected ? getBookingId(selected) : undefined;
@@ -289,19 +328,27 @@ export default function MobileCheckinPage() {
                 method: 'POST',
                 body: JSON.stringify({
                     image_base64: dataUrl,
-                    side: 'front',
+                    side: purpose === 'passport' ? 'front' : purpose === 'meter' ? 'meter_reading' : `checkin_${roomLabel}`,
                     booking_id: bookingId,
                 }),
             });
             if (res.storage_path) {
-                setDocumentStoragePath(res.storage_path);
-                showNotice('✅ Document captured & stored');
+                if (purpose === 'passport') {
+                    setDocumentStoragePath(res.storage_path);
+                } else if (purpose === 'meter') {
+                    setMeterStoragePath(res.storage_path);
+                } else if (purpose === 'walkthrough' && roomLabel) {
+                    setCapturedPhotos(prev => [...prev.filter(p => p.room_label !== roomLabel), {
+                        room_label: roomLabel, storage_path: res.storage_path, captured_at: new Date().toISOString(), preview_url: dataUrl,
+                    }]);
+                }
+                showNotice('✅ Photo captured & stored');
             } else {
                 showNotice('⚠️ Upload completed but no path returned');
             }
         } catch (err) {
-            console.warn('Document upload failed', err);
-            showNotice('⚠️ Upload failed — document will not be stored. Please fill fields manually.');
+            console.warn('Upload failed', err);
+            showNotice('⚠️ Upload failed — please retry');
         } finally {
             setIsUploading(false);
         }
@@ -314,9 +361,6 @@ export default function MobileCheckinPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            // Phase 884 fix (B revised): Widen horizon, and ALWAYS query
-            // CHECKIN tasks in parallel. Union the results to ensure truth aligns
-            // with the tasks tab, even if bookings API returns something non-empty.
             const today = new Date().toISOString().slice(0, 10);
             const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
@@ -331,7 +375,6 @@ export default function MobileCheckinPage() {
             const tList = tRes.tasks || tRes.data?.tasks || tRes.data || [];
             const checkinTasks: any[] = Array.isArray(tList) ? tList : [];
 
-            // Merge: map direct bookings, then overlay synthetic bookings from tasks
             const bookingMap = new Map<string, any>();
             rawBookings.forEach(b => {
                 const id = b.booking_id || b.id;
@@ -341,24 +384,20 @@ export default function MobileCheckinPage() {
             checkinTasks.forEach(t => {
                 if (t.status === 'COMPLETED' || t.status === 'CANCELED') return;
                 const bId = t.booking_id || t.task_id;
-                // Phase 889: For tasks without a matching booking in the bookings
-                // list, create a placeholder. We will enrich it from the booking API
-                // in the next step so check_out/guest_name/guest_count are real.
                 if (!bookingMap.has(bId)) {
                     bookingMap.set(bId, {
                         booking_id: bId,
                         booking_ref: t.task_id,
                         property_id: t.property_id,
-                        guest_name: undefined, // CRITICAL FIX: never fallback to t.title, prevents operational garbage in UI
+                        guest_name: undefined,
                         check_in: t.due_date || today,
                         check_out: undefined,
                         status: t.status || 'Upcoming',
                         deposit_required: false,
                         operator_note: t.description || undefined,
-                        _needs_booking_enrichment: true,  // flag for enrichment
+                        _needs_booking_enrichment: true,
                     });
                 } else {
-                    // Task exists AND booking exists — attach task metadata
                     const existing = bookingMap.get(bId);
                     if (existing) {
                         existing.status = existing.status || t.status || 'Upcoming';
@@ -367,15 +406,10 @@ export default function MobileCheckinPage() {
                 }
             });
 
-            // Phase 889: Enrich synthetic bookings with real booking data
-            // (check_out, guest_name, guest_count) from booking_state via API
             const enrichPromises: Promise<void>[] = [];
             bookingMap.forEach((b, bId) => {
                 if (!b._needs_booking_enrichment) return;
                 enrichPromises.push(
-                    // CRITICAL FIX FOR ACT-AS ROLES:
-                    // Workers do not have the 'bookings' capability, so /bookings/ {id} returns 403.
-                    // Instead, use the isolated /worker/bookings/{id} endpoint which permits workers.
                     apiFetch<any>(`/worker/bookings/${bId}`)
                         .then(res => {
                             const bk = res?.data || res;
@@ -389,21 +423,15 @@ export default function MobileCheckinPage() {
                                 b.guest_id = bk.guest_id ?? b.guest_id;
                             }
                         })
-                        .catch(() => {
-                            // Booking lookup failed — keep synthetic data as-is
-                        })
+                        .catch(() => {})
                 );
             });
             await Promise.all(enrichPromises);
 
             const merged = Array.from(bookingMap.values());
 
-            // Enrich each booking with property deposit config + property status
             const enriched = await Promise.all(
                 merged.map(async (b) => {
-                    // Compute nights from real dates; do NOT force a minimum of 1.
-                    // If check_in === check_out (or check_out is missing), nights is null
-                    // → WorkerTaskCard omits the field rather than showing wrong data.
                     let nights = b.nights;
                     if (!nights && b.check_in && b.check_out && b.check_out !== b.check_in) {
                         const d1 = new Date(b.check_in).getTime();
@@ -417,9 +445,6 @@ export default function MobileCheckinPage() {
                         return {
                             ...b,
                             nights,
-                            // Phase 887: store display_name so BookingCardList can pass it
-                            // as propertyName to WorkerTaskCard (which uses it as primary title).
-                            // Without this, propertyName fell back to property_id (e.g. KPG-502).
                             property_name: prop.display_name || null,
                             deposit_required: prop.deposit_required ?? false,
                             deposit_amount: prop.deposit_amount ?? null,
@@ -444,18 +469,38 @@ export default function MobileCheckinPage() {
 
     useEffect(() => { load(); }, [load]);
 
-    const startCheckin = (b: Booking) => {
+    // Phase 971: startCheckin now fetches charge-config + reference photos
+    const startCheckin = async (b: Booking) => {
         setSelected(b);
         setStep('arrival');
-        setPassportNumber('');
-        setPassportName(b.guest_name || '');
-        setPassportExpiry('');
-        setPassportPhotoUrl(null);
-        setDepositMethod('cash');
-        setDepositNote('');
+        // Reset wizard state
+        setPassportNumber(''); setPassportName(b.guest_name || ''); setPassportExpiry('');
+        setPassportPhotoUrl(null); setDocumentStoragePath(null);
+        setDepositMethod('cash'); setDepositNote('');
+        setCapturedPhotos([]); setMeterReading(''); setMeterPhotoUrl(null); setMeterStoragePath(null);
+        setGuestPhone(''); setGuestEmail('');
+        setGuestPortalUrl(null); setQrImageUrl(null);
+
+        const bookingId = getBookingId(b);
+        // Fetch charge config (deposit + electricity rules)
+        try {
+            const cc = await apiFetch<any>(`/worker/bookings/${bookingId}/charge-config`);
+            setChargeConfig({
+                deposit_enabled: cc.deposit_enabled ?? false,
+                deposit_amount: cc.deposit_amount ?? null,
+                deposit_currency: cc.deposit_currency ?? 'THB',
+                electricity_enabled: cc.electricity_enabled ?? false,
+                electricity_rate_kwh: cc.electricity_rate_kwh ?? null,
+            });
+        } catch { /* defaults are safe */ }
+        // Fetch reference photos for walk-through matching
+        try {
+            const rp = await apiFetch<any>(`/properties/${b.property_id}/reference-photos`);
+            const photos = rp.photos || rp.data?.photos || rp.data || rp || [];
+            setRefPhotos(Array.isArray(photos) ? photos : []);
+        } catch { setRefPhotos([]); }
     };
 
-    // Phase 887c: Acknowledge — parity with Combined Tasks view.
     const handleAcknowledgeTask = async (taskId: string) => {
         try {
             await apiFetch<any>(`/worker/tasks/${taskId}/acknowledge`, { method: 'PATCH' });
@@ -468,14 +513,14 @@ export default function MobileCheckinPage() {
         }
     };
 
-    // Dynamic flow: skip deposit step when not required by property config
-    // Property status step removed — merged into arrival screen as badge
+    // Phase 971: Dynamic flow based on charge config
     const getFlow = (): CheckInStep[] => {
-        const base: CheckInStep[] = ['list', 'arrival', 'passport', 'deposit', 'welcome', 'complete'];
-        if (selected && selected.deposit_required !== true) {
-            return base.filter(s => s !== 'deposit');
-        }
-        return base;
+        const steps: CheckInStep[] = ['list', 'arrival', 'walkthrough'];
+        if (chargeConfig.electricity_enabled) steps.push('meter');
+        steps.push('contact');
+        if (chargeConfig.deposit_enabled) steps.push('deposit');
+        steps.push('passport', 'complete');
+        return steps;
     };
 
     // Step numbering helpers: 'list' is not a numbered step
@@ -500,11 +545,11 @@ export default function MobileCheckinPage() {
         if (idx < flow.length - 1) setStep(flow[idx + 1]);
     };
 
-    // ── D-1: Save passport number to guest record ──
-    // Passport number: ALWAYS required (dev and production).
-    // Passport photo:  required in production, bypassed in dev/testing.
-    // DEV_PHOTO_BYPASS: flip to false when camera capture + storage are wired.
-    const DEV_PHOTO_BYPASS = true; // ← only controls photo, number always blocks
+    // ── D-1: Save identity fields + document photo path to guest record ──
+    // Guest name is always mandatory. Document photo is captured via camera UI
+    // and uploaded to Supabase Storage (/worker/documents/upload) — the
+    // storage path is sent as document_photo_url. If no photo was captured,
+    // the field is omitted (backend accepts it as optional).
     const savePassport = async () => {
         if (!selected) return;
         const bookingId = getBookingId(selected);
@@ -547,32 +592,56 @@ export default function MobileCheckinPage() {
         nextStep();
     };
 
-    // ── D-2: Persist deposit to cash_deposits table ──
+    // ── Phase 971: Persist deposit + meter via checkin-settlement API ──
     const collectDeposit = async () => {
         if (!selected) { nextStep(); return; }
+        if (!chargeConfig.deposit_enabled) { nextStep(); return; }
         const bookingId = getBookingId(selected);
         try {
-            await apiFetch('/deposits', {
+            await apiFetch('/worker/bookings/' + bookingId + '/checkin-settlement', {
                 method: 'POST',
                 body: JSON.stringify({
-                    booking_id: bookingId,
-                    property_id: selected.property_id,
-                    amount: selected.deposit_amount || 0,
-                    currency: selected.deposit_currency || 'THB',
-                    method: depositMethod,
-                    note: depositNote || undefined,
+                    deposit_collected: true,
+                    deposit_amount: chargeConfig.deposit_amount || 0,
+                    deposit_currency: chargeConfig.deposit_currency || 'THB',
+                    deposit_method: depositMethod,
+                    deposit_note: depositNote || undefined,
                 }),
             });
             showNotice('💰 Deposit recorded');
         } catch {
-            showNotice('Deposit record attempt saved');
+            showNotice('⚠️ Deposit not saved — please retry');
         }
         nextStep();
     };
 
-    // ── D-5 + D-6 + Phase 58/59: Complete check-in + auto-generate guest QR ──
-    // Backend now auto-issues guest HMAC token on successful check-in.
-    // Response includes guest_portal_url which we display as a real QR.
+    // ── Phase 971: Save meter reading ──
+    const saveMeterReading = async () => {
+        if (!selected) { nextStep(); return; }
+        const reading = parseFloat(meterReading);
+        if (isNaN(reading) || reading <= 0) {
+            showNotice('⚠️ Please enter a valid meter reading');
+            return;
+        }
+        const bookingId = getBookingId(selected);
+        try {
+            await apiFetch('/worker/bookings/' + bookingId + '/checkin-settlement', {
+                method: 'POST',
+                body: JSON.stringify({
+                    meter_reading: reading,
+                    meter_photo_url: meterStoragePath || undefined,
+                    deposit_collected: false, // meter-only submission
+                }),
+            });
+            showNotice('⚡ Meter reading saved');
+        } catch {
+            showNotice('⚠️ Meter reading not saved — please retry');
+            return;
+        }
+        nextStep();
+    };
+
+    // ── Phase 971: Complete check-in + auto-generate guest QR ──
     const completeCheckin = async () => {
         if (!selected) return;
         const bookingId = getBookingId(selected);
@@ -588,26 +657,38 @@ export default function MobileCheckinPage() {
                 showNotice('✅ Check-in completed — booking is now InStay');
             }
 
-            // Phase D: Complete the associated CHECKIN task so it leaves the worker surface.
-            // task_id is attached during load() enrichment (from checkinTasks overlay).
+            // Phase 971 fix: Auto-transition task through required states
             const taskId = (selected as any).task_id;
             if (taskId) {
                 try {
-                    await apiFetch<any>(`/worker/tasks/${taskId}/complete`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ notes: 'Check-in completed via wizard' }),
+                    // Try complete directly first
+                    const completeRes = await apiFetch<any>(`/worker/tasks/${taskId}/complete`, {
+                        method: 'PATCH', body: JSON.stringify({ notes: 'Check-in completed via wizard' }),
                     });
-                } catch (taskErr) {
-                    // Non-blocking — checkin succeeded, task completion is best-effort.
-                    console.warn('completeCheckin: task completion PATCH failed (non-blocking)', taskErr);
+                    // If 422, task might be PENDING — acknowledge first
+                    if (completeRes?.error?.code === 'INVALID_TRANSITION' || completeRes?.status === 422) {
+                        await apiFetch<any>(`/worker/tasks/${taskId}/acknowledge`, { method: 'PATCH' });
+                        await apiFetch<any>(`/worker/tasks/${taskId}/complete`, {
+                            method: 'PATCH', body: JSON.stringify({ notes: 'Check-in completed via wizard' }),
+                        });
+                    }
+                } catch {
+                    // Try acknowledge→complete chain as fallback
+                    try {
+                        await apiFetch<any>(`/worker/tasks/${taskId}/acknowledge`, { method: 'PATCH' });
+                        await apiFetch<any>(`/worker/tasks/${taskId}/complete`, {
+                            method: 'PATCH', body: JSON.stringify({ notes: 'Check-in completed via wizard' }),
+                        });
+                    } catch { console.warn('Task completion failed (non-blocking)'); }
                 }
             }
 
-            // Phase 58: Extract guest portal URL from response
+            // Extract guest portal URL from response
             const portalUrl = data?.guest_portal_url || null;
             setGuestPortalUrl(portalUrl);
 
-            // Phase 59: Fetch real QR image from backend (best-effort)
+            // Phase 971: Generate QR — try server first, fallback to client-side
+            let qrGenerated = false;
             try {
                 const qrRes = await fetch(`${BASE}/bookings/${bookingId}/qr-image`, {
                     headers: { Authorization: `Bearer ${getToken()}` },
@@ -615,13 +696,18 @@ export default function MobileCheckinPage() {
                 if (qrRes.ok) {
                     const blob = await qrRes.blob();
                     setQrImageUrl(URL.createObjectURL(blob));
+                    qrGenerated = true;
                 }
-            } catch {
-                // QR image fetch is non-blocking — portal URL is the fallback
-                console.warn('QR image fetch failed — using portal URL text');
+            } catch { /* server QR failed, try client */ }
+
+            // Client-side QR fallback
+            if (!qrGenerated && portalUrl) {
+                try {
+                    const dataUrl = await QRCode.toDataURL(portalUrl, { width: 200, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+                    setQrImageUrl(dataUrl);
+                } catch { console.warn('Client-side QR generation failed'); }
             }
 
-            // Transition to success screen with real QR
             setStep('success');
             return;
         } catch {
@@ -789,16 +875,32 @@ export default function MobileCheckinPage() {
                     <InfoRow label="Check-out" value={selected.check_out ? new Date(selected.check_out + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
                     <InfoRow label="Nights" value={selected.nights} />
                     {selected.source && <InfoRow label="Source" value={selected.source} />}
-                    {selected.reservation_ref && <InfoRow label="Reservation" value={selected.reservation_ref} />}
+                    {selected.reservation_ref && <InfoRow label="Reservation" value={truncate(selected.reservation_ref, 20)} />}
                     {selected.operator_note && (
                         <div style={{
                             marginTop: 'var(--space-3)', padding: '8px 12px',
                             background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.2)',
                             borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-warn)',
                         }}>
-                            📝 {selected.operator_note}
+                            📝 {cleanNote(selected.operator_note)}
                         </div>
                     )}
+                    {/* Settlement policy banner (Phase 971) */}
+                    <div style={{
+                        marginTop: 'var(--space-3)', padding: '10px 12px',
+                        background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: 4,
+                    }}>
+                        <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Settlement Policy</div>
+                        <div style={{ display: 'flex', gap: 'var(--space-3)', fontSize: 'var(--text-xs)' }}>
+                            <span style={{ color: chargeConfig.deposit_enabled ? 'var(--color-warn)' : 'var(--color-text-faint)' }}>
+                                {chargeConfig.deposit_enabled ? `💰 Deposit: ${chargeConfig.deposit_currency} ${chargeConfig.deposit_amount ?? '—'}` : '💰 No deposit'}
+                            </span>
+                            <span style={{ color: chargeConfig.electricity_enabled ? 'var(--color-sage)' : 'var(--color-text-faint)' }}>
+                                {chargeConfig.electricity_enabled ? `⚡ Electricity: ${chargeConfig.electricity_rate_kwh ?? '—'} /kWh` : '⚡ Not billed'}
+                            </span>
+                        </div>
+                    </div>
                     <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                         <ActionButton label="Guest Arrived ✓" onClick={nextStep} />
                         <ActionButton label="📍 Navigate to Property" onClick={() => {
@@ -818,7 +920,212 @@ export default function MobileCheckinPage() {
                 </div>
             )}
 
-            {/* ========== STEP 3: Passport / Identity Capture ========== */}
+            {/* ========== STEP 2: Property Walk-Through Photos (Phase 971) ========== */}
+            {step === 'walkthrough' && selected && (
+                <div style={card}>
+                    <StepHeader step={getStepNumber('walkthrough')} total={getStepTotal()} title="Walk-Through Photos" onBack={goBack} />
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)' }}>
+                        Capture check-in photos matching reference photos for each area.
+                    </div>
+                    {refPhotos.length === 0 ? (
+                        <div style={{ padding: 'var(--space-4)', textAlign: 'center', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)' }}>
+                            No reference photos configured for this property.
+                            <div style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-xs)' }}>You may skip this step.</div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                {capturedPhotos.length} of {refPhotos.length} captured
+                            </div>
+                            {refPhotos.map(rp => {
+                                const captured = capturedPhotos.find(c => c.room_label === rp.room_label);
+                                return (
+                                    <div key={rp.id || rp.room_label} style={{
+                                        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)',
+                                        padding: 'var(--space-3)', background: captured ? 'rgba(63,185,80,0.06)' : 'var(--color-surface-2)',
+                                        border: `1px solid ${captured ? 'rgba(63,185,80,0.3)' : 'var(--color-border)'}`,
+                                        borderRadius: 'var(--radius-md)',
+                                    }}>
+                                        {/* Reference photo */}
+                                        <div>
+                                            <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', textTransform: 'uppercase', marginBottom: 4 }}>Reference</div>
+                                            <img src={rp.photo_url} alt={rp.room_label} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
+                                        </div>
+                                        {/* Captured photo or capture button */}
+                                        <div>
+                                            <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', textTransform: 'uppercase', marginBottom: 4 }}>
+                                                {captured ? '✅ Captured' : '📸 Tap to capture'}
+                                            </div>
+                                            {captured?.preview_url ? (
+                                                <div style={{ position: 'relative' }}>
+                                                    <img src={captured.preview_url} alt="Captured" style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
+                                                    <button onClick={() => setCapturedPhotos(prev => prev.filter(p => p.room_label !== rp.room_label))} style={{
+                                                        position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', color: '#fff',
+                                                        border: 'none', borderRadius: 12, padding: '2px 8px', fontSize: '9px', cursor: 'pointer',
+                                                    }}>Retake</button>
+                                                </div>
+                                            ) : (
+                                                <label style={{
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    width: '100%', height: 80, background: 'var(--color-surface)',
+                                                    border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-sm)',
+                                                    cursor: 'pointer', fontSize: 'var(--text-2xl)',
+                                                }}>
+                                                    📷
+                                                    <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                                                        onChange={async (e) => {
+                                                            if (!e.target.files?.[0]) return;
+                                                            const file = e.target.files[0];
+                                                            const reader = new FileReader();
+                                                            reader.onload = async () => {
+                                                                const dataUrl = reader.result as string;
+                                                                setIsUploading(true);
+                                                                try {
+                                                                    const bookingId = selected ? getBookingId(selected) : undefined;
+                                                                    const res = await apiFetch<any>('/worker/documents/upload', {
+                                                                        method: 'POST',
+                                                                        body: JSON.stringify({ image_base64: dataUrl, side: `checkin_${rp.room_label}`, booking_id: bookingId }),
+                                                                    });
+                                                                    if (res.storage_path) {
+                                                                        setCapturedPhotos(prev => [...prev.filter(p => p.room_label !== rp.room_label), {
+                                                                            room_label: rp.room_label, storage_path: res.storage_path, captured_at: new Date().toISOString(), preview_url: dataUrl,
+                                                                        }]);
+                                                                        showNotice('✅ Photo captured');
+                                                                    }
+                                                                } catch { showNotice('⚠️ Upload failed'); }
+                                                                finally { setIsUploading(false); }
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }}
+                                                    />
+                                                </label>
+                                            )}
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)' }}>
+                                            {rp.room_label}{rp.caption ? ` — ${rp.caption}` : ''}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                    {isUploading && (
+                        <div style={{ padding: 'var(--space-3)', textAlign: 'center', color: 'var(--color-warn)', fontSize: 'var(--text-xs)' }}>
+                            <div className="spinner" style={{ margin: '0 auto var(--space-2)' }} /> Uploading…
+                        </div>
+                    )}
+                    <div style={{ marginTop: 'var(--space-4)' }}>
+                        <ActionButton
+                            label={refPhotos.length === 0 || capturedPhotos.length >= refPhotos.length ? 'Continue →' : `Continue (${capturedPhotos.length}/${refPhotos.length}) →`}
+                            onClick={nextStep}
+                        />
+                        {refPhotos.length > 0 && capturedPhotos.length < refPhotos.length && (
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warn)', textAlign: 'center', marginTop: 'var(--space-2)' }}>
+                                ⚠️ Not all reference photos matched — you may still continue
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ========== STEP 3: Electricity Meter (conditional, Phase 971) ========== */}
+            {step === 'meter' && selected && (
+                <div style={card}>
+                    <StepHeader step={getStepNumber('meter')} total={getStepTotal()} title="Electricity Meter" onBack={goBack} />
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)' }}>
+                        Capture the opening meter reading for electricity billing.
+                    </div>
+                    {/* Meter photo capture */}
+                    <div style={{
+                        padding: 'var(--space-3)', border: `2px dashed ${meterPhotoUrl ? 'transparent' : 'var(--color-border)'}`,
+                        borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: 'var(--space-4)',
+                        background: meterPhotoUrl ? '#000' : 'transparent', position: 'relative', overflow: 'hidden',
+                    }}>
+                        {meterPhotoUrl ? (
+                            <div style={{ position: 'relative' }}>
+                                <img src={meterPhotoUrl} alt="Meter" style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} />
+                                <button onClick={() => { setMeterPhotoUrl(null); setMeterStoragePath(null); }} style={{
+                                    position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)',
+                                    color: '#fff', border: 'none', borderRadius: 16, padding: '4px 12px', fontSize: '11px', cursor: 'pointer',
+                                }}>Retake</button>
+                                {meterStoragePath && (
+                                    <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(63,185,80,0.9)', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: '10px', fontWeight: 600 }}>
+                                        ✓ Stored
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <label style={{ cursor: 'pointer', display: 'block' }}>
+                                <div style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-2)' }}>⚡📸</div>
+                                <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text)' }}>Capture Meter Photo</div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 4 }}>Tap to open camera</div>
+                                <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                                    onChange={async (e) => {
+                                        if (!e.target.files?.[0]) return;
+                                        const file = e.target.files[0];
+                                        const reader = new FileReader();
+                                        reader.onload = async () => {
+                                            const dataUrl = reader.result as string;
+                                            setMeterPhotoUrl(dataUrl);
+                                            setIsUploading(true);
+                                            try {
+                                                const bookingId = selected ? getBookingId(selected) : undefined;
+                                                const res = await apiFetch<any>('/worker/documents/upload', {
+                                                    method: 'POST',
+                                                    body: JSON.stringify({ image_base64: dataUrl, side: 'meter_reading', booking_id: bookingId }),
+                                                });
+                                                if (res.storage_path) { setMeterStoragePath(res.storage_path); showNotice('✅ Meter photo stored'); }
+                                            } catch { showNotice('⚠️ Upload failed'); }
+                                            finally { setIsUploading(false); }
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }}
+                                />
+                            </label>
+                        )}
+                    </div>
+                    {/* Reading input */}
+                    <div style={{ marginBottom: 'var(--space-3)' }}>
+                        <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Meter Reading (kWh) *</label>
+                        <input type="number" value={meterReading} onChange={e => setMeterReading(e.target.value)}
+                            placeholder="e.g. 12345.6" style={inputStyle} inputMode="decimal" step="0.1" />
+                    </div>
+                    {chargeConfig.electricity_rate_kwh && (
+                        <div style={{ padding: 'var(--space-2) var(--space-3)', background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.2)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', color: 'var(--color-sage)', marginBottom: 'var(--space-4)' }}>
+                            ⚡ Rate: {chargeConfig.electricity_rate_kwh} {chargeConfig.deposit_currency}/kWh (configured in admin)
+                        </div>
+                    )}
+                    <ActionButton label="Save & Continue →" onClick={saveMeterReading} />
+                </div>
+            )}
+
+            {/* ========== STEP 4: Guest Contact Info (Phase 971) ========== */}
+            {step === 'contact' && selected && (
+                <div style={card}>
+                    <StepHeader step={getStepNumber('contact')} total={getStepTotal()} title="Guest Contact" onBack={goBack} />
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)' }}>
+                        Capture guest phone and email so we can send the portal link after check-in.
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                        <div>
+                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Phone Number *</label>
+                            <input type="tel" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="+66 812 345 678" style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Email (optional)</label>
+                            <input type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="guest@example.com" style={inputStyle} />
+                        </div>
+                    </div>
+                    <div style={{ marginTop: 'var(--space-4)' }}>
+                        <ActionButton label="Continue →" onClick={() => {
+                            if (!guestPhone.trim()) { showNotice('⚠️ Phone number is recommended'); }
+                            nextStep();
+                        }} />
+                    </div>
+                </div>
+            )}
+
+            {/* ========== STEP 6: Passport / Identity Capture ========== */}
             {step === 'passport' && selected && (
                 <div style={card}>
                     <StepHeader step={getStepNumber('passport')} total={getStepTotal()} title="Identify Guest" onBack={goBack} />
@@ -834,7 +1141,7 @@ export default function MobileCheckinPage() {
                                     Align MRZ / Document within frame
                                 </div>
                             </div>
-                            <button onClick={captureFrame} style={{
+                            <button onClick={() => captureFrame('passport')} style={{
                                 position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
                                 width: 56, height: 56, borderRadius: '50%', background: '#fff', border: 'none',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -947,139 +1254,44 @@ export default function MobileCheckinPage() {
                 </div>
             )}
 
-            {/* ========== STEP 4: Deposit Handling ========== */}
+            {/* ========== STEP 5: Deposit Handling (Phase 971 — from chargeConfig) ========== */}
             {step === 'deposit' && selected && (
                 <div style={card}>
-                    <StepHeader step={getStepNumber('deposit')} total={getStepTotal()} title="Deposit Handling" onBack={goBack} />
-                    {selected.deposit_required !== false ? (
-                        <>
-                            <div style={{
-                                padding: 'var(--space-4)', background: 'rgba(210,153,34,0.1)',
-                                border: '1px solid rgba(210,153,34,0.3)', borderRadius: 'var(--radius-md)',
-                                marginBottom: 'var(--space-4)',
-                            }}>
-                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Deposit Required</div>
-                                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-warn)', marginTop: 4 }}>
-                                    {selected.deposit_currency || 'THB'} {selected.deposit_amount || '—'}
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Payment Method</label>
-                                {['cash', 'transfer', 'card_hold'].map(m => (
-                                    <label key={m} style={{
-                                        display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
-                                        background: depositMethod === m ? 'rgba(63,185,80,0.08)' : 'var(--color-surface-2)',
-                                        border: `1px solid ${depositMethod === m ? 'rgba(63,185,80,0.3)' : 'var(--color-border)'}`,
-                                        borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)',
-                                    }}>
-                                        <input type="radio" name="deposit" checked={depositMethod === m}
-                                            onChange={() => setDepositMethod(m)} />
-                                        {m === 'cash' ? '💵 Cash received' : m === 'transfer' ? '🏦 Transfer received' : '💳 Card hold'}
-                                    </label>
-                                ))}
-                            </div>
-                            <div style={{ marginBottom: 'var(--space-3)' }}>
-                                <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Note (optional)</label>
-                                <input value={depositNote} onChange={e => setDepositNote(e.target.value)} placeholder="Any notes..." style={inputStyle} />
-                            </div>
-                        </>
-                    ) : (
-                        <div style={{ padding: 'var(--space-4)', textAlign: 'center', color: 'var(--color-ok)', fontSize: 'var(--text-sm)' }}>
-                            ✓ No deposit required for this booking
+                    <StepHeader step={getStepNumber('deposit')} total={getStepTotal()} title="Deposit Collection" onBack={goBack} />
+                    <div style={{
+                        padding: 'var(--space-4)', background: 'rgba(210,153,34,0.1)',
+                        border: '1px solid rgba(210,153,34,0.3)', borderRadius: 'var(--radius-md)',
+                        marginBottom: 'var(--space-4)',
+                    }}>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Deposit Required</div>
+                        <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-warn)', marginTop: 4 }}>
+                            {chargeConfig.deposit_currency} {chargeConfig.deposit_amount ?? '—'}
                         </div>
-                    )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                        <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Payment Method</label>
+                        {['cash', 'transfer', 'card_hold'].map(m => (
+                            <label key={m} style={{
+                                display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
+                                background: depositMethod === m ? 'rgba(63,185,80,0.08)' : 'var(--color-surface-2)',
+                                border: `1px solid ${depositMethod === m ? 'rgba(63,185,80,0.3)' : 'var(--color-border)'}`,
+                                borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)',
+                            }}>
+                                <input type="radio" name="deposit" checked={depositMethod === m}
+                                    onChange={() => setDepositMethod(m)} />
+                                {m === 'cash' ? '💵 Cash received' : m === 'transfer' ? '🏦 Transfer received' : '💳 Card hold'}
+                            </label>
+                        ))}
+                    </div>
+                    <div style={{ marginBottom: 'var(--space-3)' }}>
+                        <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Note (optional)</label>
+                        <input value={depositNote} onChange={e => setDepositNote(e.target.value)} placeholder="Any notes..." style={inputStyle} />
+                    </div>
                     <ActionButton label="Confirm & Record Deposit →" onClick={collectDeposit} />
                 </div>
             )}
 
-            {/* ========== STEP 5: Send Welcome Info ========== */}
-            {step === 'welcome' && selected && (
-                <div style={card}>
-                    <StepHeader step={getStepNumber('welcome')} total={getStepTotal()} title="Welcome Info" onBack={goBack} />
-                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-4)' }}>
-                        Send welcome info to the guest:
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-                        {['📶 WiFi credentials', '📋 House rules', '🆘 Emergency contacts', '🛵 Motorbike rental', '👕 Laundry info'].map(item => (
-                            <div key={item} style={{
-                                padding: '10px 14px', background: 'var(--color-surface-2)',
-                                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
-                                fontSize: 'var(--text-sm)', color: 'var(--color-text)',
-                            }}>{item}</div>
-                        ))}
-                    </div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>
-                        Send via
-                    </div>
-                    <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-                        {/* SMS — wired to POST /notifications/send-sms */}
-                        <button onClick={async () => {
-                            try {
-                                await apiFetch('/notifications/send-sms', {
-                                    method: 'POST',
-                                    body: JSON.stringify({
-                                        to_number: '+0000000000', // placeholder — needs guest phone
-                                        body: `Welcome ${selected.guest_name || 'Guest'}! Your check-in at ${selected.property_id} is ready. WiFi and house info will be provided on arrival.`,
-                                        notification_type: 'booking_confirm',
-                                        reference_id: getBookingId(selected),
-                                    }),
-                                });
-                                showNotice('✅ SMS welcome sent');
-                            } catch {
-                                showNotice('⚠️ SMS failed — guest phone may not be on file');
-                            }
-                        }} style={{
-                            flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
-                            background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)',
-                            color: 'var(--color-ok)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                        }}>📱 SMS</button>
-
-                        {/* Email — wired to POST /notifications/send-email */}
-                        <button onClick={async () => {
-                            try {
-                                await apiFetch('/notifications/send-email', {
-                                    method: 'POST',
-                                    body: JSON.stringify({
-                                        to_email: 'guest@placeholder.com', // placeholder — needs guest email
-                                        subject: `Welcome to ${selected.property_id}`,
-                                        body_html: `<p>Welcome ${selected.guest_name || 'Guest'}!</p><p>Your stay at <b>${selected.property_id}</b> is confirmed. WiFi credentials and house rules will be provided at check-in.</p>`,
-                                        notification_type: 'booking_confirm',
-                                        reference_id: getBookingId(selected),
-                                    }),
-                                });
-                                showNotice('✅ Email welcome sent');
-                            } catch {
-                                showNotice('⚠️ Email failed — guest email may not be on file');
-                            }
-                        }} style={{
-                            flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
-                            background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.3)',
-                            color: 'var(--color-sage)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-                        }}>📧 Email</button>
-
-                        {/* LINE / Telegram / WhatsApp — honestly labeled as not connected */}
-                        {['💬 LINE', '✈️ Telegram'].map(label => (
-                            <button key={label} disabled style={{
-                                flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
-                                background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
-                                color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)', fontWeight: 600,
-                                cursor: 'not-allowed', opacity: 0.5,
-                            }}>{label}<br /><span style={{ fontSize: '9px' }}>Not connected</span></button>
-                        ))}
-                    </div>
-                    <div style={{
-                        padding: 'var(--space-2) var(--space-3)', background: 'rgba(210,153,34,0.08)',
-                        border: '1px solid rgba(210,153,34,0.2)', borderRadius: 'var(--radius-sm)',
-                        fontSize: 'var(--text-xs)', color: 'var(--color-warn)', marginBottom: 'var(--space-4)',
-                    }}>
-                        ℹ️ Guest phone/email will be auto-populated when guest profile data is available.
-                        LINE and Telegram channels require channel setup in Settings.
-                    </div>
-                    <ActionButton label="Continue →" onClick={nextStep} />
-                </div>
-            )}
-
-            {/* ========== STEP 6: Complete Check-in ========== */}
+            {/* ========== STEP 7: Complete Check-in (Phase 971 — full summary review) ========== */}
             {step === 'complete' && selected && (
                 <div style={card}>
                     <StepHeader step={getStepNumber('complete')} total={getStepTotal()} title="Complete Check-in" onBack={goBack} />
@@ -1096,19 +1308,27 @@ export default function MobileCheckinPage() {
                             This will mark the booking as <strong>InStay</strong> and the property as <strong>Occupied</strong>.
                         </div>
                     </div>
-                    <InfoRow label="Guest" value={selected.guest_name} />
-                    <InfoRow label="Property" value={selected.property_id} />
-                    <InfoRow label="Passport" value={passportNumber || '(not captured)'} />
-                    {selected.deposit_required === true && (
-                        <InfoRow label="Deposit" value={depositMethod === 'cash' ? 'Cash' : depositMethod === 'transfer' ? 'Transfer' : 'Card hold'} />
-                    )}
+                    {/* Summary review */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
+                        <InfoRow label="Guest" value={selected.guest_name} />
+                        <InfoRow label="Property" value={(selected as any).property_name || selected.property_id} />
+                        <InfoRow label="Walk-through" value={refPhotos.length > 0 ? `${capturedPhotos.length}/${refPhotos.length} photos` : 'No ref photos'} />
+                        {chargeConfig.electricity_enabled && (
+                            <InfoRow label="Meter Reading" value={meterReading ? `${meterReading} kWh` : '(not captured)'} />
+                        )}
+                        <InfoRow label="Contact" value={guestPhone || '(not provided)'} />
+                        {chargeConfig.deposit_enabled && (
+                            <InfoRow label="Deposit" value={`${chargeConfig.deposit_currency} ${chargeConfig.deposit_amount} — ${depositMethod === 'cash' ? 'Cash' : depositMethod === 'transfer' ? 'Transfer' : 'Card hold'}`} />
+                        )}
+                        <InfoRow label="Passport" value={passportNumber || '(not captured)'} />
+                    </div>
                     <div style={{ marginTop: 'var(--space-5)' }}>
                         <ActionButton label="✅ Complete Check-in" onClick={completeCheckin} />
                     </div>
                 </div>
             )}
 
-            {/* ========== SUCCESS SCREEN: QR Handoff (Phase 59) ========== */}
+            {/* ========== SUCCESS SCREEN: QR Handoff (Phase 971) ========== */}
             {step === 'success' && selected && (
                 <div style={card}>
                     <div style={{
@@ -1121,11 +1341,11 @@ export default function MobileCheckinPage() {
                             Check-in Complete
                         </div>
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
-                            {selected.guest_name || 'Guest'} is now checked in at <strong>{selected.property_id}</strong>
+                            {selected.guest_name || 'Guest'} is now checked in at <strong>{(selected as any).property_name || selected.property_id}</strong>
                         </div>
                     </div>
 
-                    {/* Real QR Code — Phase 59 */}
+                    {/* QR Code */}
                     <div style={{
                         textAlign: 'center', padding: 'var(--space-5)',
                         background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)',
@@ -1134,49 +1354,73 @@ export default function MobileCheckinPage() {
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>
                             Guest Portal QR
                         </div>
-
-                        {/* Real QR image from backend, or portal URL fallback */}
                         {qrImageUrl ? (
-                            <img
-                                src={qrImageUrl}
-                                alt="Guest Portal QR Code"
-                                style={{
-                                    width: 200, height: 200, margin: '0 auto', display: 'block',
-                                    borderRadius: 8, background: 'white', padding: 8,
-                                }}
-                            />
-                        ) : guestPortalUrl ? (
-                            <div style={{
-                                padding: 'var(--space-4)', background: 'white',
-                                borderRadius: 'var(--radius-md)', margin: '0 auto',
-                                maxWidth: 240,
-                            }}>
-                                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-surface)', fontWeight: 600, wordBreak: 'break-all' }}>
-                                    📱 Guest Portal Link
-                                </div>
-                                <div style={{ fontSize: 'var(--text-xs)', color: '#555', marginTop: 8, wordBreak: 'break-all', fontFamily: 'var(--font-mono)' }}>
-                                    {guestPortalUrl}
-                                </div>
-                            </div>
+                            <img src={qrImageUrl} alt="Guest Portal QR Code" style={{
+                                width: 200, height: 200, margin: '0 auto', display: 'block',
+                                borderRadius: 8, background: 'white', padding: 8,
+                            }} />
                         ) : (
                             <div style={{ padding: 'var(--space-4)', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)' }}>
                                 ⏳ QR code generating...
                             </div>
                         )}
-
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 'var(--space-3)' }}>
                             Show this QR to the guest
                         </div>
-                        {guestPortalUrl && (
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4 }}>
-                                Guest scans → opens stay portal with property info, WiFi, rules
-                            </div>
-                        )}
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 4 }}>
+                            Guest scans → opens stay portal with property info, WiFi, rules
+                        </div>
                     </div>
 
+                    {/* Send link actions (Phase 971 — uses real contact from Step 4) */}
+                    {(guestPhone || guestEmail) && (
+                        <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
+                            {guestPhone && (
+                                <button onClick={async () => {
+                                    try {
+                                        await apiFetch('/notifications/send-sms', {
+                                            method: 'POST',
+                                            body: JSON.stringify({
+                                                to_number: guestPhone,
+                                                body: `Welcome! Your guest portal: ${guestPortalUrl || 'link available at front desk'}`,
+                                                notification_type: 'guest_portal_link',
+                                                reference_id: getBookingId(selected),
+                                            }),
+                                        });
+                                        showNotice('✅ Portal link sent via SMS');
+                                    } catch { showNotice('⚠️ SMS send failed'); }
+                                }} style={{
+                                    flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
+                                    background: 'rgba(63,185,80,0.1)', border: '1px solid rgba(63,185,80,0.3)',
+                                    color: 'var(--color-ok)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                                }}>📱 Send via SMS</button>
+                            )}
+                            {guestEmail && (
+                                <button onClick={async () => {
+                                    try {
+                                        await apiFetch('/notifications/send-email', {
+                                            method: 'POST',
+                                            body: JSON.stringify({
+                                                to_email: guestEmail,
+                                                subject: `Your stay at ${(selected as any).property_name || selected.property_id}`,
+                                                body_html: `<p>Welcome! Access your guest portal here: <a href="${guestPortalUrl}">${guestPortalUrl}</a></p>`,
+                                                notification_type: 'guest_portal_link',
+                                                reference_id: getBookingId(selected),
+                                            }),
+                                        });
+                                        showNotice('✅ Portal link sent via email');
+                                    } catch { showNotice('⚠️ Email send failed'); }
+                                }} style={{
+                                    flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
+                                    background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.3)',
+                                    color: 'var(--color-sage)', fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                                }}>📧 Send via Email</button>
+                            )}
+                        </div>
+                    )}
+
                     <ActionButton label="Done — Return to Arrivals" onClick={() => {
-                        // Clean up blob URL to prevent memory leak
-                        if (qrImageUrl) URL.revokeObjectURL(qrImageUrl);
+                        if (qrImageUrl && qrImageUrl.startsWith('blob:')) URL.revokeObjectURL(qrImageUrl);
                         setQrImageUrl(null);
                         setGuestPortalUrl(null);
                         returnToList();

@@ -421,6 +421,9 @@ app.include_router(preview_audit_router)
 from api.guests_router import router as guests_router  # noqa: E402  # Phase 192
 app.include_router(guests_router)
 
+from api.guest_dossier_router import router as guest_dossier_router  # noqa: E402  # Phase 972
+app.include_router(guest_dossier_router)
+
 from api.booking_guest_link_router import router as booking_guest_link_router  # noqa: E402  # Phase 194
 app.include_router(booking_guest_link_router)
 

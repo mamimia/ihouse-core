@@ -40,6 +40,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
+from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,7 @@ def _compute_worker_metrics(rows: List[dict]) -> dict:
     responses={
         200: {"description": "Staff performance data"},
         401: {"description": "Missing or invalid JWT"},
+        403: {"description": "Insufficient role or capability"},
         500: {"description": "Internal server error"},
     },
     openapi_extra={"security": [{"BearerAuth": []}]},
@@ -147,6 +149,7 @@ async def get_staff_performance(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("staffing")),
     _client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -213,6 +216,7 @@ async def get_staff_performance(
     responses={
         200: {"description": "Worker performance data"},
         401: {"description": "Missing or invalid JWT"},
+        403: {"description": "Insufficient role or capability"},
         404: {"description": "Worker has no tasks"},
         500: {"description": "Internal server error"},
     },
@@ -223,6 +227,7 @@ async def get_worker_performance(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("staffing")),
     _client: Optional[Any] = None,
 ) -> JSONResponse:
     """

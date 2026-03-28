@@ -353,7 +353,7 @@ export interface MultiCurrencyOverviewResponse {
     currencies: CurrencyOverviewRow[];
 }
 
-// Phase 192/193 — Guest Profile types
+// Phase 192/193 — Guest Profile types (expanded Phase 972)
 export interface Guest {
     id: string;
     tenant_id?: string;
@@ -363,6 +363,16 @@ export interface Guest {
     nationality: string | null;
     passport_no: string | null;
     notes: string | null;
+    // Phase 972 — Identity fields
+    document_type: string | null;
+    passport_expiry: string | null;
+    date_of_birth: string | null;
+    document_photo_url: string | null;
+    // Phase 972 — Messaging channels
+    whatsapp: string | null;
+    line_id: string | null;
+    telegram: string | null;
+    preferred_channel: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -370,6 +380,63 @@ export interface Guest {
 export interface GuestListResponse {
     count: number;
     guests: Guest[];
+}
+
+// Phase 972 — Guest Dossier composite types
+export interface DossierDeposit {
+    id: string;
+    booking_id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    collected_by: string | null;
+    collected_at: string | null;
+    notes: string | null;
+    refund_amount: number | null;
+}
+
+export interface DossierMeter {
+    id: string;
+    booking_id: string;
+    reading_type: string;
+    meter_value: number;
+    meter_unit: string;
+    meter_photo_url: string | null;
+    recorded_by: string | null;
+    recorded_at: string | null;
+    notes: string | null;
+}
+
+export interface DossierStay {
+    booking_id: string;
+    property_id: string;
+    property_name: string;
+    check_in: string | null;
+    check_out: string | null;
+    status: string | null;
+    source: string | null;
+    reservation_ref: string | null;
+    guest_name: string | null;
+    created_at: string | null;
+    settlement: {
+        deposit: DossierDeposit | null;
+        meter_readings: DossierMeter[];
+    };
+}
+
+export interface DossierActivity {
+    action: string;
+    performed_at: string;
+    actor_id: string;
+    details: Record<string, unknown> | null;
+}
+
+export interface GuestDossier {
+    guest: Guest;
+    document_photo_signed_url: string | null;
+    current_stay: DossierStay | null;
+    stay_history: DossierStay[];
+    activity: DossierActivity[];
 }
 
 // Phase 190 — Audit Event types
@@ -621,6 +688,9 @@ export const api = {
         apiFetch("/guests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
     patchGuest: (id: string, body: Partial<Omit<Guest, "id" | "tenant_id" | "created_at" | "updated_at">>): Promise<Guest> =>
         apiFetch(`/guests/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+    // Phase 972 — Guest Dossier
+    getGuestDossier: (id: string): Promise<GuestDossier> =>
+        apiFetch(`/guests/${id}/dossier`),
 
     // Phase 200 — Booking Calendar
     getBookings: (params?: {

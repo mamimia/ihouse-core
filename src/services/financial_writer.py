@@ -2,11 +2,25 @@
 Phase 502 — Financial Write Operations
 
 Provides mutation operations for financial data:
-- Record manual payment/adjustment
-- Update management fee settings
-- Generate owner payout records
+- Record manual payment/adjustment  [writes to booking_financial_facts + audit log]
+- Generate owner payout calculation [read + calculate only — NOT persisted]
 
 All writes go through booking_financial_facts and admin_audit_log.
+
+Payout persistence is intentionally deferred.
+    generate_payout_record() is a calculation-only function. It reads
+    booking_financial_facts, computes revenue/fees/net, and returns a
+    dict. It does NOT write to any payout table — no such table exists yet.
+    The returned payout_id is a session reference only (not retrievable later).
+    Full payout lifecycle (persist, approve, mark paid, query history) is a
+    planned future feature and requires a product decision before implementation.
+
+Actor attribution:
+    record_manual_payment() accepts an explicit actor_id parameter.
+    Callers MUST pass the real user identity from the JWT claim so that
+    admin_audit_log entries are traceable to a specific user.
+    Do NOT pass hardcoded strings like "frontend" or "system" unless the
+    action genuinely originates from an automated process (e.g. a cron job).
 """
 from __future__ import annotations
 
@@ -35,9 +49,16 @@ def record_manual_payment(
     currency: str = "THB",
     payment_type: str = "manual_adjustment",
     notes: str = "",
+    actor_id: str = "unknown",
 ) -> Dict[str, Any]:
     """
     Record a manual payment or financial adjustment.
+
+    Args:
+        actor_id: The real user ID who is making this adjustment. Callers
+                  must pass this from jwt_identity so that the audit log
+                  entry is traceable. Do not pass "frontend" or hardcoded
+                  strings.
     """
     payment_id = f"pay_{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc)
@@ -55,11 +76,11 @@ def record_manual_payment(
             on_conflict="booking_id,tenant_id",
         ).execute()
 
-        # Audit
+        # Audit — use real actor_id, never a hardcoded placeholder
         try:
             db.table("admin_audit_log").insert({
                 "tenant_id": tenant_id,
-                "actor_id": "frontend",
+                "actor_id": actor_id,
                 "action": "financial_adjustment",
                 "entity_type": "booking",
                 "entity_id": booking_id,
@@ -96,10 +117,19 @@ def generate_payout_record(
     mgmt_fee_pct: float = 15.0,
 ) -> Dict[str, Any]:
     """
-    Generate a payout record for an owner.
+    Calculate an owner payout for a given property and period.
 
-    Calculates total revenue, deducts management fee,
-    and creates a payout entry.
+    IMPORTANT — CALCULATION ONLY, NOT PERSISTED:
+        This function reads from booking_financial_facts and returns a
+        calculated dict. It does NOT write to any database table.
+        No payout table exists yet. The returned payout_id is a unique
+        reference for this response only — it cannot be retrieved later
+        because it is never stored.
+
+        Full payout lifecycle (persist → approve → mark paid → query history)
+        is a deferred product feature that requires a dedicated payouts table,
+        status-transition endpoints, and a product decision on the approval
+        workflow before implementation.
     """
     try:
         facts_result = (
@@ -119,6 +149,8 @@ def generate_payout_record(
     net_payout = round(total_gross - mgmt_fee, 2)
 
     payout = {
+        # NOTE: This payout_id is a session reference only.
+        # It is NOT stored in any database table and cannot be retrieved later.
         "payout_id": f"payout_{uuid.uuid4().hex[:8]}",
         "tenant_id": tenant_id,
         "property_id": property_id,
@@ -129,7 +161,10 @@ def generate_payout_record(
         "management_fee_pct": mgmt_fee_pct,
         "net_payout": net_payout,
         "bookings_count": len(facts),
-        "status": "pending",
+        # "calculated" = this is a point-in-time calculation, not a committed record.
+        # Do not display this as "pending" to operators — that implies a
+        # lifecycle (pending → approved → paid) that does not exist yet.
+        "status": "calculated",
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 

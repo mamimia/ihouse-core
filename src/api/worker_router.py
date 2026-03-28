@@ -43,7 +43,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth
+from api.auth import jwt_auth, jwt_identity_simple as jwt_identity
 from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 from services.audit_writer import write_audit_event
@@ -926,3 +926,118 @@ async def extract_document(
         "nationality": "GBR",
         "confidence_score": 0.98
     })
+
+
+# ---------------------------------------------------------------------------
+# Phase 953 — Worker: Charge Config Pre-fill
+# ---------------------------------------------------------------------------
+# Read the active deposit + electricity configuration for the property linked
+# to this booking. Used by the check-in wizard to pre-fill the deposit amount
+# prompt before the worker starts the deposit collection step.
+#
+# This is READ-ONLY. It does not modify the deposit collection write path.
+# If no rule has been configured for the property, returns safe defaults
+# (deposit_enabled=false) so the wizard surfaces "No deposit required".
+# ---------------------------------------------------------------------------
+
+_CHARGE_CONFIG_ROLES = frozenset({
+    "admin", "manager", "ops", "worker", "checkin", "checkout"
+})
+
+
+@router.get(
+    "/worker/bookings/{booking_id}/charge-config",
+    tags=["worker"],
+    summary="Get charge config for check-in pre-fill (Phase 953)",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_charge_config_for_booking(
+    booking_id: str,
+    identity: dict = Depends(jwt_identity),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Returns the active deposit and electricity configuration for the property
+    linked to this booking.
+
+    Used by the check-in wizard to pre-fill the deposit amount before the
+    worker starts the deposit collection step.
+
+    **Response:**
+    - `deposit_enabled` — whether a deposit is required for this property
+    - `deposit_amount` — pre-fill value (null if unset)
+    - `deposit_currency` — currency code (e.g. THB)
+    - `electricity_enabled` — whether electricity is billed
+    - `electricity_rate_kwh` — rate per kWh (null if unset)
+
+    Returns safe defaults (`deposit_enabled=false`) if the property has no
+    configured charge rule yet.
+
+    Read-only. No writes anywhere.
+    """
+    role = identity.get("role", "")
+    if role not in _CHARGE_CONFIG_ROLES:
+        return make_error_response(
+            status_code=403, code="FORBIDDEN",
+            extra={"detail": f"Role '{role}' cannot read charge config."},
+        )
+    tenant_id = identity["tenant_id"]
+
+    _default = {
+        "deposit_enabled":      False,
+        "deposit_amount":       None,
+        "deposit_currency":     "THB",
+        "electricity_enabled":  False,
+        "electricity_rate_kwh": None,
+    }
+
+    try:
+        db = client or _get_supabase_client()
+
+        # Resolve property_id from booking_state
+        bs = (
+            db.table("booking_state")
+            .select("property_id")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not (bs.data or []):
+            return make_error_response(
+                status_code=404, code=ErrorCode.NOT_FOUND,
+                extra={"detail": f"Booking '{booking_id}' not found."},
+            )
+        property_id = bs.data[0].get("property_id")
+        if not property_id:
+            return JSONResponse(status_code=200, content=_default)
+
+        # Read charge rule for this property
+        res = (
+            db.table("property_charge_rules")
+            .select(
+                "deposit_enabled, deposit_amount, deposit_currency, "
+                "electricity_enabled, electricity_rate_kwh"
+            )
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        if not rows:
+            return JSONResponse(status_code=200, content=_default)
+
+        row = rows[0]
+        return JSONResponse(status_code=200, content={
+            "deposit_enabled":      row.get("deposit_enabled", False),
+            "deposit_amount":       row.get("deposit_amount"),
+            "deposit_currency":     row.get("deposit_currency", "THB"),
+            "electricity_enabled":  row.get("electricity_enabled", False),
+            "electricity_rate_kwh": row.get("electricity_rate_kwh"),
+        })
+
+    except Exception as exc:
+        logger.exception("GET charge-config booking=%s error tenant=%s: %s",
+                         booking_id, tenant_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

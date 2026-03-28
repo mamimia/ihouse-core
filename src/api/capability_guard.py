@@ -17,8 +17,22 @@ Usage:
 
 Access rules:
     - admin role     → always allowed (all capabilities implied)
+    - ops role       → allowed for capabilities listed in _ROLE_CAPABILITY_ALLOWLIST
+                       Currently: bookings (read access for Operational Manager surface)
     - manager role   → allowed only if the specific capability is delegated
+                       via tenant_permissions
     - other roles    → denied (HTTP 403)
+
+ops role rationale (Issue 17):
+    ops is an Operational Manager role — above field workers, below admin/manager.
+    The frontend middleware (Phase 397) explicitly grants ops access to /bookings
+    and /calendar. The Phase 862 guard originally used a binary admin/manager model
+    that blocked ops unconditionally. This was a coherence gap: the middleware grant
+    was intentional (ops needs booking visibility to coordinate operations) and the
+    guard simply did not account for the ops role. The fix adds ops to the
+    _ROLE_CAPABILITY_ALLOWLIST for the bookings capability only.
+    ops does NOT get financial, staffing, or other sensitive capabilities —
+    those remain admin/manager-delegated only.
 
 The guard fetches `tenant_permissions.permissions` from the DB,
 extracts the `capabilities` map, and checks the requested capability.
@@ -35,6 +49,27 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 logger = logging.getLogger(__name__)
 
 _bearer = HTTPBearer(auto_error=False)
+
+
+# ---------------------------------------------------------------------------
+# Role-level capability allowlist (Issue 17)
+# ---------------------------------------------------------------------------
+# Non-admin, non-manager roles listed here get unconditional pass-through
+# for the named capability — WITHOUT going through the DB delegation check.
+#
+# This is intentional and deliberate. Adding a role here is a product decision,
+# not a security relaxation — the capability guard still blocks that role for
+# any capability NOT listed in this map.
+#
+# ops + bookings:
+#   ops (Operational Manager) needs booking visibility to coordinate workers.
+#   The frontend middleware (Phase 397) explicitly grants ops /bookings and
+#   /calendar. The calendar calls GET /bookings exclusively. Blocking ops at
+#   the capability guard while allowing frontend navigation produced broken pages.
+# ---------------------------------------------------------------------------
+_ROLE_CAPABILITY_ALLOWLIST: dict[str, set[str]] = {
+    "ops": {"bookings"},
+}
 
 
 def _get_db() -> Any:
@@ -99,6 +134,17 @@ def require_capability(capability: str) -> Callable:
 
         # Admin always has all capabilities
         if role == "admin":
+            return None
+
+        # Role-level capability allowlist (e.g., ops → bookings)
+        # These roles get unconditional pass-through for specific capabilities
+        # without going through the manager delegation DB check.
+        # See _ROLE_CAPABILITY_ALLOWLIST at the top of this module.
+        if capability in _ROLE_CAPABILITY_ALLOWLIST.get(role, set()):
+            logger.debug(
+                "capability_guard: role=%s allowed for capability=%s via allowlist user=%s",
+                role, capability, user_id,
+            )
             return None
 
         # Only managers can have delegated capabilities

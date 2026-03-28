@@ -1,32 +1,59 @@
 """
-Phases 687–690 — Deposit Settlement & Checkout Completion
-==========================================================
+Phases 687–689 — Deposit Settlement & Photo Comparison
+=======================================================
 
-687: POST /deposits — collect deposit
-     POST /deposits/{deposit_id}/return — full return
-     GET  /deposits?booking_id= — lookup
+687: POST /deposits                           — collect deposit
+     POST /deposits/{deposit_id}/return      — return deposit (full or post-deductions)
+     POST /deposits/{deposit_id}/forfeit     — forfeit deposit (property keeps it)
+     GET  /deposits?booking_id=              — lookup
 
-688: POST /deposits/{deposit_id}/deductions — add deduction
+688: POST /deposits/{deposit_id}/deductions   — add deduction
      DELETE /deposits/{deposit_id}/deductions/{deduction_id}
-     GET  /deposits/{deposit_id}/settlement — breakdown
+     GET  /deposits/{deposit_id}/settlement  — breakdown
 
 689: GET /bookings/{booking_id}/photo-comparison — side-by-side photos
+692: POST /bookings/{booking_id}/checkout-photos/upload — write checkout condition photos
 
-690: POST /bookings/{booking_id}/checkout — enhanced with settlement pre-check
+NOTE — Phase 690 checkout endpoint REMOVED:
+    POST /bookings/{booking_id}/checkout was previously defined here (Phase 690)
+    and is now REMOVED. The canonical implementation lives in:
+        src/api/booking_checkin_router.py (Phase 398)
+    That implementation:
+      - Writes to booking_state (not bookings directly)
+      - Emits BOOKING_CHECKED_OUT to event_log (best-effort)
+      - Enforces checkout role guard (_assert_checkout_role)
+      - Creates CLEANING task via task_writer
+    The Phase 690 shadow route was incorrect: it wrote to the wrong table,
+    bypassed event_log, and lacked a role guard. It was masked by FastAPI's
+    first-registration-wins behavior (booking_checkin_router registered first),
+    but its existence was fragile and misleading.
+
+    If deposit settlement pre-check before checkout is needed (the original
+    Phase 690 intent), that logic should be integrated into
+    booking_checkin_router.checkout_booking() as a pre-flight query.
+
+Deposit lifecycle statuses:
+    collected  → initial state after collection
+    returned   → deposit returned to guest (full or partial after deductions)
+    forfeited  → property deliberately retains the deposit (damage / breach)
+
+Terminal states: returned, forfeited — no further writes allowed.
 
 Invariant:
-    This router NEVER writes to event_log or booking_financial_facts.
+    This router NEVER writes to event_log, booking_financial_facts, or booking_state.
     Deposit records are independent — financial integration is deferred.
+    Booking status transitions are owned exclusively by booking_checkin_router.
 """
 from __future__ import annotations
 
 import hashlib
 import logging
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
@@ -125,8 +152,11 @@ async def return_deposit(
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Deposit '{deposit_id}' not found."})
 
         deposit = cur_rows[0]
-        if deposit["status"] == "returned":
-            return make_error_response(400, ErrorCode.VALIDATION_ERROR, extra={"detail": "Deposit already returned."})
+        if deposit["status"] in ("returned", "forfeited"):
+            return make_error_response(
+                400, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"Deposit already in terminal state: {deposit['status']}."},
+            )
 
         now = _now_iso()
         update = {"status": "returned", "returned_by": returned_by, "returned_at": now}
@@ -145,6 +175,83 @@ async def return_deposit(
         return JSONResponse(status_code=200, content=rows[0] if rows else {"id": deposit_id, "status": "returned"})
     except Exception as exc:
         logger.exception("return_deposit error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+@router.post("/deposits/{deposit_id}/forfeit", summary="Forfeit deposit — property retains it (Phase 691)")
+async def forfeit_deposit(
+    deposit_id: str, body: Optional[Dict[str, Any]] = None,
+    tenant_id: str = Depends(jwt_auth),
+    _cap: None = Depends(require_capability("financial")),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Mark a deposit as forfeited — the property retains the full (or remaining)
+    deposit amount due to guest damage, breach of contract, or other cause.
+
+    This closes the deposit lifecycle without returning funds to the guest.
+    Terminal state: no further writes (return, deductions) are allowed after forfeiture.
+
+    **Request body (all optional):**
+    ```json
+    { "forfeited_by": "worker_id", "reason": "Property damage — broken TV" }
+    ```
+    """
+    body = body or {}
+    forfeited_by = str(body.get("forfeited_by") or tenant_id).strip()
+    reason = str(body.get("reason") or "").strip() or None
+
+    try:
+        db = client if client is not None else _get_db()
+
+        cur = db.table("cash_deposits").select("status, amount, refund_amount").eq("id", deposit_id).limit(1).execute()
+        cur_rows = cur.data or []
+        if not cur_rows:
+            return make_error_response(404, "NOT_FOUND", extra={"detail": f"Deposit '{deposit_id}' not found."})
+
+        deposit = cur_rows[0]
+        if deposit["status"] in ("returned", "forfeited"):
+            return make_error_response(
+                400, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"Deposit already in terminal state: {deposit['status']}."},
+            )
+
+        now = _now_iso()
+        # Forfeited amount = whatever was remaining (original minus any deductions already recorded)
+        forfeited_amount = deposit.get("refund_amount", deposit["amount"])
+        update = {
+            "status": "forfeited",
+            "forfeited_by": forfeited_by,
+            "forfeited_at": now,
+            "forfeited_amount": float(forfeited_amount),
+            "forfeiture_reason": reason,
+        }
+        result = db.table("cash_deposits").update(update).eq("id", deposit_id).execute()
+        rows = result.data or []
+
+        # Audit
+        try:
+            from services.audit_writer import write_audit_event
+            write_audit_event(db, tenant_id=tenant_id, entity_type="deposit",
+                              entity_id=deposit_id, action="forfeited",
+                              details={
+                                  "forfeited_by": forfeited_by,
+                                  "forfeited_amount": forfeited_amount,
+                                  "reason": reason,
+                              })
+        except Exception:
+            pass
+
+        return JSONResponse(
+            status_code=200,
+            content=rows[0] if rows else {
+                "id": deposit_id,
+                "status": "forfeited",
+                "forfeited_amount": float(forfeited_amount),
+            },
+        )
+    except Exception as exc:
+        logger.exception("forfeit_deposit error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR)
 
 
@@ -199,8 +306,12 @@ async def add_deduction(
         dep_rows = dep.data or []
         if not dep_rows:
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Deposit '{deposit_id}' not found."})
-        if dep_rows[0]["status"] == "returned":
-            return make_error_response(400, ErrorCode.VALIDATION_ERROR, extra={"detail": "Cannot deduct from returned deposit."})
+        dep_status = dep_rows[0]["status"]
+        if dep_status in ("returned", "forfeited"):
+            return make_error_response(
+                400, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"Cannot add deduction to a deposit in terminal state: {dep_status}."},
+            )
 
         now = _now_iso()
         ded_id = hashlib.sha256(f"DED:{deposit_id}:{description}:{now}".encode()).hexdigest()[:16]
@@ -292,6 +403,11 @@ async def get_settlement(
             "total_deductions": total_deducted,
             "refund_amount": deposit.get("refund_amount", deposit["amount"] - total_deducted),
             "status": deposit["status"],
+            # Forfeiture fields — populated only when status == "forfeited"
+            "forfeited_amount": deposit.get("forfeited_amount"),
+            "forfeited_by": deposit.get("forfeited_by"),
+            "forfeited_at": deposit.get("forfeited_at"),
+            "forfeiture_reason": deposit.get("forfeiture_reason"),
         })
     except Exception as exc:
         logger.exception("get_settlement error: %s", exc)
@@ -322,13 +438,29 @@ async def photo_comparison(
         ref_photos = ref.data or []
 
         # Pre-checkin cleaning photos
-        cleaning = (
-            db.table("cleaning_task_photos").select("photo_url, room_label, created_at")
-            .eq("booking_id", booking_id)
-            .order("created_at")
-            .execute()
-        )
-        cleaning_photos = cleaning.data or []
+        # NOTE: cleaning_task_router.py writes to 'cleaning_photos' (keyed by progress_id),
+        # not 'cleaning_task_photos'. We resolve by joining through cleaning_task_progress.
+        cleaning_photos: List[Dict[str, Any]] = []
+        try:
+            progress_res = (
+                db.table("cleaning_task_progress")
+                .select("id")
+                .eq("booking_id", booking_id)
+                .limit(1)
+                .execute()
+            )
+            if progress_res.data:
+                progress_id = progress_res.data[0]["id"]
+                cp_res = (
+                    db.table("cleaning_photos")
+                    .select("photo_url, room_label, created_at")
+                    .eq("progress_id", progress_id)
+                    .order("created_at")
+                    .execute()
+                )
+                cleaning_photos = cp_res.data or []
+        except Exception:
+            cleaning_photos = []
 
         # Current checkout photos (worker takes during checkout)
         checkout = (
@@ -352,81 +484,126 @@ async def photo_comparison(
 
 
 # ===========================================================================
-# Phase 690 — Checkout Completion with Settlement Pre-Check
+# Phase 692 — Checkout Photo Upload
 # ===========================================================================
 
-@router.post("/bookings/{booking_id}/checkout", summary="Complete checkout (Phase 690)")
-async def complete_checkout(
-    booking_id: str, body: Optional[Dict[str, Any]] = None,
-    tenant_id: str = Depends(jwt_auth), client: Optional[Any] = None,
+_ALLOWED_CHECKOUT_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+_MAX_CHECKOUT_PHOTO_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+@router.post("/bookings/{booking_id}/checkout-photos/upload",
+             summary="Upload checkout condition photo (Phase 692)")
+async def upload_checkout_photo(
+    booking_id: str,
+    file: UploadFile = File(...),
+    room_label: str = Form(...),
+    notes: str = Form(""),
+    taken_by: str = Form(""),
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
 ) -> JSONResponse:
-    body = body or {}
-    worker_id = str(body.get("worker_id") or tenant_id).strip()
-    force = body.get("force", False)
+    """
+    Upload a checkout condition photo for a specific room via FormData.
+
+    This is the write path that populates the `checkout_photos` table,
+    enabling the GET /bookings/{id}/photo-comparison endpoint to return
+    real post-stay condition photos alongside reference and cleaning photos.
+
+    **Form fields:**
+    - `file`: image file (JPEG, PNG, WebP, HEIC — max 10 MB)
+    - `room_label`: room identifier, e.g. 'bedroom_1', 'bathroom', 'living_room'
+    - `notes`: optional worker annotation for this specific photo
+    - `taken_by`: worker ID (optional)
+    """
+    content_type = (file.content_type or "").lower()
+    if content_type not in _ALLOWED_CHECKOUT_PHOTO_TYPES:
+        return make_error_response(
+            400, ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"Invalid file type '{content_type}'. Allowed: JPEG, PNG, WebP, HEIC."},
+        )
+
+    file_bytes = await file.read()
+    if len(file_bytes) > _MAX_CHECKOUT_PHOTO_SIZE:
+        return make_error_response(
+            400, ErrorCode.VALIDATION_ERROR,
+            extra={"detail": f"File too large ({len(file_bytes):,} bytes). Max: 10 MB."},
+        )
+
+    if not room_label.strip():
+        return make_error_response(400, ErrorCode.VALIDATION_ERROR,
+                                   extra={"detail": "room_label is required."})
 
     try:
         db = client if client is not None else _get_db()
 
-        # Check booking exists
-        booking_res = db.table("bookings").select("booking_id, status, property_id").eq("booking_id", booking_id).limit(1).execute()
-        booking_rows = booking_res.data or []
-        if not booking_rows:
-            return make_error_response(404, "NOT_FOUND", extra={"detail": f"Booking '{booking_id}' not found."})
+        # Verify booking exists and belongs to this tenant
+        bk = db.table("bookings").select("booking_id").eq("booking_id", booking_id).limit(1).execute()
+        if not (bk.data or []):
+            return make_error_response(404, "NOT_FOUND",
+                                       extra={"detail": f"Booking '{booking_id}' not found."})
 
-        booking = booking_rows[0]
-        if booking.get("status") == "checked_out" and not force:
-            return make_error_response(400, ErrorCode.VALIDATION_ERROR, extra={"detail": "Already checked out."})
+        # Upload to Supabase Storage — bucket: checkout-photos
+        ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+        file_name = f"{tenant_id}/{booking_id}/{room_label.strip()}_{uuid.uuid4().hex[:8]}.{ext}"
 
-        # Pre-check: deposit settlement
-        deposit_warning = None
-        dep_res = db.table("cash_deposits").select("id, status, refund_amount").eq("booking_id", booking_id).execute()
-        deposits = dep_res.data or []
-        unsettled = [d for d in deposits if d["status"] == "collected"]
-        if unsettled and not force:
-            deposit_warning = f"{len(unsettled)} unsettled deposit(s). Return or settle before checkout, or use force=true."
-            return make_error_response(400, ErrorCode.VALIDATION_ERROR,
-                                       extra={"detail": deposit_warning, "unsettled_deposits": unsettled})
-
-        now = _now_iso()
-        # Update booking status
-        db.table("bookings").update({
-            "status": "checked_out",
-            "checked_out_by": worker_id,
-            "checked_out_at": now,
-        }).eq("booking_id", booking_id).execute()
-
-        # Auto-create CLEANING task (best-effort)
         try:
-            from tasks.task_model import Task
-            from tasks.task_automator import create_task_if_needed
-            cleaning_task = Task.build(
-                task_kind="CLEANING",
-                booking_id=booking_id,
-                property_id=booking.get("property_id", ""),
-                priority="MEDIUM",
-                ack_sla_minutes=60,
+            db.storage.from_("checkout-photos").upload(
+                file_name,
+                file_bytes,
+                {"content-type": content_type},
             )
-            create_task_if_needed(db, cleaning_task, tenant_id=tenant_id)
-        except Exception:
-            logger.warning("Failed to auto-create cleaning task for %s", booking_id)
+            supabase_url = os.environ.get("SUPABASE_URL", "")
+            photo_url = f"{supabase_url}/storage/v1/object/public/checkout-photos/{file_name}"
+        except Exception as storage_exc:
+            logger.warning("checkout photo storage upload failed: %s", storage_exc)
+            photo_url = f"storage-failed://{booking_id}/{room_label}/{uuid.uuid4().hex[:8]}"
+
+        # Persist record  
+        photo_row = {
+            "booking_id": booking_id,
+            "tenant_id": tenant_id,
+            "room_label": room_label.strip(),
+            "photo_url": photo_url,
+            "notes": notes.strip() or None,
+            "taken_by": taken_by.strip() or None,
+        }
+        result = db.table("checkout_photos").insert(photo_row).execute()
+        saved = (result.data or [{}])[0]
 
         # Audit
         try:
             from services.audit_writer import write_audit_event
-            write_audit_event(db, tenant_id=tenant_id, entity_type="booking",
-                              entity_id=booking_id, action="checked_out",
-                              details={"worker_id": worker_id, "deposits_count": len(deposits),
-                                       "unsettled": len(unsettled), "force": force})
+            write_audit_event(db, tenant_id=tenant_id, entity_type="checkout_photo",
+                              entity_id=booking_id, action="uploaded",
+                              details={"room_label": room_label.strip(), "taken_by": taken_by.strip() or None})
         except Exception:
             pass
 
-        return JSONResponse(status_code=200, content={
+        return JSONResponse(status_code=201, content={
+            "uploaded": True,
+            "id": saved.get("id"),
             "booking_id": booking_id,
-            "status": "checked_out",
-            "checked_out_by": worker_id,
-            "checked_out_at": now,
-            "deposit_warning": deposit_warning,
+            "room_label": room_label.strip(),
+            "photo_url": photo_url,
         })
     except Exception as exc:
-        logger.exception("complete_checkout error: %s", exc)
+        logger.exception("upload_checkout_photo error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
+# Phase 690 — Checkout Completion
+# REMOVED: This endpoint has been removed from this router.
+#
+# The canonical checkout implementation is in booking_checkin_router.py
+# (Phase 398) at POST /bookings/{booking_id}/checkout.
+#
+# That implementation correctly:
+#   - Reads from and writes to booking_state (not bookings table directly)
+#   - Emits BOOKING_CHECKED_OUT to event_log (best-effort)
+#   - Enforces checkout role guard
+#   - Creates CLEANING task via task_writer
+#
+# If deposit pre-check (unsettled deposit warning) before checkout is required,
+# add a pre-flight query to booking_checkin_router.checkout_booking().
+# ===========================================================================

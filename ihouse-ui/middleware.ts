@@ -2,6 +2,7 @@
  * Phase 179 — Next.js Route Guard Middleware
  * Phase 397 — JWT Role Enforcement
  * Phase 836 — Access Hardening (cleaner restriction + dev-login public)
+ * Phase 865 — checkin_checkout combined role hub added
  *
  * Runs on every request (Edge Runtime).
  * 1. Public routes — no auth required.
@@ -9,15 +10,19 @@
  * 3. Role enforcement — JWT role claim restricts route access.
  *
  * Role hierarchy:
- *   admin / manager  → full access
- *   owner            → /owner, /dashboard
- *   worker           → /worker, /ops, /tasks, /maintenance, /checkin, /checkout
- *   cleaner          → /worker, /ops
- *   ops              → /ops, /dashboard, /bookings, /tasks, /calendar
- *   checkin          → /checkin only
- *   checkout         → /checkout only
- *   maintenance      → /maintenance, /worker
- *   identity_only    → /welcome, /profile, /get-started, /my-properties (Phase 862 P28)
+ *   admin / manager   → full access (FULL_ACCESS_ROLES)
+ *   owner             → /owner, /dashboard
+ *   worker            → /worker, /ops, /tasks, /maintenance, /checkin, /checkout
+ *   cleaner           → /worker, /ops
+ *   ops               → /ops, /dashboard, /bookings, /tasks, /calendar
+ *   checkin           → /checkin, /ops/checkin
+ *   checkout          → /checkout, /ops/checkout
+ *   checkin_checkout  → /ops/checkin-checkout, /worker (combined role hub)
+ *   maintenance       → /maintenance, /worker
+ *   identity_only     → /welcome, /profile, /get-started, /my-properties (Phase 862 P28)
+ *
+ * Deny-by-default: any role not in FULL_ACCESS_ROLES and not in ROLE_ALLOWED_PREFIXES
+ * redirects to /no-access. NEVER falls through to unrestricted access.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -57,14 +62,15 @@ function isPublicRoute(pathname: string): boolean {
 // Phase 397: Role-to-allowed-route-prefix mapping
 // admin/manager have full access (not listed — they bypass checks)
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
-    owner:         ['/owner', '/dashboard'],
-    worker:        ['/worker', '/ops', '/maintenance', '/checkin', '/checkout'],
-    cleaner:       ['/worker', '/ops'],  // Phase 831: restrict cleaner to worker + ops surfaces only
-    ops:           ['/ops', '/dashboard', '/bookings', '/tasks', '/calendar', '/guests'],
-    checkin:       ['/checkin', '/ops/checkin'],
-    checkout:      ['/checkout', '/ops/checkout'],
-    maintenance:   ['/maintenance', '/worker'],
-    identity_only: ['/welcome', '/profile', '/get-started', '/my-properties'],  // Phase 862 P28
+    owner:             ['/owner', '/dashboard'],
+    worker:            ['/worker', '/ops', '/maintenance', '/checkin', '/checkout'],
+    cleaner:           ['/worker', '/ops'],  // Phase 831: restrict cleaner to worker + ops surfaces only
+    ops:               ['/ops', '/dashboard', '/bookings', '/tasks', '/calendar', '/guests'],
+    checkin:           ['/checkin', '/ops/checkin'],
+    checkout:          ['/checkout', '/ops/checkout'],
+    checkin_checkout:  ['/ops/checkin-checkout', '/worker'],  // Phase 865: combined role hub
+    maintenance:       ['/maintenance', '/worker'],
+    identity_only:     ['/welcome', '/profile', '/get-started', '/my-properties'],  // Phase 862 P28
 };
 
 // Roles that have unrestricted access
@@ -170,6 +176,14 @@ export function middleware(request: NextRequest) {
             // Redirect to role's default page instead of showing forbidden
             const defaultRoute = allowedPrefixes[0] || '/dashboard';
             return NextResponse.redirect(new URL(defaultRoute, request.url));
+        }
+    } else {
+        // Deny-by-default: any role not in FULL_ACCESS_ROLES and not in ROLE_ALLOWED_PREFIXES
+        // must be explicitly mapped before gaining any frontend access.
+        // This closes the bypass for future novel roles added to _ACTABLE_ROLES without
+        // a corresponding ROLE_ALLOWED_PREFIXES entry.
+        if (pathname !== '/no-access') {
+            return NextResponse.redirect(new URL('/no-access', request.url));
         }
     }
 

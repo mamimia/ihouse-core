@@ -15,7 +15,8 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api, apiFetch, WorkerTask } from '../../../lib/api';
+import type { WorkerTask } from '../../../lib/api';
+import { apiFetch } from '../../../lib/staffApi';
 import { getTabToken } from '../../../lib/tokenStore';
 
 import { useLanguage } from '../../../lib/LanguageContext';
@@ -682,9 +683,9 @@ export default function WorkerPage() {
         load(config?.taskRole);
 
         // Load properties for task cards
-        api.listProperties().then((res: any) => {
+        apiFetch<any>('/properties').then((res: any) => {
             const m: Record<string, string> = {};
-            res.properties?.forEach((p: any) => m[p.property_id] = p.display_name);
+            (res.properties || []).forEach((p: any) => m[p.property_id] = p.display_name);
             setPropMap(m);
         }).catch(() => {});
 
@@ -699,7 +700,7 @@ export default function WorkerPage() {
     const handleAck = async (id: string) => {
         setActionLoading(true);
         try {
-            await api.acknowledgeTask(id);
+            await apiFetch<any>(`/worker/tasks/${id}/acknowledge`, { method: 'PATCH' });
             showToast('✓ Task acknowledged');
             setSelected(null);
             await load(roleConfig?.taskRole);
@@ -713,7 +714,10 @@ export default function WorkerPage() {
     const handleComplete = async (id: string, notes: string) => {
         setActionLoading(true);
         try {
-            await api.completeTask(id, notes || undefined);
+            await apiFetch<any>(`/worker/tasks/${id}/complete`, {
+                method: 'PATCH',
+                body: notes ? JSON.stringify({ notes }) : undefined,
+            });
             showToast('✅ Task completed!');
             setSelected(null);
             await load(roleConfig?.taskRole);
