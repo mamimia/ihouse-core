@@ -78,9 +78,10 @@ function fmtSource(source: string | null | undefined, bookingId?: string): strin
     return source ? source.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Unknown';
 }
 
-/** Micro copy-to-clipboard button — inline utility, not a full button */
+/** Borderless copy utility — inline text, no box */
 function CopyBtn({ value }: { value: string }) {
     const [copied, setCopied] = useState(false);
+    const [hover, setHover] = useState(false);
     return (
         <span
             role="button"
@@ -92,21 +93,21 @@ function CopyBtn({ value }: { value: string }) {
                     setTimeout(() => setCopied(false), 1500);
                 });
             }}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
             onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
             style={{
                 display: 'inline-flex', alignItems: 'center',
-                padding: '0 4px', marginLeft: 4,
+                marginLeft: 5, padding: '0 2px',
                 fontSize: 9, fontWeight: 700, lineHeight: '14px',
-                borderRadius: 4,
-                border: `1px solid ${copied ? 'rgba(63,185,80,0.4)' : 'var(--color-border)'}`,
-                background: copied ? 'rgba(63,185,80,0.08)' : 'transparent',
-                color: copied ? '#3fb850' : 'var(--color-muted)',
-                cursor: 'pointer', userSelect: 'none', transition: 'all .12s',
-                letterSpacing: '0.02em',
+                color: copied ? '#3fb850' : hover ? 'var(--color-primary)' : 'var(--color-muted)',
+                cursor: 'pointer', userSelect: 'none',
+                transition: 'color .12s',
+                letterSpacing: '0.03em',
             }}
             title={`Copy: ${value}`}
         >
-            {copied ? '✓' : 'copy'}
+            {copied ? '✓ copied' : 'copy'}
         </span>
     );
 }

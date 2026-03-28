@@ -320,8 +320,11 @@ export default function GuestsPage() {
                             guests.map(g => (
                                 <tr
                                     key={g.id}
-                                    style={{ transition: 'background .12s' }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(59,130,246,0.04)')}
+                                    onClick={() => window.location.href = `/guests/${g.id}`}
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') window.location.href = `/guests/${g.id}`; }}
+                                    style={{ transition: 'background .12s', cursor: 'pointer' }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(59,130,246,0.06)')}
                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 >
                                     <Td>
@@ -338,6 +341,7 @@ export default function GuestsPage() {
                                     <td style={{ padding: 'var(--space-3) var(--space-4)', textAlign: 'right', borderBottom: '1px solid var(--color-border)' }}>
                                         <a
                                             href={`/guests/${g.id}`}
+                                            onClick={e => e.stopPropagation()}
                                             style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'none' }}
                                         >
                                             View →
