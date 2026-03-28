@@ -22,6 +22,7 @@ import { getTabToken } from '../../../lib/tokenStore';
 import { useLanguage } from '../../../lib/LanguageContext';
 import CompactLangSwitcher from '../../../components/CompactLangSwitcher';
 import MobileStaffShell from '../../../components/MobileStaffShell';
+import { LiveCountdown } from '../../../components/WorkerTaskCard';
 import { useRouter } from 'next/navigation';
 
 // ---------------------------------------------------------------------------
@@ -305,9 +306,12 @@ function TaskCard({ task, propName, onTap }: CardProps) {
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-dim)' }}>
                         🏡 <span style={{ fontWeight: 600, fontSize: 13 }}>{displayName}</span>
                     </span>
-                    <span style={{ color: overdue ? 'var(--color-alert)' : 'var(--color-sage)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        🕒 {overdue && <span style={{ fontWeight: 700 }}>{t('worker.overdue') || 'Overdue'} - </span>}
-                        {task.due_time ? fmtTime(`${task.due_date}T${task.due_time}`, l) : fmtDate(task.due_date, l)}
+                    <span style={{ fontSize: 12 }}>
+                        <LiveCountdown
+                            targetDate={task.due_date}
+                            targetTime={task.due_time || undefined}
+                            status={task.status || 'PENDING'}
+                        />
                     </span>
                 </div>
                 
@@ -359,150 +363,10 @@ function TaskCard({ task, propName, onTap }: CardProps) {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Detail Bottom Sheet
-// ---------------------------------------------------------------------------
-
-interface SheetProps {
-    task: WorkerTask;
-    propName?: string;
-    onClose: () => void;
-    onAck: (id: string) => Promise<void>;
-    onComplete: (id: string, notes: string) => Promise<void>;
-    loading: boolean;
-}
-
-function DetailSheet({ task, propName, onClose, onAck, onComplete, loading }: SheetProps) {
-    const { lang, t } = useLanguage();
-    const l = getLocale(lang);
-    const [notes, setNotes] = useState('');
-    const [view, setView] = useState<'detail' | 'complete'>('detail');
-    const overdue = isOverdue(task);
-    const isPending = task.status?.toUpperCase() === 'PENDING';
-    const isAcked = task.status?.toUpperCase() === 'ACKNOWLEDGED' || task.status?.toUpperCase() === 'IN_PROGRESS';
-    const isDone = task.status?.toUpperCase() === 'COMPLETED' || task.status?.toUpperCase() === 'CANCELED';
-
-    return (
-        <>
-            <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, backdropFilter: 'blur(4px)' }} />
-            <div style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0,
-                background: 'var(--color-bg)', borderRadius: '24px 24px 0 0', zIndex: 101,
-                padding: '0 0 env(safe-area-inset-bottom,24px)', maxHeight: '85vh', overflowY: 'auto',
-                animation: 'slideUp 240ms cubic-bezier(0.32,0.72,0,1)',
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
-                    <div style={{ width: 40, height: 4, background: 'var(--color-surface-3)', borderRadius: 99 }} />
-                </div>
-
-                <div style={{ padding: '12px 20px 28px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                        <div>
-                            <div style={{ fontSize: 12, color: 'var(--color-sage)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                {kindEmoji(task.kind)} {task.worker_role?.replace('_', ' ')}
-                            </div>
-                            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--color-text)', lineHeight: 1.2 }}>
-                                {kindLabelEn(task.kind)}
-                            </h2>
-                        </div>
-                        <button onClick={onClose} style={{
-                            background: 'var(--color-surface-2)', border: 'none', color: 'var(--color-sage)',
-                            width: 32, height: 32, borderRadius: 16, fontSize: 16, cursor: 'pointer'
-                        }}>✕</button>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-                        <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 12 }}>
-                            <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 2 }}>Property</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{propName || task.property_id}</div>
-                        </div>
-                        <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 12 }}>
-                            <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 2 }}>Due</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: overdue ? 'var(--color-alert)' : 'var(--color-text)' }}>
-                                {task.due_time ? fmtTime(`${task.due_date}T${task.due_time}`, l) : fmtDate(task.due_date, l)}
-                            </div>
-                        </div>
-                        <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 12 }}>
-                            <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 2 }}>Priority</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: priorityBg(task.priority) }}>{task.priority}</div>
-                        </div>
-                        <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 12 }}>
-                            <div style={{ fontSize: 11, color: 'var(--color-sage)', marginBottom: 2 }}>Status</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{statusLabelEn(task.status)}</div>
-                        </div>
-                    </div>
-
-                    {task.priority === 'CRITICAL' && task.status?.toUpperCase() === 'PENDING' && (
-                        <div style={{ marginBottom: 16 }}><SlaCountdown task={task} /></div>
-                    )}
-
-                    {view === 'detail' && (
-                        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-                            {isPending && (
-                                <button
-                                    disabled={loading}
-                                    onClick={() => onAck(task.task_id)}
-                                    style={{
-                                        flex: 1, padding: 16, borderRadius: 12, border: 'none',
-                                        background: 'var(--color-primary)', color: 'var(--color-text)', fontSize: 16, fontWeight: 700,
-                                        opacity: loading ? 0.5 : 1, cursor: 'pointer',
-                                    }}
-                                >
-                                    {loading ? '...' : (t('worker.btn_ack' as any) || 'Acknowledge')}
-                                </button>
-                            )}
-
-                            {isAcked && (
-                                <button
-                                    onClick={() => setView('complete')}
-                                    style={{
-                                        flex: 1, padding: 16, borderRadius: 12, border: 'none',
-                                        background: 'var(--color-muted)', color: 'var(--color-text)', fontSize: 16, fontWeight: 700, cursor: 'pointer',
-                                    }}
-                                >
-                                    {(t('worker.btn_complete' as any) || 'Mark Complete')}
-                                </button>
-                            )}
-
-                            {isDone && (
-                                <div style={{ flex: 1, textAlign: 'center', padding: 16, color: 'var(--color-sage)', background: 'var(--color-surface-2)', borderRadius: 12 }}>
-                                    Task completed or canceled.
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {view === 'complete' && (
-                        <div style={{ animation: 'fadeIn 200ms ease' }}>
-                            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', marginBottom: 8, marginTop: 0 }}>Add Notes (Optional)</h3>
-                            <textarea
-                                value={notes}
-                                onChange={e => setNotes(e.target.value)}
-                                placeholder="Any issues or details?"
-                                style={{
-                                    width: '100%', height: 100, background: 'var(--color-surface-2)', color: 'var(--color-text)',
-                                    border: '1px solid var(--color-border)', borderRadius: 12, padding: 12,
-                                    fontSize: 14, resize: 'none', marginBottom: 16,
-                                }}
-                            />
-                            <div style={{ display: 'flex', gap: 12 }}>
-                                <button
-                                    onClick={() => setView('detail')}
-                                    style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: 'var(--color-surface-3)', color: 'var(--color-text)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
-                                >Cancel</button>
-                                <button
-                                    disabled={loading}
-                                    onClick={() => onComplete(task.task_id, notes)}
-                                    style={{ flex: 2, padding: 14, borderRadius: 12, border: 'none', background: 'var(--color-muted)', color: 'var(--color-text)', fontSize: 15, fontWeight: 700, opacity: loading ? 0.5 : 1, cursor: 'pointer' }}
-                                >{loading ? '...' : 'Confirm Complete'}</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </>
-    );
-}
+// DetailSheet removed — Phase 979i:
+// Generic modal was wrong for role-specific task flows and leaked untranslated
+// i18n tokens (worker.btn_complete). Next Up taps now navigate directly to the
+// real task flow surface for each role.
 
 // ---------------------------------------------------------------------------
 // Phase 884 — Role-Aware Worker Home Bottom Nav
@@ -615,8 +479,6 @@ export default function WorkerPage() {
     const [tasks, setTasks] = useState<WorkerTask[]>([]);
     const [propMap, setPropMap] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(false);
-    const [selected, setSelected] = useState<WorkerTask | null>(null);
     const [tab, setTab] = useState<Tab>('dashboard');
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
@@ -696,37 +558,6 @@ export default function WorkerPage() {
             if (p.email) setUserName(p.email.split('@')[0]);
         }
     }, [load, router]);
-
-    const handleAck = async (id: string) => {
-        setActionLoading(true);
-        try {
-            await apiFetch<any>(`/worker/tasks/${id}/acknowledge`, { method: 'PATCH' });
-            showToast('✓ Task acknowledged');
-            setSelected(null);
-            await load(roleConfig?.taskRole);
-        } catch {
-            showToast('⚠ Acknowledge failed');
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    const handleComplete = async (id: string, notes: string) => {
-        setActionLoading(true);
-        try {
-            await apiFetch<any>(`/worker/tasks/${id}/complete`, {
-                method: 'PATCH',
-                body: notes ? JSON.stringify({ notes }) : undefined,
-            });
-            showToast('✅ Task completed!');
-            setSelected(null);
-            await load(roleConfig?.taskRole);
-        } catch {
-            showToast('⚠ Complete failed');
-        } finally {
-            setActionLoading(false);
-        }
-    };
 
     // Role-scoped task stats
     const activeTasks = tasks.filter(t => t.status?.toUpperCase() !== 'COMPLETED' && t.status?.toUpperCase() !== 'CANCELED');
@@ -880,13 +711,18 @@ export default function WorkerPage() {
                                 </div>
                             )}
 
-                            {/* Upcoming tasks summary */}
-                            {todo.length > 0 && (
+                            {/* Upcoming tasks summary — Phase 979i: taps navigate to real task flow */}
+                            {todo.length > 0 && roleConfig && (
                                 <div style={{ marginBottom: 24 }}>
                                     <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Next Up</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         {todo.slice(0, 3).map(task => (
-                                            <TaskCard key={task.task_id} task={task} propName={propMap[task.property_id]} onTap={() => setSelected(task)} />
+                                            <TaskCard
+                                                key={task.task_id}
+                                                task={task}
+                                                propName={propMap[task.property_id]}
+                                                onTap={() => router.push(roleConfig.workHref)}
+                                            />
                                         ))}
                                         {todo.length > 3 && (
                                             <a href="/tasks" style={{
@@ -909,17 +745,7 @@ export default function WorkerPage() {
                 {/* ===== PROFILE TAB ===== */}
                 {tab === 'settings' && <SettingsTab showToast={showToast} userName={userName} />}
 
-                {/* Detail Sheet */}
-                {selected && (
-                    <DetailSheet
-                        task={selected}
-                        propName={propMap[selected.property_id]}
-                        loading={actionLoading}
-                        onClose={() => setSelected(null)}
-                        onAck={handleAck}
-                        onComplete={handleComplete}
-                    />
-                )}
+                {/* DetailSheet removed — Phase 979i: taps now navigate to real task flow */}
             </div>
 
             {/* Error Toast */}
