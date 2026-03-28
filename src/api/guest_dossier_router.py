@@ -250,7 +250,29 @@ async def get_guest_dossier(
             except Exception as exc:
                 logger.warning("dossier: guest_qr_tokens fetch failed: %s", exc)
 
-        # ── 7. Build stay records ──────────────────────────────────────
+        # ── 7. Fetch checkin worker from audit_events ─────────────────
+        checkin_worker_by_booking: dict[str, str] = {}
+        checkin_at_from_audit: dict[str, str] = {}
+        if booking_ids:
+            try:
+                checkin_audit = (
+                    db.table("audit_events")
+                    .select("entity_id, actor_id, occurred_at")
+                    .eq("tenant_id", tenant_id)
+                    .in_("entity_id", booking_ids)
+                    .eq("action", "booking.checkin")
+                    .order("occurred_at", desc=True)
+                    .execute()
+                )
+                for evt in (checkin_audit.data or []):
+                    bid = evt.get("entity_id")
+                    if bid and bid not in checkin_worker_by_booking:
+                        checkin_worker_by_booking[bid] = evt.get("actor_id", "")
+                        checkin_at_from_audit[bid] = evt.get("occurred_at", "")
+            except Exception as exc:
+                logger.warning("dossier: checkin worker fetch failed: %s", exc)
+
+        # ── 8. Build stay records ──────────────────────────────────────
         active_statuses = {"InStay", "Confirmed", "CheckedIn", "checked_in", "active"}
         current_stay = None
         stay_history = []
@@ -268,8 +290,12 @@ async def get_guest_dossier(
             opening_meter = next((m for m in meters if m.get("reading_type") == "opening"), None)
             closing_meter = next((m for m in meters if m.get("reading_type") == "closing"), None)
 
+            # checked_in_at: prefer booking_state column, fall back to audit_events timestamp
+            checked_in_at = b.get("checked_in_at") or checkin_at_from_audit.get(bid)
+
             checkin_record = {
-                "checked_in_at":      b.get("checked_in_at"),
+                "checked_in_at":      checked_in_at,
+                "checked_in_by":      checkin_worker_by_booking.get(bid),
                 "walkthrough_photos": walkthrough_photos,
                 "meter_photos":       meter_photos,
                 "opening_meter":      opening_meter,
@@ -305,10 +331,12 @@ async def get_guest_dossier(
             else:
                 stay_history.append(stay)
 
-        # ── 8. Activity trail (audit events) ───────────────────────────
-        activity = []
+        # ── 9. Activity trail — merge admin_audit_log + audit_events ───
+        activity: list[dict] = []
+
+        # 9a. admin_audit_log — guest-level events
         try:
-            audit_res = (
+            aal_res = (
                 db.table("admin_audit_log")
                 .select("action, performed_at, actor_id, details, entity_type, entity_id")
                 .eq("tenant_id", tenant_id)
@@ -318,43 +346,84 @@ async def get_guest_dossier(
                 .limit(50)
                 .execute()
             )
-            activity = [_serialize_audit(a) for a in (audit_res.data or [])]
+            for a in (aal_res.data or []):
+                activity.append({
+                    "action":       a.get("action"),
+                    "performed_at": a.get("performed_at"),
+                    "actor_id":     a.get("actor_id"),
+                    "details":      a.get("details"),
+                    "entity_type":  a.get("entity_type"),
+                    "entity_id":    a.get("entity_id"),
+                })
         except Exception as exc:
-            logger.warning("dossier: audit fetch failed: %s", exc)
+            logger.warning("dossier: admin_audit_log guest fetch failed: %s", exc)
 
-        # Booking-level audit events
+        # 9b. audit_events — guest-level events (GUEST_IDENTITY_SAVED etc.)
+        try:
+            ae_guest = (
+                db.table("audit_events")
+                .select("action, occurred_at, actor_id, payload, entity_type, entity_id")
+                .eq("tenant_id", tenant_id)
+                .eq("entity_type", "guest")
+                .eq("entity_id", guest_id)
+                .order("occurred_at", desc=True)
+                .limit(50)
+                .execute()
+            )
+            for a in (ae_guest.data or []):
+                activity.append({
+                    "action":       a.get("action"),
+                    "performed_at": a.get("occurred_at"),
+                    "actor_id":     a.get("actor_id"),
+                    "details":      a.get("payload"),
+                    "entity_type":  a.get("entity_type"),
+                    "entity_id":    a.get("entity_id"),
+                })
+        except Exception as exc:
+            logger.warning("dossier: audit_events guest fetch failed: %s", exc)
+
+        # 9c. audit_events — booking-level events (booking.checkin, etc.)
         if booking_ids:
             try:
-                booking_audit_res = (
-                    db.table("admin_audit_log")
-                    .select("action, performed_at, actor_id, details, entity_type, entity_id")
+                ae_booking = (
+                    db.table("audit_events")
+                    .select("action, occurred_at, actor_id, payload, entity_type, entity_id")
                     .eq("tenant_id", tenant_id)
+                    .eq("entity_type", "booking")
                     .in_("entity_id", booking_ids)
-                    .in_("action", [
-                        "deposit_collected_at_checkin",
-                        "meter_opening_recorded",
-                        "checkin_completed",
-                        "guest_identity_saved",
-                        "booking.checkin",
-                        "checkin_override_deposit_skipped",
-                        "checkin_override_meter_skipped",
-                    ])
-                    .order("performed_at", desc=True)
+                    .order("occurred_at", desc=True)
                     .limit(50)
                     .execute()
                 )
-                activity.extend([_serialize_audit(a) for a in (booking_audit_res.data or [])])
-                activity.sort(key=lambda x: x.get("performed_at") or "", reverse=True)
+                for a in (ae_booking.data or []):
+                    activity.append({
+                        "action":       a.get("action"),
+                        "performed_at": a.get("occurred_at"),
+                        "actor_id":     a.get("actor_id"),
+                        "details":      a.get("payload"),
+                        "entity_type":  a.get("entity_type"),
+                        "entity_id":    a.get("entity_id"),
+                    })
             except Exception:
                 pass
 
-        # ── 9. Compose response ────────────────────────────────────────
+        # Deduplicate by (action, performed_at) and sort desc
+        seen: set[tuple[str, str]] = set()
+        deduped: list[dict] = []
+        for ev in activity:
+            key = (ev.get("action", ""), ev.get("performed_at", ""))
+            if key not in seen:
+                seen.add(key)
+                deduped.append(ev)
+        deduped.sort(key=lambda x: x.get("performed_at") or "", reverse=True)
+
+        # ── 10. Compose response ───────────────────────────────────────
         return JSONResponse(status_code=200, content={
             "guest":                      _serialize_guest(guest),
             "document_photo_signed_url":  document_photo_signed_url,
             "current_stay":               current_stay,
             "stay_history":               stay_history,
-            "activity":                   activity[:50],
+            "activity":                   deduped[:50],
         })
 
     except Exception as exc:
