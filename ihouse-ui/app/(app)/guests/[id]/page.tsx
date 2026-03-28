@@ -58,6 +58,66 @@ function isCheckedIn(stay: DossierStay): boolean {
     return ['checked_in', 'instay', 'checkedin', 'active'].includes(s);
 }
 
+/** Human-readable booking source label from raw source string or booking ID prefix */
+function fmtSource(source: string | null | undefined, bookingId?: string): string {
+    if (!source && !bookingId) return 'Unknown';
+    // Derive hint from iCal booking ID prefix
+    const idHint = (bookingId || '').startsWith('ICAL-') ? 'ical' : '';
+    const s = (source || idHint || '').toLowerCase();
+    if (s.includes('airbnb') || s === 'airbnb') return 'Airbnb iCal';
+    if (s.includes('booking') || s === 'booking_com') return 'Booking.com iCal';
+    if (s.includes('ical') || s === 'ota') {
+        // Guess from reservation ref if available
+        return 'OTA iCal';
+    }
+    if (s === 'direct') return 'Direct';
+    if (s === 'manual') return 'Manual';
+    if (s === 'api') return 'API';
+    if (s === 'import' || s === 'imported') return 'Imported';
+    // Capitalise anything else cleanly
+    return source ? source.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Unknown';
+}
+
+/** Inline copy-to-clipboard button */
+function CopyBtn({ value }: { value: string }) {
+    const [copied, setCopied] = useState(false);
+    return (
+        <button
+            onClick={() => { navigator.clipboard.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }}
+            style={{
+                padding: '1px 7px', fontSize: 10, fontWeight: 600,
+                border: '1px solid var(--color-border)', borderRadius: 6,
+                background: copied ? 'rgba(63,185,80,0.12)' : 'var(--color-surface-2)',
+                color: copied ? '#3fb850' : 'var(--color-text-dim)', cursor: 'pointer',
+                transition: 'all .15s', marginLeft: 6, lineHeight: '18px',
+            }}
+            title="Copy full value"
+        >
+            {copied ? '✓' : 'copy'}
+        </button>
+    );
+}
+
+/** Compact view of a long string: truncated + copy, full value on title tooltip */
+function CompactRef({ value, maxChars = 28, mono = true }: { value: string; maxChars?: number; mono?: boolean }) {
+    const truncated = value.length > maxChars ? value.slice(0, maxChars) + '…' : value;
+    return (
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <span
+                title={value}
+                style={{
+                    fontFamily: mono ? 'var(--font-mono)' : undefined,
+                    fontSize: 12, color: 'var(--color-text)',
+                    cursor: value.length > maxChars ? 'help' : 'default',
+                }}
+            >
+                {truncated}
+            </span>
+            <CopyBtn value={value} />
+        </span>
+    );
+}
+
 function actionLabel(action: string): string {
     const map: Record<string, string> = {
         guest_created: 'Guest record created',
@@ -212,183 +272,191 @@ function PhotoGrid({ photos, title }: { photos: DossierPhoto[]; title: string })
 }
 
 // ---------------------------------------------------------------------------
-// Portal Block (Issue #2 — actionable)
+// Portal Block — tight action card
 // ---------------------------------------------------------------------------
 
 function PortalBlock({ portal, guest, stay }: { portal: DossierPortal; guest: Guest; stay: DossierStay }) {
     const channels = [
-        { key: 'email', label: 'Email', icon: '📧', available: !!guest.email },
-        { key: 'phone', label: 'SMS', icon: '📱', available: !!guest.phone },
+        { key: 'email',    label: 'Email',    icon: '📧', available: !!guest.email },
+        { key: 'phone',    label: 'SMS',      icon: '📱', available: !!guest.phone },
         { key: 'whatsapp', label: 'WhatsApp', icon: '💬', available: !!guest.whatsapp },
-        { key: 'line', label: 'LINE', icon: '🟢', available: !!guest.line_id },
+        { key: 'line',     label: 'LINE',     icon: '🟢', available: !!guest.line_id },
         { key: 'telegram', label: 'Telegram', icon: '✈️', available: !!guest.telegram },
     ];
-
     const hasAnyChannel = channels.some(c => c.available);
     const checkedIn = isCheckedIn(stay);
+    const generated = portal.qr_generated;
 
     return (
-        <div style={{ ...cardStyle, background: portal.qr_generated ? 'rgba(63,185,80,0.05)' : 'var(--color-surface)' }}>
-            <SectionHeader title="🔗 Guest Portal / QR" />
-
-            {/* Status indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <span style={{
-                    width: 40, height: 40, borderRadius: '50%',
-                    background: portal.qr_generated ? 'rgba(63,185,80,0.15)' : 'var(--color-surface-2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
-                }}>
-                    {portal.qr_generated ? '✅' : '⬜'}
-                </span>
-                <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
-                        {portal.qr_generated ? 'Portal Generated' : 'Portal Not Yet Generated'}
-                    </div>
-                    {portal.issued_at && (
-                        <div style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>
-                            Issued {fmtDate(portal.issued_at, true)}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Portal URL */}
-            {portal.portal_url && (
-                <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 4 }}>Portal URL</div>
-                    <a
-                        href={portal.portal_url} target="_blank" rel="noopener noreferrer"
-                        style={{
-                            display: 'block', padding: '6px 10px',
-                            background: 'var(--color-surface-2)', borderRadius: 8,
-                            fontSize: 12, color: 'var(--color-primary)', fontFamily: 'var(--font-mono)',
-                            wordBreak: 'break-all', textDecoration: 'none', border: '1px solid var(--color-border)',
-                        }}
-                    >
-                        {portal.portal_url}
-                    </a>
-                </div>
-            )}
-
-            {portal.expires_at && (
-                <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 16 }}>
-                    Expires {fmtDate(portal.expires_at, true)}
-                </div>
-            )}
-
-            {/* Action buttons */}
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16 }}>
-                {!portal.qr_generated && checkedIn && (
-                    <div style={{ marginBottom: 12 }}>
-                        <button style={btnPrimary} title="QR generation is triggered by check-in completion">
-                            🔗 Generate QR / Portal Link
-                        </button>
-                        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 6 }}>
-                            The portal link is normally generated automatically when check-in is completed.
-                            Use this button if it was not generated.
-                        </div>
-                    </div>
-                )}
-
-                {!portal.qr_generated && !checkedIn && (
-                    <div style={{ fontSize: 12, color: 'var(--color-muted)' }}>
-                        Portal will be generated after check-in is completed.
-                    </div>
-                )}
-
-                {portal.qr_generated && (
+        <div style={{
+            ...cardStyle,
+            background: generated ? 'rgba(63,185,80,0.04)' : 'var(--color-surface)',
+            borderColor: generated ? 'rgba(63,185,80,0.2)' : 'var(--color-border)',
+            padding: '16px 20px',
+        }}>
+            {/* Header row: status + primary action inline */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: generated ? 10 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{generated ? '🔗' : '⬜'}</span>
                     <div>
-                        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', fontWeight: 600, marginBottom: 8 }}>
-                            SEND PORTAL LINK VIA
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                            {channels.map(ch => (
-                                <button
-                                    key={ch.key}
-                                    style={ch.available ? btnSecondary : btnDisabled}
-                                    disabled={!ch.available}
-                                    title={ch.available ? `Send portal link via ${ch.label}` : `${ch.label} not configured — add it in Contact tab`}
-                                >
-                                    {ch.icon} {ch.label}
-                                </button>
-                            ))}
-                        </div>
-                        {!hasAnyChannel && (
-                            <div style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 8 }}>
-                                ⚠ No contact channels configured for this guest. Add at least one channel in the Contact tab.
-                            </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: generated ? '#3fb850' : 'var(--color-text-dim)' }}>
+                            {generated ? 'Portal Ready' : 'Portal Not Yet Generated'}
+                        </span>
+                        {portal.issued_at && (
+                            <span style={{ fontSize: 11, color: 'var(--color-muted)', marginLeft: 8 }}>
+                                issued {fmtDate(portal.issued_at, true)}
+                            </span>
+                        )}
+                        {portal.expires_at && (
+                            <span style={{ fontSize: 11, color: 'var(--color-muted)', marginLeft: 8 }}>
+                                · expires {fmtDate(portal.expires_at, true)}
+                            </span>
                         )}
                     </div>
+                </div>
+                {/* Primary action */}
+                {!generated && checkedIn && (
+                    <button style={{ ...btnPrimary, padding: '5px 14px' }} title="Regenerate portal link if auto-gen failed">
+                        🔗 Generate QR
+                    </button>
+                )}
+                {!generated && !checkedIn && (
+                    <span style={{ fontSize: 11, color: 'var(--color-muted)' }}>Awaiting check-in</span>
+                )}
+                {generated && portal.portal_url && (
+                    <a
+                        href={portal.portal_url} target="_blank" rel="noopener noreferrer"
+                        style={{ ...btnSecondary, textDecoration: 'none', padding: '5px 14px' }}
+                    >
+                        ↗ Open Portal
+                    </a>
                 )}
             </div>
+
+            {/* Send actions — only when generated */}
+            {generated && (
+                <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10, marginTop: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 10 }}>
+                        Send via
+                    </span>
+                    {channels.map(ch => (
+                        <button
+                            key={ch.key}
+                            style={{
+                                ...(ch.available ? btnSecondary : btnDisabled),
+                                padding: '3px 10px', fontSize: 11, marginRight: 6, marginBottom: 4,
+                            }}
+                            disabled={!ch.available}
+                            title={ch.available ? `Send portal link via ${ch.label}` : `${ch.label} not configured — add in Contact tab`}
+                        >
+                            {ch.icon} {ch.label}
+                        </button>
+                    ))}
+                    {!hasAnyChannel && (
+                        <span style={{ fontSize: 11, color: 'var(--color-danger)', marginLeft: 4 }}>
+                            ⚠ No channels — add contact details first
+                        </span>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
 
 // ---------------------------------------------------------------------------
-// Check-in Record Block (Issue #1 — aligned with status)
+// Check-in Record Block — compact with expandable operational detail
 // ---------------------------------------------------------------------------
 
+/** Small pill chips to summarise operational coverage at a glance */
+function CheckinChip({ ok, label }: { ok: boolean; label: string }) {
+    return (
+        <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 9px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+            background: ok ? 'rgba(63,185,80,0.1)' : 'var(--color-surface-2)',
+            color: ok ? '#3fb850' : 'var(--color-text-dim)',
+            border: `1px solid ${ok ? 'rgba(63,185,80,0.2)' : 'var(--color-border)'}`,
+        }}>
+            {ok ? '✓' : '–'} {label}
+        </span>
+    );
+}
+
 function CheckinRecordBlock({ record, stayStatus }: { record: DossierCheckinRecord; stayStatus: string | null }) {
-    // Fix contradiction: if booking status says checked_in, check-in IS completed
-    // even if checked_in_at is missing (legacy data issue)
     const statusIsCheckedIn = ['checked_in', 'instay', 'checkedin', 'active'].includes((stayStatus || '').toLowerCase());
     const effectivelyCompleted = !!record.checked_in_at || statusIsCheckedIn;
+    const [showDetail, setShowDetail] = useState(false);
+
+    const hasWalkthrough = record.walkthrough_photos.length > 0;
+    const hasMeter = !!record.opening_meter;
+    const checkedInBy = (record as any).checked_in_by;
 
     return (
-        <div style={cardStyle}>
-            <SectionHeader title="✅ Check-in Record" />
+        <div style={{ ...cardStyle, padding: '14px 20px' }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: effectivelyCompleted ? 10 : 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    ✅ Check-in Record
+                </span>
+                {effectivelyCompleted && (
+                    <button
+                        onClick={() => setShowDetail(d => !d)}
+                        style={{ ...btnSecondary, padding: '2px 10px', fontSize: 11 }}
+                    >
+                        {showDetail ? 'Less ▲' : 'Details ▼'}
+                    </button>
+                )}
+            </div>
 
-            {effectivelyCompleted ? (
-                <>
-                    <InfoRow
-                        label="Status"
-                        value="✅ Check-in Completed"
-                    />
-                    <InfoRow
-                        label="Completed At"
-                        value={record.checked_in_at ? fmtDate(record.checked_in_at, true) : 'Timestamp not recorded (legacy check-in)'}
-                    />
-                    {(record as any).checked_in_by && (
-                        <InfoRow label="Completed By" value={(record as any).checked_in_by} />
-                    )}
-                </>
-            ) : (
+            {!effectivelyCompleted ? (
                 <div style={{
-                    padding: '12px 16px', borderRadius: 8,
+                    padding: '10px 14px', borderRadius: 8,
                     background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)',
-                    fontSize: 13, color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 8,
+                    fontSize: 12, color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 8,
                 }}>
-                    ⏳ Check-in not yet completed — awaiting worker arrival flow.
+                    ⏳ Check-in not yet completed
                 </div>
-            )}
+            ) : (
+                <>
+                    {/* Summary line */}
+                    <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginBottom: 8 }}>
+                        {record.checked_in_at
+                            ? fmtDate(record.checked_in_at, true)
+                            : 'Timestamp not recorded (legacy check-in)'}
+                        {checkedInBy && (
+                            <span style={{ marginLeft: 8, color: 'var(--color-muted)' }}>
+                                · by {checkedInBy.length > 20 ? checkedInBy.slice(0, 16) + '…' : checkedInBy}
+                            </span>
+                        )}
+                    </div>
 
-            {/* Opening meter */}
-            {record.opening_meter && (
-                <div style={{ marginTop: 16 }}>
-                    <SectionHeader title="⚡ Opening Electricity Meter" />
-                    <InfoRow label="Reading" value={`${record.opening_meter.meter_value} ${record.opening_meter.meter_unit}`} />
-                    <InfoRow label="Recorded" value={fmtDate(record.opening_meter.recorded_at, true)} />
-                    {record.opening_meter.meter_photo_url && (
-                        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-dim)' }}>
-                            📷 Meter photo stored in secure storage
+                    {/* Coverage chips */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <CheckinChip ok label="Check-in" />
+                        <CheckinChip ok={hasWalkthrough} label="Walk-through" />
+                        <CheckinChip ok={hasMeter} label="Meter" />
+                    </div>
+
+                    {/* Expanded operational detail */}
+                    {showDetail && (
+                        <div style={{ marginTop: 14, borderTop: '1px solid var(--color-border)', paddingTop: 14, animation: 'fadeIn .15s ease' }}>
+                            {hasMeter && (
+                                <>
+                                    <div style={{ ...sectionTitleStyle, marginBottom: 8 }}>⚡ Opening Meter</div>
+                                    <InfoRow label="Reading" value={`${record.opening_meter!.meter_value} ${record.opening_meter!.meter_unit}`} />
+                                    <InfoRow label="Recorded" value={fmtDate(record.opening_meter!.recorded_at, true)} />
+                                    {record.meter_photos.length > 0 && (
+                                        <PhotoGrid photos={record.meter_photos} title="Meter Photos" />
+                                    )}
+                                </>
+                            )}
+                            {hasWalkthrough
+                                ? <PhotoGrid photos={record.walkthrough_photos} title="Walk-Through Photos" />
+                                : <div style={{ fontSize: 12, color: 'var(--color-muted)', marginTop: 8 }}>No walk-through photos indexed.</div>
+                            }
                         </div>
                     )}
-                    {record.meter_photos.length > 0 && (
-                        <PhotoGrid photos={record.meter_photos} title="Meter Photos" />
-                    )}
-                </div>
-            )}
-
-            {/* Walkthrough photos */}
-            {record.walkthrough_photos.length > 0 ? (
-                <PhotoGrid photos={record.walkthrough_photos} title="Property Walk-Through Photos" />
-            ) : (
-                effectivelyCompleted && (
-                    <div style={{ marginTop: 16, fontSize: 12, color: 'var(--color-muted)' }}>
-                        No walk-through photos indexed for this check-in.
-                    </div>
-                )
+                </>
             )}
         </div>
     );
@@ -410,13 +478,16 @@ function SettlementBlock({ stay }: { stay: DossierStay }) {
 
             {!hasAny ? (
                 <div style={{
-                    padding: '16px', borderRadius: 8,
+                    padding: '12px 16px', borderRadius: 8,
                     background: 'var(--color-surface-2)', border: '1px dashed var(--color-border)',
-                    textAlign: 'center',
+                    display: 'flex', alignItems: 'center', gap: 10,
                 }}>
-                    <div style={{ fontSize: 13, color: 'var(--color-muted)' }}>No settlement data yet</div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 4 }}>
-                        Deposit and meter readings will appear here when collected during check-in.
+                    <span style={{ fontSize: 18 }}>💳</span>
+                    <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-dim)' }}>No settlement data recorded</div>
+                        <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 2 }}>
+                            Deposit · opening meter · checkout settlement will appear here.
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -462,67 +533,53 @@ function SettlementBlock({ stay }: { stay: DossierStay }) {
 }
 
 // ---------------------------------------------------------------------------
-// Extras & Orders Block (Issue #7 — structural placeholder)
+// Extras & Orders Block — compact spacer, future-ready
 // ---------------------------------------------------------------------------
 
 function ExtrasOrdersBlock() {
     return (
-        <div style={cardStyle}>
-            <SectionHeader title="🛎️ Extras & Orders" />
-            <div style={{
-                padding: '24px 16px', borderRadius: 8,
-                background: 'var(--color-surface-2)', border: '1px dashed var(--color-border)',
-                textAlign: 'center',
-            }}>
-                <div style={{ fontSize: 24, marginBottom: 8 }}>🛎️</div>
-                <div style={{ fontSize: 13, color: 'var(--color-text-dim)', fontWeight: 600 }}>
-                    No extras or concierge orders yet
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 6, maxWidth: 340, margin: '6px auto 0' }}>
-                    When the guest orders extras through the portal (massage, motorbike, chef, concierge services),
-                    they will appear here with order status, timestamps, and pricing.
-                </div>
+        <div style={{ ...cardStyle, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 16 }}>🛎️</span>
+            <div style={{ flex: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-dim)' }}>Extras & Orders</span>
+                <span style={{ fontSize: 11, color: 'var(--color-muted)', marginLeft: 8 }}>
+                    No concierge orders yet — portal ordering coming soon
+                </span>
             </div>
         </div>
     );
 }
 
 // ---------------------------------------------------------------------------
-// Checkout Record Block (Issue #8 — future-ready structure)
+// Checkout Record Block — compact, future-ready
 // ---------------------------------------------------------------------------
 
 function CheckoutRecordBlock({ stay }: { stay: DossierStay }) {
     const record = stay.checkout_record;
     const checkedOut = record?.checked_out_at;
 
+    if (checkedOut) {
+        return (
+            <div style={{ ...cardStyle, padding: '14px 20px' }}>
+                <SectionHeader title="🚪 Checkout Record" />
+                <InfoRow label="Checked Out At" value={fmtDate(checkedOut, true)} />
+                {record?.closing_meter && (
+                    <InfoRow label="Closing Meter" value={`${record.closing_meter.meter_value} ${record.closing_meter.meter_unit}`} />
+                )}
+                {/* Future: checkout photos, damage evidence, electricity usage, final settlement */}
+            </div>
+        );
+    }
+
     return (
-        <div style={cardStyle}>
-            <SectionHeader title="🚪 Checkout Record" />
-            {checkedOut ? (
-                <>
-                    <InfoRow label="Checked Out At" value={fmtDate(checkedOut, true)} />
-                    {record?.closing_meter && (
-                        <>
-                            <InfoRow label="Closing Meter" value={`${record.closing_meter.meter_value} ${record.closing_meter.meter_unit}`} />
-                            <InfoRow label="Meter Recorded" value={fmtDate(record.closing_meter.recorded_at, true)} />
-                        </>
-                    )}
-                    {/* Future: checkout photos, damage evidence, electricity usage, final settlement */}
-                </>
-            ) : (
-                <div style={{
-                    padding: '16px', borderRadius: 8,
-                    background: 'var(--color-surface-2)', border: '1px dashed var(--color-border)',
-                    textAlign: 'center',
-                }}>
-                    <div style={{ fontSize: 13, color: 'var(--color-muted)' }}>
-                        {isCheckedIn(stay) ? 'Guest is still in-stay — checkout not yet performed.' : 'No checkout record.'}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 6 }}>
-                        Will include: checkout photos · closing meter · electricity usage · damage evidence · final settlement
-                    </div>
-                </div>
-            )}
+        <div style={{ ...cardStyle, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 16 }}>🚪</span>
+            <div style={{ flex: 1 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-dim)' }}>Checkout Record</span>
+                <span style={{ fontSize: 11, color: 'var(--color-muted)', marginLeft: 8 }}>
+                    {isCheckedIn(stay) ? 'Guest in-stay · not yet performed' : 'No checkout data'}
+                </span>
+            </div>
         </div>
     );
 }
@@ -558,10 +615,13 @@ function StayCard({ stay, guest, expanded, onToggle }: { stay: DossierStay; gues
             {/* Expanded detail — full lifecycle */}
             {expanded && (
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)', animation: 'fadeIn .2s ease' }}>
-                    {/* Booking Header */}
-                    <InfoRow label="Booking ID" value={stay.booking_id.slice(0, 24) + '…'} mono />
-                    {stay.source && <InfoRow label="Source" value={stay.source} />}
-                    {stay.reservation_ref && <InfoRow label="Reservation" value={stay.reservation_ref.slice(0, 30)} mono />}
+                    {/* Booking Header — compact */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 12, marginBottom: 4 }}>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Source</div>
+                        <div style={{ color: 'var(--color-text-dim)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ref</div>
+                        <div style={{ fontWeight: 500, color: 'var(--color-text)' }}>{fmtSource(stay.source, stay.booking_id)}</div>
+                        <div>{stay.reservation_ref ? <CompactRef value={stay.reservation_ref} maxChars={20} /> : <span style={{ color: 'var(--color-muted)' }}>—</span>}</div>
+                    </div>
 
                     {/* Check-in Record */}
                     <div style={{ marginTop: 16 }}>
@@ -951,22 +1011,34 @@ export default function GuestDossierPage() {
                         const nights = nightCount(stay.check_in, stay.check_out);
                         return (
                             <>
-                                {/* Booking header */}
-                                <div style={cardStyle}>
-                                    <SectionHeader title="🏠 Active Stay" />
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                {/* Booking header — compact metadata */}
+                                <div style={{ ...cardStyle, padding: '16px 20px' }}>
+                                    {/* Title row */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                                         <div>
-                                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-text)' }}>{stay.property_name}</div>
-                                            <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 4 }}>
-                                                {fmtDateShort(stay.check_in)} → {fmtDateShort(stay.check_out)}{nights != null ? ` · ${nights} nights` : ''}
+                                            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--color-text)' }}>{stay.property_name}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 3 }}>
+                                                {fmtDateShort(stay.check_in)} → {fmtDateShort(stay.check_out)}{nights != null ? ` · ${nights}n` : ''}
                                             </div>
                                         </div>
                                         <StatusBadge status={stay.status} />
                                     </div>
-                                    <InfoRow label="Booking ID" value={stay.booking_id.slice(0, 24) + '…'} mono />
-                                    {stay.source && <InfoRow label="Source" value={stay.source} />}
-                                    {stay.reservation_ref && <InfoRow label="Reservation Ref" value={stay.reservation_ref} mono />}
-                                    {stay.guest_name && <InfoRow label="Booking Name" value={stay.guest_name} />}
+
+                                    {/* Compact metadata grid — 2 columns */}
+                                    <div style={{
+                                        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px',
+                                        fontSize: 12, paddingTop: 10, borderTop: '1px solid var(--color-border)',
+                                    }}>
+                                        <div style={{ color: 'var(--color-text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Source</div>
+                                        <div style={{ color: 'var(--color-text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Booking Name</div>
+                                        <div style={{ color: 'var(--color-text)', fontWeight: 500 }}>{fmtSource(stay.source, stay.booking_id)}</div>
+                                        <div style={{ color: 'var(--color-text)', fontWeight: 500 }}>{stay.guest_name || '—'}</div>
+
+                                        <div style={{ color: 'var(--color-text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 6 }}>Booking ID</div>
+                                        <div style={{ color: 'var(--color-text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 6 }}>Reservation Ref</div>
+                                        <div><CompactRef value={stay.booking_id} maxChars={20} /></div>
+                                        <div>{stay.reservation_ref ? <CompactRef value={stay.reservation_ref} maxChars={22} /> : <span style={{ color: 'var(--color-muted)' }}>—</span>}</div>
+                                    </div>
                                 </div>
 
                                 {/* Check-in record (Issue #1 — reads status for truth) */}
