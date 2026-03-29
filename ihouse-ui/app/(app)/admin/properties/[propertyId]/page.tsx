@@ -39,6 +39,7 @@ const SUB_TABS: Partial<Record<PrimaryTab, { key: string; label: string; disable
         { key: 'general',      label: 'General' },
         { key: 'house-access', label: 'House & Access' },
         { key: 'rules',        label: 'Rules' },
+        { key: 'self-checkin', label: '🔓 Self Check-in' },
         { key: 'integrations', label: 'Integrations' },
     ],
     history: [
@@ -1745,6 +1746,309 @@ export default function PropertyDetailPage() {
             {/* ============ SETTINGS / Integrations ============ */}
             {tab === 'settings' && subTab === 'integrations' && !loading && (
                 <OtaSettingsTab propertyId={propertyId} />
+            )}
+
+            {/* ============ SETTINGS / Self Check-in — Phase 1018 ============ */}
+            {tab === 'settings' && subTab === 'self-checkin' && !loading && (
+                <SelfCheckinConfigPanel
+                    propertyId={propertyId}
+                    property={p}
+                    onSaved={(updated) => { setProperty(updated); showNotice('✓ Self check-in configuration saved'); }}
+                />
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1018 — Self Check-in Property Configuration Panel
+// ---------------------------------------------------------------------------
+
+const MODE_OPTIONS = [
+    {
+        key: 'disabled',
+        label: 'Disabled',
+        desc: 'No self check-in. Property uses staffed check-in only.',
+        color: '#64748b',
+    },
+    {
+        key: 'default',
+        label: 'Default Self Check-in',
+        desc: 'All bookings use self check-in by default. Portal link sent automatically 1–3 days before arrival. Individual bookings can be overridden back to staffed.',
+        color: '#6366f1',
+    },
+    {
+        key: 'late_only',
+        label: 'Late Only (Exception)',
+        desc: 'Property uses staffed check-in. Self check-in is available only as an explicit exception for guests arriving outside staffed hours.',
+        color: '#f59e0b',
+    },
+];
+
+const PRE_ACCESS_STEP_OPTIONS = [
+    { key: 'agreement',  label: '📋 House Rules Agreement' },
+    { key: 'id_photo',   label: '🪪 ID / Passport Photo' },
+    { key: 'selfie',     label: '🤳 Selfie Verification' },
+    { key: 'deposit',    label: '💳 Deposit Acknowledgement' },
+];
+
+const POST_ENTRY_STEP_OPTIONS = [
+    { key: 'electricity_meter', label: '⚡ Electricity Meter Reading' },
+    { key: 'arrival_photos',    label: '📷 Arrival Photos' },
+];
+
+function SelfCheckinConfigPanel({
+    propertyId, property, onSaved,
+}: {
+    propertyId: string;
+    property: any;
+    onSaved: (updated: any) => void;
+}) {
+    const cfg = property?.self_checkin_config || {};
+
+    const [mode, setMode] = useState<string>(cfg.mode || 'disabled');
+    const [preSteps, setPreSteps] = useState<string[]>(cfg.pre_access_steps || ['agreement']);
+    const [postSteps, setPostSteps] = useState<string[]>(cfg.post_entry_steps || ['electricity_meter', 'arrival_photos']);
+    const [tokenTtl, setTokenTtl] = useState<string>(String(cfg.token_ttl_hours ?? 72));
+    // Arrival guide
+    const [entryInstructions, setEntryInstructions] = useState<string>(cfg.arrival_guide?.entry_instructions || '');
+    const [onArrival, setOnArrival] = useState<string>(cfg.arrival_guide?.on_arrival_what_to_do || '');
+    const [electricity, setElectricity] = useState<string>(cfg.arrival_guide?.electricity_instructions || '');
+    const [keyLocations, setKeyLocations] = useState<string>(cfg.arrival_guide?.key_locations || '');
+    const [emergencyContact, setEmergencyContact] = useState<string>(cfg.arrival_guide?.emergency_contact || '');
+
+    const [saving, setSaving] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
+
+    const toggleStep = (list: string[], setList: (v: string[]) => void, key: string) => {
+        setList(list.includes(key) ? list.filter(k => k !== key) : [...list, key]);
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        setErr(null);
+        try {
+            const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+            const tok = getToken();
+            const payload = {
+                mode,
+                pre_access_steps: preSteps,
+                post_entry_steps: postSteps,
+                token_ttl_hours: parseInt(tokenTtl) || 72,
+                arrival_guide: {
+                    entry_instructions: entryInstructions.trim() || null,
+                    on_arrival_what_to_do: onArrival.trim() || null,
+                    electricity_instructions: electricity.trim() || null,
+                    key_locations: keyLocations.trim() || null,
+                    emergency_contact: emergencyContact.trim() || null,
+                },
+            };
+            const res = await fetch(`${BASE}/properties/${propertyId}/self-checkin-config`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+                },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+                const e = await res.json().catch(() => ({}));
+                throw new Error(e.detail || `HTTP ${res.status}`);
+            }
+            const updated = await res.json();
+            onSaved(updated);
+        } catch (e: any) {
+            setErr(e.message || 'Save failed');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const isSel = (k: string) => mode === k;
+
+    return (
+        <div style={{ maxWidth: 720 }}>
+            <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
+                Self Check-in Configuration
+            </h2>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 24 }}>
+                Controls how guests check themselves in for this property.
+                Mode affects all new bookings. Existing bookings can be overridden individually.
+            </p>
+
+            {/* Mode selector */}
+            <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                    Check-in Mode
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {MODE_OPTIONS.map(opt => (
+                        <div
+                            key={opt.key}
+                            onClick={() => setMode(opt.key)}
+                            style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 14,
+                                padding: '14px 16px', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+                                border: `2px solid ${isSel(opt.key) ? opt.color : 'var(--color-border)'}`,
+                                background: isSel(opt.key) ? `${opt.color}12` : 'var(--color-surface)',
+                                transition: 'all 0.15s',
+                            }}
+                        >
+                            <div style={{
+                                width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                                border: `2px solid ${isSel(opt.key) ? opt.color : 'var(--color-border)'}`,
+                                background: isSel(opt.key) ? opt.color : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                {isSel(opt.key) && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+                            </div>
+                            <div>
+                                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: isSel(opt.key) ? opt.color : 'var(--color-text)', marginBottom: 2 }}>
+                                    {opt.label}
+                                </div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
+                                    {opt.desc}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Step requirements — only shown when mode is not disabled */}
+            {mode !== 'disabled' && (
+                <>
+                    <div style={{ marginBottom: 24 }}>
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                            Gate 1 — Pre-Access Steps
+                        </div>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 10 }}>
+                            Guest must complete all checked steps before the access code is released.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {PRE_ACCESS_STEP_OPTIONS.map(opt => (
+                                <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={preSteps.includes(opt.key)}
+                                        onChange={() => toggleStep(preSteps, setPreSteps, opt.key)}
+                                        style={{ width: 16, height: 16, accentColor: 'var(--color-primary)' }}
+                                    />
+                                    {opt.label}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: 28 }}>
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                            Gate 2 — Post-Entry Steps
+                        </div>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 10 }}>
+                            Non-blocking. Guest completes these after arriving. Incomplete items create a follow-up task after 2h.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {POST_ENTRY_STEP_OPTIONS.map(opt => (
+                                <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={postSteps.includes(opt.key)}
+                                        onChange={() => toggleStep(postSteps, setPostSteps, opt.key)}
+                                        style={{ width: 16, height: 16, accentColor: 'var(--color-primary)' }}
+                                    />
+                                    {opt.label}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Arrival guide */}
+                    <div style={{ marginBottom: 28, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+                            Arrival Guide
+                        </div>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 14 }}>
+                            Shown to the guest in the self check-in portal. Fill only what's relevant — blank fields are hidden.
+                        </p>
+                        {[
+                            { label: '🚪 Entry Instructions', val: entryInstructions, set: setEntryInstructions, placeholder: 'e.g. Gate code is 1234. Enter through the main gate and proceed to Unit 3B.' },
+                            { label: '📋 On Arrival – What To Do', val: onArrival, set: setOnArrival, placeholder: 'e.g. Check in at the front desk, leave shoes at the door…' },
+                            { label: '⚡ Electricity & Utilities', val: electricity, set: setElectricity, placeholder: 'e.g. Breaker box is in the kitchen. A/C remote is on the bed.' },
+                            { label: '🔑 Key / Lockbox Locations', val: keyLocations, set: setKeyLocations, placeholder: 'e.g. Key fob is in the lockbox by the gate. Code: 5678.' },
+                            { label: '🆘 Emergency Contact', val: emergencyContact, set: setEmergencyContact, placeholder: 'e.g. Property manager: +66 81 234 5678 (Line / WhatsApp)' },
+                        ].map(f => (
+                            <div key={f.label} style={{ marginBottom: 14 }}>
+                                <label style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 4, fontWeight: 600 }}>{f.label}</label>
+                                <textarea
+                                    value={f.val}
+                                    onChange={e => f.set(e.target.value)}
+                                    placeholder={f.placeholder}
+                                    rows={2}
+                                    style={{
+                                        width: '100%', background: 'var(--color-surface-2)',
+                                        border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                                        padding: '8px 10px', color: 'var(--color-text)',
+                                        fontSize: 'var(--text-sm)', resize: 'vertical', outline: 'none',
+                                        lineHeight: 1.5,
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Token TTL */}
+                    <div style={{ marginBottom: 24 }}>
+                        <label style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 6, fontWeight: 600 }}>
+                            Portal Link Validity (hours)
+                        </label>
+                        <input
+                            type="number" min={1} max={720}
+                            value={tokenTtl}
+                            onChange={e => setTokenTtl(e.target.value)}
+                            style={{
+                                width: 100, background: 'var(--color-surface-2)',
+                                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                                padding: '8px 10px', color: 'var(--color-text)', fontSize: 'var(--text-sm)', outline: 'none',
+                            }}
+                        />
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginLeft: 8 }}>
+                            Default: 72h. The guest portal link expires after this time.
+                        </span>
+                    </div>
+                </>
+            )}
+
+            {/* Error */}
+            {err && (
+                <div style={{
+                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                    borderRadius: 'var(--radius-md)', padding: '10px 14px',
+                    fontSize: 'var(--text-sm)', color: '#f87171', marginBottom: 16,
+                }}>
+                    {err}
+                </div>
+            )}
+
+            {/* Save */}
+            <button
+                id="btn-save-self-checkin-config"
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                    padding: '12px 28px', borderRadius: 'var(--radius-md)', border: 'none',
+                    background: saving ? 'var(--color-surface-2)' : 'var(--color-primary)',
+                    color: saving ? 'var(--color-text-faint)' : '#fff', fontWeight: 700,
+                    fontSize: 'var(--text-sm)', cursor: saving ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                }}
+            >
+                {saving ? 'Saving…' : 'Save Self Check-in Config'}
+            </button>
+
+            {mode === 'disabled' && (
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 12 }}>
+                    When mode is Disabled, no self check-in panel will appear on bookings for this property.
+                </p>
             )}
         </div>
     );

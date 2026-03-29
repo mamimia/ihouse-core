@@ -885,3 +885,111 @@ async def update_property_id_settings(
     except Exception as exc:
         logger.exception("update property-id-settings error: %s", exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# PUT /properties/{property_id}/self-checkin-config  — Phase 1018
+# ---------------------------------------------------------------------------
+
+@router.put(
+    "/properties/{property_id}/self-checkin-config",
+    tags=["properties"],
+    summary="Update property self check-in configuration (Phase 1018)",
+    description=(
+        "Saves the self check-in mode, pre-access steps, post-entry steps, "
+        "token TTL, and arrival guide for a property into the "
+        "`self_checkin_config` JSONB column on the `properties` table.\n\n"
+        "**Allowed modes:** `disabled`, `default`, `late_only`\n\n"
+        "**Admin + manager only.**"
+    ),
+    responses={
+        200: {"description": "Updated property record."},
+        400: {"description": "Invalid mode value."},
+        403: {"description": "Insufficient role."},
+        404: {"description": "Property not found."},
+        500: {"description": "Internal error."},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def update_self_checkin_config(
+    property_id: str,
+    body: dict,
+    identity: dict = Depends(jwt_identity),
+) -> JSONResponse:
+    """
+    PUT /properties/{property_id}/self-checkin-config
+
+    Body:
+        mode: "disabled" | "default" | "late_only"
+        pre_access_steps: list[str]     optional
+        post_entry_steps: list[str]     optional
+        token_ttl_hours: int            optional, default 72
+        arrival_guide: dict             optional
+    """
+    tenant_id = identity["tenant_id"]
+    role = identity.get("role", "")
+    if role not in {"admin", "manager"}:
+        return make_error_response(
+            status_code=403,
+            code="FORBIDDEN",
+            extra={"detail": "admin or manager role required"},
+        )
+
+    mode = body.get("mode", "disabled")
+    if mode not in {"disabled", "default", "late_only"}:
+        return make_error_response(
+            status_code=400,
+            code="INVALID_MODE",
+            extra={"detail": f"mode must be disabled, default, or late_only. Got: {mode!r}"},
+        )
+
+    import json as _json
+    cfg = {
+        "mode": mode,
+        "pre_access_steps": body.get("pre_access_steps", ["agreement"]),
+        "post_entry_steps": body.get("post_entry_steps", ["electricity_meter", "arrival_photos"]),
+        "token_ttl_hours": int(body.get("token_ttl_hours", 72)),
+        "arrival_guide": body.get("arrival_guide") or {},
+    }
+
+    try:
+        db = _get_supabase_client()
+
+        # Verify property exists for this tenant
+        existing = (
+            db.table("properties")
+            .select("property_id")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .limit(1)
+            .execute()
+        )
+        if not existing.data:
+            return make_error_response(
+                status_code=404,
+                code="NOT_FOUND",
+                extra={"detail": f"Property '{property_id}' not found"},
+            )
+
+        # Update self_checkin_config JSONB column
+        result = (
+            db.table("properties")
+            .update({"self_checkin_config": cfg})
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .execute()
+        )
+
+        rows = result.data or []
+        updated = rows[0] if rows else {"property_id": property_id, "self_checkin_config": cfg}
+
+        logger.info(
+            "self_checkin_config updated: property=%s tenant=%s mode=%s",
+            property_id, tenant_id, mode,
+        )
+        return JSONResponse(status_code=200, content=updated)
+
+    except Exception as exc:
+        logger.exception("PUT self-checkin-config error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
