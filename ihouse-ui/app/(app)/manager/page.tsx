@@ -1,20 +1,15 @@
 'use client';
 
 /**
- * Phase 190 — Manager Activity Feed
+ * Phase 190 — Manager Activity Feed + Phase 1022 — Operational Takeover Gate
  * Route: /manager
  *
- * Real-time audit trail of all operator/worker mutations.
- * Reads from GET /admin/audit (Phase 189 audit_events table).
- *
- * Sections:
- *   - Live Activity Feed — all recent mutations, filterable by entity type
- *   - Quick Stats — mutation counts by action type
- *   - Booking Lookup — enter a booking_id to see its full audit trail
+ * Phase 1022-G: Manager execution surface — responsive in-place drawer.
+ * Mobile: full-screen overlay.  Desktop: slide-in side drawer.
+ * Manager/admin stays inside their surface throughout the entire takeover → execute → complete flow.
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { api, AuditEvent, MorningBriefingResponse, CopilotActionItem, apiFetch } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
@@ -303,7 +298,22 @@ function BookingAuditLookup() {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 1022-E: Takeover Modal
+// Phase 1022-G: Responsive desktop/mobile detection
+// ---------------------------------------------------------------------------
+
+function useIsDesktop(): boolean {
+    const [isDesktop, setIsDesktop] = useState(true);
+    useEffect(() => {
+        const check = () => setIsDesktop(window.innerWidth >= 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+    return isDesktop;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1022-E/G: Takeover Modal
 // ---------------------------------------------------------------------------
 
 const TAKEOVER_REASONS = [
@@ -333,13 +343,12 @@ interface ManagerTask {
 function TakeoverModal({
     task,
     onClose,
-    onSuccess,
+    onTakeoverComplete,
 }: {
     task: ManagerTask;
     onClose: () => void;
-    onSuccess: (taskId: string) => void;
+    onTakeoverComplete: (task: ManagerTask) => void;  // opens execution drawer
 }) {
-    const router = useRouter();
     const [reason, setReason] = useState('');
     const [notes, setNotes]   = useState('');
     const [busy, setBusy]     = useState(false);
@@ -353,10 +362,9 @@ function TakeoverModal({
                 method: 'POST',
                 body: JSON.stringify({ reason, notes: notes.trim() || undefined }),
             });
-            onSuccess(task.id);
             onClose();
-            // Phase 1022-F: route manager into the real worker execution flow
-            router.push('/worker');
+            // Phase 1022-G: open execution drawer in-place (no navigation)
+            onTakeoverComplete({ ...task, status: 'MANAGER_EXECUTING', taken_over_reason: reason });
         } catch (e: any) {
             setErr(e?.message || 'Takeover failed. Please try again.');
         } finally {
@@ -424,7 +432,7 @@ function TakeoverModal({
 
                 <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginBottom: 'var(--space-5)', lineHeight: 1.5 }}>
                     You are taking over this task as the active executor.
-                    The original worker will be notified. You will be routed to the full task execution flow.
+                    The original worker will be notified. After confirming, you will execute the task directly from this board.
                 </div>
 
                 {/* Reason */}
@@ -492,8 +500,413 @@ function TakeoverModal({
 }
 
 // ---------------------------------------------------------------------------
-// Phase 1022-E: Manager Task Board
+// Phase 1022-G: Task Execution Content (worker engine reused, manager surface)
 // ---------------------------------------------------------------------------
+
+const KIND_STEPS: Record<string, string[]> = {
+    CLEANING: [
+        'Confirm property access — door code / key collected',
+        'Inspect all rooms for damage or missing items',
+        'Strip and replace all linen and towels',
+        'Clean kitchen — surfaces, sink, appliances',
+        'Clean bathrooms — toilet, shower, mirrors',
+        'Vacuum / mop all floors',
+        'Restock amenities (toiletries, tea/coffee)',
+        'Final walkthrough — verify ready state',
+    ],
+    CHECKIN_PREP: [
+        'Confirm property access is ready',
+        'Verify all keys / access codes are available',
+        'Check check-in materials are in place',
+        'Confirm guest arrival time and details',
+        'Collect ID and deposit if applicable',
+        'Issue access to guest and confirm receipt',
+    ],
+    CHECKOUT_VERIFY: [
+        'Confirm guest has vacated',
+        'Inspect for damage — note any issues',
+        'Collect all keys / access items',
+        'Check inventory against last record',
+        'Note early checkout or overstay if applicable',
+        'Mark property ready for next booking',
+    ],
+    GUEST_WELCOME: [
+        'Confirm guest arrival details',
+        'Prepare welcome setup per guest profile',
+        'Confirm any special requests are handled',
+        'Verify access and welcome materials ready',
+    ],
+    MAINTENANCE: [
+        'Diagnose and document the issue',
+        'Complete repair or escalate if needed',
+        'Photograph before and after state',
+        'Note materials used and time taken',
+    ],
+    SELF_CHECKIN_FOLLOWUP: [
+        'Verify guest completed self check-in',
+        'Collect any missing items (ID, deposit)',
+        'Confirm access was received correctly',
+        'Document any irregularities',
+    ],
+    GENERAL: [
+        'Review task description',
+        'Complete required actions',
+        'Document outcome',
+    ],
+};
+
+interface TaskContext {
+    task_kind?: string;
+    booking_id?: string;
+    property_id?: string;
+    priority?: string;
+    original_worker_id?: string;
+    taken_over_by?: string;
+    taken_over_reason?: string;
+    taken_over_at?: string;
+    property?: { name?: string; address?: string; door_code?: string; notes?: string };
+    booking?: { guest_name?: string; check_in?: string; check_out?: string; number_of_guests?: number };
+    checklist?: Array<{ id?: string; item?: string; label?: string }>;
+}
+
+function TaskExecutionContent({
+    task,
+    onCompleted,
+}: {
+    task: ManagerTask;
+    onCompleted: () => void;
+}) {
+    const [context, setContext]       = useState<TaskContext | null>(null);
+    const [ctxLoading, setCtxLoading] = useState(true);
+    const [checked, setChecked]       = useState<Record<string, boolean>>({});
+    const [completionNotes, setCompletionNotes] = useState('');
+    const [completing, setCompleting] = useState(false);
+    const [completeErr, setCompleteErr] = useState('');
+    const [completed, setCompleted]   = useState(false);
+
+    useEffect(() => {
+        setCtxLoading(true);
+        apiFetch<{ context: TaskContext }>(`/tasks/${task.id}/context`)
+            .then(r => setContext(r.context))
+            .catch(() => setContext({}))
+            .finally(() => setCtxLoading(false));
+    }, [task.id]);
+
+    const steps = KIND_STEPS[task.task_kind] ?? KIND_STEPS['GENERAL'];
+    const allChecked = steps.every((_, i) => checked[i]);
+
+    const handleComplete = async () => {
+        setCompleting(true); setCompleteErr('');
+        try {
+            await apiFetch(`/worker/tasks/${task.id}/complete`, {
+                method: 'PATCH',
+                body: JSON.stringify({ notes: completionNotes.trim() || undefined }),
+            });
+            setCompleted(true);
+            setTimeout(onCompleted, 900);
+        } catch (e: any) {
+            setCompleteErr(e?.message || 'Could not complete task. Please try again.');
+        } finally {
+            setCompleting(false);
+        }
+    };
+
+    const iStyle: React.CSSProperties = {
+        width: '100%', boxSizing: 'border-box',
+        background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-sm)', color: 'var(--color-text)',
+        fontSize: 'var(--text-sm)', padding: '8px 12px', resize: 'vertical',
+        fontFamily: 'inherit',
+    };
+
+    if (completed) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', gap: 12, color: '#34d399' }}>
+                <div style={{ fontSize: '3rem' }}>✓</div>
+                <div style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>Task Completed</div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', textAlign: 'center' }}>Returning to task board…</div>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', paddingBottom: 'var(--space-4)' }}>
+
+            {/* Context card */}
+            {ctxLoading ? (
+                <div style={{ height: 72, background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', animation: 'pulse 1.5s infinite' }} />
+            ) : context && (context.property || context.booking) ? (
+                <div style={{
+                    background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)', padding: 'var(--space-4)',
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                }}>
+                    {context.property?.name && (
+                        <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                            📍 {context.property.name}
+                        </div>
+                    )}
+                    {context.property?.address && (
+                        <div style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>{context.property.address}</div>
+                    )}
+                    {context.property?.door_code && (
+                        <div style={{ fontSize: 12, color: 'var(--color-text-faint)' }}>
+                            Door code: <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text)' }}>{context.property.door_code}</strong>
+                        </div>
+                    )}
+                    {context.booking && (
+                        <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 4, borderTop: '1px solid var(--color-border)', paddingTop: 6 }}>
+                            Guest: <strong>{context.booking.guest_name || '—'}</strong>
+                            {context.booking.check_in && <span style={{ marginLeft: 10 }}>In: {context.booking.check_in}</span>}
+                            {context.booking.check_out && <span style={{ marginLeft: 10 }}>Out: {context.booking.check_out}</span>}
+                            {context.booking.number_of_guests && <span style={{ marginLeft: 10 }}>{context.booking.number_of_guests} guests</span>}
+                        </div>
+                    )}
+                </div>
+            ) : null}
+
+            {/* Execution steps */}
+            <div>
+                <div style={{
+                    fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)',
+                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-3)',
+                }}>Execution Steps</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {steps.map((step, i) => (
+                        <label
+                            key={i}
+                            style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 10,
+                                padding: '8px 10px', borderRadius: 'var(--radius-sm)',
+                                background: checked[i] ? 'rgba(16,185,129,0.06)' : 'var(--color-surface-2)',
+                                border: `1px solid ${checked[i] ? 'rgba(16,185,129,0.2)' : 'var(--color-border)'}`,
+                                cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={!!checked[i]}
+                                onChange={() => setChecked(p => ({ ...p, [i]: !p[i] }))}
+                                style={{ marginTop: 2, accentColor: '#10b981', flexShrink: 0 }}
+                            />
+                            <span style={{
+                                fontSize: 'var(--text-sm)',
+                                color: checked[i] ? '#34d399' : 'var(--color-text)',
+                                textDecoration: checked[i] ? 'line-through' : 'none',
+                                opacity: checked[i] ? 0.7 : 1,
+                                transition: 'all 0.15s',
+                            }}>{step}</span>
+                        </label>
+                    ))}
+                </div>
+                {!allChecked && (
+                    <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginTop: 6, paddingLeft: 2 }}>
+                        Check off steps as you complete them. You can mark complete at any time.
+                    </div>
+                )}
+            </div>
+
+            {/* Completion notes */}
+            <div>
+                <div style={{
+                    fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)',
+                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--space-2)',
+                }}>Completion Notes (optional)</div>
+                <textarea
+                    id="execution-completion-notes"
+                    value={completionNotes}
+                    onChange={e => setCompletionNotes(e.target.value)}
+                    placeholder="Anything to note for the audit record…"
+                    rows={3}
+                    style={iStyle}
+                />
+            </div>
+
+            {completeErr && (
+                <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>⚠ {completeErr}</div>
+            )}
+
+            {/* Mark complete CTA */}
+            <button
+                id="mark-task-complete-btn"
+                onClick={handleComplete}
+                disabled={completing}
+                style={{
+                    background: completing
+                        ? 'var(--color-surface-3)'
+                        : 'linear-gradient(135deg,#10b981,#059669)',
+                    color: '#fff', border: 'none', borderRadius: 'var(--radius-md)',
+                    padding: '12px 0', fontSize: 'var(--text-sm)', fontWeight: 700,
+                    cursor: completing ? 'not-allowed' : 'pointer',
+                    opacity: completing ? 0.7 : 1,
+                    width: '100%', transition: 'all 0.15s',
+                    boxShadow: '0 2px 12px rgba(16,185,129,0.3)',
+                }}
+            >
+                {completing ? 'Completing…' : '✓ Mark Task Complete'}
+            </button>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1022-G: Manager Execution Drawer (responsive)
+// Mobile: full-screen overlay
+// Desktop: slide-in side drawer — board stays visible behind
+// ---------------------------------------------------------------------------
+
+const KIND_LABEL: Record<string, string> = {
+    CLEANING: 'Cleaning',
+    CHECKIN_PREP: 'Check-in Prep',
+    CHECKOUT_VERIFY: 'Checkout Verify',
+    GUEST_WELCOME: 'Guest Welcome',
+    MAINTENANCE: 'Maintenance',
+    SELF_CHECKIN_FOLLOWUP: 'Self Check-in Follow-up',
+    GENERAL: 'General Task',
+};
+
+function ManagerExecutionDrawer({
+    task,
+    onClose,
+    onCompleted,
+}: {
+    task: ManagerTask;
+    onClose: () => void;
+    onCompleted: () => void;  // refreshes board after completion
+}) {
+    const isDesktop = useIsDesktop();
+
+    const drawerStyle: React.CSSProperties = isDesktop ? {
+        // Desktop: right-side panel, board stays visible left
+        position: 'fixed', top: 0, right: 0, bottom: 0,
+        width: 'min(520px, 46vw)',
+        background: 'var(--color-surface)',
+        borderLeft: '1px solid var(--color-border)',
+        boxShadow: '-8px 0 40px rgba(0,0,0,0.35)',
+        display: 'flex', flexDirection: 'column',
+        zIndex: 500,
+        overflowY: 'auto',
+        animation: 'slideInRight 0.22s ease-out',
+    } : {
+        // Mobile: full screen
+        position: 'fixed', inset: 0,
+        background: 'var(--color-surface)',
+        display: 'flex', flexDirection: 'column',
+        zIndex: 500,
+        overflowY: 'auto',
+    };
+
+    const backdropStyle: React.CSSProperties = isDesktop ? {
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.35)',
+        zIndex: 499,
+        backdropFilter: 'blur(2px)',
+    } : {};
+
+    const kindLabel = KIND_LABEL[task.task_kind] ?? task.task_kind;
+    const takenReason = task.taken_over_reason?.replace(/_/g, ' ') ?? '';
+
+    return (
+        <>
+            {/* Backdrop (desktop only — dims the board behind the drawer) */}
+            {isDesktop && (
+                <div style={backdropStyle} onClick={onClose} aria-label="Close execution drawer" />
+            )}
+
+            <div style={drawerStyle}>
+                {/* Drawer header */}
+                <div style={{
+                    padding: 'var(--space-4) var(--space-5)',
+                    borderBottom: '1px solid var(--color-border)',
+                    background: 'linear-gradient(135deg,rgba(239,68,68,0.07),rgba(245,158,11,0.04))',
+                    position: 'sticky', top: 0, zIndex: 2,
+                    flexShrink: 0,
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
+                        <div>
+                            <div style={{
+                                fontSize: 'var(--text-xs)', fontWeight: 700,
+                                textTransform: 'uppercase', letterSpacing: '0.08em',
+                                color: '#f87171', marginBottom: 4,
+                            }}>⚡ Takeover Execution</div>
+                            <div style={{ fontWeight: 700, fontSize: 'var(--text-lg)', color: 'var(--color-text)', lineHeight: 1.2 }}>
+                                {kindLabel}
+                            </div>
+                        </div>
+                        <button
+                            id="close-execution-drawer"
+                            onClick={onClose}
+                            title="Close (task stays in MANAGER_EXECUTING — you can return any time)"
+                            style={{
+                                background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                                borderRadius: 'var(--radius-full)',
+                                width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: 'var(--color-text-dim)', fontSize: 16, flexShrink: 0,
+                            }}
+                        >✕</button>
+                    </div>
+
+                    {/* Context pills */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <span style={{
+                            fontSize: 11, fontWeight: 600,
+                            padding: '2px 10px', borderRadius: 'var(--radius-full)',
+                            background: 'rgba(239,68,68,0.1)', color: '#f87171',
+                            border: '1px solid rgba(239,68,68,0.2)',
+                        }}>Manager Executing</span>
+                        <span style={{
+                            fontSize: 11, fontWeight: 600,
+                            padding: '2px 10px', borderRadius: 'var(--radius-full)',
+                            background: 'var(--color-surface-3)', color: 'var(--color-text-dim)',
+                        }}>📍 {task.property_id}</span>
+                        {task.due_date && (
+                            <span style={{
+                                fontSize: 11, fontWeight: 600,
+                                padding: '2px 10px', borderRadius: 'var(--radius-full)',
+                                background: 'var(--color-surface-3)', color: 'var(--color-text-dim)',
+                            }}>Due {task.due_date}</span>
+                        )}
+                        {task.original_worker_id && (
+                            <span style={{
+                                fontSize: 11, fontWeight: 600,
+                                padding: '2px 10px', borderRadius: 'var(--radius-full)',
+                                background: 'rgba(148,163,184,0.1)', color: 'var(--color-text-dim)',
+                                border: '1px solid var(--color-border)',
+                            }}>↩ Taken over from: {task.original_worker_id.slice(0, 14)}…</span>
+                        )}
+                        {takenReason && (
+                            <span style={{
+                                fontSize: 11, fontWeight: 600,
+                                padding: '2px 10px', borderRadius: 'var(--radius-full)',
+                                background: 'rgba(245,158,11,0.08)', color: '#f59e0b',
+                            }}>Reason: {takenReason}</span>
+                        )}
+                    </div>
+
+                    {/* Safe-close notice */}
+                    <div style={{
+                        fontSize: 10, color: 'var(--color-text-faint)',
+                        marginTop: 'var(--space-3)', lineHeight: 1.5,
+                    }}>
+                        Closing this panel does not cancel the takeover — the task stays in Manager Executing state and you can resume from the task board.
+                    </div>
+                </div>
+
+                {/* Scrollable execution body */}
+                <div style={{ flex: 1, padding: 'var(--space-5)', overflowY: 'auto' }}>
+                    <TaskExecutionContent task={task} onCompleted={onCompleted} />
+                </div>
+            </div>
+
+            <style>{`
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0.6; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `}</style>
+        </>
+    );
+}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
     PENDING:           { label: 'Pending',           color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
@@ -509,9 +922,11 @@ const PRIORITY_DOT: Record<string, string> = {
 function TaskRow({
     task,
     onTakeover,
+    onExecute,
 }: {
     task: ManagerTask;
     onTakeover: (t: ManagerTask) => void;
+    onExecute:  (t: ManagerTask) => void;  // Phase 1022-G: opens execution drawer
 }) {
     const sc = STATUS_CONFIG[task.status] ?? STATUS_CONFIG['PENDING'];
     const isTakenOver = task.status === 'MANAGER_EXECUTING';
@@ -521,7 +936,7 @@ function TaskRow({
     return (
         <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 140px 110px 90px',
+            gridTemplateColumns: '1fr 140px 110px 100px',
             gap: 'var(--space-4)',
             padding: 'var(--space-3) var(--space-4)',
             alignItems: 'center',
@@ -564,7 +979,7 @@ function TaskRow({
                 </span>
             </div>
 
-            {/* Action */}
+            {/* Action — Phase 1022-G: Execute replaces navigation */}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 {canTakeover ? (
                     <button
@@ -585,7 +1000,23 @@ function TaskRow({
                         ⚡ Take Over
                     </button>
                 ) : isTakenOver ? (
-                    <span style={{ fontSize: 10, color: '#f87171', fontWeight: 600 }}>You're executing</span>
+                    <button
+                        id={`execute-btn-${task.id}`}
+                        onClick={() => onExecute(task)}
+                        title="Execute this task"
+                        style={{
+                            background: 'linear-gradient(135deg,#10b981,#059669)',
+                            color: '#fff', border: 'none',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '5px 12px', fontSize: 11, fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 6px rgba(16,185,129,0.3)',
+                            transition: 'all 0.15s',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        ▶ Execute
+                    </button>
                 ) : null}
             </div>
         </div>
@@ -593,11 +1024,13 @@ function TaskRow({
 }
 
 function TaskBoard() {
-    const [groups, setGroups] = useState<Record<string, ManagerTask[]> | null>(null);
-    const [total, setTotal]   = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [err, setErr]       = useState('');
-    const [takeoverTask, setTakeoverTask] = useState<ManagerTask | null>(null);
+    const [groups, setGroups]         = useState<Record<string, ManagerTask[]> | null>(null);
+    const [total, setTotal]           = useState(0);
+    const [loading, setLoading]       = useState(true);
+    const [err, setErr]               = useState('');
+    const [takeoverTask, setTakeoverTask]   = useState<ManagerTask | null>(null);
+    // Phase 1022-G: executing task drives the responsive drawer
+    const [executingTask, setExecutingTask] = useState<ManagerTask | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true); setErr('');
@@ -614,7 +1047,17 @@ function TaskBoard() {
 
     useEffect(() => { load(); }, [load]);
 
-    const handleTakeoverSuccess = () => { load(); };
+    // After takeover: open the execution drawer immediately; board will refresh behind it
+    const handleTakeoverComplete = (updatedTask: ManagerTask) => {
+        setExecutingTask(updatedTask);
+        load();  // refresh board so row flips to MANAGER_EXECUTING
+    };
+
+    // After task is completed inside the drawer
+    const handleExecutionCompleted = () => {
+        setExecutingTask(null);
+        load();
+    };
 
     const allTasks: ManagerTask[] = groups
         ? [
@@ -721,15 +1164,29 @@ function TaskBoard() {
 
             {/* Task rows */}
             {allTasks.map(t => (
-                <TaskRow key={t.id} task={t} onTakeover={setTakeoverTask} />
+                <TaskRow
+                    key={t.id}
+                    task={t}
+                    onTakeover={setTakeoverTask}
+                    onExecute={setExecutingTask}  // Phase 1022-G: ▶ Execute opens drawer
+                />
             ))}
 
-            {/* Takeover modal */}
+            {/* Takeover confirm modal */}
             {takeoverTask && (
                 <TakeoverModal
                     task={takeoverTask}
                     onClose={() => setTakeoverTask(null)}
-                    onSuccess={handleTakeoverSuccess}
+                    onTakeoverComplete={handleTakeoverComplete}  // opens drawer, no navigation
+                />
+            )}
+
+            {/* Phase 1022-G: Responsive execution drawer */}
+            {executingTask && (
+                <ManagerExecutionDrawer
+                    task={executingTask}
+                    onClose={() => setExecutingTask(null)}
+                    onCompleted={handleExecutionCompleted}
                 />
             )}
         </div>
