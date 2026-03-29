@@ -1,6 +1,6 @@
 """
-Phase 998 — Early Check-out Approval Router
-============================================
+Phase 998 / 998b — Early Check-out Approval Router
+====================================================
 
 This router manages the operational early check-out workflow.
 It is NOT responsible for OTA-side repricing, night-cost refunds,
@@ -11,29 +11,39 @@ Endpoints:
 
     POST /admin/bookings/{booking_id}/early-checkout/request
          Record guest's early departure request (ops staff intake).
+         Moves early_checkout_status: none → requested.
          Allowed: admin, ops, manager.
 
     POST /admin/bookings/{booking_id}/early-checkout/approve
          Grant early checkout approval + reschedule task.
-         Allowed: admin only, OR manager with can_approve_early_checkout permission.
-         This is the ONLY endpoint that sets early_checkout_approved = true.
+         Moves early_checkout_status: requested|none → approved.
+         Allowed: admin always, OR manager with can_approve_early_checkout
+         in tenant_permissions.permissions.
+         This is the ONLY call that sets early_checkout_approved = true
+         and makes the checkout task actionable early.
 
     DELETE /admin/bookings/{booking_id}/early-checkout/approve
          Revoke approval (only if checkout has not yet occurred).
-         Allowed: admin, OR approving manager.
+         Moves early_checkout_status: approved → requested|none.
+         Allowed: admin, OR approving manager with capability.
 
     GET /admin/bookings/{booking_id}/early-checkout
          Full early checkout state for this booking.
          Allowed: admin, manager, ops.
 
-Invariants:
+Invariants (Phase 998b):
     - booking_state.check_out (original OTA date) is NEVER overwritten.
-    - early_checkout_date is the ONLY field that holds the effective early date.
-    - Approval requires early_checkout_date to be set and in the future (or today).
-    - A checkout worker cannot call these endpoints. They only respond to the flag.
+    - early_checkout_effective_at (TIMESTAMPTZ) is the authoritative approved
+      effective departure moment. Replaces weak separate date+time text fields.
+    - early_checkout_date (DATE) is kept alongside for fast date-only eligibility
+      comparisons and task due_date updates.
+    - early_checkout_status tracks the lifecycle explicitly:
+        none → requested → approved → completed
+      rather than inferring state from scattered boolean flags.
+    - A checkout worker cannot call these endpoints.
     - All mutations write to admin_audit_log.
-    - Task rescheduling on approval: due_date → early_checkout_date, priority → HIGH,
-      is_early_checkout = true, original_due_date = prior due_date.
+    - Task rescheduling on approval: due_date → early_checkout_date (DATE),
+      is_early_checkout=true, original_due_date=prior due_date, priority→HIGH.
     - Revocation only allowed if booking is still checked_in (not checked_out).
 """
 from __future__ import annotations
@@ -59,13 +69,16 @@ router = APIRouter(tags=["early-checkout"])
 # Roles allowed to record an intake request
 _INTAKE_ROLES = frozenset({"admin", "ops", "manager"})
 
-# Roles that may call the approve endpoint (before capability check)
+# Roles that may call the approve/revoke endpoints (then fine-grained capability check)
 _APPROVE_BASE_ROLES = frozenset({"admin", "manager"})
 
 # Valid request source values
 _VALID_REQUEST_SOURCES = frozenset({
     "phone", "message", "guest_portal", "ops_escalation", "other"
 })
+
+# Valid early_checkout_status values
+_EARLY_CHECKOUT_STATUSES = frozenset({"none", "requested", "approved", "completed"})
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +95,10 @@ def _get_db() -> Any:
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
+
+
+def _now_ms() -> int:
+    return int(datetime.now(tz=timezone.utc).timestamp() * 1000)
 
 
 def _audit(db: Any, tenant_id: str, actor_id: str, action: str,
@@ -101,7 +118,7 @@ def _audit(db: Any, tenant_id: str, actor_id: str, action: str,
 
 
 # ---------------------------------------------------------------------------
-# Permission helper — can this identity approve early checkout?
+# Permission helper
 # ---------------------------------------------------------------------------
 
 def _can_approve(db: Any, tenant_id: str, identity: dict) -> bool:
@@ -109,10 +126,13 @@ def _can_approve(db: Any, tenant_id: str, identity: dict) -> bool:
     Phase 998: Only admin and explicitly-granted operational managers may approve.
 
     Admin: always yes.
-    Manager: only if tenant_permissions.permissions contains
+    Manager: only if tenant_permissions.permissions has
              {"can_approve_early_checkout": true} for this user.
 
-    ops, worker, checkout: never.
+    This is the delegation model:
+      Admin = always authorized.
+      Operational Manager = authorized ONLY when Admin has delegated via permissions.
+      ops, worker, checkout: never.
     """
     role = identity.get("role", "")
     if role == "admin":
@@ -141,18 +161,22 @@ def _can_approve(db: Any, tenant_id: str, identity: dict) -> bool:
 # Booking state helpers
 # ---------------------------------------------------------------------------
 
+_BOOKING_SELECT = (
+    "booking_id, tenant_id, status, check_in, check_out, guest_name, property_id, "
+    "early_checkout_approved, early_checkout_approved_by, early_checkout_approved_at, "
+    "early_checkout_reason, early_checkout_date, early_checkout_effective_at, "
+    "early_checkout_status, "
+    "early_checkout_requested_at, early_checkout_request_source, "
+    "early_checkout_request_note, early_checkout_approval_note, "
+    "checked_out_at"
+)
+
+
 def _get_booking(db: Any, tenant_id: str, booking_id: str) -> Optional[dict]:
     try:
         res = (
             db.table("booking_state")
-            .select(
-                "booking_id, tenant_id, status, check_in, check_out, guest_name, property_id, "
-                "early_checkout_approved, early_checkout_approved_by, early_checkout_approved_at, "
-                "early_checkout_reason, early_checkout_date, early_checkout_time, "
-                "early_checkout_requested_at, early_checkout_request_source, "
-                "early_checkout_request_note, early_checkout_approval_note, "
-                "checked_out_at"
-            )
+            .select(_BOOKING_SELECT)
             .eq("booking_id", booking_id)
             .eq("tenant_id", tenant_id)
             .limit(1)
@@ -161,6 +185,25 @@ def _get_booking(db: Any, tenant_id: str, booking_id: str) -> Optional[dict]:
         rows = res.data or []
         return rows[0] if rows else None
     except Exception:
+        return None
+
+
+def _build_effective_at(date_str: str, time_str: Optional[str]) -> Optional[str]:
+    """
+    Build a proper ISO 8601 UTC timestamp from a YYYY-MM-DD date and optional HH:MM time.
+    If no time is given, defaults to 11:00 local naive (represented as UTC for storage;
+    UI layer can adjust for property timezone in the future).
+    Returns None if date_str is invalid.
+    """
+    try:
+        date_str = date_str.strip()[:10]
+        time_part = (time_str or "11:00").strip()[:5]
+        # Validate format
+        dt = datetime.strptime(f"{date_str}T{time_part}", "%Y-%m-%dT%H:%M")
+        # Store as UTC (timezone-naive input treated as local operational time;
+        # stored with +00:00 suffix — property timezone support is a future phase)
+        return dt.replace(tzinfo=timezone.utc).isoformat()
+    except (ValueError, TypeError):
         return None
 
 
@@ -173,7 +216,6 @@ def _reschedule_checkout_task(
     Returns {"updated": bool, "task_id": str | None}.
     """
     try:
-        # Find active CHECKOUT_VERIFY task for this booking
         res = (
             db.table("tasks")
             .select("task_id, due_date, priority, status")
@@ -193,18 +235,18 @@ def _reschedule_checkout_task(
         original_due = task["due_date"]
 
         db.table("tasks").update({
-            "due_date":         early_date,
+            "due_date":          early_date,
             "is_early_checkout": True,
             "original_due_date": original_due,
-            "priority":         "HIGH",   # time-sensitive early departure
-            "urgency":          "urgent",
-            "updated_at":       _now_iso(),
+            "priority":          "HIGH",
+            "urgency":           "urgent",
+            "updated_at":        _now_iso(),
         }).eq("task_id", task_id).eq("tenant_id", tenant_id).execute()
 
         return {"updated": True, "task_id": task_id, "original_due_date": original_due}
 
     except Exception as exc:
-        logger.warning("early_checkout: task reschedule failed for booking=%s: %s", booking_id, exc)
+        logger.warning("early_checkout: task reschedule failed booking=%s: %s", booking_id, exc)
         return {"updated": False, "task_id": None, "reason": str(exc)}
 
 
@@ -248,7 +290,7 @@ def _revert_checkout_task(
         return {"reverted": True, "task_id": task_id, "restored_due_date": restore_date}
 
     except Exception as exc:
-        logger.warning("early_checkout: task revert failed for booking=%s: %s", booking_id, exc)
+        logger.warning("early_checkout: task revert failed booking=%s: %s", booking_id, exc)
         return {"reverted": False, "reason": str(exc)}
 
 
@@ -271,16 +313,18 @@ async def record_early_checkout_request(
     """
     Record that a guest has requested early departure.
 
-    This captures the intake event without granting approval.
-    Use /approve to actually unlock early checkout operations.
+    This is the intake step only — it captures the request without approval.
+    The checkout task remains locked. Call /approve to unlock it.
+
+    Moves early_checkout_status: none → requested.
 
     Required body fields:
         request_source: 'phone' | 'message' | 'guest_portal' | 'ops_escalation' | 'other'
 
     Optional:
         request_note: free text from intake staff
-        early_checkout_date: proposed YYYY-MM-DD (may be confirmed at approval)
-        early_checkout_time: proposed HH:MM
+        proposed_date: proposed YYYY-MM-DD (informational, not binding)
+        proposed_time: proposed HH:MM (informational, not binding)
 
     Allowed roles: admin, ops, manager.
     """
@@ -318,45 +362,51 @@ async def record_early_checkout_request(
             return make_error_response(
                 status_code=409, code="INVALID_STATE",
                 extra={
-                    "detail": f"Cannot record early checkout request for booking with status '{current_status}'. "
-                              "Booking must be checked_in.",
+                    "detail": f"Cannot record early checkout request for booking with "
+                              f"status '{current_status}'. Booking must be checked_in.",
                     "current_status": current_status,
                 },
             )
 
         now = _now_iso()
-        update = {
+        update: dict = {
             "early_checkout_requested_at":   now,
             "early_checkout_request_source": request_source,
             "early_checkout_request_note":   body.get("request_note") or None,
-            "updated_at_ms":                 int(datetime.now(tz=timezone.utc).timestamp() * 1000),
+            "early_checkout_status":         "requested",
+            "updated_at_ms":                 _now_ms(),
         }
 
-        # Optionally capture proposed early date (not binding until /approve)
-        proposed_date = (body.get("early_checkout_date") or "").strip()[:10]
+        # Store proposed timing (informational — becomes binding at /approve)
+        proposed_date = (body.get("proposed_date") or "").strip()[:10]
+        proposed_time = (body.get("proposed_time") or "").strip()[:5]
         if proposed_date:
             update["early_checkout_date"] = proposed_date
-        proposed_time = (body.get("early_checkout_time") or "").strip()[:5]
-        if proposed_time:
-            update["early_checkout_time"] = proposed_time
+        # Build effective_at only if we have a proposed date (non-binding preview)
+        proposed_effective_at = _build_effective_at(proposed_date, proposed_time or None) if proposed_date else None
+        if proposed_effective_at:
+            update["early_checkout_effective_at"] = proposed_effective_at
 
         db.table("booking_state").update(update).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
         _audit(db, tenant_id, actor_id, "early_checkout.request_received", booking_id, {
-            "request_source":      request_source,
-            "request_note":        body.get("request_note"),
-            "proposed_early_date": proposed_date or None,
-            "original_checkout":   str(booking.get("check_out", "")),
-            "recorded_by":         actor_id,
+            "request_source":        request_source,
+            "request_note":          body.get("request_note"),
+            "proposed_date":         proposed_date or None,
+            "proposed_effective_at": proposed_effective_at,
+            "original_checkout":     str(booking.get("check_out", "")),
+            "recorded_by":           actor_id,
         })
 
         return JSONResponse(status_code=200, content={
-            "status":          "request_recorded",
-            "booking_id":      booking_id,
-            "request_source":  request_source,
-            "proposed_date":   proposed_date or None,
-            "recorded_by":     actor_id,
-            "recorded_at":     now,
+            "status":                "request_recorded",
+            "early_checkout_status": "requested",
+            "booking_id":            booking_id,
+            "request_source":        request_source,
+            "proposed_date":         proposed_date or None,
+            "proposed_effective_at": proposed_effective_at,
+            "recorded_by":           actor_id,
+            "recorded_at":           now,
         })
 
     except Exception as exc:
@@ -370,7 +420,7 @@ async def record_early_checkout_request(
 
 @router.post(
     "/admin/bookings/{booking_id}/early-checkout/approve",
-    summary="Approve guest early departure + reschedule task (Phase 998)",
+    summary="Approve early departure + reschedule checkout task (Phase 998)",
     status_code=200,
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
@@ -383,23 +433,29 @@ async def approve_early_checkout(
     """
     Grant early checkout approval for this booking.
 
-    Sets early_checkout_approved = true, records effective early checkout date,
-    and reschedules the CHECKOUT_VERIFY task to the approved date.
+    This is the binding action:
+      - Sets early_checkout_approved = true
+      - Sets early_checkout_effective_at (proper TIMESTAMPTZ — date + time)
+      - Sets early_checkout_date (DATE convenience field for eligibility checks)
+      - Moves early_checkout_status → 'approved'
+      - Reschedules the CHECKOUT_VERIFY task to the approved effective date
 
     After this call, the checkout worker can execute checkout before check_out date.
+    The checkout task becomes an Early Check-out task (is_early_checkout=true, due_date updated).
 
     Required body fields:
         early_checkout_date: YYYY-MM-DD — the approved effective departure date
 
     Optional:
-        early_checkout_time: HH:MM
-        reason: guest's reason for early departure
-        approval_note: manager's operational note
+        early_checkout_time: HH:MM — specific departure time (defaults to 11:00 if omitted)
+        reason: guest's reason (flight change, emergency, etc.)
+        approval_note: manager's operational note (internal, e.g. "notify cleaning team")
 
-    Permission: admin always. Manager only with can_approve_early_checkout = true
-                in tenant_permissions.permissions.
-
-    A checkout worker CANNOT call this endpoint.
+    Permission model:
+        admin: always allowed.
+        manager: only if can_approve_early_checkout=true in tenant_permissions.permissions.
+                 This is an explicit delegation from admin — not a default manager right.
+        ops/worker: never.
     """
     role = identity.get("role", "")
     if role not in _APPROVE_BASE_ROLES:
@@ -418,7 +474,7 @@ async def approve_early_checkout(
     try:
         db = client or _get_db()
 
-        # Fine-grained capability check (manager requires grant)
+        # Fine-grained: manager must have capability grant
         if not _can_approve(db, tenant_id, identity):
             return make_error_response(
                 status_code=403, code="APPROVAL_FORBIDDEN",
@@ -428,12 +484,21 @@ async def approve_early_checkout(
                 },
             )
 
-        # Validate required fields
+        # Require early_checkout_date
         early_date = (body.get("early_checkout_date") or "").strip()[:10]
         if not early_date or len(early_date) != 10:
             return make_error_response(
                 status_code=400, code=ErrorCode.VALIDATION_ERROR,
                 extra={"detail": "early_checkout_date (YYYY-MM-DD) is required."},
+            )
+
+        # Optional time component — stored as proper TIMESTAMPTZ
+        early_time = (body.get("early_checkout_time") or "").strip()[:5] or None
+        effective_at = _build_effective_at(early_date, early_time)
+        if not effective_at:
+            return make_error_response(
+                status_code=400, code=ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"Invalid early_checkout_date format: '{early_date}'."},
             )
 
         booking = _get_booking(db, tenant_id, booking_id)
@@ -454,7 +519,7 @@ async def approve_early_checkout(
                 },
             )
 
-        # Guard: early_checkout_date must not be after the original check_out
+        # Guard: early_checkout_date must be strictly before original check_out
         original_checkout = str(booking.get("check_out") or "")[:10]
         if original_checkout and early_date >= original_checkout:
             return make_error_response(
@@ -467,7 +532,7 @@ async def approve_early_checkout(
                 },
             )
 
-        # Guard: early_checkout_date must be today or in the future
+        # Guard: early_checkout_date must be today or future
         today_str = date_type.today().isoformat()
         if early_date < today_str:
             return make_error_response(
@@ -480,51 +545,50 @@ async def approve_early_checkout(
                 },
             )
 
-        # Already approved? Idempotent re-approval is allowed (updates the date)
         already_approved = booking.get("early_checkout_approved", False)
 
         now = _now_iso()
-        update = {
+        update: dict = {
             "early_checkout_approved":      True,
             "early_checkout_approved_by":   actor_id,
             "early_checkout_approved_at":   now,
-            "early_checkout_date":          early_date,
+            "early_checkout_date":          early_date,          # DATE for eligibility checks
+            "early_checkout_effective_at":  effective_at,        # TIMESTAMPTZ — authoritative
+            "early_checkout_status":        "approved",
             "early_checkout_reason":        body.get("reason") or booking.get("early_checkout_reason"),
             "early_checkout_approval_note": body.get("approval_note") or None,
-            "updated_at_ms":                int(datetime.now(tz=timezone.utc).timestamp() * 1000),
+            "updated_at_ms":                _now_ms(),
         }
-        early_time = (body.get("early_checkout_time") or "").strip()[:5]
-        if early_time:
-            update["early_checkout_time"] = early_time
 
         db.table("booking_state").update(update).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
-        # Reschedule the CHECKOUT_VERIFY task
+        # Reschedule CHECKOUT_VERIFY task
         task_result = _reschedule_checkout_task(db, tenant_id, booking_id, early_date)
 
         _audit(db, tenant_id, actor_id, "early_checkout.approved", booking_id, {
-            "approved_by":              actor_id,
-            "effective_checkout_date":  early_date,
-            "effective_checkout_time":  early_time or None,
-            "original_checkout_date":   original_checkout,
-            "reason":                   body.get("reason"),
-            "approval_note":            body.get("approval_note"),
-            "task_rescheduled":         task_result.get("updated", False),
-            "task_id":                  task_result.get("task_id"),
-            "was_already_approved":     already_approved,
+            "approved_by":             actor_id,
+            "effective_checkout_date": early_date,
+            "effective_at":            effective_at,
+            "original_checkout_date":  original_checkout,
+            "reason":                  body.get("reason"),
+            "approval_note":           body.get("approval_note"),
+            "task_rescheduled":        task_result.get("updated", False),
+            "task_id":                 task_result.get("task_id"),
+            "was_already_approved":    already_approved,
         })
 
         return JSONResponse(status_code=200, content={
-            "status":                   "approved",
-            "booking_id":               booking_id,
-            "early_checkout_date":      early_date,
-            "early_checkout_time":      early_time or None,
-            "original_checkout_date":   original_checkout,
-            "approved_by":              actor_id,
-            "approved_at":              now,
-            "reason":                   body.get("reason"),
-            "approval_note":            body.get("approval_note"),
-            "task_reschedule":          task_result,
+            "status":                  "approved",
+            "early_checkout_status":   "approved",
+            "booking_id":              booking_id,
+            "early_checkout_date":     early_date,
+            "early_checkout_effective_at": effective_at,
+            "original_checkout_date":  original_checkout,
+            "approved_by":             actor_id,
+            "approved_at":             now,
+            "reason":                  body.get("reason"),
+            "approval_note":           body.get("approval_note"),
+            "task_reschedule":         task_result,
         })
 
     except Exception as exc:
@@ -548,18 +612,20 @@ async def revoke_early_checkout(
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
-    Revoke early checkout approval.
+    Revoke an outstanding early checkout approval.
 
     Only allowed if the booking has not yet been checked out.
     Restores the task to its original due_date and resets priority.
+    Moves early_checkout_status: approved → requested (if request was recorded)
+    or none (if approval was granted without a request intake step).
 
-    Allowed: admin only, OR manager with can_approve_early_checkout.
+    Permission: admin always. Manager with can_approve_early_checkout only.
     """
     role = identity.get("role", "")
     if role not in _APPROVE_BASE_ROLES:
         return make_error_response(
             status_code=403, code="APPROVAL_FORBIDDEN",
-            extra={"detail": "Revoking early checkout requires Admin or an approved Operational Manager."},
+            extra={"detail": "Revoking early checkout requires Admin or an authorized Operational Manager."},
         )
 
     tenant_id = identity["tenant_id"]
@@ -587,12 +653,16 @@ async def revoke_early_checkout(
                 extra={"detail": "This booking does not have an active early checkout approval."},
             )
 
-        # Cannot revoke after checkout has occurred
         if booking.get("checked_out_at"):
             return make_error_response(
                 status_code=409, code="ALREADY_CHECKED_OUT",
                 extra={"detail": "Cannot revoke early checkout approval — booking has already been checked out."},
             )
+
+        # Revert status to 'requested' if a request was recorded, else 'none'
+        revert_status = (
+            "requested" if booking.get("early_checkout_requested_at") else "none"
+        )
 
         now = _now_iso()
         db.table("booking_state").update({
@@ -600,27 +670,30 @@ async def revoke_early_checkout(
             "early_checkout_approved_by":   None,
             "early_checkout_approved_at":   None,
             "early_checkout_date":          None,
-            "early_checkout_time":          None,
+            "early_checkout_effective_at":  None,
+            "early_checkout_status":        revert_status,
             "early_checkout_approval_note": None,
-            "updated_at_ms":                int(datetime.now(tz=timezone.utc).timestamp() * 1000),
+            "updated_at_ms":                _now_ms(),
         }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
-        # Revert task rescheduling
         task_result = _revert_checkout_task(db, tenant_id, booking_id)
 
         _audit(db, tenant_id, actor_id, "early_checkout.revoked", booking_id, {
-            "revoked_by":               actor_id,
-            "original_checkout_date":   str(booking.get("check_out", "")),
-            "was_early_date":           str(booking.get("early_checkout_date", "")),
-            "task_reverted":            task_result.get("reverted", False),
+            "revoked_by":             actor_id,
+            "original_checkout_date": str(booking.get("check_out", "")),
+            "was_early_date":         str(booking.get("early_checkout_date", "")),
+            "was_effective_at":       str(booking.get("early_checkout_effective_at", "")),
+            "reverted_status":        revert_status,
+            "task_reverted":          task_result.get("reverted", False),
         })
 
         return JSONResponse(status_code=200, content={
-            "status":       "revoked",
-            "booking_id":   booking_id,
-            "revoked_by":   actor_id,
-            "revoked_at":   now,
-            "task_revert":  task_result,
+            "status":                "revoked",
+            "early_checkout_status": revert_status,
+            "booking_id":            booking_id,
+            "revoked_by":            actor_id,
+            "revoked_at":            now,
+            "task_revert":           task_result,
         })
 
     except Exception as exc:
@@ -644,11 +717,15 @@ async def get_early_checkout_state(
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
-    Returns the complete early checkout state for a booking including:
-    - Request intake details
-    - Approval details
-    - Current task state
-    - Eligibility for approval
+    Full early checkout state for a booking.
+
+    Returns:
+      - early_checkout_status (none|requested|approved|completed)
+      - Original booking checkout date
+      - Request intake details (source, note, timestamp)
+      - Approval details (effective date, effective_at TIMESTAMPTZ, approved_by, reason)
+      - Active CHECKOUT_VERIFY task state (rescheduled or normal)
+      - caller_can_approve (whether the calling user can approve this)
 
     Allowed: admin, manager, ops.
     """
@@ -671,7 +748,7 @@ async def get_early_checkout_state(
                 extra={"detail": f"Booking '{booking_id}' not found."},
             )
 
-        # Get active task state
+        # Active CHECKOUT_VERIFY task state
         task_data = None
         try:
             res = (
@@ -690,22 +767,25 @@ async def get_early_checkout_state(
         except Exception:
             pass
 
-        # Can caller approve? (informational for UI rendering)
         caller_can_approve = _can_approve(db, tenant_id, identity)
 
+        ec_status = booking.get("early_checkout_status") or "none"
+
         return JSONResponse(status_code=200, content={
-            "booking_id":              booking_id,
-            "original_checkout_date":  str(booking.get("check_out") or ""),
-            "booking_status":          booking.get("status"),
+            "booking_id":             booking_id,
+            "original_checkout_date": str(booking.get("check_out") or ""),
+            "booking_status":         booking.get("status"),
+            "early_checkout_status":  ec_status,   # none|requested|approved|completed
 
             # Request intake
             "request": {
-                "recorded":  bool(booking.get("early_checkout_requested_at")),
-                "source":    booking.get("early_checkout_request_source"),
-                "note":      booking.get("early_checkout_request_note"),
-                "at":        str(booking.get("early_checkout_requested_at") or ""),
-                "proposed_date": str(booking.get("early_checkout_date") or "")
-                                 if not booking.get("early_checkout_approved") else None,
+                "recorded":       ec_status in ("requested", "approved", "completed"),
+                "source":         booking.get("early_checkout_request_source"),
+                "note":           booking.get("early_checkout_request_note"),
+                "at":             str(booking.get("early_checkout_requested_at") or ""),
+                # proposed_date is only meaningful before approval
+                "proposed_date":  str(booking.get("early_checkout_date") or "")
+                                  if ec_status == "requested" else None,
             },
 
             # Approval
@@ -713,8 +793,10 @@ async def get_early_checkout_state(
                 "approved":            bool(booking.get("early_checkout_approved")),
                 "approved_by":         booking.get("early_checkout_approved_by"),
                 "approved_at":         str(booking.get("early_checkout_approved_at") or ""),
+                # effective_at is the authoritative moment (date+time as TIMESTAMPTZ)
+                "effective_at":        str(booking.get("early_checkout_effective_at") or ""),
+                # effective_date is the date-only convenience field
                 "effective_date":      str(booking.get("early_checkout_date") or ""),
-                "effective_time":      booking.get("early_checkout_time"),
                 "reason":              booking.get("early_checkout_reason"),
                 "approval_note":       booking.get("early_checkout_approval_note"),
             },

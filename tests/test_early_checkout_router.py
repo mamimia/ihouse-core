@@ -66,6 +66,7 @@ def _mock_booking_db(
     early_checkout_date: str | None = None,
     checked_out_at: str | None = None,
     manager_can_approve: bool = False,
+    early_checkout_status: str = "none",
 ) -> MagicMock:
     """Build a MagicMock DB that returns the right data for each query."""
     mock_db = MagicMock()
@@ -83,7 +84,8 @@ def _mock_booking_db(
         "early_checkout_approved_at": "2026-03-29T10:00:00Z" if early_checkout_approved else None,
         "early_checkout_reason": "flight change" if early_checkout_approved else None,
         "early_checkout_date": early_checkout_date,
-        "early_checkout_time": None,
+        "early_checkout_effective_at": f"{early_checkout_date}T11:00:00+00:00" if early_checkout_date else None,
+        "early_checkout_status": early_checkout_status,
         "early_checkout_requested_at": None,
         "early_checkout_request_source": None,
         "early_checkout_request_note": None,
@@ -179,6 +181,7 @@ class TestEarlyCheckoutRequest:
         body = resp.json()
         assert body["status"] == "request_recorded"
         assert body["request_source"] == "phone"
+        assert body["early_checkout_status"] == "requested"
 
     def test_ops_can_record_request(self):
         client = _client_as("ops")

@@ -330,13 +330,17 @@ def _get_booking_checkout_state(
 ) -> Optional[dict]:
     """
     Fetch the checkout eligibility fields from booking_state in one DB call.
-    Returns: {check_out, early_checkout_approved, early_checkout_approved_by}
+    Returns: {check_out, early_checkout_approved, early_checkout_approved_by,
+              early_checkout_date, early_checkout_effective_at}
     Returns None if the booking doesn't exist.
     """
     try:
         res = (
             db.table("booking_state")
-            .select("check_out, early_checkout_approved, early_checkout_approved_by")
+            .select(
+                "check_out, early_checkout_approved, early_checkout_approved_by, "
+                "early_checkout_date, early_checkout_effective_at"
+            )
             .eq("booking_id", booking_id)
             .eq("tenant_id", tenant_id)
             .limit(1)
