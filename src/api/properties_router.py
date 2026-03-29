@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth
+from api.auth import jwt_auth, jwt_identity
 from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 
