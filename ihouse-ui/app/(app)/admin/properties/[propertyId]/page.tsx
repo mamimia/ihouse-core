@@ -1963,6 +1963,7 @@ function SelfCheckinConfigPanel({
                             Guest must complete all checked steps before the access code is released.
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {/* Free user-configurable steps */}
                             {PRE_ACCESS_STEP_OPTIONS.map(opt => (
                                 <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
                                     <input
@@ -1974,18 +1975,29 @@ function SelfCheckinConfigPanel({
                                     {opt.label}
                                 </label>
                             ))}
-                            {/* Phase 1019: Deposit — inherited from Settlement Rules, not a free checkbox */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: inheritedDeposit ? 1 : 0.4 }}>
+                            {/* Phase 1019b: Deposit — inherited from Settlement Rules.
+                                This IS the real Deposit Acknowledgement step row.
+                                No duplicate row. Shows locked ON or locked OFF based on Rules. */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '6px 10px', borderRadius: 8,
+                                background: inheritedDeposit ? '#6366f108' : 'transparent',
+                                border: `1px solid ${inheritedDeposit ? '#6366f133' : 'var(--color-border)'}`,
+                                opacity: inheritedDeposit ? 1 : 0.5,
+                            }}>
                                 <input type="checkbox" checked={inheritedDeposit} readOnly
-                                    style={{ width: 16, height: 16, accentColor: 'var(--color-primary)', cursor: 'default' }} />
-                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>💳 Deposit Acknowledgement</span>
+                                    style={{ width: 16, height: 16, accentColor: 'var(--color-primary)', cursor: 'not-allowed' }} />
+                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', flex: 1 }}>
+                                    💳 Deposit Acknowledgement
+                                </span>
                                 <span style={{
-                                    fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
-                                    background: inheritedDeposit ? '#6366f115' : '#6b728015',
+                                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
+                                    background: inheritedDeposit ? '#6366f118' : '#6b728018',
                                     color: inheritedDeposit ? '#6366f1' : '#6b7280',
                                     border: `1px solid ${inheritedDeposit ? '#6366f133' : '#6b728033'}`,
+                                    whiteSpace: 'nowrap',
                                 }}>
-                                    {inheritedDeposit ? 'Inherited from Rules — ON' : 'Inherited from Rules — OFF'}
+                                    🔒 From Rules — {inheritedDeposit ? 'ON' : 'OFF'}
                                 </span>
                             </div>
                         </div>
@@ -1999,20 +2011,32 @@ function SelfCheckinConfigPanel({
                             Non-blocking. Guest completes these after arriving. Incomplete items create a follow-up task after 2h.
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {/* Phase 1019: Electricity Meter — inherited from Settlement Rules, not a free checkbox */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: inheritedElec ? 1 : 0.4 }}>
+                            {/* Phase 1019b: Electricity Meter — inherited from Settlement Rules.
+                                This IS the real Electricity Meter Reading step row.
+                                No duplicate row. Shows locked ON or locked OFF based on Rules. */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '6px 10px', borderRadius: 8,
+                                background: inheritedElec ? '#f59e0b08' : 'transparent',
+                                border: `1px solid ${inheritedElec ? '#f59e0b33' : 'var(--color-border)'}`,
+                                opacity: inheritedElec ? 1 : 0.5,
+                            }}>
                                 <input type="checkbox" checked={inheritedElec} readOnly
-                                    style={{ width: 16, height: 16, accentColor: '#f59e0b', cursor: 'default' }} />
-                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>⚡ Electricity Meter Reading</span>
+                                    style={{ width: 16, height: 16, accentColor: '#f59e0b', cursor: 'not-allowed' }} />
+                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', flex: 1 }}>
+                                    ⚡ Electricity Meter Reading
+                                </span>
                                 <span style={{
-                                    fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
-                                    background: inheritedElec ? '#f59e0b15' : '#6b728015',
+                                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
+                                    background: inheritedElec ? '#f59e0b18' : '#6b728018',
                                     color: inheritedElec ? '#d97706' : '#6b7280',
                                     border: `1px solid ${inheritedElec ? '#f59e0b33' : '#6b728033'}`,
+                                    whiteSpace: 'nowrap',
                                 }}>
-                                    {inheritedElec ? 'Inherited from Rules — ON' : 'Inherited from Rules — OFF'}
+                                    🔒 From Rules — {inheritedElec ? 'ON' : 'OFF'}
                                 </span>
                             </div>
+                            {/* Free user-configurable steps */}
                             {POST_ENTRY_STEP_OPTIONS.map(opt => (
                                 <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
                                     <input

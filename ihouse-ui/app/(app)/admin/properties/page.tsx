@@ -178,6 +178,171 @@ function CheckinModeBadge({ mode }: { mode?: string | null }) {
     );
 }
 
+// ---------------------------------------------------------------------------
+// Phase 1019b — Property Status Guide modal
+// ---------------------------------------------------------------------------
+
+const PROPERTY_STATUS_GUIDE = [
+    {
+        label: 'Approved',
+        bg: '#22c55e15', color: '#22c55e', border: '#22c55e33',
+        desc: 'Property is live and fully operational. Bookings and tasks are being managed.',
+    },
+    {
+        label: 'Pending',
+        bg: '#f59e0b15', color: '#f59e0b', border: '#f59e0b33',
+        desc: 'Property has been submitted and awaits admin review before going live.',
+    },
+    {
+        label: 'Rejected',
+        bg: '#ef444415', color: '#ef4444', border: '#ef444433',
+        desc: 'Property was reviewed and not approved. Can be resubmitted after corrections.',
+    },
+    {
+        label: 'Archived',
+        bg: '#6b728015', color: '#6b7280', border: '#6b728033',
+        desc: 'Property has been deactivated. No new bookings. Historical data is preserved.',
+    },
+];
+
+const CHECKIN_MODE_GUIDE = [
+    {
+        label: '🔓 Self Check-in',
+        bg: '#6366f115', color: '#6366f1', border: '#6366f133',
+        desc: 'Default check-in mode. All bookings use self check-in. Guest portal link sent automatically before arrival.',
+    },
+    {
+        label: '🌙 Late Only',
+        bg: '#f59e0b15', color: '#d97706', border: '#f59e0b33',
+        desc: 'Property normally uses staffed check-in. Self check-in is available only as an exception for guests arriving outside staffed hours.',
+    },
+    {
+        label: '👤 Staffed',
+        bg: '#6b728015', color: '#6b7280', border: '#6b728033',
+        desc: 'All check-ins are handled by staff. No self check-in portal is issued to guests.',
+    },
+];
+
+function PropertyStatusGuide() {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <>
+            <button
+                id="property-status-guide-btn"
+                onClick={() => setOpen(o => !o)}
+                aria-expanded={open}
+                title="What do these badges mean?"
+                style={{
+                    background: open ? 'var(--color-surface-3)' : 'var(--color-surface-2)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-full)', color: 'var(--color-text-dim)',
+                    fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                    padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 4,
+                    transition: 'background var(--transition-fast)',
+                }}
+            >ⓘ Property Guide</button>
+
+            {open && (
+                <div
+                    onClick={() => setOpen(false)}
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 1000,
+                        background: 'rgba(0,0,0,0.45)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '16px',
+                    }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Property Status Guide"
+                        style={{
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-xl)',
+                            width: '100%', maxWidth: 500,
+                            maxHeight: 'calc(100vh - 48px)',
+                            overflowY: 'auto',
+                            boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+                            padding: 'var(--space-5)',
+                        }}
+                    >
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+                            <span style={{ fontWeight: 700, fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
+                                Property Status Guide
+                            </span>
+                            <button
+                                id="property-guide-close"
+                                onClick={() => setOpen(false)}
+                                aria-label="Close"
+                                style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    color: 'var(--color-text-dim)', fontSize: '1.2rem', lineHeight: 1,
+                                    padding: '2px 6px', borderRadius: 'var(--radius-md)',
+                                }}
+                            >✕</button>
+                        </div>
+
+                        {/* Property Statuses */}
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                            Property Status
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
+                            {PROPERTY_STATUS_GUIDE.map(s => (
+                                <div key={s.label} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
+                                    <span style={{
+                                        fontSize: 'var(--text-xs)', fontWeight: 700, whiteSpace: 'nowrap',
+                                        background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+                                        borderRadius: 'var(--radius-full)', padding: '3px 10px',
+                                        flexShrink: 0, minWidth: 80, textAlign: 'center',
+                                        textTransform: 'uppercase', letterSpacing: '0.05em',
+                                        fontFamily: 'var(--font-mono)',
+                                    }}>{s.label}</span>
+                                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', lineHeight: 1.55 }}>{s.desc}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ borderTop: '1px solid var(--color-border)', marginBottom: 'var(--space-4)' }} />
+
+                        {/* Check-in Mode */}
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                            Check-in Mode
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                            {CHECKIN_MODE_GUIDE.map(m => (
+                                <div key={m.label} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
+                                    <span style={{
+                                        fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap',
+                                        background: m.bg, color: m.color, border: `1px solid ${m.border}`,
+                                        borderRadius: 10, padding: '3px 8px',
+                                        flexShrink: 0, minWidth: 100, textAlign: 'center',
+                                    }}>{m.label}</span>
+                                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', lineHeight: 1.55 }}>{m.desc}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{
+                            marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)',
+                            borderTop: '1px solid var(--color-border)',
+                            fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', lineHeight: 1.5,
+                        }}>
+                            Check-in mode is configured per-property under Settings → Self Check-in.
+                            Properties default to Staffed until configured.
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
 /* ------------------------------------------------------------------ */
 /* Property row                                                        */
 /* ------------------------------------------------------------------ */
@@ -201,7 +366,7 @@ function PropertyRow({ p, onAction }: {
     return (
         <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 100px 100px 90px 180px',
+            gridTemplateColumns: '1fr 100px 120px 90px 180px',
             alignItems: 'center',
             gap: 'var(--space-3)',
             padding: 'var(--space-4) var(--space-5)',
@@ -212,21 +377,19 @@ function PropertyRow({ p, onAction }: {
         }}>
             {/* Name + meta */}
             <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                    <a
-                        href={`/admin/properties/${p.property_id}`}
-                        style={{
-                            fontWeight: 600,
-                            fontSize: 'var(--text-sm)',
-                            color: 'var(--color-primary)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        {p.display_name || p.property_id}
-                    </a>
-                    {/* Phase 1019: Self Check-in mode badge */}
-                    <CheckinModeBadge mode={p.self_checkin_config?.mode} />
-                </div>
+                <a
+                    href={`/admin/properties/${p.property_id}`}
+                    style={{
+                        fontWeight: 600,
+                        fontSize: 'var(--text-sm)',
+                        color: 'var(--color-primary)',
+                        marginBottom: 2,
+                        textDecoration: 'none',
+                        display: 'block',
+                    }}
+                >
+                    {p.display_name || p.property_id}
+                </a>
                 <div style={{
                     fontSize: 'var(--text-xs)',
                     color: 'var(--color-text-dim)',
@@ -241,6 +404,9 @@ function PropertyRow({ p, onAction }: {
 
             {/* Status */}
             <div><StatusBadge status={p.status} /></div>
+
+            {/* Check-in Mode — Phase 1019b: dedicated column */}
+            <div><CheckinModeBadge mode={p.self_checkin_config?.mode} /></div>
 
             {/* Created */}
             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)' }}>
@@ -543,8 +709,10 @@ function AdminPropertiesContent() {
                                 transition: 'all var(--transition-fast)',
                             }}
                         >
-                            {loading ? '⟳  Refreshing…' : '↺  Refresh'}
+                        {loading ? '⟳  Refreshing…' : '↺  Refresh'}
                         </button>
+                        {/* Phase 1019b: Property Status Guide */}
+                        <PropertyStatusGuide />
                     </div>
                 </div>
             </div>
@@ -569,12 +737,12 @@ function AdminPropertiesContent() {
             {/* Table header */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 100px 100px 90px 180px',
+                gridTemplateColumns: '1fr 100px 120px 90px 180px',
                 gap: 'var(--space-3)',
                 padding: '0 var(--space-5)',
                 marginBottom: 'var(--space-2)',
             }}>
-                {['Property', 'Status', 'Created', 'Capacity', 'Actions'].map(h => (
+                {['Property', 'Status', 'Check-in Mode', 'Created', 'Actions'].map(h => (
                     <span key={h} style={{
                         fontSize: 'var(--text-xs)',
                         color: 'var(--color-text-faint)',
