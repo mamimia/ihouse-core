@@ -287,7 +287,15 @@ async def get_worker_booking(
         db = client or _get_supabase_client()
         result = (
             db.table("booking_state")
-            .select("booking_id, tenant_id, property_id, status, guest_name, guest_count, check_in, check_out, source, reservation_ref")
+            .select(
+                "booking_id, tenant_id, property_id, status, guest_name, guest_count, "
+                "check_in, check_out, source, reservation_ref, "
+                # Phase 1000: Early checkout context — workers need this to render
+                # the correct dates and Early Check-out badge in the checkout wizard.
+                "early_checkout_approved, early_checkout_date, "
+                "early_checkout_effective_at, early_checkout_status, "
+                "early_checkout_reason"
+            )
             .eq("booking_id", booking_id)
             .eq("tenant_id", tenant_id)
             .limit(1)

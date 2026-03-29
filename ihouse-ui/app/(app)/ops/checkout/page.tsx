@@ -33,14 +33,21 @@ type CheckoutTask = {
     task_id: string;
     property_id: string;
     booking_id?: string;
-    due_date?: string;         // ISO date — the checkout date
+    due_date?: string;         // ISO date — the checkout date (rescheduled to early_date if approved)
     status: string;
     title?: string;
+    // Phase 1000: Early checkout flags from tasks table
+    is_early_checkout?: boolean;         // set by early_checkout_router on approval
+    original_due_date?: string;          // original checkout date before reschedule
     // Enriched (Phase 886/889)
     guest_name?: string;
     guest_count?: number;
     check_in?: string;
-    check_out?: string;
+    check_out?: string;                  // original booking check_out — preserved always
+    early_checkout_date?: string;        // effective early checkout date (DATE)
+    early_checkout_effective_at?: string; // effective early checkout moment (TIMESTAMPTZ)
+    early_checkout_status?: string;      // none|requested|approved|completed
+    early_checkout_reason?: string;
     nights?: number;
     property_name?: string;
     property_latitude?: number | null;
@@ -167,15 +174,24 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
         }
     };
 
-    // Phase 993-fix: Eligibility gate.
-    // A checkout task is actionable only when the real checkout date (check_out) is today or past.
-    // Use check_out from the enriched booking data, NOT task.due_date.
-    // task.due_date is corrected to check_out in the DB but check_out from booking is the canonical source.
+    // Phase 993-fix / Phase 1000-early: Checkout eligibility gate.
+    //
+    // Normal checkout: actionable when check_out (original booking date) is today or past.
+    // Early checkout : the task was rescheduled — due_date = early_checkout_date.
+    //                  Use due_date as the actionable date for early tasks.
+    //
+    // Rule: if is_early_checkout=true, the task is already approved and rescheduled.
+    //       Use due_date (= early_checkout_date) for the eligibility comparison.
+    //       The original check_out is preserved but NOT used for the eligibility gate.
     const todayStr = new Date().toISOString().slice(0, 10);
-    const realCheckoutDate = t.check_out || t.due_date || '';
-    const isActionable = !realCheckoutDate || realCheckoutDate <= todayStr;
-    const lockedLabel = realCheckoutDate && realCheckoutDate > todayStr
-        ? `Checkout: ${new Date(realCheckoutDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    const actionableDate = t.is_early_checkout
+        ? (t.due_date || t.early_checkout_date || '')   // rescheduled to early date
+        : (t.check_out || t.due_date || '');              // normal: use original booking date
+    const isActionable = !actionableDate || actionableDate <= todayStr;
+    const lockedLabel = !isActionable && actionableDate
+        ? (t.is_early_checkout
+            ? `Early Checkout: ${new Date(actionableDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+            : `Checkout: ${new Date(actionableDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
         : undefined;
 
     return (
@@ -184,7 +200,7 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
             status={t.status || 'PENDING'}
             propertyName={t.property_name || t.property_id}
             propertyCode={t.property_id}
-            date={realCheckoutDate}       // countdown now uses real checkout date
+            date={actionableDate}             // countdown uses the correct actionable date
             checkIn={t.check_in}
             checkOut={t.check_out || t.due_date}
             guestName={t.guest_name}
@@ -194,6 +210,9 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
             onNavigate={handleNavigate}
             isActionable={isActionable}
             lockedLabel={lockedLabel}
+            isEarlyCheckout={t.is_early_checkout}
+            earlyCheckoutEffectiveAt={t.early_checkout_effective_at}
+            originalCheckoutDate={t.is_early_checkout ? (t.original_due_date || t.check_out) : undefined}
         />
     );
 }
@@ -289,6 +308,7 @@ export default function MobileCheckoutPage() {
                 } catch { /* keep defaults */ }
 
                 // Phase 889: Enrich with booking data (check_in, check_out, guest_name, guest_count)
+                // Phase 1000: Also enrich with early checkout context from booking_state
                 if (t.booking_id) {
                     try {
                         const bkRes = await apiFetch<any>(`/worker/bookings/${t.booking_id}`);
@@ -298,7 +318,16 @@ export default function MobileCheckoutPage() {
                             result.check_out   = bk.check_out ?? result.check_out ?? t.due_date;
                             result.guest_name  = bk.guest_name ?? result.guest_name;
                             result.guest_count = bk.guest_count ?? result.guest_count;
-                            // Compute nights from canonical booking dates
+                            // Phase 1000: Pull early checkout context from booking
+                            if (bk.early_checkout_approved) {
+                                result.early_checkout_date        = bk.early_checkout_date ?? result.early_checkout_date;
+                                result.early_checkout_effective_at = bk.early_checkout_effective_at ?? result.early_checkout_effective_at;
+                                result.early_checkout_status      = bk.early_checkout_status ?? result.early_checkout_status;
+                                result.early_checkout_reason      = bk.early_checkout_reason ?? result.early_checkout_reason;
+                                // Ensure is_early_checkout flag is set (may already be set on the task)
+                                if (!result.is_early_checkout) result.is_early_checkout = true;
+                            }
+                            // Compute nights from canonical booking dates (original check_out)
                             if (bk.check_in && bk.check_out && bk.check_out !== bk.check_in) {
                                 const d1 = new Date(bk.check_in).getTime();
                                 const d2 = new Date(bk.check_out).getTime();
@@ -383,6 +412,8 @@ export default function MobileCheckoutPage() {
             guest_name: t.guest_name || 'Guest',
             guest_count: t.guest_count,
             check_in: t.check_in,
+            // Always pass the original booking check_out so settlement and dossier have it.
+            // For early checkout display in the wizard, is_early_checkout + early_checkout_* is used.
             check_out: t.check_out || t.due_date,
             nights: t.nights,
             status: 'checked_in',
@@ -803,12 +834,65 @@ export default function MobileCheckoutPage() {
             {step === 'inspection' && selected && (
                 <div style={card}>
                     <StepHeader step={1} total={5} title="Property Inspection" onBack={goBack} />
+
+                    {/* Phase 1000: Early Checkout wizard context banner */}
+                    {selectedTask?.is_early_checkout && (
+                        <div style={{
+                            margin: '0 0 var(--space-4)',
+                            background: '#fef3c7',
+                            border: '2px solid #f59e0b',
+                            borderRadius: 'var(--radius-md)',
+                            padding: 'var(--space-3)',
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#92400e', marginBottom: 4 }}>
+                                ⚡ EARLY DEPARTURE — Exception Flow
+                            </div>
+                            <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.5 }}>
+                                {selectedTask.early_checkout_effective_at ? (
+                                    <>Effective checkout:{' '}
+                                        <strong>{new Date(selectedTask.early_checkout_effective_at).toLocaleString('en-US', {
+                                            weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                                        })}</strong>
+                                    </>
+                                ) : selectedTask.early_checkout_date ? (
+                                    <>Effective checkout: <strong>{selectedTask.early_checkout_date}</strong></>
+                                ) : null}
+                            </div>
+                            {(selectedTask.original_due_date || selected.check_out) && (
+                                <div style={{ fontSize: 11, color: '#92400e', opacity: 0.75, marginTop: 2 }}>
+                                    Original booking checkout:{' '}
+                                    {(() => {
+                                        const orig = selectedTask.original_due_date || selected.check_out || '';
+                                        try { return new Date(orig.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); }
+                                        catch { return orig; }
+                                    })()}
+                                </div>
+                            )}
+                            {selectedTask.early_checkout_reason && (
+                                <div style={{ fontSize: 11, color: '#78350f', marginTop: 4, fontStyle: 'italic' }}>
+                                    Reason: "{selectedTask.early_checkout_reason}"
+                                </div>
+                            )}
+                            <div style={{ fontSize: 10, color: '#92400e', marginTop: 6, opacity: 0.7 }}>
+                                The checkout workflow is the same as normal. Settlement, meter, deposit, and inspection all apply.
+                            </div>
+                        </div>
+                    )}
+
                     <InfoRow label="Guest" value={selected.guest_name} />
                     <InfoRow label="Guests" value={selected.guest_count ? `${selected.guest_count} guests` : undefined} />
                     <InfoRow label="Property" value={(selectedTask?.property_name) || selected.property_id} />
                     <InfoRow label="Check-in" value={selected.check_in ? new Date(selected.check_in + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
-                    <InfoRow label="Check-out" value={selected.check_out ? new Date(selected.check_out + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : selected.check_out} />
+                    <InfoRow
+                        label={selectedTask?.is_early_checkout ? 'Early Checkout' : 'Check-out'}
+                        value={
+                            selectedTask?.is_early_checkout && selectedTask.early_checkout_date
+                                ? new Date(selectedTask.early_checkout_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + ' ⚡'
+                                : selected.check_out ? new Date(selected.check_out + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : selected.check_out
+                        }
+                    />
                     <InfoRow label="Nights" value={selected.nights} />
+
 
                     {/* Phase 993-994: Before/After Photo Comparison */}
                     <div style={{ marginTop: 'var(--space-4)' }}>
@@ -1201,9 +1285,32 @@ export default function MobileCheckoutPage() {
                     <InfoRow label="Guest" value={selected.guest_name} />
                     <InfoRow label="Property" value={(selectedTask?.property_name) || selected.property_id} />
                     <InfoRow label="Nights" value={selected.nights} />
+
+                    {/* Phase 1000: Early checkout summary rows */}
+                    {selectedTask?.is_early_checkout && (
+                        <>
+                            <InfoRow
+                                label="⚡ Early Checkout"
+                                value={selectedTask.early_checkout_date
+                                    ? new Date(selectedTask.early_checkout_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                                    : 'Approved'}
+                            />
+                            <InfoRow
+                                label="Original Checkout"
+                                value={(selectedTask.original_due_date || selected.check_out)
+                                    ? new Date(((selectedTask.original_due_date || selected.check_out || '').slice(0, 10)) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                    : '—'}
+                            />
+                            {selectedTask.early_checkout_reason && (
+                                <InfoRow label="Reason" value={`"${selectedTask.early_checkout_reason}"`} />
+                            )}
+                        </>
+                    )}
+
                     <InfoRow label="Inspection" value={inspectionOk ? '✓ All OK' : `⚠ Issues: ${inspectionNotes || 'See reports'}`} />
                     {closingMeterValue && <InfoRow label="Closing Meter" value={`${closingMeterValue} kWh`} />}
                     <InfoRow label="Issues Reported" value={issues.length > 0 ? `${issues.length} issue(s)` : 'None'} />
+
 
                     {/* Settlement Breakdown */}
                     {settlement && (

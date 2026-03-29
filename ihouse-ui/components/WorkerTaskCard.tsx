@@ -226,6 +226,10 @@ export interface WorkerTaskCardProps {
     isActionable?: boolean;
     // Label shown on the locked Start button (e.g. "Checkout: Apr 7")
     lockedLabel?: string;
+    // Phase 1000: Early checkout exception flow
+    isEarlyCheckout?: boolean;
+    earlyCheckoutEffectiveAt?: string;   // TIMESTAMPTZ from booking_state
+    originalCheckoutDate?: string;       // original booking check_out for reference display
 }
 
 // ── Component — dense 2-column layout ────────────────────────────────────────
@@ -238,6 +242,7 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
         guestName, guestCount, nights: nightsProp,
         actionLabel, onStart, onAcknowledge, onNavigate,
         isActionable = true, lockedLabel,
+        isEarlyCheckout, earlyCheckoutEffectiveAt, originalCheckoutDate,
     } = props;
 
     // Kind metadata
@@ -254,8 +259,9 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
         kindLabel     = '🏠 Check-in';
     } else if (kind.includes('CHECKOUT')) {
         defaultAction = 'Start Check-out';
-        baseColor     = 'var(--color-accent)';
-        kindLabel     = '🚪 Check-out';
+        baseColor     = isEarlyCheckout ? '#d97706' : 'var(--color-accent)';  // orange for early
+        kindLabel     = isEarlyCheckout ? '🔴 Early Check-out' : '🚪 Check-out';
+        if (isEarlyCheckout) defaultAction = 'Start Early Check-out';
     } else if (kind.includes('MAINTENANCE')) {
         defaultAction = 'View Issue';
         baseColor     = 'var(--color-warn)';
@@ -281,12 +287,31 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
 
     const countdownTime = time || getDefaultTime(kind);
     const isCritical    = priority === 'CRITICAL' && isPending;
-    const cardBorder    = isCritical ? 'rgba(248,81,73,0.4)' : 'var(--color-border)';
+    const cardBorder    = isEarlyCheckout
+        ? 'rgba(217,119,6,0.45)'    // amber border for early checkout
+        : (isCritical ? 'rgba(248,81,73,0.4)' : 'var(--color-border)');
+
+    // Format effective_at for display (just the date+time part)
+    let earlyEffectiveDisplay: string | null = null;
+    if (isEarlyCheckout && earlyCheckoutEffectiveAt) {
+        try {
+            earlyEffectiveDisplay = new Date(earlyCheckoutEffectiveAt).toLocaleString('en-US', {
+                weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+            });
+        } catch { earlyEffectiveDisplay = earlyCheckoutEffectiveAt; }
+    }
+    let originalCheckoutDisplay: string | null = null;
+    if (isEarlyCheckout && originalCheckoutDate) {
+        try {
+            const d = originalCheckoutDate.slice(0, 10);
+            originalCheckoutDisplay = new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch { originalCheckoutDisplay = originalCheckoutDate; }
+    }
 
     return (
         <div
             style={{
-                background: 'var(--color-surface)',
+                background: isEarlyCheckout ? '#fffbeb' : 'var(--color-surface)',
                 border: `1px solid ${cardBorder}`,
                 borderRadius: 'var(--radius-lg)',
                 padding: '12px var(--space-4)',
@@ -387,6 +412,34 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
                     <span>🌙 {computedNights} {computedNights === 1 ? 'night' : 'nights'}</span>
                 )}
             </div>
+
+            {/* ── Early Check-out Exception Banner ── */}
+            {isEarlyCheckout && (
+                <div style={{
+                    marginTop: 8,
+                    background: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    borderRadius: 6,
+                    padding: '6px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 3,
+                }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', letterSpacing: '0.02em' }}>
+                        ⚡ EARLY DEPARTURE — Exception Approved
+                    </div>
+                    {earlyEffectiveDisplay && (
+                        <div style={{ fontSize: 11, color: '#78350f', fontWeight: 600 }}>
+                            Effective: {earlyEffectiveDisplay}
+                        </div>
+                    )}
+                    {originalCheckoutDisplay && (
+                        <div style={{ fontSize: 10, color: '#92400e', opacity: 0.75 }}>
+                            Original checkout: {originalCheckoutDisplay}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── Row 3: action buttons ── */}
             {(onStart || onAcknowledge || onNavigate) && (
