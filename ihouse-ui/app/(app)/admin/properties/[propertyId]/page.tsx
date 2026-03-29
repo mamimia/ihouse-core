@@ -1771,9 +1771,11 @@ export default function PropertyDetailPage() {
 
             {/* ============ SETTINGS / Self Check-in — Phase 1018 ============ */}
             {tab === 'settings' && subTab === 'self-checkin' && !loading && (
-                <SelfCheckinConfigPanel
+            <SelfCheckinConfigPanel
                     propertyId={propertyId}
                     property={p}
+                    inheritedDeposit={crDepositEnabled}
+                    inheritedElec={crElecEnabled}
                     onSaved={(updated) => { setProperty(updated); showNotice('✓ Self check-in configuration saved'); }}
                 />
             )}
@@ -1784,8 +1786,6 @@ export default function PropertyDetailPage() {
 // ---------------------------------------------------------------------------
 // Phase 1018 — Self Check-in Property Configuration Panel
 // ---------------------------------------------------------------------------
-
-
 
 const MODE_OPTIONS = [
     {
@@ -1809,31 +1809,32 @@ const MODE_OPTIONS = [
 ];
 
 const PRE_ACCESS_STEP_OPTIONS = [
-    { key: 'agreement',  label: '📋 House Rules Agreement' },
-    { key: 'id_photo',   label: '🪪 ID / Passport Photo' },
-    { key: 'selfie',     label: '🤳 Selfie Verification' },
-    { key: 'deposit',    label: '💳 Deposit Acknowledgement' },
+    // 'deposit' intentionally NOT here — always rendered as locked inherited row from Settlement Rules
+    { key: 'agreement', label: '📋 House Rules Agreement' },
+    { key: 'id_photo',  label: '🪪 ID / Passport Photo' },
+    { key: 'selfie',    label: '🤳 Selfie Verification' },
 ];
 
 const POST_ENTRY_STEP_OPTIONS = [
-    { key: 'electricity_meter', label: '⚡ Electricity Meter Reading' },
-    { key: 'arrival_photos',    label: '📷 Arrival Photos' },
+    // 'electricity_meter' intentionally NOT here — always rendered as locked inherited row from Settlement Rules
+    { key: 'arrival_photos', label: '📷 Arrival Photos' },
 ];
 
+
 function SelfCheckinConfigPanel({
-    propertyId, property, onSaved,
+    propertyId, property, inheritedDeposit, inheritedElec, onSaved,
 }: {
     propertyId: string;
     property: any;
+    inheritedDeposit: boolean;   // from parent crDepositEnabled — charge-rules API
+    inheritedElec: boolean;      // from parent crElecEnabled — charge-rules API
     onSaved: (updated: any) => void;
 }) {
     const cfg = property?.self_checkin_config || {};
+    // inheritedDeposit and inheritedElec come directly from parent props (crDepositEnabled / crElecEnabled)
+    // They are NOT derived from property?.charge_rules (that field doesn't exist in the API response).
 
-    // Phase 1019: Deposit and electricity are inherited from Settlement Rules — not re-decided here.
-    // crDepositEnabled / crElecEnabled come from the charge-rules API (loaded by the parent page into state).
-    // We read them off the property's charge_rules field if present, or fall back to false.
-    const inheritedDeposit = !!(property?.charge_rules?.deposit_enabled);
-    const inheritedElec    = !!(property?.charge_rules?.electricity_enabled);
+
 
     const [mode, setMode] = useState<string>(cfg.mode || 'disabled');
     // Pre-access steps: never include 'deposit' as a manual checkbox
