@@ -15,7 +15,8 @@
  * Route: /admin/owners
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
@@ -798,7 +799,264 @@ function OwnerRow({ owner, onDelete, onUpdate, properties }: {
 // Main Page
 // ---------------------------------------------------------------------------
 
-export default function OwnersPage() {
+// ---------------------------------------------------------------------------
+// Phase 1021: Link From Staff Modal
+// Opened automatically when arriving from Manage Staff via
+// /admin/owners?linkUserId=X&linkName=X&linkEmail=X&linkPhone=X
+// ---------------------------------------------------------------------------
+
+interface LinkFromStaffContext {
+    userId: string;
+    name: string;
+    email: string;
+    phone: string;
+}
+
+function LinkFromStaffModal({
+    ctx,
+    owners,
+    properties,
+    onClose,
+    onCreated,
+    onLinked,
+}: {
+    ctx: LinkFromStaffContext;
+    owners: Owner[];
+    properties: PropertyOption[];
+    onClose: () => void;
+    onCreated: (owner: Owner) => void;
+    onLinked: (updated: Owner) => void;
+}) {
+    const [tab, setTab] = useState<'create' | 'link'>('create');
+
+    // Create tab state
+    const [name, setName] = useState(ctx.name);
+    const [email, setEmail] = useState(ctx.email);
+    const [phone, setPhone] = useState(ctx.phone);
+    const [notes, setNotes] = useState('');
+    const [selectedProps, setSelectedProps] = useState<string[]>([]);
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState('');
+
+    // Link tab state
+    const [selectedOwnerId, setSelectedOwnerId] = useState('');
+    const [linking, setLinking] = useState(false);
+    const [linkError, setLinkError] = useState('');
+
+    // Unlinked owners that can be linked
+    const linkableOwners = owners.filter(o => !o.user_id);
+
+    const toggleProp = (pid: string) => setSelectedProps(prev =>
+        prev.includes(pid) ? prev.filter(p => p !== pid) : [...prev, pid]
+    );
+
+    const handleCreate = async () => {
+        if (!name.trim()) { setCreateError('Name is required.'); return; }
+        setCreating(true);
+        setCreateError('');
+        try {
+            const created = await apiFetch<Owner>('/admin/owners', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: name.trim(),
+                    email: email.trim() || null,
+                    phone: phone.trim() || null,
+                    notes: notes.trim() || null,
+                    property_ids: selectedProps,
+                    user_id: ctx.userId, // link immediately on create
+                }),
+            });
+            onCreated(created);
+            onClose();
+        } catch (e: any) {
+            setCreateError(e.message ?? 'Failed to create owner.');
+        }
+        setCreating(false);
+    };
+
+    const handleLink = async () => {
+        if (!selectedOwnerId) return;
+        setLinking(true);
+        setLinkError('');
+        try {
+            const updated = await apiFetch<Owner>(`/admin/owners/${selectedOwnerId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ user_id: ctx.userId }),
+            });
+            onLinked(updated);
+            onClose();
+        } catch (e: any) {
+            setLinkError(e.message ?? 'Link failed.');
+        }
+        setLinking(false);
+    };
+
+    const iStyle: React.CSSProperties = {
+        width: '100%', boxSizing: 'border-box',
+        background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-sm)', color: 'var(--color-text)', fontSize: 'var(--text-sm)',
+        padding: '8px 12px',
+    };
+    const lStyle: React.CSSProperties = {
+        fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
+        fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
+        marginBottom: 4, display: 'block',
+    };
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={onClose}>
+            <div onClick={e => e.stopPropagation()} style={{
+                width: 560, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto',
+                background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--color-border)', boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+                display: 'flex', flexDirection: 'column', gap: 0,
+            }}>
+
+                {/* Header */}
+                <div style={{ padding: 'var(--space-6) var(--space-6) var(--space-4)', borderBottom: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
+                                Link Owner Profile
+                            </div>
+                            <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+                                borderRadius: 'var(--radius-sm)', padding: '3px 10px',
+                                fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 600,
+                            }}>
+                                👤 {ctx.name || ctx.userId}
+                                {ctx.email && <span style={{ opacity: 0.7 }}>· {ctx.email}</span>}
+                            </div>
+                        </div>
+                        <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-dim)', marginLeft: 16 }}>✕</button>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginTop: 8, lineHeight: 1.5 }}>
+                        This staff member has the Owner role. Link them to a business owner profile to enable property ownership, financial records, and portal access.
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)' }}>
+                    {(['create', 'link'] as const).map(t => (
+                        <button key={t} onClick={() => setTab(t)} style={{
+                            flex: 1, padding: '12px 0', fontSize: 'var(--text-sm)', fontWeight: tab === t ? 700 : 400,
+                            color: tab === t ? 'var(--color-primary)' : 'var(--color-text-dim)',
+                            background: 'none', border: 'none',
+                            borderBottom: `2px solid ${tab === t ? 'var(--color-primary)' : 'transparent'}`,
+                            cursor: 'pointer', transition: 'all 0.15s',
+                        }}>
+                            {t === 'create' ? '+ Create New Profile' : '⇢ Link Existing Profile'}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Create tab */}
+                {tab === 'create' && (
+                    <div style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-faint)', lineHeight: 1.5 }}>
+                            A new owner profile will be created and immediately linked to this staff account.
+                            Fields are pre-filled from the staff member's data — edit if needed.
+                        </div>
+                        <div>
+                            <label style={lStyle}>Name *</label>
+                            <input style={iStyle} value={name} onChange={e => setName(e.target.value)} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                            <div>
+                                <label style={lStyle}>Email</label>
+                                <input style={iStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                            </div>
+                            <div>
+                                <label style={lStyle}>Phone</label>
+                                <input style={iStyle} value={phone} onChange={e => setPhone(e.target.value)} />
+                            </div>
+                        </div>
+                        <div>
+                            <label style={lStyle}>Notes (optional)</label>
+                            <textarea style={{ ...iStyle, minHeight: 50, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any relevant info…" />
+                        </div>
+                        {properties.length > 0 && (
+                            <div>
+                                <label style={lStyle}>Assign to Properties (optional)</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxHeight: 160, overflowY: 'auto' }}>
+                                    {properties.map(prop => (
+                                        <label key={prop.property_id || prop.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--text-xs)', color: 'var(--color-text)' }}>
+                                            <input type="checkbox" checked={selectedProps.includes(prop.property_id || prop.id)} onChange={() => toggleProp(prop.property_id || prop.id)} />
+                                            {prop.display_name || prop.name || prop.id}
+                                            {prop.city && <span style={{ color: 'var(--color-text-faint)' }}> · {prop.city}</span>}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {createError && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)', background: 'rgba(239,68,68,0.07)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(239,68,68,0.2)', whiteSpace: 'pre-wrap' }}>{createError}</div>}
+                        <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+                            <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', background: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>Cancel</button>
+                            <button onClick={handleCreate} disabled={creating} style={{ padding: '8px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.6 : 1 }}>
+                                {creating ? 'Creating…' : 'Create & Link Profile'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Link existing tab */}
+                {tab === 'link' && (
+                    <div style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-faint)', lineHeight: 1.5 }}>
+                            Select an existing owner profile to link to this staff account.
+                            Only profiles not yet linked to any other account are shown.
+                        </div>
+                        {linkableOwners.length === 0 ? (
+                            <div style={{
+                                padding: 'var(--space-4)', background: 'var(--color-surface-2)',
+                                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                                fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', textAlign: 'center',
+                            }}>
+                                No unlinked owner profiles available.
+                                <div style={{ marginTop: 6, fontSize: 11 }}>Switch to "Create New Profile" to create one, or unlink an existing profile first.</div>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', maxHeight: 280, overflowY: 'auto' }}>
+                                {linkableOwners.map(o => (
+                                    <label key={o.id} style={{
+                                        display: 'flex', alignItems: 'flex-start', gap: 12,
+                                        padding: '12px 14px', cursor: 'pointer',
+                                        background: selectedOwnerId === o.id ? 'rgba(var(--color-primary-rgb, 99,102,241), 0.08)' : 'var(--color-surface-2)',
+                                        border: `1px solid ${selectedOwnerId === o.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                        borderRadius: 'var(--radius-md)', transition: 'all 0.12s',
+                                    }}>
+                                        <input type="radio" name="linkOwner" value={o.id}
+                                            checked={selectedOwnerId === o.id}
+                                            onChange={() => setSelectedOwnerId(o.id)}
+                                            style={{ marginTop: 2, accentColor: 'var(--color-primary)' }} />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>{o.name}</span>
+                                            <span style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>
+                                                {[o.email, o.phone].filter(Boolean).join(' · ')}
+                                                {o.property_count > 0 && ` · ${o.property_count} propert${o.property_count !== 1 ? 'ies' : 'y'}`}
+                                            </span>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                        {linkError && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)', background: 'rgba(239,68,68,0.07)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>{linkError}</div>}
+                        <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+                            <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', background: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>Cancel</button>
+                            <button onClick={handleLink} disabled={!selectedOwnerId || linking} style={{ padding: '8px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: selectedOwnerId ? 'var(--color-primary)' : 'var(--color-border)', color: '#fff', fontWeight: 700, fontSize: 'var(--text-sm)', cursor: selectedOwnerId ? 'pointer' : 'default', opacity: linking ? 0.6 : 1 }}>
+                                {linking ? 'Linking…' : 'Link to This Profile'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function OwnersPageInner() {
     const [owners, setOwners] = useState<Owner[]>([]);
     const [properties, setProperties] = useState<PropertyOption[]>([]);
     const [loading, setLoading] = useState(true);
@@ -829,9 +1087,32 @@ export default function OwnersPage() {
         }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    // Phase 1021: detect incoming link context from Manage Staff CTA
+    const [linkCtx, setLinkCtx] = useState<LinkFromStaffContext | null>(null);
+    const paramsConsumed = useRef(false);
+
+    useEffect(() => {
+        if (paramsConsumed.current) return;
+        const userId = searchParams.get('linkUserId');
+        if (userId) {
+            paramsConsumed.current = true;
+            setLinkCtx({
+                userId,
+                name: searchParams.get('linkName') || '',
+                email: searchParams.get('linkEmail') || '',
+                phone: searchParams.get('linkPhone') || '',
+            });
+            // Clean params from URL without re-render loop
+            router.replace('/admin/owners', { scroll: false });
+        }
+    }, [searchParams, router]);
 
     const handleDelete = (id: string) => setOwners(prev => prev.filter(o => o.id !== id));
+
+    useEffect(() => { load(); }, [load]);
 
     return (
         <div style={{ maxWidth: 900 }}>
@@ -908,9 +1189,36 @@ export default function OwnersPage() {
                 />
             )}
 
+            {/* Phase 1021: Link From Staff modal — auto-opened when arriving from Manage Staff CTA */}
+            {linkCtx && (
+                <LinkFromStaffModal
+                    ctx={linkCtx}
+                    owners={owners}
+                    properties={properties}
+                    onClose={() => setLinkCtx(null)}
+                    onCreated={owner => {
+                        setOwners(prev => [owner, ...prev]);
+                        setLinkCtx(null);
+                    }}
+                    onLinked={updated => {
+                        setOwners(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o));
+                        setLinkCtx(null);
+                    }}
+                />
+            )}
+
             <div style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-5)', borderTop: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
                 Domaniqo · Owners Admin · Phase 844 v3 / 1021-D
             </div>
         </div>
+    );
+}
+
+// Next.js requires useSearchParams to be inside a Suspense boundary
+export default function OwnersPage() {
+    return (
+        <Suspense fallback={<div style={{ padding: 'var(--space-8)', color: 'var(--color-text-dim)' }}>Loading…</div>}>
+            <OwnersPageInner />
+        </Suspense>
     );
 }

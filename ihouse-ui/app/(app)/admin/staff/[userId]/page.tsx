@@ -1117,8 +1117,14 @@ export default function EditStaffPage() {
                         Property ownership, financial records, and portal access are managed through the owner profile.
                       </div>
                       <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                        {/* Phase 1021-C fix: carry full user context so Owners page opens create/link flow immediately */}
                         <a
-                          href="/admin/owners"
+                          href={`/admin/owners?${new URLSearchParams({
+                            linkUserId: rawUserId,
+                            linkName: fullName || displayName || '',
+                            linkEmail: email || '',
+                            linkPhone: phoneNumber ? `${phoneCode}${phoneNumber}`.trim() : '',
+                          }).toString()}`}
                           style={{
                             display: 'inline-block', padding: '7px 14px',
                             background: 'var(--color-primary)', color: '#fff',
@@ -1126,11 +1132,11 @@ export default function EditStaffPage() {
                             fontWeight: 600, textDecoration: 'none',
                           }}
                         >
-                          Go to Owners → Create or Link Profile
+                          Create or Link Owner Profile →
                         </a>
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--color-text-faint)', fontStyle: 'italic' }}>
-                        Portal access and property ownership are managed from the Owners section, not here.
+                        The Owners section will open with this user's details pre-filled. Portal access and property ownership are managed from there.
                       </div>
                     </div>
                   )}
