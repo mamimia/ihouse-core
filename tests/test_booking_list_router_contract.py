@@ -88,12 +88,12 @@ def _booking_row(
 
 def _mock_db(rows: list) -> MagicMock:
     """Mock returning the given rows for .execute()."""
+    chain = MagicMock()
+    chain.execute.return_value = MagicMock(data=rows)
+    for method in ['select', 'eq', 'limit', 'order', 'or_']:
+        getattr(chain, method).return_value = chain
     mock_db = MagicMock()
-    # Chain: .table().select().eq().limit().order().execute()
-    chain = mock_db.table.return_value.select.return_value.eq.return_value
-    chain.limit.return_value.order.return_value.execute.return_value = MagicMock(data=rows)
-    chain.eq.return_value.limit.return_value.order.return_value.execute.return_value = MagicMock(data=rows)
-    chain.eq.return_value.eq.return_value.limit.return_value.order.return_value.execute.return_value = MagicMock(data=rows)
+    mock_db.table.return_value = chain
     return mock_db
 
 
@@ -335,30 +335,16 @@ class TestGroupFEmpty:
 class TestGroupG500:
 
     def test_g1_db_error_returns_500(self) -> None:
-        mock_db = MagicMock()
-        (
-            mock_db.table.return_value
-            .select.return_value
-            .eq.return_value
-            .limit.return_value
-            .order.return_value
-            .execute.side_effect
-        ) = RuntimeError("connection lost")
+        mock_db = _mock_db([])
+        mock_db.table.return_value.execute.side_effect = RuntimeError("connection lost")
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
             resp = client.get("/bookings")
         assert resp.status_code == 500
 
     def test_g2_500_code_is_internal_error(self) -> None:
-        mock_db = MagicMock()
-        (
-            mock_db.table.return_value
-            .select.return_value
-            .eq.return_value
-            .limit.return_value
-            .order.return_value
-            .execute.side_effect
-        ) = RuntimeError("timeout")
+        mock_db = _mock_db([])
+        mock_db.table.return_value.execute.side_effect = RuntimeError("timeout")
         client = _make_app()
         with patch("api.bookings_router._get_supabase_client", return_value=mock_db):
             body = client.get("/bookings").json()

@@ -54,6 +54,7 @@ def _make_chain(data: list | None = None, side_effect: Exception | None = None) 
     chain.order.return_value = chain
     chain.gte.return_value = chain
     chain.lte.return_value = chain
+    chain.or_.return_value = chain
     chain.upsert.return_value = chain
     return chain
 

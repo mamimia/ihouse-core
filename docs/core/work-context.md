@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 982 — Next Phase. Phases 841–981 closed.
+Phase 1004 — Next Phase. Phases 841–1003 closed.
 
 ## Last Closed Phase
 
-Phase 981 — Test Suite Full Green.
+Phase 1003 — Canonical Block Classification & Bookings UX.
 
 ## Current Objective
 

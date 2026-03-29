@@ -66,6 +66,7 @@ def _mock_db(
     chain.limit.return_value = chain
     chain.gte.return_value = chain
     chain.lte.return_value = chain
+    chain.or_.return_value = chain
 
     db = MagicMock()
     db.table.return_value = chain

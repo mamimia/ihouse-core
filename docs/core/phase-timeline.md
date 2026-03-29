@@ -8608,3 +8608,19 @@ All fixes were test-contract alignment — no production code changed. Root caus
 The 22 skips are all legitimate environment-gated tests. No production action needed.
 
 Spec: `docs/archive/phases/phase-981-spec.md`
+
+## Phase 1003 — Canonical Block Classification & Bookings UX
+
+**Status:** Closed
+**Date:** 2026-03-29
+**Prerequisite:** Phase 1002
+
+Implemented strict calendar block classification and dual-surface UI on the Bookings page to isolate non-operational calendar blocks from real guest stays.
+
+**Key implementations:**
+1. **Canonical Block Classification:** Backend `is_calendar_block` added to `booking_state`. Router filters blocks out of the main operational `/bookings` list by default.
+2. **Bookings Page UI Rewrite:** Split the view into two tabs ("Bookings" and "Calendar Blocks"). Replaced Property ID column with a resolved `PropertyCell` showing name and code. Added functional property selection filter. 
+3. **Status Guide Modal UX:** Replaced fragile absolute popover with a robust, viewport-centered fixed modal that renders safely on all window sizes without clipping. Fully accessible with backdrop/Escape dismissability. 
+
+Result: The Bookings list is now a true operational surface, and the boundary between guests and availability blocks is strictly enforced both at the UI layer and in the backend. 
+Spec: `docs/archive/phases/phase-1003-spec.md`

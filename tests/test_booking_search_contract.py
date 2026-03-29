@@ -49,6 +49,7 @@ def _mock_db(rows: List[Dict[str, Any]]) -> MagicMock:
     chain.eq.return_value = chain
     chain.gte.return_value = chain
     chain.lte.return_value = chain
+    chain.or_.return_value = chain
     chain.limit.return_value = chain
     chain.order.return_value = chain
     chain.select.return_value = chain

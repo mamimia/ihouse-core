@@ -5401,3 +5401,13 @@ No production code changed. The test suite now serves as live, accurate contract
 Key files: `tests/test_auth_flow_e2e.py`, `tests/test_identity_linking_proof.py`, `tests/test_guest_portal_token.py`, `tests/test_properties_router_contract.py`, `tests/test_invite_flow_e2e.py`, `tests/test_audit_events_contract.py`, `tests/test_jwt_role_enforcement.py`, `tests/test_wave6_checkout_deposit_contract.py`, `tests/test_e2e_smoke.py`, `tests/test_phases_525_541.py`.
 
 Tests: 7,975 passed, 0 failed, 22 skipped.
+
+## Phase 1003 Closure — Canonical Block Classification & Bookings UX
+
+**Date:** 2026-03-29
+
+Phase 1003 closed. Implemented functional dual-surface layout on Bookings page distinguishing operational guests from `is_calendar_block = true` elements. Developed robust, modal-based Status Guide, eliminating previous Absolute/Popover clipping defects. Backend defaults to excluding calendar blocks from operational arrays via OR chain boolean selection.
+
+Key files: `src/api/bookings_router.py`, `src/api/bulk_import_router.py`, `ihouse-ui/lib/api.ts`, `ihouse-ui/app/(app)/bookings/page.tsx`.
+
+Spec: `docs/archive/phases/phase-1003-spec.md`
