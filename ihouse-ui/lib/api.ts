@@ -922,6 +922,24 @@ export const api = {
     checkoutBooking: (bookingId: string): Promise<{ status: string; booking_id: string; checked_out_at: string; cleaning_tasks_created: number; noop: boolean }> =>
         apiFetch(`/bookings/${bookingId}/checkout`, { method: 'POST' }),
 
+    // Admin Close Stay — resolves overdue bookings without triggering settlement/tasks/checkout
+    // Sets status=admin_closed. Does NOT set checked_out_at. Does NOT trigger settlement.
+    adminCloseBooking: (bookingId: string, closureNote?: string): Promise<{
+        booking_id: string;
+        status: string;
+        original_status: string;
+        closed_at: string;
+        closure_note: string | null;
+        settlement_triggered: boolean;
+        tasks_affected: boolean;
+        checkout_timestamp_set: boolean;
+    }> =>
+        apiFetch(`/admin/bookings/${bookingId}/admin-close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ closure_note: closureNote || null }),
+        }),
+
     // Phase 510 — Guest Feedback
     getGuestFeedback: (params?: { property_id?: string; limit?: number }): Promise<{ total: number; entries: unknown[] }> => {
         const q = new URLSearchParams();

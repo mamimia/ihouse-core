@@ -77,12 +77,14 @@ type OpStatus =
     | 'checking_in_today'
     | 'upcoming'
     | 'completed'
+    | 'admin_closed'
     | 'cancelled'
     | 'unknown';
 
 function deriveOperationalStatus(b: Booking): OpStatus {
     const raw = (b.status ?? '').toLowerCase();
     if (raw === 'canceled' || raw === 'cancelled') return 'cancelled';
+    if (raw === 'admin_closed') return 'admin_closed';
     if (raw === 'checked_out' || b.checked_out_at) return 'completed';
 
     const today = new Date();
@@ -117,13 +119,14 @@ const OP_STATUS_CONFIG: Record<OpStatus, { label: string; bg: string; color: str
     checking_in_today:{ label: '📥 Arriving Today',  bg: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)' },
     upcoming:         { label: 'Upcoming',            bg: 'rgba(100,100,100,0.08)', color: 'var(--color-text-dim)' },
     completed:        { label: 'Checked Out',         bg: 'rgba(100,100,100,0.08)', color: 'var(--color-muted)' },
+    admin_closed:     { label: '🔒 Admin Closed',    bg: 'rgba(100,100,100,0.08)', color: 'var(--color-text-faint)', border: '1px solid var(--color-border)' },
     cancelled:        { label: 'Cancelled',           bg: 'rgba(239,68,68,0.10)', color: 'var(--color-danger)' },
     unknown:          { label: 'Unknown',             bg: 'rgba(100,100,100,0.08)', color: 'var(--color-muted)' },
 };
 
 const OP_STATUS_PRIORITY: Record<OpStatus, number> = {
     in_stay: 1, checkout_today: 2, overdue_checkout: 3,
-    checking_in_today: 4, upcoming: 5, completed: 6, cancelled: 7, unknown: 8,
+    checking_in_today: 4, upcoming: 5, completed: 6, admin_closed: 6, cancelled: 7, unknown: 8,
 };
 
 function operationalChip(b: Booking) {

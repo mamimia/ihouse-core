@@ -5,18 +5,224 @@
  * Route: /bookings/[id]
  *
  * Financial facts, timeline events, guest info, action buttons.
+ * Admin Close Stay panel for overdue bookings (sets admin_closed, no settlement side effects).
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { EarlyCheckoutPanel } from '@/components/EarlyCheckoutPanel';
 
+const OPS_TZ = 'Asia/Bangkok';
+
 function fmtDate(d: string | null): string {
     if (!d) return '—';
-    try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+    try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: OPS_TZ }); }
     catch { return d; }
+}
+
+// ---------------------------------------------------------------------------
+// Derive operational status for a single booking record
+// (mirrors bookings/page.tsx deriveOperationalStatus — must stay in sync)
+// ---------------------------------------------------------------------------
+function isOverdue(booking: any): boolean {
+    const raw = (booking?.status ?? '').toLowerCase();
+    if (!['active', 'confirmed'].includes(raw)) return false;
+    if (booking?.checked_out_at) return false;
+    const checkOut = booking?.check_out;
+    if (!checkOut) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+    return checkOut < todayStr;
+}
+
+// ---------------------------------------------------------------------------
+// Admin Close Stay Panel
+// ---------------------------------------------------------------------------
+function AdminClosePanel({ bookingId, booking, onClosed }: {
+    bookingId: string;
+    booking: any;
+    onClosed: () => void;
+}) {
+    const [note, setNote] = useState('');
+    const [confirming, setConfirming] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleClose = async () => {
+        setSubmitting(true);
+        setError(null);
+        try {
+            await api.adminCloseBooking(bookingId, note.trim() || undefined);
+            onClosed();
+        } catch (err: unknown) {
+            if (err instanceof ApiError) {
+                setError((err.body as any)?.detail || `API ${err.status}: ${err.code}`);
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to admin-close booking');
+            }
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div style={{
+            marginTop: 'var(--space-8)',
+            background: 'rgba(245,158,11,0.05)',
+            border: '1px solid rgba(245,158,11,0.35)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-5)',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                <span style={{ fontSize: '1.1rem' }}>⚠</span>
+                <div>
+                    <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: '#b45309', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Overdue — No Checkout Recorded
+                    </h2>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', margin: '2px 0 0' }}>
+                        This booking passed its checkout date ({fmtDate(booking.check_out)}) with no worker checkout flow performed.
+                    </p>
+                </div>
+            </div>
+
+            {!confirming ? (
+                <button
+                    id="btn-admin-close-stay"
+                    onClick={() => setConfirming(true)}
+                    style={{
+                        background: 'rgba(245,158,11,0.12)',
+                        border: '1px solid rgba(245,158,11,0.5)',
+                        color: '#92400e',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 'var(--space-2) var(--space-4)',
+                        fontWeight: 600,
+                        fontSize: 'var(--text-sm)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.2)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.12)')}
+                >
+                    🔒 Admin Close Stay
+                </button>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                    {/* Explicit disclaimer */}
+                    <div style={{
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 'var(--space-3) var(--space-4)',
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--color-text-dim)',
+                        lineHeight: 1.6,
+                    }}>
+                        <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>What this action does:</div>
+                        <div>✅ Sets booking status to <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9em' }}>admin_closed</code></div>
+                        <div>✅ Records an audit event (<code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9em' }}>BOOKING_ADMIN_CLOSED</code>) attributed to you</div>
+                        <div>✅ Removes the booking from the overdue operational area</div>
+                        <div style={{ marginTop: 6, fontWeight: 700, color: 'var(--color-text)' }}>What this does NOT do:</div>
+                        <div>❌ Does not set a checkout timestamp — no fake worker history</div>
+                        <div>❌ Does not trigger settlement or financial records</div>
+                        <div>❌ Does not create or cancel cleaning tasks</div>
+                        <div>❌ Does not affect guest dossier stay status</div>
+                    </div>
+
+                    {/* Optional note */}
+                    <div>
+                        <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Closure Note (optional)
+                        </label>
+                        <textarea
+                            id="admin-close-note"
+                            value={note}
+                            onChange={e => setNote(e.target.value)}
+                            placeholder="e.g. Guest no-show, OTA block that expired, manually resolved..."
+                            rows={2}
+                            style={{
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                background: 'var(--color-bg)',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--space-2) var(--space-3)',
+                                fontSize: 'var(--text-sm)',
+                                color: 'var(--color-text)',
+                                fontFamily: 'inherit',
+                                resize: 'vertical',
+                            }}
+                        />
+                    </div>
+
+                    {error && (
+                        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-3)', color: 'var(--color-danger)', fontSize: 'var(--text-xs)' }}>
+                            ⚠ {error}
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                        <button
+                            onClick={() => { setConfirming(false); setError(null); }}
+                            disabled={submitting}
+                            style={{
+                                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                                color: 'var(--color-text-dim)', borderRadius: 'var(--radius-md)',
+                                padding: 'var(--space-2) var(--space-4)', fontWeight: 500,
+                                fontSize: 'var(--text-sm)', cursor: 'pointer',
+                            }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            id="btn-confirm-admin-close"
+                            onClick={handleClose}
+                            disabled={submitting}
+                            style={{
+                                background: submitting ? 'rgba(100,100,100,0.2)' : 'rgba(245,158,11,0.15)',
+                                border: '1px solid rgba(245,158,11,0.5)',
+                                color: submitting ? 'var(--color-text-faint)' : '#92400e',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--space-2) var(--space-4)',
+                                fontWeight: 700,
+                                fontSize: 'var(--text-sm)',
+                                cursor: submitting ? 'not-allowed' : 'pointer',
+                            }}
+                        >
+                            {submitting ? '⟳ Closing…' : '🔒 Confirm Admin Close'}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Admin Closed state display (read-only, shown after closure)
+// ---------------------------------------------------------------------------
+function AdminClosedBadge({ booking }: { booking: any }) {
+    return (
+        <div style={{
+            marginTop: 'var(--space-8)',
+            background: 'rgba(100,100,100,0.06)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-4) var(--space-5)',
+            display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+        }}>
+            <span style={{ fontSize: '1.2rem' }}>🔒</span>
+            <div>
+                <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
+                    Administratively Closed
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 2 }}>
+                    This stay was closed by an admin. No checkout was performed. No settlement was triggered.
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default function BookingDetailPage() {
@@ -198,6 +404,20 @@ export default function BookingDetailPage() {
                 </div>
             </div>
 
+            {/* Admin Close Stay panel — only for overdue bookings */}
+            {booking && isOverdue(booking) && (
+                <AdminClosePanel
+                    bookingId={bookingId}
+                    booking={booking}
+                    onClosed={load}
+                />
+            )}
+
+            {/* Admin Closed badge — read-only, shown after closure */}
+            {booking && (booking.status || '').toLowerCase() === 'admin_closed' && (
+                <AdminClosedBadge booking={booking} />
+            )}
+
             {/* Early Check-out Panel
                  ─────────────────────────────────────────────────────────────
                  Canonical gating rule — ALL conditions must be true:
@@ -220,12 +440,9 @@ export default function BookingDetailPage() {
                 const isActiveStatus = ['checked_in', 'active', 'confirmed'].includes(rawStatus);
                 const checkoutDate = booking.check_out ? new Date(booking.check_out + 'T23:59:59') : null;
                 const checkoutInFuture = checkoutDate ? checkoutDate > new Date() : false;
-                // ec_status is available if the EarlyCheckoutPanel already loaded; use the raw
-                // booking field as a pre-check so we don't render unnecessarily.
                 const rawEcStatus = (booking.early_checkout_status || '').toLowerCase();
                 const ecAlreadyInFlight = ['requested', 'approved'].includes(rawEcStatus);
 
-                // Gating: stay must be live OR EC already in-flight (read-only context)
                 const shouldShow = isActiveStatus && (checkoutInFuture || ecAlreadyInFlight);
                 if (!shouldShow) return null;
                 return (
@@ -246,3 +463,4 @@ export default function BookingDetailPage() {
         </div>
     );
 }
+

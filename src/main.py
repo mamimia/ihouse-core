@@ -513,6 +513,9 @@ app.include_router(checkout_settlement_router)
 from api.early_checkout_router import router as early_checkout_router  # noqa: E402  # Phase 998
 app.include_router(early_checkout_router)
 
+from api.booking_admin_close_router import router as booking_admin_close_router  # noqa: E402  # Admin Close Stay
+app.include_router(booking_admin_close_router)
+
 from api.settlement_history_router import router as settlement_history_router  # noqa: E402  # Phase 962
 app.include_router(settlement_history_router)
 
