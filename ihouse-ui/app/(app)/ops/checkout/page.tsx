@@ -166,13 +166,25 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
             showNotice('📍 No location data for this property');
         }
     };
+
+    // Phase 993-fix: Eligibility gate.
+    // A checkout task is actionable only when the real checkout date (check_out) is today or past.
+    // Use check_out from the enriched booking data, NOT task.due_date.
+    // task.due_date is corrected to check_out in the DB but check_out from booking is the canonical source.
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const realCheckoutDate = t.check_out || t.due_date || '';
+    const isActionable = !realCheckoutDate || realCheckoutDate <= todayStr;
+    const lockedLabel = realCheckoutDate && realCheckoutDate > todayStr
+        ? `Checkout: ${new Date(realCheckoutDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+        : undefined;
+
     return (
         <WorkerTaskCard
             kind="CHECKOUT_VERIFY"
             status={t.status || 'PENDING'}
             propertyName={t.property_name || t.property_id}
             propertyCode={t.property_id}
-            date={t.due_date || ''}
+            date={realCheckoutDate}       // countdown now uses real checkout date
             checkIn={t.check_in}
             checkOut={t.check_out || t.due_date}
             guestName={t.guest_name}
@@ -180,6 +192,8 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
             onStart={() => onStart(t)}
             onAcknowledge={onAcknowledge}
             onNavigate={handleNavigate}
+            isActionable={isActionable}
+            lockedLabel={lockedLabel}
         />
     );
 }
@@ -697,13 +711,18 @@ export default function MobileCheckoutPage() {
     const todayStr = today.toISOString().slice(0, 10);
     const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-    // Task-world split: overdue, today, upcoming
-    const overdueTasks = checkoutTasks.filter(t => t.due_date && t.due_date < todayStr);
-    const todayTasks = checkoutTasks.filter(t => t.due_date === todayStr);
-    const upcomingTasks = checkoutTasks.filter(t => t.due_date && t.due_date > todayStr);
-    // Earliest due task for countdown
+    // Phase 993-fix: Task-world split uses check_out (real checkout date), NOT due_date.
+    // due_date was corrupted by backfill (set to check_in). Even after the DB fix,
+    // check_out from the enriched booking is the canonical source for eligibility.
+    // Tasks without check_out fall back to due_date.
+    const getCheckoutDate = (t: CheckoutTask) => t.check_out || t.due_date || '';
+
+    const overdueTasks  = checkoutTasks.filter(t => { const d = getCheckoutDate(t); return d && d < todayStr; });
+    const todayTasks    = checkoutTasks.filter(t => getCheckoutDate(t) === todayStr);
+    const upcomingTasks = checkoutTasks.filter(t => { const d = getCheckoutDate(t); return d && d > todayStr; });
+    // Earliest actionable task for summary strip countdown
     const nextDueTask = overdueTasks[0] || todayTasks[0] || upcomingTasks[0] || null;
-    const nextDueIso = nextDueTask?.due_date || null;
+    const nextDueIso = nextDueTask ? getCheckoutDate(nextDueTask) : null;
 
     const card = {
         background: 'var(--color-surface)', border: '1px solid var(--color-border)',

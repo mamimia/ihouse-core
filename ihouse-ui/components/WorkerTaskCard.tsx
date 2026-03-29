@@ -206,10 +206,10 @@ export interface WorkerTaskCardProps {
     propertyName: string;
     propertyCode?: string;
 
-    date: string;
+    date: string;       // task due_date — drives countdown for non-checkout tasks
     time?: string;
     checkIn?: string;
-    checkOut?: string;
+    checkOut?: string;  // real booking checkout date — used for eligibility gating
 
     guestName?: string;
     guestCount?: number;
@@ -219,6 +219,13 @@ export interface WorkerTaskCardProps {
     onStart?: () => void;
     onAcknowledge?: () => void;
     onNavigate?: () => void;
+
+    // Phase 993-fix: Eligibility gate — when false, Start is locked until checkout date.
+    // Computed by the parent from check_out, NOT from task.due_date.
+    // Defaults to true (backwards-compatible for non-checkout tasks).
+    isActionable?: boolean;
+    // Label shown on the locked Start button (e.g. "Checkout: Apr 7")
+    lockedLabel?: string;
 }
 
 // ── Component — dense 2-column layout ────────────────────────────────────────
@@ -230,6 +237,7 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
         date, time, checkIn, checkOut,
         guestName, guestCount, nights: nightsProp,
         actionLabel, onStart, onAcknowledge, onNavigate,
+        isActionable = true, lockedLabel,
     } = props;
 
     // Kind metadata
@@ -281,14 +289,15 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
                 background: 'var(--color-surface)',
                 border: `1px solid ${cardBorder}`,
                 borderRadius: 'var(--radius-lg)',
-                padding: '12px var(--space-4)',   // tighter vertical padding
-                cursor: onStart ? 'pointer' : 'default',
+                padding: '12px var(--space-4)',
+                cursor: (onStart && isActionable) ? 'pointer' : 'default',
                 transition: 'border-color 0.15s, box-shadow 0.15s',
-                marginBottom: 'var(--space-2)',   // tighter stack gap
+                marginBottom: 'var(--space-2)',
+                opacity: isActionable ? 1 : 0.85,
             }}
-            onClick={onStart}
+            onClick={isActionable ? onStart : undefined}
             onMouseEnter={e => {
-                if (!onStart) return;
+                if (!onStart || !isActionable) return;
                 e.currentTarget.style.borderColor = baseColor;
                 e.currentTarget.style.boxShadow = `0 0 0 1px ${baseColor}22`;
             }}
@@ -393,14 +402,25 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
                         />
                     )}
                     {onStart && (
-                        <button onClick={onStart} style={{
-                            flex: 2, padding: '8px 6px',
-                            background: baseColor, color: '#fff',
-                            border: 'none', borderRadius: 'var(--radius-sm)',
-                            fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                        }}>
-                            {actionLabel || (inProgress ? 'Resume →' : defaultAction + ' →')}
-                        </button>
+                        isActionable ? (
+                            <button onClick={onStart} style={{
+                                flex: 2, padding: '8px 6px',
+                                background: baseColor, color: '#fff',
+                                border: 'none', borderRadius: 'var(--radius-sm)',
+                                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            }}>
+                                {actionLabel || (inProgress ? 'Resume →' : defaultAction + ' →')}
+                            </button>
+                        ) : (
+                            <button disabled style={{
+                                flex: 2, padding: '8px 6px',
+                                background: 'var(--color-surface-2)', color: 'var(--color-text-faint)',
+                                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                                fontSize: 11, fontWeight: 600, cursor: 'not-allowed',
+                            }}>
+                                🔒 {lockedLabel || 'Not yet available'}
+                            </button>
+                        )
                     )}
                     {onNavigate && (
                         <button onClick={onNavigate} title="Navigate to property" style={{
