@@ -163,7 +163,13 @@ async def get_guest_dossier(
             .select(
                 "booking_id, property_id, status, check_in, check_out, "
                 "booking_source, reservation_ref, guest_name, checked_in_at, "
-                "checked_out_at, updated_at_ms"
+                "checked_out_at, updated_at_ms, "
+                # Phase 1002: Full early checkout context for dossier
+                "early_checkout_approved, early_checkout_approved_by, "
+                "early_checkout_approved_at, early_checkout_date, "
+                "early_checkout_effective_at, early_checkout_status, "
+                "early_checkout_reason, early_checkout_requested_at, "
+                "early_checkout_request_source"
             )
             .eq("tenant_id", tenant_id)
             .eq("guest_id", guest_id)
@@ -447,11 +453,30 @@ async def get_guest_dossier(
                 "opening_meter":      opening_meter,
             }
 
-            # Phase 989d: Richer checkout record with settlement, photos, worker
+            # Phase 989d / Phase 1002: Rich checkout record with settlement, photos, worker, and early checkout context
             sr = settlement_by_booking.get(bid)
             checkout_record = None
             checked_out_at = b.get("checked_out_at")
             if checked_out_at or (b.get("status") or "").lower() == "checked_out":
+                # Phase 1002: Assemble full early checkout sub-object if applicable
+                early_checkout_record = None
+                if b.get("early_checkout_approved"):
+                    early_checkout_record = {
+                        "is_early_checkout":        True,
+                        "early_checkout_status":    b.get("early_checkout_status"),
+                        "original_checkout_date":   b.get("check_out"),
+                        "effective_checkout_date":  b.get("early_checkout_date"),
+                        "effective_checkout_at":    b.get("early_checkout_effective_at"),
+                        "approved_by":              b.get("early_checkout_approved_by"),
+                        "approved_at":              b.get("early_checkout_approved_at"),
+                        "reason":                   b.get("early_checkout_reason"),
+                        "requested_at":             b.get("early_checkout_requested_at"),
+                        "request_source":           b.get("early_checkout_request_source"),
+                    }
+                    # Also pull approved_by from settlement record as a fallback
+                    if sr and not early_checkout_record["approved_by"]:
+                        early_checkout_record["approved_by"] = sr.get("early_checkout_approved_by")
+
                 checkout_record = {
                     "checked_out_at":    checked_out_at,
                     "checked_out_by":    checkout_worker_by_booking.get(bid),
@@ -460,6 +485,7 @@ async def get_guest_dossier(
                     "inspection_notes":  next((p.get("notes") for p in checkout_photos
                                                if p.get("purpose") == "checkout_inspection" and p.get("notes")), None),
                     "settlement":        sr,
+                    "early_checkout":    early_checkout_record,
                 }
 
             raw_status = b.get("status")
@@ -576,6 +602,39 @@ async def get_guest_dossier(
             except Exception:
                 pass
 
+        # 9d. Phase 1002: admin_audit_log — early checkout lifecycle events per booking
+        # These are written by early_checkout_router for request, approve, revoke;
+        # and by booking_checkin_router for the completed checkout with early context.
+        if booking_ids:
+            try:
+                ec_events = (
+                    db.table("admin_audit_log")
+                    .select("action, performed_at, actor_id, details, entity_type, entity_id")
+                    .eq("tenant_id", tenant_id)
+                    .eq("entity_type", "booking")
+                    .in_("entity_id", booking_ids)
+                    .in_("action", [
+                        "early_checkout.request_received",
+                        "early_checkout.approved",
+                        "early_checkout.revoked",
+                        "booking.checkout",          # includes early_checkout context in details
+                    ])
+                    .order("performed_at", desc=True)
+                    .limit(50)
+                    .execute()
+                )
+                for a in (ec_events.data or []):
+                    activity.append({
+                        "action":       a.get("action"),
+                        "performed_at": a.get("performed_at"),
+                        "actor_id":     a.get("actor_id"),
+                        "details":      a.get("details"),
+                        "entity_type":  a.get("entity_type"),
+                        "entity_id":    a.get("entity_id"),
+                    })
+            except Exception as exc:
+                logger.warning("dossier: early checkout events fetch failed: %s", exc)
+
         # Deduplicate by (action, performed_at) and sort desc
         seen: set[tuple[str, str]] = set()
         deduped: list[dict] = []
@@ -585,6 +644,7 @@ async def get_guest_dossier(
                 seen.add(key)
                 deduped.append(ev)
         deduped.sort(key=lambda x: x.get("performed_at") or "", reverse=True)
+
 
         # ── 10. Compose response ───────────────────────────────────────
         return JSONResponse(status_code=200, content={

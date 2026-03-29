@@ -331,7 +331,8 @@ def _get_booking_checkout_state(
     """
     Fetch the checkout eligibility fields from booking_state in one DB call.
     Returns: {check_out, early_checkout_approved, early_checkout_approved_by,
-              early_checkout_date, early_checkout_effective_at}
+              early_checkout_date, early_checkout_effective_at,
+              early_checkout_reason, early_checkout_approved_at}
     Returns None if the booking doesn't exist.
     """
     try:
@@ -339,7 +340,9 @@ def _get_booking_checkout_state(
             db.table("booking_state")
             .select(
                 "check_out, early_checkout_approved, early_checkout_approved_by, "
-                "early_checkout_date, early_checkout_effective_at"
+                "early_checkout_date, early_checkout_effective_at, "
+                # Phase 1001: Additional fields for full settlement snapshot
+                "early_checkout_reason, early_checkout_approved_at"
             )
             .eq("booking_id", booking_id)
             .eq("tenant_id", tenant_id)
@@ -622,16 +625,24 @@ async def start_settlement(
 
         deposit_held, deposit_currency = _get_deposit_held(db, tenant_id, booking_id)
 
-        # Phase 998: Snapshot early checkout context onto settlement record
+        # Phase 998/1001: Snapshot full early checkout context onto settlement record
         is_early = False
         original_checkout_date = None
         effective_checkout_date = None
+        effective_checkout_at   = None
+        early_checkout_reason   = None
+        early_checkout_approved_by = None
+        early_checkout_approved_at = None
         try:
             bs = _get_booking_checkout_state(db, tenant_id, booking_id)
             if bs and bs.get("early_checkout_approved"):
                 is_early = True
-                original_checkout_date = str(bs.get("check_out") or "")[:10] or None
-                effective_checkout_date = str(bs.get("early_checkout_date") or "")[:10] or None
+                original_checkout_date     = str(bs.get("check_out") or "")[:10] or None
+                effective_checkout_date    = str(bs.get("early_checkout_date") or "")[:10] or None
+                effective_checkout_at      = str(bs.get("early_checkout_effective_at") or "") or None
+                early_checkout_reason      = bs.get("early_checkout_reason")
+                early_checkout_approved_by = bs.get("early_checkout_approved_by")
+                early_checkout_approved_at = str(bs.get("early_checkout_approved_at") or "") or None
         except Exception:
             pass  # best-effort, never block settlement start
 
@@ -650,9 +661,14 @@ async def start_settlement(
             "total_deductions":    0,
             "refund_amount":       deposit_held,
             "retained_amount":     0,
-            "is_early_checkout":   is_early,
-            "original_checkout_date":  original_checkout_date,
-            "effective_checkout_date": effective_checkout_date,
+            # Phase 998/1001: Full early checkout snapshot on the settlement record
+            "is_early_checkout":         is_early,
+            "original_checkout_date":    original_checkout_date,
+            "effective_checkout_date":   effective_checkout_date,
+            "effective_checkout_at":     effective_checkout_at,
+            "early_checkout_reason":     early_checkout_reason,
+            "early_checkout_approved_by": early_checkout_approved_by,
+            "early_checkout_approved_at": early_checkout_approved_at,
             "created_by":          actor_id,
             "created_at":          now,
             "updated_at":          now,
@@ -663,11 +679,14 @@ async def start_settlement(
         _audit(db, tenant_id, actor_id, "settlement_started",
                "booking_settlement_record", settlement_id,
                {
-                   "booking_id":             booking_id,
-                   "deposit_held":           deposit_held,
-                   "is_early_checkout":      is_early,
-                   "original_checkout_date": original_checkout_date,
-                   "effective_checkout_date": effective_checkout_date,
+                   "booking_id":                booking_id,
+                   "deposit_held":              deposit_held,
+                   "is_early_checkout":         is_early,
+                   "original_checkout_date":    original_checkout_date,
+                   "effective_checkout_date":   effective_checkout_date,
+                   "effective_checkout_at":     effective_checkout_at,
+                   "early_checkout_reason":     early_checkout_reason,
+                   "early_checkout_approved_by": early_checkout_approved_by,
                })
 
         return JSONResponse(status_code=201, content=_serialize_settlement(saved))

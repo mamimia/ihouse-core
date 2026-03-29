@@ -143,7 +143,13 @@ def _get_booking(db: Any, booking_id: str, tenant_id: str) -> Optional[dict]:
     try:
         result = (
             db.table("booking_state")
-            .select("booking_id, tenant_id, status, property_id, check_in, check_out, source")
+            .select(
+                "booking_id, tenant_id, status, property_id, check_in, check_out, source, "
+                # Phase 1001: Early checkout context for audit and status closure
+                "early_checkout_approved, early_checkout_approved_by, early_checkout_date, "
+                "early_checkout_effective_at, early_checkout_status, early_checkout_reason, "
+                "early_checkout_requested_at, early_checkout_approved_at"
+            )
             .eq("booking_id", booking_id)
             .eq("tenant_id", tenant_id)
             .limit(1)
@@ -514,13 +520,35 @@ async def checkout_booking(
                 current_status=current_status,
             )
 
+        # Phase 1001: Build early checkout context before writing event_log
+        # (booking row now includes early checkout fields from extended _get_booking)
+        is_early = bool(booking.get("early_checkout_approved"))
+        ec_context: dict = {}
+        if is_early:
+            ec_context = {
+                "is_early_checkout":           True,
+                "original_checkout_date":      str(booking.get("check_out") or "")[:10] or None,
+                "effective_checkout_date":     str(booking.get("early_checkout_date") or "")[:10] or None,
+                "effective_checkout_at":       str(booking.get("early_checkout_effective_at") or "") or None,
+                "early_checkout_reason":       booking.get("early_checkout_reason"),
+                "approved_by":                 booking.get("early_checkout_approved_by"),
+                "approved_at":                 str(booking.get("early_checkout_approved_at") or "") or None,
+            }
+
         # Update booking_state
         now_ms = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-        db.table("booking_state").update({
+        booking_state_update: dict = {
             "status": "checked_out",
             "checked_out_at": now,  # Phase 989c: persist timestamp for dossier
             "updated_at_ms": now_ms,
-        }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
+        }
+        # Phase 1001: Close the early_checkout state machine when checkout completes
+        if is_early:
+            booking_state_update["early_checkout_status"] = "completed"
+
+        db.table("booking_state").update(
+            booking_state_update
+        ).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
         # Create CLEANING task (best-effort)
         cleaning_task_count = 0
@@ -538,20 +566,31 @@ async def checkout_booking(
             logger.warning("checkout: failed to create CLEANING task for booking_id=%s", booking_id)
 
         # Audit events (best-effort)
-        _write_audit_event(db, booking_id, tenant_id, "BOOKING_CHECKED_OUT", {
-            "previous_status": current_status,
-            "new_status": "checked_out",
-            "checked_out_at": now,
-            "property_id": booking.get("property_id"),
-            "cleaning_tasks_created": cleaning_task_count,
-        })
-        # Phase 989d: Use actual user_id for worker attribution in dossier
+        event_log_payload = {
+            "previous_status":          current_status,
+            "new_status":               "checked_out",
+            "checked_out_at":           now,
+            "property_id":              booking.get("property_id"),
+            "cleaning_tasks_created":   cleaning_task_count,
+        }
+        # Phase 1001: stamp full early checkout context onto event_log entry
+        if is_early:
+            event_log_payload.update(ec_context)
+
+        _write_audit_event(db, booking_id, tenant_id, "BOOKING_CHECKED_OUT", event_log_payload)
+
+        # Phase 989d / Phase 1001: audit_events table (admin_audit_log) with full early checkout context
         checkout_actor = identity.get("user_id") or tenant_id
-        _write_audit_event_table(db, tenant_id, checkout_actor, "booking.checkout", "booking", booking_id, {
-            "previous_status": current_status,
-            "property_id": booking.get("property_id"),
+        audit_details: dict = {
+            "previous_status":        current_status,
+            "property_id":            booking.get("property_id"),
             "cleaning_tasks_created": cleaning_task_count,
-        })
+        }
+        if is_early:
+            audit_details["early_checkout"] = ec_context
+
+        _write_audit_event_table(db, tenant_id, checkout_actor, "booking.checkout", "booking", booking_id,
+                                 audit_details)
 
         # D-5b: Transition property operational_status → 'needs_cleaning' on checkout
         property_id = booking.get("property_id")
