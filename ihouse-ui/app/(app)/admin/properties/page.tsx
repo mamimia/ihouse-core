@@ -404,16 +404,16 @@ function PropertyRow({ p, onAction }: {
     return (
         <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 100px 120px 90px 48px',
+            gridTemplateColumns: '1fr 100px 120px 90px 36px',
             alignItems: 'center',
             gap: 'var(--space-3)',
-            padding: 'var(--space-4) var(--space-5)',
+            padding: 'var(--space-3) var(--space-5)',
             background: 'var(--color-surface-2)',
             borderRadius: 'var(--radius-md)',
             marginBottom: 'var(--space-2)',
             transition: 'background var(--transition-fast)',
         }}>
-            {/* Name + meta */}
+            {/* Col 1: Name + city/type meta — two-line compact */}
             <div>
                 <a
                     href={`/admin/properties/${p.property_id}`}
@@ -421,9 +421,10 @@ function PropertyRow({ p, onAction }: {
                         fontWeight: 600,
                         fontSize: 'var(--text-sm)',
                         color: 'var(--color-primary)',
-                        marginBottom: 2,
                         textDecoration: 'none',
                         display: 'block',
+                        lineHeight: 1.3,
+                        marginBottom: 1,
                     }}
                 >
                     {p.display_name || p.property_id}
@@ -432,37 +433,32 @@ function PropertyRow({ p, onAction }: {
                     fontSize: 'var(--text-xs)',
                     color: 'var(--color-text-dim)',
                     display: 'flex',
-                    gap: 'var(--space-3)',
+                    gap: 'var(--space-2)',
+                    lineHeight: 1.2,
                 }}>
                     {p.city && <span>📍 {p.city}{p.country ? `, ${p.country}` : ''}</span>}
-                    {p.property_type && <span>🏠 {p.property_type}</span>}
-                    {p.source_platform && <span>🔗 {p.source_platform}</span>}
+                    {p.property_type && <span>· {p.property_type}</span>}
                 </div>
             </div>
 
-            {/* Status */}
+            {/* Col 2: Status */}
             <div><StatusBadge status={p.status} /></div>
 
-            {/* Check-in Mode — Phase 1019b: dedicated column */}
+            {/* Col 3: Check-in Mode */}
             <div><CheckinModeBadge mode={p.self_checkin_config?.mode} /></div>
 
-            {/* Created */}
+            {/* Col 4: Created */}
             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)' }}>
                 {created}
             </div>
 
-            {/* Capacity */}
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
-                {p.max_guests ? `${p.max_guests} guests` : '—'}
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end', alignItems: 'center' }}>
+            {/* Col 5: Archive icon — right-aligned, low emphasis */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 {p.status === 'pending' && (
-                    <>
+                    <div style={{ display: 'flex', gap: 4 }}>
                         <ActionBtn label="Approve" icon="✓" color="#22c55e" onClick={() => handle('approve')} disabled={acting} />
                         <ActionBtn label="Reject" icon="✗" color="#ef4444" onClick={() => handle('reject')} disabled={acting} />
-                    </>
+                    </div>
                 )}
                 {p.status === 'approved' && (
                     <IconActionBtn label="Archive" icon="📦" onClick={() => handle('archive')} disabled={acting} />
@@ -471,6 +467,7 @@ function PropertyRow({ p, onAction }: {
         </div>
     );
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Add Property Modal                                                  */
@@ -775,7 +772,7 @@ function AdminPropertiesContent() {
             {/* Table header */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 100px 120px 90px 48px',
+                gridTemplateColumns: '1fr 100px 120px 90px 36px',
                 gap: 'var(--space-3)',
                 padding: '0 var(--space-5)',
                 marginBottom: 'var(--space-2)',
