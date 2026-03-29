@@ -1,12 +1,19 @@
 """
 Owner Portal Router — Phase 298
+Phase 1021-E — Owner model unification: portal identity reconciliation
 ==================================
 
 JWT-protected endpoints for property owners.
 Access is scoped to properties granted via owner_portal_access table.
 
+Phase 1021-E reconciliation:
+    - The owner identity for access gating remains the JWT sub (owner_portal_access.owner_id).
+    - /owner/portal now also resolves the linked owner business profile from public.owners
+      via owners.user_id = JWT sub. If linked, profile data (name, email, id) is returned.
+    - This bridges the auth identity and the business profile without changing the access model.
+
 Endpoints:
-    GET  /owner/portal              — List properties the owner can see
+    GET  /owner/portal              — List properties the owner can see (+ linked profile)
     GET  /owner/portal/{property_id}/summary — Property summary + booking count
     POST /admin/owner-access        — Admin grants owner portal access to a property
     DELETE /admin/owner-access/{owner_id}/{property_id} — Admin revokes access
@@ -63,7 +70,7 @@ class GrantOwnerAccessRequest(BaseModel):
 
 @router.get(
     "/owner/portal",
-    summary="List owner's accessible properties (Phase 298)",
+    summary="List owner's accessible properties (Phase 298 / 1021-E)",
     tags=["owner-portal"],
 )
 async def list_owner_properties(
@@ -74,12 +81,41 @@ async def list_owner_properties(
 
     Returns all properties the caller (as an owner) is allowed to see.
     Includes the caller's role for each property (owner | viewer).
+
+    Phase 1021-E: Also resolves the linked owner business profile from public.owners
+    (via owners.user_id = caller_id). Returns as owner_profile (null if not linked).
+    This reconciles the portal auth identity with the business profile entity.
     """
     db = _get_db()
     properties = get_owner_properties(db, owner_id=caller_id)
+
+    # Phase 1021-E: Resolve linked owner business profile
+    owner_profile = None
+    try:
+        profile_res = (
+            db.table("owners")
+            .select("id, name, email, phone, property_ids")
+            .eq("user_id", caller_id)
+            .maybe_single()
+            .execute()
+        )
+        if profile_res.data:
+            owner_profile = {
+                "id": profile_res.data.get("id"),
+                "name": profile_res.data.get("name"),
+                "email": profile_res.data.get("email"),
+                "phone": profile_res.data.get("phone"),
+            }
+    except Exception as exc:
+        logger.warning("list_owner_properties: failed to resolve owner profile: %s", exc)
+
     return JSONResponse(
         status_code=200,
-        content={"properties": properties, "count": len(properties)},
+        content={
+            "properties": properties,
+            "count": len(properties),
+            "owner_profile": owner_profile,  # null if not yet linked to a business profile
+        },
     )
 
 

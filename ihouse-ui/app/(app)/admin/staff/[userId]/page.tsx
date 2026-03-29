@@ -341,6 +341,9 @@ export default function EditStaffPage() {
   const [workPermitExpiry, setWorkPermitExpiry] = useState('');
   const [workPermitStatus, setWorkPermitStatus] = useState('missing');
 
+  // Phase 1021-C: Linked owner profile state
+  const [linkedOwner, setLinkedOwner] = useState<{ id: string; name: string; email?: string; property_ids?: string[] } | null | 'loading'>('loading');
+
   // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -542,6 +545,22 @@ export default function EditStaffPage() {
   }, [rawUserId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Phase 1021-C: Fetch linked owner profile whenever userId or role changes
+  const fetchLinkedOwner = useCallback(async () => {
+    setLinkedOwner('loading');
+    try {
+      const res = await apiFetch<any>(`/admin/owners/by-user/${encodeURIComponent(rawUserId)}`);
+      setLinkedOwner(res.linked ? res.owner : null);
+    } catch {
+      setLinkedOwner(null);
+    }
+  }, [rawUserId]);
+
+  useEffect(() => {
+    if (role === 'owner') fetchLinkedOwner();
+    else setLinkedOwner(null);
+  }, [role, fetchLinkedOwner]);
 
   const toggleProperty = (id: string) =>
     setAssignedProperties(prev =>
@@ -1068,6 +1087,94 @@ export default function EditStaffPage() {
               </div>
             )}
 
+            {/* Phase 1021-C: Linked Owner Profile — read-only summary (editable on Owners side) */}
+            {role === 'owner' && (
+              <div>
+                <div style={sectionHeadStyle}>Linked Owner Profile</div>
+                <div style={{
+                  padding: 'var(--space-4)',
+                  background: 'var(--color-surface-2)',
+                  border: `1px solid ${
+                    linkedOwner === 'loading' ? 'var(--color-border)'
+                    : linkedOwner ? 'rgba(74,124,89,0.35)'
+                    : 'rgba(181,110,69,0.35)'
+                  }`,
+                  borderRadius: 'var(--radius-md)',
+                }}>
+                  {linkedOwner === 'loading' && (
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>Loading…</div>
+                  )}
+                  {linkedOwner === null && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14 }}>⚠️</span>
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'rgba(181,110,69,1)' }}>
+                          No owner profile linked yet
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', lineHeight: 1.6 }}>
+                        This user has the Owner role but is not yet linked to a business owner profile.
+                        Property ownership, financial records, and portal access are managed through the owner profile.
+                      </div>
+                      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                        <a
+                          href="/admin/owners"
+                          style={{
+                            display: 'inline-block', padding: '7px 14px',
+                            background: 'var(--color-primary)', color: '#fff',
+                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)',
+                            fontWeight: 600, textDecoration: 'none',
+                          }}
+                        >
+                          Go to Owners → Create or Link Profile
+                        </a>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-faint)', fontStyle: 'italic' }}>
+                        Portal access and property ownership are managed from the Owners section, not here.
+                      </div>
+                    </div>
+                  )}
+                  {linkedOwner && linkedOwner !== 'loading' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14 }}>✓</span>
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-ok, #4A7C59)' }}>
+                          {linkedOwner.name}
+                        </span>
+                        {linkedOwner.email && (
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                            · {linkedOwner.email}
+                          </span>
+                        )}
+                      </div>
+                      {linkedOwner.property_ids && linkedOwner.property_ids.length > 0 && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                          Owns {linkedOwner.property_ids.length} propert{linkedOwner.property_ids.length === 1 ? 'y' : 'ies'}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <a
+                          href="/admin/owners"
+                          style={{
+                            display: 'inline-block', padding: '5px 12px',
+                            background: 'var(--color-surface)', color: 'var(--color-primary)',
+                            border: '1px solid var(--color-primary)',
+                            borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)',
+                            fontWeight: 600, textDecoration: 'none',
+                          }}
+                        >
+                          Open in Owners →
+                        </a>
+                        <span style={{ fontSize: 11, color: 'var(--color-text-faint)', fontStyle: 'italic' }}>
+                          Portal access and property ownership are managed from the Owners section.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div>
               <div style={sectionHeadStyle}>
                 Assigned Properties
@@ -1549,18 +1656,7 @@ export default function EditStaffPage() {
               })()}
             </div>
 
-            {role === 'owner' && (
-              <div>
-                <div style={sectionHeadStyle}>Owner Visibility Controls</div>
-                <div style={{
-                  padding: 'var(--space-4)', background: 'var(--color-surface-2)',
-                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-                  color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)',
-                }}>
-                  Property visibility controls (financials, bookings, tasks) will be configured in a future update.
-                </div>
-              </div>
-            )}
+
           </div>
         )}
 

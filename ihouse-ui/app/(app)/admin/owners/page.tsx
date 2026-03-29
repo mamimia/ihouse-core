@@ -2,10 +2,15 @@
 
 /**
  * Phase 844 v3 — Admin Owners Page
+ * Phase 1021-D — Owner model unification: Linked Account & Portal Access section
  *
- * Manage property owners: create, edit, link to properties.
- * Owners are distinct from system auth users / workers.
- * An owner represents the real-world owner of one or more properties.
+ * Manage property owners: create, edit, link to properties,
+ * link to/unlink from a system login account (tenant_permissions).
+ *
+ * UI design (Phase 1021):
+ *   - Owners surface = canonical home for business profile + portal access management
+ *   - "Linked Account & Portal Access" section is editable here
+ *   - Manage Staff shows a read-only summary that links here
  *
  * Route: /admin/owners
  */
@@ -17,6 +22,13 @@ import { getToken } from '@/lib/api';
 // Types
 // ---------------------------------------------------------------------------
 
+interface LinkedAccount {
+    user_id: string;
+    display_name: string;
+    email: string;
+    is_active: boolean;
+}
+
 interface Owner {
     id: string;
     tenant_id: string;
@@ -24,9 +36,11 @@ interface Owner {
     phone: string | null;
     email: string | null;
     notes: string | null;
+    user_id: string | null;           // Phase 1021: optional link to login account
     created_at: string;
     property_ids: string[];
     property_count: number;
+    linked_account: LinkedAccount | null; // Phase 1021: enriched from tenant_permissions
 }
 
 interface PropertyOption {
@@ -35,6 +49,13 @@ interface PropertyOption {
     display_name?: string;
     name?: string;
     city?: string;
+}
+
+interface LinkableStaff {
+    user_id: string;
+    display_name: string;
+    email: string;
+    is_active: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +121,6 @@ function AddOwnerModal({
                 method: 'POST',
                 body: JSON.stringify({ name: name.trim(), email: email.trim() || null, phone: phone.trim() || null, notes: notes.trim() || null, property_ids: selectedProps }),
             });
-            // Show warnings if any properties were skipped or linkage failed
             const warnings: string[] = created.warnings || [];
             const skipped: { property_id: string; reason: string }[] = created.skipped_properties || [];
             if (warnings.length > 0 || skipped.length > 0) {
@@ -112,9 +132,7 @@ function AddOwnerModal({
                     ),
                 ].join('\n');
                 setError(msg);
-                // Still add the owner to the list
                 onCreated(created);
-                // Don't close the modal so the user sees the warning
                 setSaving(false);
                 return;
             }
@@ -147,7 +165,6 @@ function AddOwnerModal({
                 border: '1px solid var(--color-border)', padding: 'var(--space-8)',
                 display: 'flex', flexDirection: 'column', gap: 'var(--space-5)',
             }}>
-                {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)' }}>
                         Add Owner
@@ -155,7 +172,6 @@ function AddOwnerModal({
                     <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-dim)' }}>✕</button>
                 </div>
 
-                {/* Fields */}
                 <div>
                     <label style={lStyle}>Name *</label>
                     <input style={iStyle} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Sarah Chen" autoFocus />
@@ -175,7 +191,6 @@ function AddOwnerModal({
                     <textarea style={{ ...iStyle, resize: 'vertical', minHeight: 60 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any relevant info about this owner…" />
                 </div>
 
-                {/* Property assignment */}
                 <div>
                     <label style={lStyle}>Assign to Properties</label>
                     {properties.length === 0 ? (
@@ -199,9 +214,8 @@ function AddOwnerModal({
                     )}
                 </div>
 
-                {error && <div style={{ color: 'var(--color-error, #ef4444)', fontSize: 'var(--text-sm)' }}>{error}</div>}
+                {error && <div style={{ color: 'var(--color-error, #ef4444)', fontSize: 'var(--text-sm)', whiteSpace: 'pre-wrap' }}>{error}</div>}
 
-                {/* Actions */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
                     <button onClick={onClose} style={{
                         background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
@@ -227,8 +241,9 @@ function AddOwnerModal({
 // Confirmation Modal (reusable)
 // ---------------------------------------------------------------------------
 
-function ConfirmModal({ message, onConfirm, onCancel }: {
+function ConfirmModal({ message, onConfirm, onCancel, confirmLabel = 'Delete', danger = true }: {
     message: string; onConfirm: () => void; onCancel: () => void;
+    confirmLabel?: string; danger?: boolean;
 }) {
     return (
         <div style={{
@@ -238,9 +253,9 @@ function ConfirmModal({ message, onConfirm, onCancel }: {
             <div onClick={e => e.stopPropagation()} style={{
                 background: 'var(--color-surface)', border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
-                maxWidth: 400, width: '90%', boxShadow: 'var(--shadow-lg)',
+                maxWidth: 430, width: '90%', boxShadow: 'var(--shadow-lg)',
             }}>
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', marginBottom: 'var(--space-4)', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', marginBottom: 'var(--space-4)', lineHeight: 1.6 }}>
                     {message}
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
@@ -250,8 +265,9 @@ function ConfirmModal({ message, onConfirm, onCancel }: {
                     }}>Cancel</button>
                     <button onClick={onConfirm} style={{
                         padding: '6px 16px', borderRadius: 'var(--radius-md)', border: 'none',
-                        background: 'var(--color-danger)', color: '#fff', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600,
-                    }}>Delete</button>
+                        background: danger ? 'var(--color-danger)' : 'var(--color-primary)',
+                        color: '#fff', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600,
+                    }}>{confirmLabel}</button>
                 </div>
             </div>
         </div>
@@ -259,7 +275,272 @@ function ConfirmModal({ message, onConfirm, onCancel }: {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 1021-D: Linked Account & Portal Access section
+// ---------------------------------------------------------------------------
+
+function LinkedAccountSection({
+    owner,
+    onUpdated,
+}: {
+    owner: Owner;
+    onUpdated: (updated: Owner) => void;
+}) {
+    const [linkableStaff, setLinkableStaff] = useState<LinkableStaff[]>([]);
+    const [staffLoading, setStaffLoading] = useState(false);
+    const [showLinkDropdown, setShowLinkDropdown] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState('');
+    const [linking, setLinking] = useState(false);
+    const [unlinking, setUnlinking] = useState(false);
+    const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
+    const [linkError, setLinkError] = useState('');
+
+    const loadLinkableStaff = async () => {
+        setStaffLoading(true);
+        try {
+            const res = await apiFetch<{ staff: LinkableStaff[] }>('/admin/owners/linkable-staff');
+            setLinkableStaff(res.staff || []);
+        } catch {
+            setLinkableStaff([]);
+        }
+        setStaffLoading(false);
+    };
+
+    const handleOpenLinkDropdown = () => {
+        setShowLinkDropdown(true);
+        setSelectedUserId('');
+        setLinkError('');
+        loadLinkableStaff();
+    };
+
+    const handleLink = async () => {
+        if (!selectedUserId) return;
+        setLinking(true);
+        setLinkError('');
+        try {
+            const updated = await apiFetch<Owner>(`/admin/owners/${owner.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ user_id: selectedUserId }),
+            });
+            onUpdated({ ...owner, ...updated });
+            setShowLinkDropdown(false);
+        } catch (e: any) {
+            setLinkError(e.message || 'Link failed.');
+        }
+        setLinking(false);
+    };
+
+    const handleUnlink = async () => {
+        setShowUnlinkConfirm(false);
+        setUnlinking(true);
+        setLinkError('');
+        try {
+            const updated = await apiFetch<Owner & { unlink_warning?: string }>(`/admin/owners/${owner.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ user_id: '__unlink__' }),
+            });
+            // Show unlink_warning if returned (transient server field, not stored on Owner)
+            if (updated.unlink_warning) {
+                setLinkError(`ℹ️ ${updated.unlink_warning}`);
+            }
+            onUpdated({ ...owner, ...updated, user_id: null, linked_account: null });
+        } catch (e: any) {
+            setLinkError(e.message || 'Unlink failed.');
+        }
+        setUnlinking(false);
+    };
+
+    const sectionLabel: React.CSSProperties = {
+        fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)',
+        textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)',
+    };
+
+    const linked = owner.linked_account;
+
+    return (
+        <div>
+            <div style={sectionLabel}>Linked Account & Portal Access</div>
+            <div style={{
+                padding: 'var(--space-4)',
+                background: 'var(--color-surface)',
+                border: `1px solid ${linked ? 'rgba(74,124,89,0.3)' : 'var(--color-border)'}`,
+                borderRadius: 'var(--radius-md)',
+                display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
+            }}>
+
+                {/* Not linked state */}
+                {!linked && !showLinkDropdown && (
+                    <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13 }}>○</span>
+                            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>
+                                No app account linked
+                            </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-faint)', lineHeight: 1.5 }}>
+                            This owner is a contact-only record with no login. They cannot access the owner portal.
+                            Link to a staff account with role = Owner to enable portal access.
+                        </div>
+                        <div>
+                            <button
+                                onClick={handleOpenLinkDropdown}
+                                style={{
+                                    padding: '6px 14px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                    background: 'var(--color-surface-2)', border: '1px solid var(--color-primary)',
+                                    color: 'var(--color-primary)', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                }}
+                            >
+                                + Link to Staff Account
+                            </button>
+                        </div>
+                    </>
+                )}
+
+                {/* Link dropdown */}
+                {!linked && showLinkDropdown && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)' }}>
+                            Select a staff account with role = Owner that is not yet linked to another profile:
+                        </div>
+                        {staffLoading ? (
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Loading staff…</div>
+                        ) : linkableStaff.length === 0 ? (
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+                                No linkable owner-role accounts found.
+                                Create a staff member with role = Owner in Manage Staff first.
+                            </div>
+                        ) : (
+                            <select
+                                value={selectedUserId}
+                                onChange={e => setSelectedUserId(e.target.value)}
+                                style={{
+                                    padding: '6px 10px', borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--color-border)',
+                                    background: 'var(--color-bg)', color: 'var(--color-text)',
+                                    fontSize: 'var(--text-sm)', width: '100%',
+                                }}
+                            >
+                                <option value="">— select staff account —</option>
+                                {linkableStaff.map(s => (
+                                    <option key={s.user_id} value={s.user_id}>
+                                        {s.display_name || s.email || s.user_id}
+                                        {s.email && s.display_name ? ` (${s.email})` : ''}
+                                        {!s.is_active ? ' [inactive]' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                            <button
+                                onClick={handleLink}
+                                disabled={!selectedUserId || linking}
+                                style={{
+                                    padding: '6px 14px', borderRadius: 'var(--radius-sm)', cursor: selectedUserId ? 'pointer' : 'default',
+                                    background: selectedUserId ? 'var(--color-primary)' : 'var(--color-border)',
+                                    border: 'none', color: '#fff', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                    opacity: linking ? 0.6 : 1,
+                                }}
+                            >
+                                {linking ? 'Linking…' : 'Link Account'}
+                            </button>
+                            <button
+                                onClick={() => { setShowLinkDropdown(false); setLinkError(''); }}
+                                style={{
+                                    padding: '6px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                    background: 'none', border: '1px solid var(--color-border)',
+                                    color: 'var(--color-text-dim)', fontSize: 'var(--text-xs)',
+                                }}
+                            >Cancel</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Linked state */}
+                {linked && (
+                    <>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 13, color: 'var(--color-ok, #4A7C59)' }}>✓</span>
+                                    <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
+                                        {linked.display_name || 'Unnamed account'}
+                                    </span>
+                                    {!linked.is_active && (
+                                        <span style={{ fontSize: 10, background: 'rgba(196,91,74,0.12)', color: 'var(--color-alert, #C45B4A)', padding: '1px 6px', borderRadius: 100, fontWeight: 600 }}>
+                                            INACTIVE
+                                        </span>
+                                    )}
+                                </div>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+                                    {linked.email || linked.user_id}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--color-ok, #4A7C59)', fontWeight: 500 }}>
+                                    Portal access active — can log in at /owner
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', alignItems: 'flex-end', flexShrink: 0 }}>
+                                <a
+                                    href={`/admin/staff/${linked.user_id}`}
+                                    style={{
+                                        fontSize: 11, padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--color-border)', color: 'var(--color-text-dim)',
+                                        background: 'var(--color-surface-2)', textDecoration: 'none',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    Open in Staff →
+                                </a>
+                                <button
+                                    onClick={() => setShowUnlinkConfirm(true)}
+                                    disabled={unlinking}
+                                    style={{
+                                        fontSize: 11, padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid rgba(196,91,74,0.4)', color: 'rgba(196,91,74,0.8)',
+                                        background: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {unlinking ? 'Unlinking…' : 'Unlink Account'}
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Error / warning display */}
+                {linkError && (
+                    <div style={{
+                        fontSize: 11, padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                        background: linkError.startsWith('ℹ️') ? 'rgba(74,124,89,0.07)' : 'rgba(196,91,74,0.07)',
+                        border: `1px solid ${linkError.startsWith('ℹ️') ? 'rgba(74,124,89,0.25)' : 'rgba(196,91,74,0.25)'}`,
+                        color: linkError.startsWith('ℹ️') ? 'var(--color-ok, #4A7C59)' : 'rgba(196,91,74,0.9)',
+                        lineHeight: 1.5,
+                    }}>
+                        {linkError}
+                    </div>
+                )}
+            </div>
+
+            {/* Unlink confirmation modal */}
+            {showUnlinkConfirm && (
+                <ConfirmModal
+                    danger={false}
+                    confirmLabel="Yes, Unlink"
+                    message={
+                        `You are about to unlink the owner "${owner.name}" from the account "${linked?.display_name || linked?.email}".` +
+                        `\n\nImportant: this does NOT automatically remove the user's owner portal property access. ` +
+                        `Portal access (owner_portal_access records) must be managed separately.` +
+                        `\n\nAre you sure?`
+                    }
+                    onConfirm={handleUnlink}
+                    onCancel={() => setShowUnlinkConfirm(false)}
+                />
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Owner Row (with inline editing, delete confirm, property management)
+// Phase 1021-D: added linked_account indicator in row header + LinkedAccountSection in expanded area
 // ---------------------------------------------------------------------------
 
 function OwnerRow({ owner, onDelete, onUpdate, properties }: {
@@ -348,6 +629,8 @@ function OwnerRow({ owner, onDelete, onUpdate, properties }: {
         background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 'var(--text-sm)', width: '100%',
     };
 
+    const isLinked = !!owner.linked_account;
+
     return (
         <>
             {showDeleteConfirm && (
@@ -366,7 +649,27 @@ function OwnerRow({ owner, onDelete, onUpdate, properties }: {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flex: 1, cursor: 'pointer' }}
                          onClick={() => setExpanded(v => !v)}>
-                        <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>{owner.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>{owner.name}</span>
+                            {/* Phase 1021-D: linked/unlinked badge in row */}
+                            {isLinked ? (
+                                <span style={{
+                                    fontSize: 10, padding: '2px 7px', borderRadius: 100,
+                                    background: 'rgba(74,124,89,0.1)', border: '1px solid rgba(74,124,89,0.3)',
+                                    color: 'var(--color-ok, #4A7C59)', fontWeight: 600,
+                                }}>
+                                    ✓ Portal access linked
+                                </span>
+                            ) : (
+                                <span style={{
+                                    fontSize: 10, padding: '2px 7px', borderRadius: 100,
+                                    background: 'rgba(181,110,69,0.08)', border: '1px solid rgba(181,110,69,0.25)',
+                                    color: 'rgba(181,110,69,0.9)', fontWeight: 600,
+                                }}>
+                                    Contact only
+                                </span>
+                            )}
+                        </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                             {owner.email && <span>✉ {owner.email}</span>}
                             {owner.phone && <span>📞 {owner.phone}</span>}
@@ -389,13 +692,16 @@ function OwnerRow({ owner, onDelete, onUpdate, properties }: {
 
                 {editError && (
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)', background: 'rgba(239,68,68,0.08)',
-                        padding: '6px 10px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        padding: '6px 10px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239,68,68,0.2)',
+                        whiteSpace: 'pre-wrap' }}>
                         {editError}
                     </div>
                 )}
 
                 {expanded && (
-                    <div style={{ paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                    <div style={{ paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+
+                        {/* Edit fields */}
                         {editing && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                                 <div>
@@ -430,6 +736,7 @@ function OwnerRow({ owner, onDelete, onUpdate, properties }: {
                             </div>
                         )}
 
+                        {/* Assigned Properties */}
                         <div>
                             <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)',
                                 textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Assigned Properties</div>
@@ -471,6 +778,12 @@ function OwnerRow({ owner, onDelete, onUpdate, properties }: {
                             )}
                         </div>
 
+                        {/* Phase 1021-D: Linked Account & Portal Access (editable canonical home) */}
+                        <LinkedAccountSection
+                            owner={owner}
+                            onUpdated={onUpdate}
+                        />
+
                         {!editing && owner.notes && (
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontStyle: 'italic' }}>{owner.notes}</div>
                         )}
@@ -503,7 +816,7 @@ export default function OwnersPage() {
             if (ownersRes.status === 'fulfilled') {
                 setOwners(ownersRes.value?.owners ?? []);
             } else {
-                setLoadError('Failed to load owners. Is the DB migration applied?');
+                setLoadError('Failed to load owners.');
             }
             if (propsRes.status === 'fulfilled') {
                 const raw = propsRes.value?.properties ?? propsRes.value ?? [];
@@ -544,7 +857,6 @@ export default function OwnersPage() {
                 >+ Add Owner</button>
             </div>
 
-            {/* Migration notice if empty */}
             {loadError && (
                 <div style={{
                     background: 'var(--color-surface)', border: '1px solid var(--color-warn)',
@@ -552,13 +864,9 @@ export default function OwnersPage() {
                     fontSize: 'var(--text-sm)', color: 'var(--color-warn)',
                 }}>
                     ⚠ {loadError}
-                    <div style={{ marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                        Apply the DB migration at <code>migrations/phase_844_v3.sql</code> via Supabase Dashboard → SQL Editor.
-                    </div>
                 </div>
             )}
 
-            {/* List */}
             {loading ? (
                 <div style={{ color: 'var(--color-text-dim)', padding: 'var(--space-8) 0' }}>Loading…</div>
             ) : owners.length === 0 && !loadError ? (
@@ -589,20 +897,19 @@ export default function OwnersPage() {
                 </div>
             )}
 
-            {/* Add Owner modal */}
             {showAdd && (
                 <AddOwnerModal
                     properties={properties}
                     onClose={() => setShowAdd(false)}
                     onCreated={owner => {
                         setOwners(prev => [owner, ...prev]);
+                        setShowAdd(false);
                     }}
                 />
             )}
 
-            {/* Footer */}
             <div style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-5)', borderTop: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                Domaniqo · Owners Admin · Phase 844 v3
+                Domaniqo · Owners Admin · Phase 844 v3 / 1021-D
             </div>
         </div>
     );
