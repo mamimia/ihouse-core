@@ -356,6 +356,9 @@ async def list_bookings(
                 "version":         r.get("version"),
                 "created_at":      r.get("created_at"),
                 "updated_at":      r.get("updated_at_ms"),
+                # Operational state fields — required for frontend operational status derivation
+                "checked_in_at":   r.get("checked_in_at"),
+                "checked_out_at":  r.get("checked_out_at"),
             }
             for r in rows
         ]

@@ -200,26 +200,33 @@ export default function BookingDetailPage() {
 
             {/* Early Check-out Panel
                  ─────────────────────────────────────────────────────────────
-                 Gating rule (ALL must be true to render the panel):
-                   1. booking record loaded
-                   2. booking.status is 'checked_in' or 'active'
-                      (strict — no stale list status bypass)
-                   3. Booking check_out date has not yet passed
-                      OR early_checkout_status is already in-flight (requested/approved)
-                      (so a late-started request is still visible read-only)
+                 Canonical gating rule — ALL conditions must be true:
+                   1. Booking record is loaded
+                   2. status is 'checked_in', 'active', or 'confirmed'
+                      ('active' = OTA iCal live reservation; 'confirmed' = manual booking)
+                   3. EITHER:
+                      a. check_out date is today or in the future  (stay is live or imminent)
+                      b. early_checkout_status is already 'requested' or 'approved'
+                         (allow read-only view if EC was recorded before checkout date passed)
 
-                 Booking status is taken from the freshest available source.
-                 The EarlyCheckoutPanel component reads booking_status from
-                 the EC state API response which is always authoritative.
+                 Stale bookings (check_out in the past, no EC in-flight) must NOT show
+                 this panel. They are not eligible for Early Check-out.
+
+                 Status is read from the freshly fetched single booking record — not
+                 from any list cache — so it is always authoritative.
                  ──────────────────────────────────────────────────────────── */}
             {booking && (() => {
                 const rawStatus = (booking.status || '').toLowerCase();
-                const isActiveStatus = ['checked_in', 'active'].includes(rawStatus);
+                const isActiveStatus = ['checked_in', 'active', 'confirmed'].includes(rawStatus);
                 const checkoutDate = booking.check_out ? new Date(booking.check_out + 'T23:59:59') : null;
                 const checkoutInFuture = checkoutDate ? checkoutDate > new Date() : false;
-                // Render if: status is active OR check_out is still in the future
-                // This prevents the panel from appearing on fully historical bookings.
-                const shouldShow = isActiveStatus && (checkoutInFuture || true /* EC panel handles its own read-only state */);
+                // ec_status is available if the EarlyCheckoutPanel already loaded; use the raw
+                // booking field as a pre-check so we don't render unnecessarily.
+                const rawEcStatus = (booking.early_checkout_status || '').toLowerCase();
+                const ecAlreadyInFlight = ['requested', 'approved'].includes(rawEcStatus);
+
+                // Gating: stay must be live OR EC already in-flight (read-only context)
+                const shouldShow = isActiveStatus && (checkoutInFuture || ecAlreadyInFlight);
                 if (!shouldShow) return null;
                 return (
                     <div style={{ marginTop: 'var(--space-8)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>

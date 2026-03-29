@@ -44,6 +44,8 @@ interface Booking {
     version: number | null;
     created_at: string | null;
     updated_at: string | null;
+    checked_in_at?: string | null;
+    checked_out_at?: string | null;
 }
 
 interface PropertyOption {
@@ -56,27 +58,90 @@ interface PropertyOption {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function statusChip(status: string | null) {
-    const s = status ?? 'unknown';
-    const cfg: Record<string, { bg: string; color: string; label: string }> = {
-        active: { bg: 'rgba(16,185,129,0.12)', color: 'var(--color-ok)', label: 'Active' },
-        confirmed: { bg: 'rgba(16,185,129,0.12)', color: 'var(--color-ok)', label: 'Confirmed' },
-        canceled: { bg: 'rgba(239,68,68,0.12)', color: 'var(--color-danger)', label: 'Canceled' },
-    };
-    const c = cfg[s] ?? { bg: 'rgba(100,100,100,0.12)', color: 'var(--color-muted)', label: s };
+// ---------------------------------------------------------------------------
+// Operational status derivation
+// ---------------------------------------------------------------------------
+//
+// The DB `status` column is the SOURCE-LAYER status (active/confirmed/checked_in
+// checked_out/canceled). This is NOT the operational status.
+//
+// We derive a normalized OPERATIONAL status from:
+//   db_status + check_in date + check_out date + checked_in_at + checked_out_at
+//
+// This is display-only. The DB is never mutated by this function.
+
+type OpStatus =
+    | 'in_stay'
+    | 'checkout_today'
+    | 'overdue_checkout'
+    | 'checking_in_today'
+    | 'upcoming'
+    | 'completed'
+    | 'cancelled'
+    | 'unknown';
+
+function deriveOperationalStatus(b: Booking): OpStatus {
+    const raw = (b.status ?? '').toLowerCase();
+    if (raw === 'canceled' || raw === 'cancelled') return 'cancelled';
+    if (raw === 'checked_out' || b.checked_out_at) return 'completed';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    const checkIn  = b.check_in  ?? null;
+    const checkOut = b.check_out ?? null;
+
+    // checked_in = worker performed check-in, guest is in-stay
+    if (raw === 'checked_in') {
+        if (checkOut === todayStr) return 'checkout_today';
+        return 'in_stay';
+    }
+
+    // active (OTA iCal) or confirmed (manual) — reservation layer, not serviced yet
+    if (raw === 'active' || raw === 'confirmed') {
+        if (!checkOut) return 'upcoming';
+        if (checkOut < todayStr) return 'overdue_checkout'; // past checkout, no service
+        if (checkOut === todayStr) return 'checkout_today';  // due today
+        if (checkIn === todayStr) return 'checking_in_today';
+        return 'upcoming';
+    }
+
+    return 'unknown';
+}
+
+const OP_STATUS_CONFIG: Record<OpStatus, { label: string; bg: string; color: string; border?: string }> = {
+    in_stay:          { label: '🟢 In Stay',        bg: 'rgba(16,185,129,0.12)',  color: 'var(--color-ok)' },
+    checkout_today:   { label: '⏰ Checkout Today',  bg: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)' },
+    overdue_checkout: { label: '⚠ Overdue',          bg: 'rgba(245,158,11,0.14)', color: '#b45309', border: '1px solid rgba(245,158,11,0.4)' },
+    checking_in_today:{ label: '📥 Arriving Today',  bg: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)' },
+    upcoming:         { label: 'Upcoming',            bg: 'rgba(100,100,100,0.08)', color: 'var(--color-text-dim)' },
+    completed:        { label: 'Checked Out',         bg: 'rgba(100,100,100,0.08)', color: 'var(--color-muted)' },
+    cancelled:        { label: 'Cancelled',           bg: 'rgba(239,68,68,0.10)', color: 'var(--color-danger)' },
+    unknown:          { label: 'Unknown',             bg: 'rgba(100,100,100,0.08)', color: 'var(--color-muted)' },
+};
+
+const OP_STATUS_PRIORITY: Record<OpStatus, number> = {
+    in_stay: 1, checkout_today: 2, overdue_checkout: 3,
+    checking_in_today: 4, upcoming: 5, completed: 6, cancelled: 7, unknown: 8,
+};
+
+function operationalChip(b: Booking) {
+    const op = deriveOperationalStatus(b);
+    const c = OP_STATUS_CONFIG[op];
     return (
         <span style={{
-            fontSize: 'var(--text-xs)',
-            fontWeight: 600,
-            background: c.bg,
-            color: c.color,
+            fontSize: 'var(--text-xs)', fontWeight: 600,
+            background: c.bg, color: c.color,
             borderRadius: 'var(--radius-full)',
             padding: '2px 8px',
+            border: c.border,
         }}>
             {c.label}
         </span>
     );
 }
+
 
 function sourceChip(source: string | null) {
     if (!source) return <span style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)' }}>—</span>;
@@ -695,7 +760,7 @@ function BookingRow({ b, onClick }: { b: Booking; onClick: () => void }) {
                 {fmtDate(b.check_out)}
             </td>
             <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                {statusChip(b.status)}
+                {operationalChip(b)}
             </td>
         </tr>
     );
@@ -761,10 +826,19 @@ export default function BookingsPage() {
                 check_in_to: filters.check_in_to || undefined,
             });
             const list = res.bookings ?? [];
+            // Operational priority sort:
+            //   1 in_stay → 2 checkout_today → 3 overdue_checkout →
+            //   4 checking_in_today → 5 upcoming → 6 completed → 7 cancelled
+            // Within the same priority bucket, sort by check_in/check_out ascending
+            // so the most imminent bookings appear first within each category.
             list.sort((a: Booking, b: Booking) => {
-                if (!a.check_in) return 1;
-                if (!b.check_in) return -1;
-                return new Date(a.check_in).getTime() - new Date(b.check_in).getTime();
+                const pa = OP_STATUS_PRIORITY[deriveOperationalStatus(a)];
+                const pb = OP_STATUS_PRIORITY[deriveOperationalStatus(b)];
+                if (pa !== pb) return pa - pb;
+                // Within same bucket: sort by check_out ascending (most urgent first)
+                const da = a.check_out ?? a.check_in ?? '';
+                const db = b.check_out ?? b.check_in ?? '';
+                return da < db ? -1 : da > db ? 1 : 0;
             });
             setBookings(list);
             setLastRefresh(new Date());
