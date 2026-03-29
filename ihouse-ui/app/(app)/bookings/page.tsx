@@ -134,46 +134,106 @@ const OP_STATUS_CONFIG: Record<OpStatus, { label: string; bg: string; color: str
 
 function StatusInfoPopover() {
     const [open, setOpen] = useState(false);
+
+    // Close on Escape key
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [open]);
+
     return (
-        <div style={{ position: 'relative', display: 'inline-block' }}>
+        <>
             <button
                 id="status-info-btn"
                 onClick={() => setOpen(o => !o)}
+                aria-expanded={open}
                 title="What do these statuses mean?"
                 style={{
-                    background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                    background: open ? 'var(--color-surface-3)' : 'var(--color-surface-2)',
+                    border: '1px solid var(--color-border)',
                     borderRadius: 'var(--radius-full)', color: 'var(--color-text-dim)',
                     fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
                     padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 4,
+                    transition: 'background var(--transition-fast)',
                 }}
             >ⓘ Status Guide</button>
+
             {open && (
-                <>
-                    <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
-                    <div style={{
-                        position: 'absolute', top: '110%', left: 0, zIndex: 100,
-                        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-lg)', minWidth: 340,
-                        boxShadow: '0 16px 48px rgba(0,0,0,0.45)', padding: 'var(--space-4)',
-                    }}>
-                        <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', marginBottom: 'var(--space-3)', color: 'var(--color-text)' }}>Booking Status Guide</div>
-                        {(Object.entries(OP_STATUS_CONFIG) as [OpStatus, typeof OP_STATUS_CONFIG[OpStatus]][]).map(([key, cfg]) => (
-                            <div key={key} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                                <span style={{
-                                    fontSize: 'var(--text-xs)', fontWeight: 600, whiteSpace: 'nowrap',
-                                    background: cfg.bg, color: cfg.color, border: cfg.border,
-                                    borderRadius: 'var(--radius-full)', padding: '2px 8px', flexShrink: 0,
-                                }}>{cfg.label}</span>
-                                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>{cfg.desc}</span>
-                            </div>
-                        ))}
-                        <div style={{ marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                            Statuses are derived in real-time from reservation dates and worker actions. Calendar blocks are shown separately.
+                /* Full-viewport backdrop — clicking it closes the modal */
+                <div
+                    onClick={() => setOpen(false)}
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 1000,
+                        background: 'rgba(0,0,0,0.45)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '16px',          /* gutters so card never touches screen edges */
+                    }}
+                >
+                    {/* Card — stopPropagation so clicking inside doesn't close */}
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Booking Status Guide"
+                        style={{
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-xl)',
+                            width: '100%', maxWidth: 480,
+                            /* scrollable if viewport is short */
+                            maxHeight: 'calc(100vh - 48px)',
+                            overflowY: 'auto',
+                            boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+                            padding: 'var(--space-5)',
+                        }}
+                    >
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+                            <span style={{ fontWeight: 700, fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
+                                Booking Status Guide
+                            </span>
+                            <button
+                                id="status-info-close"
+                                onClick={() => setOpen(false)}
+                                aria-label="Close"
+                                style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    color: 'var(--color-text-dim)', fontSize: '1.2rem', lineHeight: 1,
+                                    padding: '2px 6px', borderRadius: 'var(--radius-md)',
+                                }}
+                            >✕</button>
+                        </div>
+
+                        {/* Status entries */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                            {(Object.entries(OP_STATUS_CONFIG) as [OpStatus, typeof OP_STATUS_CONFIG[OpStatus]][]).map(([key, cfg]) => (
+                                <div key={key} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
+                                    <span style={{
+                                        fontSize: 'var(--text-xs)', fontWeight: 600, whiteSpace: 'nowrap',
+                                        background: cfg.bg, color: cfg.color, border: cfg.border,
+                                        borderRadius: 'var(--radius-full)', padding: '3px 10px',
+                                        flexShrink: 0, minWidth: 110, textAlign: 'center',
+                                    }}>{cfg.label}</span>
+                                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', lineHeight: 1.55 }}>{cfg.desc}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{
+                            marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)',
+                            borderTop: '1px solid var(--color-border)',
+                            fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', lineHeight: 1.5,
+                        }}>
+                            Statuses are derived in real-time from reservation dates and worker actions.
+                            Calendar blocks are shown separately and never receive operational status chips.
                         </div>
                     </div>
-                </>
+                </div>
             )}
-        </div>
+        </>
     );
 }
 
