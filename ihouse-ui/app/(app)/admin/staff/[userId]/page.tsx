@@ -1124,6 +1124,7 @@ export default function EditStaffPage() {
                             linkName: fullName || displayName || '',
                             linkEmail: email || '',
                             linkPhone: phoneNumber ? `${phoneCode}${phoneNumber}`.trim() : '',
+                            linkPropertyIds: assignedProperties.join(','),
                           }).toString()}`}
                           style={{
                             display: 'inline-block', padding: '7px 14px',

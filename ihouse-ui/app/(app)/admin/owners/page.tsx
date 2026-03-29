@@ -810,6 +810,7 @@ interface LinkFromStaffContext {
     name: string;
     email: string;
     phone: string;
+    propertyIds: string[];
 }
 
 function LinkFromStaffModal({
@@ -834,7 +835,7 @@ function LinkFromStaffModal({
     const [email, setEmail] = useState(ctx.email);
     const [phone, setPhone] = useState(ctx.phone);
     const [notes, setNotes] = useState('');
-    const [selectedProps, setSelectedProps] = useState<string[]>([]);
+    const [selectedProps, setSelectedProps] = useState<string[]>(ctx.propertyIds);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState('');
 
@@ -935,6 +936,16 @@ function LinkFromStaffModal({
                     <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginTop: 8, lineHeight: 1.5 }}>
                         This staff member has the Owner role. Link them to a business owner profile to enable property ownership, financial records, and portal access.
                     </div>
+                    {ctx.propertyIds.length > 0 && (
+                        <div style={{
+                            marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: 'rgba(74,124,89,0.08)', border: '1px solid rgba(74,124,89,0.25)',
+                            borderRadius: 'var(--radius-sm)', padding: '4px 10px',
+                            fontSize: 11, color: 'var(--color-ok, #4A7C59)', fontWeight: 600,
+                        }}>
+                            🏠 {ctx.propertyIds.length} propert{ctx.propertyIds.length === 1 ? 'y' : 'ies'} pre-selected from Manage Staff
+                        </div>
+                    )}
                 </div>
 
                 {/* Tabs */}
@@ -1104,6 +1115,10 @@ function OwnersPageInner() {
                 name: searchParams.get('linkName') || '',
                 email: searchParams.get('linkEmail') || '',
                 phone: searchParams.get('linkPhone') || '',
+                propertyIds: (searchParams.get('linkPropertyIds') || '')
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean),
             });
             // Clean params from URL without re-render loop
             router.replace('/admin/owners', { scroll: false });
