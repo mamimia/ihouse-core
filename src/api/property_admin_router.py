@@ -99,7 +99,7 @@ _PROPERTY_COLS = (
     "property_type, city, country, max_guests, bedrooms, beds, bathrooms, "
     "address, description, source_url, source_platform, "
     "status, approved_at, approved_by, archived_at, archived_by, "
-    "created_at"
+    "created_at, self_checkin_config"
 )
 
 
@@ -128,6 +128,8 @@ def _serialize_property(row: dict) -> dict:
         "archived_at": row.get("archived_at"),
         "archived_by": row.get("archived_by"),
         "created_at": row.get("created_at"),
+        # Phase 1019: Self check-in mode — needed for badge in Properties list
+        "self_checkin_config": row.get("self_checkin_config"),
     }
 
 

@@ -103,6 +103,25 @@ function StatusBadge({ status }: { status?: string }) {
     );
 }
 
+// Phase 1019 — Self Check-in mode badge (shared with list page)
+const CHECKIN_MODE_BADGE_CFG: Record<string, { label: string; bg: string; text: string; border: string }> = {
+    default:   { label: '🔓 Self Check-in', bg: '#6366f115', text: '#6366f1', border: '#6366f133' },
+    late_only: { label: '🌙 Late Only',      bg: '#f59e0b15', text: '#d97706', border: '#f59e0b33' },
+    disabled:  { label: '👤 Staffed',         bg: '#6b728015', text: '#6b7280', border: '#6b728033' },
+};
+function CheckinModeBadge({ mode }: { mode?: string | null }) {
+    const cfg = CHECKIN_MODE_BADGE_CFG[mode || 'disabled'] || CHECKIN_MODE_BADGE_CFG.disabled;
+    return (
+        <span style={{
+            display: 'inline-block', padding: '2px 8px', borderRadius: 10,
+            background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}`,
+            fontSize: 10, fontWeight: 700, letterSpacing: '0.03em', whiteSpace: 'nowrap',
+        }}>
+            {cfg.label}
+        </span>
+    );
+}
+
 // Editable field component for House Info
 function EditableField({ label, value, fieldKey, onSave }: {
     label: string; value: string; fieldKey: string;
@@ -496,6 +515,8 @@ export default function PropertyDetailPage() {
                             {p.display_name || propertyId}
                         </h1>
                         <StatusBadge status={p.status} />
+                        {/* Phase 1019: Self Check-in mode badge in header */}
+                        <CheckinModeBadge mode={p.self_checkin_config?.mode} />
                     </div>
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
                         {propertyId}
@@ -1764,6 +1785,8 @@ export default function PropertyDetailPage() {
 // Phase 1018 — Self Check-in Property Configuration Panel
 // ---------------------------------------------------------------------------
 
+
+
 const MODE_OPTIONS = [
     {
         key: 'disabled',
@@ -1806,9 +1829,21 @@ function SelfCheckinConfigPanel({
 }) {
     const cfg = property?.self_checkin_config || {};
 
+    // Phase 1019: Deposit and electricity are inherited from Settlement Rules — not re-decided here.
+    // crDepositEnabled / crElecEnabled come from the charge-rules API (loaded by the parent page into state).
+    // We read them off the property's charge_rules field if present, or fall back to false.
+    const inheritedDeposit = !!(property?.charge_rules?.deposit_enabled);
+    const inheritedElec    = !!(property?.charge_rules?.electricity_enabled);
+
     const [mode, setMode] = useState<string>(cfg.mode || 'disabled');
-    const [preSteps, setPreSteps] = useState<string[]>(cfg.pre_access_steps || ['agreement']);
-    const [postSteps, setPostSteps] = useState<string[]>(cfg.post_entry_steps || ['electricity_meter', 'arrival_photos']);
+    // Pre-access steps: never include 'deposit' as a manual checkbox
+    const [preSteps, setPreSteps] = useState<string[]>(
+        (cfg.pre_access_steps || ['agreement']).filter((s: string) => s !== 'deposit')
+    );
+    // Post-entry steps: never include 'electricity_meter' as a manual checkbox
+    const [postSteps, setPostSteps] = useState<string[]>(
+        (cfg.post_entry_steps || ['arrival_photos']).filter((s: string) => s !== 'electricity_meter')
+    );
     const [tokenTtl, setTokenTtl] = useState<string>(String(cfg.token_ttl_hours ?? 72));
     // Arrival guide
     const [entryInstructions, setEntryInstructions] = useState<string>(cfg.arrival_guide?.entry_instructions || '');
@@ -1832,8 +1867,10 @@ function SelfCheckinConfigPanel({
             const tok = getToken();
             const payload = {
                 mode,
-                pre_access_steps: preSteps,
-                post_entry_steps: postSteps,
+                // Pre-access: free steps + deposit appended if inherited from Rules
+                pre_access_steps: inheritedDeposit ? [...preSteps, 'deposit'] : preSteps,
+                // Post-entry: free steps + electricity_meter appended if inherited from Rules
+                post_entry_steps: inheritedElec ? [...postSteps, 'electricity_meter'] : postSteps,
                 token_ttl_hours: parseInt(tokenTtl) || 72,
                 arrival_guide: {
                     entry_instructions: entryInstructions.trim() || null,
@@ -1937,6 +1974,20 @@ function SelfCheckinConfigPanel({
                                     {opt.label}
                                 </label>
                             ))}
+                            {/* Phase 1019: Deposit — inherited from Settlement Rules, not a free checkbox */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: inheritedDeposit ? 1 : 0.4 }}>
+                                <input type="checkbox" checked={inheritedDeposit} readOnly
+                                    style={{ width: 16, height: 16, accentColor: 'var(--color-primary)', cursor: 'default' }} />
+                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>💳 Deposit Acknowledgement</span>
+                                <span style={{
+                                    fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
+                                    background: inheritedDeposit ? '#6366f115' : '#6b728015',
+                                    color: inheritedDeposit ? '#6366f1' : '#6b7280',
+                                    border: `1px solid ${inheritedDeposit ? '#6366f133' : '#6b728033'}`,
+                                }}>
+                                    {inheritedDeposit ? 'Inherited from Rules — ON' : 'Inherited from Rules — OFF'}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -1948,6 +1999,20 @@ function SelfCheckinConfigPanel({
                             Non-blocking. Guest completes these after arriving. Incomplete items create a follow-up task after 2h.
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {/* Phase 1019: Electricity Meter — inherited from Settlement Rules, not a free checkbox */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: inheritedElec ? 1 : 0.4 }}>
+                                <input type="checkbox" checked={inheritedElec} readOnly
+                                    style={{ width: 16, height: 16, accentColor: '#f59e0b', cursor: 'default' }} />
+                                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>⚡ Electricity Meter Reading</span>
+                                <span style={{
+                                    fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
+                                    background: inheritedElec ? '#f59e0b15' : '#6b728015',
+                                    color: inheritedElec ? '#d97706' : '#6b7280',
+                                    border: `1px solid ${inheritedElec ? '#f59e0b33' : '#6b728033'}`,
+                                }}>
+                                    {inheritedElec ? 'Inherited from Rules — ON' : 'Inherited from Rules — OFF'}
+                                </span>
+                            </div>
                             {POST_ENTRY_STEP_OPTIONS.map(opt => (
                                 <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
                                     <input

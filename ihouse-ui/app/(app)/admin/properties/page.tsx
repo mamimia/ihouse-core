@@ -30,6 +30,8 @@ interface Property {
     archived_at: string | null;
     archived_by: string | null;
     created_at: string;
+    // Phase 1019: Self Check-in mode
+    self_checkin_config?: { mode?: string } | null;
 }
 
 interface StatusSummary {
@@ -152,6 +154,30 @@ function ActionBtn({ label, icon, color, onClick, disabled }: {
     );
 }
 
+// ---------------------------------------------------------------------------
+// Phase 1019 — Self Check-in mode badge
+// ---------------------------------------------------------------------------
+
+const CHECKIN_MODE_BADGE: Record<string, { label: string; bg: string; text: string; border: string }> = {
+    default:  { label: '🔓 Self Check-in', bg: '#6366f115', text: '#6366f1', border: '#6366f133' },
+    late_only:{ label: '🌙 Late Only',      bg: '#f59e0b15', text: '#d97706', border: '#f59e0b33' },
+    disabled: { label: '👤 Staffed',         bg: '#6b728015', text: '#6b7280', border: '#6b728033' },
+};
+
+function CheckinModeBadge({ mode }: { mode?: string | null }) {
+    const m = mode || 'disabled';
+    const cfg = CHECKIN_MODE_BADGE[m] || CHECKIN_MODE_BADGE.disabled;
+    return (
+        <span style={{
+            display: 'inline-block', padding: '2px 8px', borderRadius: 10,
+            background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}`,
+            fontSize: 10, fontWeight: 700, letterSpacing: '0.03em', whiteSpace: 'nowrap',
+        }}>
+            {cfg.label}
+        </span>
+    );
+}
+
 /* ------------------------------------------------------------------ */
 /* Property row                                                        */
 /* ------------------------------------------------------------------ */
@@ -186,19 +212,21 @@ function PropertyRow({ p, onAction }: {
         }}>
             {/* Name + meta */}
             <div>
-                <a
-                    href={`/admin/properties/${p.property_id}`}
-                    style={{
-                        fontWeight: 600,
-                        fontSize: 'var(--text-sm)',
-                        color: 'var(--color-primary)',
-                        marginBottom: 2,
-                        textDecoration: 'none',
-                        display: 'block',
-                    }}
-                >
-                    {p.display_name || p.property_id}
-                </a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                    <a
+                        href={`/admin/properties/${p.property_id}`}
+                        style={{
+                            fontWeight: 600,
+                            fontSize: 'var(--text-sm)',
+                            color: 'var(--color-primary)',
+                            textDecoration: 'none',
+                        }}
+                    >
+                        {p.display_name || p.property_id}
+                    </a>
+                    {/* Phase 1019: Self Check-in mode badge */}
+                    <CheckinModeBadge mode={p.self_checkin_config?.mode} />
+                </div>
                 <div style={{
                     fontSize: 'var(--text-xs)',
                     color: 'var(--color-text-dim)',
