@@ -1325,4 +1325,35 @@ Object.assign(api, {
             method: 'POST',
             body: JSON.stringify(data),
         }),
+
+    // Phase 999 — Early Check-out Approval API
+    getEarlyCheckoutState: (bookingId: string): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/early-checkout`),
+
+    recordEarlyCheckoutRequest: (bookingId: string, body: {
+        request_source: string;
+        request_note?: string;
+        proposed_date?: string;
+        proposed_time?: string;
+    }): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/early-checkout/request`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
+
+    approveEarlyCheckout: (bookingId: string, body: {
+        early_checkout_date: string;
+        early_checkout_time?: string;
+        reason?: string;
+        approval_note?: string;
+    }): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/early-checkout/approve`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
+
+    revokeEarlyCheckout: (bookingId: string): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/early-checkout/approve`, {
+            method: 'DELETE',
+        }),
 });

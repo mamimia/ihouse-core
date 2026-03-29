@@ -10,6 +10,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { EarlyCheckoutPanel } from '@/components/EarlyCheckoutPanel';
 
 function fmtDate(d: string | null): string {
     if (!d) return '—';
@@ -194,6 +196,22 @@ export default function BookingDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Early Check-out Panel — only for checked-in bookings */}
+            {booking && ['checked_in', 'active'].includes((booking.status || '').toLowerCase()) && (
+                <div style={{ marginTop: 'var(--space-8)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+                        <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', margin: 0 }}>Early Check-out</h2>
+                        <Link
+                            href={`/admin/bookings/${bookingId}/early-checkout`}
+                            style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 500 }}
+                        >
+                            Manage →
+                        </Link>
+                    </div>
+                    <EarlyCheckoutPanel bookingId={bookingId} embedded={true} />
+                </div>
+            )}
         </div>
     );
 }
