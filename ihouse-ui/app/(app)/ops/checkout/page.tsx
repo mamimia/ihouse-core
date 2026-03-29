@@ -21,6 +21,11 @@ import OcrCaptureFlow, { type MeterFields } from '@/components/OcrCaptureFlow';
 
 // Phase 865: apiFetch imported from lib/staffApi.ts
 
+// Operational timezone — iHouse properties operate in Thailand (ICT = UTC+7).
+// All TIMESTAMPTZ values in the DB are UTC. Early checkout effective times and
+// event timestamps must be displayed in ICT so workers see correct local times.
+const OPS_TZ = 'Asia/Bangkok';
+
 type Booking = {
     booking_id?: string; booking_ref?: string; id?: string;
     property_id: string; guest_name?: string; check_in?: string; check_out?: string;
@@ -850,8 +855,9 @@ export default function MobileCheckoutPage() {
                             <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.5 }}>
                                 {selectedTask.early_checkout_effective_at ? (
                                     <>Effective checkout:{' '}
-                                        <strong>{new Date(selectedTask.early_checkout_effective_at).toLocaleString('en-US', {
+                                    <strong>{new Date(selectedTask.early_checkout_effective_at).toLocaleString('en-US', {
                                             weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                                            timeZone: OPS_TZ,
                                         })}</strong>
                                     </>
                                 ) : selectedTask.early_checkout_date ? (

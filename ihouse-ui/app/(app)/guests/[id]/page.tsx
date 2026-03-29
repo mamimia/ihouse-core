@@ -26,12 +26,18 @@ import {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+// Operational timezone — iHouse operates in Thailand (ICT = UTC+7).
+// All datetime values stored in the DB are UTC (TIMESTAMPTZ).
+// Effective checkout times and event timestamps are always displayed in ICT
+// so operational staff see the correct local time without manual conversion.
+// ---------------------------------------------------------------------------
+const OPS_TZ = 'Asia/Bangkok';
 
 type TabId = 'identity' | 'contact' | 'stay' | 'history' | 'activity';
 
 function fmtDate(s: string | null | undefined, withTime = false) {
     if (!s) return '—';
-    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric', timeZone: OPS_TZ };
     if (withTime) { opts.hour = '2-digit'; opts.minute = '2-digit'; }
     return new Date(s).toLocaleString('en-US', opts);
 }
@@ -609,7 +615,9 @@ function EarlyCheckoutBlock({ stay }: { stay: DossierStay }) {
 
     function fmtDt(d: string | null | undefined): string {
         if (!d) return '—';
-        try { return new Date(d).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        // Display in operational timezone (ICT = UTC+7) so staff see correct local time.
+        // DB stores TIMESTAMPTZ in UTC; e.g. '2026-04-05 11:00:00+00' → '6:00 PM ICT'.
+        try { return new Date(d).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: OPS_TZ }); }
         catch { return d; }
     }
     function fmtD(d: string | null | undefined): string {

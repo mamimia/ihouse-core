@@ -77,12 +77,17 @@ function fmtDate(d: string | null | undefined): string {
   } catch { return d; }
 }
 
+// Operational timezone — iHouse properties operate in Thailand (ICT = UTC+7).
+// Store UTC in DB; display in local ICT for operational staff.
+const OPS_TZ = 'Asia/Bangkok';
+
 function fmtDateTime(d: string | null | undefined): string {
   if (!d) return '—';
   try {
     return new Date(d).toLocaleString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric',
       hour: '2-digit', minute: '2-digit',
+      timeZone: OPS_TZ,
     });
   } catch { return d || '—'; }
 }
