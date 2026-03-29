@@ -1,5 +1,6 @@
 """
 Task System Model — Phase 111
+Phase 1022 — Operational Manager Takeover: MANAGER_EXECUTING state added.
 
 Defines the core data model for the iHouse Core task system.
 
@@ -11,14 +12,23 @@ Architecture constraints:
 - Task creation is driven by booking lifecycle events (Phase 112).
   This module only defines the model; it never reads from booking_state.
 
-Task lifecycle:
+Task lifecycle (Phase 111 baseline):
     PENDING → ACKNOWLEDGED → IN_PROGRESS → COMPLETED
     PENDING → CANCELED
     ACKNOWLEDGED → CANCELED
     IN_PROGRESS → COMPLETED | CANCELED
 
+Phase 1022 — Operational Manager Takeover extension:
+    PENDING | ACKNOWLEDGED | IN_PROGRESS → MANAGER_EXECUTING
+        (manager or admin takes over task from original worker)
+    MANAGER_EXECUTING → COMPLETED | CANCELED
+        (manager completes or cancels the task)
+    MANAGER_EXECUTING → PENDING
+        (manager reassigns task to a new worker; same task, new assignee,
+         full history preserved in task_actions)
+
 From worker-communication-layer.md (locked):
-  - Every task has an ackowledgement SLA (ack_sla_minutes).
+  - Every task has an acknowledgement SLA (ack_sla_minutes).
   - CRITICAL tasks have a fixed 5-minute ACK SLA (per escalation engine spec).
   - task_id is deterministic: sha256(kind:booking_id:property_id)[:16]
   - Each task has a single assigned worker_role.
@@ -95,11 +105,16 @@ class TaskStatus(str, Enum):
     """
     Lifecycle state of a task.
 
-    Valid transitions (enforced at Phase 113 write endpoint):
+    Valid transitions (baseline — Phase 113):
         PENDING → ACKNOWLEDGED → IN_PROGRESS → COMPLETED
         PENDING → CANCELED
         ACKNOWLEDGED → CANCELED
         IN_PROGRESS → COMPLETED | CANCELED
+
+    Phase 1022 — Manager Takeover extension:
+        PENDING | ACKNOWLEDGED | IN_PROGRESS → MANAGER_EXECUTING
+        MANAGER_EXECUTING → COMPLETED | CANCELED | PENDING
+            (PENDING path = manager reassigns to new worker, same task continues)
     """
 
     PENDING = "PENDING"
@@ -116,6 +131,14 @@ class TaskStatus(str, Enum):
 
     CANCELED = "CANCELED"
     """Task was canceled (e.g., booking canceled). Terminal state."""
+
+    MANAGER_EXECUTING = "MANAGER_EXECUTING"
+    """
+    Phase 1022 — Task taken over by an Operational Manager or Admin.
+    The manager/admin is now the active executor.
+    Original worker's assignment is superseded (preserved in task_actions history).
+    Exits to COMPLETED, CANCELED, or PENDING (reassign to new worker).
+    """
 
 
 class TaskPriority(str, Enum):
@@ -211,10 +234,29 @@ KIND_DEFAULT_PRIORITY: dict[TaskKind, TaskPriority] = {
 }
 
 #: Valid status transitions. Key = current state, value = allowed next states.
+#: Phase 1022 additions: any open state → MANAGER_EXECUTING; MANAGER_EXECUTING → COMPLETED|CANCELED|PENDING
 VALID_TASK_TRANSITIONS: dict[TaskStatus, frozenset[TaskStatus]] = {
-    TaskStatus.PENDING: frozenset({TaskStatus.ACKNOWLEDGED, TaskStatus.CANCELED}),
-    TaskStatus.ACKNOWLEDGED: frozenset({TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskStatus.CANCELED}),
-    TaskStatus.IN_PROGRESS: frozenset({TaskStatus.COMPLETED, TaskStatus.CANCELED}),
+    TaskStatus.PENDING: frozenset({
+        TaskStatus.ACKNOWLEDGED,
+        TaskStatus.CANCELED,
+        TaskStatus.MANAGER_EXECUTING,  # Phase 1022: manager takes over unacknowledged task
+    }),
+    TaskStatus.ACKNOWLEDGED: frozenset({
+        TaskStatus.IN_PROGRESS,
+        TaskStatus.COMPLETED,
+        TaskStatus.CANCELED,
+        TaskStatus.MANAGER_EXECUTING,  # Phase 1022: manager takes over acknowledged task
+    }),
+    TaskStatus.IN_PROGRESS: frozenset({
+        TaskStatus.COMPLETED,
+        TaskStatus.CANCELED,
+        TaskStatus.MANAGER_EXECUTING,  # Phase 1022: manager takes over in-progress task
+    }),
+    TaskStatus.MANAGER_EXECUTING: frozenset({
+        TaskStatus.COMPLETED,          # Manager completes the task
+        TaskStatus.CANCELED,           # Manager cancels the task
+        TaskStatus.PENDING,            # Manager reassigns to new worker (same task, new assignee)
+    }),
     TaskStatus.COMPLETED: frozenset(),     # terminal
     TaskStatus.CANCELED: frozenset(),      # terminal
 }
@@ -290,6 +332,11 @@ class Task:
     assigned_to: Optional[str] = None
     notes: List[str] = field(default_factory=list)
     canceled_reason: Optional[str] = None
+    # Phase 1022 — Manager Takeover fields
+    original_worker_id: Optional[str] = None    # snapshot of assigned_to at moment of takeover
+    taken_over_by: Optional[str] = None          # manager/admin who performed takeover
+    taken_over_at: Optional[str] = None          # ISO 8601 UTC timestamp of takeover
+    taken_over_reason: Optional[str] = None      # canonical reason string
 
     @classmethod
     def build(

@@ -14,7 +14,8 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { api, AuditEvent, MorningBriefingResponse, CopilotActionItem } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { api, AuditEvent, MorningBriefingResponse, CopilotActionItem, apiFetch } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -49,9 +50,12 @@ function fmtFull(iso: string): string {
 // ---------------------------------------------------------------------------
 
 const ACTION_STYLES: Record<string, { bg: string; color: string; icon: string }> = {
-    TASK_ACKNOWLEDGED: { bg: 'rgba(59,130,246,0.12)', color: '#60a5fa', icon: '👁' },
-    TASK_COMPLETED: { bg: 'rgba(16,185,129,0.12)', color: '#34d399', icon: '✓' },
-    BOOKING_FLAGS_UPDATED: { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', icon: '⚑' },
+    TASK_ACKNOWLEDGED:          { bg: 'rgba(59,130,246,0.12)',  color: '#60a5fa', icon: '👁' },
+    TASK_COMPLETED:             { bg: 'rgba(16,185,129,0.12)',  color: '#34d399', icon: '✓' },
+    BOOKING_FLAGS_UPDATED:      { bg: 'rgba(245,158,11,0.12)',  color: '#fbbf24', icon: '⚑' },
+    MANAGER_TAKEOVER_INITIATED: { bg: 'rgba(239,68,68,0.12)',   color: '#f87171', icon: '⚡' },
+    MANAGER_TASK_COMPLETED:     { bg: 'rgba(16,185,129,0.12)',  color: '#34d399', icon: '✓' },
+    MANAGER_TASK_REASSIGNED:    { bg: 'rgba(168,85,247,0.12)', color: '#c084fc', icon: '↩' },
 };
 
 function ActionBadge({ action }: { action: string }) {
@@ -293,6 +297,440 @@ function BookingAuditLookup() {
                             {events.map(ev => <AuditRow key={ev.id} ev={ev} isNew={false} />)}
                         </div>
                     )
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1022-E: Takeover Modal
+// ---------------------------------------------------------------------------
+
+const TAKEOVER_REASONS = [
+    { value: 'worker_unavailable', label: 'Worker unavailable' },
+    { value: 'worker_sick',        label: 'Worker sick / unable to attend' },
+    { value: 'emergency',          label: 'Emergency situation' },
+    { value: 'other',              label: 'Other' },
+];
+
+interface ManagerTask {
+    id: string;
+    task_kind: string;
+    status: string;
+    priority: string;
+    property_id: string;
+    booking_id?: string;
+    assigned_to?: string;
+    original_worker_id?: string;
+    taken_over_by?: string;
+    taken_over_reason?: string;
+    taken_over_at?: string;
+    due_date: string;
+    title: string;
+    created_at: string;
+}
+
+function TakeoverModal({
+    task,
+    onClose,
+    onSuccess,
+}: {
+    task: ManagerTask;
+    onClose: () => void;
+    onSuccess: (taskId: string) => void;
+}) {
+    const router = useRouter();
+    const [reason, setReason] = useState('');
+    const [notes, setNotes]   = useState('');
+    const [busy, setBusy]     = useState(false);
+    const [err, setErr]       = useState('');
+
+    const handleTakeover = async () => {
+        if (!reason) { setErr('Please select a reason.'); return; }
+        setBusy(true); setErr('');
+        try {
+            await apiFetch(`/tasks/${task.id}/take-over`, {
+                method: 'POST',
+                body: JSON.stringify({ reason, notes: notes.trim() || undefined }),
+            });
+            onSuccess(task.id);
+            onClose();
+            // Phase 1022-F: route manager into the real worker execution flow
+            router.push('/worker');
+        } catch (e: any) {
+            setErr(e?.message || 'Takeover failed. Please try again.');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const iStyle: React.CSSProperties = {
+        width: '100%', boxSizing: 'border-box',
+        background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-sm)', color: 'var(--color-text)',
+        fontSize: 'var(--text-sm)', padding: '8px 12px',
+    };
+    const lStyle: React.CSSProperties = {
+        fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
+        fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
+        marginBottom: 4, display: 'block',
+    };
+
+    return (
+        <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={onClose}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                    background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-xl)', padding: 'var(--space-6)',
+                    width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                }}
+            >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-5)' }}>
+                    <div>
+                        <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
+                            ⚡ Take Over Task
+                        </div>
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                            borderRadius: 'var(--radius-sm)', padding: '3px 10px',
+                            fontSize: 'var(--text-xs)', color: '#f87171', fontWeight: 600,
+                        }}>
+                            {task.task_kind} · {task.property_id}
+                        </div>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-dim)' }}>✕</button>
+                </div>
+
+                {/* Task info */}
+                <div style={{
+                    background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)',
+                    fontSize: 'var(--text-sm)', marginBottom: 'var(--space-5)',
+                    display: 'flex', flexDirection: 'column', gap: 4,
+                }}>
+                    <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{task.title || task.task_kind}</div>
+                    <div style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>
+                        Status: <strong style={{ color: 'var(--color-warn)' }}>{task.status}</strong>
+                        {task.assigned_to && <span style={{ marginLeft: 12 }}>Currently: <strong>{task.assigned_to.slice(0, 12)}…</strong></span>}
+                        {task.due_date && <span style={{ marginLeft: 12 }}>Due: <strong>{task.due_date}</strong></span>}
+                    </div>
+                </div>
+
+                <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginBottom: 'var(--space-5)', lineHeight: 1.5 }}>
+                    You are taking over this task as the active executor.
+                    The original worker will be notified. You will be routed to the full task execution flow.
+                </div>
+
+                {/* Reason */}
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                    <label style={lStyle}>Reason <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                    <select
+                        value={reason}
+                        onChange={e => setReason(e.target.value)}
+                        style={iStyle}
+                    >
+                        <option value="">— Select reason —</option>
+                        {TAKEOVER_REASONS.map(r => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Notes */}
+                <div style={{ marginBottom: 'var(--space-5)' }}>
+                    <label style={lStyle}>Notes (optional)</label>
+                    <textarea
+                        value={notes}
+                        onChange={e => setNotes(e.target.value)}
+                        placeholder="Additional context about why you are taking over…"
+                        rows={3}
+                        style={{ ...iStyle, resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+                </div>
+
+                {err && (
+                    <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' }}>⚠ {err}</div>
+                )}
+
+                <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
+                    <button
+                        onClick={onClose}
+                        disabled={busy}
+                        style={{
+                            background: 'transparent', border: '1px solid var(--color-border)',
+                            color: 'var(--color-text-dim)', borderRadius: 'var(--radius-md)',
+                            padding: '8px 18px', fontSize: 'var(--text-sm)', cursor: 'pointer',
+                        }}
+                    >Cancel</button>
+                    <button
+                        id="confirm-takeover-btn"
+                        onClick={handleTakeover}
+                        disabled={busy || !reason}
+                        style={{
+                            background: busy || !reason ? 'var(--color-surface-3)' : 'linear-gradient(135deg,#ef4444,#dc2626)',
+                            color: '#fff', border: 'none',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '8px 20px', fontSize: 'var(--text-sm)', fontWeight: 700,
+                            cursor: busy || !reason ? 'not-allowed' : 'pointer',
+                            opacity: busy || !reason ? 0.6 : 1,
+                            transition: 'all 0.15s',
+                            boxShadow: '0 2px 12px rgba(239,68,68,0.35)',
+                        }}
+                    >
+                        {busy ? 'Taking over…' : '⚡ Confirm Takeover'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1022-E: Manager Task Board
+// ---------------------------------------------------------------------------
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+    PENDING:           { label: 'Pending',           color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
+    ACKNOWLEDGED:      { label: 'Acknowledged',      color: '#60a5fa', bg: 'rgba(59,130,246,0.1)' },
+    IN_PROGRESS:       { label: 'In Progress',       color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+    MANAGER_EXECUTING: { label: 'Manager Executing', color: '#f87171', bg: 'rgba(239,68,68,0.1)' },
+};
+
+const PRIORITY_DOT: Record<string, string> = {
+    CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#f59e0b', LOW: '#94a3b8',
+};
+
+function TaskRow({
+    task,
+    onTakeover,
+}: {
+    task: ManagerTask;
+    onTakeover: (t: ManagerTask) => void;
+}) {
+    const sc = STATUS_CONFIG[task.status] ?? STATUS_CONFIG['PENDING'];
+    const isTakenOver = task.status === 'MANAGER_EXECUTING';
+    const canTakeover = ['PENDING', 'ACKNOWLEDGED', 'IN_PROGRESS'].includes(task.status);
+    const dot = PRIORITY_DOT[task.priority] ?? '#94a3b8';
+
+    return (
+        <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 140px 110px 90px',
+            gap: 'var(--space-4)',
+            padding: 'var(--space-3) var(--space-4)',
+            alignItems: 'center',
+            borderBottom: '1px solid var(--color-border)',
+            background: isTakenOver ? 'rgba(239,68,68,0.03)' : 'transparent',
+            transition: 'background 0.15s',
+        }}>
+            {/* Title + property */}
+            <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {task.title || task.task_kind}
+                    </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-dim)', paddingLeft: 15 }}>
+                    {task.property_id}
+                    {task.due_date && <span style={{ marginLeft: 8, color: 'var(--color-text-faint)' }}>Due {task.due_date}</span>}
+                    {isTakenOver && task.original_worker_id && (
+                        <span style={{ marginLeft: 8, color: '#f87171' }}>↩ was: {task.original_worker_id.slice(0, 10)}…</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Kind */}
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)' }}>
+                {task.task_kind}
+            </div>
+
+            {/* Status badge */}
+            <div>
+                <span style={{
+                    display: 'inline-block',
+                    background: sc.bg, color: sc.color,
+                    fontSize: 10, fontWeight: 700,
+                    padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                    letterSpacing: '0.04em', whiteSpace: 'nowrap',
+                }}>
+                    {sc.label}
+                </span>
+            </div>
+
+            {/* Action */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                {canTakeover ? (
+                    <button
+                        id={`takeover-btn-${task.id}`}
+                        onClick={() => onTakeover(task)}
+                        title="Take over this task"
+                        style={{
+                            background: 'linear-gradient(135deg,#ef4444,#dc2626)',
+                            color: '#fff', border: 'none',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '5px 12px', fontSize: 11, fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 6px rgba(239,68,68,0.3)',
+                            transition: 'all 0.15s',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        ⚡ Take Over
+                    </button>
+                ) : isTakenOver ? (
+                    <span style={{ fontSize: 10, color: '#f87171', fontWeight: 600 }}>You're executing</span>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+function TaskBoard() {
+    const [groups, setGroups] = useState<Record<string, ManagerTask[]> | null>(null);
+    const [total, setTotal]   = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [err, setErr]       = useState('');
+    const [takeoverTask, setTakeoverTask] = useState<ManagerTask | null>(null);
+
+    const load = useCallback(async () => {
+        setLoading(true); setErr('');
+        try {
+            const res = await apiFetch<{ groups: Record<string, ManagerTask[]>; total: number }>('/manager/tasks');
+            setGroups(res.groups);
+            setTotal(res.total);
+        } catch (e: any) {
+            setErr(e?.message || 'Failed to load task board.');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { load(); }, [load]);
+
+    const handleTakeoverSuccess = () => { load(); };
+
+    const allTasks: ManagerTask[] = groups
+        ? [
+            ...(groups.manager_executing || []),
+            ...(groups.pending || []),
+            ...(groups.acknowledged || []),
+            ...(groups.in_progress || []),
+          ]
+        : [];
+
+    const managerExecutingCount = groups?.manager_executing?.length ?? 0;
+
+    return (
+        <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            overflow: 'hidden',
+            marginBottom: 'var(--space-8)',
+        }}>
+            {/* Header */}
+            <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: 'var(--space-4) var(--space-5)',
+                borderBottom: '1px solid var(--color-border)',
+                background: 'linear-gradient(135deg, rgba(239,68,68,0.05), rgba(245,158,11,0.03))',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 16 }}>⚡</span>
+                    <h2 style={{
+                        fontSize: 'var(--text-sm)', fontWeight: 600,
+                        color: 'var(--color-text-dim)', textTransform: 'uppercase',
+                        letterSpacing: '0.08em', margin: 0,
+                    }}>Task Board</h2>
+                    <span style={{
+                        fontSize: 'var(--text-xs)', fontWeight: 700,
+                        padding: '1px 8px', borderRadius: 'var(--radius-full)',
+                        background: total > 0 ? 'rgba(239,68,68,0.15)' : 'var(--color-surface-3)',
+                        color: total > 0 ? '#f87171' : 'var(--color-text-dim)',
+                    }}>{total} open</span>
+                    {managerExecutingCount > 0 && (
+                        <span style={{
+                            fontSize: 'var(--text-xs)', fontWeight: 700,
+                            padding: '1px 8px', borderRadius: 'var(--radius-full)',
+                            background: 'rgba(239,68,68,0.12)', color: '#f87171',
+                        }}>⚡ {managerExecutingCount} you're executing</span>
+                    )}
+                </div>
+                <button
+                    id="task-board-refresh"
+                    onClick={load}
+                    disabled={loading}
+                    style={{
+                        background: 'transparent', border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-dim)', borderRadius: 'var(--radius-md)',
+                        padding: '4px 12px', fontSize: 'var(--text-xs)', cursor: 'pointer',
+                        opacity: loading ? 0.5 : 1,
+                    }}
+                >↺ Refresh</button>
+            </div>
+
+            {/* Column header */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 140px 110px 90px',
+                gap: 'var(--space-4)',
+                padding: 'var(--space-2) var(--space-4)',
+                background: 'var(--color-surface-2)',
+                borderBottom: '1px solid var(--color-border)',
+            }}>
+                {['Task', 'Kind', 'Status', ''].map(h => (
+                    <span key={h} style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</span>
+                ))}
+            </div>
+
+            {/* Error */}
+            {err && (
+                <div style={{ padding: 'var(--space-4)', color: 'var(--color-danger)', fontSize: 'var(--text-sm)', background: 'rgba(239,68,68,0.06)' }}>⚠ {err}</div>
+            )}
+
+            {/* Loading */}
+            {loading && allTasks.length === 0 && (
+                Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} style={{
+                        display: 'grid', gridTemplateColumns: '1fr 140px 110px 90px',
+                        gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)',
+                        borderBottom: '1px solid var(--color-border)', alignItems: 'center',
+                    }}>
+                        {[240, 80, 90, 80].map((w, j) => (
+                            <div key={j} style={{ height: 11, width: w, background: 'var(--color-surface-3)', borderRadius: 4 }} />
+                        ))}
+                    </div>
+                ))
+            )}
+
+            {/* Empty */}
+            {!loading && allTasks.length === 0 && !err && (
+                <div style={{ padding: 'var(--space-10)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
+                    <div style={{ fontSize: '1.8rem', marginBottom: 8 }}>✓</div>
+                    <div style={{ fontWeight: 600 }}>All clear</div>
+                    <div style={{ fontSize: 'var(--text-sm)', marginTop: 4 }}>No open tasks for your properties right now.</div>
+                </div>
+            )}
+
+            {/* Task rows */}
+            {allTasks.map(t => (
+                <TaskRow key={t.id} task={t} onTakeover={setTakeoverTask} />
+            ))}
+
+            {/* Takeover modal */}
+            {takeoverTask && (
+                <TakeoverModal
+                    task={takeoverTask}
+                    onClose={() => setTakeoverTask(null)}
+                    onSuccess={handleTakeoverSuccess}
+                />
             )}
         </div>
     );
@@ -577,6 +1015,9 @@ export default function ManagerPage() {
                 <MetricChip label="Flags updated" value={flagged} color="#fbbf24" />
             </div>
 
+            {/* Phase 1022-E: Task Board */}
+            <TaskBoard />
+
             {/* Copilot Briefing (Phase 312) */}
             <MorningBriefingWidget />
 
@@ -708,7 +1149,7 @@ export default function ManagerPage() {
                 fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
                 display: 'flex', justifyContent: 'space-between',
             }}>
-                <span>Domaniqo — Manager Copilot · Phase 312</span>
+                <span>Domaniqo — Manager Copilot · Phase 1022 (Takeover Gate)</span>
                 <span>Source: audit_events table · actor_id = JWT sub</span>
             </div>
         </div>
