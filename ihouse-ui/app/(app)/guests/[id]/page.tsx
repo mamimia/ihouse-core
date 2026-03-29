@@ -150,6 +150,11 @@ function actionLabel(action: string): string {
         ACT_AS_STARTED: 'Admin acting session started',
         qr_token_generated: 'Guest portal QR generated',
         portal_link_sent: 'Portal link sent to guest',
+        // Early checkout lifecycle
+        'early_checkout.request_received': 'Early Check-out Requested',
+        'early_checkout.approved':         'Early Check-out Approved',
+        'early_checkout.revoked':          'Early Check-out Revoked',
+        'early_checkout.completed':        'Early Check-out Completed',
     };
     return map[action] || action.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -172,6 +177,11 @@ function actionIcon(action: string): string {
         ACT_AS_STARTED: '🔑',
         qr_token_generated: '🔗',
         portal_link_sent: '📤',
+        // Early checkout lifecycle
+        'early_checkout.request_received': '🔴',
+        'early_checkout.approved':         '⚡',
+        'early_checkout.revoked':          '↩️',
+        'early_checkout.completed':        '🏁',
     };
     return map[action] || '📋';
 }
@@ -583,6 +593,90 @@ function ExtrasOrdersBlock() {
 // Checkout Record Block — compact, future-ready
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Early Check-out Block — surfaces exception state inside a stay record
+// ---------------------------------------------------------------------------
+
+function EarlyCheckoutBlock({ stay }: { stay: DossierStay }) {
+    const ec = stay.early_checkout;
+    if (!ec || ec.status === 'none' || !ec.status) return null;
+
+    const statusConfig = {
+        requested: { label: '⏳ Request Received', bg: '#fef3c7', border: '#fde68a', fg: '#92400e' },
+        approved:  { label: '⚡ Exception Approved', bg: 'rgba(217,119,6,0.08)', border: '#fde68a', fg: '#b45309' },
+        completed: { label: '🏁 Early Checkout Completed', bg: 'rgba(63,185,80,0.08)', border: 'rgba(63,185,80,0.3)', fg: '#15803d' },
+    }[ec.status] ?? { label: ec.status, bg: 'var(--color-surface-2)', border: 'var(--color-border)', fg: 'var(--color-text-dim)' };
+
+    function fmtDt(d: string | null | undefined): string {
+        if (!d) return '—';
+        try { return new Date(d).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        catch { return d; }
+    }
+    function fmtD(d: string | null | undefined): string {
+        if (!d) return '—';
+        try { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); }
+        catch { return d; }
+    }
+
+    const sourceLabels: Record<string, string> = {
+        phone: '📞 Phone call', message: '💬 Message',
+        guest_portal: '🌐 Guest portal', ops_escalation: '⚡ Ops escalation', other: 'Other',
+    };
+
+    return (
+        <div style={{
+            ...cardStyle, padding: '14px 20px',
+            background: statusConfig.bg,
+            borderColor: statusConfig.border,
+            borderWidth: 1,
+        }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: statusConfig.fg, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
+                    🔴 Early Check-out
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: statusConfig.fg }}>
+                    {statusConfig.label}
+                </span>
+            </div>
+
+            {/* Dates */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: 12, marginBottom: 8 }}>
+                <div style={{ color: 'var(--color-text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Original Checkout</div>
+                <div style={{ color: 'var(--color-text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
+                    {ec.status === 'approved' || ec.status === 'completed' ? 'Effective Early Checkout' : 'Proposed Date'}
+                </div>
+                <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{fmtD(ec.original_checkout_date || stay.check_out)}</div>
+                <div style={{ fontWeight: 700, color: '#b45309' }}>
+                    {ec.effective_at ? fmtDt(ec.effective_at) : ec.effective_date ? fmtD(ec.effective_date) : '—'}
+                </div>
+            </div>
+
+            {/* Reason / note */}
+            {ec.reason && (
+                <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginBottom: 4 }}>
+                    <span style={{ fontWeight: 600, marginRight: 6 }}>Reason:</span>{ec.reason}
+                </div>
+            )}
+            {ec.request_source && (
+                <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginBottom: 4 }}>
+                    <span style={{ fontWeight: 600, marginRight: 6 }}>Source:</span>{sourceLabels[ec.request_source] || ec.request_source}
+                </div>
+            )}
+
+            {/* Deep link to canonical control surface */}
+            <div style={{ marginTop: 10, borderTop: '1px solid ' + statusConfig.border, paddingTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+                <a
+                    href={`/admin/bookings/${stay.booking_id}/early-checkout`}
+                    style={{ fontSize: 11, fontWeight: 600, color: '#b45309', textDecoration: 'none' }}
+                >
+                    Manage in Booking →
+                </a>
+            </div>
+        </div>
+    );
+}
+
 function CheckoutRecordBlock({ stay }: { stay: DossierStay }) {
     const record = stay.checkout_record;
     const checkedOut = record?.checked_out_at || (stay.status?.toLowerCase() === 'checked_out');
@@ -704,14 +798,31 @@ function CheckoutRecordBlock({ stay }: { stay: DossierStay }) {
         );
     }
 
+    // Not yet checked out — show pending state with any early checkout context
+    const ec = stay.early_checkout;
+    const hasEarlyCheckout = ec && ec.status !== 'none' && !!ec.status;
+
     return (
-        <div style={{ ...cardStyle, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 16 }}>🚪</span>
-            <div style={{ flex: 1 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-dim)' }}>Checkout Record</span>
-                <span style={{ fontSize: 11, color: 'var(--color-muted)', marginLeft: 8 }}>
-                    {isCheckedIn(stay) ? 'Guest in-stay · not yet performed' : 'No checkout data'}
-                </span>
+        <div style={{ ...cardStyle, padding: '12px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🚪</span>
+                <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-dim)' }}>Checkout Record</span>
+                    <span style={{ fontSize: 11, color: 'var(--color-muted)', marginLeft: 8 }}>
+                        {isCheckedIn(stay) ? 'Guest in-stay · not yet performed' : 'No checkout data'}
+                    </span>
+                </div>
+                {hasEarlyCheckout && (
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '2px 9px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+                        background: ec!.status === 'approved' ? 'rgba(217,119,6,0.12)' : 'rgba(251,191,36,0.12)',
+                        color: ec!.status === 'approved' ? '#b45309' : '#92400e',
+                        border: '1px solid #fde68a',
+                    }}>
+                        🔴 Early Check-out
+                    </span>
+                )}
             </div>
         </div>
     );
@@ -724,14 +835,22 @@ function CheckoutRecordBlock({ stay }: { stay: DossierStay }) {
 function StayCard({ stay, guest, expanded, onToggle }: { stay: DossierStay; guest: Guest; expanded: boolean; onToggle: () => void }) {
     const nights = nightCount(stay.check_in, stay.check_out);
     const deposit = stay.settlement?.deposit;
+    const hasEarlyCheckout = stay.early_checkout && stay.early_checkout.status !== 'none' && !!stay.early_checkout.status;
 
     return (
         <div style={{ ...cardStyle, ...(expanded ? { borderColor: 'rgba(99,102,241,0.4)' } : {}) }}>
             {/* Header row — always visible */}
             <div onClick={onToggle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
                 <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         {stay.property_name}
+                        {hasEarlyCheckout && (
+                            <span style={{
+                                display: 'inline-flex', alignItems: 'center',
+                                padding: '1px 7px', borderRadius: 999, fontSize: 10, fontWeight: 700,
+                                background: 'rgba(217,119,6,0.12)', color: '#b45309', border: '1px solid #fde68a',
+                            }}>🔴 Early C/O</span>
+                        )}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>
                         {fmtDateShort(stay.check_in)} → {fmtDateShort(stay.check_out)}{nights != null ? ` · ${nights} nights` : ''}
@@ -755,6 +874,9 @@ function StayCard({ stay, guest, expanded, onToggle }: { stay: DossierStay; gues
                         <div style={{ fontWeight: 500, color: 'var(--color-text)' }}>{fmtSource(stay.source, stay.booking_id)}</div>
                         <div>{stay.reservation_ref ? <CompactRef value={stay.reservation_ref} maxChars={20} /> : <span style={{ color: 'var(--color-muted)' }}>—</span>}</div>
                     </div>
+
+                    {/* Early Check-out Exception Block — surfaces before checkout record */}
+                    <EarlyCheckoutBlock stay={stay} />
 
                     {/* Check-in Record */}
                     <div style={{ marginTop: 16 }}>

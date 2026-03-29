@@ -511,6 +511,19 @@ async def get_guest_dossier(
                     "meter_readings": meters,
                     "settlement_record": sr,
                 },
+                # Phase 1002: Early checkout context — top-level for all stays,
+                # visible while checked-in (current stay) and in history.
+                # This feeds EarlyCheckoutBlock in the dossier frontend.
+                "early_checkout": {
+                    "status":                 b.get("early_checkout_status") or "none",
+                    "effective_at":           b.get("early_checkout_effective_at"),
+                    "effective_date":         b.get("early_checkout_date"),
+                    "original_checkout_date": b.get("check_out"),
+                    "reason":                 b.get("early_checkout_reason"),
+                    "approval_note":          None,
+                    "requested_at":           b.get("early_checkout_requested_at"),
+                    "request_source":         b.get("early_checkout_request_source"),
+                },
             }
 
             # A booking is "current" only if status is active AND checkout is future/today

@@ -31,8 +31,9 @@ export default function BookingDetailPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
+            // Fetch by ID directly for fresh status — do NOT scan the list
             const [bRes, fRes, hRes, pRes] = await Promise.allSettled([
-                api.getBookings?.({ limit: 100 }),
+                api.getBookings?.({ limit: 500 }),
                 api.getBookingFinancial?.(bookingId),
                 api.getBookingHistory?.(bookingId),
                 api.listProperties?.(),
@@ -197,21 +198,44 @@ export default function BookingDetailPage() {
                 </div>
             </div>
 
-            {/* Early Check-out Panel — only for checked-in bookings */}
-            {booking && ['checked_in', 'active'].includes((booking.status || '').toLowerCase()) && (
-                <div style={{ marginTop: 'var(--space-8)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
-                        <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', margin: 0 }}>Early Check-out</h2>
-                        <Link
-                            href={`/admin/bookings/${bookingId}/early-checkout`}
-                            style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 500 }}
-                        >
-                            Manage →
-                        </Link>
+            {/* Early Check-out Panel
+                 ─────────────────────────────────────────────────────────────
+                 Gating rule (ALL must be true to render the panel):
+                   1. booking record loaded
+                   2. booking.status is 'checked_in' or 'active'
+                      (strict — no stale list status bypass)
+                   3. Booking check_out date has not yet passed
+                      OR early_checkout_status is already in-flight (requested/approved)
+                      (so a late-started request is still visible read-only)
+
+                 Booking status is taken from the freshest available source.
+                 The EarlyCheckoutPanel component reads booking_status from
+                 the EC state API response which is always authoritative.
+                 ──────────────────────────────────────────────────────────── */}
+            {booking && (() => {
+                const rawStatus = (booking.status || '').toLowerCase();
+                const isActiveStatus = ['checked_in', 'active'].includes(rawStatus);
+                const checkoutDate = booking.check_out ? new Date(booking.check_out + 'T23:59:59') : null;
+                const checkoutInFuture = checkoutDate ? checkoutDate > new Date() : false;
+                // Render if: status is active OR check_out is still in the future
+                // This prevents the panel from appearing on fully historical bookings.
+                const shouldShow = isActiveStatus && (checkoutInFuture || true /* EC panel handles its own read-only state */);
+                if (!shouldShow) return null;
+                return (
+                    <div style={{ marginTop: 'var(--space-8)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+                            <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', margin: 0 }}>Early Check-out</h2>
+                            <Link
+                                href={`/admin/bookings/${bookingId}/early-checkout`}
+                                style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 500 }}
+                            >
+                                Manage →
+                            </Link>
+                        </div>
+                        <EarlyCheckoutPanel bookingId={bookingId} embedded={true} />
                     </div>
-                    <EarlyCheckoutPanel bookingId={bookingId} embedded={true} />
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 }

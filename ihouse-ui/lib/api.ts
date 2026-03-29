@@ -483,6 +483,16 @@ export interface DossierStay {
         meter_readings: DossierMeter[];
         settlement_record: DossierSettlementRecord | null;
     };
+    early_checkout?: {
+        status: 'none' | 'requested' | 'approved' | 'completed';
+        effective_at: string | null;
+        effective_date: string | null;
+        original_checkout_date: string | null;
+        reason: string | null;
+        approval_note: string | null;
+        requested_at: string | null;
+        request_source: string | null;
+    } | null;
 }
 
 export interface DossierActivity {
