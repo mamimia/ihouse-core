@@ -940,6 +940,17 @@ export const api = {
             body: JSON.stringify({ closure_note: closureNote || null }),
         }),
 
+    // Phase 559 — Calendar Blocks view
+    // Returns only is_calendar_block=TRUE rows, excluded from the main Bookings list.
+    getCalendarBlocks: (params?: {
+        property_id?: string;
+    }): Promise<BookingListResponse> => {
+        const q = new URLSearchParams();
+        if (params?.property_id) q.set('property_id', params.property_id);
+        q.set('only_calendar_blocks', 'true');
+        return apiFetch(`/bookings${q.size ? '?' + q : ''}`);
+    },
+
     // Phase 510 — Guest Feedback
     getGuestFeedback: (params?: { property_id?: string; limit?: number }): Promise<{ total: number; entries: unknown[] }> => {
         const q = new URLSearchParams();

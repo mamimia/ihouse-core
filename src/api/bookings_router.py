@@ -208,6 +208,10 @@ async def list_bookings(
     sort_by: Optional[str] = None,
     sort_dir: str = "desc",
     limit: int = _DEFAULT_LIMIT,
+    # Phase 559 — Calendar block classification filter.
+    # only_calendar_blocks=true  → return ONLY calendar block rows (Calendar Blocks surface)
+    # only_calendar_blocks=false (default) → return ONLY real guest bookings (Bookings list)
+    only_calendar_blocks: bool = False,
     tenant_id: str = Depends(jwt_auth),
     _cap: None = Depends(require_capability("bookings")),
     client: Optional[Any] = None,
@@ -318,6 +322,16 @@ async def list_bookings(
         if check_out_to is not None:
             query = query.lte("check_out", check_out_to)
 
+        # Phase 559: Calendar block routing.
+        # By default, exclude is_calendar_block=TRUE rows from the operational list.
+        # Only include them when only_calendar_blocks=True is explicitly requested.
+        # NULL is treated as FALSE (legacy rows before the column existed).
+        if only_calendar_blocks:
+            query = query.eq("is_calendar_block", True)
+        else:
+            # Exclude blocks: is_calendar_block must be FALSE or NULL
+            query = query.or_("is_calendar_block.eq.false,is_calendar_block.is.null")
+
         result = query.limit(limit).order(_sort_field, desc=_sort_desc).execute()
         rows = result.data or []
 
@@ -343,22 +357,24 @@ async def list_bookings(
 
         bookings = [
             {
-                "booking_id":      r["booking_id"],
-                "tenant_id":       r["tenant_id"],
-                "source":          r.get("source"),
-                "reservation_ref": r.get("reservation_ref"),
-                "property_id":     r.get("property_id"),
-                "status":          r.get("status"),
-                "check_in":        r.get("check_in"),
-                "check_out":       r.get("check_out"),
-                "guest_name":      r.get("guest_name"),
-                "guest_count":     r.get("guest_count"),
-                "version":         r.get("version"),
-                "created_at":      r.get("created_at"),
-                "updated_at":      r.get("updated_at_ms"),
+                "booking_id":         r["booking_id"],
+                "tenant_id":          r["tenant_id"],
+                "source":             r.get("source"),
+                "reservation_ref":    r.get("reservation_ref"),
+                "property_id":        r.get("property_id"),
+                "status":             r.get("status"),
+                "check_in":           r.get("check_in"),
+                "check_out":          r.get("check_out"),
+                "guest_name":         r.get("guest_name"),
+                "guest_count":        r.get("guest_count"),
+                "version":            r.get("version"),
+                "created_at":         r.get("created_at"),
+                "updated_at":         r.get("updated_at_ms"),
                 # Operational state fields — required for frontend operational status derivation
-                "checked_in_at":   r.get("checked_in_at"),
-                "checked_out_at":  r.get("checked_out_at"),
+                "checked_in_at":      r.get("checked_in_at"),
+                "checked_out_at":     r.get("checked_out_at"),
+                # Phase 559 — Calendar block classification flag
+                "is_calendar_block":  r.get("is_calendar_block") or False,
             }
             for r in rows
         ]

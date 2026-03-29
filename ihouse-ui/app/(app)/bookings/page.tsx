@@ -46,6 +46,7 @@ interface Booking {
     updated_at: string | null;
     checked_in_at?: string | null;
     checked_out_at?: string | null;
+    is_calendar_block?: boolean;
 }
 
 interface PropertyOption {
@@ -53,6 +54,9 @@ interface PropertyOption {
     display_name: string;
     status: string;
 }
+
+// Map of property_id → display_name for fast lookup in the table
+type PropertyMap = Record<string, string>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -112,17 +116,66 @@ function deriveOperationalStatus(b: Booking): OpStatus {
     return 'unknown';
 }
 
-const OP_STATUS_CONFIG: Record<OpStatus, { label: string; bg: string; color: string; border?: string }> = {
-    in_stay:          { label: '🟢 In Stay',        bg: 'rgba(16,185,129,0.12)',  color: 'var(--color-ok)' },
-    checkout_today:   { label: '⏰ Checkout Today',  bg: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)' },
-    overdue_checkout: { label: '⚠ Overdue',          bg: 'rgba(245,158,11,0.14)', color: '#b45309', border: '1px solid rgba(245,158,11,0.4)' },
-    checking_in_today:{ label: '📥 Arriving Today',  bg: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)' },
-    upcoming:         { label: 'Upcoming',            bg: 'rgba(100,100,100,0.08)', color: 'var(--color-text-dim)' },
-    completed:        { label: 'Checked Out',         bg: 'rgba(100,100,100,0.08)', color: 'var(--color-muted)' },
-    admin_closed:     { label: '🔒 Admin Closed',    bg: 'rgba(100,100,100,0.08)', color: 'var(--color-text-faint)', border: '1px solid var(--color-border)' },
-    cancelled:        { label: 'Cancelled',           bg: 'rgba(239,68,68,0.10)', color: 'var(--color-danger)' },
-    unknown:          { label: 'Unknown',             bg: 'rgba(100,100,100,0.08)', color: 'var(--color-muted)' },
+const OP_STATUS_CONFIG: Record<OpStatus, { label: string; bg: string; color: string; border?: string; desc: string }> = {
+    in_stay:           { label: '🟢 In Stay',       bg: 'rgba(16,185,129,0.12)',  color: 'var(--color-ok)',           desc: 'Worker has checked the guest in. Guest is currently staying.' },
+    checkout_today:    { label: '⏰ Checkout Today', bg: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)',      desc: 'Checkout date is today. Awaiting worker checkout action.' },
+    overdue_checkout:  { label: '⚠ Overdue',         bg: 'rgba(245,158,11,0.14)', color: '#b45309', border: '1px solid rgba(245,158,11,0.4)', desc: 'Checkout date has passed with no worker checkout recorded. Needs resolution.' },
+    checking_in_today: { label: '📥 Arriving Today', bg: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)',      desc: 'Check-in date is today. Guest expected to arrive.' },
+    upcoming:          { label: 'Upcoming',           bg: 'rgba(100,100,100,0.08)', color: 'var(--color-text-dim)',   desc: 'Future confirmed reservation. No action needed yet.' },
+    completed:         { label: 'Checked Out',        bg: 'rgba(100,100,100,0.08)', color: 'var(--color-muted)',      desc: 'Worker has completed the checkout. Stay is fully closed.' },
+    admin_closed:      { label: '🔒 Admin Closed',   bg: 'rgba(100,100,100,0.08)', color: 'var(--color-text-faint)', border: '1px solid var(--color-border)', desc: 'Administratively resolved by an admin. No worker checkout was performed. No settlement or tasks were triggered.' },
+    cancelled:         { label: 'Cancelled',          bg: 'rgba(239,68,68,0.10)', color: 'var(--color-danger)',       desc: 'Booking was cancelled by the OTA, guest, or admin.' },
+    unknown:           { label: 'Unknown',            bg: 'rgba(100,100,100,0.08)', color: 'var(--color-muted)',      desc: 'Status could not be derived. Contact support if this persists.' },
 };
+
+// ---------------------------------------------------------------------------
+// Status Info Popover
+// ---------------------------------------------------------------------------
+
+function StatusInfoPopover() {
+    const [open, setOpen] = useState(false);
+    return (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+                id="status-info-btn"
+                onClick={() => setOpen(o => !o)}
+                title="What do these statuses mean?"
+                style={{
+                    background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-full)', color: 'var(--color-text-dim)',
+                    fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                    padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 4,
+                }}
+            >ⓘ Status Guide</button>
+            {open && (
+                <>
+                    <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+                    <div style={{
+                        position: 'absolute', top: '110%', left: 0, zIndex: 100,
+                        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-lg)', minWidth: 340,
+                        boxShadow: '0 16px 48px rgba(0,0,0,0.45)', padding: 'var(--space-4)',
+                    }}>
+                        <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', marginBottom: 'var(--space-3)', color: 'var(--color-text)' }}>Booking Status Guide</div>
+                        {(Object.entries(OP_STATUS_CONFIG) as [OpStatus, typeof OP_STATUS_CONFIG[OpStatus]][]).map(([key, cfg]) => (
+                            <div key={key} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                                <span style={{
+                                    fontSize: 'var(--text-xs)', fontWeight: 600, whiteSpace: 'nowrap',
+                                    background: cfg.bg, color: cfg.color, border: cfg.border,
+                                    borderRadius: 'var(--radius-full)', padding: '2px 8px', flexShrink: 0,
+                                }}>{cfg.label}</span>
+                                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>{cfg.desc}</span>
+                            </div>
+                        ))}
+                        <div style={{ marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+                            Statuses are derived in real-time from reservation dates and worker actions. Calendar blocks are shown separately.
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
 
 const OP_STATUS_PRIORITY: Record<OpStatus, number> = {
     in_stay: 1, checkout_today: 2, overdue_checkout: 3,
@@ -729,10 +782,110 @@ interface Filters {
 }
 
 // ---------------------------------------------------------------------------
+// Property cell — shows code + display name
+// ---------------------------------------------------------------------------
+
+function PropertyCell({ propertyId, propertyMap }: { propertyId: string | null; propertyMap: PropertyMap }) {
+    if (!propertyId) return <span style={{ color: 'var(--color-text-faint)' }}>—</span>;
+    const name = propertyMap[propertyId];
+    return (
+        <div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--color-text)', fontWeight: 600 }}>{propertyId}</span>
+            {name && (
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }} title={name}>{name}</div>
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Property Autocomplete Filter
+// ---------------------------------------------------------------------------
+
+function PropertyAutocompleteFilter({
+    value, onChange, properties,
+}: { value: string; onChange: (v: string) => void; properties: PropertyOption[] }) {
+    const [query, setQuery] = useState(value);
+    const [open, setOpen] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Sync external value changes
+    useEffect(() => { setQuery(value); }, [value]);
+
+    const normalised = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const suggestions = properties.filter(p => {
+        const code = p.property_id.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const name = (p.display_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return code.includes(normalised) || name.includes(normalised);
+    }).slice(0, 8);
+
+    const select = (pid: string) => {
+        setQuery(pid);
+        onChange(pid);
+        setOpen(false);
+    };
+
+    const handleChange = (v: string) => {
+        setQuery(v);
+        setOpen(true);
+        if (v === '') onChange('');
+    };
+
+    const handleBlur = () => {
+        // small delay so click on suggestion registers first
+        setTimeout(() => setOpen(false), 150);
+        // if not an exact match, clear the filter
+        const exact = properties.find(p => p.property_id === query);
+        if (!exact && query !== '') { setQuery(''); onChange(''); }
+    };
+
+    return (
+        <div style={{ position: 'relative', flex: '1 1 160px', minWidth: 120 }}>
+            <input
+                id="filter-property"
+                ref={inputRef}
+                value={query}
+                placeholder="Property (code or name)"
+                onChange={e => handleChange(e.target.value)}
+                onFocus={() => setOpen(true)}
+                onBlur={handleBlur}
+                autoComplete="off"
+                style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+            />
+            {open && suggestions.length > 0 && (
+                <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+                    background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)', marginTop: 2,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden',
+                }}>
+                    {suggestions.map(p => (
+                        <div
+                            key={p.property_id}
+                            onMouseDown={() => select(p.property_id)}
+                            style={{
+                                padding: 'var(--space-2) var(--space-3)', cursor: 'pointer',
+                                borderBottom: '1px solid var(--color-border)',
+                                transition: 'background var(--transition-fast)',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-2)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>{p.property_id}</span>
+                            {p.display_name && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginLeft: 8 }}>{p.display_name}</span>}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Booking row
 // ---------------------------------------------------------------------------
 
-function BookingRow({ b, onClick }: { b: Booking; onClick: () => void }) {
+function BookingRow({ b, propertyMap, onClick }: { b: Booking; propertyMap: PropertyMap; onClick: () => void }) {
     return (
         <tr
             onClick={onClick}
@@ -753,8 +906,8 @@ function BookingRow({ b, onClick }: { b: Booking; onClick: () => void }) {
             <td style={{ padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
                 {b.guest_name || '—'}
             </td>
-            <td style={{ padding: 'var(--space-3) var(--space-4)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
-                {b.property_id ?? '—'}
+            <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
+                <PropertyCell propertyId={b.property_id} propertyMap={propertyMap} />
             </td>
             <td style={{ padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--text-sm)' }}>
                 {fmtDate(b.check_in)}
@@ -764,6 +917,43 @@ function BookingRow({ b, onClick }: { b: Booking; onClick: () => void }) {
             </td>
             <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
                 {operationalChip(b)}
+            </td>
+        </tr>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Calendar Block row (separate surface, no operational status)
+// ---------------------------------------------------------------------------
+
+function CalendarBlockRow({ b, propertyMap }: { b: Booking; propertyMap: PropertyMap }) {
+    return (
+        <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <td style={{ padding: 'var(--space-3) var(--space-4)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                {b.booking_id.length > 12 ? b.booking_id.slice(0, 12) + '…' : b.booking_id}
+            </td>
+            <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
+                {sourceChip(b.source)}
+            </td>
+            <td style={{ padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', fontStyle: 'italic' }}>
+                {b.guest_name || '—'}
+            </td>
+            <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
+                <PropertyCell propertyId={b.property_id} propertyMap={propertyMap} />
+            </td>
+            <td style={{ padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--text-sm)' }}>
+                {fmtDate(b.check_in)}
+            </td>
+            <td style={{ padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--text-sm)' }}>
+                {fmtDate(b.check_out)}
+            </td>
+            <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
+                <span style={{
+                    fontSize: 'var(--text-xs)', fontWeight: 600,
+                    background: 'rgba(100,100,116,0.12)', color: 'var(--color-text-dim)',
+                    borderRadius: 'var(--radius-full)', padding: '2px 8px',
+                    border: '1px solid var(--color-border)',
+                }}>🚫 Blocked</span>
             </td>
         </tr>
     );
@@ -795,27 +985,29 @@ function EmptyState({ onAddBooking, onAddIcal }: { onAddBooking: () => void; onA
 
 export default function BookingsPage() {
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [blocks, setBlocks] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
+    const [blocksLoading, setBlocksLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
     const [liveEvent, setLiveEvent] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [tab, setTab] = useState<'bookings' | 'blocks'>('bookings');
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [filters, setFilters] = useState<Filters>({
         property_id: '', status: '', source: '', check_in_from: '', check_in_to: '',
     });
-
-    // Modal state
     const [showAddBooking, setShowAddBooking] = useState(false);
     const [showIcalFeed, setShowIcalFeed] = useState(false);
-    const [showIntegrations, setShowIntegrations] = useState(false);
     const [properties, setProperties] = useState<PropertyOption[]>([]);
+    const [propertyMap, setPropertyMap] = useState<PropertyMap>({});
 
-    // Load properties for dropdowns
     useEffect(() => {
-        api.listProperties()
-            .then(res => setProperties(res.properties ?? []))
-            .catch(() => { /* properties will just show IDs */ });
+        api.listProperties().then(res => {
+            const props = res.properties ?? [];
+            setProperties(props);
+            setPropertyMap(Object.fromEntries(props.map(p => [p.property_id, p.display_name || p.property_id])));
+        }).catch(() => {});
     }, []);
 
     const loadBookings = useCallback(async () => {
@@ -829,16 +1021,10 @@ export default function BookingsPage() {
                 check_in_to: filters.check_in_to || undefined,
             });
             const list = res.bookings ?? [];
-            // Operational priority sort:
-            //   1 in_stay → 2 checkout_today → 3 overdue_checkout →
-            //   4 checking_in_today → 5 upcoming → 6 completed → 7 cancelled
-            // Within the same priority bucket, sort by check_in/check_out ascending
-            // so the most imminent bookings appear first within each category.
             list.sort((a: Booking, b: Booking) => {
                 const pa = OP_STATUS_PRIORITY[deriveOperationalStatus(a)];
                 const pb = OP_STATUS_PRIORITY[deriveOperationalStatus(b)];
                 if (pa !== pb) return pa - pb;
-                // Within same bucket: sort by check_out ascending (most urgent first)
                 const da = a.check_out ?? a.check_in ?? '';
                 const db = b.check_out ?? b.check_in ?? '';
                 return da < db ? -1 : da > db ? 1 : 0;
@@ -846,25 +1032,30 @@ export default function BookingsPage() {
             setBookings(list);
             setLastRefresh(new Date());
         } catch (err: unknown) {
-            if (err instanceof ApiError) {
-                setError(`API ${err.status}: ${err.code}`);
-            } else {
-                setError(err instanceof Error ? err.message : 'Failed to load bookings');
-            }
+            setError(err instanceof Error ? err.message : 'Failed to load bookings');
         } finally {
             setLoading(false);
         }
     }, [filters]);
 
+    const loadBlocks = useCallback(async () => {
+        setBlocksLoading(true);
+        try {
+            const res = await api.getCalendarBlocks({ property_id: filters.property_id || undefined });
+            setBlocks(res.bookings ?? []);
+        } catch { /* silent */ } finally {
+            setBlocksLoading(false);
+        }
+    }, [filters.property_id]);
+
     useEffect(() => { loadBookings(); }, [loadBookings]);
+    useEffect(() => { loadBlocks(); }, [loadBlocks]);
 
-    // 60s auto-refresh
     useEffect(() => {
-        timerRef.current = setInterval(loadBookings, 60_000);
+        timerRef.current = setInterval(() => { loadBookings(); loadBlocks(); }, 60_000);
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }, [loadBookings]);
+    }, [loadBookings, loadBlocks]);
 
-    // SSE for real-time booking events
     useEffect(() => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('ihouse_token') ?? '' : '';
         const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
@@ -874,19 +1065,13 @@ export default function BookingsPage() {
                 const evt = JSON.parse(e.data);
                 if (evt.channel === 'bookings') {
                     setLiveEvent(`${evt.type}: ${evt.booking_id ?? 'unknown'}`);
-                    setTimeout(loadBookings, 1000);
+                    setTimeout(() => { loadBookings(); loadBlocks(); }, 1000);
                     setTimeout(() => setLiveEvent(null), 5000);
                 }
             } catch { /* ignore */ }
         };
         return () => es.close();
-    }, [loadBookings]);
-
-    const handleBookingSuccess = (msg: string) => {
-        setSuccessMsg(msg);
-        loadBookings(); // Refresh the list immediately
-        setTimeout(() => setSuccessMsg(null), 8000);
-    };
+    }, [loadBookings, loadBlocks]);
 
     return (
         <div>
@@ -895,198 +1080,92 @@ export default function BookingsPage() {
         select option { background: var(--color-surface); }
       `}</style>
 
-            {/* Modals */}
-            <AddBookingModal
-                open={showAddBooking}
-                onClose={() => setShowAddBooking(false)}
-                onSuccess={handleBookingSuccess}
-                properties={properties}
-            />
-            <IcalFeedModal
-                open={showIcalFeed}
-                onClose={() => { setShowIcalFeed(false); loadBookings(); }}
-                onSuccess={handleBookingSuccess}
-                properties={properties}
-            />
+            <AddBookingModal open={showAddBooking} onClose={() => setShowAddBooking(false)}
+                onSuccess={(msg) => { setSuccessMsg(msg); loadBookings(); setTimeout(() => setSuccessMsg(null), 8000); }}
+                properties={properties} />
+            <IcalFeedModal open={showIcalFeed} onClose={() => { setShowIcalFeed(false); loadBookings(); loadBlocks(); }}
+                onSuccess={(msg) => { setSuccessMsg(msg); loadBookings(); loadBlocks(); setTimeout(() => setSuccessMsg(null), 8000); }}
+                properties={properties} />
 
-            {/* Header */}
-            <div style={{ marginBottom: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+            <div style={{ marginBottom: 'var(--space-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
                 <div>
                     <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, letterSpacing: '-0.02em' }}>Bookings</h1>
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-1)' }}>
-                        {loading ? 'Loading…' : `${bookings.length} result${bookings.length !== 1 ? 's' : ''}`}
+                        {loading ? 'Loading…' : `${bookings.length} booking${bookings.length !== 1 ? 's' : ''}`}
+                        {blocks.length > 0 && <span style={{ marginLeft: 8, color: 'var(--color-text-faint)' }}>· {blocks.length} calendar block{blocks.length !== 1 ? 's' : ''}</span>}
                         {lastRefresh && <span style={{ marginLeft: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>· Updated {lastRefresh.toLocaleTimeString()}</span>}
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                    <button
-                        id="btn-add-booking"
-                        onClick={() => setShowAddBooking(true)}
-                        style={{
-                            ...btnPrimary,
-                            display: 'flex', alignItems: 'center', gap: 6,
-                        }}
-                    >
-                        + Add Booking
-                    </button>
-                    <button
-                        id="btn-ical-feed"
-                        onClick={() => setShowIcalFeed(true)}
-                        style={{
-                            ...btnPrimary,
-                            background: 'var(--color-olive)',
-                            display: 'flex', alignItems: 'center', gap: 6,
-                        }}
-                    >
-                        📡 iCal Feed
-                    </button>
-                    <div style={{ position: 'relative' }}>
-                        <button
-                            id="btn-integrations"
-                            onClick={() => setShowIntegrations(!showIntegrations)}
-                            style={{
-                                ...btnSecondary,
-                                background: 'var(--color-surface-2)',
-                                color: 'var(--color-text)',
-                                display: 'flex', alignItems: 'center', gap: 6,
-                            }}
-                        >
-                            🔌 Integrations ▾
-                        </button>
-                        {showIntegrations && (
-                            <div style={{
-                                position: 'absolute', top: '100%', right: 0, marginTop: 4,
-                                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                                borderRadius: 'var(--radius-lg)', padding: 'var(--space-3) 0',
-                                minWidth: 260, boxShadow: '0 12px 48px rgba(0,0,0,0.5)', zIndex: 50,
-                            }}>
-                                <div style={{ padding: '0 var(--space-4)', marginBottom: 'var(--space-2)' }}>
-                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active</span>
-                                </div>
-                                <button onClick={() => { setShowIntegrations(false); setShowIcalFeed(true); }} style={{ width: '100%', padding: 'var(--space-2) var(--space-4)', background: 'none', border: 'none', color: 'var(--color-text)', textAlign: 'left', cursor: 'pointer', fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ color: '#22c55e' }}>✅</span> iCal Feeds
-                                </button>
-                                <div style={{ height: 1, background: 'var(--color-border)', margin: 'var(--space-2) 0' }} />
-                                <div style={{ padding: '0 var(--space-4)', marginBottom: 'var(--space-2)' }}>
-                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Requires Setup</span>
-                                </div>
-                                <a href="/admin/integrations" style={{ display: 'flex', padding: 'var(--space-2) var(--space-4)', color: 'var(--color-text)', textDecoration: 'none', fontSize: 'var(--text-sm)', alignItems: 'center', gap: 8 }}>
-                                    <span>⚙️</span> Guesty PMS
-                                </a>
-                                <a href="/admin/integrations" style={{ display: 'flex', padding: 'var(--space-2) var(--space-4)', color: 'var(--color-text)', textDecoration: 'none', fontSize: 'var(--text-sm)', alignItems: 'center', gap: 8 }}>
-                                    <span>⚙️</span> Hostaway PMS
-                                </a>
-                                <div style={{ height: 1, background: 'var(--color-border)', margin: 'var(--space-2) 0' }} />
-                                <div style={{ padding: '0 var(--space-4)', marginBottom: 'var(--space-2)' }}>
-                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Planned</span>
-                                </div>
-                                <div style={{ padding: 'var(--space-2) var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span>🔜</span> Booking.com · Airbnb · Expedia
-                                </div>
-                                <div style={{ height: 1, background: 'var(--color-border)', margin: 'var(--space-2) 0' }} />
-                                <a href="/admin/integrations" style={{ display: 'flex', padding: 'var(--space-2) var(--space-4)', color: 'var(--color-primary)', textDecoration: 'none', fontSize: 'var(--text-sm)', fontWeight: 600, alignItems: 'center', gap: 8 }}>
-                                    <span>⚡</span> Integration Dashboard
-                                </a>
-                            </div>
-                        )}
-                    </div>
-                    <button
-                        onClick={loadBookings}
-                        disabled={loading}
-                        style={{
-                            ...btnSecondary,
-                            opacity: loading ? 0.7 : 1,
-                        }}
-                    >
+                    <button id="btn-add-booking" onClick={() => setShowAddBooking(true)} style={{ ...btnPrimary, display: 'flex', alignItems: 'center', gap: 6 }}>+ Add Booking</button>
+                    <button id="btn-ical-feed" onClick={() => setShowIcalFeed(true)} style={{ ...btnPrimary, background: 'var(--color-olive)' }}>📡 iCal Feed</button>
+                    <button onClick={() => { loadBookings(); loadBlocks(); }} disabled={loading} style={{ ...btnSecondary, opacity: loading ? 0.7 : 1 }}>
                         {loading ? '⟳' : '↺'} Refresh
                     </button>
                 </div>
             </div>
 
-            {/* Success banner */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', borderBottom: '1px solid var(--color-border)', paddingBottom: 0 }}>
+                {(['bookings', 'blocks'] as const).map(t => (
+                    <button key={t} id={`tab-${t}`} onClick={() => setTab(t)} style={{
+                        padding: 'var(--space-2) var(--space-4)',
+                        background: 'none', border: 'none',
+                        borderBottom: `2px solid ${tab === t ? 'var(--color-primary)' : 'transparent'}`,
+                        color: tab === t ? 'var(--color-primary)' : 'var(--color-text-dim)',
+                        cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)',
+                        marginBottom: -1,
+                    }}>
+                        {t === 'bookings' ? `📋 Bookings${!loading ? ` (${bookings.length})` : ''}` : `🚫 Calendar Blocks${!blocksLoading ? ` (${blocks.length})` : ''}`}
+                    </button>
+                ))}
+                <div style={{ marginLeft: 'auto', paddingBottom: 'var(--space-1)' }}>
+                    <StatusInfoPopover />
+                </div>
+            </div>
+
+            {tab === 'blocks' && (
+                <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', display: 'flex', gap: 'var(--space-2)' }}>
+                    <span>ℹ️</span>
+                    <div>
+                        <strong style={{ color: 'var(--color-text)', display: 'block', marginBottom: 2 }}>Calendar Blocks — Availability Holds Only</strong>
+                        These rows are iCal availability blocks (e.g. “Airbnb (Not available)”, “Not available”).  They are <strong>not real guest reservations</strong>.
+                        They never generate tasks, never affect settlement, and are preserved here for audit/source-truth visibility only.
+                    </div>
+                </div>
+            )}
+
             {successMsg && <SuccessBanner message={successMsg} onDismiss={() => setSuccessMsg(null)} />}
 
-            {/* Live event banner */}
             {liveEvent && (
-                <div style={{
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: 'var(--space-2) var(--space-4)',
-                    fontSize: 'var(--text-xs)',
-                    color: 'var(--color-primary)',
-                    marginBottom: 'var(--space-4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-2)',
-                }}>
+                <div style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-primary)', marginBottom: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                     <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)', animation: 'pulse 1.5s infinite' }} />
                     Live: {liveEvent}
                 </div>
             )}
 
-            {/* Filter bar */}
-            <div style={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 'var(--space-4)',
-                marginBottom: 'var(--space-5)',
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 'var(--space-3)',
-                alignItems: 'center',
-            }}>
-                <input
-                    id="filter-property"
-                    placeholder="Property ID"
-                    value={filters.property_id}
-                    onChange={e => setFilters(f => ({ ...f, property_id: e.target.value }))}
-                    style={{ ...inputStyle, flex: '1 1 120px', minWidth: 100, width: 'auto' }}
-                />
-                <select
-                    id="filter-status"
-                    value={filters.status}
-                    onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
-                    style={{ ...inputStyle, flex: '1 1 120px', minWidth: 100, width: 'auto' }}
-                >
-                    {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-                <select
-                    id="filter-source"
-                    value={filters.source}
-                    onChange={e => setFilters(f => ({ ...f, source: e.target.value }))}
-                    style={{ ...inputStyle, flex: '1 1 120px', minWidth: 100, width: 'auto' }}
-                >
-                    {SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s || 'All providers'}</option>)}
-                </select>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Check-in</span>
-                    <input id="filter-checkin-from" type="date" value={filters.check_in_from}
-                        onChange={e => setFilters(f => ({ ...f, check_in_from: e.target.value }))}
-                        style={{ ...inputStyle, width: 'auto' }} />
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>–</span>
-                    <input id="filter-checkin-to" type="date" value={filters.check_in_to}
-                        onChange={e => setFilters(f => ({ ...f, check_in_to: e.target.value }))}
-                        style={{ ...inputStyle, width: 'auto' }} />
-                </div>
-                <button
-                    id="filter-reset"
-                    onClick={() => setFilters({ property_id: '', status: '', source: '', check_in_from: '', check_in_to: '' })}
-                    style={btnSecondary}
-                >
-                    Reset
-                </button>
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', marginBottom: 'var(--space-5)', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' }}>
+                <PropertyAutocompleteFilter value={filters.property_id} onChange={v => setFilters(f => ({ ...f, property_id: v }))} properties={properties} />
+                {tab === 'bookings' && (
+                    <>
+                        <select id="filter-status" value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))} style={{ ...inputStyle, flex: '1 1 120px' }}>
+                            {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        <select id="filter-source" value={filters.source} onChange={e => setFilters(f => ({ ...f, source: e.target.value }))} style={{ ...inputStyle, flex: '1 1 120px' }}>
+                            {SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s || 'All providers'}</option>)}
+                        </select>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>Check-in</span>
+                            <input id="filter-checkin-from" type="date" value={filters.check_in_from} onChange={e => setFilters(f => ({ ...f, check_in_from: e.target.value }))} style={{ ...inputStyle, width: 'auto' }} />
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>–</span>
+                            <input id="filter-checkin-to" type="date" value={filters.check_in_to} onChange={e => setFilters(f => ({ ...f, check_in_to: e.target.value }))} style={{ ...inputStyle, width: 'auto' }} />
+                        </div>
+                    </>
+                )}
+                <button id="filter-reset" onClick={() => setFilters({ property_id: '', status: '', source: '', check_in_from: '', check_in_to: '' })} style={btnSecondary}>Reset</button>
             </div>
 
-            {/* Error */}
-            {error && (
-                <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)', color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' }}>
-                    ⚠ {error}
-                </div>
-            )}
+            {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)', color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' }}>⚠ {error}</div>}
 
-            {/* Table */}
             <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1098,26 +1177,36 @@ export default function BookingsPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {loading
-                            ? Array.from({ length: 5 }).map((_, i) => (
-                                <tr key={i}>
-                                    {Array.from({ length: 7 }).map((__, j) => (
-                                        <td key={j} style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                                            <div style={{ height: 14, background: 'var(--color-surface-3)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))
-                            : bookings.length === 0
-                                ? <EmptyState onAddBooking={() => setShowAddBooking(true)} onAddIcal={() => setShowIcalFeed(true)} />
-                                : bookings.map(b => (
-                                    <BookingRow
-                                        key={b.booking_id}
-                                        b={b}
-                                        onClick={() => window.location.href = `/bookings/${b.booking_id}`}
-                                    />
+                        {tab === 'bookings' ? (
+                            loading
+                                ? Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i}>{Array.from({ length: 7 }).map((__, j) => (
+                                        <td key={j} style={{ padding: 'var(--space-3) var(--space-4)' }}><div style={{ height: 14, background: 'var(--color-surface-3)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} /></td>
+                                    ))}</tr>
                                 ))
-                        }
+                                : bookings.length === 0
+                                    ? <EmptyState onAddBooking={() => setShowAddBooking(true)} onAddIcal={() => setShowIcalFeed(true)} />
+                                    : bookings.map(b => (
+                                        <BookingRow key={b.booking_id} b={b} propertyMap={propertyMap}
+                                            onClick={() => { window.location.href = `/bookings/${b.booking_id}`; }} />
+                                    ))
+                        ) : (
+                            blocksLoading
+                                ? Array.from({ length: 3 }).map((_, i) => (
+                                    <tr key={i}>{Array.from({ length: 7 }).map((__, j) => (
+                                        <td key={j} style={{ padding: 'var(--space-3) var(--space-4)' }}><div style={{ height: 14, background: 'var(--color-surface-3)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} /></td>
+                                    ))}</tr>
+                                ))
+                                : blocks.length === 0
+                                    ? (
+                                        <tr><td colSpan={7} style={{ padding: 'var(--space-16)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
+                                            <div style={{ fontSize: '2rem', marginBottom: 'var(--space-2)' }}>🚫</div>
+                                            <div style={{ fontWeight: 700, marginBottom: 4 }}>No calendar blocks found</div>
+                                            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)' }}>All iCal feeds are clean for this property.</div>
+                                        </td></tr>
+                                    )
+                                    : blocks.map(b => <CalendarBlockRow key={b.booking_id} b={b} propertyMap={propertyMap} />)
+                        )}
                     </tbody>
                 </table>
                 </div>

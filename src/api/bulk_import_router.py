@@ -526,11 +526,27 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
         now_ms = int(_time.time() * 1000)
         now_iso = datetime.now(tz=_tz.utc).isoformat()
 
+        # Phase 559 — Calendar block detection patterns (provider-agnostic).
+        # These normalized summary strings mean "this is an unavailability block,
+        # not a real guest reservation" across Airbnb, Booking.com, Vrbo, etc.
+        _BLOCK_SUMMARIES: frozenset[str] = frozenset({
+            "airbnb (not available)",
+            "not available",
+            "blocked",
+            "unavailable",
+            "owner block",
+            "maintenance",
+            "hold",
+        })
+
         for ev in events:
             dtstart = ev.get("DTSTART", "")
             dtend = ev.get("DTEND", "")
             summary = ev.get("SUMMARY", "iCal Booking")
             uid = ev.get("UID", "")
+            # Phase 559: Detect calendar blocks at ingest.
+            # reservation_code will be empty, description will be empty for blocks.
+            is_calendar_block = summary.strip().lower() in _BLOCK_SUMMARIES
             description = ev.get("DESCRIPTION", "")
             dtstamp = ev.get("DTSTAMP", "")
 
@@ -592,7 +608,8 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
 
             event_kind = "BOOKING_AMENDED" if is_update else "BOOKING_CREATED"
 
-            # Extract guest name from SUMMARY (iCal typically has "Reserved" or guest name)
+            # Extract guest name from SUMMARY (iCal typically has "Reserved" or guest name).
+            # For calendar blocks, preserve the raw summary so it's inspectable for audit.
             guest_name = summary if summary != "iCal Booking" else ""
 
             try:
@@ -641,7 +658,10 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
                     },
                 }).execute()
 
-                # 2. Upsert booking_state (canonical)
+                # 2. Upsert booking_state (canonical).
+                # Phase 559: is_calendar_block=True marks this row as a non-guest
+                # availability block. It will be excluded from the operational
+                # Bookings list and will never generate operational tasks.
                 db.table("booking_state").upsert({
                     "booking_id": booking_id,
                     "tenant_id": tenant_id,
@@ -653,6 +673,7 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
                     "check_in": check_in,
                     "check_out": check_out,
                     "guest_name": guest_name,
+                    "is_calendar_block": is_calendar_block,
                     "state_json": {
                         "ical_summary": summary,
                         "ical_description": description[:500] if description else "",
@@ -662,17 +683,19 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
                         "reservation_url": reservation_url,
                         "reservation_code": reservation_code,
                         "phone_last4": phone_last4,
+                        "is_calendar_block": is_calendar_block,  # Mirror in state_json for event tracing
                     },
                     "version": new_version,
                     "last_event_id": event_id,
                     "updated_at_ms": now_ms,
                 }, on_conflict="booking_id").execute()
 
-                # 3. Create operational tasks for NEW bookings (same path as OTA webhook)
-                # Phase 887d: Guard point 2 — double-check approval before task creation.
-                # This guard is redundant (guard point 1 already blocks unapproved properties)
-                # but provides defense-in-depth at the task write layer.
-                if not is_update:
+                # 3. Create operational tasks for NEW non-block bookings only.
+                # Phase 559 (LOCKED RULE): Calendar blocks NEVER generate tasks.
+                # This is unconditional — no task type (CHECKIN_PREP, CLEANING,
+                # CHECKOUT_VERIFY) is ever created for is_calendar_block=True rows.
+                # Phase 887d: Guard point 2 — also double-check approval.
+                if not is_update and not is_calendar_block:
                     try:
                         from tasks.task_writer import write_tasks_for_booking_created
                         write_tasks_for_booking_created(
@@ -686,13 +709,19 @@ def _parse_ical_bookings(db: Any, property_id: str, ical_url: str, tenant_id: st
                     except Exception as t_exc:
                         logger.warning("_parse_ical_bookings: task creation failed %s: %s", booking_id, t_exc)
 
-                    # Phase 837 — Auto-issue guest portal token (best-effort)
+                    # Phase 837 — Auto-issue guest portal token for real guests only.
+                    # Blocks do not get guest portal access.
                     try:
                         from services.guest_token import issue_guest_token, record_guest_token
                         raw_token, exp = issue_guest_token(booking_ref=booking_id, ttl_seconds=30 * 86_400)
                         record_guest_token(db=db, booking_ref=booking_id, tenant_id=tenant_id, raw_token=raw_token, exp=exp)
                     except Exception:
                         pass
+                elif not is_update and is_calendar_block:
+                    logger.info(
+                        "_parse_ical_bookings: BLOCK %s — skipping task creation and guest portal (is_calendar_block=True)",
+                        booking_id,
+                    )
 
                 created += 1
             except Exception as exc:
