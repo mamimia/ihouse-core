@@ -510,13 +510,27 @@ export default function PropertyDetailPage() {
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
                         Property Detail
                     </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                         <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.03em', margin: 0 }}>
                             {p.display_name || propertyId}
                         </h1>
                         <StatusBadge status={p.status} />
                         {/* Phase 1019: Self Check-in mode badge in header */}
                         <CheckinModeBadge mode={p.self_checkin_config?.mode} />
+                        {/* Phase 1020: Property type — small symbolic chip */}
+                        {p.property_type && (
+                            <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 7px',
+                                borderRadius: 6, letterSpacing: '0.06em',
+                                background: 'var(--color-surface-3)',
+                                color: 'var(--color-text-dim)',
+                                border: '1px solid var(--color-border)',
+                                textTransform: 'uppercase',
+                                fontFamily: 'var(--font-mono)',
+                            }}>
+                                {p.property_type}
+                            </span>
+                        )}
                     </div>
                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
                         {propertyId}
@@ -607,90 +621,106 @@ export default function PropertyDetailPage() {
             {loading && <p style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>Loading…</p>}
 
             {/* ============ TAB 1: Overview ============ */}
-            {tab === 'overview' && !loading && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-4)' }}>
+            {tab === 'overview' && !loading && (() => {
+                const activeTasks = tasks.filter(t => !['completed','cancelled','canceled','COMPLETED','CANCELLED','CANCELED'].includes(t.status)).length;
+                return (
+                    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 'var(--space-4)', alignItems: 'start' }}>
 
-                    {/* ── Row 1: Check-in/out · Active Tasks · Location ── */}
+                        {/* ── LEFT: Property info card ── */}
+                        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                            {/* Small map if GPS available */}
+                            {p.latitude && p.longitude && (() => {
+                                const lat = Number(p.latitude);
+                                const lng = Number(p.longitude);
+                                const d = 0.005;
+                                const bbox = `${lng-d},${lat-d},${lng+d},${lat+d}`;
+                                const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
+                                return (
+                                    <div style={{ borderRadius: 'var(--radius-sm)', overflow: 'hidden', margin: '-16px -16px 4px', height: 120 }}>
+                                        <iframe src={osmUrl} style={{ width: '100%', height: 120, border: 'none', display: 'block' }} loading="lazy" title="Property location" />
+                                    </div>
+                                );
+                            })()}
 
-                    <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>Check-in / Check-out</div>
-                        <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-text)' }}>
-                            {p.checkin_time || '15:00'} → {p.checkout_time || '11:00'}
+                            {/* Property meta rows */}
+                            {[
+                                { icon: '📍', label: [p.city, p.country].filter(Boolean).join(', ') || '—' },
+                                { icon: '👥', label: p.max_guests ? `${p.max_guests} guests` : '—' },
+                                { icon: '🛏️', label: [p.bedrooms && `${p.bedrooms} bed`, p.bathrooms && `${p.bathrooms} bath`].filter(Boolean).join(' · ') || '—' },
+                                { icon: '⏰', label: `${p.checkin_time || '15:00'} → ${p.checkout_time || '11:00'}` },
+                            ].map(row => (
+                                <div key={row.icon} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 13, flexShrink: 0, opacity: 0.6 }}>{row.icon}</span>
+                                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>{row.label}</span>
+                                </div>
+                            ))}
+
+                            {/* Description snippet */}
+                            {p.description && (
+                                <p style={{
+                                    fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
+                                    lineHeight: 1.55, margin: 0,
+                                    display: '-webkit-box', WebkitLineClamp: 3,
+                                    WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                                    borderTop: '1px solid var(--color-border)', paddingTop: 10,
+                                }}>
+                                    {p.description}
+                                </p>
+                            )}
                         </div>
-                    </div>
 
-                    <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>Active Tasks</div>
-                        {/* Phase 887d: compare uppercase CANCELED (DB) and lowercase cancelled (legacy) */}
-                        <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: tasks.filter(t => !['completed','cancelled','canceled','COMPLETED','CANCELLED','CANCELED'].includes(t.status)).length > 0 ? 'var(--color-warn)' : 'var(--color-ok)' }}>
-                            {tasks.filter(t => !['completed','cancelled','canceled','COMPLETED','CANCELLED','CANCELED'].includes(t.status)).length}
-                        </div>
-                    </div>
+                        {/* ── RIGHT: Operational metrics ── */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 'var(--space-3)' }}>
 
-                    {/* Location — interactive map */}
-                    {p.latitude && p.longitude ? (() => {
-                        const lat = Number(p.latitude);
-                        const lng = Number(p.longitude);
-                        const d = 0.005;
-                        const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`;
-                        const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
-                        return (
-                            <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', minHeight: 110 }}>
-                                <iframe src={osmUrl} style={{ width: '100%', height: 110, border: 'none', display: 'block' }} loading="lazy" title="Property location" />
+                            {/* Active Tasks */}
+                            <div style={{ ...cardStyle, minHeight: 90, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 6 }}>Active Tasks</div>
+                                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: activeTasks > 0 ? 'var(--color-warn)' : 'var(--color-ok)' }}>
+                                    {activeTasks}
+                                </div>
                             </div>
-                        );
-                    })() : (
-                        <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>Location</div>
-                            <div style={{ color: 'var(--color-warn)', fontSize: 'var(--text-sm)', fontStyle: 'italic' }}>⚠ GPS not set</div>
-                        </div>
-                    )}
 
-                    {/* ── Row 2: Settlement Policy · Reference Photos · House Rules ── */}
-
-                    <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 'var(--space-2)' }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-1)' }}>Settlement Policy</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{
-                                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0, display: 'inline-block',
-                                    background: crDepositEnabled ? 'var(--color-primary)' : 'var(--color-border)',
-                                }} />
-                                <span style={{ fontSize: 'var(--text-xs)', color: crDepositEnabled ? 'var(--color-text)' : 'var(--color-text-faint)', fontWeight: crDepositEnabled ? 600 : 400 }}>
-                                    {crDepositEnabled ? `Deposit: ${crDepositAmount || '—'} ${crDepositCurrency}` : 'No deposit'}
-                                </span>
+                            {/* Settlement Policy */}
+                            <div style={{ ...cardStyle, minHeight: 90, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6 }}>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 2 }}>Settlement Policy</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: crDepositEnabled ? 'var(--color-primary)' : 'var(--color-border)' }} />
+                                    <span style={{ fontSize: 'var(--text-xs)', color: crDepositEnabled ? 'var(--color-text)' : 'var(--color-text-faint)', fontWeight: crDepositEnabled ? 600 : 400 }}>
+                                        {crDepositEnabled ? `Deposit ${crDepositAmount || '—'} ${crDepositCurrency}` : 'No deposit'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: crElecEnabled ? '#f59e0b' : 'var(--color-border)' }} />
+                                    <span style={{ fontSize: 'var(--text-xs)', color: crElecEnabled ? 'var(--color-text)' : 'var(--color-text-faint)', fontWeight: crElecEnabled ? 600 : 400 }}>
+                                        {crElecEnabled ? `Elec ${crElecRate || '—'} ${crElecCurrency}/kWh` : 'No elec billing'}
+                                    </span>
+                                </div>
+                                {!crLoaded && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontStyle: 'italic' }}>Loading…</div>}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{
-                                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0, display: 'inline-block',
-                                    background: crElecEnabled ? '#f59e0b' : 'var(--color-border)',
-                                }} />
-                                <span style={{ fontSize: 'var(--text-xs)', color: crElecEnabled ? 'var(--color-text)' : 'var(--color-text-faint)', fontWeight: crElecEnabled ? 600 : 400 }}>
-                                    {crElecEnabled ? `Electricity: ${crElecRate || '—'} ${crElecCurrency}/kWh` : 'Electricity not billed'}
-                                </span>
+
+                            {/* Reference Photos */}
+                            <div style={{ ...cardStyle, minHeight: 90, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 6 }}>Reference Photos</div>
+                                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: photos.length > 0 ? 'var(--color-text)' : 'var(--color-warn)' }}>
+                                    {photos.length}
+                                </div>
+                                {photos.length === 0 && (
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warn)', marginTop: 2, fontStyle: 'italic' }}>Setup required</div>
+                                )}
                             </div>
-                        </div>
-                        {!crLoaded && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontStyle: 'italic' }}>Loading…</div>}
-                    </div>
 
-                    <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>Reference Photos</div>
-                        <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: photos.length > 0 ? 'var(--color-text)' : 'var(--color-warn)' }}>
-                            {photos.length}
-                        </div>
-                        {photos.length === 0 && (
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warn)', marginTop: 4, fontStyle: 'italic' }}>Setup required before activation</div>
-                        )}
-                    </div>
+                            {/* House Rules */}
+                            <div style={{ ...cardStyle, minHeight: 90, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 6 }}>House Rules</div>
+                                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)' }}>
+                                    {Array.isArray(p.house_rules) ? p.house_rules.length : 0}
+                                </div>
+                            </div>
 
-                    <div style={{ ...cardStyle, minHeight: 110, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>House Rules</div>
-                        <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text)' }}>
-                            {Array.isArray(p.house_rules) ? p.house_rules.length : 0}
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* ============ MEDIA / Reference Photos ============ */}
             {tab === 'media' && subTab === 'ref-photos' && !loading && (

@@ -154,6 +154,44 @@ function ActionBtn({ label, icon, color, onClick, disabled }: {
     );
 }
 
+// Phase 1020 — compact icon-only button for secondary row actions (Archive, etc.)
+function IconActionBtn({ label, icon, onClick, disabled }: {
+    label: string; icon: string; onClick: () => void; disabled?: boolean;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            title={label}
+            aria-label={label}
+            style={{
+                background: 'transparent',
+                border: '1px solid transparent',
+                borderRadius: 'var(--radius-md)',
+                width: 28, height: 28,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.3 : 0.5,
+                transition: 'all var(--transition-fast)',
+                color: 'var(--color-text-dim)',
+            }}
+            onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.opacity = '0.9';
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-3)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)';
+            }}
+            onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.opacity = disabled ? '0.3' : '0.5';
+                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent';
+            }}
+        >
+            {icon}
+        </button>
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Phase 1019 — Self Check-in mode badge
 // ---------------------------------------------------------------------------
@@ -366,7 +404,7 @@ function PropertyRow({ p, onAction }: {
     return (
         <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 100px 120px 90px 180px',
+            gridTemplateColumns: '1fr 100px 120px 90px 48px',
             alignItems: 'center',
             gap: 'var(--space-3)',
             padding: 'var(--space-4) var(--space-5)',
@@ -419,7 +457,7 @@ function PropertyRow({ p, onAction }: {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end', alignItems: 'center' }}>
                 {p.status === 'pending' && (
                     <>
                         <ActionBtn label="Approve" icon="✓" color="#22c55e" onClick={() => handle('approve')} disabled={acting} />
@@ -427,7 +465,7 @@ function PropertyRow({ p, onAction }: {
                     </>
                 )}
                 {p.status === 'approved' && (
-                    <ActionBtn label="Archive" icon="📦" color="#6b7280" onClick={() => handle('archive')} disabled={acting} />
+                    <IconActionBtn label="Archive" icon="📦" onClick={() => handle('archive')} disabled={acting} />
                 )}
             </div>
         </div>
@@ -737,12 +775,12 @@ function AdminPropertiesContent() {
             {/* Table header */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 100px 120px 90px 180px',
+                gridTemplateColumns: '1fr 100px 120px 90px 48px',
                 gap: 'var(--space-3)',
                 padding: '0 var(--space-5)',
                 marginBottom: 'var(--space-2)',
             }}>
-                {['Property', 'Status', 'Check-in Mode', 'Created', 'Actions'].map(h => (
+                {['Property', 'Status', 'Check-in Mode', 'Created', ''].map(h => (
                     <span key={h} style={{
                         fontSize: 'var(--text-xs)',
                         color: 'var(--color-text-faint)',
