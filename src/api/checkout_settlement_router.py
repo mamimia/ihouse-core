@@ -84,11 +84,11 @@ _FINALIZE_ROLES  = frozenset({"admin", "ops", "worker", "checkout"})
 _VOID_ROLES      = frozenset({"admin"})
 _READ_ADMIN      = frozenset({"admin", "manager"})
 
-# Phase 993-harden: Roles that bypass the checkout-date eligibility gate.
-# Admin and ops can always perform checkout operations regardless of timing.
-# This is intentional — managers need to be able to handle edge cases.
-# A normal checkout worker (role='worker' or 'checkout') is date-gated.
-_CHECKOUT_DATE_BYPASS_ROLES = frozenset({"admin", "ops", "manager"})
+# Phase 998: Tightened from Phase 997.
+# 'ops' removed — ops staff execute checkout via the normal worker path, which
+# is gated by early_checkout_approved=true or the actual check_out date.
+# Only Admin and Manager (decision-making roles) bypass the date gate entirely.
+_CHECKOUT_DATE_BYPASS_ROLES = frozenset({"admin", "manager"})
 
 # Phase 965: valid manual deduction categories (electricity is auto-only)
 _MANUAL_DEDUCTION_CATEGORIES = frozenset({"damage", "miscellaneous"})
@@ -618,6 +618,19 @@ async def start_settlement(
 
         deposit_held, deposit_currency = _get_deposit_held(db, tenant_id, booking_id)
 
+        # Phase 998: Snapshot early checkout context onto settlement record
+        is_early = False
+        original_checkout_date = None
+        effective_checkout_date = None
+        try:
+            bs = _get_booking_checkout_state(db, tenant_id, booking_id)
+            if bs and bs.get("early_checkout_approved"):
+                is_early = True
+                original_checkout_date = str(bs.get("check_out") or "")[:10] or None
+                effective_checkout_date = str(bs.get("early_checkout_date") or "")[:10] or None
+        except Exception:
+            pass  # best-effort, never block settlement start
+
         now = _now_iso()
         settlement_id = str(uuid.uuid4())
         row = {
@@ -633,6 +646,9 @@ async def start_settlement(
             "total_deductions":    0,
             "refund_amount":       deposit_held,
             "retained_amount":     0,
+            "is_early_checkout":   is_early,
+            "original_checkout_date":  original_checkout_date,
+            "effective_checkout_date": effective_checkout_date,
             "created_by":          actor_id,
             "created_at":          now,
             "updated_at":          now,
@@ -642,7 +658,13 @@ async def start_settlement(
 
         _audit(db, tenant_id, actor_id, "settlement_started",
                "booking_settlement_record", settlement_id,
-               {"booking_id": booking_id, "deposit_held": deposit_held})
+               {
+                   "booking_id":             booking_id,
+                   "deposit_held":           deposit_held,
+                   "is_early_checkout":      is_early,
+                   "original_checkout_date": original_checkout_date,
+                   "effective_checkout_date": effective_checkout_date,
+               })
 
         return JSONResponse(status_code=201, content=_serialize_settlement(saved))
 

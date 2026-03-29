@@ -510,6 +510,9 @@ app.include_router(checkin_settlement_router)
 from api.checkout_settlement_router import router as checkout_settlement_router  # noqa: E402  # Phase 959-961
 app.include_router(checkout_settlement_router)
 
+from api.early_checkout_router import router as early_checkout_router  # noqa: E402  # Phase 998
+app.include_router(early_checkout_router)
+
 from api.settlement_history_router import router as settlement_history_router  # noqa: E402  # Phase 962
 app.include_router(settlement_history_router)
 

@@ -469,7 +469,9 @@ async def checkout_booking(
         # Admin/manager/ops bypass. Workers must be on or after check_out date,
         # OR early_checkout_approved must be true on the booking record.
         role = identity.get("role", "")
-        _BYPASS = frozenset({"admin", "ops", "manager"})
+        # Phase 998: Only admin and manager bypass the date gate.
+        # ops executes via the worker path (date-gated or early_checkout_approved).
+        _BYPASS = frozenset({"admin", "manager"})
         if role not in _BYPASS:
             # Fetch the override flag and checkout date
             bs_res = db.table("booking_state").select(
