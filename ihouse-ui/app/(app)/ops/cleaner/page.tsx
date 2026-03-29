@@ -185,7 +185,12 @@ function CleanerSummaryStrip({ activeTasks, completedTasks, nextDeadlineIso }: {
 // ======== Main Page ========
 
 
-export default function MobileCleanerPage() {
+/**
+ * CleanerWizard — Phase 1022-H: extracted as named export for embedding in ManagerExecutionDrawer.
+ * Identical logic to the page; MobileStaffShell wrapper removed.
+ * onCompleted: called after cleaning is completed (used for manager board refresh).
+ */
+export function CleanerWizard({ onCompleted }: { onCompleted?: () => void }) {
     const [tasks, setTasks] = useState<CleaningTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [screen, setScreen] = useState<Screen>('list');
@@ -670,7 +675,6 @@ export default function MobileCleanerPage() {
     const nextDeadlineIso = activeTasks.length > 0 ? (activeTasks[0].due_date || activeTasks[0].deadline || null) : null;
 
     return (
-        <MobileStaffShell title="Cleaning" bottomNavItems={CLEANER_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
             {/* Notice toast */}
             {notice && (
@@ -1047,6 +1051,14 @@ export default function MobileCleanerPage() {
 
             {/* Phase 864: BottomNav now managed by MobileStaffShell via bottomNavItems prop */}
         </div>
+    );
+}
+
+/** Page-level default — workers access the cleaning wizard at /ops/cleaner */
+export default function MobileCleanerPage() {
+    return (
+        <MobileStaffShell title="Cleaning" bottomNavItems={CLEANER_BOTTOM_NAV}>
+            <CleanerWizard />
         </MobileStaffShell>
     );
 }

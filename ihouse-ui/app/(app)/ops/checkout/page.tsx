@@ -223,7 +223,12 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
 }
 
 // ========== Main Page ==========
-export default function MobileCheckoutPage() {
+/**
+ * CheckoutWizard — Phase 1022-H: extracted as named export for embedding in ManagerExecutionDrawer.
+ * Identical logic to the page; MobileStaffShell wrapper removed.
+ * onCompleted: called after checkout is completed (used for manager board refresh).
+ */
+export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
     // ─── Architectural rule (Phase 883 / Issue 16) ───────────────────────────
     // The checkout LIST uses CHECKOUT_VERIFY tasks as its source of truth,
     // NOT booking status. This is the correct and deliberate architecture.
@@ -771,7 +776,6 @@ export default function MobileCheckoutPage() {
     };
 
     return (
-        <MobileStaffShell title="Check-out" bottomNavItems={CHECKOUT_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto', paddingBottom: 80 }}>
             {/* Notice toast */}
             {notice && (
@@ -1449,6 +1453,14 @@ export default function MobileCheckoutPage() {
 
             {/* Phase 865: BottomNav now managed by MobileStaffShell via bottomNavItems prop */}
         </div>
+    );
+}
+
+/** Page-level default — workers access the checkout wizard at /ops/checkout */
+export default function MobileCheckoutPage() {
+    return (
+        <MobileStaffShell title="Check-out" bottomNavItems={CHECKOUT_BOTTOM_NAV}>
+            <CheckoutWizard />
         </MobileStaffShell>
     );
 }

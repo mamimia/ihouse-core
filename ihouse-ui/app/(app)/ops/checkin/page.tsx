@@ -244,7 +244,12 @@ function BookingCardList({ bookings, onStart, onAcknowledge, showNotice }: {
 
 // ========== Main Page ==========
 
-export default function MobileCheckinPage() {
+/**
+ * CheckinWizard — Phase 1022-H: extracted as named export for embedding in ManagerExecutionDrawer.
+ * Identical logic to the page; MobileStaffShell wrapper removed.
+ * onCompleted: called after a booking check-in is completed (used for manager board refresh).
+ */
+export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [step, setStep] = useState<CheckInStep>('list');
@@ -845,7 +850,6 @@ export default function MobileCheckinPage() {
     };
 
     return (
-        <MobileStaffShell title="Check-in" bottomNavItems={CHECKIN_BOTTOM_NAV}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
             {/* Notice toast */}
             {notice && (
@@ -1360,6 +1364,14 @@ export default function MobileCheckinPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+/** Page-level default — workers access the check-in wizard at /ops/checkin */
+export default function MobileCheckinPage() {
+    return (
+        <MobileStaffShell title="Check-in" bottomNavItems={CHECKIN_BOTTOM_NAV}>
+            <CheckinWizard />
         </MobileStaffShell>
     );
 }

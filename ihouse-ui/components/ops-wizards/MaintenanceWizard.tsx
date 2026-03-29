@@ -1,25 +1,22 @@
 'use client';
 
 /**
- * Operational Core — Phase F: Mobile Maintenance Flow
- * Architecture source: .agent/architecture/mobile-maintenance.md
- * Scope: Maintenance worker sees MAINTENANCE tasks + problem reports.
+ * Phase 1022-H — MaintenanceWizard (extracted from /ops/maintenance/page.tsx)
  *
- * Wired to existing APIs:
- *   - problem_report_router.py (382 lines) — full CRUD + photo + status
- *   - worker_router.py (598 lines) — task list + acknowledge + complete
- *   - cleaning_task_router.py — supply check reused for parts tracking
+ * This is the REAL maintenance execution flow — identical to what the worker sees at /ops/maintenance.
+ * The only difference is the outer MobileStaffShell wrapper is removed so it can be embedded
+ * inside the ManagerExecutionDrawer without conflicting chrome.
+ *
+ * Do NOT modify this file independently of /ops/maintenance/page.tsx.
+ * Any feature changes to the maintenance flow must be made in BOTH places
+ * (or better: only here, and have /ops/maintenance/page.tsx import from here).
  */
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, getWorkerId, getToken, API_BASE as BASE } from '@/lib/staffApi';
 import { useElapsed, useCountdown } from '@/lib/useCountdown';
-import { MAINTENANCE_BOTTOM_NAV } from '@/components/BottomNav';
-import MobileStaffShell from '@/components/MobileStaffShell';
 import WorkerTaskCard from '@/components/WorkerTaskCard';
 import WorkerHeader from '@/components/WorkerHeader';
-
-// Phase 864: apiFetch, getWorkerId, getToken imported from lib/staffApi.ts
 
 type Issue = {
     id?: string; report_id?: string; property_id: string;
@@ -42,10 +39,8 @@ const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string
 
 type ViewMode = 'list' | 'detail' | 'work';
 
-// Phase 883 — Issue age chip: "Reported 3h ago" / "CRITICAL — SLA exceeded X"
 function IssueAgeChip({ createdAt, severity }: { createdAt?: string; severity?: string }) {
     const elapsed = useElapsed(createdAt || null);
-    // CRITICAL 5-minute SLA: show countdown if created_at < 5 min ago
     const { label: slaLabel, isOverdue: slaOverdue } = useCountdown(
         createdAt ? new Date(new Date(createdAt).getTime() + 5 * 60_000).toISOString() : null
     );
@@ -72,9 +67,10 @@ function IssueAgeChip({ createdAt, severity }: { createdAt?: string; severity?: 
 }
 
 /**
- * MaintenanceWizard — Phase 1022-H: extracted as named export for embedding in ManagerExecutionDrawer.
- * Identical logic to the page; MobileStaffShell wrapper removed.
- * onCompleted: called after a task is completed (used for manager board refresh).
+ * MaintenanceWizard — embeddable, shell-free version of /ops/maintenance.
+ *
+ * Props:
+ *   onCompleted — called after a task is successfully completed (used by manager drawer to refresh board)
  */
 export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void }) {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -85,7 +81,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
 
-    // Work log state
     const [workNotes, setWorkNotes] = useState('');
     const [workStarted, setWorkStarted] = useState(false);
     const [workStartTime, setWorkStartTime] = useState<string | null>(null);
@@ -114,7 +109,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
 
             setTasks(rawTasks);
 
-            // Fetch issues
             const issuesRes = await apiFetch<any>('/problem-reports?limit=50').catch(() => ({}));
             setIssues(issuesRes.reports || issuesRes.data || []);
         } catch { /* graceful */ }
@@ -125,7 +119,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
 
     const openIssue = (issue: Issue) => {
         setSelectedIssue(issue);
-        // Find matching task
         const match = tasks.find(t => t.property_id === issue.property_id && t.kind === 'MAINTENANCE');
         setSelectedTask(match || null);
         setView('detail');
@@ -177,7 +170,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
             showNotice('✅ Task completed');
         } catch { showNotice('Complete failed'); }
 
-        // Also update issue status
         if (selectedIssue) {
             const issueId = selectedIssue.id || selectedIssue.report_id;
             if (issueId) {
@@ -194,11 +186,10 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
         setSelectedIssue(null);
         setSelectedTask(null);
         load();
+        onCompleted?.();
     };
 
     const today = new Date();
-    const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
     const openIssues = issues.filter(i => i.status !== 'resolved' && i.status !== 'closed');
     const criticalCount = openIssues.filter(i => i.severity === 'CRITICAL').length;
     const activeTasks = tasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELED');
@@ -230,7 +221,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                 <>
                     <WorkerHeader title="Maintenance" />
 
-                    {/* Summary strip */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
                         <div style={card}>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase' }}>Open Issues</div>
@@ -262,22 +252,19 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                     )}
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                        {openIssues.map(issue => {
-                            const sev = SEVERITY_COLORS[issue.severity || 'MEDIUM'] || SEVERITY_COLORS.MEDIUM;
-                            return (
-                                <WorkerTaskCard
-                                    key={issue.id || issue.report_id}
-                                    kind="MAINTENANCE"
-                                    status={issue.status || 'PENDING'}
-                                    priority={issue.severity || 'MEDIUM'}
-                                    propertyName={issue.property_id}
-                                    propertyCode={issue.category || 'General'}
-                                    date={issue.created_at ? new Date(issue.created_at).toISOString().split('T')[0] : ''}
-                                    guestName={issue.description?.substring(0, 50) || 'Issue'} // Use guestName slot for issue title summary
-                                    onStart={() => openIssue(issue)}
-                                />
-                            );
-                        })}
+                        {openIssues.map(issue => (
+                            <WorkerTaskCard
+                                key={issue.id || issue.report_id}
+                                kind="MAINTENANCE"
+                                status={issue.status || 'PENDING'}
+                                priority={issue.severity || 'MEDIUM'}
+                                propertyName={issue.property_id}
+                                propertyCode={issue.category || 'General'}
+                                date={issue.created_at ? new Date(issue.created_at).toISOString().split('T')[0] : ''}
+                                guestName={issue.description?.substring(0, 50) || 'Issue'}
+                                onStart={() => openIssue(issue)}
+                            />
+                        ))}
                     </div>
                 </>
             )}
@@ -291,7 +278,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                     }}>← Back to list</button>
 
                     <div style={card}>
-                        {/* Severity header */}
                         {(() => {
                             const sev = SEVERITY_COLORS[selectedIssue.severity || 'MEDIUM'] || SEVERITY_COLORS.MEDIUM;
                             return (
@@ -323,7 +309,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                             </div>
                         )}
 
-                        {/* Associated task */}
                         {selectedTask && (
                             <div style={{
                                 marginTop: 'var(--space-4)', padding: 'var(--space-3)',
@@ -339,7 +324,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                             </div>
                         )}
 
-                        {/* Actions */}
                         <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                             {selectedTask?.status === 'PENDING' && (
                                 <button onClick={acknowledgeTask} style={{
@@ -355,7 +339,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                                 fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer',
                             }}>🔧 Start Work</button>
 
-                            {/* Navigate to property */}
                             <button onClick={() => navigateToProperty(selectedIssue.property_id)} style={{
                                 width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
                                 background: 'transparent', color: 'var(--color-text-dim)',
@@ -363,7 +346,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                                 fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer',
                             }}>📍 Navigate to Property</button>
 
-                            {/* Call property manager */}
                             <a href="tel:+66000000000" style={{
                                 display: 'block', width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
                                 background: 'transparent', color: 'var(--color-text-dim)',
@@ -410,17 +392,15 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                             </div>
                         </div>
 
-                        {/* Work notes */}
                         <div style={{ marginBottom: 'var(--space-3)' }}>
                             <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
                                 Work Notes *
                             </label>
                             <textarea value={workNotes} onChange={e => setWorkNotes(e.target.value)}
                                 placeholder="What was done? Parts used? Any follow-up needed?"
-                                rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+                                rows={4} style={{ ...inputStyle, resize: 'vertical' } as React.CSSProperties} />
                         </div>
 
-                        {/* After photo */}
                         <div style={{ marginBottom: 'var(--space-4)' }}>
                             <label style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -452,7 +432,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                             </label>
                         </div>
 
-                        {/* Complete */}
                         <button onClick={completeTask} disabled={!workNotes.trim()} style={{
                             width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
                             background: workNotes.trim() ? 'var(--color-primary)' : 'var(--color-surface-2)',
@@ -464,17 +443,6 @@ export function MaintenanceWizard({ onCompleted }: { onCompleted?: () => void })
                     </div>
                 </div>
             )}
-
-            {/* Phase 864: BottomNav now managed by MobileStaffShell via bottomNavItems prop */}
         </div>
-    );
-}
-
-/** Page-level default — workers access the maintenance wizard at /ops/maintenance */
-export default function MobileMaintenancePage() {
-    return (
-        <MobileStaffShell title="Maintenance" bottomNavItems={MAINTENANCE_BOTTOM_NAV}>
-            <MaintenanceWizard />
-        </MobileStaffShell>
     );
 }

@@ -12,6 +12,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AuditEvent, MorningBriefingResponse, CopilotActionItem, apiFetch } from '@/lib/api';
 
+// Phase 1022-H: Real worker execution wizards — embedded directly in the manager drawer.
+// These are the canonical worker flows, identical to what workers see on /ops/*.
+// MobileStaffShell wrapper removed; logic and UX are 100% identical.
+import { CheckinWizard } from '@/app/(app)/ops/checkin/page';
+import { CheckoutWizard } from '@/app/(app)/ops/checkout/page';
+import { CleanerWizard } from '@/app/(app)/ops/cleaner/page';
+import { MaintenanceWizard } from '@/app/(app)/ops/maintenance/page';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -499,61 +507,55 @@ function TakeoverModal({
     );
 }
 
+// Phase 1022-H: KIND_STEPS only kept for the GENERAL fallback shell.
+// All other task kinds now use the real extracted wizard components.
+const GENERAL_STEPS: string[] = [
+    'Review task description',
+    'Complete required actions',
+    'Document outcome',
+];
+
 // ---------------------------------------------------------------------------
-// Phase 1022-G: Task Execution Content (worker engine reused, manager surface)
+// Phase 1022-H: TaskWizardRouter — routes task_kind to real worker wizard.
+// CLEANING → CleanerWizard (real /ops/cleaner flow)
+// CHECKIN_PREP / GUEST_WELCOME / SELF_CHECKIN_FOLLOWUP → CheckinWizard (real /ops/checkin flow)
+// CHECKOUT_VERIFY → CheckoutWizard (real /ops/checkout flow)
+// MAINTENANCE → MaintenanceWizard (real /ops/maintenance flow)
+// GENERAL → simplified fallback shell (no real wizard exists for generic tasks)
 // ---------------------------------------------------------------------------
 
-const KIND_STEPS: Record<string, string[]> = {
-    CLEANING: [
-        'Confirm property access — door code / key collected',
-        'Inspect all rooms for damage or missing items',
-        'Strip and replace all linen and towels',
-        'Clean kitchen — surfaces, sink, appliances',
-        'Clean bathrooms — toilet, shower, mirrors',
-        'Vacuum / mop all floors',
-        'Restock amenities (toiletries, tea/coffee)',
-        'Final walkthrough — verify ready state',
-    ],
-    CHECKIN_PREP: [
-        'Confirm property access is ready',
-        'Verify all keys / access codes are available',
-        'Check check-in materials are in place',
-        'Confirm guest arrival time and details',
-        'Collect ID and deposit if applicable',
-        'Issue access to guest and confirm receipt',
-    ],
-    CHECKOUT_VERIFY: [
-        'Confirm guest has vacated',
-        'Inspect for damage — note any issues',
-        'Collect all keys / access items',
-        'Check inventory against last record',
-        'Note early checkout or overstay if applicable',
-        'Mark property ready for next booking',
-    ],
-    GUEST_WELCOME: [
-        'Confirm guest arrival details',
-        'Prepare welcome setup per guest profile',
-        'Confirm any special requests are handled',
-        'Verify access and welcome materials ready',
-    ],
-    MAINTENANCE: [
-        'Diagnose and document the issue',
-        'Complete repair or escalate if needed',
-        'Photograph before and after state',
-        'Note materials used and time taken',
-    ],
-    SELF_CHECKIN_FOLLOWUP: [
-        'Verify guest completed self check-in',
-        'Collect any missing items (ID, deposit)',
-        'Confirm access was received correctly',
-        'Document any irregularities',
-    ],
-    GENERAL: [
-        'Review task description',
-        'Complete required actions',
-        'Document outcome',
-    ],
-};
+function TaskWizardRouter({
+    task,
+    onCompleted,
+}: {
+    task: ManagerTask;
+    onCompleted: () => void;
+}) {
+    const kind = task.task_kind;
+
+    // Real wizard: Cleaning
+    if (kind === 'CLEANING') {
+        return <CleanerWizard onCompleted={onCompleted} />;
+    }
+
+    // Real wizard: Check-in (also covers GUEST_WELCOME and SELF_CHECKIN_FOLLOWUP variants)
+    if (kind === 'CHECKIN_PREP' || kind === 'GUEST_WELCOME' || kind === 'SELF_CHECKIN_FOLLOWUP') {
+        return <CheckinWizard onCompleted={onCompleted} />;
+    }
+
+    // Real wizard: Check-out
+    if (kind === 'CHECKOUT_VERIFY') {
+        return <CheckoutWizard onCompleted={onCompleted} />;
+    }
+
+    // Real wizard: Maintenance
+    if (kind === 'MAINTENANCE') {
+        return <MaintenanceWizard onCompleted={onCompleted} />;
+    }
+
+    // Fallback: simplified shell for GENERAL and any unmapped task kinds
+    return <GeneralTaskShell task={task} onCompleted={onCompleted} />;
+}
 
 interface TaskContext {
     task_kind?: string;
@@ -569,7 +571,8 @@ interface TaskContext {
     checklist?: Array<{ id?: string; item?: string; label?: string }>;
 }
 
-function TaskExecutionContent({
+// Simplified shell kept ONLY for GENERAL tasks (no dedicated worker wizard exists)
+function GeneralTaskShell({
     task,
     onCompleted,
 }: {
@@ -592,7 +595,7 @@ function TaskExecutionContent({
             .finally(() => setCtxLoading(false));
     }, [task.id]);
 
-    const steps = KIND_STEPS[task.task_kind] ?? KIND_STEPS['GENERAL'];
+    const steps = GENERAL_STEPS;
     const allChecked = steps.every((_, i) => checked[i]);
 
     const handleComplete = async () => {
@@ -894,7 +897,13 @@ function ManagerExecutionDrawer({
 
                 {/* Scrollable execution body */}
                 <div style={{ flex: 1, padding: 'var(--space-5)', overflowY: 'auto' }}>
-                    <TaskExecutionContent task={task} onCompleted={onCompleted} />
+                    {/* Phase 1022-H: Real worker wizard routing.
+                        CLEANING → CleanerWizard (real /ops/cleaner flow)
+                        CHECKIN_PREP / GUEST_WELCOME → CheckinWizard (real /ops/checkin flow)
+                        CHECKOUT_VERIFY → CheckoutWizard (real /ops/checkout flow)
+                        MAINTENANCE → MaintenanceWizard (real /ops/maintenance flow)
+                        GENERAL → simplified fallback (no dedicated wizard) */}
+                    <TaskWizardRouter task={task} onCompleted={onCompleted} />
                 </div>
             </div>
 
