@@ -673,7 +673,30 @@ async def start_settlement(
             "created_at":          now,
             "updated_at":          now,
         }
-        res = db.table("booking_settlement_records").insert(row).execute()
+        # Phase 1001: Insert with graceful fallback for schema lag.
+        # The 4 new columns (effective_checkout_at, early_checkout_reason,
+        # early_checkout_approved_by, early_checkout_approved_at) require the
+        # Phase 1001 migration. If that migration hasn't been applied yet,
+        # strip those nullable columns and retry with the base set.
+        _NEW_COLS = frozenset({
+            "effective_checkout_at", "early_checkout_reason",
+            "early_checkout_approved_by", "early_checkout_approved_at",
+        })
+        try:
+            res = db.table("booking_settlement_records").insert(row).execute()
+        except Exception as _insert_exc:
+            _exc_str = str(_insert_exc).lower()
+            if "42703" in _exc_str or "does not exist" in _exc_str or "column" in _exc_str:
+                logger.warning(
+                    "settlement/start: new Phase 1001 columns absent — "
+                    "falling back to base insert for booking=%s. "
+                    "Apply migration 20260329080000 to enable full context snapshots.",
+                    booking_id,
+                )
+                row_compat = {k: v for k, v in row.items() if k not in _NEW_COLS}
+                res = db.table("booking_settlement_records").insert(row_compat).execute()
+            else:
+                raise
         saved = (res.data or [{}])[0]
 
         _audit(db, tenant_id, actor_id, "settlement_started",
