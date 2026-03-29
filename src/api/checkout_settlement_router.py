@@ -84,6 +84,12 @@ _FINALIZE_ROLES  = frozenset({"admin", "ops", "worker", "checkout"})
 _VOID_ROLES      = frozenset({"admin"})
 _READ_ADMIN      = frozenset({"admin", "manager"})
 
+# Phase 993-harden: Roles that bypass the checkout-date eligibility gate.
+# Admin and ops can always perform checkout operations regardless of timing.
+# This is intentional — managers need to be able to handle edge cases.
+# A normal checkout worker (role='worker' or 'checkout') is date-gated.
+_CHECKOUT_DATE_BYPASS_ROLES = frozenset({"admin", "ops", "manager"})
+
 # Phase 965: valid manual deduction categories (electricity is auto-only)
 _MANUAL_DEDUCTION_CATEGORIES = frozenset({"damage", "miscellaneous"})
 
@@ -315,8 +321,118 @@ def _serialize_settlement(row: dict) -> dict:
     return {k: v for k, v in row.items()}
 
 
-# ===========================================================================
-# Phase 959 — POST /worker/bookings/{booking_id}/closing-meter
+# ---------------------------------------------------------------------------
+# Phase 993-harden — Checkout eligibility guard
+# ---------------------------------------------------------------------------
+
+def _get_booking_checkout_state(
+    db: Any, tenant_id: str, booking_id: str
+) -> Optional[dict]:
+    """
+    Fetch the checkout eligibility fields from booking_state in one DB call.
+    Returns: {check_out, early_checkout_approved, early_checkout_approved_by}
+    Returns None if the booking doesn't exist.
+    """
+    try:
+        res = (
+            db.table("booking_state")
+            .select("check_out, early_checkout_approved, early_checkout_approved_by")
+            .eq("booking_id", booking_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+def _assert_checkout_eligibility(
+    db: Any,
+    tenant_id: str,
+    booking_id: str,
+    identity: dict,
+) -> Optional[JSONResponse]:
+    """
+    Phase 993-harden: Enforce checkout-date eligibility.
+
+    Rule:
+        A checkout operation (closing-meter, settlement/start, finalize)
+        is only permitted when:
+          (a) the booking's check_out date is today or in the past, OR
+          (b) early_checkout_approved = true was set by an Admin/Manager, OR
+          (c) the caller's role is admin, ops, or manager (date-bypass roles).
+
+    Returns:
+        None      — eligibility confirmed, proceed.
+        JSONResponse(403) — not eligible, return this response immediately.
+
+    Design note:
+        Admin/Ops bypass the date gate intentionally — they handle exceptions.
+        Workers (role='worker', 'checkout', 'checkin') are strictly date-gated.
+        The early_checkout_approved flag is the ONLY worker path to early checkout,
+        and it can only be set by Admin or Operational Manager (future phase).
+    """
+    from datetime import date as date_type
+
+    role = identity.get("role", "")
+
+    # Admin/ops/manager bypass the date gate — they can always operate.
+    if role in _CHECKOUT_DATE_BYPASS_ROLES:
+        return None
+
+    # For worker roles: enforce the date rule.
+    booking_state = _get_booking_checkout_state(db, tenant_id, booking_id)
+    if booking_state is None:
+        # Booking doesn't exist — let the caller's 404 guard handle it.
+        return None
+
+    # Check management override first (future: set via admin endpoint).
+    if booking_state.get("early_checkout_approved"):
+        # Override is active — allow (management approved early checkout).
+        logger.info(
+            "checkout_eligibility: early_checkout_approved=true for booking=%s tenant=%s actor=%s",
+            booking_id, tenant_id, identity.get("user_id", "unknown"),
+        )
+        return None
+
+    # Enforce date: check_out must be today or past.
+    check_out_str = booking_state.get("check_out")
+    if not check_out_str:
+        # No checkout date — cannot determine eligibility, block to be safe.
+        return make_error_response(
+            status_code=422,
+            code="CHECKOUT_NOT_ELIGIBLE",
+            extra={
+                "detail": "This booking has no checkout date. Cannot perform checkout operations.",
+                "booking_id": booking_id,
+            },
+        )
+
+    today_str = date_type.today().isoformat()  # YYYY-MM-DD in server local date
+    check_out_date = str(check_out_str)[:10]    # normalize to YYYY-MM-DD
+
+    if check_out_date > today_str:
+        return make_error_response(
+            status_code=422,
+            code="CHECKOUT_NOT_ELIGIBLE",
+            extra={
+                "detail": (
+                    f"Checkout is not permitted before the booking checkout date. "
+                    f"Checkout date: {check_out_date}. Today: {today_str}. "
+                    "An early checkout requires management approval (Admin or Operational Manager)."
+                ),
+                "booking_id":    booking_id,
+                "check_out":     check_out_date,
+                "today":         today_str,
+                "early_override_required": True,
+            },
+        )
+
+    return None  # Eligible.
+
+
 # ===========================================================================
 
 @router.post(
@@ -374,6 +490,11 @@ async def capture_closing_meter(
 
     try:
         db = client or _get_db()
+
+        # Phase 993-harden: Enforce checkout-date eligibility before any writes.
+        eligibility_err = _assert_checkout_eligibility(db, tenant_id, booking_id, identity)
+        if eligibility_err is not None:
+            return eligibility_err
 
         property_id = _get_property_id(db, tenant_id, booking_id)
         if not property_id:
@@ -472,6 +593,11 @@ async def start_settlement(
 
     try:
         db = client or _get_db()
+
+        # Phase 993-harden: Enforce checkout-date eligibility before any writes.
+        eligibility_err = _assert_checkout_eligibility(db, tenant_id, booking_id, identity)
+        if eligibility_err is not None:
+            return eligibility_err
 
         # Guard: only one active settlement per booking
         existing = _get_active_settlement(db, tenant_id, booking_id)

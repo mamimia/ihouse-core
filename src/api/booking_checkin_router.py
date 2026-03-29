@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date as date_type
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -464,6 +464,32 @@ async def checkout_booking(
         booking = _get_booking(db, booking_id, tenant_id)
         if not booking:
             return err("BOOKING_NOT_FOUND", "Booking not found", status=404, booking_id=booking_id)
+
+        # Phase 993-harden: Enforce checkout-date eligibility.
+        # Admin/manager/ops bypass. Workers must be on or after check_out date,
+        # OR early_checkout_approved must be true on the booking record.
+        role = identity.get("role", "")
+        _BYPASS = frozenset({"admin", "ops", "manager"})
+        if role not in _BYPASS:
+            # Fetch the override flag and checkout date
+            bs_res = db.table("booking_state").select(
+                "check_out, early_checkout_approved"
+            ).eq("booking_id", booking_id).eq("tenant_id", tenant_id).limit(1).execute()
+            bs = (bs_res.data or [{}])[0] if bs_res.data else {}
+            early_approved = bs.get("early_checkout_approved") or False
+            check_out_str = str(bs.get("check_out") or "")[:10]
+            today_str = date_type.today().isoformat()
+            if not early_approved and check_out_str and check_out_str > today_str:
+                return err(
+                    "CHECKOUT_NOT_ELIGIBLE",
+                    f"Checkout is not permitted before the booking checkout date ({check_out_str}). "
+                    "An early checkout requires management approval.",
+                    status=422,
+                    booking_id=booking_id,
+                    check_out=check_out_str,
+                    today=today_str,
+                    early_override_required=True,
+                )
 
         current_status = (booking.get("status") or "").lower()
 
