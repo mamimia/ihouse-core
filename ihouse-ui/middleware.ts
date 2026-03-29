@@ -52,6 +52,7 @@ const PUBLIC_PREFIXES = [
     '/guest',
     '/invite',
     '/staff',
+    '/self-checkin',  // Phase 1016: guest self check-in portal — token-gated, no login required
 ];
 
 function isPublicRoute(pathname: string): boolean {
