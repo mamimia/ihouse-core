@@ -45,6 +45,7 @@ class TokenType(str, Enum):
     INVITE = "invite"
     ONBOARD = "onboard"
     STAFF_ONBOARD = "staff_onboard"
+    SELF_CHECKIN = "self_checkin"
 
 
 # ---------------------------------------------------------------------------

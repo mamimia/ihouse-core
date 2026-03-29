@@ -2,10 +2,12 @@
 
 /**
  * Phase 557 — Enhanced Booking Detail Page
+ * Phase 1015 — Self Check-in Panel integration
  * Route: /bookings/[id]
  *
  * Financial facts, timeline events, guest info, action buttons.
  * Admin Close Stay panel for overdue bookings (sets admin_closed, no settlement side effects).
+ * Self Check-in panel for active bookings on default/late_only properties.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -13,6 +15,7 @@ import { api, ApiError } from '@/lib/api';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { EarlyCheckoutPanel } from '@/components/EarlyCheckoutPanel';
+import { SelfCheckinPanel } from '@/components/SelfCheckinPanel';
 
 const OPS_TZ = 'Asia/Bangkok';
 
@@ -417,6 +420,36 @@ export default function BookingDetailPage() {
             {booking && (booking.status || '').toLowerCase() === 'admin_closed' && (
                 <AdminClosedBadge booking={booking} />
             )}
+
+            {/* Self Check-in Panel
+                 ─────────────────────────────────────────────────────────────
+                 Show for active/confirmed bookings on properties where
+                 self_checkin_config.mode is 'default' or 'late_only'.
+                 The mode is read from the booking's self_checkin_config
+                 snapshot (stored at approval time) or from the booking record.
+                 Disabled properties: panel is suppressed entirely.
+                 ──────────────────────────────────────────────────────────── */}
+            {booking && (() => {
+                const rawStatus = (booking.status || '').toLowerCase();
+                const isEligible = ['active', 'confirmed', 'checked_in'].includes(rawStatus);
+                if (!isEligible) return null;
+
+                const mode: string = (
+                    booking.self_checkin_config?.mode ||
+                    booking.property_self_checkin_mode ||
+                    'disabled'
+                );
+                if (!['default', 'late_only'].includes(mode)) return null;
+
+                return (
+                    <SelfCheckinPanel
+                        bookingId={bookingId}
+                        booking={booking}
+                        propertyMode={mode as 'default' | 'late_only'}
+                        onActionComplete={load}
+                    />
+                );
+            })()}
 
             {/* Early Check-out Panel
                  ─────────────────────────────────────────────────────────────

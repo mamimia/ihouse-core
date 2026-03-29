@@ -82,6 +82,14 @@ class TaskKind(str, Enum):
     Typical trigger: manual operator action or booking with linked guest (Phase 206).
     """
 
+    SELF_CHECKIN_FOLLOWUP = "SELF_CHECKIN_FOLLOWUP"
+    """
+    Follow-up for incomplete late self check-in.
+    Staff must verify/collect missing items from the guest (ID photo, deposit, etc.).
+    Typical trigger: access released via self check-in but some steps were incomplete.
+    Phase 1004.
+    """
+
 
 class TaskStatus(str, Enum):
     """
@@ -188,6 +196,7 @@ KIND_DEFAULT_WORKER_ROLE: dict[TaskKind, WorkerRole] = {
     TaskKind.MAINTENANCE: WorkerRole.MAINTENANCE,
     TaskKind.GENERAL: WorkerRole.GENERAL_STAFF,
     TaskKind.GUEST_WELCOME: WorkerRole.CHECKIN,
+    TaskKind.SELF_CHECKIN_FOLLOWUP: WorkerRole.CHECKIN,
 }
 
 #: Default priority for each task kind.
@@ -198,6 +207,7 @@ KIND_DEFAULT_PRIORITY: dict[TaskKind, TaskPriority] = {
     TaskKind.MAINTENANCE: TaskPriority.MEDIUM,
     TaskKind.GENERAL: TaskPriority.LOW,
     TaskKind.GUEST_WELCOME: TaskPriority.HIGH,
+    TaskKind.SELF_CHECKIN_FOLLOWUP: TaskPriority.HIGH,
 }
 
 #: Valid status transitions. Key = current state, value = allowed next states.

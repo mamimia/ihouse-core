@@ -1054,12 +1054,120 @@ export const api = {
         const q = period ? `?period=${period}` : '';
         return apiFetch(`/analytics/summary${q}`);
     },
+
+    // Phase 569 — Conflicts
+    getConflicts: (): Promise<{ conflicts: ConflictItem[] }> =>
+        apiFetch('/conflicts'),
+
+    resolveConflict: (conflictId: string, resolution: string): Promise<unknown> =>
+        apiFetch(`/conflicts/${conflictId}/resolve`, {
+            method: 'POST',
+            body: JSON.stringify({ resolution }),
+        }),
+
+    // Phase 569 — Exchange rates / Currencies
+    getExchangeRates: (): Promise<{ rates: Record<string, number>; base: string }> =>
+        apiFetch('/currencies/rates'),
+
+    // Phase 569 — Maintenance
+    getMaintenanceRequests: (): Promise<{ requests: MaintenanceRequestItem[] }> =>
+        apiFetch('/maintenance'),
+
+    createMaintenanceRequest: (data: {
+        property_id: string;
+        title: string;
+        description: string;
+        priority: string;
+    }): Promise<MaintenanceRequestItem> =>
+        apiFetch('/maintenance', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    // Phase 999 — Early Check-out Approval API
+    getEarlyCheckoutState: (bookingId: string): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/early-checkout`),
+
+    recordEarlyCheckoutRequest: (bookingId: string, body: {
+        request_source: string;
+        request_note?: string;
+        proposed_date?: string;
+        proposed_time?: string;
+    }): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/early-checkout/request`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
+
+    approveEarlyCheckout: (bookingId: string, body: {
+        early_checkout_date: string;
+        early_checkout_time?: string;
+        reason?: string;
+        approval_note?: string;
+    }): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/early-checkout/approve`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
+
+    revokeEarlyCheckout: (bookingId: string): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/early-checkout/approve`, {
+            method: 'DELETE',
+        }),
+
+    // Phase 1005–1015 — Self Check-in API
+    getSelfCheckinState: (bookingId: string): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/self-checkin`),
+
+    requestSelfCheckin: (bookingId: string, body: {
+        reason?: string;
+        guest_phone?: string;
+        guest_email?: string;
+    }): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/self-checkin/request`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
+
+    approveSelfCheckin: (bookingId: string, body: {
+        guest_phone?: string;
+        guest_email?: string;
+        guest_name?: string;
+        reason?: string;
+        token_ttl_hours?: number;
+    }): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/self-checkin/approve`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
+
+    revokeSelfCheckin: (bookingId: string): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/self-checkin/approve`, {
+            method: 'DELETE',
+        }),
+
+    resendSelfCheckinLink: (bookingId: string, body: {
+        guest_phone?: string;
+        guest_email?: string;
+        guest_name?: string;
+    }): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/self-checkin/resend`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
+
+    // Phase 1015 — Staffed override (Default mode → staffed check-in)
+    staffedSelfCheckinOverride: (bookingId: string, body: { reason: string }): Promise<any> =>
+        apiFetch(`/admin/bookings/${bookingId}/self-checkin/staffed-override`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        }),
 };
+
 
 // Phase 157 — Worker task types
 // Phase 201 — Worker channel preference types
 export interface WorkerChannel {
-    channel_type: string;  // 'line' | 'whatsapp' | 'telegram'
     channel_id: string;
     active: boolean;
     created_at: string | null;
@@ -1334,65 +1442,3 @@ export interface MaintenanceRequestItem {
     resolved_at?: string;
 }
 
-// Extend the api object with missing methods
-Object.assign(api, {
-    // Phase 569 — Conflicts
-    getConflicts: (): Promise<{ conflicts: ConflictItem[] }> =>
-        apiFetch('/conflicts'),
-
-    resolveConflict: (conflictId: string, resolution: string): Promise<unknown> =>
-        apiFetch(`/conflicts/${conflictId}/resolve`, {
-            method: 'POST',
-            body: JSON.stringify({ resolution }),
-        }),
-
-    // Phase 569 — Exchange rates / Currencies
-    getExchangeRates: (): Promise<{ rates: Record<string, number>; base: string }> =>
-        apiFetch('/currencies/rates'),
-
-    // Phase 569 — Maintenance
-    getMaintenanceRequests: (): Promise<{ requests: MaintenanceRequestItem[] }> =>
-        apiFetch('/maintenance'),
-
-    createMaintenanceRequest: (data: {
-        property_id: string;
-        title: string;
-        description: string;
-        priority: string;
-    }): Promise<MaintenanceRequestItem> =>
-        apiFetch('/maintenance', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        }),
-
-    // Phase 999 — Early Check-out Approval API
-    getEarlyCheckoutState: (bookingId: string): Promise<any> =>
-        apiFetch(`/admin/bookings/${bookingId}/early-checkout`),
-
-    recordEarlyCheckoutRequest: (bookingId: string, body: {
-        request_source: string;
-        request_note?: string;
-        proposed_date?: string;
-        proposed_time?: string;
-    }): Promise<any> =>
-        apiFetch(`/admin/bookings/${bookingId}/early-checkout/request`, {
-            method: 'POST',
-            body: JSON.stringify(body),
-        }),
-
-    approveEarlyCheckout: (bookingId: string, body: {
-        early_checkout_date: string;
-        early_checkout_time?: string;
-        reason?: string;
-        approval_note?: string;
-    }): Promise<any> =>
-        apiFetch(`/admin/bookings/${bookingId}/early-checkout/approve`, {
-            method: 'POST',
-            body: JSON.stringify(body),
-        }),
-
-    revokeEarlyCheckout: (bookingId: string): Promise<any> =>
-        apiFetch(`/admin/bookings/${bookingId}/early-checkout/approve`, {
-            method: 'DELETE',
-        }),
-});

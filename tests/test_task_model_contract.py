@@ -33,11 +33,15 @@ class TestEnumCompleteness:
 
     def test_task_kind_has_5_values(self):
         from tasks.task_model import TaskKind
-        assert len(TaskKind) == 6  # +GUEST_WELCOME (Phase 206)
+        assert len(TaskKind) == 7  # +GUEST_WELCOME (Phase 206), +SELF_CHECKIN_FOLLOWUP (Phase 1008)
 
     def test_task_kind_values(self):
         from tasks.task_model import TaskKind
-        expected = {"CLEANING", "CHECKIN_PREP", "CHECKOUT_VERIFY", "MAINTENANCE", "GENERAL", "GUEST_WELCOME"}
+        expected = {
+            "CLEANING", "CHECKIN_PREP", "CHECKOUT_VERIFY",
+            "MAINTENANCE", "GENERAL", "GUEST_WELCOME",
+            "SELF_CHECKIN_FOLLOWUP",  # Phase 1008
+        }
         actual = {k.value for k in TaskKind}
         assert actual == expected
 

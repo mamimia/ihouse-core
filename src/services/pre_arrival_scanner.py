@@ -1,28 +1,35 @@
 """
 Phase 232 — Guest Pre-Arrival Automation Chain
+Phase 1013 — Default Self Check-in Integration
 
 pre_arrival_scanner: daily job that finds bookings with check-in in 1–3 days,
 auto-creates pre-arrival tasks, and auto-drafts a check-in message (draft only).
+
+Phase 1013 addition — Mode-Aware Routing:
+  Reads property's self_checkin_config.mode to determine the correct path:
+
+  mode='disabled' or mode='late_only' (staffed properties):
+    → Normal staffed flow: create CHECKIN_PREP + GUEST_WELCOME tasks, build draft.
+    → Late Self Check-in is triggered separately by admin action, not the scanner.
+
+  mode='default' (self check-in properties):
+    → Skip CHECKIN_PREP + GUEST_WELCOME tasks (no physical staff check-in needed).
+    → If no staffed override on the booking: auto-issue SELF_CHECKIN token,
+      set self_checkin_status='approved', send portal link to guest.
+    → If staffed override active: skip portal issuance, fall through to staffed tasks.
+    → Access code is NOT included in the draft — guest gets it at check-in time.
 
 Design:
   - Called by the scheduler (Job 4, daily at 06:00 UTC) via services/scheduler.py.
   - Also callable manually for testing/backfill.
   - Idempotent: queries pre_arrival_queue to skip already-processed bookings.
   - Best-effort per booking: exception on one booking never aborts the scan.
-  - Never sends any message — draft_preview is stored only.
-
-DB reads:
-  - booking_state  — find bookings with check_in in (today+1, today+2, today+3)
-                     and lifecycle_status in ('CONFIRMED', 'ACTIVE')
-  - pre_arrival_queue — skip bookings already processed today
-
-DB writes:
-  - tasks            — CHECKIN_PREP + GUEST_WELCOME via upsert (idempotent)
-  - pre_arrival_queue — one row per booking per check_in date
+  - Never sends any message directly — portal link dispatch is delegated.
 
 Public entry point:
     run_pre_arrival_scan(db=None) -> dict
-        Returns: { bookings_found, bookings_processed, tasks_created, drafts_written }
+        Returns: { bookings_found, bookings_processed, bookings_skipped,
+                   tasks_created, drafts_written, self_checkin_issued }
 """
 from __future__ import annotations
 
@@ -78,8 +85,116 @@ def _build_checkin_draft(
     )
 
 
+def _get_property_self_checkin_config(db: Any, tenant_id: str, property_id: str) -> dict:
+    """
+    Fetch the self_checkin_config for a property.
+    Returns mode and step config, with safe defaults.
+    """
+    try:
+        res = (
+            db.table("properties")
+            .select("self_checkin_config")
+            .eq("property_id", property_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        if rows:
+            cfg = rows[0].get("self_checkin_config") or {}
+            return cfg if isinstance(cfg, dict) else {}
+    except Exception:
+        pass
+    return {"mode": "disabled"}
+
+
+def _issue_self_checkin_for_default_booking(
+    db: Any,
+    tenant_id: str,
+    booking_id: str,
+    property_id: str,
+    guest_name: str,
+    guest_phone: Optional[str],
+    guest_email: Optional[str],
+    property_name: Optional[str],
+    sc_config: dict,
+) -> bool:
+    """
+    Auto-issue self check-in portal link for a Default-mode booking.
+
+    Phase 1013 — this is the scanner's replacement for staffed task creation
+    when property mode is 'default'.
+
+    Actions:
+      1. Issue SELF_CHECKIN access token
+      2. Set booking_state.self_checkin_status = 'approved'
+      3. Set self_checkin_approved_by = 'system:pre_arrival', self_checkin_approved = True
+      4. Store token hash + portal link on booking
+      5. Dispatch portal link via SMS/email (best-effort)
+
+    Returns True if successful (token issued + state updated), False on failure.
+    """
+    try:
+        from api.self_checkin_router import (
+            _issue_self_checkin_token,
+            _dispatch_portal_link,
+        )
+
+        ttl_hours = sc_config.get("max_token_ttl_hours") or 72
+        portal_url, token_hash, exp = _issue_self_checkin_token(
+            db=db,
+            tenant_id=tenant_id,
+            booking_id=booking_id,
+            guest_email=guest_email or "",
+            ttl_hours=int(ttl_hours),
+        )
+
+        now = datetime.now(tz=timezone.utc).isoformat()
+        now_ms = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+
+        db.table("booking_state").update({
+            "self_checkin_status": "approved",
+            "self_checkin_approved": True,
+            "self_checkin_approved_by": "system:pre_arrival",
+            "self_checkin_approved_at": now,
+            "self_checkin_reason": "property_default_self_checkin",
+            "self_checkin_token_hash": token_hash,
+            "self_checkin_portal_url": portal_url,
+            "self_checkin_portal_sent_at": now,
+            "self_checkin_config": sc_config,  # snapshot property config at time of issuance
+            "updated_at_ms": now_ms,
+        }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
+
+        # Dispatch portal link to guest
+        if sc_config.get("auto_send_portal_link", True):
+            _dispatch_portal_link(
+                db=db,
+                tenant_id=tenant_id,
+                portal_url=portal_url,
+                guest_name=guest_name or "Guest",
+                property_name=property_name or property_id,
+                mode="default",
+                to_phone=guest_phone,
+                to_email=guest_email,
+            )
+
+        logger.info(
+            "pre_arrival_scanner: default_sc issued for booking=%s property=%s portal=%s",
+            booking_id, property_id, portal_url,
+        )
+        return True
+
+    except Exception as exc:
+        logger.warning(
+            "pre_arrival_scanner: default_sc issuance failed booking=%s: %s",
+            booking_id, exc,
+        )
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Task creation helper (create CHECKIN_PREP + GUEST_WELCOME via upsert)
+# Staffed properties only — NOT called for Default Self Check-in mode.
 # ---------------------------------------------------------------------------
 
 def _create_pre_arrival_tasks(
@@ -228,6 +343,7 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
             "bookings_skipped": int,
             "tasks_created": int,
             "drafts_written": int,
+            "self_checkin_issued": int,
         }
     """
     try:
@@ -241,6 +357,7 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
             "bookings_skipped": 0,
             "tasks_created": 0,
             "drafts_written": 0,
+            "self_checkin_issued": 0,
         }
 
     today = date.today()
@@ -252,7 +369,8 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
             db.table("booking_state")
             .select(
                 "booking_id, tenant_id, property_id, check_in, check_out, "
-                "status"
+                "status, guest_name, guest_phone, guest_email, "
+                "self_checkin_staff_override"
             )
             .gte("check_in", date_from)
             .lte("check_in", date_to)
@@ -276,6 +394,7 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
     bookings_skipped = 0
     total_tasks = 0
     total_drafts = 0
+    total_self_checkin_issued = 0
 
     for booking in bookings:
         booking_id = booking.get("booking_id", "")
@@ -284,6 +403,8 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
         check_in   = booking.get("check_in", "")
         check_out  = booking.get("check_out", "")
         guest_name = booking.get("guest_name")
+        guest_phone = booking.get("guest_phone")
+        guest_email = booking.get("guest_email")
 
         if not (booking_id and tenant_id and check_in):
             continue
@@ -320,58 +441,123 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
                 pass  # if we can't verify, continue (safe default — let it process)
 
         try:
-            # 1. Create tasks
-            task_ids = _create_pre_arrival_tasks(
-                db=db,
-                tenant_id=tenant_id,
-                booking_id=booking_id,
-                property_id=property_id or "",
-                check_in=check_in,
-                guest_name=guest_name,
-            )
-
-            # 2. Fetch property for access_code (best-effort)
-            access_code: Optional[str] = None
-            property_name: Optional[str] = None
+            # Phase 1013: detect property self_checkin mode
+            sc_config: dict = {}
+            sc_mode = "disabled"
             if property_id:
-                try:
-                    prop_result = (
-                        db.table("properties")
-                        .select("name, access_code")
-                        .eq("property_id", property_id)
-                        .limit(1)
-                        .execute()
-                    )
-                    if prop_result.data:
-                        access_code = prop_result.data[0].get("access_code")
-                        property_name = prop_result.data[0].get("name")
-                except Exception:  # noqa: BLE001
-                    pass
+                sc_config = _get_property_self_checkin_config(db, tenant_id, property_id)
+                sc_mode = sc_config.get("mode") or "disabled"
 
-            # 3. Build check-in draft
-            draft = _build_checkin_draft(
-                guest_name=guest_name,
-                property_name=property_name,
-                check_in=check_in,
-                check_out=check_out or "",
-                access_code=access_code,
-            )
+            # Check for per-booking staffed override
+            staff_override = booking.get("self_checkin_staff_override") or False
 
-            # 4. Write queue row
-            _write_queue_row(
-                db=db,
-                tenant_id=tenant_id,
-                booking_id=booking_id,
-                property_id=property_id,
-                check_in=check_in,
-                tasks_created=task_ids,
-                draft_written=True,
-                draft_preview=draft,
-            )
+            # === DEFAULT SELF CHECK-IN path ===
+            if sc_mode == "default" and not staff_override:
+                # Skip CHECKIN_PREP/GUEST_WELCOME — no physical check-in needed.
+                # Auto-issue SELF_CHECKIN token + portal link.
 
-            total_tasks += len(task_ids)
-            total_drafts += 1
-            bookings_processed += 1
+                # Fetch property name for notification message
+                property_name: Optional[str] = None
+                if property_id:
+                    try:
+                        pn_res = (
+                            db.table("properties")
+                            .select("display_name, name")
+                            .eq("property_id", property_id)
+                            .limit(1)
+                            .execute()
+                        )
+                        if pn_res.data:
+                            property_name = (
+                                pn_res.data[0].get("display_name")
+                                or pn_res.data[0].get("name")
+                            )
+                    except Exception:
+                        pass
+
+                issued = _issue_self_checkin_for_default_booking(
+                    db=db,
+                    tenant_id=tenant_id,
+                    booking_id=booking_id,
+                    property_id=property_id or "",
+                    guest_name=guest_name,
+                    guest_phone=guest_phone,
+                    guest_email=guest_email,
+                    property_name=property_name,
+                    sc_config=sc_config,
+                )
+
+                _write_queue_row(
+                    db=db,
+                    tenant_id=tenant_id,
+                    booking_id=booking_id,
+                    property_id=property_id,
+                    check_in=check_in,
+                    tasks_created=[],
+                    draft_written=False,
+                    draft_preview=f"[self_checkin:default] portal_issued={issued}",
+                )
+
+                if issued:
+                    total_self_checkin_issued += 1
+                bookings_processed += 1
+
+            else:
+                # === STAFFED / LATE_ONLY / DISABLED path ===
+                # (also used if Default-mode but staff override is set)
+
+                # 1. Create tasks
+                task_ids = _create_pre_arrival_tasks(
+                    db=db,
+                    tenant_id=tenant_id,
+                    booking_id=booking_id,
+                    property_id=property_id or "",
+                    check_in=check_in,
+                    guest_name=guest_name,
+                )
+
+                # 2. Fetch property for access_code (best-effort)
+                access_code: Optional[str] = None
+                property_name = None
+                if property_id:
+                    try:
+                        prop_result = (
+                            db.table("properties")
+                            .select("name, access_code")
+                            .eq("property_id", property_id)
+                            .limit(1)
+                            .execute()
+                        )
+                        if prop_result.data:
+                            access_code = prop_result.data[0].get("access_code")
+                            property_name = prop_result.data[0].get("name")
+                    except Exception:  # noqa: BLE001
+                        pass
+
+                # 3. Build check-in draft
+                draft = _build_checkin_draft(
+                    guest_name=guest_name,
+                    property_name=property_name,
+                    check_in=check_in,
+                    check_out=check_out or "",
+                    access_code=access_code,
+                )
+
+                # 4. Write queue row
+                _write_queue_row(
+                    db=db,
+                    tenant_id=tenant_id,
+                    booking_id=booking_id,
+                    property_id=property_id,
+                    check_in=check_in,
+                    tasks_created=task_ids,
+                    draft_written=True,
+                    draft_preview=draft,
+                )
+
+                total_tasks += len(task_ids)
+                total_drafts += 1
+                bookings_processed += 1
 
         except Exception as exc:  # noqa: BLE001
             logger.warning(
@@ -380,14 +566,16 @@ def run_pre_arrival_scan(db: Optional[Any] = None) -> dict:
             )
 
     logger.info(
-        "pre_arrival_scanner: found=%d processed=%d skipped=%d tasks=%d drafts=%d",
-        bookings_found, bookings_processed, bookings_skipped, total_tasks, total_drafts,
+        "pre_arrival_scanner: found=%d processed=%d skipped=%d tasks=%d drafts=%d sc_issued=%d",
+        bookings_found, bookings_processed, bookings_skipped,
+        total_tasks, total_drafts, total_self_checkin_issued,
     )
 
     return {
-        "bookings_found":    bookings_found,
-        "bookings_processed": bookings_processed,
-        "bookings_skipped":  bookings_skipped,
-        "tasks_created":     total_tasks,
-        "drafts_written":    total_drafts,
+        "bookings_found":       bookings_found,
+        "bookings_processed":   bookings_processed,
+        "bookings_skipped":     bookings_skipped,
+        "tasks_created":        total_tasks,
+        "drafts_written":       total_drafts,
+        "self_checkin_issued":  total_self_checkin_issued,
     }
