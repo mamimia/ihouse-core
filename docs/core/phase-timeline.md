@@ -8624,3 +8624,42 @@ Implemented strict calendar block classification and dual-surface UI on the Book
 
 Result: The Bookings list is now a true operational surface, and the boundary between guests and availability blocks is strictly enforced both at the UI layer and in the backend. 
 Spec: `docs/archive/phases/phase-1003-spec.md`
+
+## Phase 1021 — Owner Bridge Flow (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-29
+**Prerequisite:** Phase 1003 — Canonical Block Classification & Bookings UX
+
+Replaced the misleading "Go to Owners → Create or Link Profile" CTA in Manage Staff (for role=Owner staff users) with a real create-or-link bridge flow. A modal now launches directly from the staff detail page, carrying over personal details and all existing property assignments from the staff record into the owner creation experience. No navigation away. No blank form. Prefilled and ready.
+
+Key files: `admin/staff/[id]/page.tsx`, `components/owners/LinkOwnerModal.tsx`.
+
+## Phase 1022 — Operational Manager Takeover Gate (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-29
+**Prerequisite:** Phase 1021 — Owner Bridge Flow
+
+Full end-to-end design and implementation of the Operational Manager/Admin task takeover model. This is the first operational control layer allowing managers and admins to step into worker tasks directly from their own surface.
+
+**Core model:**
+- Takeover is task-specific, auditable, in-place (REASSIGNED — same task)
+- New `MANAGER_EXECUTING` status in task state machine
+- Audit chain: `original_worker_id`, `taken_over_by`, `taken_over_reason`, `taken_over_at`
+- Scope: Operational Manager → assigned properties only; Admin → global fallback
+
+**Key sub-phases:**
+- 1022-A: Task model extension (MANAGER_EXECUTING, takeover fields)
+- 1022-C/D: Takeover router with permission guards, property scope, manager task board
+- 1022-E/G: Manager Task Board UI + Takeover Modal + responsive execution drawer (mobile: full-screen overlay; desktop: slide-in side panel)
+- 1022-H: Real worker wizard extraction and embedding in manager drawer
+  - All 4 `/ops/*` wizards extracted as named embeddable exports (zero logic changes)
+  - `TaskWizardRouter` routes by `task_kind` to real wizard in drawer
+  - `GENERAL` acknowledged as using `GeneralTaskShell` simplified fallback (no real wizard exists)
+  - Build: clean. Staging deployed: commit `91f7114`
+
+Pending (not blocking close): staging visual verification of embedded wizards — blocked by browser automation dev-login issue. Needs manual or credential-supplied verification in next session.
+
+Key files: `src/tasks/task_model.py`, `src/api/task_takeover_router.py`, `ihouse-ui/app/(app)/manager/page.tsx`, all four `ihouse-ui/app/(app)/ops/*/page.tsx`.
+Spec: `docs/archive/phases/phase-1022-spec.md`

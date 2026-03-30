@@ -1,14 +1,22 @@
 ## Current Active Phase
 
-Phase 1004 — Next Phase. Phases 841–1003 closed.
+Phase 1023 — Next Phase. Phases 841–1022 closed.
 
 ## Last Closed Phase
 
-Phase 1003 — Canonical Block Classification & Bookings UX.
+Phase 1022 — Operational Manager Takeover Gate.
 
 ## Current Objective
 
-✅ **Intake Proof Sequence — COMPLETE** — System proven from true zero-state.
+✅ **Phase 1022 — Operational Manager Takeover Gate — CLOSED**
+- Task model extended: `MANAGER_EXECUTING`, audit fields, `VALID_TASK_TRANSITIONS` updated
+- Takeover router: permission-guarded by role + property scope
+- Manager Task Board + Takeover Modal + responsive execution drawer
+- All 4 worker wizards embedded in manager drawer via `TaskWizardRouter`
+- Build clean. Staging deployed: commit `91f7114`
+
+⏳ **Single open item for Phase 1023 start:**
+- Staging visual verification of embedded wizards — requires dev-login credentials (browser automation blocked this session). Complete with: TENANT ID you provided to dev-login, SECRET, ROLE=Admin or Manager.
 - System reset to zero-state (Phase 830)
 - Auth E2E proven: dev-login → JWT → API access
 - Task lifecycle policy: no production delete, CANCELLED + canceled_reason
@@ -59,7 +67,13 @@ Phase 860 — Landing Page UI Fixes & Mobile Scrolling          ← CLOSED
 Phase 861 — Identity Merge & Auth Linking Closure              ← CLOSED
 Phase 862 — Staff Onboarding Data Mapping + mailto UX         ← CLOSED
 Phase 863 — Media Storage Remediation + Canonical Retention   ← CLOSED
-Phase 864 — Next Phase                                        ← ACTIVE
+Phase 864 — Next Phase                                        ← CLOSED (merged into later phases)
+Phase 979 — Guest Dossier & Worker Check-in Hardening         ← CLOSED
+Phase 981 — Test Suite Full Green (7,975 passed)              ← CLOSED
+Phase 1003 — Canonical Block Classification & Bookings UX     ← CLOSED
+Phase 1021 — Owner Bridge Flow                                ← CLOSED
+Phase 1022 — Operational Manager Takeover Gate                ← CLOSED
+Phase 1023 — Next Phase                                       ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)

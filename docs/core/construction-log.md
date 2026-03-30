@@ -5411,3 +5411,38 @@ Phase 1003 closed. Implemented functional dual-surface layout on Bookings page d
 Key files: `src/api/bookings_router.py`, `src/api/bulk_import_router.py`, `ihouse-ui/lib/api.ts`, `ihouse-ui/app/(app)/bookings/page.tsx`.
 
 Spec: `docs/archive/phases/phase-1003-spec.md`
+
+## Phase 1021 Closure — Owner Bridge Flow
+
+**Date:** 2026-03-29
+
+Phase 1021 closed. Replaced misleading CTA in Manage Staff (role=Owner users) with a real `LinkOwnerModal`. Modal carries over full personal details (name, email, phone) and all existing property assignments from the staff record into the owner create/link flow. Staff users with role=Owner no longer see a navigation-only CTA that goes nowhere — they get a real in-context create-or-link experience.
+
+Key files: `ihouse-ui/app/(app)/admin/staff/[id]/page.tsx`, `ihouse-ui/components/owners/LinkOwnerModal.tsx`.
+
+## Phase 1022 Closure — Operational Manager Takeover Gate
+
+**Date:** 2026-03-29
+
+Phase 1022 closed. Designed and implemented the full operational manager/admin task takeover model end-to-end.
+
+**Backend:**
+- `MANAGER_EXECUTING` status added to `TaskStatus`, `VALID_TASK_TRANSITIONS` extended
+- Takeover tracking fields: `original_worker_id`, `taken_over_by`, `taken_over_reason`, `taken_over_at`
+- `POST /tasks/{task_id}/take-over` — permission-guarded by role and property scope
+- `GET /manager/tasks` — manager task board endpoint
+
+**Frontend:**
+- Manager task board with real task data, status badges, priority indicators
+- Takeover modal with reason input
+- Responsive execution drawer: mobile = full-screen overlay, desktop = slide-in side panel
+- Board stays visible on desktop throughout execute → complete flow
+- All four `/ops/*` wizards (`CheckinWizard`, `CheckoutWizard`, `CleanerWizard`, `MaintenanceWizard`) extracted as named exports and embedded in manager drawer via `TaskWizardRouter`
+- `GENERAL` tasks use `GeneralTaskShell` simplified fallback (acknowledged — no dedicated worker wizard exists for GENERAL)
+
+Build: clean exit code 0. Deployed to staging (commit `91f7114`, `domaniqo-staging.vercel.app`).
+
+**Pending:** staging visual verification of embedded wizards — browser automation blocked by unknown dev-login credentials. Must be completed in next session with manual or credential-provided login.
+
+Key files: `src/tasks/task_model.py`, `src/api/task_takeover_router.py`, `ihouse-ui/app/(app)/manager/page.tsx`, `ihouse-ui/app/(app)/ops/checkin/page.tsx`, `ihouse-ui/app/(app)/ops/checkout/page.tsx`, `ihouse-ui/app/(app)/ops/cleaner/page.tsx`, `ihouse-ui/app/(app)/ops/maintenance/page.tsx`.
+Spec: `docs/archive/phases/phase-1022-spec.md`

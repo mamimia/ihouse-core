@@ -1,14 +1,18 @@
 ## Current Phase
-Phase 1004 — Next Phase
+Phase 1023 — Next Phase
 
 ## Last Closed Phase
-Phase 1003 — Canonical Block Classification & Bookings UX
+Phase 1022 — Operational Manager Takeover Gate
 
 ## System Status
 
 **[...System status through Phase 958 unchanged...] Phase 979 Guest Dossier & Worker Check-in Hardening: Full Guest Dossier system — `/guests/{guest_id}` backend endpoint with denormalized response (stays, check-in records, portal data), tabbed frontend dossier page (Current Stay, Activity, Contact), timeline-aware status badges (In Stay / Past Stay / Upcoming), compact metadata layout, Guest Portal QR/Send Link actions, full-row clickability on Guest Directory. Worker check-in lifecycle: self-healing mechanism auto-completes orphaned ACKNOWLEDGED tasks via `forceCompleteTask()` state-machine walk when booking is already `checked_in`. Breadcrumb navigation leak suppressed on all mobile staff routes. MobileStaffShell horizontal gutter (`paddingInline: var(--space-4)`). LiveCountdown human-readable tiered format: `>48h→13d`, `24-48h→1d 6h`, `<24h→18h 20m`, `<1h→42m 08s`; adaptive tick rate. Worker Home broken modal removed (source of `worker.btn_complete` i18n token leak) — Next Up cards now navigate to role-specific task flows. Deployed to Railway + Vercel.**
 
 **Phase 1003 Canonical Block Classification & Bookings UX:** Established functional dual-surface Bookings page separating true operating stays from Calendar Blocks. Viewport-safe Status Modal completely replaces fragile popover logic. All sync-based availability rows labeled explicitly with `is_calendar_block = true`.
+
+**Phase 1021 Owner Bridge Flow:** Replaced the misleading "Go to Owners" CTA for role=Owner staff users with a real `LinkOwnerModal`. Modal carries over personal details and all property assignments from the staff record into the owner create/link flow.
+
+**Phase 1022 Operational Manager Takeover Gate:** Full end-to-end task takeover model. `MANAGER_EXECUTING` status in task state machine. Audit chain: `original_worker_id`, `taken_over_by`, `taken_over_reason`, `taken_over_at`. Permission guards: Operational Manager scoped to assigned properties; Admin global fallback. Responsive execution drawer keeps manager on their board surface. All four worker wizards (`CheckinWizard`, `CheckoutWizard`, `CleanerWizard`, `MaintenanceWizard`) extracted and embedded in manager drawer via `TaskWizardRouter`. Build clean. Deployed commit `91f7114`. Staging visual verification pending for next session.
 
 ## Deferred Items — Managed Open Items Registry
 
@@ -419,7 +423,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Next: Phase 982.**
+**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Phases 1021–1022 closed (frontend-only changes — test count unchanged). Next: Phase 1023.**
 
 ## Environment Variables (continued)
 
