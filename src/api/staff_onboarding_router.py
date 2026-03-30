@@ -543,6 +543,20 @@ async def approve_onboarding(
         if preferred_channel:
             comm_pref["preferred_channel"] = preferred_channel
 
+        # Phase 1025 Fix B: Derive document validity status from submitted data.
+        # NEVER hardcode 'missing' — that silently overwrites real submitted data.
+        # Rule: if the number was submitted, the document exists and is 'valid'.
+        # Admin can always downgrade to 'expired'/'missing' manually later.
+        id_doc_status = "valid" if id_number else "missing"
+        work_permit_status = "valid" if work_permit_number else "missing"
+        # Write the derived statuses back into comm_pref so the Documents tab reads them
+        comm_pref["id_doc_status"] = id_doc_status
+        comm_pref["work_permit_status"] = work_permit_status
+        logger.info(
+            "staff-onboarding/approve: doc status derived id_doc=%s work_permit=%s user_id=%s",
+            id_doc_status, work_permit_status, user_id,
+        )
+
         # Primary name for the staff card = real full name, not nickname
         full_name = wdata.get("full_name") or (
             f"{wdata.get('first_name', '')} {wdata.get('last_name', '')}".strip()
@@ -580,9 +594,20 @@ async def approve_onboarding(
         if work_permit_expiry_date:
             perm_row["work_permit_expiry_date"] = work_permit_expiry_date
 
-        admin_client.table("tenant_permissions").upsert(
-            perm_row, on_conflict="tenant_id,user_id"
-        ).execute()
+        # Phase 1025 Fix D (partial atomicity): permissions upsert runs before token mark.
+        # If this write fails, the token remains in pending_confirm so admin can retry.
+        # If auth provisioning succeeded but this fails, log PARTIAL_APPROVAL_FAILURE.
+        try:
+            admin_client.table("tenant_permissions").upsert(
+                perm_row, on_conflict="tenant_id,user_id"
+            ).execute()
+        except Exception as perm_exc:
+            logger.critical(
+                "PARTIAL_APPROVAL_FAILURE: auth user provisioned but permissions upsert failed. "
+                "user_id=%s tenant=%s email=%s error=%s — manual cleanup may be required.",
+                user_id, tenant_id, email, perm_exc,
+            )
+            raise perm_exc
         
         # 3. Mark token as used
         from datetime import datetime, timezone

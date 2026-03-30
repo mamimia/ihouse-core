@@ -109,7 +109,7 @@ export default function PendingRequestsPage() {
     if (!confirm('Approve this worker and provision their access?')) return;
     const role = metadata?.intended_role || 'worker';
     const workerRoles = metadata?.worker_data?.worker_roles || [];
-    const displayName = metadata?.display_name || 'Staff Member';
+    const displayName = metadata?.worker_data?.full_name || metadata?.display_name || 'Staff Member';
 
     try {
       const resp = await apiFetch<{ magic_link?: string }>(`/admin/staff-onboarding/${id}/approve`, {
@@ -123,12 +123,27 @@ export default function PendingRequestsPage() {
         setApprovedLink({ workerName: displayName, link: resp.magic_link, deliveryMethod: (resp as any).delivery_method });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        alert('Worker Approved successfully.');
+        alert('Worker approved successfully.');
       }
     } catch (err: any) {
-      alert(err.message || 'Network error during approval');
+      // Phase 1025 Fix D: Show specific human-readable messages per error code.
+      // err.code is the machine code (from Fix A). err.message is the human text.
+      const code: string = err?.code || '';
+      if (code === 'INVALID_STATUS') {
+        alert('This request has already been approved. The worker is already on your staff list.');
+      } else if (code === 'RATE_LIMIT') {
+        alert("Email rate limit exceeded. Please wait ~60 minutes, or use the Resend Access button on the staff member\u2019s profile.");
+      } else if (code === 'IDENTITY_MISMATCH_AT_APPROVAL') {
+        alert('Identity mismatch detected: the submitted email does not match the existing Supabase account. Please contact support.');
+      } else if (code === 'VALIDATION_ERROR') {
+        alert(`Approval failed: ${err.message || 'Missing required data (check email).'}`);
+      } else {
+        // Fallback: show the real message from the backend (Fix A ensures this is human-readable)
+        alert(`Approval failed: ${err.message || 'Unknown error. Please try again.'}`);
+      }
     }
   };
+
 
   const handleReject = async (id: string) => {
     if (!confirm('Reject and delete this request?')) return;

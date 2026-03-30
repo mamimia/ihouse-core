@@ -2132,8 +2132,46 @@ export default function EditStaffPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                   {capHistory.map((ev, i) => {
                     const isGrant = ev.action === 'MANAGER_CAPABILITY_GRANTED';
-                    // Phase 1023-C: prefer human label stored in payload, fall back to raw key
-                    const capLabel = ev.payload?.capability_label ?? ev.payload?.capability ?? '';
+                    
+                    // Fallback map for rows written before capability_label was saved in audit payloads
+                    const fallbackMap: Record<string, string> = {
+                      'booking_flag_vip': 'Flag bookings as VIP',
+                      'booking_flag_dispute': 'Flag bookings as disputed',
+                      'booking_approve_early_co': 'Approve early checkout',
+                      'booking_approve_self_ci': 'Approve self check-in',
+                      'booking_create_manual': 'Create manual bookings',
+                      'booking_exception_notes': 'Add operator notes to bookings',
+                      'staff_view_roster': 'View staff roster & contact details',
+                      'staff_manage_assignments': 'Assign / unassign staff to properties',
+                      'staff_approve_availability': 'Approve / reject availability requests',
+                      'staff_create_worker': 'Create new worker accounts (invite)',
+                      'staff_deactivate_worker': 'Archive / deactivate worker accounts',
+                      'ops_task_takeover': 'Take over worker tasks',
+                      'ops_task_reassign': 'Reassign tasks between workers',
+                      'ops_schedule_tasks': 'Create ad-hoc operational tasks',
+                      'ops_view_cleaning_reports': 'View cleaning completion reports & photos',
+                      'ops_set_property_status': 'Set property operational status',
+                      'settlement_view_deposits': 'View deposit collection records',
+                      'settlement_finalize': 'Finalize checkout settlements',
+                      'settlement_approve_deductions': 'Approve damage deductions',
+                      'settlement_void': 'Void a finalized settlement',
+                      'financial_view_revenue': 'View revenue & occupancy metrics',
+                      'financial_view_owner_stmt': 'View owner statements',
+                      'financial_export': 'Export financial data',
+                      // Phase 862 legacy coarse keys
+                      'financial': 'Full Financial Suite (Legacy)',
+                      'staffing': 'Full Staffing Suite (Legacy)',
+                      'properties': 'Full Properties Suite (Legacy)',
+                      'bookings': 'Full Bookings Suite (Legacy)',
+                      'maintenance': 'Full Maintenance Suite (Legacy)',
+                      'settings': 'Tenant Settings (Legacy)',
+                      'intake': 'Property Intake (Legacy)',
+                    };
+                    
+                    // Phase 1023-C: prefer human label stored in payload, fall back to stable map, then raw key
+                    const rawKey = ev.payload?.capability ?? '';
+                    const capLabel = ev.payload?.capability_label ?? fallbackMap[rawKey] ?? rawKey;
+                    
                     const when = ev.occurred_at ? new Date(ev.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
                     return (
                       <div key={ev.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>

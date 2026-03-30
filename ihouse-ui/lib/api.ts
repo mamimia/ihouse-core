@@ -106,7 +106,22 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _retryCount 
                 performClientLogout('/login');
             }
         }
-        throw new ApiError(resp.status, body?.error || "UNKNOWN_ERROR", body);
+
+        // Phase 1025 Fix A: Align error parsing with the Phase 75 standard backend shape.
+        // Backend uses { code: "SCREAMING_CASE", message: "Human text" } (make_error_response).
+        // Legacy routers use { error: "string" }. Both shapes must be handled.
+        // Priority: body.code (Phase 75) > body.error as string (legacy) > "UNKNOWN_ERROR"
+        const rawError = body?.error;
+        const errorCode: string =
+            (typeof body?.code === 'string' && body.code)   // Phase 75 standard: { code, message }
+            || (typeof rawError === 'string' && rawError)    // legacy: { error: "STRING" }
+            || 'UNKNOWN_ERROR';
+        // Human-readable message: prefer body.message, then body.detail, then the code itself
+        const errorMessage: string =
+            (typeof body?.message === 'string' && body.message)
+            || (typeof body?.detail === 'string' && body.detail)
+            || errorCode;
+        throw new ApiError(resp.status, errorCode, body, errorMessage);
     }
     const body = await resp.json();
     // Phase 789: Unwrap canonical {ok, data} envelope from backend
@@ -123,9 +138,12 @@ export class ApiError extends Error {
     constructor(
         public status: number,
         public code: string,
-        public body: unknown
+        public body: unknown,
+        // Phase 1025 Fix A: human-readable message from backend body.message / body.detail
+        humanMessage?: string,
     ) {
-        super(`API ${status}: ${code}`);
+        // Use humanMessage for .message so catch(err) => alert(err.message) shows real text
+        super(humanMessage || `API ${status}: ${code}`);
     }
 }
 
