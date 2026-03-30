@@ -10,6 +10,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Service role key — available in Next.js API routes (server-only, never exposed to client)
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const PUBLIC_ONBOARD_TENANT = 'public-onboard';
 
@@ -20,6 +22,18 @@ const supaFetch = (path: string, opts: RequestInit = {}) =>
             'Content-Type': 'application/json',
             apikey: SUPABASE_ANON_KEY,
             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            ...(opts.headers || {}),
+        },
+    });
+
+// Admin fetch using service role key — bypasses RLS, used only for stale-record cleanup
+const supaFetchAdmin = (path: string, opts: RequestInit = {}) =>
+    fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        ...opts,
+        headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY}`,
             ...(opts.headers || {}),
         },
     });
@@ -87,29 +101,48 @@ export async function POST(request: NextRequest) {
                 const existing = await checkRes.json();
                 if (existing.length > 0) {
                     const ex = existing[0];
-                    const isSameSubmitter = body.submitterUserId && ex.submitter_user_id === body.submitterUserId;
-                    let message = '';
-                    if (ex.status === 'draft') {
-                        if (isSameSubmitter) {
-                            message = `You already have a draft for this listing. View it in My Properties.`;
-                        } else {
-                            message = `This listing is already saved as a draft in the system. If you believe this is an error, please contact us.`;
+
+                    // Non-blocking statuses: draft, archived, rejected
+                    // These records are no longer active — delete the stale row so the
+                    // new submitter gets a fresh property_id with no conflicts.
+                    const NON_BLOCKING = ['draft', 'archived', 'rejected'];
+                    if (NON_BLOCKING.includes(ex.status)) {
+                        console.log(`[onboard] Stale record found (${ex.property_id}, status=${ex.status}) — removing before new insert`);
+                        try {
+                            // Delete associated marketing photos first to avoid FK violations
+                            await supaFetchAdmin(
+                                `property_marketing_photos?property_id=eq.${ex.property_id}&tenant_id=eq.${PUBLIC_ONBOARD_TENANT}`,
+                                { method: 'DELETE' },
+                            );
+                            // Hard-delete the stale property row
+                            await supaFetchAdmin(
+                                `properties?property_id=eq.${ex.property_id}&tenant_id=eq.${PUBLIC_ONBOARD_TENANT}`,
+                                { method: 'DELETE' },
+                            );
+                        } catch (delErr) {
+                            console.warn('[onboard] Failed to delete stale record, proceeding anyway:', delErr);
                         }
-                    } else if (ex.status === 'pending_review' || ex.status === 'pending') {
-                        message = `This listing is already submitted and pending admin review.`;
-                    } else if (ex.status === 'rejected') {
-                        message = `This listing was previously submitted and rejected. Please contact us to resubmit.`;
-                    } else if (ex.status === 'archived') {
-                        message = `This listing was previously connected but is now archived. Contact us to restore it.`;
+                        // Fall through — new insert will proceed below
                     } else {
-                        message = `This listing is already connected to property "${ex.display_name || ex.property_id}".`;
+                        // Blocking statuses: pending, pending_review, approved, active
+                        const isSameSubmitter = body.submitterUserId && ex.submitter_user_id === body.submitterUserId;
+                        let message = '';
+                        if (ex.status === 'pending_review' || ex.status === 'pending') {
+                            message = `This listing is already submitted and pending admin review.`;
+                        } else if (ex.status === 'approved' || ex.status === 'active') {
+                            message = `This listing is already active in the system as "${ex.display_name || ex.property_id}".`;
+                        } else {
+                            message = isSameSubmitter
+                                ? `You already have a submission for this listing.`
+                                : `This listing already exists in the system.`;
+                        }
+                        return NextResponse.json({
+                            success: false,
+                            conflict: true,
+                            existing_property: { property_id: ex.property_id, display_name: ex.display_name, status: ex.status },
+                            message,
+                        }, { status: 409 });
                     }
-                    return NextResponse.json({
-                        success: false,
-                        conflict: true,
-                        existing_property: { property_id: ex.property_id, display_name: ex.display_name, status: ex.status },
-                        message,
-                    }, { status: 409 });
                 }
             }
         }
