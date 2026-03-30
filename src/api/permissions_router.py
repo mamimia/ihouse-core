@@ -1429,7 +1429,7 @@ def _execute_baton_transfer(
     today = date.today().isoformat()
 
     try:
-        # 1. Find removed worker's roles (needed to determine which tasks to transfer)
+        # 1. Find removed worker's roles (needed to find a lane-matching backup)
         perm_res = (
             db.table("tenant_permissions")
             .select("worker_roles")
@@ -1438,24 +1438,56 @@ def _execute_baton_transfer(
             .limit(1)
             .execute()
         )
-        removed_roles = (perm_res.data or [{}])[0].get("worker_roles") or []
+        removed_roles = set((perm_res.data or [{}])[0].get("worker_roles") or [])
 
         # 2. Find the next backup: lowest priority among remaining workers on this property
-        next_res = (
+        #    who share at least one worker_role with the removed Primary (lane-aware).
+        #
+        #    Phase 1030-fix: The original code picked ANY worker by lowest priority,
+        #    which meant a Cleaner or Maintenance worker could "replace" a removed
+        #    Check-in Primary, leaving the real Check-in Backup (e.g. Mandy) unpromoted.
+        #    Now we fetch all remaining workers, join their roles, and select the correct one.
+        all_remaining = (
             db.table("staff_property_assignments")
             .select("user_id, priority")
             .eq("tenant_id", tenant_id)
             .eq("property_id", property_id)
             .neq("user_id", removed_user_id)
             .order("priority", desc=False)
-            .limit(1)
+            .limit(50)
             .execute()
         )
-        if not (next_res.data or []):
+        if not (all_remaining.data or []):
             return {"transfer_occurred": False, "reason": "no_backup_available",
                     "new_primary_user_id": None, "tasks_transferred": 0}
 
-        new_primary_id = next_res.data[0]["user_id"]
+        # Fetch roles for all candidates in one query
+        candidate_ids = [r["user_id"] for r in all_remaining.data]
+        roles_res = (
+            db.table("tenant_permissions")
+            .select("user_id, worker_roles")
+            .eq("tenant_id", tenant_id)
+            .in_("user_id", candidate_ids)
+            .execute()
+        )
+        roles_by_user = {
+            r["user_id"]: set(r.get("worker_roles") or [])
+            for r in (roles_res.data or [])
+        }
+
+        # Pick the candidate with lowest priority whose roles overlap with the removed worker's lane
+        new_primary_id = None
+        for candidate in all_remaining.data:
+            uid = candidate["user_id"]
+            candidate_roles = roles_by_user.get(uid, set())
+            if removed_roles and candidate_roles & removed_roles:
+                # At least one role in common — correct lane match
+                new_primary_id = uid
+                break
+
+        if new_primary_id is None:
+            return {"transfer_occurred": False, "reason": "no_lane_matching_backup",
+                    "new_primary_user_id": None, "tasks_transferred": 0}
 
         # 3. Promote new primary to priority=1
         now = datetime.now(tz=timezone.utc).isoformat()
