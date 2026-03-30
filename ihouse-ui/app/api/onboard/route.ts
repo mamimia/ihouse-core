@@ -186,15 +186,47 @@ export async function POST(request: NextRequest) {
         if (body.lastName) {
             propertyData.submitter_last_name = body.lastName;
         }
+        // ── Phone: wizard form first, auth user metadata as fallback ──
+        // The wizard sends `phone: countryCode + ' ' + localNumber`.
+        // If the user left the phone field blank the value becomes "+66 " (2 digits) — invalid.
+        // In that case we look up the Supabase auth user's raw_user_meta_data.phone as fallback.
+        let resolvedPhone: string | null = null;
         if (body.phone) {
-            // Strip country-code-only values ("+66 ", etc.) — require at least 4 digits
             const phoneDigits = body.phone.replace(/\D/g, '');
             if (phoneDigits.length >= 4) {
-                propertyData.submitter_phone = body.phone.trim();
-                // Also store as owner_phone so the property settings card shows it.
-                propertyData.owner_phone = body.phone.trim();
+                resolvedPhone = body.phone.trim();
             }
         }
+        if (!resolvedPhone && body.submitterUserId && SUPABASE_SERVICE_ROLE_KEY) {
+            try {
+                const authUserRes = await fetch(
+                    `${SUPABASE_URL}/auth/v1/admin/users/${body.submitterUserId}`,
+                    {
+                        headers: {
+                            apikey: SUPABASE_SERVICE_ROLE_KEY,
+                            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                        },
+                    }
+                );
+                if (authUserRes.ok) {
+                    const authUser = await authUserRes.json();
+                    const metaPhone: string | undefined =
+                        authUser?.user_metadata?.phone ||
+                        authUser?.raw_user_meta_data?.phone;
+                    if (metaPhone) {
+                        const metaDigits = metaPhone.replace(/\D/g, '');
+                        if (metaDigits.length >= 4) {
+                            resolvedPhone = metaPhone;
+                        }
+                    }
+                }
+            } catch { /* non-critical — proceed without phone if lookup fails */ }
+        }
+        if (resolvedPhone) {
+            propertyData.submitter_phone = resolvedPhone;
+            propertyData.owner_phone = resolvedPhone;
+        }
+
         if (body.userType) {
             propertyData.submitter_user_type = body.userType;
         }
