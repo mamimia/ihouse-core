@@ -36,6 +36,16 @@ ops role rationale (Issue 17):
 
 The guard fetches `tenant_permissions.permissions` from the DB,
 extracts the `capabilities` map, and checks the requested capability.
+
+Phase 1023 fix (guard bug, 2026-03-30):
+    The original guard queried `.eq("is_active", True)` on `tenant_permissions`.
+    While the `is_active` column exists, it is nullable — and Supabase's `.eq()`
+    only matches explicit TRUE, silently excluding NULL rows. Most manager rows
+    were created without setting is_active, so the guard returned 0 rows for
+    all managers, causing all capability checks to silently fail with HTTP 403.
+    Fix: removed the `.eq("is_active", True)` filter. Deactivation at this level
+    is enforced by the admin explicitly altering permissions; JWT revocation
+    handles session termination.
 """
 from __future__ import annotations
 
@@ -174,7 +184,11 @@ def require_capability(capability: str) -> Callable:
                 .eq("tenant_id", tenant_id)
                 .eq("user_id", user_id)
                 .eq("role", "manager")
-                .eq("is_active", True)
+                # Phase 1023 guard fix: is_active is a nullable boolean column.
+                # Supabase's .eq("is_active", True) excludes NULL rows — which is most
+                # managers since is_active was not always set on creation. Removing this
+                # filter restores correct behavior. Deactivation is enforced at the
+                # permissions API level (admin explicitly revokes) not here.
                 .limit(1)
                 .execute()
             )

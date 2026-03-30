@@ -292,7 +292,7 @@ export default function EditStaffPage() {
   const [legacyRole, setLegacyRole] = useState<string | undefined>(undefined);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<0 | 1 | 2 | 3>(0);
+  const [activeTab, setActiveTab] = useState<0 | 1 | 2 | 3 | 4>(0);
 
   // Tab 1 — Profile
   const [fullName, setFullName] = useState('');
@@ -343,6 +343,17 @@ export default function EditStaffPage() {
 
   // Phase 1021-C: Linked owner profile state
   const [linkedOwner, setLinkedOwner] = useState<{ id: string; name: string; email?: string; property_ids?: string[] } | null | 'loading'>('loading');
+
+  // Phase 1023: Delegated Authority state
+  type CapEntry = { key: string; label: string; granted: boolean };
+  type CapGroup = { group: string; label: string; capabilities: CapEntry[] };
+  const [capGroups, setCapGroups] = useState<CapGroup[]>([]);
+  const [capLoading, setCapLoading] = useState(false);
+  const [capDirty, setCapDirty] = useState<Record<string, Record<string, boolean>>>({});  // group → { key: localBool }
+  const [capPending, setCapPending] = useState<string | null>(null);  // group currently in confirm step
+  const [capApplying, setCapApplying] = useState<string | null>(null);  // group currently being saved
+  const [capError, setCapError] = useState<string | null>(null);
+  const [capHistory, setCapHistory] = useState<any[]>([]);
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -734,7 +745,17 @@ export default function EditStaffPage() {
     }
   };
 
-  const TABS = ['Profile', 'Role & Assignment', 'Access & Comms', 'Documents & Compliance'];
+  const TABS = [
+    'Profile',
+    'Role & Assignment',
+    'Access & Comms',
+    'Documents & Compliance',
+    // Tab 4 only appears for managers, added dynamically below
+  ];
+  const visibleTabs = role === 'manager'
+    ? [...TABS, 'Delegated Authority']
+    : TABS;
+  const maxTab = visibleTabs.length - 1;
 
   if (loading) {
     return (
@@ -836,8 +857,21 @@ export default function EditStaffPage() {
         display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)',
         background: 'var(--color-surface)', padding: '0 var(--space-5)',
       }}>
-        {TABS.map((t, i) => (
-          <button key={t} onClick={() => setActiveTab(i as 0 | 1 | 2 | 3)} style={{
+        {visibleTabs.map((t, i) => (
+          <button key={t} onClick={() => {
+            setActiveTab(i as 0 | 1 | 2 | 3 | 4);
+            // Lazy-load capabilities when tab 4 is opened
+            if (i === 4 && capGroups.length === 0 && !capLoading) {
+              setCapLoading(true);
+              Promise.all([
+                apiFetch(`/admin/managers/${rawUserId}/capabilities`),
+                apiFetch(`/admin/managers/${rawUserId}/capabilities/history?limit=5`),
+              ]).then(([capRes, histRes]) => {
+                if (capRes?.data?.grouped_capabilities) setCapGroups(capRes.data.grouped_capabilities);
+                if (histRes?.data?.events) setCapHistory(histRes.data.events);
+              }).catch(() => setCapError('Failed to load delegated capabilities.')).finally(() => setCapLoading(false));
+            }
+          }} style={{
             padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer',
             fontSize: 'var(--text-sm)', fontWeight: activeTab === i ? 700 : 400,
             color: activeTab === i ? 'var(--color-primary)' : 'var(--color-text-dim)',
@@ -1801,7 +1835,265 @@ export default function EditStaffPage() {
             </div>
           </div>
         )}
+
+        {/* ── Tab 5: Delegated Authority (manager only) ──────────────────── */}
+        {activeTab === 4 && role === 'manager' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+              <div>
+                <div style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
+                  Delegated Authority
+                </div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
+                  Manage what operational capabilities this manager can exercise on your behalf.
+                  Only what you explicitly grant is active. Admin always retains full authority.
+                </div>
+              </div>
+              <span style={{
+                padding: '4px 12px', borderRadius: 9999,
+                background: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)',
+                fontSize: 'var(--text-xs)', fontWeight: 700,
+              }}>manager</span>
+            </div>
+
+            {capError && (
+              <div style={{ background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', color: '#f85149', padding: '10px 16px', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-sm)' }}>
+                {capError}
+              </div>
+            )}
+
+            {capLoading ? (
+              <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)', padding: 'var(--space-4)' }}>Loading capabilities…</div>
+            ) : capGroups.length === 0 ? (
+              <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)', padding: 'var(--space-4)' }}>
+                No capabilities data available. Ensure this user has a manager record.
+              </div>
+            ) : (
+              capGroups.map((group) => {
+                const dirty = capDirty[group.group] ?? {};
+                const isDirty = Object.keys(dirty).length > 0;
+                const isPending = capPending === group.group;
+                const isApplying = capApplying === group.group;
+
+                // For each capability: use dirty value if present, else server-side granted
+                const effectiveCaps = group.capabilities.map((cap) => ({
+                  ...cap,
+                  granted: group.group in capDirty && cap.key in dirty ? dirty[cap.key] : cap.granted,
+                }));
+
+                // Compute diff for confirm step
+                const changedCaps = isPending
+                  ? effectiveCaps.filter((cap) => {
+                      const original = group.capabilities.find(c => c.key === cap.key)?.granted ?? false;
+                      return cap.granted !== original;
+                    })
+                  : [];
+
+                return (
+                  <div key={group.group} style={{
+                    border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                    overflow: 'hidden',
+                  }}>
+                    {/* Section header */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      background: 'var(--color-surface-2)',
+                      borderBottom: '1px solid var(--color-border)',
+                    }}>
+                      <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {group.label}
+                      </span>
+                      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                        {isDirty && !isPending && (
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warn, #B56E45)', fontWeight: 600 }}>unsaved changes</span>
+                        )}
+                        {!isPending && (
+                          <button
+                            disabled={!isDirty || isApplying}
+                            onClick={() => setCapPending(group.group)}
+                            style={{
+                              padding: '5px 14px', borderRadius: 'var(--radius-sm)',
+                              background: isDirty ? 'var(--color-primary)' : 'var(--color-surface)',
+                              color: isDirty ? '#fff' : 'var(--color-text-faint)',
+                              border: `1px solid ${isDirty ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                              fontSize: 'var(--text-xs)', fontWeight: 700,
+                              cursor: isDirty ? 'pointer' : 'not-allowed',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            Apply
+                          </button>
+                        )}
+                        {isPending && (
+                          <>
+                            <button
+                              onClick={() => setCapPending(null)}
+                              style={{
+                                padding: '5px 12px', borderRadius: 'var(--radius-sm)',
+                                background: 'none', border: '1px solid var(--color-border)',
+                                fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', cursor: 'pointer',
+                              }}
+                            >Cancel</button>
+                            <button
+                              disabled={isApplying}
+                              onClick={async () => {
+                                setCapApplying(group.group);
+                                setCapPending(null);
+                                setCapError(null);
+                                // Build the full section payload from effective caps
+                                const payload: Record<string, boolean> = {};
+                                effectiveCaps.forEach(c => { payload[c.key] = c.granted; });
+                                try {
+                                  const res = await apiFetch(`/admin/managers/${rawUserId}/capabilities/section`, {
+                                    method: 'PATCH',
+                                    body: JSON.stringify({ section: group.group, capabilities: payload }),
+                                  });
+                                  if (res?.data) {
+                                    // Refresh capability groups from server response
+                                    const refreshed = await apiFetch(`/admin/managers/${rawUserId}/capabilities`);
+                                    if (refreshed?.data?.grouped_capabilities) {
+                                      setCapGroups(refreshed.data.grouped_capabilities);
+                                    }
+                                    // Refresh history
+                                    const histRefresh = await apiFetch(`/admin/managers/${rawUserId}/capabilities/history?limit=5`);
+                                    if (histRefresh?.data?.events) setCapHistory(histRefresh.data.events);
+                                    // Clear dirty for this group
+                                    setCapDirty(prev => { const n = { ...prev }; delete n[group.group]; return n; });
+                                  }
+                                } catch {
+                                  setCapError(`Failed to save ${group.label} capabilities. Please try again.`);
+                                } finally {
+                                  setCapApplying(null);
+                                }
+                              }}
+                              style={{
+                                padding: '5px 14px', borderRadius: 'var(--radius-sm)',
+                                background: isApplying ? 'var(--color-border)' : '#2da44e',
+                                color: '#fff', border: 'none',
+                                fontSize: 'var(--text-xs)', fontWeight: 700,
+                                cursor: isApplying ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.15s',
+                              }}
+                            >
+                              {isApplying ? 'Saving…' : 'Confirm'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Confirm diff preview */}
+                    {isPending && changedCaps.length > 0 && (
+                      <div style={{
+                        background: 'rgba(99,102,241,0.06)', borderBottom: '1px solid var(--color-border)',
+                        padding: '10px 16px',
+                      }}>
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-dim)', marginBottom: 6 }}>
+                          Changes to apply:
+                        </div>
+                        {changedCaps.map(c => (
+                          <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-xs)', marginBottom: 2 }}>
+                            <span style={{
+                              padding: '2px 8px', borderRadius: 9999, fontWeight: 700,
+                              background: c.granted ? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.12)',
+                              color: c.granted ? '#2ea843' : '#f85149',
+                            }}>
+                              {c.granted ? '+ Grant' : '− Revoke'}
+                            </span>
+                            <span style={{ color: 'var(--color-text)' }}>{c.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Capability toggles */}
+                    <div style={{ padding: 0 }}>
+                      {effectiveCaps.map((cap, idx) => (
+                        <div
+                          key={cap.key}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            borderBottom: idx < effectiveCaps.length - 1 ? '1px solid var(--color-border)' : 'none',
+                            opacity: isPending ? 0.7 : 1,
+                            transition: 'background 0.1s',
+                            cursor: isPending ? 'default' : 'pointer',
+                          }}
+                          onClick={() => {
+                            if (isPending || isApplying) return;
+                            const currentVal = cap.granted;
+                            setCapDirty(prev => ({
+                              ...prev,
+                              [group.group]: {
+                                ...prev[group.group],
+                                [cap.key]: !currentVal,
+                              },
+                            }));
+                          }}
+                        >
+                          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                            {cap.label}
+                          </span>
+                          {/* Toggle switch */}
+                          <div style={{
+                            width: 40, height: 22, borderRadius: 11,
+                            background: cap.granted ? 'var(--color-primary)' : 'var(--color-border)',
+                            position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                          }}>
+                            <div style={{
+                              width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                              position: 'absolute', top: 3,
+                              left: cap.granted ? 21 : 3,
+                              transition: 'left 0.2s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                            }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+
+            {/* Audit trail footer */}
+            {capHistory.length > 0 && (
+              <div style={{
+                borderTop: '1px solid var(--color-border)',
+                paddingTop: 'var(--space-4)',
+              }}>
+                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>
+                  Recent Capability Changes
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {capHistory.map((ev, i) => {
+                    const isGrant = ev.action === 'MANAGER_CAPABILITY_GRANTED';
+                    const cap = ev.payload?.capability ?? '';
+                    const when = ev.occurred_at ? new Date(ev.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+                    return (
+                      <div key={ev.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                        <span style={{
+                          padding: '2px 7px', borderRadius: 9999, fontWeight: 700, flexShrink: 0,
+                          background: isGrant ? 'rgba(46,160,67,0.12)' : 'rgba(248,81,73,0.1)',
+                          color: isGrant ? '#2ea843' : '#f85149',
+                        }}>
+                          {isGrant ? 'Granted' : 'Revoked'}
+                        </span>
+                        <span style={{ color: 'var(--color-text)' }}>{cap}</span>
+                        <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>{when}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
 
       {/* ── Sticky footer ───────────────────────────────────────────────── */}
       <div style={{
@@ -1812,14 +2104,14 @@ export default function EditStaffPage() {
       }}>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {activeTab > 0 && (
-            <button onClick={() => setActiveTab((activeTab - 1) as 0 | 1 | 2 | 3)} style={{
+            <button onClick={() => setActiveTab((activeTab - 1) as 0 | 1 | 2 | 3 | 4)} style={{
               padding: '8px 18px', borderRadius: 'var(--radius-sm)',
               background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
               color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 'var(--text-sm)',
             }}>← Previous</button>
           )}
-          {activeTab < 3 && (
-            <button onClick={() => setActiveTab((activeTab + 1) as 0 | 1 | 2 | 3)} style={{
+          {activeTab < maxTab && activeTab !== 4 && (
+            <button onClick={() => setActiveTab((activeTab + 1) as 0 | 1 | 2 | 3 | 4)} style={{
               padding: '8px 18px', borderRadius: 'var(--radius-sm)',
               background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
               color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--text-sm)',
@@ -1827,20 +2119,23 @@ export default function EditStaffPage() {
           )}
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          style={{
-            padding: '10px 28px', borderRadius: 'var(--radius-md)',
-            background: saving ? 'var(--color-border)' : 'var(--color-primary)',
-            color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
-            fontWeight: 700, fontSize: 'var(--text-sm)',
-            boxShadow: saving ? 'none' : '0 2px 12px rgba(99,102,241,0.4)',
-            transition: 'all 0.15s',
-          }}
-        >
-          {saving ? 'Saving…' : 'Save Changes'}
-        </button>
+        {/* Tab 4 (Delegated Authority) has its own section-level Apply/Confirm — no global save */}
+        {activeTab !== 4 && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              padding: '10px 28px', borderRadius: 'var(--radius-md)',
+              background: saving ? 'var(--color-border)' : 'var(--color-primary)',
+              color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
+              fontWeight: 700, fontSize: 'var(--text-sm)',
+              boxShadow: saving ? 'none' : '0 2px 12px rgba(99,102,241,0.4)',
+              transition: 'all 0.15s',
+            }}
+          >
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        )}
       </div>
     </div>
   );
