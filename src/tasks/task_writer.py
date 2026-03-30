@@ -104,13 +104,45 @@ def write_tasks_for_booking_created(
     Uses upsert with on_conflict='task_id' to ensure idempotency —
     duplicate BOOKING_CREATED events (DLQ replay) do not create duplicate tasks.
 
+    Phase 888a — FUTURE-ONLY CUTOFF:
+    Operational tasks (CHECKIN_PREP, CLEANING, CHECKOUT_VERIFY) must NEVER be
+    generated for bookings whose check_in date is in the past. This prevents
+    iCal imports from generating ghost tasks for historical bookings.
+
+    Rule: if check_in < today (server date UTC), skip all task creation.
+    The booking is still imported for reference — only operational tasks are gated.
+
     Returns:
-        Number of tasks successfully written (0 on error, expected 2 on success).
+        Number of tasks successfully written (0 on error or skipped, expected 2-3 on success).
 
     Raises:
         Never. All errors are logged and swallowed (best-effort pattern).
     """
     try:
+        from datetime import date as _date  # noqa: PLC0415
+        _today = _date.today().isoformat()
+
+        # ── Future-only cutoff (Phase 888a) ──────────────────────────────────
+        # Determine the latest operational date for this booking.
+        # If the booking's check_in is already in the past, no actionable
+        # tasks can be created — the operational window has closed.
+        #
+        # Special case: if there is a check_out and it is today or future,
+        # we still generate a CHECKOUT_VERIFY task (the guest may still need
+        # to check out today). CHECKIN_PREP is skipped if check_in is past.
+        _checkin_past = bool(check_in) and check_in < _today
+        _checkout_future = bool(check_out) and check_out >= _today
+
+        if _checkin_past and not _checkout_future:
+            # Both check_in and check_out are past — skip all tasks.
+            logger.info(
+                "task_writer: skipping task generation for past booking "
+                "booking_id=%s check_in=%s check_out=%s (future-only cutoff)",
+                booking_id, check_in, check_out,
+            )
+            return 0
+        # ─────────────────────────────────────────────────────────────────────
+
         db = client or _get_supabase_client()
         created_at = datetime.now(tz=timezone.utc).isoformat()
 

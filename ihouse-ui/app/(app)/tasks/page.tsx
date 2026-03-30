@@ -310,10 +310,20 @@ function EmptyState({ filter }: { filter: string }) {
 // ---------------------------------------------------------------------------
 
 // Admin: full 4-tab filter set — Pending first (default), All last.
-// Status values MUST be uppercase to match backend TaskStatus enum.
+// Phase 888b — canonical task-state model:
+//   Pending     = all incomplete tasks (PENDING + ACKNOWLEDGED) — the full operational queue.
+//                 Backend returns PENDING+ACKNOWLEDGED+IN_PROGRESS when no status filter is sent.
+//                 We use '__PENDING_ALL__' as a UI-side sentinel to send no status filter,
+//                 which the backend interprets as "all non-CANCELED tasks".
+//   In Progress = only tasks where real work has started (IN_PROGRESS). ACKNOWLEDGED ≠ In Progress.
+//   Done        = COMPLETED only.
+//   All         = no filter, all tasks including CANCELED.
+//
+// BEFORE this fix: 'In Progress' → ACKNOWLEDGED  (WRONG — just being acknowledged moved task out of Pending)
+// AFTER this fix:  'In Progress' → IN_PROGRESS   (CORRECT — only tasks where worker pressed Start)
 const ADMIN_FILTERS = [
-    { label: 'Pending',     value: 'PENDING' },
-    { label: 'In Progress', value: 'ACKNOWLEDGED' },
+    { label: 'Pending',     value: '__PENDING_ALL__' },  // sends no status → backend: PENDING+ACKNOWLEDGED+IN_PROGRESS
+    { label: 'In Progress', value: 'IN_PROGRESS' },
     { label: 'Done',        value: 'COMPLETED' },
     { label: 'All',         value: '' },
 ];
@@ -403,7 +413,7 @@ export default function TasksPage() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     // Default to PENDING so the most actionable tab is shown on load
-    const [filter, setFilter] = useState('PENDING');
+    const [filter, setFilter] = useState('__PENDING_ALL__');
     const [error, setError] = useState<string | null>(null);
     const [detailId, setDetailId] = useState<string | null>(null);
     // Phase 887c: store both display_name and approval status per property
@@ -460,11 +470,16 @@ export default function TasksPage() {
             setError(null);
             const backendRole = getBackendWorkerRole(staffRole);
 
+            // Phase 888b: __PENDING_ALL__ sentinel — send no status filter so backend
+            // returns all non-CANCELED tasks (PENDING + ACKNOWLEDGED + IN_PROGRESS).
+            // This ensures acknowledged tasks remain visible in the Pending operational queue.
+            const backendStatus = filter === '__PENDING_ALL__' ? undefined : (filter || undefined);
+
             if (staffRole === 'checkin_checkout') {
                 // Special: combined role needs CHECKIN + CHECKOUT tasks merged
                 const [checkinResp, checkoutResp] = await Promise.all([
-                    api.getWorkerTasks({ status: filter || undefined, limit: 50, worker_role: 'CHECKIN' }),
-                    api.getWorkerTasks({ status: filter || undefined, limit: 50, worker_role: 'CHECKOUT' }),
+                    api.getWorkerTasks({ status: backendStatus, limit: 50, worker_role: 'CHECKIN' }),
+                    api.getWorkerTasks({ status: backendStatus, limit: 50, worker_role: 'CHECKOUT' }),
                 ]);
                 // Merge and deduplicate by task_id
                 const merged = new Map<string, WorkerTask>();
@@ -474,7 +489,7 @@ export default function TasksPage() {
                 setTasks(Array.from(merged.values()));
             } else {
                 const resp = await api.getWorkerTasks({
-                    status: filter || undefined,
+                    status: backendStatus,
                     limit: 50,
                     worker_role: backendRole,
                 });

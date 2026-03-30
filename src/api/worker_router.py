@@ -372,9 +372,54 @@ async def acknowledge_task(
 
     **No request body required.**
 
+    Phase 888d — Acknowledge timing window:
+    Acknowledge is only permitted within 24 hours (1 day) of the task's due_date.
+    This prevents workers from mass-acknowledging months-in-advance tasks, which
+    distorts the operational queue by moving all future tasks into ACKNOWLEDGED
+    state before any work is imminent.
+
+    Window: task.due_date - 1 day ≤ today ≤ task.due_date
+    Tasks without a due_date are always acknowledgeable.
+
     Uses VALID_TASK_TRANSITIONS from task_model.py.
     Terminal tasks (COMPLETED/CANCELED) return 422 INVALID_TRANSITION.
     """
+    try:
+        db = client or _get_supabase_client()
+
+        # Look up task to enforce timing gate
+        _task_res = (
+            db.table("tasks")
+            .select("due_date, kind")
+            .eq("task_id", task_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if _task_res.data:
+            _due_str = _task_res.data[0].get("due_date")
+            if _due_str:
+                from datetime import date as _date  # noqa: PLC0415
+                try:
+                    _due = _date.fromisoformat(_due_str)
+                    _today = _date.today()
+                    _days_until = (_due - _today).days
+                    # Allow ack within 1 calendar day of due date (same day, day before, or overdue)
+                    # Reject if task is 2+ calendar days in the future
+                    if _days_until > 1:
+                        return make_error_response(
+                            422,
+                            ErrorCode.INVALID_TRANSITION,
+                            f"Cannot acknowledge task: due date {_due_str} is {_days_until} day(s) away. "
+                            f"Acknowledge is only available within 24 hours of the task due date. "
+                            f"Check back on {(_due - __import__('datetime').timedelta(days=1)).isoformat()}.",
+                        )
+                except (ValueError, TypeError):
+                    pass  # unparseable date — allow, don't block
+
+    except Exception as _gate_exc:  # noqa: BLE001
+        logger.warning("acknowledge_task: timing gate check failed (non-blocking): %s", _gate_exc)
+
     return await _transition_task(
         task_id=task_id,
         tenant_id=tenant_id,

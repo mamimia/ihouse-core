@@ -91,9 +91,13 @@ function deriveOperationalStatus(b: Booking): OpStatus {
     if (raw === 'admin_closed') return 'admin_closed';
     if (raw === 'checked_out' || b.checked_out_at) return 'completed';
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().slice(0, 10);
+    // Phase 888c — always use UTC date for comparisons.
+    // Using `new Date()` + setHours(0,0,0,0) produces the LOCAL date which shifts
+    // with the viewer's timezone. A Bangkok admin viewing at 23:59 Bangkok time
+    // is already the next UTC day, causing stale "Checkout Today" labels.
+    // Canonical rule: all date comparisons use UTC YYYY-MM-DD.
+    const nowUtc = new Date();
+    const todayStr = `${nowUtc.getUTCFullYear()}-${String(nowUtc.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUtc.getUTCDate()).padStart(2, '0')}`;
 
     const checkIn  = b.check_in  ?? null;
     const checkOut = b.check_out ?? null;
@@ -101,6 +105,7 @@ function deriveOperationalStatus(b: Booking): OpStatus {
     // checked_in = worker performed check-in, guest is in-stay
     if (raw === 'checked_in') {
         if (checkOut === todayStr) return 'checkout_today';
+        if (checkOut && checkOut < todayStr) return 'overdue_checkout'; // missed checkout
         return 'in_stay';
     }
 
@@ -115,6 +120,7 @@ function deriveOperationalStatus(b: Booking): OpStatus {
 
     return 'unknown';
 }
+
 
 const OP_STATUS_CONFIG: Record<OpStatus, { label: string; bg: string; color: string; border?: string; desc: string }> = {
     in_stay:           { label: '🟢 In Stay',       bg: 'rgba(16,185,129,0.12)',  color: 'var(--color-ok)',           desc: 'Worker has checked the guest in. Guest is currently staying.' },
