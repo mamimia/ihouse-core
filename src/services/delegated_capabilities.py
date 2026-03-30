@@ -532,7 +532,7 @@ def set_section_capabilities(
     allowed_keys: set[str] = set()
     for group in CAPABILITY_GROUPS:
         if group["group"] == section:
-            allowed_keys = {key for key, _ in group["capabilities"]}
+            allowed_keys = {entry[0] for entry in group["capabilities"]}
             break
 
     if not allowed_keys:

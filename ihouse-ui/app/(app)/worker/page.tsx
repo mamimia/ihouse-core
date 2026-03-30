@@ -492,8 +492,11 @@ export default function WorkerPage() {
     const [userName, setUserName] = useState('');
     const [roleConfig, setRoleConfig] = useState<WorkerRoleConfig | null>(null);
     // Phase 948g: Explicit flag — true ONLY for workers whose stored role is 'checkin_checkout'.
-    // Prevents accidental combined-view rendering for workers with missing sub-roles.
     const [isCombinedRole, setIsCombinedRole] = useState(false);
+    // Phase 1030: Promotion notice — shown when this worker was promoted from Backup to Primary
+    const [promotionNotice, setPromotionNotice] = useState<{
+        property_id: string; tasks_assigned: number; promoted_at: string;
+    } | null>(null);
     const { lang, t } = useLanguage();
     const l = getLocale(lang);
     const router = useRouter();
@@ -564,6 +567,16 @@ export default function WorkerPage() {
             const p = parseJwt(token);
             if (p.email) setUserName(p.email.split('@')[0]);
         }
+
+        // Phase 1030: Check for promotion notice (Backup → Primary baton-transfer)
+        // The notice is stored in comm_preference._promotion_notice by the backend on transfer.
+        // We fetch it here and display a banner. On dismiss, we clear it via PATCH.
+        apiFetch<any>('/permissions/me').then((profile: any) => {
+            const notice = profile?.comm_preference?._promotion_notice;
+            if (notice && !notice.acknowledged) {
+                setPromotionNotice(notice);
+            }
+        }).catch(() => {});
     }, [load, router]);
 
     // Role-scoped task stats
@@ -607,6 +620,51 @@ export default function WorkerPage() {
                             <p style={{ fontSize: 13, color: 'var(--color-sage)', margin: '2px 0 0' }}>
                                 {new Date().toLocaleDateString(getLocale(lang), { weekday: 'long', month: 'short', day: 'numeric' })}
                             </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Phase 1030: Promotion banner — shown when this worker was promoted from Backup to Primary */}
+                {promotionNotice && (
+                    <div style={{
+                        margin: '12px 20px 0',
+                        background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(88,166,255,0.1))',
+                        border: '1px solid rgba(99,102,241,0.4)',
+                        borderRadius: 14, padding: '16px 18px',
+                        animation: 'slideUp 300ms ease',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                            <span style={{ fontSize: 24, flexShrink: 0 }}>⭐</span>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)', marginBottom: 4 }}>
+                                    You are now the Primary Worker
+                                </div>
+                                <div style={{ fontSize: 13, color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
+                                    You have been promoted from Backup to Primary for this property.
+                                    {promotionNotice.tasks_assigned > 0 && (
+                                        <span> <strong style={{ color: '#3fb950' }}>{promotionNotice.tasks_assigned} task{promotionNotice.tasks_assigned !== 1 ? 's' : ''}</strong> have been assigned to you.</span>
+                                    )}
+                                    {' '}You will now receive all future auto-generated tasks for your work lane.
+                                </div>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    setPromotionNotice(null);
+                                    // Acknowledge the notice so it doesn't show again
+                                    try {
+                                        await apiFetch<any>('/permissions/me', {
+                                            method: 'PATCH',
+                                            body: JSON.stringify({
+                                                comm_preference: { _promotion_notice: { ...promotionNotice, acknowledged: true } }
+                                            }),
+                                        });
+                                    } catch { /* best effort */ }
+                                }}
+                                style={{
+                                    background: 'none', border: 'none', color: 'var(--color-text-faint)',
+                                    fontSize: 18, cursor: 'pointer', padding: 0, flexShrink: 0,
+                                }}
+                            >✕</button>
                         </div>
                     </div>
                 )}

@@ -321,6 +321,19 @@ export default function EditStaffPage() {
   const [originalAssignments, setOriginalAssignments] = useState<string[]>([]);
   const [availableProperties, setAvailableProperties] = useState<{ id: string; name: string }[]>([]);
 
+  // Phase 1030: Priority/Primary/Backup state for each assigned property
+  // propertyLaneData[property_id] → { is_primary, priority, lane_count }
+  const [propertyLaneData, setPropertyLaneData] = useState<Record<string, { is_primary: boolean; priority: number; lane_count: number; lanes: Record<string, any[]> }>>({});
+  // Baton-transfer confirmation modal
+  const [batonPreview, setBatonPreview] = useState<{
+    user_id: string; property_id: string; property_name: string;
+    removed_name: string; is_primary: boolean; new_primary_name?: string;
+    pending_tasks_count: number; acknowledged_tasks_count: number;
+  } | null>(null);
+  const [batonLoading, setBatonLoading] = useState(false);
+  // Primary/Backup help panel
+  const [showPBHelp, setShowPBHelp] = useState(false);
+
   // Tab 3 — Comms
   const [whatsapp, setWhatsapp] = useState('');
   const [telegram, setTelegram] = useState('');
@@ -497,6 +510,20 @@ export default function EditStaffPage() {
       const propIds = assignmentsRes.property_ids || [];
       setAssignedProperties(propIds);
       setOriginalAssignments(propIds);
+
+      // Phase 1030: Fetch lane/priority data for each assigned property
+      if (propIds.length > 0) {
+        const laneDataMap: Record<string, any> = {};
+        await Promise.all(
+          propIds.map(async (pid: string) => {
+            try {
+              const laneRes = await apiFetch<any>(`/staff/property-lane/${encodeURIComponent(pid)}`);
+              laneDataMap[pid] = laneRes;
+            } catch { /* best effort */ }
+          })
+        );
+        setPropertyLaneData(laneDataMap);
+      }
 
       // Phase 887d: Available properties — approved only.
       // The API call uses ?status=approved, but we also client-side filter as a
@@ -1218,30 +1245,147 @@ export default function EditStaffPage() {
             )}
 
             <div>
-              <div style={sectionHeadStyle}>
-                Assigned Properties
+              {/* ── Assigned Properties section head with help button ── */}
+              <div style={{ ...sectionHeadStyle, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Assigned Properties</span>
                 {assignedProperties.length > 0 && (
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', marginLeft: 8, fontWeight: 400 }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 400 }}>
                     {assignedProperties.length} assigned
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setShowPBHelp(v => !v)}
+                  title="What is Primary / Backup?"
+                  style={{
+                    marginLeft: 'auto', width: 20, height: 20, borderRadius: '50%',
+                    background: showPBHelp ? 'var(--color-primary)' : 'var(--color-surface-2)',
+                    border: '1px solid var(--color-border)', color: showPBHelp ? '#fff' : 'var(--color-text-dim)',
+                    cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >?
+                </button>
               </div>
+
+              {/* ── Primary/Backup Help Panel ── */}
+              {showPBHelp && (
+                <div style={{
+                  background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
+                  borderRadius: 'var(--radius-md)', padding: '14px 16px', marginBottom: 'var(--space-4)',
+                  fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', lineHeight: 1.7,
+                }}>
+                  <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 8, fontSize: 'var(--text-sm)' }}>
+                    Primary &amp; Backup — How it works
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <tbody>
+                      {[
+                        ['⭐ Primary', 'The main person responsible for this type of work at this property. Receives all auto-generated tasks from bookings.'],
+                        ['🔵 Backup', 'A standby person. Does not receive tasks automatically. Enters the flow only if the Primary is removed.'],
+                        ['🔄 When Backup becomes Primary', 'If the Primary is removed, the first Backup is automatically promoted. Their PENDING tasks transfer. ACKNOWLEDGED tasks stay with the original worker.'],
+                        ['🚫 What does NOT happen automatically', 'ACKNOWLEDGED and IN_PROGRESS tasks never move automatically. They stay with the original worker until an admin decides.'],
+                        ['📋 What admin should expect', 'A confirmation screen appears before any primary removal. Acknowledged tasks that need action will be listed clearly.'],
+                      ].map(([title, desc]) => (
+                        <tr key={title} style={{ verticalAlign: 'top' }}>
+                          <td style={{ fontWeight: 700, paddingRight: 12, paddingBottom: 8, whiteSpace: 'nowrap', color: 'var(--color-text)', width: 220 }}>{title}</td>
+                          <td style={{ paddingBottom: 8 }}>{desc}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               {availableProperties.length === 0 ? (
                 <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>No properties found.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {availableProperties.map(p => (
-                    <label key={p.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                      background: assignedProperties.includes(p.id) ? 'rgba(var(--color-primary-rgb, 99,102,241), 0.08)' : 'var(--color-surface-2)',
-                      border: `1px solid ${assignedProperties.includes(p.id) ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.15s',
-                    }}>
-                      <input type="checkbox" checked={assignedProperties.includes(p.id)} onChange={() => toggleProperty(p.id)}
-                        style={{ accentColor: 'var(--color-primary)' }} />
-                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{p.name}</span>
-                    </label>
-                  ))}
+                  {availableProperties.map(p => {
+                    const assigned = assignedProperties.includes(p.id);
+                    // Derive this worker's current status in this property's lanes
+                    const laneInfo = propertyLaneData[p.id];
+                    let thisPriority = 1;
+                    let laneCount = 0;
+                    if (laneInfo?.lanes) {
+                      for (const workers of Object.values(laneInfo.lanes) as any[][]) {
+                        laneCount += workers.length;
+                        const found = workers.find((w: any) => w.user_id === rawUserId);
+                        if (found) thisPriority = found.priority;
+                      }
+                    }
+                    const isCurrentPrimary = assigned && thisPriority === 1;
+                    const backupNum = assigned && thisPriority > 1 ? thisPriority - 1 : null;
+                    // What will this worker become if added (for unassigned properties)?
+                    const wouldBePrimary = !assigned && laneCount === 0;
+                    const wouldBeBackup = !assigned && laneCount > 0;
+
+                    return (
+                      <div key={p.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                        background: assigned ? 'rgba(99,102,241,0.06)' : 'var(--color-surface-2)',
+                        border: `1px solid ${assigned ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        borderRadius: 'var(--radius-sm)', transition: 'all 0.15s',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={assigned}
+                          onChange={async () => {
+                            if (assigned && isCurrentPrimary) {
+                              // Phase 1030: Show baton-transfer preview before removing primary
+                              setBatonLoading(true);
+                              try {
+                                const preview = await apiFetch<any>(`/staff/assignments/${encodeURIComponent(rawUserId)}/${encodeURIComponent(p.id)}/removal-preview`);
+                                setBatonPreview({ ...preview, property_name: p.name });
+                              } catch {
+                                // Fallback: just proceed with toggle
+                                setAssignedProperties(prev => prev.filter(x => x !== p.id));
+                              } finally {
+                                setBatonLoading(false);
+                              }
+                            } else {
+                              setAssignedProperties(prev =>
+                                prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]
+                              );
+                            }
+                          }}
+                          disabled={batonLoading}
+                          style={{ accentColor: 'var(--color-primary)', flexShrink: 0 }}
+                        />
+
+                        <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{p.name}</span>
+
+                        {/* Primary/Backup badge for assigned properties */}
+                        {assigned && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                            background: isCurrentPrimary ? 'rgba(99,102,241,0.15)' : 'rgba(88,166,255,0.12)',
+                            color: isCurrentPrimary ? 'var(--color-primary)' : '#58a6ff',
+                            border: `1px solid ${isCurrentPrimary ? 'rgba(99,102,241,0.3)' : 'rgba(88,166,255,0.25)'}`,
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {isCurrentPrimary ? '⭐ Primary' : `🔵 Backup ${backupNum}`}
+                          </span>
+                        )}
+
+                        {/* Preview badge for unassigned properties — what would they become? */}
+                        {!assigned && wouldBePrimary && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
+                            background: 'rgba(63,185,80,0.1)', color: '#3fb950',
+                            border: '1px solid rgba(63,185,80,0.25)', whiteSpace: 'nowrap',
+                          }}>→ Will be Primary</span>
+                        )}
+                        {!assigned && wouldBeBackup && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
+                            background: 'rgba(88,166,255,0.08)', color: '#58a6ff',
+                            border: '1px solid rgba(88,166,255,0.2)', whiteSpace: 'nowrap',
+                          }}>→ Will be Backup</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -2198,6 +2342,114 @@ export default function EditStaffPage() {
         )}
       </div>
 
+
+      {/* ── Phase 1030: Baton-Transfer Confirmation Modal ─────────────────── */}
+      {batonPreview && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1050,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div style={{
+            background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-border)', padding: '28px 32px',
+            maxWidth: 520, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <span style={{ fontSize: 22 }}>⚠️</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
+                  Remove Primary Worker
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 2 }}>
+                  {batonPreview.property_name}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', lineHeight: 1.7, marginBottom: 20 }}>
+              <p style={{ margin: '0 0 12px 0' }}>
+                <strong style={{ color: 'var(--color-text)' }}>{batonPreview.removed_name}</strong> is currently the{' '}
+                <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Primary</span> worker for this property.
+              </p>
+
+              {batonPreview.new_primary_name ? (
+                <div style={{
+                  background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+                  borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: 12,
+                }}>
+                  <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>If you continue:</div>
+                  <ul style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <li>
+                      <strong>{batonPreview.new_primary_name}</strong> will become the new Primary.
+                    </li>
+                    {batonPreview.pending_tasks_count > 0 && (
+                      <li>
+                        <strong style={{ color: '#3fb950' }}>{batonPreview.pending_tasks_count} PENDING task{batonPreview.pending_tasks_count !== 1 ? 's' : ''}</strong>{' '}
+                        will automatically transfer to {batonPreview.new_primary_name}.
+                      </li>
+                    )}
+                    {batonPreview.acknowledged_tasks_count > 0 && (
+                      <li>
+                        <strong style={{ color: '#d29922' }}>{batonPreview.acknowledged_tasks_count} ACKNOWLEDGED task{batonPreview.acknowledged_tasks_count !== 1 ? 's' : ''}</strong>{' '}
+                        will <strong>stay with {batonPreview.removed_name}</strong> and require manual reassignment.
+                      </li>
+                    )}
+                    <li style={{ color: 'var(--color-text-faint)' }}>
+                      IN_PROGRESS tasks are never moved automatically.
+                    </li>
+                  </ul>
+                </div>
+              ) : (
+                <div style={{
+                  background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.3)',
+                  borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: 12, color: '#d29922',
+                }}>
+                  ⚠ No Backup exists for this property. After removal, future tasks will be <strong>unassigned</strong> and require manual assignment.
+                </div>
+              )}
+
+              {batonPreview.acknowledged_tasks_count > 0 && (
+                <div style={{
+                  background: 'rgba(210,153,34,0.06)', border: '1px solid rgba(210,153,34,0.25)',
+                  borderRadius: 'var(--radius-sm)', padding: '8px 12px',
+                  fontSize: 'var(--text-xs)', color: '#d29922',
+                }}>
+                  <strong>Action required:</strong> After this transfer, visit the Tasks page and manually reassign the {batonPreview.acknowledged_tasks_count} acknowledged task(s) still assigned to {batonPreview.removed_name}.
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setBatonPreview(null)}
+                style={{
+                  padding: '9px 20px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // Execute the removal by toggling the property off
+                  setAssignedProperties(prev => prev.filter(x => x !== batonPreview.property_id));
+                  setBatonPreview(null);
+                }}
+                style={{
+                  padding: '9px 20px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--color-alert, #C45B4A)', border: 'none',
+                  color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)',
+                  boxShadow: '0 2px 8px rgba(196,91,74,0.35)',
+                }}
+              >
+                Confirm &amp; Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Sticky footer ───────────────────────────────────────────────── */}
       <div style={{

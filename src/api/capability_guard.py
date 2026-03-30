@@ -141,6 +141,14 @@ def require_capability(capability: str) -> Callable:
         role = identity.get("role", "")
         user_id = identity.get("user_id", "")
         tenant_id = identity.get("tenant_id", "")
+        is_active = identity.get("is_active", True)
+        
+        if not is_active:
+            logger.warning("capability_guard: rejected inactive user=%s", user_id)
+            raise HTTPException(
+                status_code=403,
+                detail="USER_INACTIVE: This account is currently deactivated."
+            )
 
         # Admin always has all capabilities
         if role == "admin":

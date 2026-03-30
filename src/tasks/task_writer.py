@@ -158,16 +158,21 @@ def write_tasks_for_booking_created(
         )
 
         try:
-            # Phase 842: Auto-assign tasks to staff members assigned to the property
-            # who possess the matching worker role for the task.
+            # Phase 1030: Deterministic Primary/Backup task assignment.
+            # Query staff_property_assignments ORDER BY priority ASC so that
+            # priority=1 (Primary) always wins. Replaces the accidental heap-order
+            # first-match behavior from Phase 842.
             result_assign = (
                 db.table("staff_property_assignments")
-                .select("user_id")
+                .select("user_id, priority")
                 .eq("tenant_id", tenant_id)
                 .eq("property_id", property_id)
+                .order("priority", desc=False)  # PRIMARY FIRST — deterministic
                 .execute()
             )
-            assigned_user_ids = [r["user_id"] for r in (result_assign.data or [])]
+            assigned_rows = result_assign.data or []
+            # Preserve priority order: primaries first, backups last
+            assigned_user_ids = [r["user_id"] for r in assigned_rows]
 
             assignment_map = {}
             if assigned_user_ids:
@@ -180,14 +185,16 @@ def write_tasks_for_booking_created(
                 )
                 user_roles_map = {r["user_id"]: (r.get("worker_roles") or []) for r in (result_perms.data or [])}
 
-                # Create assignment pool: for each needed role (lower-case), pick the first user_id that has it
+                # For each needed role, pick the lowest-priority (Primary) user that has it.
+                # assigned_user_ids is already sorted by priority ASC from the DB query,
+                # so the first match is always the canonical Primary for that work lane.
                 roles_needed = {t.worker_role.value for t in tasks}
                 for role_val in roles_needed:
                     role_normalized = role_val.lower()
-                    for uid in assigned_user_ids:
+                    for uid in assigned_user_ids:  # already priority-ordered
                         if role_normalized in user_roles_map.get(uid, []):
                             assignment_map[role_val] = uid
-                            break
+                            break  # Primary found — Backup workers are NOT assigned here.
 
             for t in tasks:
                 t.assigned_to = assignment_map.get(t.worker_role.value)

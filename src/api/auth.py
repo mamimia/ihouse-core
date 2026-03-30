@@ -253,6 +253,7 @@ def get_identity(
             "role": str(payload.get("role", "manager")).strip(),
             "auth_method": auth_method,
             "email": str(payload.get("email", "")).strip(),  # Phase 864 — needed by act_as_router
+            "is_active": payload.get("is_active", True),
         }
 
         # Phase 868 — Act As token recognition
@@ -280,6 +281,7 @@ def get_identity(
             "tenant_id": sub,
             "role": str(payload.get("role", "manager")).strip(),
             "auth_method": "legacy",
+            "is_active": payload.get("is_active", True),
         }
 
 

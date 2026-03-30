@@ -1104,9 +1104,9 @@ async def create_staff_assignment(
 @router.delete(
     "/staff/assignments/{user_id}/{property_id}",
     tags=["staff"],
-    summary="Remove a property assignment from a staff member (Phase 842)",
+    summary="Remove a property assignment from a staff member (Phase 1030: baton-transfer)",
     responses={
-        200: {"description": "Assignment removed"},
+        200: {"description": "Assignment removed, baton-transfer executed if applicable"},
         401: {"description": "Missing or invalid JWT"},
         404: {"description": "Assignment not found"},
         500: {"description": "Internal server error"},
@@ -1122,10 +1122,10 @@ async def delete_staff_assignment(
     try:
         db = client if client is not None else _get_supabase_client()
 
-        # Check existence
+        # Check existence and fetch priority of the removed worker
         check = (
             db.table("staff_property_assignments")
-            .select("id")
+            .select("id, priority")
             .eq("tenant_id", tenant_id)
             .eq("user_id", user_id)
             .eq("property_id", property_id)
@@ -1139,6 +1139,15 @@ async def delete_staff_assignment(
                 extra={"user_id": user_id, "property_id": property_id},
             )
 
+        removed_priority = (check.data or [{}])[0].get("priority", 1)
+        is_primary = (removed_priority == 1)
+
+        # Phase 1030: Baton-transfer — execute BEFORE deleting the row
+        baton_result = {"transfer_occurred": False, "new_primary_user_id": None, "tasks_transferred": 0}
+        if is_primary:
+            baton_result = _execute_baton_transfer(db, tenant_id, user_id, property_id)
+
+        # Delete the assignment
         db.table("staff_property_assignments") \
             .delete() \
             .eq("tenant_id", tenant_id) \
@@ -1146,17 +1155,399 @@ async def delete_staff_assignment(
             .eq("property_id", property_id) \
             .execute()
 
-        # Phase 888: Clear future PENDING tasks assigned to this user
+        # Phase 888: Clear remaining future PENDING tasks that were NOT transferred
+        # (non-primary removals, or tasks not matching the new primary's roles)
         clear_result = _clear_tasks_on_unassign(db, tenant_id, user_id, property_id)
 
+        # Write audit log
+        try:
+            from services.audit_writer import write_audit_event
+            write_audit_event(
+                db, tenant_id=tenant_id, entity_type="staff_assignment",
+                entity_id=property_id, action="primary_removed" if is_primary else "backup_removed",
+                details={
+                    "removed_user_id": user_id, "was_primary": is_primary,
+                    "baton_transfer": baton_result, "tasks_cleared": clear_result.get("cleared", 0),
+                }
+            )
+        except Exception:
+            pass
+
         return JSONResponse(status_code=200, content={
-            "status":      "unassigned",
-            "tenant_id":   tenant_id,
-            "user_id":     user_id,
-            "property_id": property_id,
-            "tasks_cleared": clear_result.get("cleared", 0),
-            "clear_detail": clear_result,
+            "status":            "unassigned",
+            "tenant_id":         tenant_id,
+            "user_id":           user_id,
+            "property_id":       property_id,
+            "was_primary":       is_primary,
+            "baton_transfer":    baton_result,
+            "tasks_cleared":     clear_result.get("cleared", 0),
+            "clear_detail":      clear_result,
         })
     except Exception as exc:
         logger.exception("DELETE /staff/assignments/%s/%s error: %s", user_id, property_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1030 — New endpoint: preview the impact of removing a primary
+# Used by the UI confirmation modal before the admin confirms primary removal.
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/staff/assignments/{user_id}/{property_id}/removal-preview",
+    tags=["staff"],
+    summary="Preview what happens if this worker is removed from property (Phase 1030)",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def preview_staff_removal(
+    user_id: str,
+    property_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """Returns a preview of the baton-transfer consequences WITHOUT any writes."""
+    try:
+        db = client if client is not None else _get_supabase_client()
+        from datetime import date
+        today = date.today().isoformat()
+
+        # 1. Get removed worker's priority and display name
+        spa_res = (
+            db.table("staff_property_assignments")
+            .select("priority")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", user_id)
+            .eq("property_id", property_id)
+            .limit(1)
+            .execute()
+        )
+        if not (spa_res.data or []):
+            return make_error_response(status_code=404, code=ErrorCode.PERMISSION_NOT_FOUND)
+
+        removed_priority = (spa_res.data or [{}])[0].get("priority", 1)
+        is_primary = (removed_priority == 1)
+
+        # Get removed worker name
+        name_res = (
+            db.table("tenant_permissions")
+            .select("display_name, worker_roles")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        removed_name = (name_res.data or [{}])[0].get("display_name", user_id)
+        removed_roles = (name_res.data or [{}])[0].get("worker_roles") or []
+
+        # 2. Find next backup (priority=2 or lowest priority > removed_priority)
+        next_backup = None
+        new_primary_name = None
+        if is_primary:
+            next_res = (
+                db.table("staff_property_assignments")
+                .select("user_id, priority")
+                .eq("tenant_id", tenant_id)
+                .eq("property_id", property_id)
+                .neq("user_id", user_id)
+                .order("priority", desc=False)
+                .limit(1)
+                .execute()
+            )
+            if next_res.data:
+                next_backup = next_res.data[0]["user_id"]
+                nb_res = (
+                    db.table("tenant_permissions")
+                    .select("display_name")
+                    .eq("tenant_id", tenant_id)
+                    .eq("user_id", next_backup)
+                    .limit(1)
+                    .execute()
+                )
+                new_primary_name = (nb_res.data or [{}])[0].get("display_name", next_backup)
+
+        # 3. Count PENDING tasks that would transfer to new primary
+        pending_count = 0
+        if next_backup:
+            task_roles = []
+            for r in removed_roles:
+                task_roles.extend(_ROLE_TO_TASK_ROLES.get(r.lower(), []))
+            task_roles = list(set(task_roles))
+            if task_roles:
+                pt_res = (
+                    db.table("tasks")
+                    .select("task_id", count="exact")
+                    .eq("tenant_id", tenant_id)
+                    .eq("property_id", property_id)
+                    .eq("assigned_to", user_id)
+                    .eq("status", "PENDING")
+                    .gte("due_date", today)
+                    .execute()
+                )
+                pending_count = pt_res.count or len(pt_res.data or [])
+
+        # 4. Count ACKNOWLEDGED tasks that will NOT auto-move
+        ack_count = 0
+        ack_res = (
+            db.table("tasks")
+            .select("task_id", count="exact")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .eq("assigned_to", user_id)
+            .eq("status", "ACKNOWLEDGED")
+            .gte("due_date", today)
+            .execute()
+        )
+        ack_count = ack_res.count or len(ack_res.data or [])
+
+        return JSONResponse(status_code=200, content={
+            "user_id":             user_id,
+            "property_id":         property_id,
+            "removed_name":        removed_name,
+            "is_primary":          is_primary,
+            "new_primary_user_id": next_backup,
+            "new_primary_name":    new_primary_name,
+            "pending_tasks_count": pending_count,
+            "acknowledged_tasks_count": ack_count,
+            "summary": (
+                f"Removing {removed_name} (Primary). {new_primary_name} will be promoted. "
+                f"{pending_count} PENDING task(s) will transfer. {ack_count} ACKNOWLEDGED task(s) require manual action."
+            ) if is_primary else (
+                f"Removing {removed_name} (Backup). No baton transfer needed. "
+                f"Primary worker continues unchanged."
+            ),
+        })
+    except Exception as exc:
+        logger.exception("GET /staff/assignments/%s/%s/removal-preview error: %s", user_id, property_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1030 — New endpoint: list all workers for a property with their
+# priority/Primary/Backup status (used by the staff card property section)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/staff/property-lane/{property_id}",
+    tags=["staff"],
+    summary="List all workers assigned to a property with their priority/lane status (Phase 1030)",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_property_lane_workers(
+    property_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """Returns all workers assigned to a property, grouped by work lane, with Primary/Backup designation."""
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # Get all assignments for this property, ordered by priority
+        spa_res = (
+            db.table("staff_property_assignments")
+            .select("user_id, priority, assigned_at")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .order("priority", desc=False)
+            .execute()
+        )
+        rows = spa_res.data or []
+        if not rows:
+            return JSONResponse(status_code=200, content={"property_id": property_id, "lanes": {}})
+
+        user_ids = [r["user_id"] for r in rows]
+        perm_res = (
+            db.table("tenant_permissions")
+            .select("user_id, display_name, worker_roles, photo_url, is_active")
+            .eq("tenant_id", tenant_id)
+            .in_("user_id", user_ids)
+            .execute()
+        )
+        perm_map = {p["user_id"]: p for p in (perm_res.data or [])}
+
+        # Lane classification
+        def _lane(roles: list) -> str:
+            if not roles:
+                return "unassigned"
+            r = [x.lower() for x in roles]
+            if "cleaner" in r:
+                return "cleaning"
+            if "checkin" in r or "checkout" in r:
+                return "checkin_checkout"
+            if "maintenance" in r:
+                return "maintenance"
+            return "other"
+
+        lanes: dict = {}
+        for spa_row in rows:
+            uid = spa_row["user_id"]
+            perm = perm_map.get(uid, {})
+            worker_roles = perm.get("worker_roles") or []
+            lane = _lane(worker_roles)
+            if lane not in lanes:
+                lanes[lane] = []
+            priority = spa_row.get("priority", 1)
+            lanes[lane].append({
+                "user_id":      uid,
+                "display_name": perm.get("display_name", uid),
+                "photo_url":    perm.get("photo_url"),
+                "worker_roles": worker_roles,
+                "priority":     priority,
+                "is_primary":   priority == 1,
+                "label":        "Primary" if priority == 1 else f"Backup {priority - 1}",
+                "is_active":    perm.get("is_active", True),
+                "assigned_at":  spa_row.get("assigned_at"),
+            })
+
+        return JSONResponse(status_code=200, content={
+            "property_id": property_id,
+            "lanes": lanes,
+        })
+    except Exception as exc:
+        logger.exception("GET /staff/property-lane/%s error: %s", property_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1030 — Helper: execute baton-transfer when a primary is removed
+# ---------------------------------------------------------------------------
+
+def _execute_baton_transfer(
+    db: Any,
+    tenant_id: str,
+    removed_user_id: str,
+    property_id: str,
+) -> dict:
+    """Phase 1030: When the Primary is removed from a property:
+    1. Find the next backup (lowest priority != removed_user_id)
+    2. Promote them to priority=1
+    3. Reassign all future PENDING tasks from removed → new primary
+    4. Return transfer summary
+
+    DOES NOT touch ACKNOWLEDGED or IN_PROGRESS tasks.
+    """
+    from datetime import date
+    today = date.today().isoformat()
+
+    try:
+        # 1. Find removed worker's roles (needed to determine which tasks to transfer)
+        perm_res = (
+            db.table("tenant_permissions")
+            .select("worker_roles")
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", removed_user_id)
+            .limit(1)
+            .execute()
+        )
+        removed_roles = (perm_res.data or [{}])[0].get("worker_roles") or []
+
+        # 2. Find the next backup: lowest priority among remaining workers on this property
+        next_res = (
+            db.table("staff_property_assignments")
+            .select("user_id, priority")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .neq("user_id", removed_user_id)
+            .order("priority", desc=False)
+            .limit(1)
+            .execute()
+        )
+        if not (next_res.data or []):
+            return {"transfer_occurred": False, "reason": "no_backup_available",
+                    "new_primary_user_id": None, "tasks_transferred": 0}
+
+        new_primary_id = next_res.data[0]["user_id"]
+
+        # 3. Promote new primary to priority=1
+        now = datetime.now(tz=timezone.utc).isoformat()
+        db.table("staff_property_assignments").update({
+            "priority": 1,
+        }).eq("tenant_id", tenant_id).eq("user_id", new_primary_id).eq("property_id", property_id).execute()
+
+        # 4. Map roles to task worker_role values
+        task_roles: list = []
+        for r in removed_roles:
+            task_roles.extend(_ROLE_TO_TASK_ROLES.get(r.lower(), []))
+        task_roles = list(set(task_roles))
+
+        if not task_roles:
+            return {"transfer_occurred": True, "new_primary_user_id": new_primary_id,
+                    "tasks_transferred": 0, "reason": "no_matching_task_roles"}
+
+        # 5. Reassign future PENDING tasks from removed → new primary
+        task_res = (
+            db.table("tasks")
+            .select("task_id")
+            .eq("tenant_id", tenant_id)
+            .eq("property_id", property_id)
+            .eq("assigned_to", removed_user_id)
+            .eq("status", "PENDING")
+            .gte("due_date", today)
+            .in_("worker_role", task_roles)
+            .limit(200)
+            .execute()
+        )
+        task_ids = [t["task_id"] for t in (task_res.data or [])]
+
+        if task_ids:
+            db.table("tasks").update({
+                "assigned_to": new_primary_id,
+                "updated_at": now,
+            }).in_("task_id", task_ids).eq("status", "PENDING").eq("assigned_to", removed_user_id).execute()
+
+        # 6. Write audit log for the baton-transfer event
+        try:
+            from services.audit_writer import write_audit_event
+            write_audit_event(
+                db, tenant_id=tenant_id, entity_type="staff_baton_transfer",
+                entity_id=property_id, action="baton_transfer",
+                details={
+                    "removed_primary": removed_user_id,
+                    "new_primary": new_primary_id,
+                    "property_id": property_id,
+                    "tasks_transferred": len(task_ids),
+                    "task_ids": task_ids[:20],
+                    "note": "ACKNOWLEDGED and IN_PROGRESS tasks were NOT moved automatically.",
+                }
+            )
+        except Exception:
+            pass
+
+        # 7. Record promotion in tenant_preferences for login-banner display
+        try:
+            # Store pending promotion notice in the new primary's comm_preference
+            # The worker app checks this on login and shows a banner, then clears it.
+            db.table("tenant_permissions").update({
+                "comm_preference": db.table("tenant_permissions")
+                    .select("comm_preference")
+                    .eq("user_id", new_primary_id)
+                    .eq("tenant_id", tenant_id)
+                    .limit(1)
+                    .execute()
+                    .data[0].get("comm_preference") or {}
+            }).eq("user_id", "__SKIP__").execute()  # no-op, use separate update below
+            # Simpler: write a _promotion_notice field separately
+            db.rpc("update_promotion_notice", {
+                "p_tenant_id": tenant_id,
+                "p_user_id": new_primary_id,
+                "p_property_id": property_id,
+                "p_tasks_count": len(task_ids),
+            }).execute()
+        except Exception:
+            # Promotion notice is best-effort — does not fail the baton transfer
+            pass
+
+        logger.info(
+            "baton_transfer: removed=%s new_primary=%s property=%s tasks_transferred=%d",
+            removed_user_id, new_primary_id, property_id, len(task_ids),
+        )
+
+        return {
+            "transfer_occurred": True,
+            "new_primary_user_id": new_primary_id,
+            "tasks_transferred": len(task_ids),
+            "task_ids": task_ids[:20],
+        }
+
+    except Exception as exc:
+        logger.warning("baton_transfer: failed for %s/%s: %s", removed_user_id, property_id, exc)
+        return {"transfer_occurred": False, "error": str(exc), "tasks_transferred": 0}
