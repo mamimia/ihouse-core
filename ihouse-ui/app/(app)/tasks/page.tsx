@@ -214,13 +214,29 @@ function DayPropertyCard({ propertyId, date, tasks, onOpen, propertyMap, staffMa
                              flexDirection: 'column',
                              padding: '10px 12px',
                              cursor: 'pointer',
-                             background: task.status === 'completed' ? 'var(--color-surface-hover)' : 'var(--color-surface)',
+                             // Phase 1027b: IN_PROGRESS tasks stay in Pending with a live pulse indicator.
+                             // A pulsing green left border signals real work is happening right now.
+                             background: task.status === 'IN_PROGRESS'
+                                 ? 'rgba(16,185,129,0.05)'
+                                 : task.status === 'COMPLETED' || task.status === 'completed'
+                                 ? 'var(--color-surface-hover)'
+                                 : 'var(--color-surface)',
+                             borderLeft: task.status === 'IN_PROGRESS'
+                                 ? '3px solid var(--color-ok)'
+                                 : '3px solid transparent',
+                             animation: task.status === 'IN_PROGRESS' ? 'liveTaskPulse 2s ease-in-out infinite' : undefined,
                              gap: 8,
                              transition: 'background 0.2s',
                              minWidth: 0,
                          }}
                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
-                         onMouseLeave={(e) => { e.currentTarget.style.background = task.status === 'completed' ? 'var(--color-surface-hover)' : 'var(--color-surface)'; }}
+                         onMouseLeave={(e) => { 
+                             e.currentTarget.style.background = task.status === 'IN_PROGRESS'
+                                 ? 'rgba(16,185,129,0.05)'
+                                 : task.status === 'COMPLETED' || task.status === 'completed'
+                                 ? 'var(--color-surface-hover)'
+                                 : 'var(--color-surface)';
+                         }}
                     >
                          {/* Header: Task Kind + Badges */}
                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -621,6 +637,10 @@ export default function TasksPage() {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
+        @keyframes liveTaskPulse {
+          0%, 100% { border-left-color: var(--color-ok); background: rgba(16,185,129,0.05); }
+          50% { border-left-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.1); }
+        }
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
@@ -782,11 +802,23 @@ export default function TasksPage() {
 
                     // ── Admin view: dense grouped DayPropertyCard board ──
                     if (staffRole === null) {
-                        if (sorted.length === 0) return <EmptyState filter={filter} />;
+                        // Phase 1027b: For Pending tab, exclude COMPLETED and CANCELED.
+                        // Backend returns all non-CANCELED when no status filter is sent,
+                        // but Pending must ONLY show tasks that are not yet done.
+                        // Tasks remain in Pending while IN_PROGRESS (live work in progress).
+                        // They ONLY leave Pending when they reach COMPLETED (→ Done tab).
+                        const visibleSorted = filter === '__PENDING_ALL__'
+                            ? sorted.filter(t => {
+                                const s = (t.status || '').toUpperCase();
+                                return s !== 'COMPLETED' && s !== 'CANCELED';
+                              })
+                            : sorted;
+
+                        if (visibleSorted.length === 0) return <EmptyState filter={filter} />;
                         const groupedTasks: { key: string; date: string; propertyId: string; tasks: WorkerTask[] }[] = [];
                         const groupMap = new Map<string, WorkerTask[]>();
                         // Phase 889: attach booking data to tasks for nights display
-                        const enrichedSorted = sorted.map(t => {
+                        const enrichedSorted = visibleSorted.map(t => {
                             const bk = t.booking_id ? bookingCache[t.booking_id] : undefined;
                             return bk ? Object.assign({}, t, { _bookingCache: bk }) : t;
                         });
