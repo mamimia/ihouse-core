@@ -372,7 +372,9 @@ async def acknowledge_task(
 
     **No request body required.**
 
-    Phase 888d — Acknowledge timing window:
+    Phase 1027d — Acknowledge timing window:
+    (Touches the ACKNOWLEDGED state transition originally introduced in Phase 888 /
+    Phase 112 task lifecycle. This is the current active operational truth fix.)
     Acknowledge is only permitted within 24 hours (1 day) of the task's due_date.
     This prevents workers from mass-acknowledging months-in-advance tasks, which
     distorts the operational queue by moving all future tasks into ACKNOWLEDGED

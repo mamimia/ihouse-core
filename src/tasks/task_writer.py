@@ -104,7 +104,8 @@ def write_tasks_for_booking_created(
     Uses upsert with on_conflict='task_id' to ensure idempotency —
     duplicate BOOKING_CREATED events (DLQ replay) do not create duplicate tasks.
 
-    Phase 888a — FUTURE-ONLY CUTOFF:
+    Phase 1027a — FUTURE-ONLY CUTOFF:
+    (Touches logic originally introduced in Phase 888 / task_automator Phase 112.)
     Operational tasks (CHECKIN_PREP, CLEANING, CHECKOUT_VERIFY) must NEVER be
     generated for bookings whose check_in date is in the past. This prevents
     iCal imports from generating ghost tasks for historical bookings.
@@ -122,7 +123,7 @@ def write_tasks_for_booking_created(
         from datetime import date as _date  # noqa: PLC0415
         _today = _date.today().isoformat()
 
-        # ── Future-only cutoff (Phase 888a) ──────────────────────────────────
+        # ── Future-only cutoff (Phase 1027a) ────────────────────────────────
         # Determine the latest operational date for this booking.
         # If the booking's check_in is already in the past, no actionable
         # tasks can be created — the operational window has closed.

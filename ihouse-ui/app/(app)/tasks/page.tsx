@@ -304,13 +304,14 @@ function EmptyState({ filter }: { filter: string }) {
         </div>
     );
 }
-
 // ---------------------------------------------------------------------------
 // Status filter tabs
 // ---------------------------------------------------------------------------
 
 // Admin: full 4-tab filter set — Pending first (default), All last.
-// Phase 888b — canonical task-state model:
+// Phase 1027b — canonical task-state model:
+// (Touches the admin task filter logic originally introduced in Phase 157/882b/882c.
+//  Phase 888 (Task Assignment Backfill) is a different, unrelated feature.)
 //   Pending     = all incomplete tasks (PENDING + ACKNOWLEDGED) — the full operational queue.
 //                 Backend returns PENDING+ACKNOWLEDGED+IN_PROGRESS when no status filter is sent.
 //                 We use '__PENDING_ALL__' as a UI-side sentinel to send no status filter,
@@ -470,7 +471,7 @@ export default function TasksPage() {
             setError(null);
             const backendRole = getBackendWorkerRole(staffRole);
 
-            // Phase 888b: __PENDING_ALL__ sentinel — send no status filter so backend
+            // Phase 1027b: __PENDING_ALL__ sentinel — send no status filter so backend
             // returns all non-CANCELED tasks (PENDING + ACKNOWLEDGED + IN_PROGRESS).
             // This ensures acknowledged tasks remain visible in the Pending operational queue.
             const backendStatus = filter === '__PENDING_ALL__' ? undefined : (filter || undefined);

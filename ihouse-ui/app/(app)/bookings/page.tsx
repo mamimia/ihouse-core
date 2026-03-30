@@ -91,7 +91,9 @@ function deriveOperationalStatus(b: Booking): OpStatus {
     if (raw === 'admin_closed') return 'admin_closed';
     if (raw === 'checked_out' || b.checked_out_at) return 'completed';
 
-    // Phase 888c — always use UTC date for comparisons.
+    // Phase 1027c — always use UTC date for comparisons.
+    // (Touches deriveOperationalStatus logic originally introduced in Phase 158.
+    //  Phase 888 is unrelated — this is the current active operational truth fix.)
     // Using `new Date()` + setHours(0,0,0,0) produces the LOCAL date which shifts
     // with the viewer's timezone. A Bangkok admin viewing at 23:59 Bangkok time
     // is already the next UTC day, causing stale "Checkout Today" labels.
