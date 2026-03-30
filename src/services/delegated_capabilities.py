@@ -40,60 +40,242 @@ _LEGACY_CAPABILITIES: frozenset[str] = frozenset({
     "intake",
 })
 
-# ── Phase 1023 fine-grained capability groups ──
-# Each group is: { "label": str, "capabilities": [ (key, description), ... ] }
+# ── Phase 1023-C: Plain-language capability descriptions ──
+# Each capability is: (key, label, description, power_type)
+# power_type: "view" | "approve" | "edit" | "execute"
+# description: plain-language explanation understandable by non-technical admins.
 CAPABILITY_GROUPS: list[dict] = [
     {
         "group": "booking_exceptions",
         "label": "Booking Exceptions",
         "capabilities": [
-            ("booking_flag_vip",           "Flag bookings as VIP"),
-            ("booking_flag_dispute",       "Flag bookings as disputed"),
-            ("booking_approve_early_co",   "Approve early checkout"),
-            ("booking_approve_self_ci",    "Approve self check-in"),
-            ("booking_create_manual",      "Create manual bookings"),
-            ("booking_exception_notes",    "Add operator notes to bookings"),
+            (
+                "booking_flag_vip",
+                "Flag bookings as VIP",
+                "The manager can mark a guest booking as VIP, which triggers priority "
+                "handling across the operational surface (housekeeping priority, task urgency). "
+                "Does not change rates or communicate anything to the guest directly. "
+                "Admin can always unflag.",
+                "edit",
+            ),
+            (
+                "booking_flag_dispute",
+                "Flag bookings as disputed",
+                "The manager can flag a booking as disputed — for example, if a guest "
+                "raised a payment or damage claim. This is a visibility and triage flag only. "
+                "It does not automatically issue a refund, deduction, or message to the guest. "
+                "Only admins can resolve disputes.",
+                "edit",
+            ),
+            (
+                "booking_approve_early_co",
+                "Approve early checkout",
+                "The manager can approve a guest's request to check out earlier than "
+                "the originally booked departure date. This may affect cleaning schedules. "
+                "Does not automatically issue a partial refund — financial adjustments "
+                "remain an admin action.",
+                "approve",
+            ),
+            (
+                "booking_approve_self_ci",
+                "Approve self check-in",
+                "The manager can approve a guest to self-check-in (e.g. via a keybox or "
+                "smart lock) without a staff-assisted check-in walk-through. "
+                "Only applies to properties set up for self-check-in. "
+                "The manager cannot create or modify the access codes themselves.",
+                "approve",
+            ),
+            (
+                "booking_create_manual",
+                "Create manual bookings",
+                "The manager can create a manual booking directly in the system — "
+                "for example, for a direct guest who is not arriving through an OTA. "
+                "Admin should review all manual bookings for rate accuracy. "
+                "The manager cannot modify OTA-sourced bookings.",
+                "execute",
+            ),
+            (
+                "booking_exception_notes",
+                "Add operator notes to bookings",
+                "The manager can write internal notes on any booking — "
+                "for example, guest preferences, handover instructions, or issue logs. "
+                "Notes are visible to admin and other staff but are never sent to guests. "
+                "The manager cannot delete existing notes.",
+                "edit",
+            ),
         ],
     },
     {
         "group": "staff_management",
         "label": "Staff Management",
         "capabilities": [
-            ("staff_view_roster",           "View staff roster & contact details"),
-            ("staff_manage_assignments",    "Assign / unassign staff to properties"),
-            ("staff_approve_availability",  "Approve / reject availability requests"),
-            ("staff_create_worker",         "Create new worker accounts (invite)"),
-            ("staff_deactivate_worker",     "Archive / deactivate worker accounts"),
+            (
+                "staff_view_roster",
+                "View staff roster & contact details",
+                "The manager can view the full list of staff members, their roles, "
+                "assigned properties, and contact details (phone, LINE). "
+                "Read-only — the manager cannot create or modify staff profiles.",
+                "view",
+            ),
+            (
+                "staff_manage_assignments",
+                "Assign / unassign staff to properties",
+                "The manager can assign or remove a worker from a property. "
+                "This affects which tasks the worker receives and appears in their schedule. "
+                "Does not create or delete the worker's account — only the assignment relationship.",
+                "edit",
+            ),
+            (
+                "staff_approve_availability",
+                "Approve / reject availability requests",
+                "The manager can approve or reject a worker's request to mark themselves "
+                "unavailable for a specific date or period. "
+                "Does not allow the manager to set availability on behalf of a worker — "
+                "only to respond to worker-initiated requests.",
+                "approve",
+            ),
+            (
+                "staff_create_worker",
+                "Create new worker accounts (invite)",
+                "The manager can invite a new worker and create their basic staff profile. "
+                "The manager cannot set pay rates, compliance document status, or sensitive "
+                "employment fields — those remain admin-only. "
+                "New accounts are created with the least-privilege worker role.",
+                "execute",
+            ),
+            (
+                "staff_deactivate_worker",
+                "Archive / deactivate worker accounts",
+                "The manager can deactivate a worker's account, removing their access to "
+                "the platform and preventing new task assignments. "
+                "Existing completed tasks and history are preserved. "
+                "Account deletion is admin-only and cannot be delegated.",
+                "execute",
+            ),
         ],
     },
     {
         "group": "property_operations",
         "label": "Property Operations",
         "capabilities": [
-            ("ops_task_takeover",           "Take over worker tasks"),
-            ("ops_task_reassign",           "Reassign tasks between workers"),
-            ("ops_schedule_tasks",          "Create ad-hoc operational tasks"),
-            ("ops_view_cleaning_reports",   "View cleaning completion reports & photos"),
-            ("ops_set_property_status",     "Set property operational status"),
+            (
+                "ops_task_takeover",
+                "Take over worker tasks",
+                "The manager can claim an in-progress or unacknowledged task and execute "
+                "it themselves (or mark it done) — for example, if a worker is absent. "
+                "This creates an audit record showing the manager completed the task. "
+                "The original worker is notified of the reassignment.",
+                "execute",
+            ),
+            (
+                "ops_task_reassign",
+                "Reassign tasks between workers",
+                "The manager can move an upcoming or in-progress task from one worker "
+                "to another. Only workers assigned to that property can receive the task. "
+                "Does not allow the manager to create new task types — only reassign existing ones.",
+                "edit",
+            ),
+            (
+                "ops_schedule_tasks",
+                "Create ad-hoc operational tasks",
+                "The manager can schedule additional one-off tasks — for example, an "
+                "unplanned deep clean or a maintenance inspection. "
+                "These are not automatically billed or charged to guests. "
+                "Recurring task schedules remain an admin configuration.",
+                "execute",
+            ),
+            (
+                "ops_view_cleaning_reports",
+                "View cleaning completion reports & photos",
+                "The manager can view the photo evidence and completion checklist "
+                "submitted by cleaners after each task. "
+                "Read-only — the manager cannot edit or delete submitted reports.",
+                "view",
+            ),
+            (
+                "ops_set_property_status",
+                "Set property operational status",
+                "The manager can change a property's operational status — for example, "
+                "marking it temporarily offline for maintenance, or returning it to active. "
+                "This affects what bookings can be made and may block OTA sync. "
+                "Admin is notified whenever this status changes.",
+                "edit",
+            ),
         ],
     },
     {
         "group": "internal_settlement",
         "label": "Internal Settlement",
         "capabilities": [
-            ("settlement_view_deposits",       "View deposit collection records"),
-            ("settlement_finalize",            "Finalize checkout settlements"),
-            ("settlement_approve_deductions",  "Approve damage deductions"),
-            ("settlement_void",                "Void a finalized settlement"),
+            (
+                "settlement_view_deposits",
+                "View deposit collection records",
+                "The manager can see which guests have paid a security deposit, "
+                "the amount collected, and the collection method. "
+                "Cannot collect, modify, or release deposits — view only.",
+                "view",
+            ),
+            (
+                "settlement_finalize",
+                "Finalize checkout settlements",
+                "The manager can mark a checkout settlement as complete after confirming "
+                "the room condition and deposit return. "
+                "This is a key operational handoff step. "
+                "Finalized settlements cannot be reversed without admin action.",
+                "execute",
+            ),
+            (
+                "settlement_approve_deductions",
+                "Approve damage deductions",
+                "The manager can approve a proposed deduction from a guest's deposit — "
+                "for example, for damaged items or extended stays. "
+                "The deduction amount is set by the admin or system; the manager "
+                "approves whether to apply it. Does not give the manager power to "
+                "set deduction amounts independently.",
+                "approve",
+            ),
+            (
+                "settlement_void",
+                "Void a finalized settlement",
+                "The manager can void a settlement that was incorrectly finalized, "
+                "returning it to a pending state for correction. "
+                "All voids are logged with the manager's identity and reason. "
+                "This is a high-trust action and should only be granted to senior managers.",
+                "execute",
+            ),
         ],
     },
     {
         "group": "financial_visibility",
         "label": "Financial Visibility",
         "capabilities": [
-            ("financial_view_revenue",     "View revenue & occupancy metrics"),
-            ("financial_view_owner_stmt",  "View owner statements"),
-            ("financial_export",           "Export financial data"),
+            (
+                "financial_view_revenue",
+                "View revenue & occupancy metrics",
+                "The manager can view property revenue summaries and occupancy data — "
+                "for operational planning only. "
+                "Cannot see individual owner payouts, net rates, or OTA commission breakdowns. "
+                "No export access is included.",
+                "view",
+            ),
+            (
+                "financial_view_owner_stmt",
+                "View owner statements",
+                "The manager can view the owner-facing settlement statements for any "
+                "property. This is sensitive — it shows net payouts and deductions. "
+                "Grant this only to managers who need to liaise directly with property owners. "
+                "Read-only — cannot modify or send statements.",
+                "view",
+            ),
+            (
+                "financial_export",
+                "Export financial data",
+                "The manager can export financial reports (CSV/Excel) for reporting purposes. "
+                "Exported data may contain sensitive revenue and payout information. "
+                "All exports are logged. Does not grant access to payment credentials "
+                "or the ability to initiate transfers.",
+                "view",
+            ),
         ],
     },
 ]
@@ -102,7 +284,7 @@ CAPABILITY_GROUPS: list[dict] = [
 _FINE_CAPABILITIES: frozenset[str] = frozenset(
     key
     for group in CAPABILITY_GROUPS
-    for key, _ in group["capabilities"]
+    for key, *_ in group["capabilities"]
 )
 
 # Union: Phase 862 legacy + Phase 1023 fine-grained
@@ -169,6 +351,7 @@ def has_capability(permissions: Optional[dict], capability: str) -> bool:
 def get_grouped_capabilities(permissions: Optional[dict]) -> list[dict]:
     """
     Return the full capability taxonomy with current grant state for a manager.
+    Phase 1023-C: now includes description and power_type per capability.
 
     Used by the Admin UI to render the Delegated Authority tab.
 
@@ -181,6 +364,8 @@ def get_grouped_capabilities(permissions: Optional[dict]) -> list[dict]:
                     {
                         "key": "booking_approve_early_co",
                         "label": "Approve early checkout",
+                        "description": "...",
+                        "power_type": "approve",
                         "granted": True,
                     },
                     ...
@@ -194,11 +379,13 @@ def get_grouped_capabilities(permissions: Optional[dict]) -> list[dict]:
     for group in CAPABILITY_GROUPS:
         caps_out = [
             {
-                "key": key,
-                "label": label,
-                "granted": current.get(key, False),
+                "key": entry[0],
+                "label": entry[1],
+                "description": entry[2],
+                "power_type": entry[3],
+                "granted": current.get(entry[0], False),
             }
-            for key, label in group["capabilities"]
+            for entry in group["capabilities"]
         ]
         result.append({
             "group": group["group"],
@@ -395,6 +582,13 @@ def _write_capability_audit_events(
     import uuid as _uuid
     from datetime import datetime, timezone
 
+    # Build a label lookup map from the taxonomy
+    _label_map: dict[str, str] = {
+        entry[0]: entry[1]
+        for group in CAPABILITY_GROUPS
+        for entry in group["capabilities"]
+    }
+
     written = 0
     for change in changes:
         action = (
@@ -402,8 +596,10 @@ def _write_capability_audit_events(
             if change["new"]
             else "MANAGER_CAPABILITY_REVOKED"
         )
+        cap_key = change["capability"]
         payload = {
-            "capability": change["capability"],
+            "capability": cap_key,
+            "capability_label": _label_map.get(cap_key, cap_key),  # Phase 1023-C: human label
             "granted": change["new"],
             "previous_granted": change["old"],
             "changed_by_admin_id": admin_user_id,

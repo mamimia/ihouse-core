@@ -344,8 +344,8 @@ export default function EditStaffPage() {
   // Phase 1021-C: Linked owner profile state
   const [linkedOwner, setLinkedOwner] = useState<{ id: string; name: string; email?: string; property_ids?: string[] } | null | 'loading'>('loading');
 
-  // Phase 1023: Delegated Authority state
-  type CapEntry = { key: string; label: string; granted: boolean };
+  // Phase 1023-C: Delegated Authority state
+  type CapEntry = { key: string; label: string; description: string; power_type: string; granted: boolean };
   type CapGroup = { group: string; label: string; capabilities: CapEntry[] };
   const [capGroups, setCapGroups] = useState<CapGroup[]>([]);
   const [capLoading, setCapLoading] = useState(false);
@@ -354,6 +354,7 @@ export default function EditStaffPage() {
   const [capApplying, setCapApplying] = useState<string | null>(null);  // group currently being saved
   const [capError, setCapError] = useState<string | null>(null);
   const [capHistory, setCapHistory] = useState<any[]>([]);
+  const [capInfoOpen, setCapInfoOpen] = useState<string | null>(null); // capability key with open info popover
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -2012,12 +2013,12 @@ export default function EditStaffPage() {
                     {/* Capability toggles */}
                     <div style={{ padding: 0 }}>
                       {effectiveCaps.map((cap, idx) => (
-                        <div
-                          key={cap.key}
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '12px 16px',
-                            borderBottom: idx < effectiveCaps.length - 1 ? '1px solid var(--color-border)' : 'none',
+                        <div key={cap.key}>
+                          <div
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              padding: '12px 16px',
+                              borderBottom: (idx < effectiveCaps.length - 1 || capInfoOpen === cap.key) ? '1px solid var(--color-border)' : 'none',
                             opacity: isPending ? 0.7 : 1,
                             transition: 'background 0.1s',
                             cursor: isPending ? 'default' : 'pointer',
@@ -2034,23 +2035,83 @@ export default function EditStaffPage() {
                             }));
                           }}
                         >
-                          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-                            {cap.label}
-                          </span>
-                          {/* Toggle switch */}
-                          <div style={{
-                            width: 40, height: 22, borderRadius: 11,
-                            background: cap.granted ? 'var(--color-primary)' : 'var(--color-border)',
-                            position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-                          }}>
-                            <div style={{
-                              width: 16, height: 16, borderRadius: '50%', background: '#fff',
-                              position: 'absolute', top: 3,
-                              left: cap.granted ? 21 : 3,
-                              transition: 'left 0.2s',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                            }} />
+                          {/* Left: label + power_type badge */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', lineHeight: 1.4 }}>
+                              {cap.label}
+                            </span>
+                            {cap.power_type && (
+                              <span style={{
+                                display: 'inline-block', fontSize: 10, fontWeight: 700,
+                                padding: '1px 6px', borderRadius: 4, letterSpacing: '0.04em',
+                                alignSelf: 'flex-start',
+                                textTransform: 'uppercase',
+                                ...(cap.power_type === 'view' ? {
+                                  background: 'rgba(56,139,253,0.12)', color: '#388bfd',
+                                } : cap.power_type === 'approve' ? {
+                                  background: 'rgba(210,153,34,0.14)', color: '#d29922',
+                                } : cap.power_type === 'edit' ? {
+                                  background: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)',
+                                } : /* execute */ {
+                                  background: 'rgba(248,81,73,0.1)', color: '#f85149',
+                                }),
+                              }}>
+                                {cap.power_type}
+                              </span>
+                            )}
                           </div>
+
+                          {/* Right: ⓘ info icon + toggle */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                            {/* Info button — stops toggle click from propagating */}
+                            {cap.description && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCapInfoOpen(prev => prev === cap.key ? null : cap.key);
+                                }}
+                                title="What does this permission mean?"
+                                style={{
+                                  background: 'none', border: 'none', cursor: 'pointer',
+                                  color: capInfoOpen === cap.key ? 'var(--color-primary)' : 'var(--color-text-faint)',
+                                  fontSize: 15, lineHeight: 1, padding: '2px 4px',
+                                  borderRadius: 4,
+                                  transition: 'color 0.15s',
+                                }}
+                              >ⓘ</button>
+                            )}
+
+                            {/* Toggle switch */}
+                            <div style={{
+                              width: 40, height: 22, borderRadius: 11,
+                              background: cap.granted ? 'var(--color-primary)' : 'var(--color-border)',
+                              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                            }}>
+                              <div style={{
+                                width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                                position: 'absolute', top: 3,
+                                left: cap.granted ? 21 : 3,
+                                transition: 'left 0.2s',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                              }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Info popover — appears inline below the row when open */}
+                        {capInfoOpen === cap.key && cap.description && (
+                          <div style={{
+                            background: 'var(--color-surface-2)',
+                            border: '1px solid var(--color-border)',
+                            borderTop: 'none',
+                            padding: '12px 16px',
+                            fontSize: 'var(--text-xs)',
+                            color: 'var(--color-text-dim)',
+                            lineHeight: 1.6,
+                          }}>
+                            {cap.description}
+                          </div>
+                        )}
                         </div>
                       ))}
                     </div>
@@ -2071,7 +2132,8 @@ export default function EditStaffPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                   {capHistory.map((ev, i) => {
                     const isGrant = ev.action === 'MANAGER_CAPABILITY_GRANTED';
-                    const cap = ev.payload?.capability ?? '';
+                    // Phase 1023-C: prefer human label stored in payload, fall back to raw key
+                    const capLabel = ev.payload?.capability_label ?? ev.payload?.capability ?? '';
                     const when = ev.occurred_at ? new Date(ev.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
                     return (
                       <div key={ev.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
@@ -2082,7 +2144,7 @@ export default function EditStaffPage() {
                         }}>
                           {isGrant ? 'Granted' : 'Revoked'}
                         </span>
-                        <span style={{ color: 'var(--color-text)' }}>{cap}</span>
+                        <span style={{ color: 'var(--color-text)' }}>{capLabel}</span>
                         <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>{when}</span>
                       </div>
                     );
