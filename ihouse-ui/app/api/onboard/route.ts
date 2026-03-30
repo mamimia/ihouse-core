@@ -63,29 +63,51 @@ export async function POST(request: NextRequest) {
         }
 
         // ── Deduplication check ──
+        // Strip tracking query params — listing identity is in the URL path (e.g. /rooms/12345678).
+        // This avoids PostgREST query-string breakage on URLs containing '&' and catches
+        // re-submissions with different tracking suffixes (?s=76, ?unique_share_id=...).
         const sourceUrl = body.sourceUrl?.trim() || null;
+        let canonicalSourceUrl: string | null = null;
         if (sourceUrl) {
+            try {
+                const parsed = new URL(sourceUrl);
+                canonicalSourceUrl = `${parsed.origin}${parsed.pathname}`;
+            } catch {
+                canonicalSourceUrl = sourceUrl;
+            }
+        }
+        if (canonicalSourceUrl) {
+            // Match any existing record whose source_url starts with the canonical path
+            // (covers both exact matches and records stored with different query params)
+            const likePattern = encodeURIComponent(`${canonicalSourceUrl}%`);
             const checkRes = await supaFetch(
-                `properties?tenant_id=eq.${PUBLIC_ONBOARD_TENANT}&source_url=eq.${encodeURIComponent(sourceUrl)}&select=property_id,display_name,status,created_at&limit=1`,
+                `properties?tenant_id=eq.${PUBLIC_ONBOARD_TENANT}&source_url=like.${likePattern}&select=property_id,display_name,status,created_at,submitter_user_id&limit=1`,
             );
             if (checkRes.ok) {
                 const existing = await checkRes.json();
                 if (existing.length > 0) {
                     const ex = existing[0];
+                    const isSameSubmitter = body.submitterUserId && ex.submitter_user_id === body.submitterUserId;
                     let message = '';
-                    if (ex.status === 'archived') {
-                        message = `This listing was previously connected but is now archived. Contact us to restore it.`;
-                    } else if (ex.status === 'pending') {
-                        message = `This listing is already submitted and pending review.`;
+                    if (ex.status === 'draft') {
+                        if (isSameSubmitter) {
+                            message = `You already have a draft for this listing. View it in My Properties.`;
+                        } else {
+                            message = `This listing is already saved as a draft in the system. If you believe this is an error, please contact us.`;
+                        }
+                    } else if (ex.status === 'pending_review' || ex.status === 'pending') {
+                        message = `This listing is already submitted and pending admin review.`;
                     } else if (ex.status === 'rejected') {
-                        message = `This listing was previously submitted. Contact us for more information.`;
+                        message = `This listing was previously submitted and rejected. Please contact us to resubmit.`;
+                    } else if (ex.status === 'archived') {
+                        message = `This listing was previously connected but is now archived. Contact us to restore it.`;
                     } else {
-                        message = `This listing is already connected to property "${ex.display_name}".`;
+                        message = `This listing is already connected to property "${ex.display_name || ex.property_id}".`;
                     }
                     return NextResponse.json({
                         success: false,
                         conflict: true,
-                        existing_property: ex,
+                        existing_property: { property_id: ex.property_id, display_name: ex.display_name, status: ex.status },
                         message,
                     }, { status: 409 });
                 }
@@ -151,6 +173,15 @@ export async function POST(request: NextRequest) {
         if (!propertyRes.ok) {
             const errorText = await propertyRes.text();
             console.error('[onboard] Property insert failed:', propertyRes.status, errorText);
+            // DB-level uniqueness violation (23505) — dedup check missed it (e.g. query param mismatch)
+            // Surface as a conflict rather than a generic 500 so the UI shows a meaningful message.
+            if (errorText.includes('23505') || errorText.includes('unique') || errorText.includes('duplicate')) {
+                return NextResponse.json({
+                    success: false,
+                    conflict: true,
+                    message: 'This listing URL is already registered in the system. If you believe this is an error, please contact us.',
+                }, { status: 409 });
+            }
             return NextResponse.json(
                 { error: 'Failed to create property', detail: errorText },
                 { status: 500 },
