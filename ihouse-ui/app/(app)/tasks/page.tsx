@@ -535,9 +535,11 @@ export default function TasksPage() {
             setError(null);
             const backendRole = getBackendWorkerRole(staffRole);
 
-            // Phase 1027b: __PENDING_ALL__ sentinel — send no status filter so backend
-            // returns all non-CANCELED tasks (PENDING + ACKNOWLEDGED + IN_PROGRESS).
-            // This ensures acknowledged tasks remain visible in the Pending operational queue.
+            // Phase 1029 — Source-of-truth fix:
+            // When filter is '__PENDING_ALL__' (Pending tab), we send NO status param.
+            // The backend now defaults to returning PENDING + ACKNOWLEDGED + IN_PROGRESS only.
+            // COMPLETED and CANCELED are excluded at the DB query level — NOT by client-side filter.
+            // The Done tab sends status=COMPLETED explicitly.
             const backendStatus = filter === '__PENDING_ALL__' ? undefined : (filter || undefined);
 
             if (staffRole === 'checkin_checkout') {
@@ -1015,17 +1017,11 @@ export default function TasksPage() {
 
                     // ── Admin view: dense grouped DayPropertyCard board ──
                     if (staffRole === null) {
-                        // Phase 1027b: For Pending tab, exclude COMPLETED and CANCELED.
-                        // Backend returns all non-CANCELED when no status filter is sent,
-                        // but Pending must ONLY show tasks that are not yet done.
-                        // Tasks remain in Pending while IN_PROGRESS (live work in progress).
-                        // They ONLY leave Pending when they reach COMPLETED (→ Done tab).
-                        const visibleSorted = filter === '__PENDING_ALL__'
-                            ? sorted.filter(t => {
-                                const s = (t.status || '').toUpperCase();
-                                return s !== 'COMPLETED' && s !== 'CANCELED';
-                              })
-                            : sorted;
+                        // Phase 1029 — Client-side filter removed.
+                        // Backend already returns only the canonical incomplete queue
+                        // (PENDING | ACKNOWLEDGED | IN_PROGRESS) when no status filter is sent.
+                        // No client-side exclusion needed. Source-of-truth is the backend.
+                        const visibleSorted = sorted;
 
                         if (visibleSorted.length === 0) return <EmptyState filter={filter} />;
                         const groupedTasks: { key: string; date: string; propertyId: string; tasks: WorkerTask[] }[] = [];

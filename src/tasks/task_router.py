@@ -158,6 +158,23 @@ async def list_tasks(
             query = query.eq("booking_id", booking_id)
         if status is not None:
             query = query.eq("status", status)
+        else:
+            # Phase 1029 — Source-of-truth fix:
+            # When no status filter is explicitly provided, the default query
+            # returns the canonical INCOMPLETE operational queue:
+            #   PENDING | ACKNOWLEDGED | IN_PROGRESS
+            # COMPLETED and CANCELED tasks are terminal. They are NEVER returned
+            # by default — they must be explicitly requested with ?status=COMPLETED
+            # or ?status=CANCELED.
+            #
+            # Before Phase 1029, the backend returned ALL statuses including
+            # COMPLETED when no filter was sent, and the UI had to client-side
+            # filter. That client-side filter was the only thing keeping COMPLETED
+            # tasks out of the admin Pending view — a fragile, non-canonical design.
+            #
+            # This is the source-of-truth fix. All surfaces (admin, worker, manager,
+            # preview) now see only the live queue by default.
+            query = query.not_.in_("status", ["COMPLETED", "CANCELED"])
         if kind is not None:
             query = query.eq("kind", kind)
         if due_date is not None:

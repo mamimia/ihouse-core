@@ -458,9 +458,73 @@ async def start_task(
 
     **No request body required.**
 
-    Uses VALID_TASK_TRANSITIONS from task_model.py.
-    Terminal tasks (COMPLETED/CANCELED) return 422 INVALID_TRANSITION.
+    Phase 1029 — Start timing gate:
+    START is the gate for "real work begins now". It must not open arbitrarily
+    far in advance (e.g. a worker cannot start checkout on a booking due in 5 days).
+
+    Rule by kind:
+    - CHECKOUT_VERIFY, CHECKOUT_PREP, CLEANING (canonical): START on due_date only
+      (days_until = 0). Rationale: checkout is same-day, cleaning follows checkout.
+    - CHECKIN_PREP, GUEST_WELCOME: START up to 1 day before due_date (days_until <= 1).
+      Rationale: check-in prep realistically begins the evening before.
+    - MAINTENANCE, GENERAL: no time gate (operational flexibility).
+
+    Hour-level gating (e.g. 'Start Cleaning only 1h before checkout')
+    requires due_time to be consistently stored. That is Phase 1030.
     """
+    try:
+        db = client or _get_supabase_client()
+
+        # Phase 1029: START timing gate
+        _task_res = (
+            db.table("tasks")
+            .select("due_date, kind")
+            .eq("task_id", task_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if _task_res.data:
+            _due_str = _task_res.data[0].get("due_date")
+            _kind = (_task_res.data[0].get("kind") or "").upper()
+            if _due_str:
+                from datetime import date as _date
+                try:
+                    _due = _date.fromisoformat(_due_str)
+                    _today = _date.today()
+                    _days_until = (_due - _today).days
+
+                    # Strict same-day kinds: only allowed on the due_date itself
+                    _STRICT_SAME_DAY = frozenset({"CHECKOUT_VERIFY", "CHECKOUT_PREP", "CLEANING"})
+                    # Day-before-allowed kinds: allow start day before due_date
+                    _DAY_BEFORE_OK = frozenset({"CHECKIN_PREP", "GUEST_WELCOME"})
+                    # No gate kinds: maintenance, general, adhoc
+                    _NO_GATE = frozenset({"MAINTENANCE", "GENERAL"})
+
+                    if _kind in _STRICT_SAME_DAY and _days_until > 0:
+                        return make_error_response(
+                            422,
+                            ErrorCode.INVALID_TRANSITION,
+                            f"Cannot start {_kind} task: available only on the task due date "
+                            f"({_due_str}). Today is {_today.isoformat()} "
+                            f"({_days_until} day(s) early).",
+                        )
+                    elif _kind in _DAY_BEFORE_OK and _days_until > 1:
+                        return make_error_response(
+                            422,
+                            ErrorCode.INVALID_TRANSITION,
+                            f"Cannot start {_kind} task more than 1 day early. "
+                            f"Due date: {_due_str}. Today: {_today.isoformat()} "
+                            f"({_days_until} day(s) early). "
+                            f"You can start on {(_due - __import__('datetime').timedelta(days=1)).isoformat()}.",
+                        )
+                    # _NO_GATE kinds: no restriction, fall through
+                except (ValueError, TypeError):
+                    pass  # unparseable due_date — allow, don't block
+
+    except Exception as _gate_exc:
+        logger.warning("start_task: timing gate check failed (non-blocking): %s", _gate_exc)
+
     return await _transition_task(
         task_id=task_id,
         tenant_id=tenant_id,
@@ -561,6 +625,19 @@ async def _transition_task(
 
         now = datetime.now(tz=timezone.utc).isoformat()
         patch_data: dict = {"status": target_status.value, "updated_at": now}
+
+        # Phase 1029 — Canonical lifecycle timestamps.
+        # Each state transition writes its own timestamp so we can audit:
+        #   acknowledged_at: when the worker saw and committed to the task
+        #   started_at:      when the worker pressed Start (real work began)
+        #   completed_at:    when the worker pressed Complete
+        # These are the source-of-truth for operational SLA measurement.
+        if target_status == TaskStatus.ACKNOWLEDGED:
+            patch_data["acknowledged_at"] = now
+        elif target_status == TaskStatus.IN_PROGRESS:
+            patch_data["started_at"] = now
+        elif target_status == TaskStatus.COMPLETED:
+            patch_data["completed_at"] = now
 
         if notes:
             # Append to existing notes list (stored as JSONB or text[]  in DB).
