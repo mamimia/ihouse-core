@@ -734,6 +734,9 @@ async def get_profile(
                 profile["full_name"] = metadata.get("full_name", "") or metadata.get("name", "")
                 profile["phone"] = metadata.get("phone", "") or user.phone or ""
                 profile["avatar_url"] = metadata.get("avatar_url", "")
+                # language from user_metadata — used as fallback when no tenant_permissions row
+                if metadata.get("language"):
+                    profile["language"] = metadata["language"]
                 # Extract linked providers with their emails
                 identities = getattr(user, "identities", None) or []
                 providers = []
@@ -799,18 +802,32 @@ async def update_profile(
 
     updated_fields = {}
 
-    # Update language in tenant_permissions if applicable
+    # Update language in both tenant_permissions AND user_metadata so it persists
+    # regardless of whether the user has a membership row (public submitters do not).
     if body.language is not None:
+        lang_val = body.language.strip()
+        # 1. Write to tenant_permissions (for members)
         try:
             from api.db import get_db
             db = get_db()
             if db:
                 db.table("tenant_permissions").update({
-                    "language": body.language.strip(),
+                    "language": lang_val,
                 }).eq("user_id", user_id).execute()
-                updated_fields["language"] = body.language.strip()
+                updated_fields["language"] = lang_val
         except Exception as exc:
-            logger.warning("auth/profile: language update failed for user=%s: %s", user_id, exc)
+            logger.warning("auth/profile: language update (tenant_permissions) failed for user=%s: %s", user_id, exc)
+        # 2. Write to user_metadata (for all users, including public submitters)
+        try:
+            supa_admin = _get_supabase_admin()
+            if supa_admin:
+                supa_admin.auth.admin.update_user_by_id(
+                    user_id,
+                    {"user_metadata": {"language": lang_val}},
+                )
+                updated_fields["language"] = lang_val
+        except Exception as exc:
+            logger.warning("auth/profile: language update (user_metadata) failed for user=%s: %s", user_id, exc)
 
     # Update Supabase Auth user_metadata (full_name, phone) if applicable
     if body.full_name is not None or body.phone is not None:
