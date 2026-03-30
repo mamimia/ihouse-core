@@ -211,8 +211,11 @@ async def list_worker_tasks(
         if status is not None:
             query = query.eq("status", status)
         else:
-            # Phase E-4: Hide canceled tasks from default "All" view to keep dashboard clean
-            query = query.neq("status", "CANCELED")
+            # Phase E-4 / Phase 1030: Default view excludes terminal states.
+            # CANCELED and COMPLETED are hidden when no explicit status filter is sent.
+            # The Pending tab sends no status filter and expects PENDING+ACKNOWLEDGED+IN_PROGRESS only.
+            # The Done tab sends status=COMPLETED explicitly.
+            query = query.neq("status", "CANCELED").neq("status", "COMPLETED")
             
         if date is not None:
             query = query.eq("due_date", date)
