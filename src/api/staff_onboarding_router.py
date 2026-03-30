@@ -523,8 +523,36 @@ async def approve_onboarding(
             raise e
         
         # 2. Provision permissions with all the rich data
+        # Phase 1026 Fix — Role integrity: intended_role is the source of truth.
+        # Priority: body.role (explicit admin override) > meta.intended_role > fallback 'worker'
         role = body.role or meta.get("intended_role", "worker")
-        wroles = body.worker_roles or wdata.get("worker_roles", [])
+        wroles = list(body.worker_roles or wdata.get("worker_roles", []) or [])
+
+        # Phase 1026 Fix H2 — Normalize combined checkin/checkout string.
+        # The invite UI may store "checkin/checkout" as a single preselected_roles value.
+        # Expand it to the canonical two-element form that the JWT builder and staff card require.
+        if "checkin/checkout" in wroles:
+            wroles = [r for r in wroles if r != "checkin/checkout"]
+            if "checkin" not in wroles:
+                wroles.append("checkin")
+            if "checkout" not in wroles:
+                wroles.append("checkout")
+
+        # Phase 1026 Fix H3 — Manager role integrity.
+        # If intended_role is 'manager', the person is NOT a worker.
+        # Write role='manager', worker_roles=[], worker_role=None.
+        # Do NOT inherit worker sub-roles from the form (op_manager, etc.) — those are erroneous.
+        if role == "manager":
+            wroles = []
+
+        # Phase 1026 Fix H1 — Write worker_role (singular) for worker types.
+        # For combined checkin+checkout, canonical primary is 'checkin' (first alphabetically
+        # and 'checkin_checkout' is detected by auth_login_router from the pair, not this field).
+        # For manager, worker_role is None by design.
+        if role == "worker" and wroles:
+            resolved_worker_role: Optional[str] = wroles[0]
+        else:
+            resolved_worker_role = None
 
         # Extract PII/compliance fields from comm_preference into dedicated columns
         comm_pref = dict(wdata.get("comm_preference") or {})
@@ -569,6 +597,7 @@ async def approve_onboarding(
             "user_id": user_id,
             "role": role,
             "worker_roles": wroles,
+            "worker_role": resolved_worker_role,   # Phase 1026 Fix H1: singular primary sub-role
             "is_active": True,
             "display_name": full_name,          # primary: real full name
             "phone": wdata.get("phone", ""),
@@ -580,6 +609,10 @@ async def approve_onboarding(
             "created_at": "now()",
             "updated_at": "now()"
         }
+        logger.info(
+            "staff-onboarding/approve: role=%s worker_roles=%s worker_role=%s user_id=%s",
+            role, wroles, resolved_worker_role, user_id,
+        )
         # Phase 857 (audit C8): add dedicated PII columns if migration has been applied
         if date_of_birth:
             perm_row["date_of_birth"] = date_of_birth

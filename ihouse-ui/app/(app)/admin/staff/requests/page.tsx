@@ -110,7 +110,11 @@ export default function PendingRequestsPage() {
 
   const handleApprove = async (id: string, metadata: any) => {
     const role = metadata?.intended_role || 'worker';
-    const workerRoles = metadata?.worker_data?.worker_roles || [];
+    // Phase 1026 Fix H3: manager intended_role must not carry over worker sub-roles.
+    // The backend normalizes as well, but be explicit here to avoid any payload pollution.
+    const workerRoles = (role === 'manager')
+      ? []
+      : (metadata?.worker_data?.worker_roles || []);
     const displayName = metadata?.worker_data?.full_name || metadata?.display_name || 'Staff Member';
 
     try {
@@ -299,10 +303,15 @@ export default function PendingRequestsPage() {
           />
           <select
             value={genAccountRole}
-            onChange={e => setGenAccountRole(e.target.value)}
+            onChange={e => {
+              setGenAccountRole(e.target.value);
+              // Clear worker sub-roles if switching away from worker
+              setGenRoles([]);
+            }}
             style={{ ...selectStyle, width: '150px' }}
           >
             <option value="worker">Staff Member</option>
+            <option value="manager">Operational Manager</option>
             <option value="owner">Owner</option>
           </select>
           <select
@@ -315,24 +324,51 @@ export default function PendingRequestsPage() {
             <option value="he">Hebrew</option>
           </select>
         </div>
+        {/* Phase 1026: Worker sub-role checkboxes only shown for Staff Member account type.
+            Combined check-in & check-out stores both 'checkin' and 'checkout' as separate values.
+            Operational Manager goes through the manager account role — no sub-role needed. */}
         {genAccountRole === 'worker' && (
           <div style={{ marginBottom: 'var(--space-3)' }}>
-            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 6, display: 'block' }}>Pre-select Roles (Optional)</label>
+            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 6, display: 'block' }}>Pre-select Role (Optional)</label>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              {['cleaner', 'checkin', 'checkout', 'checkin/checkout', 'maintenance', 'op_manager'].map(r => (
-                <label key={r} style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: 4, border: '1px solid var(--color-border)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={genRoles.includes(r)} 
+              {/* Single roles */}
+              {['cleaner', 'checkin', 'checkout', 'maintenance'].map(r => (
+                <label key={r} style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: 4, border: `1px solid ${genRoles.includes(r) ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
+                  <input
+                    type="checkbox"
+                    checked={genRoles.includes(r)}
                     onChange={(e) => {
                       if (e.target.checked) setGenRoles([...genRoles, r]);
                       else setGenRoles(genRoles.filter(x => x !== r));
-                    }} 
+                    }}
                   />
-                  {r === 'op_manager' ? 'Op Manager' : r === 'checkin/checkout' ? 'Check-in & Check-out' : r.charAt(0).toUpperCase() + r.slice(1)}
+                  {r.charAt(0).toUpperCase() + r.slice(1)}
                 </label>
               ))}
+              {/* Combined check-in & check-out — stores as two separate values */}
+              <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: 4, border: `1px solid ${(genRoles.includes('checkin') && genRoles.includes('checkout')) ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
+                <input
+                  type="checkbox"
+                  checked={genRoles.includes('checkin') && genRoles.includes('checkout')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      // Add both — deduplicated
+                      const next = [...genRoles.filter(x => x !== 'checkin' && x !== 'checkout'), 'checkin', 'checkout'];
+                      setGenRoles(next);
+                    } else {
+                      setGenRoles(genRoles.filter(x => x !== 'checkin' && x !== 'checkout'));
+                    }
+                  }}
+                />
+                Check-in &amp; Check-out
+              </label>
             </div>
+          </div>
+        )}
+        {/* Phase 1026: Manager account role context note */}
+        {genAccountRole === 'manager' && (
+          <div style={{ marginBottom: 'var(--space-3)', padding: '8px 12px', background: 'rgba(99,102,241,0.08)', borderRadius: 6, border: '1px solid var(--color-primary)', fontSize: 13, color: 'var(--color-text-dim)' }}>
+            Operational Manager will be provisioned with <strong>role = Manager</strong>. No worker sub-roles are needed.
           </div>
         )}
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
