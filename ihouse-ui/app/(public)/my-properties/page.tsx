@@ -5,13 +5,14 @@
  *
  * Authenticated user area showing their properties with status badges.
  * Entry point after completing the Get Started wizard.
- * Also accessible from the main navigation for returning users.
  *
  * Status model:
  *   draft          → saved, not yet submitted
  *   pending_review → submitted, awaiting admin review
- *   approved       → admin approved, live in system
- *   expired        → draft older than 90 days (archived)
+ *   approved       → admin approved
+ *   active         → live in system
+ *   rejected       → admin rejected, needs updates
+ *   expired        → draft older than 90 days
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -36,15 +37,49 @@ interface Property {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
-const STATUS_CONFIG: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-    draft: { label: 'Draft', icon: '📝', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' },
-    pending_review: { label: 'Pending Review', icon: '⏳', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
-    pending: { label: 'Pending Review', icon: '⏳', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
-    active: { label: 'Active', icon: '✅', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
-    approved: { label: 'Approved', icon: '✅', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
-    rejected: { label: 'Needs Updates', icon: '⛔', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
-    expired:        { label: 'Expired',         color: 'rgba(234,229,222,0.25)', bg: 'rgba(234,229,222,0.03)', icon: '📦' },
+/* ─── Status journey config ─── */
+type JourneyStep = {
+    key: string[];          // statuses that map to this step
+    label: string;
+    shortLabel: string;
 };
+
+const JOURNEY_STEPS: JourneyStep[] = [
+    { key: ['draft', 'pending_review', 'pending', 'approved', 'active', 'rejected'], label: 'Submitted', shortLabel: 'Sub.' },
+    { key: ['pending_review', 'pending', 'approved', 'active', 'rejected'],          label: 'Under Review', shortLabel: 'Review' },
+    { key: ['approved', 'active', 'rejected'],                                        label: 'Decision',    shortLabel: 'Decision' },
+    { key: ['active'],                                                                label: 'Active',       shortLabel: 'Active' },
+];
+
+/* Step index of the CURRENT status (0-based, matches JOURNEY_STEPS) */
+function getJourneyIndex(status: string): number {
+    if (status === 'draft') return 0;
+    if (status === 'pending_review' || status === 'pending') return 1;
+    if (status === 'approved' || status === 'rejected') return 2;
+    if (status === 'active') return 3;
+    return 0;
+}
+
+/* Context line shown under the progress bar */
+function getStatusContext(status: string): { text: string; color: string } {
+    switch (status) {
+        case 'draft':
+            return { text: 'Your property is saved as a draft. Submit it for review when ready.', color: '#9ca3af' };
+        case 'pending_review':
+        case 'pending':
+            return { text: 'Under Review — We typically respond within 24–48 hours.', color: '#f59e0b' };
+        case 'approved':
+            return { text: 'Approved — Your property has been approved and is being set up.', color: '#22c55e' };
+        case 'active':
+            return { text: 'Active — Your property is live in the system.', color: '#22c55e' };
+        case 'rejected':
+            return { text: 'Not approved — Please contact us for more information.', color: '#ef4444' };
+        case 'expired':
+            return { text: 'This draft has expired. Submit a new property to get started.', color: '#6b7280' };
+        default:
+            return { text: '', color: '#9ca3af' };
+    }
+}
 
 const card: React.CSSProperties = {
     background: 'var(--color-elevated, #1E2127)',
@@ -64,6 +99,104 @@ const primaryBtn: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: 6,
 };
 
+/* ─── Delete Confirmation Modal ─── */
+function DeleteConfirmModal({
+    propertyName,
+    onConfirm,
+    onCancel,
+}: {
+    propertyName: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+}) {
+    return (
+        <>
+            {/* Backdrop */}
+            <div
+                onClick={onCancel}
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 9000,
+                    background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
+                    animation: 'fadeIn 150ms ease both',
+                }}
+            />
+            {/* Modal */}
+            <div style={{
+                position: 'fixed', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 9001,
+                background: 'var(--color-elevated, #1E2127)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                borderRadius: 20,
+                padding: '28px 24px 24px',
+                width: 'min(92vw, 360px)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+                animation: 'modalIn 200ms cubic-bezier(0.34,1.56,0.64,1) both',
+            }}>
+                {/* Icon */}
+                <div style={{
+                    width: 52, height: 52, borderRadius: 26,
+                    background: 'rgba(239,68,68,0.1)',
+                    border: '1px solid rgba(239,68,68,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 16px',
+                }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                        fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <line x1="10" y1="11" x2="10" y2="17" />
+                        <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                </div>
+                <h3 style={{
+                    textAlign: 'center', fontSize: 17, fontWeight: 700,
+                    color: 'var(--color-stone, #EAE5DE)', margin: '0 0 8px',
+                }}>
+                    Delete property?
+                </h3>
+                <p style={{
+                    textAlign: 'center', fontSize: 13,
+                    color: 'rgba(234,229,222,0.45)', margin: '0 0 24px', lineHeight: 1.6,
+                }}>
+                    <strong style={{ color: 'rgba(234,229,222,0.75)' }}>{propertyName}</strong> will be permanently removed.
+                    This action cannot be undone.
+                </p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                        onClick={onCancel}
+                        style={{
+                            flex: 1, padding: '11px 0',
+                            background: 'transparent',
+                            border: '1px solid rgba(234,229,222,0.15)',
+                            borderRadius: 12, color: 'rgba(234,229,222,0.6)',
+                            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                            transition: 'all 0.15s',
+                            fontFamily: 'var(--font-brand, inherit)',
+                        }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        style={{
+                            flex: 1, padding: '11px 0',
+                            background: '#ef4444',
+                            border: 'none',
+                            borderRadius: 12, color: '#fff',
+                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                            transition: 'all 0.15s',
+                            fontFamily: 'var(--font-brand, inherit)',
+                        }}
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </>
+    );
+}
+
 export default function MyPropertiesPage() {
     const router = useRouter();
     const [properties, setProperties] = useState<Property[]>([]);
@@ -71,11 +204,12 @@ export default function MyPropertiesPage() {
     const [submitting, setSubmitting] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
     const [justSubmitted, setJustSubmitted] = useState<string | null>(null);
-    const [deleteToast, setDeleteToast] = useState<{ id: string; name: string; undone: boolean } | null>(null);
+    const [deleteToast, setDeleteToast] = useState<{ id: string; name: string } | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
     const [userName, setUserName] = useState('');
     const [userEmail, setUserEmail] = useState('');
 
-    // Auth check — ihouse_token is the canonical credential
+    // Auth check
     useEffect(() => {
         const token = document.cookie
             .split('; ')
@@ -85,7 +219,6 @@ export default function MyPropertiesPage() {
             router.replace('/login');
             return;
         }
-        // Try Supabase session for display name (optional — not required for auth)
         if (supabase) {
             supabase.auth.getUser().then(({ data: { user } }) => {
                 if (user) {
@@ -99,7 +232,6 @@ export default function MyPropertiesPage() {
 
     const fetchProperties = useCallback(async () => {
         try {
-            // Phase 862 P24: use ihouse_token cookie for auth
             const token = document.cookie
                 .split('; ')
                 .find(c => c.startsWith('ihouse_token='))
@@ -146,35 +278,19 @@ export default function MyPropertiesPage() {
         finally { setSubmitting(null); }
     };
 
-    const handleDelete = async (propertyId: string) => {
-        // Save the property for potential rollback
-        const deletedProp = properties.find(p => p.id === propertyId);
-        const propName = deletedProp?.name || 'Property';
+    /* First tap → open modal. Modal confirm → actually delete. */
+    const handleDeleteRequest = (propertyId: string, propertyName: string) => {
+        setConfirmDelete({ id: propertyId, name: propertyName });
+    };
 
-        // Optimistically remove from UI 
+    const handleDeleteConfirmed = async () => {
+        if (!confirmDelete) return;
+        const { id: propertyId, name: propName } = confirmDelete;
+        setConfirmDelete(null);
+
         setProperties(prev => prev.filter(p => p.id !== propertyId));
-        setDeleteToast({ id: propertyId, name: propName, undone: false });
+        setDeleteToast({ id: propertyId, name: propName });
 
-        // Wait 3 seconds for potential undo before committing the backend delete
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // Check if user hit undo during the wait
-        // We read from a ref-like pattern via the state setter
-        let wasUndone = false;
-        setDeleteToast(prev => {
-            if (prev?.id === propertyId && prev.undone) {
-                wasUndone = true;
-            }
-            return prev;
-        });
-
-        if (wasUndone) {
-            // Already restored by undo handler
-            setDeleteToast(null);
-            return;
-        }
-
-        // Proceed with backend deletion
         setDeleting(propertyId);
         try {
             const token = document.cookie
@@ -187,15 +303,11 @@ export default function MyPropertiesPage() {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             if (!res.ok) {
-                // Backend failed — roll back
-                if (deletedProp) {
-                    setProperties(prev => [...prev, deletedProp]);
-                }
-                setDeleteToast({ id: propertyId, name: propName + ' — delete failed', undone: true });
-                setTimeout(() => setDeleteToast(null), 3000);
-            } else {
+                // Backend failed — restore
+                fetchProperties();
                 setDeleteToast(null);
-                // Clear wizard draft state if the deleted property was the cached draft
+            } else {
+                setTimeout(() => setDeleteToast(null), 3000);
                 try {
                     const wizardState = sessionStorage.getItem('domaniqo_get_started_state');
                     if (wizardState) {
@@ -206,25 +318,11 @@ export default function MyPropertiesPage() {
                     }
                 } catch { /* ignore */ }
             }
-        } catch { 
-            // Network error — roll back
-            if (deletedProp) {
-                setProperties(prev => [...prev, deletedProp]);
-            }
-            setDeleteToast({ id: propertyId, name: propName + ' — delete failed', undone: true });
-            setTimeout(() => setDeleteToast(null), 3000);
+        } catch {
+            fetchProperties();
+            setDeleteToast(null);
         }
         finally { setDeleting(null); }
-    };
-
-    const handleUndoDelete = () => {
-        if (!deleteToast) return;
-        const propertyId = deleteToast.id;
-        // Re-fetch since we need the full property object
-        setDeleteToast(prev => prev ? { ...prev, undone: true } : null);
-        // Trigger a full refresh to restore
-        fetchProperties();
-        setDeleteToast(null);
     };
 
     const handleSignOut = async () => {
@@ -232,54 +330,55 @@ export default function MyPropertiesPage() {
         performClientLogout('/');
     };
 
-    const drafts = properties.filter(p => p.status === 'draft');
+    const drafts    = properties.filter(p => p.status === 'draft');
     const submitted = properties.filter(p => ['pending_review', 'pending'].includes(p.status));
-    const approved = properties.filter(p => ['approved', 'active'].includes(p.status));
-    const expired = properties.filter(p => p.status === 'expired');
+    const approved  = properties.filter(p => ['approved', 'active'].includes(p.status));
+    const rejected  = properties.filter(p => p.status === 'rejected');
+    const expired   = properties.filter(p => p.status === 'expired');
 
     return (
         <>
             <style>{`
+                @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
                 @keyframes fadeSlideIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+                @keyframes modalIn { from { opacity:0; transform:translate(-50%,-48%) scale(0.94); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
                 .mp-fade { animation: fadeSlideIn 400ms ease both; }
                 .mp-card { transition: border-color 0.2s; }
                 .mp-card:hover { border-color: rgba(234,229,222,0.12) !important; }
+                .del-btn:hover { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.4) !important; color: #ef4444 !important; }
             `}</style>
 
             <SignedInShell back="/welcome" backLabel="← Home" />
 
-            {/* Delete undo toast */}
-            {deleteToast && !deleteToast.undone && (
+            {/* Delete confirmation modal */}
+            {confirmDelete && (
+                <DeleteConfirmModal
+                    propertyName={confirmDelete.name}
+                    onConfirm={handleDeleteConfirmed}
+                    onCancel={() => setConfirmDelete(null)}
+                />
+            )}
+
+            {/* Success toast after confirmed delete */}
+            {deleteToast && (
                 <div style={{
                     position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
                     zIndex: 9999, background: '#1E2127', border: '1px solid rgba(234,229,222,0.15)',
-                    borderRadius: 12, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 14,
+                    borderRadius: 12, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10,
                     boxShadow: '0 8px 32px rgba(0,0,0,0.4)', fontSize: 14, color: 'rgba(234,229,222,0.7)',
-                    animation: 'fadeSlideIn 300ms ease both',
+                    animation: 'fadeSlideIn 300ms ease both', whiteSpace: 'nowrap',
                 }}>
-                    <span>🗑️ {deleteToast.name} deleted</span>
-                    <button
-                        onClick={handleUndoDelete}
-                        style={{
-                            background: 'transparent', border: '1px solid rgba(234,229,222,0.2)',
-                            color: '#f59e0b', borderRadius: 8, padding: '4px 12px', cursor: 'pointer',
-                            fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
-                        }}
-                    >
-                        Undo
-                    </button>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    {deleteToast.name} deleted
                 </div>
             )}
 
-            <div style={{
-                minHeight: '100vh',
-                background: 'var(--color-midnight, #171A1F)',
-                paddingTop: SHELL_TOP_PADDING,
-            }}>
-                <div style={{
-                    maxWidth: 480, margin: '0 auto',
-                    padding: 'var(--space-6, 24px) var(--space-4, 16px)',
-                }}>
+            <div style={{ minHeight: '100vh', background: 'var(--color-midnight, #171A1F)', paddingTop: SHELL_TOP_PADDING }}>
+                <div style={{ maxWidth: 480, margin: '0 auto', padding: 'var(--space-6, 24px) var(--space-4, 16px)' }}>
+
                     {/* Page heading */}
                     <div className="mp-fade" style={{ marginBottom: 'var(--space-6, 24px)' }}>
                         <h1 style={{
@@ -300,7 +399,6 @@ export default function MyPropertiesPage() {
                             Loading your properties…
                         </div>
                     ) : properties.length === 0 ? (
-                        /* Empty state */
                         <div className="mp-fade" style={{ ...card, textAlign: 'center', padding: 'var(--space-8, 32px)' }}>
                             <div style={{ fontSize: 48, marginBottom: 12 }}>🏠</div>
                             <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-stone)', margin: '0 0 8px' }}>
@@ -309,23 +407,17 @@ export default function MyPropertiesPage() {
                             <p style={{ fontSize: 14, color: 'rgba(234,229,222,0.4)', margin: '0 0 20px', lineHeight: 1.6 }}>
                                 Add your first property to get started with Domaniqo.
                             </p>
-                            <button
-                                style={primaryBtn}
-                                onClick={() => {
-                                    sessionStorage.removeItem('domaniqo_get_started_state');
-                                    router.push('/get-started');
-                                }}
-                            >
+                            <button style={primaryBtn} onClick={() => { sessionStorage.removeItem('domaniqo_get_started_state'); router.push('/get-started'); }}>
                                 + Add Your First Property
                             </button>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
                             {/* Just submitted banner */}
                             {justSubmitted && (
                                 <div className="mp-fade" style={{
-                                    ...card,
-                                    padding: '14px 18px',
+                                    ...card, padding: '14px 18px',
                                     background: 'rgba(74,124,89,0.06)',
                                     border: '1px solid rgba(74,124,89,0.15)',
                                 }}>
@@ -338,88 +430,40 @@ export default function MyPropertiesPage() {
                                 </div>
                             )}
 
-                            {/* Drafts section */}
-                            {drafts.length > 0 && (
-                                <div>
+                            {/* Render all sections */}
+                            {[
+                                { label: 'Submitted', items: submitted, showProgress: true },
+                                { label: 'Needs Attention', items: rejected, showProgress: true },
+                                { label: 'Drafts', items: drafts, showProgress: true },
+                                { label: 'Approved', items: approved, showProgress: true },
+                                { label: 'Archived', items: expired, showProgress: false },
+                            ].map(({ label, items, showProgress }) => items.length > 0 && (
+                                <div key={label}>
                                     <h2 style={{
                                         fontSize: 12, fontWeight: 700, color: 'rgba(234,229,222,0.3)',
                                         textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px',
                                     }}>
-                                        Drafts ({drafts.length})
+                                        {label} ({items.length})
                                     </h2>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {drafts.map(prop => (
-                                            <PropertyCard key={prop.id} property={prop}
-                                                onSubmit={() => handleSubmitForReview(prop.id)}
-                                                onDelete={() => handleDelete(prop.id)}
-                                                submitting={submitting === prop.id || deleting === prop.id} />
+                                        {items.map(prop => (
+                                            <PropertyCard
+                                                key={prop.id}
+                                                property={prop}
+                                                showProgress={showProgress}
+                                                onSubmit={prop.status === 'draft' ? () => handleSubmitForReview(prop.id) : undefined}
+                                                onDeleteRequest={() => handleDeleteRequest(prop.id, prop.name || 'Property')}
+                                                canDelete={['draft', 'pending_review', 'pending', 'rejected'].includes(prop.status)}
+                                                submitting={submitting === prop.id || deleting === prop.id}
+                                            />
                                         ))}
                                     </div>
                                 </div>
-                            )}
-
-                            {/* Submitted section */}
-                            {submitted.length > 0 && (
-                                <div>
-                                    <h2 style={{
-                                        fontSize: 12, fontWeight: 700, color: 'rgba(234,229,222,0.3)',
-                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px',
-                                    }}>
-                                        Submitted ({submitted.length})
-                                    </h2>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {submitted.map(prop => (
-                                            <PropertyCard key={prop.id} property={prop}
-                                                onDelete={['draft', 'pending_review', 'rejected'].includes(prop.status) ? () => handleDelete(prop.id) : undefined}
-                                                submitting={deleting === prop.id} />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Approved section */}
-                            {approved.length > 0 && (
-                                <div>
-                                    <h2 style={{
-                                        fontSize: 12, fontWeight: 700, color: 'rgba(234,229,222,0.3)',
-                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px',
-                                    }}>
-                                        Approved ({approved.length})
-                                    </h2>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {approved.map(prop => (
-                                            <PropertyCard key={prop.id} property={prop} />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Expired section */}
-                            {expired.length > 0 && (
-                                <div>
-                                    <h2 style={{
-                                        fontSize: 12, fontWeight: 700, color: 'rgba(234,229,222,0.2)',
-                                        textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px',
-                                    }}>
-                                        Archived ({expired.length})
-                                    </h2>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {expired.map(prop => (
-                                            <PropertyCard key={prop.id} property={prop} />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            ))}
 
                             {/* Add another */}
                             <div style={{ textAlign: 'center', paddingTop: 4 }}>
-                                <button
-                                    style={primaryBtn}
-                                    onClick={() => {
-                                        sessionStorage.removeItem('domaniqo_get_started_state');
-                                        router.push('/get-started');
-                                    }}
-                                >
+                                <button style={primaryBtn} onClick={() => { sessionStorage.removeItem('domaniqo_get_started_state'); router.push('/get-started'); }}>
                                     + Add Another Property
                                 </button>
                             </div>
@@ -431,130 +475,232 @@ export default function MyPropertiesPage() {
     );
 }
 
-/* ─── Property Card Component ─── */
+/* ─── Status Journey Progress Bar ─── */
+function StatusJourney({ status }: { status: string }) {
+    const currentIdx = getJourneyIndex(status);
+    const ctx = getStatusContext(status);
+    const isRejected = status === 'rejected';
 
-function PropertyCard({ property, onSubmit, onDelete, submitting }: {
+    return (
+        <div style={{ paddingTop: 14 }}>
+            {/* Step dots + line */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, marginBottom: 10 }}>
+                {JOURNEY_STEPS.map((step, i) => {
+                    const isDone = i < currentIdx;
+                    const isCurrent = i === currentIdx;
+                    const isDecisionRejected = isRejected && i === 2;
+
+                    let dotBg = 'transparent';
+                    let dotBorder = 'rgba(234,229,222,0.15)';
+                    let dotColor = 'rgba(234,229,222,0.2)';
+                    let labelColor = 'rgba(234,229,222,0.25)';
+
+                    if (isDone) {
+                        dotBg = '#334036'; dotBorder = '#334036'; dotColor = '#fff'; labelColor = 'rgba(234,229,222,0.5)';
+                    }
+                    if (isCurrent && !isDecisionRejected) {
+                        dotBg = isRejected ? '#ef4444' : '#334036';
+                        dotBorder = isRejected ? '#ef4444' : '#334036';
+                        dotColor = '#fff'; labelColor = isRejected ? '#ef4444' : '#EAE5DE';
+                    }
+                    if (isDecisionRejected) {
+                        dotBg = '#ef4444'; dotBorder = '#ef4444'; dotColor = '#fff'; labelColor = '#ef4444';
+                    }
+
+                    const isLast = i === JOURNEY_STEPS.length - 1;
+
+                    return (
+                        <div key={step.label} style={{ display: 'flex', alignItems: 'flex-start', flex: isLast ? 0 : 1 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 36 }}>
+                                {/* Dot */}
+                                <div style={{
+                                    width: 22, height: 22, borderRadius: 11,
+                                    background: dotBg, border: `2px solid ${dotBorder}`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.3s',
+                                    flexShrink: 0,
+                                }}>
+                                    {(isDone || isDecisionRejected) ? (
+                                        isDecisionRejected ? (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
+                                                fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                                            </svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
+                                                fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg>
+                                        )
+                                    ) : isCurrent ? (
+                                        <div style={{ width: 7, height: 7, borderRadius: 4, background: '#fff' }} />
+                                    ) : null}
+                                </div>
+                                {/* Label */}
+                                <div style={{
+                                    fontSize: 10, fontWeight: isCurrent ? 700 : 500,
+                                    color: labelColor, marginTop: 5, textAlign: 'center',
+                                    lineHeight: 1.2, whiteSpace: 'nowrap',
+                                }}>
+                                    {step.shortLabel !== step.label
+                                        ? step.label.split(' ').map((w, wi) => <div key={wi}>{w}</div>)
+                                        : step.label}
+                                </div>
+                            </div>
+                            {/* Connector line */}
+                            {!isLast && (
+                                <div style={{
+                                    flex: 1, height: 2, marginTop: 10,
+                                    background: isDone ? '#334036' : 'rgba(234,229,222,0.1)',
+                                    transition: 'background 0.3s',
+                                }} />
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Context text */}
+            {ctx.text && (
+                <div style={{
+                    fontSize: 12, color: ctx.color, lineHeight: 1.55,
+                    padding: '8px 10px',
+                    background: 'rgba(0,0,0,0.15)',
+                    borderRadius: 8,
+                    borderLeft: `3px solid ${ctx.color}`,
+                }}>
+                    {ctx.text}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ─── Property Card Component ─── */
+function PropertyCard({
+    property, onSubmit, onDeleteRequest, canDelete, submitting, showProgress,
+}: {
     property: Property;
     onSubmit?: () => void;
-    onDelete?: () => void;
+    onDeleteRequest?: () => void;
+    canDelete?: boolean;
     submitting?: boolean;
+    showProgress?: boolean;
 }) {
     const router = useRouter();
-    const statusConf = STATUS_CONFIG[property.status] || STATUS_CONFIG.draft;
     const isExpired = property.status === 'expired';
 
     return (
-        <div style={{ position: 'relative' }}>
-            {onDelete && (
-                <button
-                    onClick={onDelete}
-                    disabled={submitting}
-                    style={{
-                        position: 'absolute', top: -12, right: -12, zIndex: 10,
-                        background: 'var(--color-surface, #1E2127)', color: 'rgba(234,229,222,0.4)', 
-                        border: '1px solid rgba(234,229,222,0.1)', cursor: submitting ? 'not-allowed' : 'pointer', 
-                        width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', opacity: submitting ? 0.5 : 1
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444'; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(234,229,222,0.4)'; e.currentTarget.style.borderColor = 'rgba(234,229,222,0.1)'; }}
-                    title="Delete permanently"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-            )}
-            <div className="mp-card" style={{
-                ...card,
-                padding: '14px 16px',
-                opacity: (isExpired || submitting) ? 0.5 : 1,
-                pointerEvents: submitting ? 'none' : 'auto',
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                {/* Left side: photo + info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
-                    {property.cover_photo_url ? (
-                        <div style={{
-                            width: 64, height: 64, borderRadius: 8, overflow: 'hidden', flexShrink: 0,
-                            background: 'var(--color-surface, #1E2127)', border: '1px solid rgba(234,229,222,0.1)'
-                        }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={property.cover_photo_url} alt={property.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </div>
-                    ) : (
-                        <div style={{
-                            width: 64, height: 64, borderRadius: 8, flexShrink: 0,
-                            background: 'rgba(234,229,222,0.03)', border: '1px dashed rgba(234,229,222,0.15)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24
-                        }}>
-                            🏠
-                        </div>
-                    )}
+        <div className="mp-card" style={{
+            ...card,
+            padding: '16px',
+            opacity: (isExpired || submitting) ? 0.55 : 1,
+            pointerEvents: submitting ? 'none' : 'auto',
+        }}>
+            {/* Top row: photo + name + delete */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                {/* Photo */}
+                {property.cover_photo_url ? (
+                    <div style={{
+                        width: 58, height: 58, borderRadius: 8, overflow: 'hidden', flexShrink: 0,
+                        background: 'var(--color-surface, #1E2127)', border: '1px solid rgba(234,229,222,0.1)',
+                    }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={property.cover_photo_url} alt={property.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                ) : (
+                    <div style={{
+                        width: 58, height: 58, borderRadius: 8, flexShrink: 0,
+                        background: 'rgba(234,229,222,0.03)', border: '1px dashed rgba(234,229,222,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+                    }}>
+                        🏠
+                    </div>
+                )}
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <h3 style={{
-                            fontSize: 15, fontWeight: 600,
-                            color: 'var(--color-stone, #EAE5DE)',
-                            margin: '0 0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>
-                            {property.name || 'Untitled Property'}
-                        </h3>
-
-                        <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.35)', marginBottom: 6 }}>
-                            {[property.city, property.country].filter(Boolean).join(', ') || 'Location not set'}
-                            {property.property_type && ` · ${property.property_type}`}
-                        </div>
-
-                        {/* Status badge */}
-                        <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 10, fontWeight: 700,
-                            color: statusConf.color, background: statusConf.bg,
-                            padding: '2px 8px', borderRadius: 99,
-                            textTransform: 'uppercase', letterSpacing: '0.04em',
-                        }}>
-                            {statusConf.icon} {statusConf.label}
-                        </span>
+                {/* Name + location */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3 style={{
+                        fontSize: 15, fontWeight: 700,
+                        color: 'var(--color-stone, #EAE5DE)',
+                        margin: '0 0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                        {property.name || 'Untitled Property'}
+                    </h3>
+                    <div style={{ fontSize: 12, color: 'rgba(234,229,222,0.35)' }}>
+                        {[property.city, property.country].filter(Boolean).join(', ') || 'Location not set'}
+                        {property.property_type && ` · ${property.property_type}`}
                     </div>
                 </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', minWidth: 100 }}>
-                    {property.status === 'draft' && onSubmit && (
-                        <>
-                            <button
-                                onClick={() => router.push(`/get-started?edit=${property.id}`)}
-                                disabled={submitting}
-                                style={{
-                                    ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
-                                    background: 'transparent',
-                                    border: '1px solid rgba(234,229,222,0.15)',
-                                    color: 'var(--color-stone)',
-                                    opacity: submitting ? 0.5 : 1,
-                                }}
-                            >
-                                Edit ✏️
-                            </button>
-                            <button
-                                onClick={onSubmit}
-                                disabled={submitting}
-                                style={{
-                                    ...primaryBtn, padding: '6px 14px', fontSize: 12, flexShrink: 0,
-                                    opacity: submitting ? 0.5 : 1,
-                                }}
-                            >
-                                {submitting ? '…' : 'Submit →'}
-                            </button>
-                        </>
-                    )}
-                    {(!onSubmit && property.status !== 'draft' && !['approved', 'active'].includes(property.status)) && (
-                        <div style={{ width: 1, height: 1 }}>{/* Spacer basically if no edit/submit on submitted view... wait we don't need this */}</div>
-                    )}
-                </div>
+                {/* Delete button — clearly visible, red-tinted, labelled */}
+                {canDelete && onDeleteRequest && (
+                    <button
+                        className="del-btn"
+                        onClick={onDeleteRequest}
+                        disabled={submitting}
+                        title="Delete this property"
+                        style={{
+                            flexShrink: 0,
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '6px 10px',
+                            background: 'rgba(239,68,68,0.07)',
+                            border: '1px solid rgba(239,68,68,0.2)',
+                            borderRadius: 8,
+                            color: 'rgba(239,68,68,0.7)',
+                            fontSize: 12, fontWeight: 600,
+                            cursor: submitting ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s',
+                            opacity: submitting ? 0.4 : 1,
+                        }}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        Delete
+                    </button>
+                )}
             </div>
-        </div>
+
+            {/* Status journey progress */}
+            {showProgress && !isExpired && (
+                <StatusJourney status={property.status} />
+            )}
+
+            {/* Draft actions */}
+            {property.status === 'draft' && onSubmit && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                    <button
+                        onClick={() => router.push(`/get-started?edit=${property.id}`)}
+                        disabled={submitting}
+                        style={{
+                            flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 600,
+                            background: 'transparent', border: '1px solid rgba(234,229,222,0.15)',
+                            borderRadius: 10, color: 'var(--color-stone)',
+                            cursor: 'pointer', transition: 'all 0.15s',
+                            fontFamily: 'var(--font-brand, inherit)',
+                        }}
+                    >
+                        ✏️ Edit
+                    </button>
+                    <button
+                        onClick={onSubmit}
+                        disabled={submitting}
+                        style={{
+                            flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 700,
+                            background: 'var(--color-moss, #334036)', border: 'none',
+                            borderRadius: 10, color: '#fff',
+                            cursor: submitting ? 'not-allowed' : 'pointer',
+                            opacity: submitting ? 0.6 : 1, transition: 'all 0.15s',
+                            fontFamily: 'var(--font-brand, inherit)',
+                        }}
+                    >
+                        {submitting ? '…' : 'Submit for Review →'}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

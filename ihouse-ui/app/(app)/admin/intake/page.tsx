@@ -310,10 +310,16 @@ export default function AdminIntakePage() {
                                             color: 'var(--color-text-dim)',
                                             display: 'flex',
                                             gap: 'var(--space-3)',
+                                            flexWrap: 'wrap',
                                         }}>
                                             {prop.city && <span>📍 {[prop.city, prop.country].filter(Boolean).join(', ')}</span>}
                                             {prop.property_type && <span>🏠 {prop.property_type}</span>}
                                             {prop.submitter_email && <span>👤 {prop.submitter_email}</span>}
+                                            {prop.submitter_phone && (
+                                                <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                                                    📞 {prop.submitter_phone}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
