@@ -994,38 +994,64 @@ async def repair_worker_email(
                 "comm_email": comm_email,
             })
 
-        # ── Safety classification: is this an email-typo case or a deep mismatch? ──
-        # Deep mismatch: completely different names (Tiki Toto class) — BLOCK.
-        # Typo mismatch: same name, minor variation (.com missing, extra space, etc.)
-        # Heuristic: the local part (before @) must be identical (case-insensitive).
+        # ── Safety classification: is this an email-typo case or a deep (wrong-person) mismatch? ──
+        # Policy:
+        #   - edit_distance(auth_local, comm_local) == 0  → identical, trivial (domain-only fix)
+        #   - edit_distance <= 3                          → small typo, admin-initiated correction → ALLOW
+        #   - edit_distance >  3                          → likely different people → BLOCK as deep mismatch
+        # This lets an admin fix 'jonh@gmail.com' → 'john@gmail.com' while still blocking
+        # Tiki-Toto-class linkages where the auth account genuinely belongs to another person.
+        def _levenshtein(a: str, b: str) -> int:
+            """Classic DP Levenshtein distance."""
+            if a == b:
+                return 0
+            if not a:
+                return len(b)
+            if not b:
+                return len(a)
+            prev = list(range(len(b) + 1))
+            for i, ca in enumerate(a):
+                curr = [i + 1]
+                for j, cb in enumerate(b):
+                    curr.append(min(prev[j + 1] + 1, curr[j] + 1, prev[j] + (0 if ca == cb else 1)))
+                prev = curr
+            return prev[-1]
+
         auth_local  = auth_email.split("@")[0].lower().strip()
         comm_local  = comm_email.split("@")[0].lower().strip()
         auth_domain = auth_email.split("@")[-1].lower().strip() if "@" in auth_email else ""
         comm_domain = comm_email.split("@")[-1].lower().strip() if "@" in comm_email else ""
 
-        if auth_local != comm_local:
+        edit_dist = _levenshtein(auth_local, comm_local)
+        is_deep_mismatch = edit_dist > 3  # different people threshold
+
+        if is_deep_mismatch:
             logger.error(
-                "Phase 947d: repair-email BLOCKED for deep mismatch: user_id=%s "
-                "auth_email=%s comm_email=%s — local parts differ",
-                user_id, auth_email, comm_email,
+                "Phase 947d: repair-email BLOCKED — deep mismatch (edit_dist=%d): user_id=%s "
+                "auth_email=%s comm_email=%s tenant=%s",
+                edit_dist, user_id, auth_email, comm_email, tenant_id,
             )
             return make_error_response(
                 status_code=409,
                 code="DEEP_IDENTITY_MISMATCH",
                 extra={
                     "detail": (
-                        f"This mismatch cannot be repaired with a simple email update. "
-                        f"The auth account local name '{auth_email}' differs significantly "
-                        f"from the comm email '{comm_email}'. This may be a wrong-user linkage "
-                        f"(like the Tiki Toto case) and requires manual investigation."
+                        f"This mismatch cannot be automatically repaired. "
+                        f"The auth account email '{auth_email}' appears to belong to a different person "
+                        f"than the comm email '{comm_email}' (name edit distance: {edit_dist}). "
+                        "If you are certain this is the same person, contact your system administrator "
+                        "to manually update the auth account."
                     ),
                     "auth_email": auth_email,
                     "comm_email": comm_email,
+                    "edit_distance": edit_dist,
                     "mismatch_class": "deep_mismatch",
                 },
             )
 
-        mismatch_class = "email_typo" if auth_domain != comm_domain else "case_difference"
+        mismatch_class = "email_typo" if auth_local == comm_local else "username_typo"
+        if auth_domain == comm_domain:
+            mismatch_class = "case_or_whitespace"
 
         # ── Perform the repair ──
         import time

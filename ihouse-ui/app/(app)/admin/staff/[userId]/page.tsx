@@ -1462,14 +1462,18 @@ export default function EditStaffPage() {
 
                 {/* Phase 947d: Identity Mismatch Banner — full repair UX */}
                 {authStatus?.identity_mismatch && (() => {
-                  // Classify the mismatch: same local part = typo (fixable here);
-                  // different local parts = deep mismatch (needs manual investigation)
+                  // Classify the mismatch for frontend messaging only.
+                  // The backend has the authoritative edit-distance guard (> 3 = deep mismatch).
+                  // For UX: if local parts are same or very similar → show repair button.
+                  // If obviously different names → show manual investigation message only.
                   const authLocal = (authStatus.auth_email || '').split('@')[0].toLowerCase().trim();
                   const commLocal = (authStatus.comm_email || '').split('@')[0].toLowerCase().trim();
-                  const isTypoCase = authLocal === commLocal && authLocal !== '';
+                  // Simple edit-distance heuristic for UI classification
+                  const lenDiff = Math.abs(authLocal.length - commLocal.length);
+                  const isRepairableCase = authLocal === commLocal || lenDiff <= 4;
 
                   const handleRepair = async () => {
-                    if (!isTypoCase) return;
+                    if (!isRepairableCase) return;
                     setRepairLoading(true);
                     setRepairResult(null);
                     try {
@@ -1510,9 +1514,9 @@ export default function EditStaffPage() {
 
                       <div style={{ fontSize: 12, color: 'var(--color-text-dim)', lineHeight: 1.6 }}>
                         <div style={{ marginBottom: 4 }}>
-                          {isTypoCase
-                            ? '⚠ The auth account email has a typo. The worker username matches, but the domain is wrong.'
-                            : '🚫 The auth account belongs to a different person. This requires manual database repair.'}
+                          {isRepairableCase
+                            ? '⚠ The auth account email does not match the worker\'s contact email. This can be fixed automatically.'
+                            : '🚫 The auth account appears to belong to a different person. This requires manual investigation.'}
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontFamily: 'monospace', fontSize: 11, marginBottom: 8 }}>
@@ -1520,14 +1524,14 @@ export default function EditStaffPage() {
                           <span><span style={{ color: 'var(--color-ok, #4A7C59)' }}>Comm email (correct):</span> {authStatus.comm_email}</span>
                         </div>
 
-                        {isTypoCase ? (
+                        {isRepairableCase ? (
                           <div>
                             <div style={{ marginBottom: 6, fontSize: 11 }}>
-                              <strong>What to do:</strong> Click "Fix Auth Email" to update the auth account email from
+                              <strong>What to do:</strong> Click "Fix Auth Email" to update the Supabase auth account email from
                               <code style={{ margin: '0 4px', background: 'rgba(0,0,0,0.08)', padding: '1px 4px', borderRadius: 3 }}>{authStatus.auth_email}</code>
                               to
                               <code style={{ margin: '0 4px', background: 'rgba(0,0,0,0.08)', padding: '1px 4px', borderRadius: 3 }}>{authStatus.comm_email}</code>.
-                              The worker's account linkage stays the same.
+                              The worker\'s account ID and permissions stay unchanged.
                             </div>
                             {repairResult && (
                               <div style={{ marginBottom: 8, padding: '6px 10px', borderRadius: 4, fontSize: 11, fontWeight: 600,
