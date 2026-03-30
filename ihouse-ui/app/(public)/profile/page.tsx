@@ -8,7 +8,7 @@
  * Client-side auth check redirects to /login if no Supabase session.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import DMonogram from '@/components/DMonogram';
 import PasswordInput from '@/components/auth/PasswordInput';
@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { usePasswordRules } from '@/hooks/usePasswordRules';
 import { linkGoogleAccount, unlinkProvider, addPassword, GoogleIcon } from '@/lib/identityLinking';
 import SignedInShell, { SHELL_TOP_PADDING } from '@/components/SignedInShell';
+import { useLanguage } from '@/lib/LanguageContext';
 
 interface ProviderInfo {
     provider: string;
@@ -77,6 +78,7 @@ const btnPrimary: React.CSSProperties = {
 
 export default function ProfilePage() {
     const router = useRouter();
+    const { setLang } = useLanguage();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -151,6 +153,11 @@ export default function ProfilePage() {
             if (res.ok) {
                 setMessage('Profile updated ✓');
                 setEditMode(false);
+                // Apply language to the app immediately — no page reload needed.
+                const lang = form.language.trim();
+                if (lang && ['en', 'th', 'he'].includes(lang)) {
+                    setLang(lang as 'en' | 'th' | 'he');
+                }
                 fetchProfile();
             } else {
                 setMessage('Failed to save');
@@ -233,7 +240,7 @@ export default function ProfilePage() {
 
                     {/* Language */}
                     <div style={{ marginBottom: 'var(--space-6, 24px)' }}>
-                        <label style={labelStyle}>Language</label>
+                        <label style={labelStyle}>Language <span style={{ opacity: 0.55, fontWeight: 400 }}>(Preferred)</span></label>
                         {editMode ? (
                             <select
                                 style={{ ...inputStyle, appearance: 'auto' as any }}
@@ -247,9 +254,10 @@ export default function ProfilePage() {
                             </select>
                         ) : (
                             <div style={inputStyle}>
-                                {profile?.language === 'th' ? 'ไทย' :
-                                 profile?.language === 'he' ? 'עברית' :
-                                 profile?.language === 'en' ? 'English' : '—'}
+                                {profile?.language === 'th' ? 'ไทย'
+                                 : profile?.language === 'he' ? 'עברית'
+                                 : profile?.language === 'en' ? 'English'
+                                 : <span style={{ opacity: 0.35 }}>Not set</span>}
                             </div>
                         )}
                     </div>
