@@ -238,6 +238,40 @@ async def list_worker_tasks(
 
         result = query.execute()
         tasks = result.data if result.data else []
+
+        # ── Staleness Guard (Phase 887e) ────────────────────────────────────────
+        # Worker surfaces must NEVER show operational tasks whose due_date has
+        # already passed. A PENDING CHECKIN_PREP task from 4 days ago is a ghost —
+        # the guest has long since arrived (or not) and the operational window is
+        # closed. Surfacing it causes workers to attempt incorrect actions.
+        #
+        # Rule: for CHECKIN_PREP / CHECKOUT_VERIFY / CLEANING tasks that are still
+        # in an active state (PENDING / ACKNOWLEDGED / IN_PROGRESS), suppress them
+        # if their due_date is strictly before today. This is always-on for the
+        # worker surface — admins use include_stale=true on /tasks if they need audit.
+        from datetime import date as _date  # noqa: PLC0415
+        _OPERATIONAL_KINDS = frozenset({'CHECKIN_PREP', 'CHECKOUT_VERIFY', 'CLEANING'})
+        _TODAY = _date.today().isoformat()  # e.g. "2026-03-30"
+        _ACTIVE = frozenset({'PENDING', 'ACKNOWLEDGED', 'IN_PROGRESS'})
+
+        def _is_stale(t: dict) -> bool:
+            k = (t.get('kind') or '').upper()
+            s = (t.get('status') or '').upper()
+            d = t.get('due_date') or ''
+            return k in _OPERATIONAL_KINDS and s in _ACTIVE and bool(d) and d < _TODAY
+
+        stale = [t for t in tasks if _is_stale(t)]
+        if stale:
+            logger.warning(
+                "staleness_guard[worker]: suppressed %d stale task(s) for tenant=%s "
+                "(ids: %s). Booking window has passed — tasks should be CANCELED.",
+                len(stale),
+                tenant_id,
+                [t.get('task_id') for t in stale],
+            )
+        tasks = [t for t in tasks if not _is_stale(t)]
+        # ────────────────────────────────────────────────────────────────────────
+
         return JSONResponse(
             status_code=200,
             content={
@@ -245,7 +279,7 @@ async def list_worker_tasks(
                 "count": len(tasks),
                 "role_scoped": len(effective_worker_roles) > 0,
                 "assignment_filtered": assigned_to is not None,
-                "has_assignments": len(assigned_prop_ids) > 0 if assigned_to is not None else False,
+                "has_assignments": len(tasks) > 0 if assigned_to is not None else False,
             },
         )
 

@@ -93,6 +93,7 @@ async def list_tasks(
     kind: Optional[str] = None,
     due_date: Optional[str] = None,
     limit: int = _DEFAULT_LIMIT,
+    include_stale: bool = False,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
@@ -100,13 +101,18 @@ async def list_tasks(
     Return tasks for the authenticated tenant.
 
     **Filters (all optional):**
-    - `property_id` — filter by property
-    - `status`      — filter by TaskStatus (PENDING / ACKNOWLEDGED / IN_PROGRESS /
-                      COMPLETED / CANCELED)
-    - `kind`        — filter by TaskKind (CLEANING / CHECKIN_PREP / CHECKOUT_VERIFY /
-                      MAINTENANCE / GENERAL)
-    - `due_date`    — filter by due_date (YYYY-MM-DD)
-    - `limit`       — max results, 1–100 (default 50)
+    - `property_id`   — filter by property
+    - `status`        — filter by TaskStatus (PENDING / ACKNOWLEDGED / IN_PROGRESS /
+                        COMPLETED / CANCELED)
+    - `kind`          — filter by TaskKind (CLEANING / CHECKIN_PREP / CHECKOUT_VERIFY /
+                        MAINTENANCE / GENERAL)
+    - `due_date`      — filter by due_date (YYYY-MM-DD)
+    - `limit`         — max results, 1–100 (default 50)
+    - `include_stale` — if true, include tasks overdue by more than 1 day (default false).
+                        Operational kinds (CHECKIN_PREP, CHECKOUT_VERIFY, CLEANING) that
+                        are still PENDING/ACKNOWLEDGED/IN_PROGRESS but whose due_date is
+                        more than 1 day in the past are excluded by default to prevent
+                        ghost tasks surfacing to workers after the scheduled day has passed.
     """
     # --- validate limit ---
     if not (1 <= limit <= _MAX_LIMIT):
@@ -159,6 +165,48 @@ async def list_tasks(
 
         result = query.execute()
         tasks = result.data if result.data else []
+
+        # ── Staleness Guard (Phase 887e) ────────────────────────────────────────
+        # Operational task kinds that are still active but whose due_date is more
+        # than 1 day in the past are "ghost tasks" — the guest has already checked
+        # in/out or the cleaning window has closed.  They MUST NOT surface to any
+        # worker surface because:
+        #   1. Acting on them is operationally incorrect (guest already gone / new
+        #      guest may be arriving)
+        #   2. They cause confusion and operational errors
+        # Rule: exclude PENDING|ACKNOWLEDGED|IN_PROGRESS tasks of operational kinds
+        # where due_date < today - 1 day, unless include_stale=True is explicitly
+        # passed (admin audit use only).
+        if not include_stale:
+            from datetime import date  # noqa: PLC0415
+            _OPERATIONAL_KINDS = frozenset({'CHECKIN_PREP', 'CHECKOUT_VERIFY', 'CLEANING'})
+            _STALE_CUTOFF = (date.today().isoformat())  # today's ISO date string
+            _ACTIVE_STATUSES = frozenset({'PENDING', 'ACKNOWLEDGED', 'IN_PROGRESS'})
+            def _is_stale(t: dict) -> bool:
+                """Return True if this task should be suppressed by the staleness guard."""
+                task_kind = (t.get('kind') or '').upper()
+                task_status = (t.get('status') or '').upper()
+                task_due = t.get('due_date') or ''
+                if task_kind not in _OPERATIONAL_KINDS:
+                    return False  # Non-operational tasks are never auto-stale
+                if task_status not in _ACTIVE_STATUSES:
+                    return False  # Terminal tasks pass through unchanged
+                if not task_due:
+                    return False  # No due_date — can't determine staleness
+                # Stale: due_date strictly before today (>= 1 day overdue)
+                # Note: due_date == today is allowed (it's today's task)
+                return task_due < _STALE_CUTOFF
+            stale_count = sum(1 for t in tasks if _is_stale(t))
+            if stale_count:
+                logger.warning(
+                    "staleness_guard: suppressed %d stale operational task(s) for tenant=%s "
+                    "(kinds: %s). Use include_stale=true to see them.",
+                    stale_count,
+                    tenant_id,
+                    list({(t.get('kind') or '').upper() for t in tasks if _is_stale(t)}),
+                )
+            tasks = [t for t in tasks if not _is_stale(t)]
+        # ───────────────────────────────────────────────────────────────────────
 
         # Phase 887d: Approved-Only Lifecycle Rule.
         # Strip out any tasks whose property is not in 'approved' status.
