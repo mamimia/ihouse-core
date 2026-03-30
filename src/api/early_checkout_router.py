@@ -250,6 +250,64 @@ def _reschedule_checkout_task(
         return {"updated": False, "task_id": None, "reason": str(exc)}
 
 
+def _reschedule_cleaning_task(
+    db: Any, tenant_id: str, booking_id: str, early_date: str
+) -> dict:
+    """
+    Phase 1028 — On early checkout approval: reschedule the CLEANING task to match.
+
+    Canonical invariant: CLEANING always follows CHECKOUT on the same day.
+    When a checkout is moved earlier, the cleaning must also move to that same day.
+    Without this, the cleaner is still scheduled for the original checkout date
+    while the property needs cleaning on the new (earlier) date.
+
+    Finds the CLEANING task for this booking (must be non-terminal).
+    Snapshots original due_date in original_due_date for revocation support.
+    Sets is_early_checkout=true, bumps priority to HIGH.
+    """
+    try:
+        res = (
+            db.table("tasks")
+            .select("task_id, due_date, status")
+            .eq("tenant_id", tenant_id)
+            .eq("booking_id", booking_id)
+            .eq("kind", "CLEANING")
+            .not_.in_("status", ["COMPLETED", "CANCELED"])
+            # Prefer the checkout-oriented CLEANING (due on check_out date, not check_in)
+            # Both are acceptable to reschedule — take the one with the latest due_date
+            # since the checkout CLEANING should be on/after check_in CLEANING.
+            .order("due_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        if not rows:
+            return {"updated": False, "task_id": None, "reason": "no_active_cleaning_task"}
+
+        task = rows[0]
+        task_id = task["task_id"]
+        original_due = task["due_date"]
+
+        db.table("tasks").update({
+            "due_date":          early_date,
+            "is_early_checkout": True,
+            "original_due_date": original_due,
+            "priority":          "HIGH",
+            "urgency":           "urgent",
+            "updated_at":        _now_iso(),
+        }).eq("task_id", task_id).eq("tenant_id", tenant_id).execute()
+
+        logger.info(
+            "early_checkout: CLEANING task rescheduled booking=%s task=%s %s→%s",
+            booking_id, task_id, original_due, early_date,
+        )
+        return {"updated": True, "task_id": task_id, "original_due_date": original_due}
+
+    except Exception as exc:
+        logger.warning("early_checkout: CLEANING reschedule failed booking=%s: %s", booking_id, exc)
+        return {"updated": False, "task_id": None, "reason": str(exc)}
+
+
 def _revert_checkout_task(
     db: Any, tenant_id: str, booking_id: str
 ) -> dict:
@@ -292,6 +350,52 @@ def _revert_checkout_task(
     except Exception as exc:
         logger.warning("early_checkout: task revert failed booking=%s: %s", booking_id, exc)
         return {"reverted": False, "reason": str(exc)}
+
+
+def _revert_cleaning_task(
+    db: Any, tenant_id: str, booking_id: str
+) -> dict:
+    """
+    Phase 1028 — On revocation: restore the CLEANING task to its original due_date.
+    Mirrors _revert_checkout_task for CLEANING kind.
+    """
+    try:
+        res = (
+            db.table("tasks")
+            .select("task_id, original_due_date")
+            .eq("tenant_id", tenant_id)
+            .eq("booking_id", booking_id)
+            .eq("kind", "CLEANING")
+            .eq("is_early_checkout", True)
+            .not_.in_("status", ["COMPLETED", "CANCELED"])
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        if not rows:
+            return {"reverted": False, "reason": "no_early_cleaning_task"}
+
+        task = rows[0]
+        task_id = task["task_id"]
+        restore_date = task.get("original_due_date")
+
+        update = {
+            "is_early_checkout":  False,
+            "priority":           "MEDIUM",
+            "urgency":            "normal",
+            "updated_at":         _now_iso(),
+        }
+        if restore_date:
+            update["due_date"] = restore_date
+            update["original_due_date"] = None
+
+        db.table("tasks").update(update).eq("task_id", task_id).eq("tenant_id", tenant_id).execute()
+        return {"reverted": True, "task_id": task_id, "restored_due_date": restore_date}
+
+    except Exception as exc:
+        logger.warning("early_checkout: CLEANING revert failed booking=%s: %s", booking_id, exc)
+        return {"reverted": False, "reason": str(exc)}
+
 
 
 # ===========================================================================
@@ -562,33 +666,41 @@ async def approve_early_checkout(
 
         db.table("booking_state").update(update).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
-        # Reschedule CHECKOUT_VERIFY task
+        # Reschedule CHECKOUT_VERIFY task to early_date
         task_result = _reschedule_checkout_task(db, tenant_id, booking_id, early_date)
 
+        # Phase 1028 — also reschedule CLEANING to the same early date.
+        # Canonical rule: CLEANING always follows CHECKOUT on the same day.
+        # If the checkout is moved earlier, the cleaner must also be notified.
+        cleaning_result = _reschedule_cleaning_task(db, tenant_id, booking_id, early_date)
+
         _audit(db, tenant_id, actor_id, "early_checkout.approved", booking_id, {
-            "approved_by":             actor_id,
-            "effective_checkout_date": early_date,
-            "effective_at":            effective_at,
-            "original_checkout_date":  original_checkout,
-            "reason":                  body.get("reason"),
-            "approval_note":           body.get("approval_note"),
-            "task_rescheduled":        task_result.get("updated", False),
-            "task_id":                 task_result.get("task_id"),
-            "was_already_approved":    already_approved,
+            "approved_by":              actor_id,
+            "effective_checkout_date":  early_date,
+            "effective_at":             effective_at,
+            "original_checkout_date":   original_checkout,
+            "reason":                   body.get("reason"),
+            "approval_note":            body.get("approval_note"),
+            "checkout_task_rescheduled":task_result.get("updated", False),
+            "checkout_task_id":         task_result.get("task_id"),
+            "cleaning_task_rescheduled":cleaning_result.get("updated", False),
+            "cleaning_task_id":         cleaning_result.get("task_id"),
+            "was_already_approved":     already_approved,
         })
 
         return JSONResponse(status_code=200, content={
-            "status":                  "approved",
-            "early_checkout_status":   "approved",
-            "booking_id":              booking_id,
-            "early_checkout_date":     early_date,
+            "status":                      "approved",
+            "early_checkout_status":       "approved",
+            "booking_id":                  booking_id,
+            "early_checkout_date":         early_date,
             "early_checkout_effective_at": effective_at,
-            "original_checkout_date":  original_checkout,
-            "approved_by":             actor_id,
-            "approved_at":             now,
-            "reason":                  body.get("reason"),
-            "approval_note":           body.get("approval_note"),
-            "task_reschedule":         task_result,
+            "original_checkout_date":      original_checkout,
+            "approved_by":                 actor_id,
+            "approved_at":                 now,
+            "reason":                      body.get("reason"),
+            "approval_note":               body.get("approval_note"),
+            "task_reschedule":             task_result,
+            "cleaning_reschedule":         cleaning_result,
         })
 
     except Exception as exc:
@@ -677,6 +789,8 @@ async def revoke_early_checkout(
         }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
 
         task_result = _revert_checkout_task(db, tenant_id, booking_id)
+        # Phase 1028 — also revert CLEANING to original due_date on revocation
+        cleaning_revert = _revert_cleaning_task(db, tenant_id, booking_id)
 
         _audit(db, tenant_id, actor_id, "early_checkout.revoked", booking_id, {
             "revoked_by":             actor_id,
@@ -684,7 +798,8 @@ async def revoke_early_checkout(
             "was_early_date":         str(booking.get("early_checkout_date", "")),
             "was_effective_at":       str(booking.get("early_checkout_effective_at", "")),
             "reverted_status":        revert_status,
-            "task_reverted":          task_result.get("reverted", False),
+            "checkout_task_reverted": task_result.get("reverted", False),
+            "cleaning_task_reverted": cleaning_revert.get("reverted", False),
         })
 
         return JSONResponse(status_code=200, content={
@@ -694,6 +809,7 @@ async def revoke_early_checkout(
             "revoked_by":            actor_id,
             "revoked_at":            now,
             "task_revert":           task_result,
+            "cleaning_revert":       cleaning_revert,
         })
 
     except Exception as exc:

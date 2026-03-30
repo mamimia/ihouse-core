@@ -449,6 +449,54 @@ export default function TasksPage() {
     const [staffRole, setStaffRole] = useState<string | null | undefined>(undefined);
     useEffect(() => { setStaffRole(getStaffRoleFromContext()); }, []);
 
+    // Phase 1028 — Ad-hoc CLEANING modal state
+    const [adhocModal, setAdhocModal] = useState<{
+        open: boolean;
+        propertyId: string;
+        dueDate: string;
+        note: string;
+        priority: string;
+        submitting: boolean;
+        error: string | null;
+    }>({ open: false, propertyId: '', dueDate: '', note: '', priority: 'MEDIUM', submitting: false, error: null });
+
+    const openAdhocModal = () => setAdhocModal({
+        open: true, propertyId: '', dueDate: new Date().toISOString().slice(0, 10),
+        note: '', priority: 'MEDIUM', submitting: false, error: null,
+    });
+    const closeAdhocModal = () => setAdhocModal(m => ({ ...m, open: false, error: null }));
+
+    const submitAdhocCleaning = async () => {
+        if (!adhocModal.propertyId || !adhocModal.dueDate) {
+            setAdhocModal(m => ({ ...m, error: 'Property and date are required.' }));
+            return;
+        }
+        setAdhocModal(m => ({ ...m, submitting: true, error: null }));
+        try {
+            const token = typeof window !== 'undefined' ? getTabToken?.() ?? '' : '';
+            const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+            const res = await fetch(`${baseUrl}/tasks/cleaning/adhoc`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    property_id: adhocModal.propertyId,
+                    due_date: adhocModal.dueDate,
+                    note: adhocModal.note || undefined,
+                    priority: adhocModal.priority,
+                }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body?.detail || `HTTP ${res.status}`);
+            }
+            setAdhocModal(m => ({ ...m, open: false }));
+            await loadTasks();
+        } catch (err: unknown) {
+            setAdhocModal(m => ({ ...m, submitting: false, error: err instanceof Error ? err.message : 'Failed to create task' }));
+        }
+    };
+
+
     useEffect(() => {
         Promise.allSettled([
             api.listProperties?.(),
@@ -682,7 +730,7 @@ export default function TasksPage() {
                         </div>
 
                         {/* Badges */}
-                        <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0, alignItems: 'center' }}>
                             {criticalCount > 0 && (
                                 <div style={{
                                     background: 'var(--color-danger)',
@@ -710,9 +758,174 @@ export default function TasksPage() {
                                     {overdueCount} overdue
                                 </div>
                             )}
+                            {/* Phase 1028 — Ad-hoc cleaning button (admin only) */}
+                            {staffRole === null && (
+                                <button
+                                    id="adhoc-cleaning-btn"
+                                    onClick={openAdhocModal}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 6,
+                                        background: 'var(--color-surface)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        padding: '6px 12px',
+                                        fontSize: 'var(--text-xs)',
+                                        fontWeight: 600,
+                                        color: 'var(--color-text-dim)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s',
+                                    }}
+                                    onMouseEnter={e => {
+                                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-hover)';
+                                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-primary)';
+                                        (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface)';
+                                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)';
+                                        (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-dim)';
+                                    }}
+                                    title="Create an unplanned cleaning task for any property"
+                                >
+                                    🧹 Add Cleaning
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* Phase 1028 — Ad-hoc Cleaning Modal */}
+                {adhocModal.open && (
+                    <div style={{
+                        position: 'fixed', inset: 0, zIndex: 1000,
+                        background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: 'var(--space-4)',
+                    }} onClick={closeAdhocModal}>
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                background: 'var(--color-surface)',
+                                borderRadius: 'var(--radius-xl)',
+                                border: '1px solid var(--color-border)',
+                                boxShadow: 'var(--shadow-xl)',
+                                padding: 'var(--space-6)',
+                                width: '100%', maxWidth: 440,
+                                display: 'flex', flexDirection: 'column', gap: 'var(--space-4)',
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontWeight: 700, fontSize: 'var(--text-lg)', color: 'var(--color-text)' }}>🧹 Add Cleaning Task</div>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 2 }}>Create an unplanned cleaning for any property</div>
+                                </div>
+                                <button onClick={closeAdhocModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-dim)', fontSize: 20, lineHeight: 1 }}>✕</button>
+                            </div>
+
+                            {/* Property */}
+                            <div>
+                                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', display: 'block', marginBottom: 6 }}>Property *</label>
+                                <select
+                                    id="adhoc-property-select"
+                                    value={adhocModal.propertyId}
+                                    onChange={e => setAdhocModal(m => ({ ...m, propertyId: e.target.value }))}
+                                    style={{
+                                        width: '100%', padding: '8px 10px',
+                                        background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)', color: 'var(--color-text)',
+                                        fontSize: 'var(--text-sm)',
+                                    }}
+                                >
+                                    <option value="">— Select property —</option>
+                                    {Object.entries(propertyMap).sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => (
+                                        <option key={id} value={id}>{name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Date */}
+                            <div>
+                                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', display: 'block', marginBottom: 6 }}>Date *</label>
+                                <input
+                                    id="adhoc-date-input"
+                                    type="date"
+                                    value={adhocModal.dueDate}
+                                    onChange={e => setAdhocModal(m => ({ ...m, dueDate: e.target.value }))}
+                                    style={{
+                                        width: '100%', padding: '8px 10px',
+                                        background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)', color: 'var(--color-text)',
+                                        fontSize: 'var(--text-sm)',
+                                    }}
+                                />
+                            </div>
+
+                            {/* Priority */}
+                            <div>
+                                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', display: 'block', marginBottom: 6 }}>Priority</label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {(['MEDIUM', 'HIGH', 'CRITICAL'] as const).map(p => (
+                                        <button key={p} onClick={() => setAdhocModal(m => ({ ...m, priority: p }))} style={{
+                                            flex: 1, padding: '6px 0', borderRadius: 'var(--radius-md)',
+                                            border: `1.5px solid ${adhocModal.priority === p ? (p === 'CRITICAL' ? '#f85149' : p === 'HIGH' ? '#f59e0b' : 'var(--color-primary)') : 'var(--color-border)'}`,
+                                            background: adhocModal.priority === p ? (p === 'CRITICAL' ? 'rgba(248,81,73,0.1)' : p === 'HIGH' ? 'rgba(245,158,11,0.1)' : 'rgba(var(--color-primary-rgb),0.08)') : 'transparent',
+                                            color: adhocModal.priority === p ? (p === 'CRITICAL' ? '#f85149' : p === 'HIGH' ? '#f59e0b' : 'var(--color-primary)') : 'var(--color-text-dim)',
+                                            fontWeight: 600, fontSize: 'var(--text-xs)', cursor: 'pointer',
+                                        }}>{p}</button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Note */}
+                            <div>
+                                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', display: 'block', marginBottom: 6 }}>Operational Note (optional)</label>
+                                <textarea
+                                    id="adhoc-note-input"
+                                    value={adhocModal.note}
+                                    onChange={e => setAdhocModal(m => ({ ...m, note: e.target.value }))}
+                                    placeholder="e.g. Guest complaint, deep clean needed, owner request..."
+                                    rows={2}
+                                    style={{
+                                        width: '100%', padding: '8px 10px',
+                                        background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)', color: 'var(--color-text)',
+                                        fontSize: 'var(--text-sm)', resize: 'none', fontFamily: 'inherit',
+                                    }}
+                                />
+                            </div>
+
+                            {/* Error */}
+                            {adhocModal.error && (
+                                <div style={{ color: 'var(--color-danger)', fontSize: 'var(--text-xs)', background: 'rgba(239,68,68,0.08)', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                    {adhocModal.error}
+                                </div>
+                            )}
+
+                            {/* Actions */}
+                            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                                <button onClick={closeAdhocModal} style={{
+                                    flex: 1, padding: '10px', borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--color-border)', background: 'transparent',
+                                    color: 'var(--color-text-dim)', fontWeight: 600, cursor: 'pointer', fontSize: 'var(--text-sm)',
+                                }}>Cancel</button>
+                                <button
+                                    id="adhoc-submit-btn"
+                                    onClick={submitAdhocCleaning}
+                                    disabled={adhocModal.submitting}
+                                    style={{
+                                        flex: 2, padding: '10px', borderRadius: 'var(--radius-md)',
+                                        background: 'var(--color-primary)', border: 'none',
+                                        color: '#fff', fontWeight: 700, cursor: adhocModal.submitting ? 'wait' : 'pointer',
+                                        fontSize: 'var(--text-sm)', opacity: adhocModal.submitting ? 0.7 : 1,
+                                    }}
+                                >
+                                    {adhocModal.submitting ? 'Creating...' : '🧹 Create Cleaning Task'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
 
                 {/* Filter tabs */}
                 <div style={{

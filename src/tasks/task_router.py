@@ -613,3 +613,218 @@ async def trigger_pre_arrival_tasks(
         logger.exception("trigger_pre_arrival_tasks error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to generate pre-arrival tasks")
 
+
+# ===========================================================================
+# Phase 1028 — POST /tasks/cleaning/adhoc
+# ===========================================================================
+# Product rule: An Operational Manager (or Admin) may create a CLEANING task
+# at any time, for any property, regardless of current booking state.
+# Use cases:
+#   - Guest complaint mid-stay (extra cleaning needed)
+#   - Owner or management-triggered deep clean
+#   - Emergency clean between early checkout and next check-in
+#   - Routine scheduled clean even without a booking
+#
+# The task is created as PENDING, assigned to the property's assigned cleaner
+# (if one exists in staff_property_assignments), or left unassigned for manual
+# assignment.
+#
+# Allowed roles: admin, manager.
+# ===========================================================================
+
+_ADHOC_CLEANING_ROLES = frozenset({"admin", "manager"})
+
+
+@router.post(
+    "/tasks/cleaning/adhoc",
+    tags=["tasks"],
+    summary="Create an ad-hoc CLEANING task for any property (Phase 1028)",
+    status_code=200,
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def create_adhoc_cleaning_task(
+    body: dict,
+    identity: dict = Depends(jwt_auth),
+    _client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    POST /tasks/cleaning/adhoc
+
+    Phase 1028 — Operational Manager or Admin creates a standalone CLEANING task.
+
+    Allows scheduling cleaning for any property at any time, even mid-stay or
+    without a booking. Assigns to the property's existing cleaner if available.
+
+    Required body fields:
+        property_id: str  — the target property
+        due_date:    str  — YYYY-MM-DD, the date cleaning is needed
+
+    Optional:
+        booking_id:  str  — link to a specific booking (informational)
+        note:        str  — operational note (e.g. "guest complaint, extra towels")
+        assigned_to: str  — user_id to override auto-assignment
+        priority:    str  — MEDIUM (default), HIGH, CRITICAL
+
+    Returns:
+        task_id, kind, status, due_date, property_id, assigned_to
+    """
+    role = identity.get("role", "")
+    if role not in _ADHOC_CLEANING_ROLES:
+        return make_error_response(
+            status_code=403, code="FORBIDDEN",
+            extra={"detail": f"Role '{role}' cannot create ad-hoc cleaning tasks. Requires admin or manager."},
+        )
+
+    tenant_id = identity.get("tenant_id", "")
+    actor_id = identity.get("user_id", "system")
+
+    property_id = (body.get("property_id") or "").strip()
+    due_date = (body.get("due_date") or "").strip()[:10]
+
+    if not property_id:
+        return make_error_response(
+            status_code=400, code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "property_id is required."},
+        )
+    if not due_date or len(due_date) != 10:
+        return make_error_response(
+            status_code=400, code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "due_date (YYYY-MM-DD) is required."},
+        )
+
+    booking_id = (body.get("booking_id") or "").strip() or None
+    note = (body.get("note") or "").strip() or None
+    priority = (body.get("priority") or "MEDIUM").strip().upper()
+    if priority not in ("LOW", "MEDIUM", "HIGH", "CRITICAL"):
+        priority = "MEDIUM"
+    override_assigned_to = (body.get("assigned_to") or "").strip() or None
+
+    try:
+        db = _client if _client is not None else _get_supabase_client()
+
+        # Validate property exists for this tenant
+        prop_res = (
+            db.table("properties")
+            .select("property_id")
+            .eq("property_id", property_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not (prop_res.data or []):
+            return make_error_response(
+                status_code=404, code=ErrorCode.NOT_FOUND,
+                extra={"detail": f"Property '{property_id}' not found for this tenant."},
+            )
+
+        # Auto-assign to property's existing cleaner (if not overridden)
+        assigned_to = override_assigned_to
+        if not assigned_to:
+            try:
+                # Find any cleaner assigned to this property
+                assign_res = (
+                    db.table("staff_property_assignments")
+                    .select("user_id")
+                    .eq("property_id", property_id)
+                    .eq("tenant_id", tenant_id)
+                    .limit(10)
+                    .execute()
+                )
+                if assign_res.data:
+                    # Check which of these has cleaner role
+                    candidate_ids = [r["user_id"] for r in assign_res.data]
+                    perm_res = (
+                        db.table("tenant_permissions")
+                        .select("user_id, worker_roles")
+                        .eq("tenant_id", tenant_id)
+                        .in_("user_id", candidate_ids)
+                        .execute()
+                    )
+                    for perm in (perm_res.data or []):
+                        roles = [str(r).lower() for r in (perm.get("worker_roles") or [])]
+                        if "cleaner" in roles:
+                            assigned_to = perm["user_id"]
+                            break
+            except Exception as exc:
+                logger.warning("adhoc_cleaning: auto-assign lookup failed: %s", exc)
+
+        # Build a deterministic task_id that avoids collision with booking-generated tasks
+        import hashlib
+        now_iso = datetime.now(tz=timezone.utc).isoformat()
+        scope = f"ADHOC_CLEANING:{property_id}:{due_date}:{actor_id}:{now_iso}"
+        task_id = hashlib.sha256(scope.encode()).hexdigest()[:16]
+
+        title = f"Ad-hoc cleaning — {property_id} on {due_date}"
+        if booking_id:
+            title = f"Ad-hoc cleaning — {property_id} (booking {booking_id}) on {due_date}"
+
+        notes_payload = []
+        if note:
+            notes_payload = [{"text": note, "created_by": actor_id, "created_at": now_iso}]
+
+        task_row = {
+            "task_id":       task_id,
+            "tenant_id":     tenant_id,
+            "kind":          "CLEANING",
+            "status":        "PENDING",
+            "priority":      priority,
+            "urgency":       "normal",
+            "worker_role":   "cleaner",
+            "ack_sla_minutes": 60,
+            "booking_id":    booking_id or property_id,   # fallback to property_id if no booking
+            "property_id":   property_id,
+            "due_date":      due_date,
+            "title":         title,
+            "description":   note,
+            "assigned_to":   assigned_to,
+            "notes":         notes_payload,
+            "created_at":    now_iso,
+            "updated_at":    now_iso,
+        }
+
+        db.table("tasks").insert(task_row).execute()
+
+        # Audit
+        try:
+            db.table("admin_audit_log").insert({
+                "tenant_id":    tenant_id,
+                "actor_id":     actor_id,
+                "action":       "task.adhoc_cleaning_created",
+                "entity_type":  "task",
+                "entity_id":    task_id,
+                "details": {
+                    "property_id": property_id,
+                    "due_date":    due_date,
+                    "booking_id":  booking_id,
+                    "priority":    priority,
+                    "assigned_to": assigned_to,
+                    "note":        note,
+                    "created_by":  actor_id,
+                },
+                "performed_at": now_iso,
+            }).execute()
+        except Exception:
+            pass  # Audit is best-effort
+
+        logger.info(
+            "Phase 1028 adhoc_cleaning: task=%s property=%s due=%s assigned=%s actor=%s",
+            task_id, property_id, due_date, assigned_to, actor_id,
+        )
+
+        return JSONResponse(status_code=200, content={
+            "task_id":      task_id,
+            "kind":         "CLEANING",
+            "status":       "PENDING",
+            "property_id":  property_id,
+            "due_date":     due_date,
+            "booking_id":   booking_id,
+            "assigned_to":  assigned_to,
+            "priority":     priority,
+            "note":         note,
+            "created_by":   actor_id,
+        })
+
+    except Exception as exc:
+        logger.exception("adhoc_cleaning: create failed property=%s: %s", property_id, exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to create ad-hoc cleaning task")
+
