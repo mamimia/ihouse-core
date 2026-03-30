@@ -181,6 +181,9 @@ async def list_permissions(
                 " worker_id, worker_role,"
                 " photo_url, address, emergency_contact, comm_preference,"
                 " worker_roles, maintenance_specializations, notes, is_active,"
+                # Phase 1025 Fix E: dedicated PII columns (Phase 857 migration)
+                " date_of_birth, id_number, id_expiry_date, id_photo_url,"
+                " work_permit_number, work_permit_expiry_date, work_permit_photo_url,"
                 " created_at, updated_at"
             )
             .eq("tenant_id", tenant_id)
@@ -228,6 +231,9 @@ async def get_permission(
                 " worker_id, worker_role,"
                 " photo_url, address, emergency_contact, comm_preference,"
                 " worker_roles, maintenance_specializations, notes, is_active,"
+                # Phase 1025 Fix E: dedicated PII columns (Phase 857 migration)
+                " date_of_birth, id_number, id_expiry_date, id_photo_url,"
+                " work_permit_number, work_permit_expiry_date, work_permit_photo_url,"
                 " created_at, updated_at"
             )
             .eq("tenant_id", tenant_id)
@@ -675,6 +681,9 @@ _PATCHABLE_PROFILE_FIELDS = frozenset({
     "photo_url", "address", "emergency_contact",
     "comm_preference", "worker_roles", "maintenance_specializations",
     "notes", "is_active", "role",
+    # Phase 1025 Fix E: dedicated PII columns — patchable by admin
+    "date_of_birth", "id_number", "id_expiry_date", "id_photo_url",
+    "work_permit_number", "work_permit_expiry_date", "work_permit_photo_url",
 })
 
 @router.patch(
