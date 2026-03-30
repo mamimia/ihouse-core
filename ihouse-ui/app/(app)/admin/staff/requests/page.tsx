@@ -72,6 +72,9 @@ export default function PendingRequestsPage() {
   const [showQR, setShowQR] = useState(false);
   const [approvedLink, setApprovedLink] = useState<{ workerName: string; link: string; deliveryMethod?: string } | null>(null);
   const [generatedForEmail, setGeneratedForEmail] = useState(''); // email used when generating the invite
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [confirmingRejectId, setConfirmingRejectId] = useState<string | null>(null);
+  const [approvalError, setApprovalError] = useState<{ id: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -106,7 +109,6 @@ export default function PendingRequestsPage() {
   };
 
   const handleApprove = async (id: string, metadata: any) => {
-    if (!confirm('Approve this worker and provision their access?')) return;
     const role = metadata?.intended_role || 'worker';
     const workerRoles = metadata?.worker_data?.worker_roles || [];
     const displayName = metadata?.worker_data?.full_name || metadata?.display_name || 'Staff Member';
@@ -116,6 +118,7 @@ export default function PendingRequestsPage() {
         method: 'POST',
         body: JSON.stringify({ role, worker_roles: workerRoles, frontend_url: window.location.origin })
       });
+      setConfirmingId(null);
       // Remove from list
       setRequests(r => r.filter(x => x.id !== id));
       
@@ -126,33 +129,33 @@ export default function PendingRequestsPage() {
         alert('Worker approved successfully.');
       }
     } catch (err: any) {
+      setConfirmingId(null);
       // Phase 1025 Fix D: Show specific human-readable messages per error code.
       // err.code is the machine code (from Fix A). err.message is the human text.
       const code: string = err?.code || '';
       if (code === 'INVALID_STATUS') {
-        alert('This request has already been approved. The worker is already on your staff list.');
+        setApprovalError({ id, message: 'This request has already been approved. The worker is already on your staff list.' });
       } else if (code === 'RATE_LIMIT') {
-        alert("Email rate limit exceeded. Please wait ~60 minutes, or use the Resend Access button on the staff member\u2019s profile.");
+        setApprovalError({ id, message: 'Email rate limit exceeded. Please wait ~60 minutes, or use the Resend Access button on the staff member\u2019s profile.' });
       } else if (code === 'IDENTITY_MISMATCH_AT_APPROVAL') {
-        alert('Identity mismatch detected: the submitted email does not match the existing Supabase account. Please contact support.');
+        setApprovalError({ id, message: 'Identity mismatch: submitted email does not match existing account. Please contact support.' });
       } else if (code === 'VALIDATION_ERROR') {
-        alert(`Approval failed: ${err.message || 'Missing required data (check email).'}`);
+        setApprovalError({ id, message: `Approval failed: ${err.message || 'Missing required data (check email).'}` });
       } else {
-        // Fallback: show the real message from the backend (Fix A ensures this is human-readable)
-        alert(`Approval failed: ${err.message || 'Unknown error. Please try again.'}`);
+        setApprovalError({ id, message: `Approval failed: ${err.message || 'Unknown error. Please try again.'}` });
       }
     }
   };
 
 
   const handleReject = async (id: string) => {
-    if (!confirm('Reject and delete this request?')) return;
     try {
       await apiFetch(`/admin/staff-onboarding/${id}/reject`, {
         method: 'POST'
       });
+      setConfirmingRejectId(null);
       setRequests(r => r.filter(x => x.id !== id));
-    } catch { }
+    } catch { setConfirmingRejectId(null); }
   };
 
   const cardStyle: React.CSSProperties = {
@@ -512,13 +515,43 @@ export default function PendingRequestsPage() {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 'var(--space-4)' }}>
-                  <button onClick={() => handleApprove(req.id, req.metadata)} style={{ padding: '8px 20px', background: '#3fb950', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
-                    Approve
-                  </button>
-                  <button onClick={() => handleReject(req.id)} style={{ padding: '8px 20px', background: 'transparent', color: '#f85149', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
-                    Reject
-                  </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 'var(--space-4)', minWidth: 120 }}>
+                  {approvalError?.id === req.id && (
+                    <div id={`approval-error-${req.id}`} style={{ padding: '8px 12px', background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: '#f85149', marginBottom: 4 }}>
+                      {approvalError.message}
+                      <button onClick={() => setApprovalError(null)} style={{ display: 'block', marginTop: 4, background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 11, textDecoration: 'underline' }}>Dismiss</button>
+                    </div>
+                  )}
+                  {confirmingId === req.id ? (
+                    <>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-faint)', marginBottom: 2 }}>Confirm approval?</span>
+                      <button id={`confirm-approve-${req.id}`} onClick={() => handleApprove(req.id, req.metadata)} style={{ padding: '8px 16px', background: '#3fb950', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
+                        ✓ Yes, Approve
+                      </button>
+                      <button onClick={() => setConfirmingId(null)} style={{ padding: '6px 16px', background: 'transparent', color: 'var(--color-text-faint)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                        Cancel
+                      </button>
+                    </>
+                  ) : confirmingRejectId === req.id ? (
+                    <>
+                      <span style={{ fontSize: 12, color: '#f85149', marginBottom: 2 }}>Reject and delete?</span>
+                      <button id={`confirm-reject-${req.id}`} onClick={() => handleReject(req.id)} style={{ padding: '8px 16px', background: '#f85149', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
+                        ✓ Yes, Reject
+                      </button>
+                      <button onClick={() => setConfirmingRejectId(null)} style={{ padding: '6px 16px', background: 'transparent', color: 'var(--color-text-faint)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button id={`approve-btn-${req.id}`} onClick={() => { setApprovalError(null); setConfirmingId(req.id); }} style={{ padding: '8px 20px', background: '#3fb950', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
+                        Approve
+                      </button>
+                      <button id={`reject-btn-${req.id}`} onClick={() => setConfirmingRejectId(req.id)} style={{ padding: '8px 20px', background: 'transparent', color: '#f85149', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
+                        Reject
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
