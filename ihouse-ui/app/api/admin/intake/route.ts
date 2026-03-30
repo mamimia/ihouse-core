@@ -219,16 +219,36 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // For approve: read the current record first so we can copy submitter contact
+        // into owner_email / owner_phone if they aren't already set.
+        let existingProperty: Record<string, unknown> | null = null;
+        if (action === 'approve') {
+            try {
+                const existRes = await supaFetch(
+                    `properties?property_id=eq.${encodeURIComponent(propertyId)}&select=submitter_email,submitter_phone,owner_email,owner_phone&limit=1`
+                );
+                if (existRes.ok) {
+                    const rows = await existRes.json();
+                    if (rows.length > 0) existingProperty = rows[0];
+                }
+            } catch { /* non-critical — proceed with approval even if pre-read fails */ }
+        }
+
         const updateData: Record<string, unknown> = action === 'approve'
             ? {
                 status: 'approved',
                 approved_at: new Date().toISOString(),
                 approved_by: admin.email,
                 // Phase 877: Migrate property into admin's tenant on approval
-                // Properties start as tenant_id='public-onboard' from the onboarding wizard.
-                // On approval, they must move into the admin's real tenant scope
-                // so they appear in /admin/properties (which is tenant-filtered).
                 ...(admin.tenantId ? { tenant_id: admin.tenantId } : {}),
+                // Copy submitter contact → owner snapshot if owner fields are empty.
+                // This ensures the property settings card shows contact info immediately.
+                ...(!existingProperty?.owner_email && existingProperty?.submitter_email
+                    ? { owner_email: existingProperty.submitter_email }
+                    : {}),
+                ...(!existingProperty?.owner_phone && existingProperty?.submitter_phone
+                    ? { owner_phone: existingProperty.submitter_phone }
+                    : {}),
             }
             : {
                 status: 'rejected',

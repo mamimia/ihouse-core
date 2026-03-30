@@ -175,6 +175,9 @@ export async function POST(request: NextRequest) {
         }
         if (body.submitterEmail) {
             propertyData.submitter_email = body.submitterEmail;
+            // The public submitter IS the owner/contact at submission time.
+            // Pre-fill owner_email so the property settings card shows contact immediately.
+            propertyData.owner_email = body.submitterEmail;
         }
         // Submitter context — visible to admin in intake detail
         if (body.firstName) {
@@ -184,10 +187,12 @@ export async function POST(request: NextRequest) {
             propertyData.submitter_last_name = body.lastName;
         }
         if (body.phone) {
-            // Strip country-code-only values ("+ 66 ", "+66 ") — require at least 4 digits
+            // Strip country-code-only values ("+66 ", etc.) — require at least 4 digits
             const phoneDigits = body.phone.replace(/\D/g, '');
             if (phoneDigits.length >= 4) {
                 propertyData.submitter_phone = body.phone.trim();
+                // Also store as owner_phone so the property settings card shows it.
+                propertyData.owner_phone = body.phone.trim();
             }
         }
         if (body.userType) {
