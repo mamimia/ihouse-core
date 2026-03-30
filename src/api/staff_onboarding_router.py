@@ -543,13 +543,15 @@ async def approve_onboarding(
         if preferred_channel:
             comm_pref["preferred_channel"] = preferred_channel
 
-        # Phase 1025 Fix B: Derive document validity status from submitted data.
+        # Phase 1025 Fix B (corrected): Derive document status from submitted data.
         # NEVER hardcode 'missing' — that silently overwrites real submitted data.
-        # Rule: if the number was submitted, the document exists and is 'valid'.
-        # Admin can always downgrade to 'expired'/'missing' manually later.
-        id_doc_status = "valid" if id_number else "missing"
-        work_permit_status = "valid" if work_permit_number else "missing"
-        # Write the derived statuses back into comm_pref so the Documents tab reads them
+        # Use 'submitted' (not 'valid') — the canonical UI status enum is:
+        #   missing | submitted | verified | expiring_soon | expired
+        # A newly approved worker has SUBMITTED documents; an admin can upgrade to
+        # 'verified' after manual review. 'valid' is not in the UI enum.
+        id_doc_status = "submitted" if id_number else "missing"
+        work_permit_status = "submitted" if work_permit_number else "missing"
+        # Write the derived statuses into comm_pref so the Documents tab reads them
         comm_pref["id_doc_status"] = id_doc_status
         comm_pref["work_permit_status"] = work_permit_status
         logger.info(
