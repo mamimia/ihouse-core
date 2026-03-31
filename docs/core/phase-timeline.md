@@ -8744,3 +8744,31 @@ Invariants: INV-1010 (extended), INV-1011 (extended), INV-1012 (new).
 Commit: `7732ab4`. Branch: `checkpoint/supabase-single-write-20260305-1747`.
 
 Spec: `docs/archive/phases/phase-1030-spec.md`
+
+## Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-31
+**Commits:** `b5f5e8f` → `7dcb4da` → `89d3f45`
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+Root cause discovered: `POST /staff/assignments` never wrote `priority` — it relied on `DEFAULT 1`. Every worker on every property got `priority=1`, making `ORDER BY priority ASC LIMIT 1` non-deterministic for workers in the same lane.
+
+**Code fixes (b5f5e8f):**
+Early-checkout healing now walks `candidate_ids` in priority order (Primary first, not arbitrary DB order). Backfill path: if a priority=1 worker already exists in the lane, backfill is skipped (prevents Backup stealing NULL tasks). Ownerless task guard: both failure paths emit `ERROR OWNERLESS_TASK_CREATED` — no silent NULL-assignment. Test suite: 4 pre-existing mismatches fixed; 161 tests pass.
+
+**DB + API normalization (7dcb4da):**
+Migration `phase_1031_assignment_priority_normalization`: adds `chk_priority_positive`, trigger `fn_guard_assignment_priority_uniqueness` (blocks duplicate priority per lane on INSERT/UPDATE), DB function `get_next_lane_priority()`. API write path rewritten: resolves worker lane from `worker_roles`, queries MAX(priority)+1 in lane, sets correct priority at insert time.
+
+**Canonical lane enforcement (89d3f45):**
+Lane model locked: CLEANING / MAINTENANCE / CHECKIN_CHECKOUT only. UNKNOWN is not a valid model state.
+Migration `phase_1031c_remove_invalid_lane_assignments`: removed 11 invalid rows (8 `manager_not_worker`, 2 `ghost_no_permission_record`, 1 `owner_not_worker`). All removals in audit table `phase_1031c_removed_assignments`.
+Migration `phase_1031c_db_guard_no_role_assignments`: trigger `fn_guard_assignment_requires_operational_lane` blocks any INSERT for a worker without a valid operational lane at the DB level. API returns `400 NO_OPERATIONAL_LANE` before the DB trigger is even reached.
+
+**Proofs (DB):** invalid_rows_remaining=0, all 14 rows map to real lanes, zero priority collisions, ownerless_active_tasks=0, KPG-500 and KPG-502 Primary selection is deterministic.
+
+**Open (not blocking):** Pre-guard KPG-500 CLEANING task distribution (7 Backup / 2 Primary — legacy, not current write-path failure). Baton-transfer and promotion-banner live staging proof deferred. Amendment healing for misassigned (not just NULL) tasks deferred to Phase 1032+. DB UNIQUE constraint on lane deferred pending schema redesign (trigger is strongest available enforcement without materializing lane column).
+
+Invariants added: INV-1031-A (backfill skips if Primary exists), INV-1031-B (OWNERLESS_TASK_CREATED on every NULL-assignment path), INV-1031-C (early-checkout healing selects minimum-priority cleaner first), INV-1031-D (no worker without valid lane enters assignment stack).
+
+Spec: `docs/archive/phases/phase-1031-spec.md`
