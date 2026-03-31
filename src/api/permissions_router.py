@@ -59,7 +59,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
@@ -198,6 +198,75 @@ async def list_permissions(
         })
     except Exception as exc:
         logger.exception("GET /permissions error: %s", exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# GET /permissions/me — caller's own permission record (Phase 1032)
+# Used by the worker home page to read comm_preference._promotion_notice
+# Must be registered BEFORE /permissions/{user_id} to avoid path shadowing.
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/permissions/me",
+    tags=["permissions"],
+    summary="Get the calling user's own permission record (Phase 1032)",
+    responses={
+        200: {"description": "Caller's permission record including comm_preference"},
+        401: {"description": "Missing or invalid JWT"},
+        404: {"description": "No permission record found for this user"},
+        500: {"description": "Internal server error"},
+    },
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_my_permission(
+    request: Request,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """Returns the permission record for the authenticated user (self lookup).
+    Includes comm_preference which contains _promotion_notice for the worker
+    promotion banner on the worker home page.
+    """
+    try:
+        # Extract the caller's user_id from JWT
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.removeprefix("Bearer ").strip()
+        import jwt as _jwt
+        try:
+            payload = _jwt.decode(token, options={"verify_signature": False})
+            caller_user_id = payload.get("sub") or payload.get("user_id")
+        except Exception:
+            return make_error_response(status_code=401, code=ErrorCode.UNAUTHORIZED,
+                                       extra={"detail": "Cannot decode user identity from token."})
+
+        if not caller_user_id:
+            return make_error_response(status_code=401, code=ErrorCode.UNAUTHORIZED,
+                                       extra={"detail": "Token contains no user identity."})
+
+        db = client if client is not None else _get_supabase_client()
+        result = (
+            db.table("tenant_permissions")
+            .select(
+                "id, user_id, role, permissions, display_name, phone, language,"
+                " worker_id, worker_role,"
+                " photo_url, comm_preference,"
+                " worker_roles, is_active,"
+                " created_at, updated_at"
+            )
+            .eq("tenant_id", tenant_id)
+            .eq("user_id", caller_user_id)
+            .limit(1)
+            .execute()
+        )
+        rows = result.data or []
+        if not rows:
+            return make_error_response(status_code=404, code=ErrorCode.NOT_FOUND,
+                                       extra={"detail": f"No permission record for user {caller_user_id}"})
+
+        return JSONResponse(status_code=200, content=rows[0])
+    except Exception as exc:
+        logger.exception("GET /permissions/me error: %s", exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
 
 
