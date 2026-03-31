@@ -99,13 +99,15 @@ def _mock_booking_db(
         "permissions": {"can_approve_early_checkout": manager_can_approve}
     }]
 
-    # Task row
+    # Task row — Phase 1031: include assigned_to so the healing path
+    # in _reschedule_cleaning_task does not trigger (task already has an owner)
     task_result = MagicMock()
     task_result.data = [{
         "task_id": "task-001",
         "due_date": check_out,
         "priority": "MEDIUM",
         "status": "PENDING",
+        "assigned_to": "worker-001",   # prevents healing query chain
     }]
 
     # Update/insert always succeeds
@@ -134,7 +136,11 @@ def _mock_booking_db(
     eq2.not_ = not_mock
     not_in_mock = MagicMock()
     not_mock.in_.return_value = not_in_mock
+    # Phase 1031 fix: _reschedule_cleaning_task uses .order("due_date", desc=True).limit(1)
+    # Wire .order() to return not_in_mock so .limit.execute() gets task_result correctly
+    not_in_mock.order.return_value = not_in_mock
     not_in_mock.limit.return_value = MagicMock(execute=MagicMock(return_value=task_result))
+
 
     # eq chains for task queries (3-level deep)
     eq3 = MagicMock()

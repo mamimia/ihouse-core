@@ -906,6 +906,68 @@ def _backfill_tasks_on_assign(
         if not matching_tasks:
             return {"backfilled": 0, "roles_matched": task_roles, "task_ids": []}
 
+        # Phase 1031-fix: Primary-existence guard.
+        # If NULL tasks exist but a priority=1 worker already covers this lane,
+        # those NULLs are a healing problem — the Primary should own them, not
+        # the newly added Backup. Backfilling the Backup would silently misassign them.
+        #
+        # Rule: if the new worker is NOT priority=1, and a priority=1 worker already
+        # exists on this property with at least one matching task_role, skip backfill
+        # for the NULL tasks. They will be picked up by the existing primary-assignment
+        # path (booking creation, amendment, or ad-hoc creation all use ORDER BY priority ASC).
+        # Future tasks generated AFTER this backfill call will be assigned to the Primary via
+        # the task_writer — so this guard does not leave tasks permanently ownerless.
+        try:
+            new_worker_priority_res = (
+                db.table("staff_property_assignments")
+                .select("priority")
+                .eq("tenant_id", tenant_id)
+                .eq("user_id", user_id)
+                .eq("property_id", property_id)
+                .limit(1)
+                .execute()
+            )
+            new_worker_priority = (new_worker_priority_res.data or [{}])[0].get("priority", 1)
+
+            if new_worker_priority != 1:
+                # Check if a Primary (priority=1) already exists for a matching lane
+                primary_res = (
+                    db.table("staff_property_assignments")
+                    .select("user_id, priority")
+                    .eq("tenant_id", tenant_id)
+                    .eq("property_id", property_id)
+                    .eq("priority", 1)
+                    .neq("user_id", user_id)
+                    .limit(10)
+                    .execute()
+                )
+                primary_ids = [r["user_id"] for r in (primary_res.data or [])]
+                if primary_ids:
+                    primary_roles_res = (
+                        db.table("tenant_permissions")
+                        .select("user_id, worker_roles")
+                        .eq("tenant_id", tenant_id)
+                        .in_("user_id", primary_ids)
+                        .execute()
+                    )
+                    for pr in (primary_roles_res.data or []):
+                        primary_task_roles = []
+                        for pr_ui in (pr.get("worker_roles") or []):
+                            primary_task_roles.extend(_ROLE_TO_TASK_ROLES.get(pr_ui.lower(), []))
+                        if set(primary_task_roles) & set(task_roles):
+                            # A Primary exists for this lane — do not backfill the Backup
+                            logger.info(
+                                "task_backfill: skipping backfill for Backup user=%s property=%s "
+                                "— Primary already exists for this lane (roles: %s). "
+                                "NULL tasks belong to the Primary assignment path.",
+                                user_id, property_id, task_roles,
+                            )
+                            return {"backfilled": 0, "roles_matched": task_roles, "task_ids": [],
+                                    "reason": "primary_exists_for_lane"}
+        except Exception as _guard_exc:
+            logger.warning("task_backfill: primary-exists guard failed for %s/%s: %s", user_id, property_id, _guard_exc)
+            # If guard fails, proceed with backfill so we don't silently orphan tasks
+
         # 4. Batch update: assign all matching tasks to this worker
         task_ids = [t["task_id"] for t in matching_tasks]
         now = datetime.now(tz=timezone.utc).isoformat()

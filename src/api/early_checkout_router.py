@@ -332,12 +332,17 @@ def _reschedule_cleaning_task(
                             .in_("user_id", candidate_ids)
                             .execute()
                         )
-                        for r in (roles_res.data or []):
-                            if "cleaner" in (r.get("worker_roles") or []):
-                                update_payload["assigned_to"] = r["user_id"]
+                        # Phase 1031-fix: Walk candidates in priority order (Primary first).
+                        # candidate_ids is already priority-ordered from the DB query above.
+                        # Build a user_id → roles lookup and walk the priority list,
+                        # not the arbitrary roles_res.data order.
+                        roles_map = {r["user_id"]: (r.get("worker_roles") or []) for r in (roles_res.data or [])}
+                        for uid in candidate_ids:  # already priority-ordered
+                            if "cleaner" in roles_map.get(uid, []):
+                                update_payload["assigned_to"] = uid
                                 logger.info(
-                                    "early_checkout: healed unassigned CLEANING task=%s → assigned to cleaner=%s",
-                                    task_id, r["user_id"],
+                                    "early_checkout: healed unassigned CLEANING task=%s → assigned to Primary cleaner=%s",
+                                    task_id, uid,
                                 )
                                 break
             except Exception as _heal_exc:

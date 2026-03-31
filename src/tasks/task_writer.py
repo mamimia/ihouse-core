@@ -203,13 +203,25 @@ def write_tasks_for_booking_created(
                 # This is NOT a silent best-effort: it must be surfaced in logs for ops to act.
                 if t.assigned_to is None:
                     logger.warning(
-                        "task_writer: NO PRIMARY WORKER found for role=%s "
-                        "property_id=%s booking_id=%s task_id=%s — task will be UNASSIGNED. "
-                        "Ensure a worker with this role is assigned to the property.",
-                        t.worker_role.value, property_id, booking_id, t.task_id,
+                        "OWNERLESS_TASK_CREATED: task_id=%s kind=%s role=%s "
+                        "property_id=%s booking_id=%s assigned_to=NULL. "
+                        "No Primary worker found for this role. "
+                        "Task will be written but is operationally invisible — "
+                        "no worker will see it until manually reassigned. "
+                        "Ensure a worker with worker_roles=['%s'] is assigned to property '%s'.",
+                        t.task_id, t.kind.value, t.worker_role.value,
+                        property_id, booking_id,
+                        t.worker_role.value.lower(), property_id,
                     )
         except Exception as _exc:
-            logger.warning("task_writer: Failed to auto-assign tasks booking_id=%s: %s", booking_id, _exc)
+            logger.error(
+                "OWNERLESS_TASK_CREATED: auto-assign failed for booking_id=%s property_id=%s — "
+                "ALL tasks for this booking will be written with assigned_to=NULL. "
+                "Error: %s. "
+                "This is a source-of-truth gap — tasks exist but no worker is notified. "
+                "Immediate manual assignment required.",
+                booking_id, property_id, _exc,
+            )
 
         rows = [_task_to_row(t) for t in tasks]
         result = db.table("tasks").upsert(rows, on_conflict="task_id").execute()
