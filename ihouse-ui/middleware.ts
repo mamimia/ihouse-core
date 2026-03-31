@@ -113,6 +113,7 @@ export function middleware(request: NextRequest) {
     if (!token) {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('from', pathname);
+        loginUrl.searchParams.set('reason', 'mw_no_cookie');
         return NextResponse.redirect(loginUrl);
     }
 
@@ -126,6 +127,7 @@ export function middleware(request: NextRequest) {
         if (payload.exp < nowSeconds) {
             const loginUrl = new URL('/login', request.url);
             loginUrl.searchParams.set('from', pathname);
+            loginUrl.searchParams.set('reason', 'mw_expired');
             const response = NextResponse.redirect(loginUrl);
             response.cookies.delete('ihouse_token');
             return response;

@@ -44,14 +44,15 @@ export function getToken(): string | null {
 // Phase 186 — Client-side logout helper (also called by apiFetch on 401/403)
 // ---------------------------------------------------------------------------
 
-export function performClientLogout(redirectPath = '/login'): void {
+export function performClientLogout(redirectPath = '/login', reason?: string): void {
     clearToken();
     // Clear cookie so middleware also evicts
     if (typeof document !== 'undefined') {
         document.cookie = 'ihouse_token=; path=/; max-age=0; SameSite=Lax';
     }
     if (typeof window !== 'undefined') {
-        window.location.href = redirectPath;
+        const url = redirectPath + (reason ? `?reason=${encodeURIComponent(reason)}` : '');
+        window.location.href = url;
     }
 }
 
@@ -109,7 +110,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _retryCount 
             const isCapabilityDenial = typeof detail === 'string' && detail.startsWith('CAPABILITY_DENIED');
             const isPreviewBlock = body?.error?.code === 'PREVIEW_READ_ONLY' || body?.ok === false && body?.error?.code === 'PREVIEW_READ_ONLY';
             if (!isCapabilityDenial && !isPreviewBlock && _token) {
-                performClientLogout('/login');
+                // Diagnostic: encode status + path so the /login URL shows exactly what caused the logout
+                performClientLogout('/login', `apifetch_${resp.status}_${path.replace(/\//g, '_')}`);
             }
         }
 
