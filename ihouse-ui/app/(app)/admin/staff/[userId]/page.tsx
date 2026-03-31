@@ -320,6 +320,8 @@ export default function EditStaffPage() {
   const [assignedProperties, setAssignedProperties] = useState<string[]>([]);
   const [originalAssignments, setOriginalAssignments] = useState<string[]>([]);
   const [availableProperties, setAvailableProperties] = useState<{ id: string; name: string }[]>([]);
+  // Role summary/edit mode: collapsed by default (shows saved summary), opens only on [Edit]
+  const [roleEditMode, setRoleEditMode] = useState(false);
 
   // Phase 1030: Priority/Primary/Backup state for each assigned property
   // propertyLaneData[property_id] → { is_primary, priority, lane_count }
@@ -1106,46 +1108,104 @@ export default function EditStaffPage() {
             </div>
           </div>
         )}
-
         {/* ── Tab 2: Role & Assignment ──────────────────────────────────── */}
         {activeTab === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-            <Field label="Role *">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-3)', marginTop: 4 }}>
-                {CANONICAL_ROLES.map(r => (
-                  <label key={r.value} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
-                    background: role === r.value ? 'rgba(var(--color-primary-rgb, 99,102,241), 0.12)' : 'var(--color-surface-2)',
-                    border: `2px solid ${role === r.value ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                    borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.15s',
-                  }}>
-                    <input type="radio" name="role" value={r.value} checked={role === r.value}
-                      onChange={() => { setRole(r.value); setWorkerRoles([]); setMaintenanceSpecs([]); }}
-                      style={{ accentColor: 'var(--color-primary)' }} />
-                    <span style={{ fontWeight: role === r.value ? 700 : 400, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-                      {r.label}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </Field>
 
-            {role === 'worker' && (
-              <div>
-                <div style={sectionHeadStyle}>Staff Roles</div>
-                {workerRoles.length === 0 && (
-                  <div style={{ fontSize: 'var(--text-xs)', color: '#f85149', marginBottom: 'var(--space-2)' }}>
-                    Select at least one worker role.
-                  </div>
-                )}
-                <CheckGroup options={WORKER_ROLES} selected={workerRoles} onChange={setWorkerRoles} />
+            {/* ── Role summary / edit-mode toggle ── */}
+            {roleEditMode ? (
+              // ── Edit Mode: full selection grid ──────────────────────────
+              <>
+              <Field label="Role *">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-3)', marginTop: 4 }}>
+                  {CANONICAL_ROLES.map(r => (
+                    <label key={r.value} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+                      background: role === r.value ? 'rgba(var(--color-primary-rgb, 99,102,241), 0.12)' : 'var(--color-surface-2)',
+                      border: `2px solid ${role === r.value ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.15s',
+                    }}>
+                      <input type="radio" name="role" value={r.value} checked={role === r.value}
+                        onChange={() => { setRole(r.value); setWorkerRoles([]); setMaintenanceSpecs([]); }}
+                        style={{ accentColor: 'var(--color-primary)' }} />
+                      <span style={{ fontWeight: role === r.value ? 700 : 400, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                        {r.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </Field>
 
-                {workerRoles.includes('maintenance') && (
-                  <div style={{ marginTop: 'var(--space-4)' }}>
-                    <div style={sectionHeadStyle}>Maintenance Specializations</div>
-                    <CheckGroup options={MAINTENANCE_SPECS} selected={maintenanceSpecs} onChange={setMaintenanceSpecs} />
+              {role === 'worker' && (
+                <div>
+                  <div style={sectionHeadStyle}>Staff Roles</div>
+                  {workerRoles.length === 0 && (
+                    <div style={{ fontSize: 'var(--text-xs)', color: '#f85149', marginBottom: 'var(--space-2)' }}>
+                      Select at least one worker role.
+                    </div>
+                  )}
+                  <CheckGroup options={WORKER_ROLES} selected={workerRoles} onChange={setWorkerRoles} />
+
+                  {workerRoles.includes('maintenance') && (
+                    <div style={{ marginTop: 'var(--space-4)' }}>
+                      <div style={sectionHeadStyle}>Maintenance Specializations</div>
+                      <CheckGroup options={MAINTENANCE_SPECS} selected={maintenanceSpecs} onChange={setMaintenanceSpecs} />
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setRoleEditMode(false)}
+                style={{
+                  alignSelf: 'flex-start', padding: '6px 14px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 600,
+                }}
+              >
+                ✓ Collapse Role
+              </button>
+              </>
+            ) : (
+              // ── Summary Mode: collapsed one-liner ───────────────────────
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                padding: 'var(--space-3) var(--space-4)',
+                background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Role</div>
+                  <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
+                    {role === 'worker' ? (
+                      workerRoles.length > 0 ? (
+                        <>
+                          {workerRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(' & ')}
+                          {maintenanceSpecs.length > 0 && (
+                            <span style={{ color: 'var(--color-text-dim)', fontWeight: 400 }}>
+                              {' · '}{maintenanceSpecs.join(', ')}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ color: '#f85149' }}>No roles selected</span>
+                      )
+                    ) : (
+                      CANONICAL_ROLES.find(r => r.value === role)?.label || role
+                    )}
                   </div>
-                )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRoleEditMode(true)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 'var(--radius-sm)',
+                    background: 'none', border: '1px solid var(--color-border)',
+                    color: 'var(--color-primary)', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 700,
+                  }}
+                >
+                  Edit
+                </button>
               </div>
             )}
 

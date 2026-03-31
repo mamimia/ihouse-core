@@ -78,7 +78,7 @@ export default function PendingRequestsPage() {
 
   // Resolution history — items move here on approve/reject instead of disappearing
   const [history, setHistory] = useState<(PendingRequest & { resolution: 'approved' | 'rejected'; resolved_at: string })[]>([]);
-  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(true);
 
   const load = useCallback(async () => {
     try {
@@ -602,56 +602,67 @@ export default function PendingRequestsPage() {
         })}
       </div>
 
-      {/* ── Resolution History ──────────────────────────────────────────── */}
-      {history.length > 0 && (
-        <div style={{ marginTop: 'var(--space-6)' }}>
-          <button
-            onClick={() => setHistoryExpanded(v => !v)}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)',
-              display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontWeight: 600,
-            }}
-          >
-            {historyExpanded ? '▾' : '▸'} Resolved ({history.length})
-          </button>
-          {historyExpanded && (
-            <div style={{ marginTop: 'var(--space-3)' }}>
-              {history.map(item => {
-                const wdata = item.metadata?.worker_data || {};
-                const isApproved = item.resolution === 'approved';
-                return (
-                  <div key={item.id} style={{
-                    ...cardStyle,
-                    opacity: 0.75,
-                    borderColor: isApproved ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)',
-                    background: isApproved ? 'rgba(63,185,80,0.04)' : 'rgba(248,81,73,0.04)',
-                    display: 'flex', alignItems: 'center', gap: 'var(--space-4)',
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-                        {wdata.full_name || item.email}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginTop: 2 }}>
-                        {item.email} · {new Date(item.resolved_at).toLocaleString()}
-                      </div>
-                    </div>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-full)',
-                      background: isApproved ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.12)',
-                      color: isApproved ? '#3fb950' : '#f85149',
-                      border: `1px solid ${isApproved ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,
-                      letterSpacing: '0.05em', flexShrink: 0,
-                    }}>
-                      {isApproved ? '✓ APPROVED' : '✕ REJECTED'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+      {/* ── Resolution History — always shown, expands after first resolve ── */}
+      <div style={{ marginTop: 'var(--space-8)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-5)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+          <h2 style={{ fontSize: 'var(--text-md)', fontWeight: 600, margin: 0, color: 'var(--color-text-dim)' }}>
+            Resolved This Session {history.length > 0 && <span style={{ fontSize: 'var(--text-sm)', fontWeight: 400 }}>({history.length})</span>}
+          </h2>
+          {history.length > 0 && (
+            <button
+              onClick={() => setHistoryExpanded(v => !v)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', fontWeight: 600 }}
+            >
+              {historyExpanded ? 'Collapse ▴' : 'Show ▾'}
+            </button>
           )}
         </div>
-      )}
+
+        {history.length === 0 ? (
+          <div style={{ padding: 'var(--space-4)', textAlign: 'center', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+            No resolved requests this session. Approved and rejected items will appear here.
+          </div>
+        ) : historyExpanded && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            {history.map(item => {
+              const wdata = item.metadata?.worker_data || {};
+              const isApproved = item.resolution === 'approved';
+              return (
+                <div key={item.id} style={{
+                  padding: 'var(--space-3) var(--space-4)',
+                  borderRadius: 'var(--radius-md)',
+                  border: `1px solid ${isApproved ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,
+                  background: isApproved ? 'rgba(63,185,80,0.04)' : 'rgba(248,81,73,0.04)',
+                  display: 'flex', alignItems: 'center', gap: 'var(--space-4)',
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                      {wdata.full_name || item.email}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginTop: 2 }}>
+                      {item.email} · {new Date(item.resolved_at).toLocaleString()}
+                    </div>
+                    {item.metadata?.intended_role && (
+                      <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginTop: 2 }}>
+                        Role: {item.metadata?.intended_role}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-full)',
+                    background: isApproved ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.12)',
+                    color: isApproved ? '#3fb950' : '#f85149',
+                    border: `1px solid ${isApproved ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,
+                    letterSpacing: '0.05em', flexShrink: 0,
+                  }}>
+                    {isApproved ? '✓ APPROVED' : '✕ REJECTED'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -887,8 +887,8 @@ export default function NewStaffPage() {
               </div>
             </div>
 
-            {/* Work Permit — only relevant for worker-role staff */}
-            {role === 'worker' && (
+            {/* Work Permit — shown for worker and manager; hidden for admin and owner */}
+            {(role !== 'admin' && role !== 'owner') && (
               <>
             <div style={sectionHeadStyle}>Work Permit</div>
             <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
@@ -948,7 +948,10 @@ export default function NewStaffPage() {
               <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>Compliance Overview</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
                 {[{ label: 'ID / Passport', status: autoDocStatus(idDocStatus, idDocExpiry), expiry: idDocExpiry },
-                  { label: 'Work Permit',  status: autoDocStatus(workPermitStatus, workPermitExpiry), expiry: workPermitExpiry }].map(doc => {
+                  ...(role !== 'admin' && role !== 'owner'
+                    ? [{ label: 'Work Permit', status: autoDocStatus(workPermitStatus, workPermitExpiry), expiry: workPermitExpiry }]
+                    : [])
+                ].map(doc => {
                   const warning = expiryWarning(doc.expiry);
                   return (
                     <div key={doc.label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
