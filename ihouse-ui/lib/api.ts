@@ -101,19 +101,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _retryCount 
         const body = await resp.json().catch(() => ({}));
         const detail = body?.detail || '';
 
-        // Phase 862 P44: Distinguish auth failures from capability denials.
-        // CAPABILITY_DENIED means the user IS authenticated but lacks a specific
-        // delegated capability — do NOT logout, just throw the error.
-        // Phase 866: PREVIEW_READ_ONLY means preview mode blocked a mutation — same treatment.
-        // Only auto-logout on true auth failures (missing/expired/invalid token).
-        if (resp.status === 401 || resp.status === 403) {
-            const isCapabilityDenial = typeof detail === 'string' && detail.startsWith('CAPABILITY_DENIED');
-            const isPreviewBlock = body?.error?.code === 'PREVIEW_READ_ONLY' || body?.ok === false && body?.error?.code === 'PREVIEW_READ_ONLY';
-            if (!isCapabilityDenial && !isPreviewBlock && _token) {
-                // Diagnostic: encode status + path so the /login URL shows exactly what caused the logout
-                performClientLogout('/login', `apifetch_${resp.status}_${path.replace(/\//g, '_')}`);
-            }
+        // Phase 862 P44 / Phase 1033 fix:
+        // Logout ONLY on 401 — a true authentication failure (missing, expired, or invalid token).
+        // A 403 is an AUTHORIZATION denial: the user IS authenticated but lacks access to this
+        // specific resource. 403 must NEVER destroy the session — it should surface as an error
+        // in the component's UI (setError / catch block), not redirect to login.
+        //
+        // Before this fix: apiFetch treated 401 and 403 equally, causing role-guarded endpoints
+        // like /manager/tasks (which returns 403 for non-qualifying roles) to log the whole session
+        // out, including during Preview As and Act As flows.
+        if (resp.status === 401 && _token) {
+            performClientLogout('/login', `apifetch_401_${path.replace(/\//g, '_')}`);
         }
+
 
         // Phase 1025 Fix A: Align error parsing with the Phase 75 standard backend shape.
         // Backend uses { code: "SCREAMING_CASE", message: "Human text" } (make_error_response).
