@@ -1444,7 +1444,7 @@ function AlertRail({ alerts, loading }: { alerts: AlertItem[]; loading: boolean 
                 ))}
                 {alerts.length > 8 && (
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', padding: '4px 12px' }}>
-                        +{alerts.length - 8} more alerts — see full list on Tasks page
+                        +{alerts.length - 8} more — Alerts page coming in Step 3
                     </div>
                 )}
             </div>
@@ -1481,10 +1481,24 @@ export default function ManagerPage() {
 
     useEffect(() => { load(); }, [load]);
 
-    // Derived stats
+    // Cockpit-first: derive alert items from live audit stream.
+    // No new API endpoint — derived from existing stream data.
+    // Step 3 replaces this with a dedicated /manager/alerts endpoint.
+    const hubAlerts: AlertItem[] = events.slice(0, 60).reduce<AlertItem[]>((acc, ev) => {
+        if (ev.action === 'MANAGER_TAKEOVER_INITIATED') {
+            acc.push({ type: ev.action, severity: 'high', title: 'Manager takeover active', task_id: ev.entity_id });
+        } else if (ev.action === 'BOOKING_FLAGS_UPDATED') {
+            acc.push({ type: ev.action, severity: 'warning', title: 'Booking flags updated' });
+        }
+        return acc;
+    }, []).slice(0, 8);
+
+    // Operational metrics derived from stream
     const acknowledged = events.filter(e => e.action === 'TASK_ACKNOWLEDGED').length;
-    const completed = events.filter(e => e.action === 'TASK_COMPLETED').length;
-    const flagged = events.filter(e => e.action === 'BOOKING_FLAGS_UPDATED').length;
+    const completed    = events.filter(e => e.action === 'TASK_COMPLETED').length;
+    const flagged      = events.filter(e => e.action === 'BOOKING_FLAGS_UPDATED').length;
+    const takeovers    = events.filter(e => e.action === 'MANAGER_TAKEOVER_INITIATED').length;
+    const managerDone  = events.filter(e => e.action === 'MANAGER_TASK_COMPLETED').length;
 
     const btnBase: React.CSSProperties = {
         border: '1px solid var(--color-border)',
@@ -1503,20 +1517,17 @@ export default function ManagerPage() {
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
             `}</style>
 
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-8)' }}>
+            {/* ── COCKPIT HEADER ────────────────────────────────────── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-6)' }}>
                 <div>
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-1)' }}>
-                        Manager view · {lastRefresh ? lastRefresh.toLocaleTimeString() : 'loading…'}
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-1)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                        Operational Manager · {lastRefresh ? lastRefresh.toLocaleTimeString() : 'loading…'}
                     </p>
-                    <h1 style={{
-                        fontSize: 'var(--text-3xl)', fontWeight: 700,
-                        letterSpacing: '-0.03em', lineHeight: 1.1,
-                    }}>
-                        Activity <span style={{ color: 'var(--color-primary)' }}>Feed</span>
+                    <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+                        Command <span style={{ color: 'var(--color-primary)' }}>Hub</span>
                     </h1>
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
-                        Every operator and worker mutation — who did what, when.
+                        Operational state · Alerts · Interventions · Stream
                     </p>
                 </div>
                 <button
@@ -1538,21 +1549,23 @@ export default function ManagerPage() {
                 </button>
             </div>
 
-            {/* Stat row */}
-            <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-8)', flexWrap: 'wrap' }}>
-                <MetricChip label="Total events" value={events.length} color="var(--color-text)" />
-                <MetricChip label="Task acked" value={acknowledged} color="#60a5fa" />
-                <MetricChip label="Task completed" value={completed} color="#34d399" />
-                <MetricChip label="Flags updated" value={flagged} color="#fbbf24" />
+            {/* ── 1. ALERT RAIL — first thing a manager sees ────────── */}
+            <AlertRail alerts={hubAlerts} loading={loading} />
+
+            {/* ── 2. OPERATIONAL METRICS ────────────────────────────── */}
+            <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-8)', flexWrap: 'wrap' }}>
+                <MetricChip label="Takeovers active"  value={takeovers}    color="#f87171" />
+                <MetricChip label="Manager completed" value={managerDone}  color="#34d399" />
+                <MetricChip label="Task acked"        value={acknowledged} color="#60a5fa" />
+                <MetricChip label="Task completed"    value={completed}    color="#34d399" />
+                <MetricChip label="Flags updated"     value={flagged}      color="#fbbf24" />
+                <MetricChip label="Stream events"     value={events.length} color="var(--color-text)" />
             </div>
 
-            {/* Phase 1022-E: Task Board */}
+            {/* ── 3. TASK BOARD — intervention layer ────────────────── */}
             <TaskBoard />
 
-            {/* Copilot Briefing (Phase 312) */}
-            <MorningBriefingWidget />
-
-            {/* Activity feed */}
+            {/* ── 4. LIVE STREAM ────────────────────────────────────── */}
             <div style={{
                 background: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
@@ -1560,7 +1573,6 @@ export default function ManagerPage() {
                 overflow: 'hidden',
                 marginBottom: 'var(--space-8)',
             }}>
-                {/* Feed header */}
                 <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: 'var(--space-4) var(--space-5)',
@@ -1568,11 +1580,12 @@ export default function ManagerPage() {
                     background: 'var(--color-surface-2)',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                        <span style={{ fontSize: 14 }}>📡</span>
                         <h2 style={{
                             fontSize: 'var(--text-sm)', fontWeight: 600,
                             color: 'var(--color-text-dim)', textTransform: 'uppercase',
                             letterSpacing: '0.08em',
-                        }}>Live Mutations</h2>
+                        }}>Live Stream</h2>
                         <span style={{
                             fontSize: 'var(--text-xs)', fontWeight: 700,
                             padding: '1px 8px', borderRadius: 'var(--radius-full)',
@@ -1580,7 +1593,6 @@ export default function ManagerPage() {
                             color: 'var(--color-text-dim)',
                         }}>{events.length}</span>
                     </div>
-                    {/* Entity filter pills */}
                     <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                         {(['all', 'task', 'booking'] as const).map(f => (
                             <button
@@ -1600,79 +1612,47 @@ export default function ManagerPage() {
                     </div>
                 </div>
 
-                {/* Column headers */}
                 <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '160px 1fr 180px 80px',
-                    gap: 'var(--space-4)',
-                    padding: 'var(--space-2) var(--space-5)',
+                    display: 'grid', gridTemplateColumns: '160px 1fr 180px 80px',
+                    gap: 'var(--space-4)', padding: 'var(--space-2) var(--space-5)',
                     borderBottom: '1px solid var(--color-border)',
                     background: 'var(--color-surface-2)',
                 }}>
                     {['Action', 'Entity', 'Actor', 'When'].map(h => (
-                        <span key={h} style={{
-                            fontSize: 'var(--text-xs)', fontWeight: 600,
-                            color: 'var(--color-text-dim)', textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                        }}>{h}</span>
+                        <span key={h} style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</span>
                     ))}
                 </div>
 
-                {/* Error */}
                 {error && (
-                    <div style={{
-                        padding: 'var(--space-4) var(--space-5)',
-                        color: 'var(--color-danger)',
-                        fontSize: 'var(--text-sm)',
-                        background: 'rgba(239,68,68,0.06)',
-                        borderBottom: '1px solid var(--color-border)',
-                    }}>⚠ {error}</div>
+                    <div style={{ padding: 'var(--space-4) var(--space-5)', color: 'var(--color-danger)', fontSize: 'var(--text-sm)', background: 'rgba(239,68,68,0.06)', borderBottom: '1px solid var(--color-border)' }}>⚠ {error}</div>
                 )}
-
-                {/* Loading skeletons */}
                 {loading && events.length === 0 && (
                     Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} style={{
-                            display: 'grid', gridTemplateColumns: '160px 1fr 180px 80px',
-                            gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-5)',
-                            borderBottom: '1px solid var(--color-border)',
-                            alignItems: 'center',
-                        }}>
+                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 180px 80px', gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-5)', borderBottom: '1px solid var(--color-border)', alignItems: 'center' }}>
                             {[100, 200, 140, 50].map((w, j) => (
-                                <div key={j} style={{
-                                    height: 12, width: w, background: 'var(--color-surface-3)',
-                                    borderRadius: 4, animation: 'pulse 1.5s infinite',
-                                }} />
+                                <div key={j} style={{ height: 12, width: w, background: 'var(--color-surface-3)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />
                             ))}
                         </div>
                     ))
                 )}
-
-                {/* Empty */}
                 {!loading && events.length === 0 && !error && (
                     <div style={{ padding: 'var(--space-16)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: 'var(--space-3)' }}>📋</div>
-                        <div style={{ fontWeight: 600 }}>No mutations yet</div>
-                        <div style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>
-                            Audit events will appear here as operators take actions.
-                        </div>
+                        <div style={{ fontSize: '2rem', marginBottom: 'var(--space-3)' }}>📡</div>
+                        <div style={{ fontWeight: 600 }}>Stream is quiet</div>
+                        <div style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>Events appear here as the team takes action.</div>
                     </div>
                 )}
-
-                {/* Rows */}
                 {events.map(ev => (
-                    <AuditRow
-                        key={ev.id}
-                        ev={ev}
-                        isNew={!prevIds.has(ev.id)}
-                    />
+                    <AuditRow key={ev.id} ev={ev} isNew={!prevIds.has(ev.id)} />
                 ))}
             </div>
 
-            {/* Booking Audit Lookup */}
+            {/* ── 5. COPILOT BRIEFING — secondary tool ──────────────── */}
+            <MorningBriefingWidget />
+
+            {/* ── 6. BOOKING AUDIT LOOKUP — secondary drill-down ────── */}
             <BookingAuditLookup />
 
-            {/* Footer */}
             <div style={{
                 marginTop: 'var(--space-10)',
                 paddingTop: 'var(--space-6)',
@@ -1680,8 +1660,8 @@ export default function ManagerPage() {
                 fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
                 display: 'flex', justifyContent: 'space-between',
             }}>
-                <span>Domaniqo — Manager Copilot · Phase 1022 (Takeover Gate)</span>
-                <span>Source: audit_events table · actor_id = JWT sub</span>
+                <span>Domaniqo — Operational Manager · Phase 1033 Hub</span>
+                <span>Source: audit_events · actor_id = JWT sub</span>
             </div>
         </div>
     );
