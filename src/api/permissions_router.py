@@ -1544,28 +1544,41 @@ def _execute_baton_transfer(
         except Exception:
             pass
 
-        # 7. Record promotion in tenant_preferences for login-banner display
+        # 7. Record promotion in comm_preference for login-banner display.
+        # Phase 1030-fix: The original code called db.rpc("update_promotion_notice", ...)
+        # which silently failed because that RPC function was never created in the DB.
+        # Replaced with a direct read-modify-write on tenant_permissions.comm_preference JSONB.
+        # The worker app checks comm_preference._promotion_notice on login,
+        # shows the banner, then clears it via PATCH /profile.
         try:
-            # Store pending promotion notice in the new primary's comm_preference
-            # The worker app checks this on login and shows a banner, then clears it.
+            pref_res = (
+                db.table("tenant_permissions")
+                .select("comm_preference")
+                .eq("tenant_id", tenant_id)
+                .eq("user_id", new_primary_id)
+                .limit(1)
+                .execute()
+            )
+            existing_pref = (pref_res.data or [{}])[0].get("comm_preference") or {}
+            existing_pref["_promotion_notice"] = {
+                "property_id": property_id,
+                "tasks_transferred": len(task_ids),
+                "promoted_at": datetime.now(tz=timezone.utc).isoformat(),
+            }
             db.table("tenant_permissions").update({
-                "comm_preference": db.table("tenant_permissions")
-                    .select("comm_preference")
-                    .eq("user_id", new_primary_id)
-                    .eq("tenant_id", tenant_id)
-                    .limit(1)
-                    .execute()
-                    .data[0].get("comm_preference") or {}
-            }).eq("user_id", "__SKIP__").execute()  # no-op, use separate update below
-            # Simpler: write a _promotion_notice field separately
-            db.rpc("update_promotion_notice", {
-                "p_tenant_id": tenant_id,
-                "p_user_id": new_primary_id,
-                "p_property_id": property_id,
-                "p_tasks_count": len(task_ids),
-            }).execute()
-        except Exception:
-            # Promotion notice is best-effort — does not fail the baton transfer
+                "comm_preference": existing_pref,
+            }).eq("tenant_id", tenant_id).eq("user_id", new_primary_id).execute()
+            logger.info(
+                "baton_transfer: promotion_notice written for new_primary=%s property=%s",
+                new_primary_id, property_id,
+            )
+        except Exception as _pn_exc:
+            # Promotion notice is best-effort — must not fail the transfer.
+            # But we log it explicitly so ops can see when awareness breaks.
+            logger.warning(
+                "baton_transfer: failed to write promotion_notice for %s/%s: %s",
+                new_primary_id, property_id, _pn_exc,
+            )
             pass
 
         logger.info(
