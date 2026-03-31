@@ -738,17 +738,19 @@ async def create_adhoc_cleaning_task(
         assigned_to = override_assigned_to
         if not assigned_to:
             try:
-                # Find any cleaner assigned to this property
+                # Phase 1030: ORDER BY priority ASC so that priority=1 (Primary) wins.
+                # Without this, DB heap order could select the Backup instead.
                 assign_res = (
                     db.table("staff_property_assignments")
-                    .select("user_id")
+                    .select("user_id, priority")
                     .eq("property_id", property_id)
                     .eq("tenant_id", tenant_id)
+                    .order("priority", desc=False)
                     .limit(10)
                     .execute()
                 )
                 if assign_res.data:
-                    # Check which of these has cleaner role
+                    # candidate_ids is now priority-ordered: Primary first
                     candidate_ids = [r["user_id"] for r in assign_res.data]
                     perm_res = (
                         db.table("tenant_permissions")
@@ -757,10 +759,12 @@ async def create_adhoc_cleaning_task(
                         .in_("user_id", candidate_ids)
                         .execute()
                     )
-                    for perm in (perm_res.data or []):
-                        roles = [str(r).lower() for r in (perm.get("worker_roles") or [])]
-                        if "cleaner" in roles:
-                            assigned_to = perm["user_id"]
+                    # Build map from user_id → roles for lookup
+                    roles_by_uid = {p["user_id"]: [str(r).lower() for r in (p.get("worker_roles") or [])] for p in (perm_res.data or [])}
+                    # Walk priority-ordered IDs and pick first CLEANER
+                    for uid in candidate_ids:
+                        if "cleaner" in roles_by_uid.get(uid, []):
+                            assigned_to = uid
                             break
             except Exception as exc:
                 logger.warning("adhoc_cleaning: auto-assign lookup failed: %s", exc)
