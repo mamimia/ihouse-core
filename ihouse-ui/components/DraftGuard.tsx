@@ -1,32 +1,35 @@
 'use client';
 
 /**
- * DraftGuard — Phase 1033 freeze protection.
+ * DraftGuard — Phase 1033 access control.
  *
- * Blocks direct URL access to 1033 draft pages for non-admin users.
- * Redirects to /manager (Hub) immediately on mount if role !== 'admin'.
+ * Allows admin and manager roles (including Preview As manager and Act As manager).
+ * Blocks all other roles (owner, worker, cleaner, etc.) with redirect to /manager Hub.
  *
- * This is a TEMPORARY protection step only.
- * It is NOT the final access model for OM Baseline pages.
- * It must be replaced before any 1033 page goes live for real users.
+ * Phase 1033 Alerts / Stream / Team are real product surfaces — they must be
+ * accessible to the manager role in all session modes (direct, preview, act_as).
  *
- * Allowed: admin
- * Blocked (redirected to /manager): manager, owner, worker, and any other role
+ * Allowed: admin, manager (including preview_role=manager, act_as manager JWT)
+ * Blocked → /manager: owner, worker, cleaner, and any unrecognised role
  */
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getTabToken } from '../lib/tokenStore';
 
-function getJwtRole(): string {
+const ALLOWED_ROLES = new Set(['admin', 'manager']);
+
+function getEffectiveRole(): string {
     if (typeof window === 'undefined') return '';
     try {
+        // Preview As role takes priority (set in sessionStorage by PreviewAsSelector)
+        const preview = sessionStorage.getItem('ihouse_preview_role');
+        if (preview) return preview;
+
         const token = getTabToken();
         if (!token) return '';
         const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
-        // Honour preview role if set (matches Sidebar behaviour)
-        const preview = sessionStorage.getItem('ihouse_preview_role');
-        return preview || (payload.role as string) || '';
+        return (payload.role as string) || '';
     } catch {
         return '';
     }
@@ -37,17 +40,16 @@ export default function DraftGuard({ children }: { children: React.ReactNode }) 
     const [allowed, setAllowed] = useState(false);
 
     useEffect(() => {
-        const role = getJwtRole();
-        if (role === 'admin') {
+        const role = getEffectiveRole();
+        if (ALLOWED_ROLES.has(role)) {
             setAllowed(true);
         } else {
-            // Non-admin: redirect immediately back to the manager Hub
+            // Not admin or manager — redirect to Hub
             router.replace('/manager');
         }
     }, [router]);
 
     if (!allowed) {
-        // Render nothing while the redirect resolves — no flash of content
         return null;
     }
 
