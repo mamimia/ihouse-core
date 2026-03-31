@@ -232,10 +232,27 @@ const ROLES_LIST = [
   { id: 'cleaner', labelKey: 'rCleaner' },
   { id: 'checkin', labelKey: 'rCheckin' },
   { id: 'checkout', labelKey: 'rCheckout' },
-  { id: 'checkin/checkout', labelKey: 'rBoth' },
   { id: 'maintenance', labelKey: 'rMaint' },
-  { id: 'op_manager', labelKey: 'rOp' }
 ];
+
+// Canonical role combination rules:
+// - cleaner is exclusive (cannot combine with any other role)
+// - maintenance is exclusive (cannot combine with any other role)
+// - checkin and checkout may combine with each other only
+const EXCLUSIVE_ROLES = new Set(['cleaner', 'maintenance']);
+
+function canonicalToggleRole(current: string[], toggled: string): string[] {
+  if (current.includes(toggled)) {
+    return current.filter(r => r !== toggled);
+  }
+  // Adding an exclusive role: remove all others
+  if (EXCLUSIVE_ROLES.has(toggled)) {
+    return [toggled];
+  }
+  // Adding checkin/checkout: remove any exclusive role first
+  const next = current.filter(r => !EXCLUSIVE_ROLES.has(r));
+  return [...next, toggled];
+}
 
 function ApplyForm() {
   const searchParams = useSearchParams();
@@ -276,6 +293,7 @@ function ApplyForm() {
   const [commsError, setCommsError] = useState(false);
   
   const [rolesLocked, setRolesLocked] = useState(false);
+  const [intendedRole, setIntendedRole] = useState<string | null>(null); // from token: 'manager' | 'worker' | etc
   const [photoUploading, setPhotoUploading] = useState(false);
   const [idPhotoUploading, setIdPhotoUploading] = useState(false);
   const [wpPhotoUploading, setWpPhotoUploading] = useState(false);
@@ -298,6 +316,8 @@ function ApplyForm() {
           setValidToken(true);
           if (data.email) { setEmail(data.email); setEmailLocked(true); }
           if (data.language) setLanguage(data.language);
+          if (data.intended_role) setIntendedRole(data.intended_role);
+          // Lock worker sub-roles only if preselected via token
           if (data.worker_roles?.length) { setWorkerRoles(data.worker_roles); setRolesLocked(true); }
         }
       })
@@ -387,8 +407,9 @@ function ApplyForm() {
   };
 
   const toggleRole = (r: string) => {
-    setWorkerRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
+    setWorkerRoles(prev => canonicalToggleRole(prev, r));
   };
+
 
   const makeUploadHandler = (setter: (url: string) => void, setUploading: (v: boolean) => void) =>
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -636,28 +657,48 @@ function ApplyForm() {
           </div>
         </div>
 
-        {/* Roles */}
-        <div>
-          <label style={labelStyle}>{rolesLocked ? t.designatedRoles : t.fRoles}</label>
-          <div style={gridTwo}>
-            {ROLES_LIST.filter(r => rolesLocked ? workerRoles.includes(r.id) : true).map(r => {
-              const selected = workerRoles.includes(r.id);
-              return (
-                <label key={r.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  cursor: rolesLocked ? 'default' : 'pointer', fontSize: 13, fontWeight: 600,
-                  padding: '10px 12px', borderRadius: 8,
-                  border: `2px solid ${selected ? '#0366d6' : '#d0d7de'}`,
-                  background: selected ? 'rgba(3,102,214,0.05)' : '#fff',
-                  color: selected ? '#0366d6' : '#24292e', minWidth: 0,
-                }}>
-                  <input type="checkbox" checked={selected} onChange={rolesLocked ? undefined : () => toggleRole(r.id)} style={{ flexShrink: 0, pointerEvents: rolesLocked ? 'none' : 'auto' }} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(t as any)[r.labelKey]}</span>
-                </label>
-              );
-            })}
+        {/* Roles — only show for worker invites; hide for manager/owner invites */}
+        {(intendedRole === 'manager') ? (
+          <div style={{ padding: '14px 16px', background: 'rgba(3,102,214,0.05)', border: '2px solid #0366d6', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#57606a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Your Role</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#0366d6' }}>🏢 Operational Manager</div>
+            <div style={{ fontSize: 12, color: '#57606a', marginTop: 4 }}>Your role has been assigned by the system administrator. No selection is needed.</div>
           </div>
-        </div>
+        ) : (intendedRole === 'owner') ? (
+          <div style={{ padding: '14px 16px', background: 'rgba(3,102,214,0.05)', border: '2px solid #0366d6', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#57606a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Your Role</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#0366d6' }}>🏠 Property Owner</div>
+            <div style={{ fontSize: 12, color: '#57606a', marginTop: 4 }}>Your role has been assigned by the system administrator. No selection is needed.</div>
+          </div>
+        ) : (
+          <div>
+            <label style={labelStyle}>{rolesLocked ? t.designatedRoles : t.fRoles}</label>
+            {/* Combination hint */}
+            {!rolesLocked && (
+              <p style={{ margin: '0 0 8px', fontSize: 11, color: '#57606a' }}>
+                Cleaner and Maintenance are exclusive roles. Check-in and Check-out may be combined.
+              </p>
+            )}
+            <div style={gridTwo}>
+              {ROLES_LIST.filter(r => rolesLocked ? workerRoles.includes(r.id) : true).map(r => {
+                const selected = workerRoles.includes(r.id);
+                return (
+                  <label key={r.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    cursor: rolesLocked ? 'default' : 'pointer', fontSize: 13, fontWeight: 600,
+                    padding: '10px 12px', borderRadius: 8,
+                    border: `2px solid ${selected ? '#0366d6' : '#d0d7de'}`,
+                    background: selected ? 'rgba(3,102,214,0.05)' : '#fff',
+                    color: selected ? '#0366d6' : '#24292e', minWidth: 0,
+                  }}>
+                    <input type="checkbox" checked={selected} onChange={rolesLocked ? undefined : () => toggleRole(r.id)} style={{ flexShrink: 0, pointerEvents: rolesLocked ? 'none' : 'auto' }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(t as any)[r.labelKey]}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Comms section header */}
         {commsError && (

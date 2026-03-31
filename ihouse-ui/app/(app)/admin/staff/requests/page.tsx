@@ -76,6 +76,10 @@ export default function PendingRequestsPage() {
   const [confirmingRejectId, setConfirmingRejectId] = useState<string | null>(null);
   const [approvalError, setApprovalError] = useState<{ id: string; message: string } | null>(null);
 
+  // Resolution history — items move here on approve/reject instead of disappearing
+  const [history, setHistory] = useState<(PendingRequest & { resolution: 'approved' | 'rejected'; resolved_at: string })[]>([]);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -123,7 +127,9 @@ export default function PendingRequestsPage() {
         body: JSON.stringify({ role, worker_roles: workerRoles, frontend_url: window.location.origin })
       });
       setConfirmingId(null);
-      // Remove from list
+      // Move to history instead of discarding
+      const resolved = requests.find(x => x.id === id);
+      if (resolved) setHistory(h => [{ ...resolved, resolution: 'approved', resolved_at: new Date().toISOString() }, ...h]);
       setRequests(r => r.filter(x => x.id !== id));
       
       if (resp.magic_link) {
@@ -158,6 +164,9 @@ export default function PendingRequestsPage() {
         method: 'POST'
       });
       setConfirmingRejectId(null);
+      // Move to history instead of discarding
+      const resolved = requests.find(x => x.id === id);
+      if (resolved) setHistory(h => [{ ...resolved, resolution: 'rejected', resolved_at: new Date().toISOString() }, ...h]);
       setRequests(r => r.filter(x => x.id !== id));
     } catch { setConfirmingRejectId(null); }
   };
@@ -331,38 +340,36 @@ export default function PendingRequestsPage() {
           <div style={{ marginBottom: 'var(--space-3)' }}>
             <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginBottom: 6, display: 'block' }}>Pre-select Role (Optional)</label>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              {/* Single roles */}
-              {['cleaner', 'checkin', 'checkout', 'maintenance'].map(r => (
+              {/* Canonical worker roles — no combined tile; each selected independently */}
+              {/* Combination rules: cleaner and maintenance are exclusive; checkin+checkout may coexist */}
+              {(['cleaner', 'checkin', 'checkout', 'maintenance'] as const).map(r => (
                 <label key={r} style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: 4, border: `1px solid ${genRoles.includes(r) ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
                   <input
                     type="checkbox"
                     checked={genRoles.includes(r)}
                     onChange={(e) => {
-                      if (e.target.checked) setGenRoles([...genRoles, r]);
-                      else setGenRoles(genRoles.filter(x => x !== r));
+                      if (e.target.checked) {
+                        // Enforce canonical combination rules
+                        const exclusiveSet = new Set(['cleaner', 'maintenance']);
+                        let next: string[];
+                        if (exclusiveSet.has(r)) {
+                          next = [r]; // exclusive: clear all others
+                        } else {
+                          next = [...genRoles.filter(x => !exclusiveSet.has(x)), r];
+                        }
+                        setGenRoles(next);
+                      } else {
+                        setGenRoles(genRoles.filter(x => x !== r));
+                      }
                     }}
                   />
                   {r.charAt(0).toUpperCase() + r.slice(1)}
                 </label>
               ))}
-              {/* Combined check-in & check-out — stores as two separate values */}
-              <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: 4, border: `1px solid ${(genRoles.includes('checkin') && genRoles.includes('checkout')) ? 'var(--color-primary)' : 'var(--color-border)'}` }}>
-                <input
-                  type="checkbox"
-                  checked={genRoles.includes('checkin') && genRoles.includes('checkout')}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      // Add both — deduplicated
-                      const next = [...genRoles.filter(x => x !== 'checkin' && x !== 'checkout'), 'checkin', 'checkout'];
-                      setGenRoles(next);
-                    } else {
-                      setGenRoles(genRoles.filter(x => x !== 'checkin' && x !== 'checkout'));
-                    }
-                  }}
-                />
-                Check-in &amp; Check-out
-              </label>
             </div>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-faint)' }}>
+              Cleaner and Maintenance are exclusive. Check-in and Check-out may be combined.
+            </p>
           </div>
         )}
         {/* Phase 1026: Manager account role context note */}
@@ -594,6 +601,57 @@ export default function PendingRequestsPage() {
           );
         })}
       </div>
+
+      {/* ── Resolution History ──────────────────────────────────────────── */}
+      {history.length > 0 && (
+        <div style={{ marginTop: 'var(--space-6)' }}>
+          <button
+            onClick={() => setHistoryExpanded(v => !v)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)',
+              display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontWeight: 600,
+            }}
+          >
+            {historyExpanded ? '▾' : '▸'} Resolved ({history.length})
+          </button>
+          {historyExpanded && (
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              {history.map(item => {
+                const wdata = item.metadata?.worker_data || {};
+                const isApproved = item.resolution === 'approved';
+                return (
+                  <div key={item.id} style={{
+                    ...cardStyle,
+                    opacity: 0.75,
+                    borderColor: isApproved ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)',
+                    background: isApproved ? 'rgba(63,185,80,0.04)' : 'rgba(248,81,73,0.04)',
+                    display: 'flex', alignItems: 'center', gap: 'var(--space-4)',
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                        {wdata.full_name || item.email}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginTop: 2 }}>
+                        {item.email} · {new Date(item.resolved_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-full)',
+                      background: isApproved ? 'rgba(63,185,80,0.12)' : 'rgba(248,81,73,0.12)',
+                      color: isApproved ? '#3fb950' : '#f85149',
+                      border: `1px solid ${isApproved ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,
+                      letterSpacing: '0.05em', flexShrink: 0,
+                    }}>
+                      {isApproved ? '✓ APPROVED' : '✕ REJECTED'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -33,7 +33,18 @@ async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers || {}),
     },
   });
-  if (!res.ok) throw new Error(`${res.status}`);
+  if (!res.ok) {
+    // Parse JSON error body so callers can access detail/message
+    let errDetail: string | undefined;
+    try {
+      const body = await res.json();
+      errDetail = body?.detail || body?.message || undefined;
+    } catch { /* ignore parse errors */ }
+    const err: any = new Error(errDetail || `${res.status}`);
+    err.status = res.status;
+    if (errDetail) err.detail = errDetail;
+    throw err;
+  }
   return res.json();
 }
 
@@ -391,6 +402,14 @@ export default function NewStaffPage() {
     if (role === 'worker' && workerRoles.length === 0) {
       setError('Select at least one worker role.'); setActiveTab(1); return;
     }
+    // Operational Manager must have at least one property assigned.
+    // A manager with no property scope is unusable — enforce this before save,
+    // not as a silent backend failure.
+    if (role === 'manager' && assignedProperties.length === 0) {
+      setError('Operational Manager must be assigned to at least one property. Select a property in the Role & Assignment tab before saving.');
+      setActiveTab(1);
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
@@ -445,7 +464,19 @@ export default function NewStaffPage() {
 
       router.push('/admin/staff?created=1');
     } catch (e: any) {
-      setError('Save failed. Please check the details and try again.');
+      // Try to surface the real backend error detail.
+      // The apiFetch above throws with message = HTTP status code (e.g. '400').
+      // Re-fetch the response body if possible, otherwise use message.
+      let msg = 'Save failed. Please check the details and try again.';
+      // Check if the error has a parsed detail from the backend
+      if (e?.detail) {
+        msg = e.detail;
+      } else if (e?.message && e.message !== '400' && e.message !== '500') {
+        msg = e.message;
+      } else if (e?.message === '400') {
+        msg = 'Save failed: one or more fields are invalid. Check that all selected properties are approved and all required fields are filled.';
+      }
+      setError(msg);
     } finally {
       setSaving(false);
     }
@@ -692,6 +723,17 @@ export default function NewStaffPage() {
                   </span>
                 )}
               </div>
+              {/* Operational Manager must have at least one property — show persistent warning */}
+              {role === 'manager' && assignedProperties.length === 0 && (
+                <div style={{
+                  background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
+                  borderRadius: 'var(--radius-md)', padding: '10px 14px',
+                  color: '#b45309', fontSize: 'var(--text-xs)', fontWeight: 600,
+                  marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  ⚠ Operational Manager requires at least one property assignment. This manager will have no operational scope until a property is assigned.
+                </div>
+              )}
               {availableProperties.length === 0 ? (
                 <div style={{ color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>
                   No approved properties found. Add properties in Settings → Properties.
@@ -845,7 +887,9 @@ export default function NewStaffPage() {
               </div>
             </div>
 
-            {/* Work Permit */}
+            {/* Work Permit — only relevant for worker-role staff */}
+            {role === 'worker' && (
+              <>
             <div style={sectionHeadStyle}>Work Permit</div>
             <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -896,6 +940,8 @@ export default function NewStaffPage() {
                 </Field>
               </div>
             </div>
+            </>
+            )}
 
             {/* Compliance Summary */}
             <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginTop: 'var(--space-2)' }}>
