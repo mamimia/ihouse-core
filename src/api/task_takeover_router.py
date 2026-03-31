@@ -1037,21 +1037,24 @@ async def manager_team(
         if caller_role == "manager":
             prop_ids = _get_manager_property_ids(db, caller_user_id)
 
-        # ── Fetch all assignments in scope ───────────────────────────────
-        q_assignments = db.table("staff_assignments").select(
-            "user_id, property_id, operational_lane, priority"
-        )
-        if prop_ids is not None:
-            q_assignments = q_assignments.in_("property_id", prop_ids)
-        all_assignments = (q_assignments.execute()).data or []
-
-        if not all_assignments and prop_ids is not None and len(prop_ids) == 0:
+        # Guard: if manager has no assigned properties, return empty immediately.
+        # Must come BEFORE the .in_() DB call — passing an empty list to
+        # supabase-py's .in_() generates invalid PostgREST syntax and crashes.
+        if prop_ids is not None and len(prop_ids) == 0:
             return JSONResponse(status_code=200, content={
                 "manager_id": caller_user_id,
                 "role": caller_role,
                 "properties": [],
                 "total_workers": 0,
             })
+
+        # ── Fetch all assignments in scope ───────────────────────────────────
+        q_assignments = db.table("staff_assignments").select(
+            "user_id, property_id, operational_lane, priority"
+        )
+        if prop_ids is not None:
+            q_assignments = q_assignments.in_("property_id", prop_ids)
+        all_assignments = (q_assignments.execute()).data or []
 
         # Collect unique worker IDs
         worker_ids = list({r["user_id"] for r in all_assignments if r.get("user_id")})
@@ -1141,7 +1144,8 @@ async def manager_team(
                         "lane": lane,
                         "priority": prio,
                         "designation": designation,
-                        "open_tasks_on_property": open_tasks,
+                        "open_tasks": open_tasks,       # frontend field name
+                        "open_tasks_on_property": open_tasks,  # legacy alias
                         "contact": {
                             "line": comm.get("line_id") or comm.get("line") or "",
                             "phone": comm.get("phone") or "",
