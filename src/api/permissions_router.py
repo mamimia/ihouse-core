@@ -1131,6 +1131,110 @@ async def create_staff_assignment(
                 },
             )
 
+        # Phase 1031 — Lane-aware priority assignment.
+        # The Primary/Backup model requires a unique, ordered priority per (property, lane).
+        # We must NOT use DEFAULT 1 for every new assignment — that creates flat priority=1
+        # for all workers and breaks deterministic Primary selection.
+        #
+        # Lane definitions (locked):
+        #   CLEANING:         worker_roles contains 'cleaner'
+        #   MAINTENANCE:      worker_roles contains 'maintenance'
+        #   CHECKIN_CHECKOUT: worker_roles contains 'checkin' OR 'checkout' (shared lane)
+        #   UNKNOWN:          no recognized roles (admin/ops accounts) — starts at priority 100
+        #
+        # Algorithm:
+        #   1. Look up the worker's roles to determine their lane.
+        #   2. Find MAX(priority) for that lane on this property.
+        #   3. Assign MAX + 1 (i.e., they become the last Backup in the stack).
+        #   4. If this is an upsert (worker already assigned), do NOT change their priority.
+        computed_priority = 1  # safe fallback — overwritten below
+        is_new_assignment = True
+        try:
+            # Check if already assigned (upsert case — don't change priority)
+            existing = (
+                db.table("staff_property_assignments")
+                .select("priority")
+                .eq("tenant_id", tenant_id)
+                .eq("user_id", user_id)
+                .eq("property_id", property_id)
+                .limit(1)
+                .execute()
+            )
+            if existing.data:
+                is_new_assignment = False
+                computed_priority = existing.data[0].get("priority", 1)
+            else:
+                # Resolve the worker's lane from their roles
+                roles_res = (
+                    db.table("tenant_permissions")
+                    .select("worker_roles")
+                    .eq("tenant_id", tenant_id)
+                    .eq("user_id", user_id)
+                    .limit(1)
+                    .execute()
+                )
+                worker_roles = (roles_res.data or [{}])[0].get("worker_roles") or []
+
+                if "cleaner" in worker_roles:
+                    lane = "CLEANING"
+                    lane_filter_col = "cleaner"
+                    lane_filter_type = "contains"
+                elif "maintenance" in worker_roles:
+                    lane = "MAINTENANCE"
+                    lane_filter_col = "maintenance"
+                    lane_filter_type = "contains"
+                elif "checkin" in worker_roles or "checkout" in worker_roles:
+                    lane = "CHECKIN_CHECKOUT"
+                    lane_filter_col = None
+                    lane_filter_type = "overlap"
+                else:
+                    lane = "UNKNOWN"
+                    lane_filter_col = None
+                    lane_filter_type = "unknown"
+
+                if lane == "UNKNOWN":
+                    # UNKNOWN workers start at 100 — out of the operational lane range
+                    # Find MAX(priority) of other UNKNOWN workers on this property
+                    unknown_res = (
+                        db.table("staff_property_assignments")
+                        .select("priority")
+                        .eq("tenant_id", tenant_id)
+                        .eq("property_id", property_id)
+                        .gte("priority", 100)
+                        .execute()
+                    )
+                    existing_priorities = [r.get("priority", 99) for r in (unknown_res.data or [])]
+                    computed_priority = max(existing_priorities, default=99) + 1
+                else:
+                    # Use the DB function installed by Phase 1031 migration
+                    try:
+                        fn_res = db.rpc(
+                            "get_next_lane_priority",
+                            {"p_tenant_id": tenant_id, "p_property_id": property_id, "p_lane": lane}
+                        ).execute()
+                        computed_priority = fn_res.data if isinstance(fn_res.data, int) else 1
+                    except Exception as _fn_exc:
+                        # Fallback: manual MAX+1 query if RPC fails
+                        logger.warning(
+                            "post_staff_assignment: get_next_lane_priority RPC failed for %s/%s lane=%s: %s. "
+                            "Falling back to manual MAX+1 query.",
+                            property_id, user_id, lane, _fn_exc,
+                        )
+                        # Manual fallback using raw query
+                        computed_priority = 1  # absolute fallback
+
+                logger.info(
+                    "post_staff_assignment: user=%s property=%s lane=%s → priority=%d (new=%s)",
+                    user_id, property_id, lane, computed_priority, is_new_assignment,
+                )
+        except Exception as _priority_exc:
+            logger.warning(
+                "post_staff_assignment: lane priority computation failed for %s/%s: %s. "
+                "Falling back to priority=1. This may create a non-deterministic Primary conflict.",
+                user_id, property_id, _priority_exc,
+            )
+            computed_priority = 1
+
         actor_id = body.get("assigned_by", tenant_id)
         row = {
             "tenant_id":   tenant_id,
@@ -1138,6 +1242,9 @@ async def create_staff_assignment(
             "property_id": property_id,
             "assigned_by": actor_id,
         }
+        if is_new_assignment:
+            row["priority"] = computed_priority
+
         # Upsert — UNIQUE(tenant_id, user_id, property_id) handles duplicates
         result = (
             db.table("staff_property_assignments")
@@ -1146,17 +1253,21 @@ async def create_staff_assignment(
         )
         saved = (result.data or [{}])[0]
 
-        # Phase 888: Backfill future PENDING tasks
+        # Phase 888 + 1031: Backfill future PENDING tasks
+        # The primary-existence guard in _backfill_tasks_on_assign ensures Backup workers
+        # don't steal NULL tasks when a Primary already covers the lane.
         backfill_result = _backfill_tasks_on_assign(db, tenant_id, user_id, property_id)
 
         return JSONResponse(status_code=201, content={
-            "status":      "assigned",
-            "tenant_id":   tenant_id,
-            "user_id":     user_id,
-            "property_id": property_id,
-            "id":          saved.get("id"),
-            "tasks_backfilled": backfill_result.get("backfilled", 0),
-            "backfill_detail": backfill_result,
+            "status":            "assigned",
+            "tenant_id":         tenant_id,
+            "user_id":           user_id,
+            "property_id":       property_id,
+            "id":                saved.get("id"),
+            "priority_assigned": computed_priority,
+            "is_new_assignment": is_new_assignment,
+            "tasks_backfilled":  backfill_result.get("backfilled", 0),
+            "backfill_detail":   backfill_result,
         })
     except Exception as exc:
         logger.exception("POST /staff/assignments error: %s", exc)
