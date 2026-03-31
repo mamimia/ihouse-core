@@ -764,6 +764,21 @@ export const api = {
         return apiFetch(`/admin/audit${q.size ? "?" + q : ""}`);
     },
 
+    // Phase 1033 — Manager audit events (identity-aware: Preview As + Act As)
+    getManagerAuditEvents: (params?: {
+        entity_type?: string;
+        entity_id?: string;
+        actor_id?: string;
+        limit?: number;
+    }): Promise<AuditEventListResponse> => {
+        const q = new URLSearchParams();
+        if (params?.entity_type) q.set("entity_type", params.entity_type);
+        if (params?.entity_id) q.set("entity_id", params.entity_id);
+        if (params?.actor_id) q.set("actor_id", params.actor_id);
+        if (params?.limit) q.set("limit", String(params.limit));
+        return apiFetch(`/manager/audit${q.size ? "?" + q : ""}`);
+    },
+
     // Phase 191 — Multi-Currency Financial Overview
     getMultiCurrencyOverview: (
         period: string,

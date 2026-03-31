@@ -80,7 +80,7 @@ export default function StreamPage() {
         if (!isAuto) setLoading(true);
         setErr('');
         try {
-            const res = await api.getAuditEvents({ limit: 100 });
+            const res = await api.getManagerAuditEvents({ limit: 100 });
             const incoming = res.events || [];
             if (isAuto) {
                 const fresh = new Set(incoming.filter(e => !prevIdsRef.current.has(e.id)).map(e => e.id));

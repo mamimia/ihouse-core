@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import DraftGuard from '@/components/DraftGuard';
-import { api, AuditEvent } from '@/lib/api';
+import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Alert classification
@@ -92,7 +92,7 @@ export default function AlertsPage() {
     const load = useCallback(async () => {
         setLoading(true); setErr('');
         try {
-            const res = await api.getAuditEvents({ limit: 200 });
+            const res = await api.getManagerAuditEvents({ limit: 100 });
             const alerts: AlertItem[] = (res.events || [])
                 .filter(e => ALERT_ACTIONS.has(e.action))
                 .map(e => ({
