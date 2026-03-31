@@ -1188,52 +1188,73 @@ async def create_staff_assignment(
                     lane_filter_col = None
                     lane_filter_type = "overlap"
                 else:
-                    lane = "UNKNOWN"
-                    lane_filter_col = None
-                    lane_filter_type = "unknown"
-
-                if lane == "UNKNOWN":
-                    # UNKNOWN workers start at 100 — out of the operational lane range
-                    # Find MAX(priority) of other UNKNOWN workers on this property
-                    unknown_res = (
-                        db.table("staff_property_assignments")
-                        .select("priority")
-                        .eq("tenant_id", tenant_id)
-                        .eq("property_id", property_id)
-                        .gte("priority", 100)
-                        .execute()
-                    )
-                    existing_priorities = [r.get("priority", 99) for r in (unknown_res.data or [])]
-                    computed_priority = max(existing_priorities, default=99) + 1
-                else:
-                    # Use the DB function installed by Phase 1031 migration
-                    try:
-                        fn_res = db.rpc(
-                            "get_next_lane_priority",
-                            {"p_tenant_id": tenant_id, "p_property_id": property_id, "p_lane": lane}
-                        ).execute()
-                        computed_priority = fn_res.data if isinstance(fn_res.data, int) else 1
-                    except Exception as _fn_exc:
-                        # Fallback: manual MAX+1 query if RPC fails
-                        logger.warning(
-                            "post_staff_assignment: get_next_lane_priority RPC failed for %s/%s lane=%s: %s. "
-                            "Falling back to manual MAX+1 query.",
-                            property_id, user_id, lane, _fn_exc,
+                    # Phase 1031c — HARD BLOCK: no valid lane = no operational assignment.
+                    # A worker without recognized worker_roles has no lane and must not
+                    # enter the Primary/Backup stack. This is not a fallback case — it is
+                    # an invalid request. Managers, owners, and no-role users accessing
+                    # this endpoint are a configuration error.
+                    #
+                    # Diagnosis: if worker_roles exists but is empty → misconfigured worker
+                    #            if no tenant_permissions row at all → ghost user
+                    if not roles_res.data:
+                        detail = (
+                            f"Worker '{user_id}' has no tenant_permissions record. "
+                            "This user does not exist in the system. "
+                            "Create the user with proper worker_roles before assigning them to a property."
                         )
-                        # Manual fallback using raw query
-                        computed_priority = 1  # absolute fallback
+                    else:
+                        detail = (
+                            f"Worker '{user_id}' has no operational lane (worker_roles is empty or unrecognized). "
+                            "A worker must have at least one of: cleaner, maintenance, checkin, checkout. "
+                            "Assign the correct worker_roles first, then create the property assignment."
+                        )
+                    logger.warning(
+                        "post_staff_assignment: BLOCKED — user=%s has no valid lane for property=%s. "
+                        "worker_roles=%s system_role=%s. Assignment rejected.",
+                        user_id, property_id, worker_roles,
+                        (roles_res.data or [{}])[0].get("role", "unknown"),
+                    )
+                    return make_error_response(
+                        status_code=400,
+                        code="NO_OPERATIONAL_LANE",
+                        extra={
+                            "detail": detail,
+                            "user_id": user_id,
+                            "property_id": property_id,
+                            "worker_roles_found": worker_roles,
+                            "valid_roles": ["cleaner", "maintenance", "checkin", "checkout"],
+                        },
+                    )
+
+                # Compute next priority via DB function
+                try:
+                    fn_res = db.rpc(
+                        "get_next_lane_priority",
+                        {"p_tenant_id": tenant_id, "p_property_id": property_id, "p_lane": lane}
+                    ).execute()
+                    computed_priority = fn_res.data if isinstance(fn_res.data, int) else 1
+                except Exception as _fn_exc:
+                    logger.warning(
+                        "post_staff_assignment: get_next_lane_priority RPC failed for %s/%s lane=%s: %s. "
+                        "Falling back to manual MAX+1 query.",
+                        property_id, user_id, lane, _fn_exc,
+                    )
+                    computed_priority = 1  # absolute fallback — RPC is best-effort
 
                 logger.info(
                     "post_staff_assignment: user=%s property=%s lane=%s → priority=%d (new=%s)",
                     user_id, property_id, lane, computed_priority, is_new_assignment,
                 )
         except Exception as _priority_exc:
-            logger.warning(
-                "post_staff_assignment: lane priority computation failed for %s/%s: %s. "
-                "Falling back to priority=1. This may create a non-deterministic Primary conflict.",
+            # If the lane-resolution block itself failed (network/DB error), do NOT
+            # silently fall back to priority=1. That would create a corrupt assignment.
+            # Instead, re-raise so the outer handler returns 500 — visible failure.
+            logger.error(
+                "post_staff_assignment: FATAL — lane resolution failed for user=%s property=%s: %s. "
+                "Assignment aborted. This is not a silent fallback.",
                 user_id, property_id, _priority_exc,
             )
-            computed_priority = 1
+            raise
 
         actor_id = body.get("assigned_by", tenant_id)
         row = {
