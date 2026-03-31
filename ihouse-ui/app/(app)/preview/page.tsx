@@ -31,7 +31,7 @@ export function PreviewPageContent() {
 
             // Canonical route map — must match admin-preview-and-act-as.md
             const PREVIEW_ROUTES: Record<string, string> = {
-                manager:          '/dashboard',
+                manager:          '/manager',
                 owner:            '/owner',
                 cleaner:          '/ops/cleaner',
                 checkin:          '/ops/checkin',

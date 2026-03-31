@@ -31,7 +31,7 @@ function getPayloadFromToken(token: string): RolePayload | null {
 /** Maps a role string to the landing route. */
 const ROLE_ROUTES: Record<string, string> = {
     admin: '/dashboard',
-    manager: '/dashboard',
+    manager: '/manager',
     ops: '/ops',
     operations: '/ops',
     worker: '/worker',
