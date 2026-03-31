@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../../../lib/api';
 import { useRouter } from 'next/navigation';
+import DraftGuard from '../../../../components/DraftGuard';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -387,12 +388,15 @@ export default function ManagerTasksPage() {
   filtered.sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
 
   if (loading) return (
-    <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>
-      Loading tasks…
-    </div>
+    <DraftGuard>
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>
+        Loading tasks…
+      </div>
+    </DraftGuard>
   );
 
   return (
+    <DraftGuard>
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
@@ -477,5 +481,6 @@ export default function ManagerTasksPage() {
         />
       )}
     </div>
+    </DraftGuard>
   );
 }

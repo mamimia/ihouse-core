@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../../../lib/api';
+import DraftGuard from '../../../../components/DraftGuard';
 
 type Worker = {
   user_id: string;
@@ -68,9 +69,10 @@ export default function ManagerTeamPage() {
 
   const totalGaps = properties.reduce((acc, p) => acc + p.coverage_gaps.length, 0);
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading team…</div>;
+  if (loading) return <DraftGuard><div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading team…</div></DraftGuard>;
 
   return (
+    <DraftGuard>
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
@@ -108,6 +110,7 @@ export default function ManagerTeamPage() {
         </div>
       )}
     </div>
+    </DraftGuard>
   );
 }
 

@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../../../lib/api';
+import DraftGuard from '../../../../components/DraftGuard';
 
 type Booking = {
   id: string;
@@ -177,9 +178,10 @@ export default function ManagerBookingsPage() {
       )
     : bookings;
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading bookings…</div>;
+  if (loading) return <DraftGuard><div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading bookings…</div></DraftGuard>;
 
   return (
+    <DraftGuard>
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 20px' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--color-text)', fontFamily: "'Manrope', sans-serif" }}>
@@ -240,6 +242,7 @@ export default function ManagerBookingsPage() {
         />
       )}
     </div>
+    </DraftGuard>
   );
 }
 

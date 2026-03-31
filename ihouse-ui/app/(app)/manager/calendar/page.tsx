@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../../../lib/api';
 import Link from 'next/link';
+import DraftGuard from '../../../../components/DraftGuard';
 
 type Booking = {
   id: string;
@@ -129,6 +130,7 @@ export default function ManagerCalendarPage() {
   const selectedTasks = selectedDate ? tasksByDate[selectedDate] || [] : [];
 
   return (
+    <DraftGuard>
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 20px' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--color-text)', fontFamily: "'Manrope', sans-serif" }}>
@@ -283,6 +285,7 @@ export default function ManagerCalendarPage() {
         </div>
       )}
     </div>
+    </DraftGuard>
   );
 }
 

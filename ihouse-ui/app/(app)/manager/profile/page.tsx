@@ -14,6 +14,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../../../lib/api';
 import { getTabToken } from '../../../../lib/tokenStore';
+import DraftGuard from '../../../../components/DraftGuard';
 
 type PermissionsMe = {
   user_id: string;
@@ -123,9 +124,10 @@ export default function ManagerProfilePage() {
   const activeCaps = me?.permissions || me?.capabilities || {};
   const grantedCaps = Object.entries(activeCaps).filter(([, v]) => v === true);
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading profile…</div>;
+  if (loading) return <DraftGuard><div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>Loading profile…</div></DraftGuard>;
 
   return (
+    <DraftGuard>
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 20px' }}>
       <h1 style={{ margin: '0 0 24px', fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--color-text)', fontFamily: "'Manrope', sans-serif" }}>
         My Profile
@@ -242,6 +244,7 @@ export default function ManagerProfilePage() {
         </p>
       </Section>
     </div>
+    </DraftGuard>
   );
 }
 
