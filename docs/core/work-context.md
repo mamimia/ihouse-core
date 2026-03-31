@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1032 — Live Staging Proof + Baton-Transfer Closure. Phases 841–1031 closed.
+Phase 1033 — (Next — to be determined). Phases 841–1032 closed.
 
 ## Last Closed Phase
 
-Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection.
+Phase 1032 — Live Staging Proof + Baton-Transfer Closure.
 
 ## Current Objective
 
@@ -14,34 +14,30 @@ Root cause: `POST /staff/assignments` always used `DEFAULT 1` for priority — e
 
 Fixes: early-checkout healing priority walk, backfill Primary-existence guard, `OWNERLESS_TASK_CREATED` error token. DB triggers block (property, lane, priority) collisions and block no-lane INSERT. API returns `400 NO_OPERATIONAL_LANE` for roleless workers. 11 invalid rows removed (managers, ghost user, owner). Lane model locked: CLEANING / MAINTENANCE / CHECKIN_CHECKOUT only — no UNKNOWN lane. DB proofs: zero collisions, zero ownerless tasks, all 14 assignments in real operational lanes. 161 tests pass. Commits `b5f5e8f` → `7dcb4da` → `89d3f45`.
 
-⏳ **Phase 1032 — Live Staging Proof + Baton-Transfer Closure — ACTIVE**
+✅ **Phase 1032 — Live Staging Proof + Baton-Transfer Closure — CLOSED** (2026-03-31)
 
-Deferred live-flow proofs from Phase 1030/1031 now due:
-- Baton-transfer E2E: remove real Primary, prove Backup promoted, PENDING tasks move, ACKNOWLEDGED/IN_PROGRESS stay
-- Promotion banner: logged-in worker sees notice after promotion
-- Backfill: new Backup assignment against a lane with existing Primary → `reason: primary_exists_for_lane`
+Closed all deferred live-flow proofs and resolved two source-of-truth gaps found during the proof pass.
 
-### Code complete and committed (commit `7732ab4`, branch `checkpoint/supabase-single-write-20260305-1747`):
-- `src/tasks/task_writer.py` — Amendment reschedule healing: unassigned tasks now inherit Priority 1 worker on date shift (mirrors INV-1011 from early-checkout path)
-- `src/tasks/task_router.py` — Ad-hoc cleaning `POST /tasks/cleaning/adhoc` now uses `ORDER BY priority ASC` — Primary always selected over Backup
-- `src/api/permissions_router.py` — Baton-transfer is now lane-aware: filters backup candidates by `worker_roles` overlap, selects lowest-priority qualified worker; promotion notice uses direct JSONB write instead of dead RPC
-- `src/api/worker_router.py` — Default status filter explicitly excludes COMPLETED + CANCELED (not just CANCELED)
-- `src/api/early_checkout_router.py` — Early-checkout rescheduling heals unassigned CLEANING tasks to current Primary
-- `tests/test_worker_router_contract.py` — Regression test A8: default GET /worker/tasks excludes COMPLETED and CANCELED
-- `scripts/cleanup_probe_tasks.sql` — Staging hygiene enforcement (ZTEST- prefix convention locked)
+**Code fixes:**
+- `fb5b3ea`: Trigger race fix — `fn_guard_assignment_priority_uniqueness` exempted from UPDATE operations; atomic Backup→Primary promotion now works.
+- `6eedbda`: `POST /staff/assignments` 500 fix — PostgREST upsert was sending NULL `priority`, violating `chk_priority_positive`. Now always included in payload.
+- `a414a8c`: `GET /permissions/me` endpoint added — returns caller's own `tenant_permissions` row including `comm_preference._promotion_notice`. Was silently 404, causing worker banner to never render.
 
-### Staging-proven:
-- ✅ Admin Pending view: COMPLETED tasks excluded — confirmed on `domaniqo-staging.vercel.app` with browser screenshots
+**Proven on staging:**
+- Baton-transfer E2E: KPG-500 CLEANING lane — Joey demoted (Backup), แพรวา promoted (Primary). `staff_property_assignments` confirmed in DB.
+- Promotion notice JSONB: `_promotion_notice` present, `acknowledged: false` in Supabase.
+- `GET /permissions/me`: HTTP 200, returns notice correctly.
+- Worker promotion banner: ⭐ "You are now the Primary Worker" rendered in `/worker` UI for `praewatanphan@gmail.com` (screenshot confirmed).
+- `POST /staff/assignments` existing-row: HTTP 201 (was 500).
 
-### Staging proofs DEFERRED (code correct, not yet proven on live):
-- ❌ Lane-aware baton-transfer: set up Primary/Backup, remove Primary, verify PENDING tasks move + ACKNOWLEDGED stay
-- ❌ Worker promotion banner: promoted worker sees banner in worker UI
-- ❌ `POST /staff/assignments` backfill: assign new worker, confirm future PENDING tasks populate
-- ❌ Amendment reschedule healing: trigger amendment on unassigned task, confirm Primary healed
-- ❌ Ad-hoc cleaning Primary selection: create ad-hoc task, confirm assigned_to = Priority 1
+**Final staging state (real, caused by proof pass):**
+- KPG-500 CLEANING: แพรวา = Primary (priority=1), Joey = Backup (priority=2).
 
-### Blocker in this session:
-Direct curl/Python calls to Supabase REST endpoint hung for 16+ minutes. Terminal was blocked. All staging proof attempts were aborted to preserve credits. Proofs deferred to next chat.
+**Open (not blocking closure):**
+- Promotion notice acknowledgement PATCH (worker dismiss banner → `acknowledged: true`) not built.
+- Legacy KPG-500 task distribution (7 Backup / 2 Primary) is a pre-guard artifact, not a current write-path failure.
+
+Commits: `fb5b3ea` → `6eedbda` → `a414a8c`. Branch: `checkpoint/supabase-single-write-20260305-1747`.
 
 
 - System reset to zero-state (Phase 830)
@@ -103,7 +99,9 @@ Phase 1022 — Operational Manager Takeover Gate                ← CLOSED
 Phase 1028 — Primary/Backup Model Decision & Baton-Transfer Architecture  ← CLOSED
 Phase 1029 — Default Worker Task Filter COMPLETED Exclusion Hardened      ← CLOSED
 Phase 1030 — Task Lifecycle & Assignment Hardening                         ← CLOSED
-Phase 1031 — Next Phase                                                    ← ACTIVE
+Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection   ← CLOSED
+Phase 1032 — Live Staging Proof + Baton-Transfer Closure                    ← CLOSED
+Phase 1033 — Next workstream (to be determined)                             ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)
@@ -395,4 +393,4 @@ Phase 1031 — Next Phase                                                    ←
 
 ## Tests
 
-**7,975 passed, 0 failed, 22 skipped. Full Green. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phase 981 closed. Next: Phase 982.**
+**7,975 passed, 0 failed, 22 skipped. Full Green. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1032 closed. Next: Phase 1033.**

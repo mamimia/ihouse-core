@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1032 — Live Staging Proof + Baton-Transfer Closure
+Phase 1033 — (Next — to be determined)
 
 ## Last Closed Phase
-Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection
+Phase 1032 — Live Staging Proof + Baton-Transfer Closure
 
 ## System Status
 
@@ -36,6 +36,14 @@ Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection
 - `89d3f45` — Canonical no-lane enforcement: trigger `fn_guard_assignment_requires_operational_lane` blocks INSERT for any worker without cleaner/maintenance/checkin/checkout. Removed 11 invalid rows (manager_not_worker ×8, ghost_no_permission_record ×2, owner_not_worker ×1). Audit table `phase_1031c_removed_assignments` created. DB proofs: invalid_rows=0, all 14 assignment rows in real operational lanes, zero priority collisions.
 - Lane model locked: CLEANING / MAINTENANCE / CHECKIN_CHECKOUT only. UNKNOWN is not a valid product concept. No operational assignment without a valid lane.
 - INV-1031-A/B/C/D added.
+
+**Phase 1032 — Live Staging Proof + Baton-Transfer Closure (3 sub-commits):**
+- `fb5b3ea` — Trigger race fix: `fn_guard_assignment_priority_uniqueness` was blocking baton-transfer promotions. Exempted UPDATE operations from the collision guard — atomic Backup→Primary promotion (priority=1) now succeeds.
+- `6eedbda` — `POST /staff/assignments` 500 fix: PostgREST upsert was sending absent `priority` as NULL, violating `chk_priority_positive`. Fixed: `permissions_router.py` always includes `priority` in upsert payload (idempotent for existing rows, lane-aware for new rows).
+- `a414a8c` — `GET /permissions/me` added to `permissions_router.py`: returns the caller's own `tenant_permissions` row including `comm_preference._promotion_notice`. Registered before `GET /permissions/{user_id}` to avoid path shadowing. Root cause of silent banner failure — endpoint was 404.
+- **Live staging proofs (all confirmed):** baton-transfer E2E (KPG-500: Joey→Backup, แพรวา→Primary), promotion notice JSONB write in DB, `GET /permissions/me` HTTP 200, worker promotion banner visible in `/worker` UI (screenshot), `POST /staff/assignments` existing-row returns 201.
+- **Final staging state:** KPG-500 CLEANING lane — แพรวา=Primary (priority=1), Joey=Backup (priority=2). This is a real live state change from the proof pass.
+- **Open (not blocking):** promotion notice acknowledgement PATCH not built; legacy KPG-500 task distribution is pre-guard artifact, not a current write-path failure.
 
 ## Deferred Items — Managed Open Items Registry
 
@@ -446,7 +454,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Phases 1021–1030 closed. Next: Phase 1031.**
+**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Phases 1021–1032 closed. Next: Phase 1033.**
 
 ## Environment Variables (continued)
 

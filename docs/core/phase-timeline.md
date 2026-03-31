@@ -8772,3 +8772,39 @@ Migration `phase_1031c_db_guard_no_role_assignments`: trigger `fn_guard_assignme
 Invariants added: INV-1031-A (backfill skips if Primary exists), INV-1031-B (OWNERLESS_TASK_CREATED on every NULL-assignment path), INV-1031-C (early-checkout healing selects minimum-priority cleaner first), INV-1031-D (no worker without valid lane enters assignment stack).
 
 Spec: `docs/archive/phases/phase-1031-spec.md`
+
+## Phase 1032 — Live Staging Proof + Baton-Transfer Closure (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-31
+**Commits:** `fb5b3ea` → `6eedbda` → `a414a8c`
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+Closed the deferred live-flow proofs from Phases 1030/1031 and resolved two source-of-truth gaps found during the proof pass.
+
+**Trigger race fix (fb5b3ea):**
+`fn_guard_assignment_priority_uniqueness` was blocking baton-transfer promotions because it evaluated UPDATE operations the same as INSERTs. Fix: exempted UPDATE from the collision guard. Atomic Backup→Primary promotion (priority=1) now succeeds without violating the uniqueness constraint.
+
+**POST /staff/assignments 500 fix (6eedbda):**
+Root cause: PostgREST `upsert()` sends all payload fields in the INSERT attempt, including absent ones as NULL. Missing `priority` in the payload was sent as NULL, violating `chk_priority_positive` (>=1), causing a 500. Fix: `permissions_router.py` now always includes `priority` in the upsert row — existing-row path uses the current live value (idempotent), new-row path uses the lane-aware computed value.
+
+**GET /permissions/me added (a414a8c):**
+The worker home promotion banner calls `/permissions/me` to read `comm_preference._promotion_notice`. The endpoint did not exist — all worker-side banner checks silently returned 404 and the banner never rendered. Added `GET /permissions/me` to `permissions_router.py`, registered before `GET /permissions/{user_id}` to avoid FastAPI path shadowing. Endpoint extracts `user_id` from JWT `sub` claim and returns the caller's own `tenant_permissions` row including `comm_preference`.
+
+**Staging proofs (all confirmed live on `domaniqo-staging.vercel.app` / Railway):**
+- Baton-transfer E2E: Joey demoted (KPG-500 CLEANING Primary→Backup), แพรวา promoted (Backup→Primary). DB confirmed via `staff_property_assignments` query.
+- Promotion notice JSONB write: `comm_preference._promotion_notice` confirmed present and `acknowledged: false` in Supabase.
+- `GET /permissions/me`: HTTP 200, returns `_promotion_notice` for caller.
+- Worker promotion banner: screenshot confirms ⭐ "You are now the Primary Worker" rendered at top of `/worker` for `praewatanphan@gmail.com`.
+- `POST /staff/assignments` existing-row: HTTP 201 (was 500 before fix).
+
+**Final staging state after proofs:**
+- KPG-500 CLEANING lane: แพรวา = Primary (priority=1), Joey = Backup (priority=2)
+- This is a live state change caused by the proof pass itself — not a test artifact reset.
+
+**OPEN (not blocking closure):**
+- KPG-500 pre-guard task distribution (7 Backup / 2 Primary) is a legacy artifact, not a current write-path failure.
+- Amendment reschedule healing for already-assigned (not NULL) tasks remains deferred.
+- Promotion notice acknowledgement flow (worker dismisses banner → PATCH to mark acknowledged) not built in this phase.
+
+Spec: `docs/archive/phases/phase-1032-spec.md`

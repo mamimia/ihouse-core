@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 520 — Live System Document Sync (2026-03-14)**
+**Last updated: Phase 1032 — Live Staging Proof + Baton-Transfer Closure (2026-03-31)**
 
 ## Core Architecture
 
@@ -505,6 +505,16 @@ All **14 providers** implemented at full parity:
 | `POST /admin/properties/{id}/reject` | Reject property (pending → rejected) | 396 |
 | `POST /admin/properties/{id}/archive` | Archive property (approved → archived) | 396 |
 | `PATCH /admin/properties/{id}` | Update mutable property fields | 397 |
+
+### Permissions (Phase 1032)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `GET /permissions` | List all permission records for tenant | 165 |
+| `GET /permissions/me` | Calling user\'s own permission record incl. `comm_preference._promotion_notice` | 1032 |
+| `GET /permissions/{user_id}` | Single permission record | 165 |
+| `POST /staff/assignments` | Upsert staff-property assignment (lane-aware, priority-aware) | 1028/1031/1032 |
+| `PATCH /staff/assignments/{id}/baton-transfer` | Lane-aware baton-transfer with promotion notice write | 1030 |
 
 ### Property Dashboard (Phase 505)
 
