@@ -39,19 +39,19 @@ const IconAdmin = <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" 
 const IconMore = <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>;
 
 const NAV_ITEMS: { key: TranslationKey; href: string; icon: React.ReactNode; roles: Role[] }[] = [
-  { key: 'nav.dashboard',   href: '/dashboard',        icon: IconDashboard, roles: ['admin', 'manager', 'owner', 'worker', 'cleaner', 'checkin', 'maintenance'] },
-  { key: 'nav.tasks',       href: '/tasks',            icon: IconTasks, roles: ['admin', 'manager', 'worker', 'cleaner', 'checkin', 'maintenance'] },
+  { key: 'nav.dashboard',   href: '/dashboard',        icon: IconDashboard,  roles: ['admin', 'owner', 'worker', 'cleaner', 'checkin', 'maintenance'] },
+  { key: 'nav.tasks',       href: '/tasks',            icon: IconTasks,      roles: ['admin', 'worker', 'cleaner', 'checkin', 'maintenance'] },
   { key: 'nav.cleaning' as TranslationKey, href: '/ops/cleaner', icon: IconCleaning, roles: ['worker', 'cleaner'] },
-  { key: 'nav.bookings',    href: '/bookings',         icon: IconBookings, roles: ['admin', 'manager', 'owner'] },
-  { key: 'nav.calendar',    href: '/calendar',         icon: IconCalendar, roles: ['admin', 'manager', 'owner'] },
-  { key: 'nav.financial',   href: '/financial',        icon: IconFinancial, roles: ['admin', 'manager', 'owner'] },
-  { key: 'nav.owner',       href: '/admin/owners',     icon: IconOwner, roles: ['admin'] },
-  { key: 'nav.manager',     href: '/manager',          icon: IconManager, roles: ['admin', 'manager'] },
-  { key: 'nav.guests',      href: '/guests',           icon: IconGuests, roles: ['admin', 'manager'] },
-  { key: 'nav.properties',  href: '/admin/properties', icon: IconProperties, roles: ['admin', 'manager'] },
-  { key: 'nav.staff',       href: '/admin/staff',      icon: IconStaff, roles: ['admin', 'manager'] },
-  { key: 'nav.admin',       href: '/admin',            icon: IconAdmin, roles: ['admin'] },
-  { key: 'nav.more',        href: '/admin/more',       icon: IconMore, roles: ['admin', 'manager'] },
+  { key: 'nav.bookings',    href: '/bookings',         icon: IconBookings,   roles: ['admin', 'owner'] },
+  { key: 'nav.calendar',    href: '/calendar',         icon: IconCalendar,   roles: ['admin', 'owner'] },
+  { key: 'nav.financial',   href: '/financial',        icon: IconFinancial,  roles: ['admin', 'owner'] },
+  { key: 'nav.owner',       href: '/admin/owners',     icon: IconOwner,      roles: ['admin'] },
+  { key: 'nav.manager',     href: '/manager',          icon: IconManager,    roles: ['admin'] },
+  { key: 'nav.guests',      href: '/guests',           icon: IconGuests,     roles: ['admin'] },
+  { key: 'nav.properties',  href: '/admin/properties', icon: IconProperties, roles: ['admin'] },
+  { key: 'nav.staff',       href: '/admin/staff',      icon: IconStaff,      roles: ['admin'] },
+  { key: 'nav.admin',       href: '/admin',            icon: IconAdmin,      roles: ['admin'] },
+  { key: 'nav.more',        href: '/admin/more',       icon: IconMore,       roles: ['admin'] },
 ];
 
 function getUserRole(): Role {

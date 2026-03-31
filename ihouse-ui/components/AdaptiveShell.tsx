@@ -19,6 +19,8 @@ import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import CompactLangSwitcher from './CompactLangSwitcher';
 import ThemeToggle from './ThemeToggle';
+import OMSidebar from './OMSidebar';
+import OMBottomNav from './OMBottomNav';
 
 const WorkerTutorial = dynamic(() => import('./WorkerTutorial'), { ssr: false });
 
@@ -40,20 +42,93 @@ export default function AdaptiveShell({ children }: AdaptiveShellProps) {
     const MOBILE_STAFF_PREFIXES = ['/worker', '/ops/cleaner', '/ops/checkin', '/ops/checkout', '/ops/maintenance'];
     const isMobileStaffRoute = MOBILE_STAFF_PREFIXES.some(p => pathname.startsWith(p));
 
-    // Phase 882b — Also bypass sidebar when preview role is active (staff preview context)
-    // This prevents the admin sidebar from rendering on pages (like /tasks) that are
-    // wrapped in MobileStaffShell by their own preview-aware logic.
+    // Phase 882b — Bypass sidebar for non-manager staff preview roles only.
+    // Manager preview gets its own OM shell (see isOMManagerContext below).
+    const STAFF_PREVIEW_ROLES = ['cleaner', 'checkin', 'checkout', 'maintenance', 'checkin_checkout', 'worker'];
     const isPreviewStaffContext = typeof window !== 'undefined' && (() => {
-        try { return !!sessionStorage.getItem('ihouse_preview_role'); } catch { return false; }
+        try {
+            const previewRole = sessionStorage.getItem('ihouse_preview_role');
+            return !!previewRole && STAFF_PREVIEW_ROLES.includes(previewRole);
+        } catch { return false; }
+    })();
+
+    // Phase 1033 Step 3 — OM Manager Shell detection.
+    // Fires ONLY when effective role === 'manager':
+    //   (a) Preview As with role=manager in sessionStorage, OR
+    //   (b) Act As token with role=manager in sessionStorage JWT, OR
+    //   (c) Direct manager JWT in localStorage (future direct manager login).
+    // Does NOT affect any other role path.
+    const isOMManagerContext = typeof window !== 'undefined' && (() => {
+        try {
+            const previewRole = sessionStorage.getItem('ihouse_preview_role');
+            if (previewRole === 'manager') return true;
+            // Check act-as or direct manager token
+            const ssToken = sessionStorage.getItem('ihouse_token');
+            const lsToken = localStorage.getItem('ihouse_token');
+            const token = ssToken ?? lsToken;
+            if (!token) return false;
+            const payload = JSON.parse(atob(token.split('.')[1] || '{}'));
+            return payload.role === 'manager';
+        } catch { return false; }
     })();
 
     if (isMobileStaffRoute || isPreviewStaffContext) {
-        // MobileStaffShell handles its own frame (dark theme, phone sim, header, nav)
-        // Each page supplies its own header/bottomNav via MobileStaffShell props
         return (
             <div style={{ flex: 1, width: '100%', minHeight: '100vh' }}>
                 {children}
             </div>
+        );
+    }
+
+    // ── OM Manager Shell — manager-specific rendering for all breakpoints ──
+    if (isOMManagerContext) {
+        if (isMobile) {
+            return (
+                <>
+                    <main style={{
+                        flex: 1,
+                        padding: 'var(--space-4)',
+                        paddingTop: 'var(--space-4)',
+                        paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 8px))',
+                        maxWidth: '100%',
+                        minHeight: '100vh',
+                    }}>
+                        {children}
+                    </main>
+                    <OMBottomNav />
+                </>
+            );
+        }
+        if (isTablet) {
+            return (
+                <>
+                    <OMSidebar collapsed />
+                    <main style={{
+                        marginInlineStart: '64px',
+                        flex: 1,
+                        padding: 'var(--space-6)',
+                        maxWidth: 'var(--content-max)',
+                        minHeight: '100vh',
+                    }}>
+                        {children}
+                    </main>
+                </>
+            );
+        }
+        // Desktop
+        return (
+            <>
+                <OMSidebar />
+                <main style={{
+                    marginInlineStart: '220px',
+                    flex: 1,
+                    padding: 'var(--space-8)',
+                    maxWidth: 'var(--content-max)',
+                    minHeight: '100vh',
+                }}>
+                    {children}
+                </main>
+            </>
         );
     }
 
