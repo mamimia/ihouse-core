@@ -217,6 +217,22 @@ class TestGroupA_GetValidation:
             resp = c.get("/worker/tasks?status=PENDING")
         assert resp.status_code == 200
 
+    def test_a8_default_excludes_completed_and_canceled(self) -> None:
+        """A8: No status filter → excludes COMPLETED and CANCELED."""
+        c = _make_app()
+        db = _mock_db_list([_task_row()])
+        with patch("api.worker_router._get_supabase_client", return_value=db):
+            c.get("/worker/tasks")
+        
+        # In worker_router.py line 218: query = query.in_("status", ["PENDING", "ACKNOWLEDGED", "IN_PROGRESS"])
+        # We verify that .in_ was called with those exact statuses
+        called_in = False
+        for call in db.table.return_value.select.return_value.in_.call_args_list:
+            if call[0] == ("status", ["PENDING", "ACKNOWLEDGED", "IN_PROGRESS"]):
+                called_in = True
+        assert called_in, "Must explicitly filter for active statuses to exclude COMPLETED/CANCELED"
+
+
 
 # ===========================================================================
 # Group B — GET response shape

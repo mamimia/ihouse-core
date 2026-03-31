@@ -399,9 +399,54 @@ def reschedule_tasks_for_booking_amended(
 
         now = datetime.now(tz=timezone.utc).isoformat()
         rescheduled = 0
+
+        # Phase 1030-guard: If any rescheduled task has no assigned worker,
+        # try to heal the assignment using the current Primary for this property.
+        assignment_map = {}
+        unassigned_tasks = [t for t in existing_tasks if not t.assigned_to and t.task_id in {a.task_id for a in actions}]
+        if unassigned_tasks:
+            try:
+                property_id = existing_tasks[0].property_id
+                result_assign = (
+                    db.table("staff_property_assignments")
+                    .select("user_id, priority")
+                    .eq("tenant_id", tenant_id)
+                    .eq("property_id", property_id)
+                    .order("priority", desc=False)
+                    .execute()
+                )
+                assigned_user_ids = [r["user_id"] for r in (result_assign.data or [])]
+                if assigned_user_ids:
+                    result_perms = (
+                        db.table("tenant_permissions")
+                        .select("user_id, worker_roles")
+                        .eq("tenant_id", tenant_id)
+                        .in_("user_id", assigned_user_ids)
+                        .execute()
+                    )
+                    user_roles_map = {r["user_id"]: (r.get("worker_roles") or []) for r in (result_perms.data or [])}
+                    roles_needed = {t.worker_role.value for t in unassigned_tasks}
+                    for role_val in roles_needed:
+                        role_normalized = role_val.lower()
+                        for uid in assigned_user_ids:
+                            if role_normalized in user_roles_map.get(uid, []):
+                                assignment_map[role_val] = uid
+                                break
+            except Exception as _exc:
+                logger.warning("task_writer: failed to build healing assignment_map for amended booking_id=%s: %s", booking_id, _exc)
+
         for action in actions:
+            update_payload = {"due_date": action.new_due_date, "updated_at": now}
+            
+            task_obj = next((t for t in existing_tasks if t.task_id == action.task_id), None)
+            if task_obj and not task_obj.assigned_to:
+                healed_worker = assignment_map.get(task_obj.worker_role.value)
+                if healed_worker:
+                    update_payload["assigned_to"] = healed_worker
+                    logger.info("task_writer: healed unassigned task=%s (role=%s) during amendment", action.task_id, task_obj.worker_role.value)
+
             db.table("tasks").update(
-                {"due_date": action.new_due_date, "updated_at": now}
+                update_payload
             ).eq("task_id", action.task_id).eq("tenant_id", tenant_id).execute()
             rescheduled += 1
 
