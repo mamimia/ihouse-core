@@ -53,6 +53,10 @@ const PUBLIC_PREFIXES = [
     '/invite',
     '/staff',
     '/self-checkin',  // Phase 1016: guest self check-in portal — token-gated, no login required
+    '/preview',       // Phase 846/867: Preview As landing — session bootstrap redirect, not a content page.
+                      // Protected upstream by admin-only PreviewAsSelector. No cookie needed here.
+    '/act-as',        // Phase 864/870: Act As landing — receives scoped JWT as URL param, stores it,
+                      // then redirects to role surface. Requires valid act_as JWT in URL, not cookie.
 ];
 
 function isPublicRoute(pathname: string): boolean {
