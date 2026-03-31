@@ -1,10 +1,11 @@
 """
-Phases 710–712, 1022 — Task Takeover (Manager/Admin)
-=====================================================
+Phases 710–712, 1022, 1033 — Task Takeover & Management (Manager/Admin)
+=======================================================================
 
 Phase 1022 hardening of the Phase 710 skeleton.
+Phase 1033 expansion: Task notes, manager alerts, team overview, and flexible reassign.
 
-Canonical model (Phase 1022):
+Canonical model (Phase 1022/1033):
     - Operational Manager (role='manager') is the PRIMARY takeover actor.
     - Admin (role='admin') is the FALLBACK takeover actor.
     - Both use the identical endpoint, state machine, and audit trail.
@@ -33,17 +34,21 @@ After takeover:
 Worker notification (Phase 711 / 1022):
     Informational tone: "This task is now being handled by [Manager]."
 
-Reassign endpoint (Phase 1022):
+Reassign endpoint (Phase 1022/1033):
     POST /tasks/{task_id}/reassign
     - Returns task to PENDING with new assigned_to (or null = open pool)
+    - Works on any in-flight status (including MANAGER_EXECUTING)
     - Same task continues — no new task created
     - Full history preserved in task_actions
 
 Endpoints:
     POST /tasks/{task_id}/take-over  — manager/admin takes over task
     POST /tasks/{task_id}/reassign   — manager/admin releases to new worker
+    POST /tasks/{task_id}/notes      — add manager-specific notes
     GET  /tasks/{task_id}/context    — full task context for execution
     GET  /manager/tasks              — manager's task board
+    GET  /manager/alerts             — manager-specific task alerts
+    GET  /manager/team-overview      — status of all workers/tasks
 """
 from __future__ import annotations
 
@@ -56,7 +61,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth
+from api.auth import jwt_auth, jwt_identity
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -391,10 +396,13 @@ async def reassign_task(
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
 
         task = task_rows[0]
-        if task.get("status") != "MANAGER_EXECUTING":
+        # Phase 1033: reassign works on any active in-flight status
+        # (PENDING / ACKNOWLEDGED / IN_PROGRESS / MANAGER_EXECUTING)
+        _REASSIGN_ELIGIBLE = frozenset({"PENDING", "ACKNOWLEDGED", "IN_PROGRESS", "MANAGER_EXECUTING"})
+        if task.get("status") not in _REASSIGN_ELIGIBLE:
             return make_error_response(
                 400, ErrorCode.VALIDATION_ERROR,
-                extra={"detail": f"Can only reassign a MANAGER_EXECUTING task (current: {task.get('status')})."},
+                extra={"detail": f"Can only reassign an active task (current: {task.get('status')})."},
             )
 
         now = _now_iso()
@@ -641,7 +649,7 @@ async def get_task_context(
     summary="Manager task board — all open tasks for supervised properties (Phase 1022)",
 )
 async def manager_task_board(
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -649,6 +657,11 @@ async def manager_task_board(
 
     Returns all open tasks for the manager's supervised properties, grouped by status.
     Also includes tasks currently MANAGER_EXECUTING by this manager.
+
+    Phase 1033 fix: uses jwt_identity (not jwt_auth) so that:
+      - Preview As (X-Preview-Role: manager) correctly resolves role='manager'
+      - Act As tokens (token_type=act_as, role=manager) correctly resolve role='manager'
+      - No secondary DB lookup for role — the auth layer already resolved it
 
     Scoping:
         - manager role: tasks on their assigned properties only
@@ -662,7 +675,11 @@ async def manager_task_board(
     """
     try:
         db = client if client is not None else _get_db()
-        caller_role = _get_caller_role(db, tenant_id)
+
+        # Role comes directly from the auth layer (preview overlay + act_as already applied)
+        caller_role = str(identity.get("role", "worker")).strip()
+        # For DB scoping, use user_id (the actual user UUID, = JWT sub)
+        caller_user_id = str(identity.get("user_id") or identity.get("tenant_id", "")).strip()
 
         if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
             return make_error_response(
@@ -684,10 +701,10 @@ async def manager_task_board(
 
         # Scope: manager → their properties only; admin → all
         if caller_role == "manager":
-            prop_ids = _get_manager_property_ids(db, tenant_id)
+            prop_ids = _get_manager_property_ids(db, caller_user_id)
             if not prop_ids:
                 return JSONResponse(status_code=200, content={
-                    "manager_id": tenant_id,
+                    "manager_id": caller_user_id,
                     "role": caller_role,
                     "groups": {
                         "manager_executing": [],
@@ -710,11 +727,12 @@ async def manager_task_board(
             "in_progress": [],
         }
 
+
         for t in tasks:
             status = str(t.get("status", "")).upper()
             # MANAGER_EXECUTING tasks: show all (admin sees all; manager sees their own)
             if status == "MANAGER_EXECUTING":
-                if caller_role == "admin" or t.get("taken_over_by") == tenant_id:
+                if caller_role == "admin" or t.get("taken_over_by") == caller_user_id:
                     groups["manager_executing"].append(t)
             elif status == "PENDING":
                 groups["pending"].append(t)
@@ -726,7 +744,7 @@ async def manager_task_board(
         total = sum(len(v) for v in groups.values())
 
         return JSONResponse(status_code=200, content={
-            "manager_id": tenant_id,
+            "manager_id": caller_user_id,
             "role": caller_role,
             "groups": groups,
             "total": total,
@@ -734,4 +752,430 @@ async def manager_task_board(
 
     except Exception as exc:
         logger.exception("manager_task_board error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
+# Phase 1033 — POST /tasks/{task_id}/notes
+# Operational note on a task (overlay, not booking core)
+# ===========================================================================
+
+@router.post(
+    "/tasks/{task_id}/notes",
+    summary="Add an operational note to a task (Phase 1033)",
+)
+async def add_task_note(
+    task_id: str,
+    body: Dict[str, Any],
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    POST /tasks/{task_id}/notes
+
+    Adds an operational note to a task. Notes are stored in task_actions
+    with action=OPERATIONAL_NOTE and are visible to managers and admins.
+    Workers do NOT receive a notification for notes.
+
+    Body:
+        note  (required) — free-text operational note
+    """
+    note = str(body.get("note") or "").strip()
+    if not note:
+        return make_error_response(
+            400, ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "'note' is required."},
+        )
+
+    try:
+        db = client if client is not None else _get_db()
+        caller_role = _get_caller_role(db, tenant_id)
+        if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
+            return make_error_response(
+                403, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "Only managers and admins can add task notes."},
+            )
+
+        # Verify task exists and belongs to supervised properties (manager scope)
+        task_res = db.table("tasks").select("id, status, property_id").eq("id", task_id).limit(1).execute()
+        task_rows = task_res.data or []
+        if not task_rows:
+            return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
+
+        task = task_rows[0]
+        if caller_role == "manager":
+            prop_ids = _get_manager_property_ids(db, tenant_id)
+            if task.get("property_id") not in prop_ids:
+                return make_error_response(
+                    403, ErrorCode.VALIDATION_ERROR,
+                    extra={"detail": "Task does not belong to a supervised property."},
+                )
+
+        now = _now_iso()
+        note_id = _action_id("NOTE", task_id, now)
+
+        db.table("task_actions").insert({
+            "id": note_id,
+            "task_id": task_id,
+            "action": "OPERATIONAL_NOTE",
+            "performed_by": tenant_id,
+            "details": {
+                "note": note,
+                "added_by": tenant_id,
+                "caller_role": caller_role,
+            },
+            "created_at": now,
+        }).execute()
+
+        return JSONResponse(status_code=201, content={
+            "note_id": note_id,
+            "task_id": task_id,
+            "note": note,
+            "added_by": tenant_id,
+            "created_at": now,
+        })
+
+    except Exception as exc:
+        logger.exception("add_task_note error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
+# Phase 1033 — GET /manager/alerts
+# Alert stream: critical/overdue tasks and coverage gaps
+# ===========================================================================
+
+@router.get(
+    "/manager/alerts",
+    summary="Manager alert stream — overdue critical tasks + coverage gaps (Phase 1033)",
+)
+async def manager_alerts(
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    GET /manager/alerts
+
+    Returns alerts for the manager's supervised properties:
+    - CRITICAL tasks that are overdue (due_date < now, status not COMPLETED/CANCELED)
+    - HIGH priority tasks overdue
+    - Tasks that are PENDING and have no assigned_to (open pool / uncovered)
+    - Properties with no Primary worker in a lane (coverage gap)
+
+    Scoping: manager → supervised properties; admin → all.
+    """
+    try:
+        db = client if client is not None else _get_db()
+        caller_role = _get_caller_role(db, tenant_id)
+
+        if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
+            return make_error_response(
+                403, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "Only managers and admins can view alerts."},
+            )
+
+        prop_ids: Optional[List[str]] = None
+        if caller_role == "manager":
+            prop_ids = _get_manager_property_ids(db, tenant_id)
+
+        now_str = _now_iso()
+        alerts: List[Dict[str, Any]] = []
+
+        # ── Overdue CRITICAL tasks ───────────────────────────────────────
+        try:
+            q = (
+                db.table("tasks")
+                .select("id, task_kind, status, priority, property_id, assigned_to, due_date, title")
+                .in_("status", ["PENDING", "ACKNOWLEDGED", "IN_PROGRESS", "MANAGER_EXECUTING"])
+                .eq("priority", "CRITICAL")
+                .lt("due_date", now_str)
+            )
+            if prop_ids is not None:
+                q = q.in_("property_id", prop_ids)
+            overdue_critical = (q.order("due_date", desc=False).limit(50).execute()).data or []
+            for t in overdue_critical:
+                alerts.append({
+                    "type": "OVERDUE_CRITICAL",
+                    "severity": "critical",
+                    "task_id": t["id"],
+                    "title": t.get("title") or t.get("task_kind"),
+                    "property_id": t.get("property_id"),
+                    "status": t.get("status"),
+                    "due_date": t.get("due_date"),
+                    "assigned_to": t.get("assigned_to"),
+                })
+        except Exception:
+            pass
+
+        # ── Overdue HIGH tasks ───────────────────────────────────────────
+        try:
+            q = (
+                db.table("tasks")
+                .select("id, task_kind, status, priority, property_id, assigned_to, due_date, title")
+                .in_("status", ["PENDING", "ACKNOWLEDGED", "IN_PROGRESS"])
+                .eq("priority", "HIGH")
+                .lt("due_date", now_str)
+            )
+            if prop_ids is not None:
+                q = q.in_("property_id", prop_ids)
+            overdue_high = (q.order("due_date", desc=False).limit(30).execute()).data or []
+            for t in overdue_high:
+                alerts.append({
+                    "type": "OVERDUE_HIGH",
+                    "severity": "high",
+                    "task_id": t["id"],
+                    "title": t.get("title") or t.get("task_kind"),
+                    "property_id": t.get("property_id"),
+                    "status": t.get("status"),
+                    "due_date": t.get("due_date"),
+                    "assigned_to": t.get("assigned_to"),
+                })
+        except Exception:
+            pass
+
+        # ── PENDING tasks with no assigned_to (uncovered) ───────────────
+        try:
+            q = (
+                db.table("tasks")
+                .select("id, task_kind, status, priority, property_id, due_date, title")
+                .eq("status", "PENDING")
+                .is_("assigned_to", "null")
+            )
+            if prop_ids is not None:
+                q = q.in_("property_id", prop_ids)
+            uncovered = (q.order("due_date", desc=False).limit(20).execute()).data or []
+            for t in uncovered:
+                alerts.append({
+                    "type": "TASK_UNCOVERED",
+                    "severity": "warning",
+                    "task_id": t["id"],
+                    "title": t.get("title") or t.get("task_kind"),
+                    "property_id": t.get("property_id"),
+                    "status": t.get("status"),
+                    "due_date": t.get("due_date"),
+                    "assigned_to": None,
+                })
+        except Exception:
+            pass
+
+        # ── Coverage gaps: properties with no priority=1 in a lane ──────
+        try:
+            lanes = ["CLEANING", "MAINTENANCE", "CHECKIN_CHECKOUT"]
+            q_assignments = db.table("staff_assignments").select(
+                "property_id, operational_lane, priority"
+            )
+            if prop_ids is not None:
+                q_assignments = q_assignments.in_("property_id", prop_ids)
+            all_assignments = (q_assignments.execute()).data or []
+
+            # Build: {(property_id, lane)} → min priority
+            min_prio: Dict[tuple, int] = {}
+            for row in all_assignments:
+                key = (row["property_id"], row.get("operational_lane"))
+                cur = min_prio.get(key, 9999)
+                min_prio[key] = min(cur, row.get("priority") or 9999)
+
+            # Properties in scope
+            scope_props = prop_ids or list({r["property_id"] for r in all_assignments})
+            for p in scope_props:
+                for lane in lanes:
+                    key = (p, lane)
+                    if min_prio.get(key, 9999) > 1:
+                        alerts.append({
+                            "type": "COVERAGE_GAP",
+                            "severity": "warning",
+                            "property_id": p,
+                            "lane": lane,
+                            "detail": f"No Primary worker (priority=1) for {lane} lane on {p}.",
+                        })
+        except Exception:
+            pass
+
+        return JSONResponse(status_code=200, content={
+            "manager_id": tenant_id,
+            "role": caller_role,
+            "alert_count": len(alerts),
+            "alerts": alerts,
+        })
+
+    except Exception as exc:
+        logger.exception("manager_alerts error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
+# Phase 1033 — GET /manager/team
+# Team overview: workers, task load, coverage gaps per property+lane
+# ===========================================================================
+
+@router.get(
+    "/manager/team",
+    summary="Manager team overview — worker load + coverage gaps (Phase 1033)",
+)
+async def manager_team(
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    GET /manager/team
+
+    Returns for each supervised property:
+    - All assigned workers with their Primary/Backup designation per lane
+    - Each worker's current task status (how many PENDING/IN_PROGRESS tasks)
+    - Contact info from comm_preference
+    - Coverage gaps (missing Primary in a lane)
+
+    Scoping: manager → supervised properties; admin → all.
+    """
+    try:
+        db = client if client is not None else _get_db()
+        caller_role = _get_caller_role(db, tenant_id)
+
+        if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
+            return make_error_response(
+                403, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "Only managers and admins can view team overview."},
+            )
+
+        prop_ids: Optional[List[str]] = None
+        if caller_role == "manager":
+            prop_ids = _get_manager_property_ids(db, tenant_id)
+
+        # ── Fetch all assignments in scope ───────────────────────────────
+        q_assignments = db.table("staff_assignments").select(
+            "user_id, property_id, operational_lane, priority"
+        )
+        if prop_ids is not None:
+            q_assignments = q_assignments.in_("property_id", prop_ids)
+        all_assignments = (q_assignments.execute()).data or []
+
+        if not all_assignments and prop_ids is not None and len(prop_ids) == 0:
+            return JSONResponse(status_code=200, content={
+                "manager_id": tenant_id,
+                "role": caller_role,
+                "properties": [],
+                "total_workers": 0,
+            })
+
+        # Collect unique worker IDs
+        worker_ids = list({r["user_id"] for r in all_assignments if r.get("user_id")})
+        scope_props = list({r["property_id"] for r in all_assignments if r.get("property_id")})
+
+        # ── Fetch worker permission records (display_name, comm_preference, role) ─
+        worker_data: Dict[str, Dict] = {}
+        if worker_ids:
+            try:
+                perm_res = (
+                    db.table("tenant_permissions")
+                    .select("user_id, display_name, role, comm_preference, is_active")
+                    .in_("user_id", worker_ids)
+                    .execute()
+                )
+                for row in (perm_res.data or []):
+                    worker_data[row["user_id"]] = row
+            except Exception:
+                pass
+
+        # ── Fetch open task counts per worker per property ───────────────
+        task_counts: Dict[str, Dict[str, int]] = {}  # {worker_id: {property_id: count}}
+        if worker_ids:
+            try:
+                tasks_res = (
+                    db.table("tasks")
+                    .select("assigned_to, property_id, status")
+                    .in_("assigned_to", worker_ids)
+                    .in_("status", ["PENDING", "ACKNOWLEDGED", "IN_PROGRESS", "MANAGER_EXECUTING"])
+                    .execute()
+                )
+                for t in (tasks_res.data or []):
+                    wid = t.get("assigned_to") or ""
+                    pid = t.get("property_id") or ""
+                    if wid not in task_counts:
+                        task_counts[wid] = {}
+                    task_counts[wid][pid] = task_counts[wid].get(pid, 0) + 1
+            except Exception:
+                pass
+
+        # ── Build per-property output ────────────────────────────────────
+        lanes = ["CLEANING", "MAINTENANCE", "CHECKIN_CHECKOUT"]
+
+        # Group assignments by property
+        prop_workers: Dict[str, List[Dict]] = {p: [] for p in scope_props}
+        for row in all_assignments:
+            prop_workers.setdefault(row["property_id"], []).append(row)
+
+        properties_out = []
+        for p in scope_props:
+            workers_in_prop = prop_workers.get(p, [])
+
+            # Build lane coverage map: lane → {priority: user_id}
+            lane_coverage: Dict[str, Dict[int, str]] = {lane: {} for lane in lanes}
+            for row in workers_in_prop:
+                lane = row.get("operational_lane") or ""
+                prio = row.get("priority") or 99
+                uid = row.get("user_id") or ""
+                if lane in lane_coverage:
+                    lane_coverage[lane][prio] = uid
+
+            coverage_gaps = [
+                lane for lane in lanes
+                if 1 not in lane_coverage.get(lane, {})
+            ]
+
+            # Build worker list for this property
+            workers_out = []
+            seen_workers = set()
+            for row in sorted(workers_in_prop, key=lambda r: (r.get("operational_lane") or "", r.get("priority") or 99)):
+                uid = row.get("user_id") or ""
+                lane = row.get("operational_lane") or ""
+                prio = row.get("priority") or 99
+                winfo = worker_data.get(uid, {})
+                comm = winfo.get("comm_preference") or {}
+                open_tasks = (task_counts.get(uid) or {}).get(p, 0)
+                designation = "Primary" if prio == 1 else ("Backup" if prio == 2 else f"Priority {prio}")
+
+                entry_key = (uid, lane)
+                if entry_key not in seen_workers:
+                    seen_workers.add(entry_key)
+                    workers_out.append({
+                        "user_id": uid,
+                        "display_name": winfo.get("display_name") or uid,
+                        "role": winfo.get("role") or "worker",
+                        "is_active": winfo.get("is_active", True),
+                        "lane": lane,
+                        "priority": prio,
+                        "designation": designation,
+                        "open_tasks_on_property": open_tasks,
+                        "contact": {
+                            "line": comm.get("line_id") or comm.get("line") or "",
+                            "phone": comm.get("phone") or "",
+                            "email": comm.get("email") or "",
+                        },
+                    })
+
+            properties_out.append({
+                "property_id": p,
+                "workers": workers_out,
+                "lane_coverage": {
+                    lane: {
+                        "has_primary": 1 in lane_coverage.get(lane, {}),
+                        "primary_user_id": lane_coverage.get(lane, {}).get(1),
+                        "backup_user_id": lane_coverage.get(lane, {}).get(2),
+                    }
+                    for lane in lanes
+                },
+                "coverage_gaps": coverage_gaps,
+            })
+
+        total_workers = len({r["user_id"] for r in all_assignments if r.get("user_id")})
+
+        return JSONResponse(status_code=200, content={
+            "manager_id": tenant_id,
+            "role": caller_role,
+            "properties": properties_out,
+            "total_workers": total_workers,
+        })
+
+    except Exception as exc:
+        logger.exception("manager_team error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR)
