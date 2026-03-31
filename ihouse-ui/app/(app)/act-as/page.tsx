@@ -17,9 +17,9 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { setActAsTabToken } from '../../../lib/tokenStore';
 
-/** Canonical route map — must match admin-preview-and-act-as.md and ROLE_ROUTES in ActAsSelector */
+/** Canonical route map — must match admin-preview-and-act-as.md, roleRoute.ts, and preview/page.tsx */
 const ROLE_ROUTES: Record<string, string> = {
-    manager:          '/dashboard',
+    manager:          '/manager',
     owner:            '/owner',
     cleaner:          '/ops/cleaner',
     checkin:          '/ops/checkin',

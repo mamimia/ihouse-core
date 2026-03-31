@@ -13,8 +13,14 @@ const BASE_URL =
 // Auth
 // ---------------------------------------------------------------------------
 
-let _token: string | null =
-    typeof window !== "undefined" ? localStorage.getItem("ihouse_token") : null;
+// Phase 865 — Token read priority: sessionStorage first (Act As tab), localStorage fallback (normal login).
+// This mirrors getTabToken() from tokenStore.ts. Previously only localStorage was read here,
+// causing Act As tabs — which store their scoped JWT in sessionStorage only — to fire all API
+// calls with no Authorization header (backend 401 → page fails to load → login bounce).
+let _token: string | null = (() => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('ihouse_token') ?? localStorage.getItem('ihouse_token');
+})();
 
 export function setToken(token: string) {
     _token = token;
