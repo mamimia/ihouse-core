@@ -1,22 +1,38 @@
 ## Current Active Phase
 
-Phase 1023 — Next Phase. Phases 841–1022 closed.
+Phase 1030 — Task Lifecycle & Assignment Hardening. Phases 841–1029 closed.
 
 ## Last Closed Phase
 
-Phase 1022 — Operational Manager Takeover Gate.
+Phase 1029 — Default Worker Task Filter (COMPLETED exclusion hardened).
 
 ## Current Objective
 
-✅ **Phase 1022 — Operational Manager Takeover Gate — CLOSED**
-- Task model extended: `MANAGER_EXECUTING`, audit fields, `VALID_TASK_TRANSITIONS` updated
-- Takeover router: permission-guarded by role + property scope
-- Manager Task Board + Takeover Modal + responsive execution drawer
-- All 4 worker wizards embedded in manager drawer via `TaskWizardRouter`
-- Build clean. Staging deployed: commit `91f7114`
+⏳ **Phase 1030 — Task Lifecycle & Assignment Hardening — IN PROGRESS**
 
-⏳ **Single open item for Phase 1023 start:**
-- Staging visual verification of embedded wizards — requires dev-login credentials (browser automation blocked this session). Complete with: TENANT ID you provided to dev-login, SECRET, ROLE=Admin or Manager.
+### Code complete and committed (commit `7732ab4`, branch `checkpoint/supabase-single-write-20260305-1747`):
+- `src/tasks/task_writer.py` — Amendment reschedule healing: unassigned tasks now inherit Priority 1 worker on date shift (mirrors INV-1011 from early-checkout path)
+- `src/tasks/task_router.py` — Ad-hoc cleaning `POST /tasks/cleaning/adhoc` now uses `ORDER BY priority ASC` — Primary always selected over Backup
+- `src/api/permissions_router.py` — Baton-transfer is now lane-aware: filters backup candidates by `worker_roles` overlap, selects lowest-priority qualified worker; promotion notice uses direct JSONB write instead of dead RPC
+- `src/api/worker_router.py` — Default status filter explicitly excludes COMPLETED + CANCELED (not just CANCELED)
+- `src/api/early_checkout_router.py` — Early-checkout rescheduling heals unassigned CLEANING tasks to current Primary
+- `tests/test_worker_router_contract.py` — Regression test A8: default GET /worker/tasks excludes COMPLETED and CANCELED
+- `scripts/cleanup_probe_tasks.sql` — Staging hygiene enforcement (ZTEST- prefix convention locked)
+
+### Staging-proven:
+- ✅ Admin Pending view: COMPLETED tasks excluded — confirmed on `domaniqo-staging.vercel.app` with browser screenshots
+
+### Staging proofs DEFERRED (code correct, not yet proven on live):
+- ❌ Lane-aware baton-transfer: set up Primary/Backup, remove Primary, verify PENDING tasks move + ACKNOWLEDGED stay
+- ❌ Worker promotion banner: promoted worker sees banner in worker UI
+- ❌ `POST /staff/assignments` backfill: assign new worker, confirm future PENDING tasks populate
+- ❌ Amendment reschedule healing: trigger amendment on unassigned task, confirm Primary healed
+- ❌ Ad-hoc cleaning Primary selection: create ad-hoc task, confirm assigned_to = Priority 1
+
+### Blocker in this session:
+Direct curl/Python calls to Supabase REST endpoint hung for 16+ minutes. Terminal was blocked. All staging proof attempts were aborted to preserve credits. Proofs deferred to next chat.
+
+
 - System reset to zero-state (Phase 830)
 - Auth E2E proven: dev-login → JWT → API access
 - Task lifecycle policy: no production delete, CANCELLED + canceled_reason
