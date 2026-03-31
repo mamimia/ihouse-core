@@ -1262,9 +1262,13 @@ async def create_staff_assignment(
             "user_id":     user_id,
             "property_id": property_id,
             "assigned_by": actor_id,
+            # Phase 1032 fix: always include priority in the upsert payload.
+            # PostgREST upsert sends all payload fields in the INSERT attempt —
+            # missing fields become NULL which violates chk_priority_positive.
+            # computed_priority is always set: existing-row uses current value
+            # (idempotent update), new-row uses the lane-aware computed value.
+            "priority":    computed_priority,
         }
-        if is_new_assignment:
-            row["priority"] = computed_priority
 
         # Upsert — UNIQUE(tenant_id, user_id, property_id) handles duplicates
         result = (
