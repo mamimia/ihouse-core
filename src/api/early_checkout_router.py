@@ -288,14 +288,62 @@ def _reschedule_cleaning_task(
         task_id = task["task_id"]
         original_due = task["due_date"]
 
-        db.table("tasks").update({
+        update_payload = {
             "due_date":          early_date,
             "is_early_checkout": True,
             "original_due_date": original_due,
             "priority":          "HIGH",
             "urgency":           "urgent",
             "updated_at":        _now_iso(),
-        }).eq("task_id", task_id).eq("tenant_id", tenant_id).execute()
+        }
+
+        # Phase 1030-guard: If the CLEANING task has no assigned worker (was created
+        # without a Primary cleaner), try to heal the assignment now using the
+        # current Primary cleaner for this property. Early checkout is a critical
+        # operational trigger — if someone is moving the date, they need a cleaner.
+        if not task.get("assigned_to"):
+            try:
+                prop_res = (
+                    db.table("tasks")
+                    .select("property_id, tenant_id")
+                    .eq("task_id", task_id)
+                    .limit(1)
+                    .execute()
+                )
+                prop_row = (prop_res.data or [{}])[0]
+                _prop_id = prop_row.get("property_id")
+                _tenant_id = prop_row.get("tenant_id")
+                if _prop_id and _tenant_id:
+                    assign_res = (
+                        db.table("staff_property_assignments")
+                        .select("user_id")
+                        .eq("tenant_id", _tenant_id)
+                        .eq("property_id", _prop_id)
+                        .order("priority", desc=False)
+                        .limit(10)
+                        .execute()
+                    )
+                    candidate_ids = [r["user_id"] for r in (assign_res.data or [])]
+                    if candidate_ids:
+                        roles_res = (
+                            db.table("tenant_permissions")
+                            .select("user_id, worker_roles")
+                            .eq("tenant_id", _tenant_id)
+                            .in_("user_id", candidate_ids)
+                            .execute()
+                        )
+                        for r in (roles_res.data or []):
+                            if "cleaner" in (r.get("worker_roles") or []):
+                                update_payload["assigned_to"] = r["user_id"]
+                                logger.info(
+                                    "early_checkout: healed unassigned CLEANING task=%s → assigned to cleaner=%s",
+                                    task_id, r["user_id"],
+                                )
+                                break
+            except Exception as _heal_exc:
+                logger.warning("early_checkout: failed to heal unassigned CLEANING task=%s: %s", task_id, _heal_exc)
+
+        db.table("tasks").update(update_payload).eq("task_id", task_id).eq("tenant_id", tenant_id).execute()
 
         logger.info(
             "early_checkout: CLEANING task rescheduled booking=%s task=%s %s→%s",

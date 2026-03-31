@@ -198,6 +198,16 @@ def write_tasks_for_booking_created(
 
             for t in tasks:
                 t.assigned_to = assignment_map.get(t.worker_role.value)
+                # Phase 1030-guard: Warn loudly when a task has no assigned worker.
+                # A task with assigned_to=None is operationally invisible — no one receives it.
+                # This is NOT a silent best-effort: it must be surfaced in logs for ops to act.
+                if t.assigned_to is None:
+                    logger.warning(
+                        "task_writer: NO PRIMARY WORKER found for role=%s "
+                        "property_id=%s booking_id=%s task_id=%s — task will be UNASSIGNED. "
+                        "Ensure a worker with this role is assigned to the property.",
+                        t.worker_role.value, property_id, booking_id, t.task_id,
+                    )
         except Exception as _exc:
             logger.warning("task_writer: Failed to auto-assign tasks booking_id=%s: %s", booking_id, _exc)
 
