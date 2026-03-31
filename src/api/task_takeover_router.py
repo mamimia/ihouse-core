@@ -1060,6 +1060,21 @@ async def manager_team(
         worker_ids = list({r["user_id"] for r in all_assignments if r.get("user_id")})
         scope_props = list({r["property_id"] for r in all_assignments if r.get("property_id")})
 
+        # ── Fetch property names ─────────────────────────────────────────────
+        property_names: Dict[str, str] = {}
+        if scope_props:
+            try:
+                prop_res = (
+                    db.table("properties")
+                    .select("id, name")
+                    .in_("id", scope_props)
+                    .execute()
+                )
+                for row in (prop_res.data or []):
+                    property_names[row["id"]] = row.get("name") or row["id"]
+            except Exception:
+                pass
+
         # ── Fetch worker permission records (display_name, comm_preference, role) ─
         worker_data: Dict[str, Dict] = {}
         if worker_ids:
@@ -1155,6 +1170,7 @@ async def manager_team(
 
             properties_out.append({
                 "property_id": p,
+                "property_name": property_names.get(p) or p,
                 "workers": workers_out,
                 "lane_coverage": {
                     lane: {
@@ -1174,6 +1190,7 @@ async def manager_team(
             "role": caller_role,
             "properties": properties_out,
             "total_workers": total_workers,
+            "total_properties": len(properties_out),
         })
 
     except Exception as exc:
