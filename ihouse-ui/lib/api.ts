@@ -1180,7 +1180,21 @@ export const api = {
             method: 'POST',
             body: JSON.stringify(body),
         }),
+
+    // Phase 1033 — Generic helpers for new OM endpoints.
+    // Use for any route that does not yet have a named method on this object.
+    // Prefer named methods for stability; use these only for new/transitional endpoints.
+    get: <T = unknown>(path: string): Promise<T> =>
+        apiFetch<T>(path),
+
+    post: <T = unknown>(path: string, body: unknown): Promise<T> =>
+        apiFetch<T>(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }),
 };
+
 
 
 // Phase 157 — Worker task types

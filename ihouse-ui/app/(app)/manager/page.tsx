@@ -1387,6 +1387,71 @@ function MorningBriefingWidget() {
 }
 
 // ---------------------------------------------------------------------------
+// Alert rail (Phase 1033)
+// ---------------------------------------------------------------------------
+
+type AlertItem = {
+    type: string;
+    severity: 'critical' | 'high' | 'warning';
+    task_id?: string;
+    title?: string;
+    property_id?: string;
+    status?: string;
+    due_date?: string | null;
+    lane?: string;
+    detail?: string;
+};
+
+function AlertRail({ alerts, loading }: { alerts: AlertItem[]; loading: boolean }) {
+    if (loading) return null;
+    if (alerts.length === 0) return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: '#10b98110', border: '1px solid #10b98130', marginBottom: 16, fontSize: 'var(--text-xs)', color: '#10b981' }}>
+            ✓ No active alerts
+        </div>
+    );
+
+    const criticals = alerts.filter(a => a.severity === 'critical');
+    const highs = alerts.filter(a => a.severity === 'high');
+    const warnings = alerts.filter(a => a.severity === 'warning');
+
+    return (
+        <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-dim)', letterSpacing: '0.06em', marginBottom: 8 }}>ALERTS</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {criticals.slice(0, 3).map((a, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: '#ef444414', border: '1px solid #ef444430' }}>
+                        <span style={{ fontSize: '0.85em' }}>🔴</span>
+                        <span style={{ fontWeight: 700, fontSize: 'var(--text-xs)', color: '#ef4444' }}>CRITICAL</span>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text)' }}>{a.title || a.type}</span>
+                        {a.property_id && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{a.property_id}</span>}
+                    </div>
+                ))}
+                {highs.slice(0, 2).map((a, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: '#f9731614', border: '1px solid #f9731630' }}>
+                        <span style={{ fontSize: '0.85em' }}>🟠</span>
+                        <span style={{ fontWeight: 700, fontSize: 'var(--text-xs)', color: '#f97316' }}>HIGH</span>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text)' }}>{a.title || a.type}</span>
+                        {a.property_id && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{a.property_id}</span>}
+                    </div>
+                ))}
+                {warnings.slice(0, 3).map((a, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: '#f59e0b10', border: '1px solid #f59e0b28' }}>
+                        <span style={{ fontSize: '0.85em' }}>⚠️</span>
+                        <span style={{ fontWeight: 600, fontSize: 'var(--text-xs)', color: '#f59e0b' }}>WARNING</span>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text)' }}>{a.detail || a.title || a.type}</span>
+                        {a.property_id && !a.detail && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{a.property_id}</span>}
+                    </div>
+                ))}
+                {alerts.length > 8 && (
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', padding: '4px 12px' }}>
+                        +{alerts.length - 8} more alerts — see full list on Tasks page
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -1397,6 +1462,9 @@ export default function ManagerPage() {
     const [entityFilter, setEntityFilter] = useState<'all' | 'task' | 'booking'>('all');
     const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
     const [prevIds, setPrevIds] = useState<Set<number>>(new Set());
+    // Phase 1033: alert rail state
+    const [alerts, setAlerts] = useState<AlertItem[]>([]);
+    const [alertsLoading, setAlertsLoading] = useState(true);
 
     const load = useCallback(async () => {
         setLoading(true); setError(null);
@@ -1414,7 +1482,21 @@ export default function ManagerPage() {
         }
     }, [entityFilter]);
 
+    // Phase 1033: load alerts in parallel
+    const loadAlerts = useCallback(async () => {
+        setAlertsLoading(true);
+        try {
+            const res = await api.get<{ alerts: AlertItem[] }>('/manager/alerts');
+            setAlerts(res.alerts || []);
+        } catch {
+            // best-effort
+        } finally {
+            setAlertsLoading(false);
+        }
+    }, []);
+
     useEffect(() => { load(); }, [load]);
+    useEffect(() => { loadAlerts(); }, [loadAlerts]);
 
     // Derived stats
     const acknowledged = events.filter(e => e.action === 'TASK_ACKNOWLEDGED').length;
@@ -1481,11 +1563,21 @@ export default function ManagerPage() {
                 <MetricChip label="Flags updated" value={flagged} color="#fbbf24" />
             </div>
 
+            {/* Phase 1033: Alert Rail */}
+            <AlertRail alerts={alerts} loading={alertsLoading} />
+
             {/* Phase 1022-E: Task Board */}
             <TaskBoard />
 
-            {/* Copilot Briefing (Phase 312) */}
-            <MorningBriefingWidget />
+            {/* Copilot Briefing (Phase 312) — collapsed by default in Phase 1033 */}
+            <details style={{ marginBottom: 'var(--space-6)' }}>
+              <summary style={{ cursor: 'pointer', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', padding: '8px 0', userSelect: 'none' }}>
+                📋 Copilot Briefing (click to expand)
+              </summary>
+              <div style={{ marginTop: 8 }}>
+                <MorningBriefingWidget />
+              </div>
+            </details>
 
             {/* Activity feed */}
             <div style={{
@@ -1615,7 +1707,7 @@ export default function ManagerPage() {
                 fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
                 display: 'flex', justifyContent: 'space-between',
             }}>
-                <span>Domaniqo — Manager Copilot · Phase 1022 (Takeover Gate)</span>
+                <span>Domaniqo — Manager Hub · Phases 1022 + 1033 (OM Baseline v1)</span>
                 <span>Source: audit_events table · actor_id = JWT sub</span>
             </div>
         </div>
