@@ -1462,9 +1462,6 @@ export default function ManagerPage() {
     const [entityFilter, setEntityFilter] = useState<'all' | 'task' | 'booking'>('all');
     const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
     const [prevIds, setPrevIds] = useState<Set<number>>(new Set());
-    // Phase 1033: alert rail state
-    const [alerts, setAlerts] = useState<AlertItem[]>([]);
-    const [alertsLoading, setAlertsLoading] = useState(true);
 
     const load = useCallback(async () => {
         setLoading(true); setError(null);
@@ -1482,21 +1479,7 @@ export default function ManagerPage() {
         }
     }, [entityFilter]);
 
-    // Phase 1033: load alerts in parallel
-    const loadAlerts = useCallback(async () => {
-        setAlertsLoading(true);
-        try {
-            const res = await api.get<{ alerts: AlertItem[] }>('/manager/alerts');
-            setAlerts(res.alerts || []);
-        } catch {
-            // best-effort
-        } finally {
-            setAlertsLoading(false);
-        }
-    }, []);
-
     useEffect(() => { load(); }, [load]);
-    useEffect(() => { loadAlerts(); }, [loadAlerts]);
 
     // Derived stats
     const acknowledged = events.filter(e => e.action === 'TASK_ACKNOWLEDGED').length;
@@ -1563,21 +1546,11 @@ export default function ManagerPage() {
                 <MetricChip label="Flags updated" value={flagged} color="#fbbf24" />
             </div>
 
-            {/* Phase 1033: Alert Rail */}
-            <AlertRail alerts={alerts} loading={alertsLoading} />
-
             {/* Phase 1022-E: Task Board */}
             <TaskBoard />
 
-            {/* Copilot Briefing (Phase 312) — collapsed by default in Phase 1033 */}
-            <details style={{ marginBottom: 'var(--space-6)' }}>
-              <summary style={{ cursor: 'pointer', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', padding: '8px 0', userSelect: 'none' }}>
-                📋 Copilot Briefing (click to expand)
-              </summary>
-              <div style={{ marginTop: 8 }}>
-                <MorningBriefingWidget />
-              </div>
-            </details>
+            {/* Copilot Briefing (Phase 312) */}
+            <MorningBriefingWidget />
 
             {/* Activity feed */}
             <div style={{
@@ -1707,7 +1680,7 @@ export default function ManagerPage() {
                 fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
                 display: 'flex', justifyContent: 'space-between',
             }}>
-                <span>Domaniqo — Manager Hub · Phases 1022 + 1033 (OM Baseline v1)</span>
+                <span>Domaniqo — Manager Copilot · Phase 1022 (Takeover Gate)</span>
                 <span>Source: audit_events table · actor_id = JWT sub</span>
             </div>
         </div>

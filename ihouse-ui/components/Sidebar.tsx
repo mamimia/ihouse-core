@@ -38,32 +38,21 @@ const IconStaff = <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" 
 const IconAdmin = <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
 const IconMore = <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>;
 
-// Phase 1033: added manager-specific sub-routes.
-// Manager nav uses /manager/* scoped routes, NOT the shared admin/worker routes.
-// /tasks is excluded for manager (unscoped — manager uses /manager/tasks).
 const NAV_ITEMS: { key: TranslationKey; href: string; icon: React.ReactNode; roles: Role[] }[] = [
-  // ── Shared surfaces ───────────────────────────────────────────────────
-  { key: 'nav.dashboard',   href: '/dashboard',           icon: IconDashboard, roles: ['admin', 'owner', 'worker', 'cleaner', 'checkin', 'maintenance'] },
-  { key: 'nav.tasks',       href: '/tasks',               icon: IconTasks, roles: ['admin', 'worker', 'cleaner', 'checkin', 'maintenance'] },
+  { key: 'nav.dashboard',   href: '/dashboard',        icon: IconDashboard, roles: ['admin', 'manager', 'owner', 'worker', 'cleaner', 'checkin', 'maintenance'] },
+  { key: 'nav.tasks',       href: '/tasks',            icon: IconTasks, roles: ['admin', 'manager', 'worker', 'cleaner', 'checkin', 'maintenance'] },
   { key: 'nav.cleaning' as TranslationKey, href: '/ops/cleaner', icon: IconCleaning, roles: ['worker', 'cleaner'] },
-  { key: 'nav.bookings',    href: '/bookings',            icon: IconBookings, roles: ['admin', 'owner'] },
-  { key: 'nav.calendar',    href: '/calendar',            icon: IconCalendar, roles: ['admin', 'owner'] },
-  { key: 'nav.financial',   href: '/financial',           icon: IconFinancial, roles: ['admin', 'owner'] },
-  { key: 'nav.owner',       href: '/admin/owners',        icon: IconOwner, roles: ['admin'] },
-  { key: 'nav.guests',      href: '/guests',              icon: IconGuests, roles: ['admin'] },
-  { key: 'nav.properties',  href: '/admin/properties',    icon: IconProperties, roles: ['admin'] },
-  { key: 'nav.staff',       href: '/admin/staff',         icon: IconStaff, roles: ['admin'] },
-  { key: 'nav.admin',       href: '/admin',               icon: IconAdmin, roles: ['admin'] },
-  { key: 'nav.more',        href: '/admin/more',          icon: IconMore, roles: ['admin'] },
-  // ── Ops Manager (manager role) — scoped /manager/* surfaces ──────────
-  // Hub = /manager (existing cockpit, will be the new Hub)
-  { key: 'nav.dashboard' as TranslationKey, href: '/manager',          icon: IconDashboard,  roles: ['manager'] },
-  { key: 'nav.tasks' as TranslationKey,     href: '/manager/tasks',    icon: IconTasks,      roles: ['manager'] },
-  { key: 'nav.bookings' as TranslationKey,  href: '/manager/bookings', icon: IconBookings,   roles: ['manager'] },
-  { key: 'nav.calendar' as TranslationKey,  href: '/manager/calendar', icon: IconCalendar,   roles: ['manager'] },
-  { key: 'nav.manager' as TranslationKey,   href: '/manager/team',     icon: IconStaff,      roles: ['manager'] },
+  { key: 'nav.bookings',    href: '/bookings',         icon: IconBookings, roles: ['admin', 'manager', 'owner'] },
+  { key: 'nav.calendar',    href: '/calendar',         icon: IconCalendar, roles: ['admin', 'manager', 'owner'] },
+  { key: 'nav.financial',   href: '/financial',        icon: IconFinancial, roles: ['admin', 'manager', 'owner'] },
+  { key: 'nav.owner',       href: '/admin/owners',     icon: IconOwner, roles: ['admin'] },
+  { key: 'nav.manager',     href: '/manager',          icon: IconManager, roles: ['admin', 'manager'] },
+  { key: 'nav.guests',      href: '/guests',           icon: IconGuests, roles: ['admin', 'manager'] },
+  { key: 'nav.properties',  href: '/admin/properties', icon: IconProperties, roles: ['admin', 'manager'] },
+  { key: 'nav.staff',       href: '/admin/staff',      icon: IconStaff, roles: ['admin', 'manager'] },
+  { key: 'nav.admin',       href: '/admin',            icon: IconAdmin, roles: ['admin'] },
+  { key: 'nav.more',        href: '/admin/more',       icon: IconMore, roles: ['admin', 'manager'] },
 ];
-
 
 function getUserRole(): Role {
   if (typeof window === 'undefined') return 'manager';
@@ -114,8 +103,6 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
   const salutation = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   const isActive = (href: string) => {
-    // Hub: /manager matches exactly or /manager is the prefix but not sub-routes
-    if (href === '/manager') return pathname === '/manager';
     if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
     return pathname?.startsWith(href);
   };
@@ -385,25 +372,6 @@ export default function Sidebar({ collapsed = false, onClose, mode = 'fixed' }: 
                 transition: 'all var(--transition-fast)',
               }}>
                 <span style={{ fontSize: '1em', opacity: isActive('/admin/profile') ? 1 : 0.65 }}>👤</span>
-                My Profile
-              </Link>
-            )}
-            {/* Profile link — manager (Phase 1033) */}
-            {role === 'manager' && (
-              <Link href="/manager/profile" onClick={onClose} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                padding: 'var(--space-3) var(--space-6)',
-                fontSize: 'var(--text-sm)',
-                color: isActive('/manager/profile') ? 'var(--color-primary)' : 'var(--color-text-dim)',
-                background: isActive('/manager/profile') ? 'rgba(59,130,246,0.06)' : 'transparent',
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: isActive('/manager/profile') ? 600 : 400,
-                textDecoration: 'none',
-                transition: 'all var(--transition-fast)',
-              }}>
-                <span style={{ fontSize: '1em', opacity: isActive('/manager/profile') ? 1 : 0.65 }}>👤</span>
                 My Profile
               </Link>
             )}
