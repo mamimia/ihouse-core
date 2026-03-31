@@ -1047,7 +1047,7 @@ async def manager_team(
 
         if not all_assignments and prop_ids is not None and len(prop_ids) == 0:
             return JSONResponse(status_code=200, content={
-                "manager_id": tenant_id,
+                "manager_id": caller_user_id,
                 "role": caller_role,
                 "properties": [],
                 "total_workers": 0,

@@ -191,6 +191,12 @@ async def list_manager_audit_events(
             extra={"detail": "Only admin and manager roles can access audit events."},
         )
 
+    # Tenant isolation: resolve from identity dict.
+    # jwt_identity sets tenant_id from the JWT 'sub' claim (same as jwt_auth),
+    # but works for Preview As / Act As tokens where jwt_auth would return the
+    # admin's user_id instead of the operational tenant context.
+    caller_tenant_id = str(identity.get("tenant_id") or identity.get("sub", "")).strip()
+
     if entity_type and entity_type not in _VALID_ENTITY_TYPES:
         return make_error_response(
             status_code=422,
@@ -201,11 +207,12 @@ async def list_manager_audit_events(
     try:
         db = client if client is not None else _get_supabase_client()
 
-        # No tenant_id scoping — audit_events are cross-tenant from the service role.
-        # The admin/manager sees their operational context (all their properties' events).
+        # Tenant-scoped. caller_tenant_id is resolved from jwt_identity above,
+        # ensuring Preview As / Act As sessions use the correct operational tenant.
         query = (
             db.table("audit_events")
             .select("id,tenant_id,actor_id,action,entity_type,entity_id,payload,occurred_at")
+            .eq("tenant_id", caller_tenant_id)
         )
 
         if entity_type:
