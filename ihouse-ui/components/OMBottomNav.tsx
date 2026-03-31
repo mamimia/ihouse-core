@@ -49,7 +49,7 @@ const PRIMARY_TABS: Tab[] = [
     { label: 'Team',   href: '/manager/team',   icon: '👥' },
 ];
 
-const LIVE_ROUTES = new Set(['/manager']);
+const LIVE_ROUTES = new Set(['/manager', '/manager/alerts', '/manager/stream', '/manager/team']);
 
 // ---------------------------------------------------------------------------
 // Component

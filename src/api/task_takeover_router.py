@@ -1013,23 +1013,19 @@ async def manager_alerts(
     summary="Manager team overview — worker load + coverage gaps (Phase 1033)",
 )
 async def manager_team(
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
     GET /manager/team
 
-    Returns for each supervised property:
-    - All assigned workers with their Primary/Backup designation per lane
-    - Each worker's current task status (how many PENDING/IN_PROGRESS tasks)
-    - Contact info from comm_preference
-    - Coverage gaps (missing Primary in a lane)
-
-    Scoping: manager → supervised properties; admin → all.
+    Phase 1033 fix: uses jwt_identity so Preview As and Act As sessions
+    resolve the correct role without a secondary DB lookup.
     """
     try:
         db = client if client is not None else _get_db()
-        caller_role = _get_caller_role(db, tenant_id)
+        caller_role = str(identity.get("role", "worker")).strip()
+        caller_user_id = str(identity.get("user_id") or identity.get("tenant_id", "")).strip()
 
         if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
             return make_error_response(
@@ -1039,7 +1035,7 @@ async def manager_team(
 
         prop_ids: Optional[List[str]] = None
         if caller_role == "manager":
-            prop_ids = _get_manager_property_ids(db, tenant_id)
+            prop_ids = _get_manager_property_ids(db, caller_user_id)
 
         # ── Fetch all assignments in scope ───────────────────────────────
         q_assignments = db.table("staff_assignments").select(
@@ -1170,7 +1166,7 @@ async def manager_team(
         total_workers = len({r["user_id"] for r in all_assignments if r.get("user_id")})
 
         return JSONResponse(status_code=200, content={
-            "manager_id": tenant_id,
+            "manager_id": caller_user_id,
             "role": caller_role,
             "properties": properties_out,
             "total_workers": total_workers,

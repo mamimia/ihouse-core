@@ -74,8 +74,8 @@ const OM_NAV: NavItem[] = [
     { label: 'Tasks',    href: '/manager/tasks',    icon: '⚡', section: 'supporting' },
 ];
 
-// Routes that exist as real pages in this phase (others are coming in later steps)
-const LIVE_ROUTES = new Set(['/manager']);
+// Routes that exist as real pages in this phase
+const LIVE_ROUTES = new Set(['/manager', '/manager/alerts', '/manager/stream', '/manager/team']);
 
 // ---------------------------------------------------------------------------
 // Props
@@ -301,7 +301,7 @@ export default function OMSidebar({ collapsed = false, mode, onClose }: OMSideba
                         <div style={logoStyle}>Domaniqo</div>
                         <div style={roleTagStyle}>Operations Platform</div>
                         <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 8, fontWeight: 500 }}>
-                            {displayName}
+                            {omMode === 'preview' ? 'Preview · Ops Manager' : displayName}
                         </div>
                     </>
                 ) : (
