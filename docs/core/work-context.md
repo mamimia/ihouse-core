@@ -1,18 +1,25 @@
 ## Current Active Phase
 
-Phase 1031 — Next Phase. Phases 841–1030 closed.
+Phase 1032 — Live Staging Proof + Baton-Transfer Closure. Phases 841–1031 closed.
 
 ## Last Closed Phase
 
-Phase 1030 — Task Lifecycle & Assignment Hardening.
+Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection.
 
 ## Current Objective
 
-✅ **Phase 1030 — Task Lifecycle & Assignment Hardening — CLOSED** (2026-03-31)
+✅ **Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection — CLOSED** (2026-03-31)
 
-All code committed `7732ab4`. Admin Pending exclusion of COMPLETED proven on staging. DB audit confirms `priority` column populated and Primary/Backup model correct per lane. Five live-flow proofs deferred but code correct. Phase formally closed.
+Root cause: `POST /staff/assignments` always used `DEFAULT 1` for priority — every worker in every property got priority=1, making `ORDER BY priority ASC LIMIT 1` non-deterministic.
 
-⏳ **Phase 1031 — Next Phase (TBD)**
+Fixes: early-checkout healing priority walk, backfill Primary-existence guard, `OWNERLESS_TASK_CREATED` error token. DB triggers block (property, lane, priority) collisions and block no-lane INSERT. API returns `400 NO_OPERATIONAL_LANE` for roleless workers. 11 invalid rows removed (managers, ghost user, owner). Lane model locked: CLEANING / MAINTENANCE / CHECKIN_CHECKOUT only — no UNKNOWN lane. DB proofs: zero collisions, zero ownerless tasks, all 14 assignments in real operational lanes. 161 tests pass. Commits `b5f5e8f` → `7dcb4da` → `89d3f45`.
+
+⏳ **Phase 1032 — Live Staging Proof + Baton-Transfer Closure — ACTIVE**
+
+Deferred live-flow proofs from Phase 1030/1031 now due:
+- Baton-transfer E2E: remove real Primary, prove Backup promoted, PENDING tasks move, ACKNOWLEDGED/IN_PROGRESS stay
+- Promotion banner: logged-in worker sees notice after promotion
+- Backfill: new Backup assignment against a lane with existing Primary → `reason: primary_exists_for_lane`
 
 ### Code complete and committed (commit `7732ab4`, branch `checkpoint/supabase-single-write-20260305-1747`):
 - `src/tasks/task_writer.py` — Amendment reschedule healing: unassigned tasks now inherit Priority 1 worker on date shift (mirrors INV-1011 from early-checkout path)

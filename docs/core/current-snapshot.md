@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1031 — Next Phase
+Phase 1032 — Live Staging Proof + Baton-Transfer Closure
 
 ## Last Closed Phase
-Phase 1030 — Task Lifecycle & Assignment Hardening
+Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection
 
 ## System Status
 
@@ -29,6 +29,13 @@ Phase 1030 — Task Lifecycle & Assignment Hardening
 **Phase 1029 Default Worker Task Filter COMPLETED Exclusion Hardened:** `GET /worker/tasks` default now excludes both COMPLETED and CANCELED at backend-canonical level. Regression test A8 added.
 
 **Phase 1030 Task Lifecycle & Assignment Hardening:** All task creation, rescheduling, and baton-transfer paths enforce Primary/Backup model. Amendment reschedule healing, ad-hoc cleaning Primary selection, early-checkout healing, lane-aware baton-transfer, and promotion notice JSONB write all implemented. Commit `7732ab4`. Admin Pending exclusion of COMPLETED tasks staging-proven. INV-1010/1011/1012 extended.
+
+**Phase 1031 Assignment Priority Normalization & Canonical Lane Protection (3 sub-commits):**
+- `b5f5e8f` — Code-level gaps closed: early-checkout healing walks priority-ordered candidates (Primary first); backfill Primary-existence guard (Backup cannot steal NULL tasks when Primary exists in lane); ownerless-task guard emits `ERROR OWNERLESS_TASK_CREATED` on all failure paths. 161 tests pass.
+- `7dcb4da` — DB + API normalization: `chk_priority_positive` constraint; trigger `fn_guard_assignment_priority_uniqueness` (blocks (property, lane, priority) collision); DB function `get_next_lane_priority()`. API write path now lane-aware: resolves worker lane from `worker_roles`, computes MAX(priority)+1, sets correct priority at insert. UNKNOWN-lane hard block replaces silent priority>=100 path.
+- `89d3f45` — Canonical no-lane enforcement: trigger `fn_guard_assignment_requires_operational_lane` blocks INSERT for any worker without cleaner/maintenance/checkin/checkout. Removed 11 invalid rows (manager_not_worker ×8, ghost_no_permission_record ×2, owner_not_worker ×1). Audit table `phase_1031c_removed_assignments` created. DB proofs: invalid_rows=0, all 14 assignment rows in real operational lanes, zero priority collisions.
+- Lane model locked: CLEANING / MAINTENANCE / CHECKIN_CHECKOUT only. UNKNOWN is not a valid product concept. No operational assignment without a valid lane.
+- INV-1031-A/B/C/D added.
 
 ## Deferred Items — Managed Open Items Registry
 
