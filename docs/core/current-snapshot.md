@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1023 — Next Phase
+Phase 1031 — Next Phase
 
 ## Last Closed Phase
-Phase 1022 — Operational Manager Takeover Gate
+Phase 1030 — Task Lifecycle & Assignment Hardening
 
 ## System Status
 
@@ -13,6 +13,22 @@ Phase 1022 — Operational Manager Takeover Gate
 **Phase 1021 Owner Bridge Flow:** Replaced the misleading "Go to Owners" CTA for role=Owner staff users with a real `LinkOwnerModal`. Modal carries over personal details and all property assignments from the staff record into the owner create/link flow.
 
 **Phase 1022 Operational Manager Takeover Gate:** Full end-to-end task takeover model. `MANAGER_EXECUTING` status in task state machine. Audit chain: `original_worker_id`, `taken_over_by`, `taken_over_reason`, `taken_over_at`. Permission guards: Operational Manager scoped to assigned properties; Admin global fallback. Responsive execution drawer keeps manager on their board surface. All four worker wizards (`CheckinWizard`, `CheckoutWizard`, `CleanerWizard`, `MaintenanceWizard`) extracted and embedded in manager drawer via `TaskWizardRouter`. Build clean. Deployed commit `91f7114`. Staging visual verification pending for next session.
+
+**Phase 1023 Staff Onboarding Error Clarity & Role Integrity:** UNKNOWN_ERROR masking removed — frontend now surfaces real backend error codes. Combined (checkin+checkout) role normalized to `[checkin, checkout]` array. Operational Manager invite route separated from worker sub-role logic.
+
+**Phase 1024 Identity Mismatch & Auth-Email Repair Path:** Hardened auth-email repair flow for cases where staff card email is corrected but auth identity remains on old email. Admin surface surfaces identity mismatch state.
+
+**Phase 1025 Public Property Submission Flow Hardening:** Stale-state blocking in public submission flow fixed. My Properties delete affordance added with confirmation dialog. Intake queue now shows submitter phone.
+
+**Phase 1026 Operational Truth Semantics Lock:** Canonical semantics locked: PENDING includes ACKNOWLEDGED and IN_PROGRESS. COMPLETED and CANCELED excluded from default Pending view at backend level. Applies to all surfaces.
+
+**Phase 1027 Stale Task & Past-Task Hygiene:** Historical task bleed-through fixed. ZTEST- hygiene rule established. `scripts/cleanup_probe_tasks.sql` created.
+
+**Phase 1028 Primary/Backup Model Decision & Baton-Transfer Architecture:** `priority` INTEGER column added to `staff_property_assignments`. Primary/Backup model locked per property + lane. Baton-transfer designed: PENDING tasks may move, ACKNOWLEDGED/IN_PROGRESS tasks must not. INV-1010, INV-1011, INV-1012 locked.
+
+**Phase 1029 Default Worker Task Filter COMPLETED Exclusion Hardened:** `GET /worker/tasks` default now excludes both COMPLETED and CANCELED at backend-canonical level. Regression test A8 added.
+
+**Phase 1030 Task Lifecycle & Assignment Hardening:** All task creation, rescheduling, and baton-transfer paths enforce Primary/Backup model. Amendment reschedule healing, ad-hoc cleaning Primary selection, early-checkout healing, lane-aware baton-transfer, and promotion notice JSONB write all implemented. Commit `7732ab4`. Admin Pending exclusion of COMPLETED tasks staging-proven. INV-1010/1011/1012 extended.
 
 ## Deferred Items — Managed Open Items Registry
 
@@ -423,7 +439,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Phases 1021–1022 closed (frontend-only changes — test count unchanged). Next: Phase 1023.**
+**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Phases 1021–1030 closed. Next: Phase 1031.**
 
 ## Environment Variables (continued)
 

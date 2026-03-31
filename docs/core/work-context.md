@@ -1,14 +1,18 @@
 ## Current Active Phase
 
-Phase 1030 — Task Lifecycle & Assignment Hardening. Phases 841–1029 closed.
+Phase 1031 — Next Phase. Phases 841–1030 closed.
 
 ## Last Closed Phase
 
-Phase 1029 — Default Worker Task Filter (COMPLETED exclusion hardened).
+Phase 1030 — Task Lifecycle & Assignment Hardening.
 
 ## Current Objective
 
-⏳ **Phase 1030 — Task Lifecycle & Assignment Hardening — IN PROGRESS**
+✅ **Phase 1030 — Task Lifecycle & Assignment Hardening — CLOSED** (2026-03-31)
+
+All code committed `7732ab4`. Admin Pending exclusion of COMPLETED proven on staging. DB audit confirms `priority` column populated and Primary/Backup model correct per lane. Five live-flow proofs deferred but code correct. Phase formally closed.
+
+⏳ **Phase 1031 — Next Phase (TBD)**
 
 ### Code complete and committed (commit `7732ab4`, branch `checkpoint/supabase-single-write-20260305-1747`):
 - `src/tasks/task_writer.py` — Amendment reschedule healing: unassigned tasks now inherit Priority 1 worker on date shift (mirrors INV-1011 from early-checkout path)
@@ -89,7 +93,10 @@ Phase 981 — Test Suite Full Green (7,975 passed)              ← CLOSED
 Phase 1003 — Canonical Block Classification & Bookings UX     ← CLOSED
 Phase 1021 — Owner Bridge Flow                                ← CLOSED
 Phase 1022 — Operational Manager Takeover Gate                ← CLOSED
-Phase 1023 — Next Phase                                       ← ACTIVE
+Phase 1028 — Primary/Backup Model Decision & Baton-Transfer Architecture  ← CLOSED
+Phase 1029 — Default Worker Task Filter COMPLETED Exclusion Hardened      ← CLOSED
+Phase 1030 — Task Lifecycle & Assignment Hardening                         ← CLOSED
+Phase 1031 — Next Phase                                                    ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)

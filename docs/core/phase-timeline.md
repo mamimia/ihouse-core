@@ -8663,3 +8663,84 @@ Pending (not blocking close): staging visual verification of embedded wizards �
 
 Key files: `src/tasks/task_model.py`, `src/api/task_takeover_router.py`, `ihouse-ui/app/(app)/manager/page.tsx`, all four `ihouse-ui/app/(app)/ops/*/page.tsx`.
 Spec: `docs/archive/phases/phase-1022-spec.md`
+
+## Phase 1023 — Staff Onboarding Error Clarity & Role Integrity (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-30
+
+Frontend stopped swallowing real backend error codes — UNKNOWN_ERROR masking removed. Status derivation for id/work permit documents improved. Combined (checkin+checkout) role normalized to array `[checkin, checkout]`, never a slash-string. Operational Manager invite flow separated from worker sub-role invite logic.
+
+Spec: `docs/archive/phases/phase-1023-spec.md`
+
+## Phase 1024 — Identity Mismatch & Auth-Email Repair Path (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-30
+
+Addressed real case: worker submitted onboarding with wrong email, admin corrected it in staff card, but auth identity stayed on old email (Identity Mismatch / Access Link Blocked). Analyzed repair path and improved the auth-email repair flow by replacing the fragile route with a hardened alternative. Admin surface now surfaces identity mismatch state.
+
+Spec: `docs/archive/phases/phase-1024-spec.md`
+
+## Phase 1025 — Public Property Submission Flow Hardening (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-30
+
+Fixed stale-state blocking in public property submission: previously submitted listings in draft/rejected/archived states could block new submission. Added safe My Properties delete affordance with confirmation dialog. Improved submitter journey. Intake queue now shows submitter phone in addition to email.
+
+Spec: `docs/archive/phases/phase-1025-spec.md`
+
+## Phase 1026 — Operational Truth Semantics Lock (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-30
+
+Locked canonical Operational Truth semantics. PENDING = all incomplete tasks (ACKNOWLEDGED and IN_PROGRESS included). ACKNOWLEDGED = intent only, not started work. COMPLETED and CANCELED must never surface in Pending default view. These rules apply to all surfaces (admin, worker, preview) from this phase forward.
+
+Spec: `docs/archive/phases/phase-1026-spec.md`
+
+## Phase 1027 — Stale Task & Past-Task Hygiene (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-30
+
+Fixed historical task bleed-through in worker and admin views. Implemented staleness filtering so newly onboarded properties do not surface historical tasks. Established ZTEST- prefix hygiene rule for all staging proof tasks. Created `scripts/cleanup_probe_tasks.sql`. KPG-500 (Emuna Villa) used as primary live example.
+
+Spec: `docs/archive/phases/phase-1027-spec.md`
+
+## Phase 1028 — Primary/Backup Model Decision & Baton-Transfer Architecture (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-30
+
+Locked Primary/Backup worker assignment model per property + lane (Cleaning, Check-in & Check-out combined, Maintenance). Added `priority` INTEGER column to `staff_property_assignments`. Replaced non-deterministic first-row-wins behavior with explicit priority-ranked selection. Designed baton-transfer: PENDING tasks may move, ACKNOWLEDGED/IN_PROGRESS tasks must not. Admin confirmation modal required on transfer.
+
+Invariants locked: INV-1010, INV-1011, INV-1012.
+
+Spec: `docs/archive/phases/phase-1028-spec.md`
+
+## Phase 1029 — Default Worker Task Filter COMPLETED Exclusion Hardened (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-30
+
+Hardened the canonical backend default filter for `GET /worker/tasks` to explicitly exclude both COMPLETED and CANCELED (not only CANCELED). Added regression test A8 in `test_worker_router_contract.py` to prevent future regressions. This moved the exclusion from a UI-layer concern to a backend-canonical guarantee.
+
+Spec: `docs/archive/phases/phase-1029-spec.md`
+
+## Phase 1030 — Task Lifecycle & Assignment Hardening (Closed)
+
+**Status:** Closed
+**Date:** 2026-03-31
+
+Hardened all task creation, rescheduling, and baton-transfer paths to enforce the Primary/Backup model end-to-end. Amendment reschedule healing added (unassigned tasks inherit Priority 1 worker on date shift). Ad-hoc cleaning POST now uses ORDER BY priority ASC. Early-checkout rescheduling heals unassigned CLEANING tasks to current Primary. Baton-transfer is lane-aware (departure worker's roles must match backup candidate's roles). Promotion notice switched from dead RPC to direct JSONB write.
+
+Staging-proven: Admin Pending view correctly excludes COMPLETED tasks (browser screenshot). DB audit: priority column populated and Primary/Backup correctly assigned per lane on KPG-502 and KPG-500.
+
+Deferred proofs (code correct, not live-flow proven): live baton-transfer flow, worker promotion banner, assignment backfill on live flow, amendment reschedule healing live, ad-hoc cleaning Primary selection live.
+
+Invariants: INV-1010 (extended), INV-1011 (extended), INV-1012 (new).
+Commit: `7732ab4`. Branch: `checkpoint/supabase-single-write-20260305-1747`.
+
+Spec: `docs/archive/phases/phase-1030-spec.md`
