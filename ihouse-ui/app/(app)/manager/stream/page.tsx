@@ -2,6 +2,7 @@
 
 /**
  * Phase 1033 Step 3 — /manager/stream
+ * Phase 1034 (OM-1) — Task event expand → ManagerTaskDrawer intervention layer.
  *
  * Full-width live event stream. Full-screen version of the Hub's LiveStream
  * widget, with richer filtering and no size constraints.
@@ -11,7 +12,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import DraftGuard from '@/components/DraftGuard';
-import { api, AuditEvent } from '@/lib/api';
+import { api, AuditEvent, apiFetch } from '@/lib/api';
+import { ManagerTaskDrawer, type ManagerTaskCardTask } from '@/components/ManagerTaskCard';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -75,6 +77,24 @@ export default function StreamPage() {
     const [newIds, setNewIds] = useState<Set<number>>(new Set());
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const prevIdsRef = useRef<Set<number>>(new Set());
+
+    // Phase 1034: task event expand → ManagerTaskDrawer
+    const [drawerTask, setDrawerTask] = useState<ManagerTaskCardTask | null>(null);
+    const [loadingTask, setLoadingTask] = useState(false);
+
+    const openTaskDrawer = useCallback(async (entityId: string) => {
+        setLoadingTask(true);
+        try {
+            // Phase 1034: use GET /tasks/{id} — full task with timing + notes
+            const res = await apiFetch<{ task: ManagerTaskCardTask }>(`/tasks/${entityId}`);
+            setDrawerTask(res.task);
+        } catch {
+            // Fallback — open with minimal shell so manager can still see the panel
+            setDrawerTask({ id: entityId, task_kind: 'GENERAL', status: 'UNKNOWN', priority: 'NORMAL', property_id: '' });
+        } finally {
+            setLoadingTask(false);
+        }
+    }, []);
 
     const load = useCallback(async (isAuto = false) => {
         if (!isAuto) setLoading(true);
@@ -178,9 +198,12 @@ export default function StreamPage() {
                     {filtered.map((ev, idx) => {
                         const cfg = getActionConfig(ev.action);
                         const isNew = newIds.has(ev.id);
+                        const isTaskEvent = ev.entity_type === 'task';
                         return (
                             <div
                                 key={ev.id}
+                                onClick={isTaskEvent ? () => openTaskDrawer(ev.entity_id) : undefined}
+                                title={isTaskEvent ? 'Click to open intervention panel' : undefined}
                                 style={{
                                     display: 'grid',
                                     gridTemplateColumns: '2fr 1.2fr 2fr 1fr',
@@ -188,9 +211,12 @@ export default function StreamPage() {
                                     padding: '12px 20px',
                                     borderBottom: idx < filtered.length - 1 ? '1px solid var(--color-border)' : 'none',
                                     background: isNew ? `${cfg.color}08` : 'transparent',
-                                    transition: 'background 600ms ease',
+                                    transition: 'background 180ms ease',
                                     alignItems: 'center',
+                                    cursor: isTaskEvent ? 'pointer' : 'default',
                                 }}
+                                onMouseEnter={e => { if (isTaskEvent) (e.currentTarget as HTMLElement).style.background = 'var(--color-surface-2)'; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isNew ? `${cfg.color}08` : 'transparent'; }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                                     <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color, background: cfg.bg, width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -211,10 +237,27 @@ export default function StreamPage() {
                                     {timeAgo(ev.occurred_at)}
                                 </div>
                             </div>
-                        );
+                            );
                     })}
                 </div>
             </div>
+
+            {/* Phase 1034: ManagerTaskDrawer — intervention panel from stream */}
+            {drawerTask && (
+                <ManagerTaskDrawer
+                    task={drawerTask}
+                    onClose={() => setDrawerTask(null)}
+                    onMutated={() => { setDrawerTask(null); load(); }}
+                />
+            )}
+            {loadingTask && (
+                <div style={{
+                    position: 'fixed', bottom: 24, right: 24,
+                    background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                    borderRadius: 8, padding: '10px 16px', fontSize: 12, color: 'var(--color-text-dim)',
+                    zIndex: 400, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                }}>Loading task…</div>
+            )}
         </DraftGuard>
     );
 }

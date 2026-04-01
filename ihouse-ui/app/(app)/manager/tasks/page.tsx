@@ -2,17 +2,17 @@
 
 /**
  * Phase 1033 — /manager/tasks
+ * Phase 1034 (OM-1) — TaskRow click → ManagerTaskCard inline expansion.
  * Operational Manager scoped task board.
  *
  * Calls GET /manager/tasks (property-scoped) — NOT /tasks (unscoped).
- * Includes lane filter, status filter, takeover, reassign, note, ad-hoc task.
- * Reuses TakeoverModal and ManagerExecutionDrawer from /manager/page.tsx via API.
+ * ManagerTaskCard provides: Takeover-Start, Reassign (property pool), Note (attributed).
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { api } from '../../../../lib/api';
-import { useRouter } from 'next/navigation';
+import { api, apiFetch } from '../../../../lib/api';
 import DraftGuard from '../../../../components/DraftGuard';
+import { ManagerTaskCard, type ManagerTaskCardTask } from '../../../../components/ManagerTaskCard';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -345,7 +345,6 @@ function AdHocModal({ onClose, onDone }: { onClose: () => void; onDone: () => vo
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ManagerTasksPage() {
-  const router = useRouter();
   const [groups, setGroups] = useState<Groups>({ manager_executing: [], pending: [], acknowledged: [], in_progress: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -353,6 +352,10 @@ export default function ManagerTasksPage() {
   const [noteTask, setNoteTask] = useState<Task | null>(null);
   const [reassignTask, setReassignTask] = useState<Task | null>(null);
   const [showAdHoc, setShowAdHoc] = useState(false);
+  // Phase 1034 (OM-1): ManagerTaskCard inline expansion
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [expandedTask, setExpandedTask] = useState<ManagerTaskCardTask | null>(null);
+  const [loadingExpanded, setLoadingExpanded] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -368,10 +371,25 @@ export default function ManagerTasksPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleTakeOver = (task: Task) => {
-    // Navigate to hub which has the full TakeoverModal + ExecutionDrawer
-    router.push(`/manager?takeover=${task.id}`);
-  };
+  // Phase 1034: expand task row → ManagerTaskCard (fetches full task with timing + notes)
+  const openExpanded = useCallback(async (task: Task) => {
+    if (expandedTaskId === task.id) {
+      setExpandedTaskId(null);
+      setExpandedTask(null);
+      return;
+    }
+    setExpandedTaskId(task.id);
+    setLoadingExpanded(true);
+    try {
+      const res = await apiFetch<{ task: ManagerTaskCardTask }>(`/tasks/${task.id}`);
+      setExpandedTask(res.task);
+    } catch {
+      // Fallback: use row data as minimal task
+      setExpandedTask({ ...task } as unknown as ManagerTaskCardTask);
+    } finally {
+      setLoadingExpanded(false);
+    }
+  }, [expandedTaskId]);
 
   const allTasks = [
     ...groups.manager_executing,
@@ -386,6 +404,9 @@ export default function ManagerTasksPage() {
     MANAGER_EXECUTING: 0, PENDING: 1, ACKNOWLEDGED: 2, IN_PROGRESS: 3,
   };
   filtered.sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
+
+  // Keep handleTakeOver stub for old TaskRow compatibility (pre-OM-1 legacy only)
+  const handleTakeOver = () => {}; // rows now expand to ManagerTaskCard instead
 
   if (loading) return (
     <DraftGuard>
@@ -452,13 +473,36 @@ export default function ManagerTasksPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map(task => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              onTakeOver={handleTakeOver}
-              onNote={() => setNoteTask(task)}
-              onReassign={() => setReassignTask(task)}
-            />
+            <div key={task.id}>
+              {/* Task row — click toggles ManagerTaskCard expansion */}
+              <div
+                onClick={() => openExpanded(task)}
+                style={{ cursor: 'pointer' }}
+              >
+                <TaskRow
+                  task={task}
+                  onTakeOver={handleTakeOver}  // legacy — card handles takeover now
+                  onNote={() => setNoteTask(task)}
+                  onReassign={() => setReassignTask(task)}
+                />
+              </div>
+              {/* Phase 1034: ManagerTaskCard — inline expansion below the clicked row */}
+              {expandedTaskId === task.id && (
+                <div style={{ marginTop: 4, marginBottom: 8 }}>
+                  {loadingExpanded || !expandedTask ? (
+                    <div style={{ padding: '16px', fontSize: 12, color: 'var(--color-text-faint)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+                      Loading intervention panel…
+                    </div>
+                  ) : (
+                    <ManagerTaskCard
+                      task={expandedTask}
+                      onClose={() => { setExpandedTaskId(null); setExpandedTask(null); }}
+                      onMutated={() => { setExpandedTaskId(null); setExpandedTask(null); load(); }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

@@ -799,6 +799,99 @@ async def get_task_context(
 
 
 # ===========================================================================
+# Phase 1034 (OM-1) — GET /tasks/{task_id}
+# Single task fetch for ManagerTaskCard — timing fields + notes + property name
+# ===========================================================================
+
+@router.get(
+    "/tasks/{task_id}",
+    summary="Get single task for ManagerTaskCard (manager/admin only — Phase 1034)",
+)
+async def get_task_for_manager(
+    task_id: str,
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    GET /tasks/{task_id}
+
+    Phase 1034 (OM-1): Returns the full task row enriched with timing fields
+    and property display name for ManagerTaskCard drill-down.
+    Used by stream event expand and alert rail task links.
+
+    Timing fields: ack_is_open, ack_allowed_at, start_is_open, start_allowed_at
+    Extra fields: property_name (display), notes (list, never null)
+    Permission: manager (property-scoped) or admin (all). Workers cannot access.
+    """
+    try:
+        db = client if client is not None else _get_db()
+        caller_role = _get_caller_role(db, tenant_id)
+        if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
+            return make_error_response(
+                403, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "Only managers and admins can access this endpoint."},
+            )
+
+        task_res = db.table("tasks").select("*").eq("id", task_id).limit(1).execute()
+        task_rows = task_res.data or []
+        if not task_rows:
+            return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
+
+        task = task_rows[0]
+
+        # Manager property scope check
+        if caller_role == "manager":
+            prop_ids = set(_get_manager_property_ids(db, tenant_id))
+            task_property = task.get("property_id", "")
+            if task_property and prop_ids and task_property not in prop_ids:
+                return make_error_response(
+                    403, ErrorCode.VALIDATION_ERROR,
+                    extra={"detail": f"Property '{task_property}' is not in your supervised properties."},
+                )
+
+        # Timing enrichment (same as worker_router)
+        timing: Dict[str, Any] = {}
+        try:
+            from tasks.timing import compute_task_timing
+            timing = compute_task_timing(task)
+        except Exception:
+            pass
+
+        # Property display name (best-effort)
+        property_name: Optional[str] = None
+        prop_id = task.get("property_id")
+        if prop_id:
+            try:
+                prop_res = (
+                    db.table("properties")
+                    .select("display_name")
+                    .eq("id", prop_id)
+                    .limit(1)
+                    .execute()
+                )
+                if prop_res.data:
+                    property_name = prop_res.data[0].get("display_name")
+            except Exception:
+                pass
+
+        return JSONResponse(status_code=200, content={
+            "task": {
+                **task,
+                "ack_is_open":      timing.get("ack_is_open"),
+                "ack_allowed_at":   timing.get("ack_allowed_at"),
+                "start_is_open":    timing.get("start_is_open"),
+                "start_allowed_at": timing.get("start_allowed_at"),
+                "property_name":    property_name,
+                "notes":            task.get("notes") or [],
+            },
+        })
+
+    except Exception as exc:
+        logger.exception("get_task_for_manager error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
 # GET /manager/tasks  (Phase 1022-D)
 # Manager Task Inbox — scoped to supervised properties
 # ===========================================================================
