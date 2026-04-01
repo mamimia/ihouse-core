@@ -1,9 +1,10 @@
 """
-Phases 710–712, 1022, 1033 — Task Takeover & Management (Manager/Admin)
+Phases 710–712, 1022, 1033, 1034 — Task Takeover & Management (Manager/Admin)
 =======================================================================
 
 Phase 1022 hardening of the Phase 710 skeleton.
 Phase 1033 expansion: Task notes, manager alerts, team overview, and flexible reassign.
+Phase 1034 (OM-1): takeover-start route (dedicated timing-bypass execution path).
 
 Canonical model (Phase 1022/1033):
     - Operational Manager (role='manager') is the PRIMARY takeover actor.
@@ -42,13 +43,14 @@ Reassign endpoint (Phase 1022/1033):
     - Full history preserved in task_actions
 
 Endpoints:
-    POST /tasks/{task_id}/take-over  — manager/admin takes over task
-    POST /tasks/{task_id}/reassign   — manager/admin releases to new worker
-    POST /tasks/{task_id}/notes      — add manager-specific notes
-    GET  /tasks/{task_id}/context    — full task context for execution
-    GET  /manager/tasks              — manager's task board
-    GET  /manager/alerts             — manager-specific task alerts
-    GET  /manager/team-overview      — status of all workers/tasks
+    POST /tasks/{task_id}/take-over       — manager/admin takes over task (→ MANAGER_EXECUTING)
+    POST /tasks/{task_id}/takeover-start  — Phase 1034: PENDING→IN_PROGRESS bypass (no MANAGER_EXECUTING)
+    POST /tasks/{task_id}/reassign        — manager/admin releases to new worker
+    POST /tasks/{task_id}/notes           — add attributed note to tasks.notes[] JSONB
+    GET  /tasks/{task_id}/context         — full task context for execution
+    GET  /manager/tasks                   — manager's task board
+    GET  /manager/alerts                  — manager-specific task alerts
+    GET  /manager/team-overview           — status of all workers/tasks
 """
 from __future__ import annotations
 
@@ -339,6 +341,163 @@ async def take_over_task(
 
     except Exception as exc:
         logger.exception("take_over_task error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
+# ===========================================================================
+# Phase 1034 (OM-1) — POST /tasks/{task_id}/takeover-start
+# Dedicated timing-bypass execution path for manager/admin
+# ===========================================================================
+
+@router.post(
+    "/tasks/{task_id}/takeover-start",
+    summary="Manager/Admin takeover-start: PENDING→IN_PROGRESS bypass (Phase 1034)",
+)
+async def takeover_start_task(
+    task_id: str,
+    body: Dict[str, Any],
+    tenant_id: str = Depends(jwt_auth),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    POST /tasks/{task_id}/takeover-start
+
+    Phase 1034 (OM-1) locked constraint:
+    This is the ONLY path where worker timing gates are bypassed.
+    The existing /acknowledge and /start endpoints are NEVER globally bypassed by role.
+
+    Atomically walks the task from its current status to IN_PROGRESS:
+        PENDING          → ACKNOWLEDGED → IN_PROGRESS
+        ACKNOWLEDGED     → IN_PROGRESS
+        IN_PROGRESS      → IN_PROGRESS (idempotent, still valid)
+        MANAGER_EXECUTING → rejected (use existing take-over endpoint)
+
+    Unlike /take-over (which sets MANAGER_EXECUTING), this endpoint keeps the
+    task on the normal worker state machine (IN_PROGRESS). The manager is
+    executing as the temporary assigned worker, not creating a MANAGER_EXECUTING silo.
+
+    Gate:
+        - Caller must be role=manager or role=admin
+        - Manager: task property must be in their assigned properties
+        - Admin: any task in tenancy
+        - Task must NOT be COMPLETED or CANCELED
+        - MANAGER_EXECUTING tasks are rejected (not this endpoint's domain)
+
+    Body:
+        reason  (optional) — free-text reason for takeover-start
+
+    Audit:
+        task_actions → TASK_TAKEOVER_STARTED
+    """
+    reason = str(body.get("reason") or "").strip() or None
+
+    try:
+        db = client if client is not None else _get_db()
+
+        # Permission check
+        caller_role = _get_caller_role(db, tenant_id)
+        if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
+            return make_error_response(
+                403, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "Only managers and admins can use takeover-start."},
+            )
+
+        # Fetch task
+        task_res = db.table("tasks").select("*").eq("id", task_id).limit(1).execute()
+        task_rows = task_res.data or []
+        if not task_rows:
+            return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
+
+        task = task_rows[0]
+        current_status = str(task.get("status", "")).upper()
+
+        # Reject terminal states
+        if current_status in {"COMPLETED", "CANCELED"}:
+            return make_error_response(
+                400, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": f"Cannot use takeover-start on a terminal task (status={current_status})."},
+            )
+
+        # Reject MANAGER_EXECUTING — that's the /take-over endpoint's domain
+        if current_status == "MANAGER_EXECUTING":
+            return make_error_response(
+                409, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "Task is MANAGER_EXECUTING. Use /take-over for full takeover execution."},
+            )
+
+        # Manager property scope check
+        if caller_role == "manager":
+            manager_props = set(_get_manager_property_ids(db, tenant_id))
+            task_property = task.get("property_id", "")
+            if task_property and manager_props and task_property not in manager_props:
+                return make_error_response(
+                    403, ErrorCode.VALIDATION_ERROR,
+                    extra={"detail": f"Property '{task_property}' is not in your supervised properties."},
+                )
+
+        now = _now_iso()
+
+        # Atomic walk: PENDING → ACKNOWLEDGED → IN_PROGRESS
+        # If already ACKNOWLEDGED or IN_PROGRESS, only advance what's needed.
+        previous_status = current_status
+        update_payload: Dict[str, Any] = {"updated_at": now}
+
+        if current_status == "PENDING":
+            # Walk through ACKNOWLEDGED immediately then to IN_PROGRESS
+            update_payload["status"] = "IN_PROGRESS"
+            # Record that we skipped ACKNOWLEDGED gate
+            update_payload["acknowledged_at"] = now
+            update_payload["assigned_to"] = tenant_id
+        elif current_status == "ACKNOWLEDGED":
+            update_payload["status"] = "IN_PROGRESS"
+            update_payload["assigned_to"] = tenant_id
+        elif current_status == "IN_PROGRESS":
+            # Idempotent — already where we need to be
+            # Still take ownership
+            update_payload["assigned_to"] = tenant_id
+        # else: caught above by terminal/MANAGER_EXECUTING checks
+
+        db.table("tasks").update(update_payload).eq("id", task_id).execute()
+        final_status = update_payload.get("status", current_status)
+
+        # task_actions: TASK_TAKEOVER_STARTED
+        try:
+            db.table("task_actions").insert({
+                "id": _action_id("TAKEOVER_START", task_id, now),
+                "task_id": task_id,
+                "action": "TASK_TAKEOVER_STARTED",
+                "performed_by": tenant_id,
+                "details": {
+                    "previous_status": previous_status,
+                    "final_status": final_status,
+                    "caller_role": caller_role,
+                    "reason": reason,
+                    "timing_gate_bypassed": True,
+                    "bypass_method": "takeover-start",
+                },
+                "created_at": now,
+            }).execute()
+        except Exception:
+            logger.warning("Phase 1034: failed to write TASK_TAKEOVER_STARTED action for %s", task_id)
+
+        logger.info(
+            "Phase 1034: task %s takeover-start by %s (role=%s) %s→%s",
+            task_id, tenant_id, caller_role, previous_status, final_status,
+        )
+
+        return JSONResponse(status_code=200, content={
+            "task_id": task_id,
+            "status": final_status,
+            "previous_status": previous_status,
+            "taken_over_by": tenant_id,
+            "taken_over_by_role": caller_role,
+            "timing_gate_bypassed": True,
+            "bypass_method": "takeover-start",
+            "reason": reason,
+        })
+
+    except Exception as exc:
+        logger.exception("takeover_start_task error: %s", exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR)
 
 
@@ -796,8 +955,11 @@ async def add_task_note(
                 extra={"detail": "Only managers and admins can add task notes."},
             )
 
+        # Resolve author display name for attribution
+        author_name = _get_caller_display_name(db, tenant_id)
+
         # Verify task exists and belongs to supervised properties (manager scope)
-        task_res = db.table("tasks").select("id, status, property_id").eq("id", task_id).limit(1).execute()
+        task_res = db.table("tasks").select("id, status, property_id, notes").eq("id", task_id).limit(1).execute()
         task_rows = task_res.data or []
         if not task_rows:
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
@@ -814,25 +976,57 @@ async def add_task_note(
         now = _now_iso()
         note_id = _action_id("NOTE", task_id, now)
 
-        db.table("task_actions").insert({
+        # Phase 1034: note object with full attribution fields
+        note_obj = {
             "id": note_id,
-            "task_id": task_id,
-            "action": "OPERATIONAL_NOTE",
-            "performed_by": tenant_id,
-            "details": {
-                "note": note,
-                "added_by": tenant_id,
-                "caller_role": caller_role,
-            },
+            "text": note,
+            "author_id": tenant_id,
+            "author_name": author_name,
+            "author_role": caller_role,
             "created_at": now,
-        }).execute()
+            "source": "manager",
+        }
+
+        # Append to tasks.notes[] JSONB array (append-only — never deletes or overwrites)
+        existing_notes = task.get("notes") or []
+        if not isinstance(existing_notes, list):
+            existing_notes = []
+        updated_notes = existing_notes + [note_obj]
+
+        try:
+            db.table("tasks").update({
+                "notes": updated_notes,
+                "updated_at": now,
+            }).eq("id", task_id).execute()
+        except Exception as notes_err:
+            logger.warning("Phase 1034: failed to append note to tasks.notes[] for %s: %s", task_id, notes_err)
+            # Fallback: still write to task_actions so note is not lost
+
+        # Also write to task_actions for the audit trail
+        try:
+            db.table("task_actions").insert({
+                "id": note_id,
+                "task_id": task_id,
+                "action": "OPERATIONAL_NOTE",
+                "performed_by": tenant_id,
+                "details": {
+                    "note": note,
+                    "author_id": tenant_id,
+                    "author_name": author_name,
+                    "author_role": caller_role,
+                    "source": "manager",
+                    "created_at": now,
+                },
+                "created_at": now,
+            }).execute()
+        except Exception:
+            logger.warning("Phase 1034: failed to write OPERATIONAL_NOTE action for %s", task_id)
 
         return JSONResponse(status_code=201, content={
             "note_id": note_id,
             "task_id": task_id,
-            "note": note,
-            "added_by": tenant_id,
-            "created_at": now,
+            "note": note_obj,
+            "notes_count": len(updated_notes),
         })
 
     except Exception as exc:
