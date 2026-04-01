@@ -849,3 +849,295 @@ async def create_adhoc_cleaning_task(
         logger.exception("adhoc_cleaning: create failed property=%s: %s", property_id, exc)
         return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to create ad-hoc cleaning task")
 
+
+# ===========================================================================
+# Phase 1036 — POST /tasks/adhoc
+# ===========================================================================
+# Generic ad-hoc task creation for managers and admins.
+# Supports all manager-creatable task kinds: CLEANING, MAINTENANCE, GENERAL.
+# (CHECKIN_PREP / CHECKOUT_VERIFY are canonical booking-generated tasks —
+#  they are not directly creatable ad-hoc; use booking automation for those.)
+#
+# Duplicate guardrail:
+#   For CLEANING tasks — warn if a CLEANING task already exists on the same
+#   property within ±1 day of the requested due_date and is still open.
+#   Returns 409 CONFLICT with conflict_tasks[] if guardrail fires.
+#   The caller may pass ?force=true to override the guardrail and create anyway.
+#
+# Auto-assignment:
+#   Follows same lane-aware auto-assign logic as cleaning/adhoc.
+#
+# Allowed roles: admin, manager.
+# ===========================================================================
+
+# Kinds that managers can create ad-hoc (excludes canonical booking-generated)
+_ADHOC_ALLOWED_KINDS = frozenset({"CLEANING", "MAINTENANCE", "GENERAL"})
+# Kinds where we check for open duplicates within the same window
+_ADHOC_DEDUP_KINDS = frozenset({"CLEANING"})
+# Worker role that maps to each kind (for auto-assignment)
+_KIND_TO_WORKER_ROLE: dict = {
+    "CLEANING": "cleaner",
+    "MAINTENANCE": "maintenance",
+    "GENERAL": None,          # Any worker — no role filter
+}
+
+
+@router.post(
+    "/tasks/adhoc",
+    tags=["tasks"],
+    summary="Create an ad-hoc operational task (Phase 1036)",
+    status_code=200,
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def create_adhoc_task(
+    body: dict,
+    force: bool = False,
+    identity: dict = Depends(jwt_auth),
+    _client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    POST /tasks/adhoc
+
+    Phase 1036 — Generic ad-hoc task creation for operational managers and admins.
+
+    Required body:
+        property_id   str  — target property
+        due_date      str  — YYYY-MM-DD
+        task_kind     str  — CLEANING | MAINTENANCE | GENERAL
+
+    Optional:
+        note          str  — operational note (visible to assigned worker)
+        priority      str  — LOW | MEDIUM (default) | HIGH | CRITICAL
+        assigned_to   str  — override auto-assignment with explicit user_id
+
+    Duplicate guardrail (CLEANING only):
+        If an open CLEANING task exists on the same property within ±1 day of
+        due_date, returns 409 with conflict_tasks[] listing the conflicts.
+        Pass ?force=true to override guardrail and create anyway.
+
+    Returns:
+        task_id, kind, status, due_date, property_id, assigned_to,
+        conflict_warning (if force=True and conflicts were found)
+    """
+    role = identity.get("role", "")
+    if role not in _ADHOC_CLEANING_ROLES:  # reuse admin|manager set
+        return make_error_response(
+            status_code=403, code="FORBIDDEN",
+            extra={"detail": f"Role '{role}' cannot create ad-hoc tasks. Requires admin or manager."},
+        )
+
+    tenant_id = identity.get("tenant_id", "")
+    actor_id = identity.get("user_id", "system")
+
+    property_id = (body.get("property_id") or "").strip()
+    due_date = (body.get("due_date") or "").strip()[:10]
+    task_kind = (body.get("task_kind") or "GENERAL").strip().upper()
+    note = (body.get("note") or "").strip() or None
+    priority = (body.get("priority") or "MEDIUM").strip().upper()
+    override_assigned_to = (body.get("assigned_to") or "").strip() or None
+
+    if not property_id:
+        return make_error_response(
+            status_code=400, code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "property_id is required."},
+        )
+    if not due_date or len(due_date) != 10:
+        return make_error_response(
+            status_code=400, code=ErrorCode.VALIDATION_ERROR,
+            extra={"detail": "due_date (YYYY-MM-DD) is required."},
+        )
+    if task_kind not in _ADHOC_ALLOWED_KINDS:
+        return make_error_response(
+            status_code=400, code=ErrorCode.VALIDATION_ERROR,
+            extra={
+                "detail": (
+                    f"Task kind '{task_kind}' cannot be created ad-hoc. "
+                    f"Allowed: {', '.join(sorted(_ADHOC_ALLOWED_KINDS))}. "
+                    "Check-in and check-out tasks are created automatically from bookings."
+                ),
+            },
+        )
+    if priority not in ("LOW", "MEDIUM", "HIGH", "CRITICAL"):
+        priority = "MEDIUM"
+
+    try:
+        db = _client if _client is not None else _get_supabase_client()
+
+        # ── Validate property exists for this tenant ──
+        prop_res = (
+            db.table("properties")
+            .select("property_id, display_name")
+            .eq("property_id", property_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+        if not (prop_res.data or []):
+            return make_error_response(
+                status_code=404, code=ErrorCode.NOT_FOUND,
+                extra={"detail": f"Property '{property_id}' not found for this tenant."},
+            )
+        property_name = (prop_res.data[0].get("display_name") or property_id) if prop_res.data else property_id
+
+        # ── Duplicate guardrail (CLEANING only) ──────────────────────────────
+        # Warn if an open CLEANING task exists for the same property within ±1 day.
+        # This catches: "creating a cleaning task when one was already booked for
+        # the same turnover day" — a common accidental duplicate pattern.
+        conflict_tasks: list = []
+        if task_kind in _ADHOC_DEDUP_KINDS and not force:
+            try:
+                from datetime import date as _date, timedelta  # noqa: PLC0415
+                due = _date.fromisoformat(due_date)
+                window_start = (due - timedelta(days=1)).isoformat()
+                window_end = (due + timedelta(days=1)).isoformat()
+                dup_res = (
+                    db.table("tasks")
+                    .select("task_id, kind, status, due_date")
+                    .eq("tenant_id", tenant_id)
+                    .eq("property_id", property_id)
+                    .eq("kind", task_kind)
+                    .not_.in_("status", ["COMPLETED", "CANCELED"])
+                    .gte("due_date", window_start)
+                    .lte("due_date", window_end)
+                    .execute()
+                )
+                conflict_tasks = dup_res.data or []
+            except Exception as dup_exc:
+                logger.warning("adhoc_task: duplicate check failed: %s", dup_exc)
+
+            if conflict_tasks:
+                return JSONResponse(status_code=409, content={
+                    "ok": False,
+                    "error": {
+                        "code": "DUPLICATE_TASK_CONFLICT",
+                        "message": (
+                            f"An open {task_kind} task already exists for {property_name} "
+                            f"within 1 day of {due_date}. "
+                            "Pass ?force=true to create anyway (e.g. for an extra cleaning)."
+                        ),
+                        "conflict_tasks": conflict_tasks,
+                        "property_name": property_name,
+                        "requested_due_date": due_date,
+                    },
+                })
+
+        # ── Auto-assign by lane ───────────────────────────────────────────────
+        assigned_to = override_assigned_to
+        worker_role_needed = _KIND_TO_WORKER_ROLE.get(task_kind)
+        if not assigned_to:
+            try:
+                assign_res = (
+                    db.table("staff_property_assignments")
+                    .select("user_id, priority")
+                    .eq("property_id", property_id)
+                    .eq("tenant_id", tenant_id)
+                    .order("priority", desc=False)
+                    .limit(10)
+                    .execute()
+                )
+                if assign_res.data:
+                    candidate_ids = [r["user_id"] for r in assign_res.data]
+                    perm_res = (
+                        db.table("tenant_permissions")
+                        .select("user_id, worker_roles")
+                        .eq("tenant_id", tenant_id)
+                        .in_("user_id", candidate_ids)
+                        .execute()
+                    )
+                    roles_by_uid = {
+                        p["user_id"]: [str(r).lower() for r in (p.get("worker_roles") or [])]
+                        for p in (perm_res.data or [])
+                    }
+                    for uid in candidate_ids:
+                        uid_roles = roles_by_uid.get(uid, [])
+                        if worker_role_needed is None or worker_role_needed in uid_roles:
+                            assigned_to = uid
+                            break
+            except Exception as exc:
+                logger.warning("adhoc_task: auto-assign lookup failed: %s", exc)
+
+        # ── Create task row ───────────────────────────────────────────────────
+        import hashlib  # noqa: PLC0415
+        now_iso = datetime.now(tz=timezone.utc).isoformat()
+        scope = f"ADHOC:{task_kind}:{property_id}:{due_date}:{actor_id}:{now_iso}"
+        task_id = hashlib.sha256(scope.encode()).hexdigest()[:16]
+
+        worker_role_for_task = worker_role_needed or "worker"
+        title = f"Ad-hoc {task_kind.lower().replace('_', ' ')} — {property_name} on {due_date}"
+
+        notes_payload: list = []
+        if note:
+            notes_payload = [{"text": note, "created_by": actor_id, "created_at": now_iso, "source": "manager_note"}]
+
+        task_row = {
+            "task_id":         task_id,
+            "tenant_id":       tenant_id,
+            "kind":            task_kind,
+            "status":          "PENDING",
+            "priority":        priority,
+            "urgency":         "normal",
+            "worker_role":     worker_role_for_task,
+            "ack_sla_minutes": 60,
+            "booking_id":      property_id,   # no booking context — use property as fallback
+            "property_id":     property_id,
+            "due_date":        due_date,
+            "title":           title,
+            "description":     note,
+            "assigned_to":     assigned_to,
+            "notes":           notes_payload,
+            "created_at":      now_iso,
+            "updated_at":      now_iso,
+        }
+
+        db.table("tasks").insert(task_row).execute()
+
+        # Audit
+        try:
+            db.table("admin_audit_log").insert({
+                "tenant_id":   tenant_id,
+                "actor_id":    actor_id,
+                "action":      "task.adhoc_created",
+                "entity_type": "task",
+                "entity_id":   task_id,
+                "details": {
+                    "kind":        task_kind,
+                    "property_id": property_id,
+                    "due_date":    due_date,
+                    "priority":    priority,
+                    "assigned_to": assigned_to,
+                    "force":       force,
+                    "note":        note,
+                },
+                "performed_at": now_iso,
+            }).execute()
+        except Exception:
+            pass   # audit is best-effort
+
+        conflict_warning = None
+        if force and conflict_tasks:
+            conflict_warning = (
+                f"Created despite {len(conflict_tasks)} existing {task_kind} task(s) "
+                f"near {due_date} on {property_name}."
+            )
+
+        logger.info(
+            "Phase 1036 adhoc_task: kind=%s task=%s property=%s due=%s assigned=%s actor=%s force=%s",
+            task_kind, task_id, property_id, due_date, assigned_to, actor_id, force,
+        )
+
+        return JSONResponse(status_code=200, content={
+            "ok": True,
+            "task_id":          task_id,
+            "kind":             task_kind,
+            "status":           "PENDING",
+            "property_id":      property_id,
+            "property_name":    property_name,
+            "due_date":         due_date,
+            "assigned_to":      assigned_to,
+            "priority":         priority,
+            "conflict_warning": conflict_warning,
+        })
+
+    except Exception as exc:
+        logger.exception("adhoc_task: create failed property=%s kind=%s: %s", property_id, task_kind, exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR, "Failed to create ad-hoc task")

@@ -1,21 +1,16 @@
 'use client';
 
 /**
- * Phase 1035 — /manager/stream  (REDESIGNED)
+ * Phase 1036 — /manager/stream  (HARDENED)
  *
  * Product spec: docs/core/stream-product-spec.md
  *
- * This is an OPERATIONAL COMMAND SURFACE, not an audit log.
- * - Tasks tab: live tasks table (PENDING/ACKNOWLEDGED/IN_PROGRESS/MANAGER_EXECUTING)
- *   sorted by urgency (overdue → today → upcoming → future)
- * - Bookings tab: operational booking runway (yesterday → +7d) from bookings table
- * - Sessions tab: REMOVED (belongs in /admin/audit)
- *
- * Data sources:
- *   Tasks   → GET /manager/tasks  (tasks table, property-scoped)
- *   Bookings → GET /manager/stream/bookings  (bookings table, operational window)
- *
- * NOT audit_events. Never.
+ * Phase 1035: Stream redesigned as operational command surface (live tables).
+ * Phase 1036 additions:
+ *   - Canonical task ordering: Checkout → Cleaning → Check-in within same property+day
+ *   - Add Task quick action (reuses POST /tasks/adhoc — no parallel creation system)
+ *   - Duplicate guardrail: warns if conflicting open task exists, allows force-override
+ *   - Scope-aware booking empty state
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -61,6 +56,8 @@ type StreamBooking = {
 
 type StreamTab = 'tasks' | 'bookings';
 
+type ConflictTask = { task_id: string; kind: string; status: string; due_date: string };
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const KIND_LABEL: Record<string, string> = {
@@ -80,6 +77,19 @@ const STATUS_CHIP: Record<string, { color: string; bg: string; label: string }> 
   MANAGER_EXECUTING:  { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', label: 'Manager Executing' },
 };
 
+// ── Canonical task kind ordering within same property + due_date ──────────────
+// Operational sequence: Check-out (turnover starts) → Cleaning → Check-in
+// This matches the real workflow: guest leaves → property cleaned → new guest arrives.
+const CANONICAL_KIND_ORDER: Record<string, number> = {
+  CHECKOUT_VERIFY:     1,
+  CLEANING:            2,
+  CHECKIN_PREP:        3,
+  MAINTENANCE:         4,
+  GUEST_WELCOME:       5,
+  SELF_CHECKIN_FOLLOWUP: 6,
+  GENERAL:             7,
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function todayStr(): string {
@@ -94,7 +104,6 @@ function getUrgency(task: StreamTask): UrgencyLevel {
   const today = todayStr();
   if (due < today) return 'overdue';
   if (due === today) return 'today';
-  // Within 7 days
   const daysOut = (new Date(due).getTime() - Date.now()) / 86400000;
   if (daysOut <= 7) return 'upcoming';
   return 'future';
@@ -110,6 +119,34 @@ const URGENCY_BADGE: Record<UrgencyLevel, { label: string; color: string; bg: st
   upcoming: { label: 'UPCOMING', color: '#6366f1', bg: 'rgba(99,102,241,0.10)' },
   future:   { label: '',         color: '#6b7280', bg: 'transparent' },
 };
+
+/**
+ * Sort tasks by:
+ *   1. Urgency (overdue → today → upcoming → future)
+ *   2. Due date ascending (earlier first within same urgency band)
+ *   3. Property ID (group same-property tasks together within same day)
+ *   4. Canonical kind order (Checkout → Cleaning → Checkin within same property+date)
+ */
+function sortTasks(tasks: StreamTask[]): StreamTask[] {
+  return [...tasks].sort((a, b) => {
+    const ua = URGENCY_ORDER[getUrgency(a)];
+    const ub = URGENCY_ORDER[getUrgency(b)];
+    if (ua !== ub) return ua - ub;
+
+    const da = a.due_date || '9999';
+    const db = b.due_date || '9999';
+    if (da !== db) return da.localeCompare(db);
+
+    // Same urgency + same due date → group by property, then canonical kind order
+    const pa = a.property_id || '';
+    const pb = b.property_id || '';
+    if (pa !== pb) return pa.localeCompare(pb);
+
+    const ka = CANONICAL_KIND_ORDER[a.task_kind || a.kind || ''] ?? 99;
+    const kb = CANONICAL_KIND_ORDER[b.task_kind || b.kind || ''] ?? 99;
+    return ka - kb;
+  });
+}
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '—';
@@ -143,12 +180,33 @@ function UrgencyBadge({ level }: { level: UrgencyLevel }) {
   );
 }
 
+/** Tiny canonical sequence badge shown within same property+day group */
+function KindSequenceBadge({ kind }: { kind: string }) {
+  const seq = CANONICAL_KIND_ORDER[kind];
+  if (!seq) return null;
+  const color = kind === 'CHECKOUT_VERIFY' ? '#ef4444'
+    : kind === 'CLEANING' ? '#f59e0b'
+    : kind === 'CHECKIN_PREP' ? '#10b981'
+    : 'transparent';
+  if (color === 'transparent') return null;
+  return (
+    <span title="Operational sequence" style={{
+      fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 3,
+      background: `${color}15`, color, border: `1px solid ${color}30`,
+      marginLeft: 4, letterSpacing: '0.05em', userSelect: 'none',
+    }}>
+      {seq === 1 ? 'CHECKOUT' : seq === 2 ? 'CLEAN' : seq === 3 ? 'CHECK-IN' : ''}
+    </span>
+  );
+}
+
 function TaskRow({
   task, isNew, onClick,
 }: { task: StreamTask; isNew: boolean; onClick: () => void }) {
   const urgency = getUrgency(task);
   const sc = STATUS_CHIP[task.status] || STATUS_CHIP['PENDING'];
-  const kindLabel = KIND_LABEL[task.task_kind || task.kind || ''] || task.task_kind || '';
+  const kind = task.task_kind || task.kind || '';
+  const kindLabel = KIND_LABEL[kind] || kind;
   const propName = task.property_name || task.property_id;
   const propCode = (task.property_name && task.property_id !== task.property_name) ? task.property_id : null;
   const workerName = workerDisplay(task.assigned_to_name || task.taken_over_by_name, task.assigned_to || task.taken_over_by);
@@ -183,7 +241,10 @@ function TaskRow({
         {propCode && (
           <div style={{ fontSize: 10, color: 'var(--color-text-faint)' }}>{propCode}</div>
         )}
-        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 1 }}>{kindLabel}</div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 1, display: 'flex', alignItems: 'center' }}>
+          {kindLabel}
+          <KindSequenceBadge kind={kind} />
+        </div>
       </div>
 
       {/* Status + urgency */}
@@ -274,6 +335,192 @@ function BookingRow({ booking }: { booking: StreamBooking }) {
   );
 }
 
+// ── Add Task Modal ────────────────────────────────────────────────────────────
+// Reuses POST /tasks/adhoc — NOT a second task creation system.
+// Allowed kinds: CLEANING | MAINTENANCE | GENERAL
+// CHECKIN_PREP / CHECKOUT_VERIFY are booking-generated and blocked here.
+
+const ADHOC_KINDS = ['CLEANING', 'MAINTENANCE', 'GENERAL'] as const;
+type AdhocKind = typeof ADHOC_KINDS[number];
+
+const ADHOC_KIND_LABEL: Record<AdhocKind, string> = {
+  CLEANING: 'Extra Cleaning',
+  MAINTENANCE: 'Maintenance',
+  GENERAL: 'General Operational Task',
+};
+
+type ConflictState = {
+  message: string;
+  conflicts: ConflictTask[];
+  propertyName: string;
+};
+
+function AddTaskModal({
+  onClose,
+  onDone,
+  scopedPropertyIds,
+}: {
+  onClose: () => void;
+  onDone: () => void;
+  scopedPropertyIds?: string[];
+}) {
+  const [propertyId, setPropertyId] = useState(scopedPropertyIds?.[0] || '');
+  const [kind, setKind] = useState<AdhocKind>('CLEANING');
+  const [dueDate, setDueDate] = useState(todayStr());
+  const [note, setNote] = useState('');
+  const [priority, setPriority] = useState<'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [conflict, setConflict] = useState<ConflictState | null>(null);
+
+  const submit = async (force = false) => {
+    if (!propertyId.trim()) { setError('Select a property.'); return; }
+    if (!dueDate) { setError('Due date is required.'); return; }
+    setSaving(true);
+    setError('');
+    setConflict(null);
+    try {
+      const url = `/tasks/adhoc${force ? '?force=true' : ''}`;
+      await apiFetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ property_id: propertyId, task_kind: kind, due_date: dueDate, note: note || undefined, priority }),
+      });
+      onDone();
+    } catch (e: unknown) {
+      // Try to parse conflict response (409)
+      const msg = (e as Error)?.message || '';
+      if (msg.includes('DUPLICATE_TASK_CONFLICT') || msg.includes('already exists')) {
+        // Parse conflict details from error if available
+        setConflict({
+          message: msg,
+          conflicts: [],
+          propertyName: propertyId,
+        });
+      } else {
+        setError(msg || 'Failed to create task');
+      }
+      setSaving(false);
+    }
+  };
+
+  const PRIORITIES = ['MEDIUM', 'HIGH', 'CRITICAL'] as const;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60,
+    }}>
+      <div style={{
+        background: 'var(--color-surface)', borderRadius: 14, padding: 28,
+        width: '100%', maxWidth: 460, boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-text)' }}>Add Operational Task</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--color-text-faint)' }}>✕</button>
+        </div>
+
+        {/* Property selector */}
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-faint)', display: 'block', marginBottom: 4, letterSpacing: '0.06em' }}>PROPERTY</label>
+        {scopedPropertyIds && scopedPropertyIds.length > 1 ? (
+          <select value={propertyId} onChange={e => setPropertyId(e.target.value)}
+            style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 13, marginBottom: 14 }}>
+            {scopedPropertyIds.map(pid => <option key={pid} value={pid}>{pid}</option>)}
+          </select>
+        ) : (
+          <input autoFocus value={propertyId} onChange={e => setPropertyId(e.target.value)} placeholder="e.g. KPG-500"
+            style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 13, boxSizing: 'border-box', marginBottom: 14 }} />
+        )}
+
+        {/* Task kind */}
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-faint)', display: 'block', marginBottom: 6, letterSpacing: '0.06em' }}>TASK TYPE</label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {ADHOC_KINDS.map(k => (
+            <button key={k} onClick={() => setKind(k)} style={{
+              padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              border: `1.5px solid ${kind === k ? 'var(--color-primary)' : 'var(--color-border)'}`,
+              background: kind === k ? 'rgba(var(--color-primary-rgb),0.08)' : 'transparent',
+              color: kind === k ? 'var(--color-primary)' : 'var(--color-text-dim)',
+            }}>
+              {ADHOC_KIND_LABEL[k]}
+            </button>
+          ))}
+        </div>
+
+        {/* Note: check-in / check-out are not available */}
+        <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginBottom: 14, padding: '8px 12px', background: 'var(--color-bg)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+          ℹ Check-in and check-out tasks are generated automatically from bookings.
+        </div>
+
+        {/* Due date */}
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-faint)', display: 'block', marginBottom: 4, letterSpacing: '0.06em' }}>DUE DATE</label>
+        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 13, boxSizing: 'border-box', marginBottom: 14 }} />
+
+        {/* Priority */}
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-faint)', display: 'block', marginBottom: 6, letterSpacing: '0.06em' }}>PRIORITY</label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {PRIORITIES.map(p => {
+            const col = p === 'CRITICAL' ? '#ef4444' : p === 'HIGH' ? '#f59e0b' : 'var(--color-primary)';
+            return (
+              <button key={p} onClick={() => setPriority(p)} style={{
+                flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                border: `1.5px solid ${priority === p ? col : 'var(--color-border)'}`,
+                background: priority === p ? `${col}15` : 'transparent',
+                color: priority === p ? col : 'var(--color-text-dim)',
+              }}>
+                {p}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Note */}
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-faint)', display: 'block', marginBottom: 4, letterSpacing: '0.06em' }}>NOTE FOR WORKER (optional)</label>
+        <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+          placeholder="e.g. Extra cleaning — guest complaint, focus on kitchen"
+          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 13, resize: 'none', boxSizing: 'border-box' }} />
+
+        {/* Conflict warning */}
+        {conflict && (
+          <div style={{ marginTop: 14, padding: '12px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>⚠ Existing task conflict detected</div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 10 }}>
+              An open {kind} task already exists near this date for {conflict.propertyName}.
+              Creating another is still valid — e.g. for an extra cleaning between stays.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => { setConflict(null); setSaving(false); }}
+                style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: 'pointer', fontSize: 12, color: 'var(--color-text-dim)' }}
+              >Cancel</button>
+              <button
+                onClick={() => submit(true)}
+                disabled={saving}
+                style={{ flex: 2, padding: '7px 0', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700, opacity: saving ? 0.7 : 1 }}
+              >{saving ? 'Creating…' : 'Create Anyway (Extra Task)'}</button>
+            </div>
+          </div>
+        )}
+
+        {error && <p style={{ color: '#ef4444', fontSize: 12, margin: '10px 0 0' }}>⚠ {error}</p>}
+
+        {!conflict && (
+          <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' }}>
+            <button onClick={onClose}
+              style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-dim)', fontSize: 13 }}>
+              Cancel
+            </button>
+            <button onClick={() => submit(false)} disabled={saving}
+              style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, opacity: saving ? 0.7 : 1 }}>
+              {saving ? 'Creating…' : 'Create Task'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function StreamPage() {
@@ -292,21 +539,21 @@ export default function StreamPage() {
   const [bookingsErr, setBookingsErr] = useState('');
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
 
-  // Drawer state
+  // Drawer + modal state
   const [drawerTask, setDrawerTask] = useState<ManagerTaskCardTask | null>(null);
   const [loadingTask, setLoadingTask] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
 
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Load tasks (from /manager/tasks — tasks table, not audit_events) ────────
+  // ── Load tasks ───────────────────────────────────────────────────────────────
   const loadTasks = useCallback(async (isAuto = false) => {
     if (!isAuto) setTasksLoading(true);
     setTasksErr('');
     try {
       const res = await apiFetch<{ groups: Record<string, StreamTask[]> }>('/manager/tasks');
       const groups = res.groups || {};
-      // Flatten all groups into one list; urgency sort applied client-side
       const all: StreamTask[] = [
         ...(groups.manager_executing || []),
         ...(groups.pending || []),
@@ -320,16 +567,7 @@ export default function StreamPage() {
         setTimeout(() => setNewTaskIds(new Set()), 3000);
       }
       prevTaskIdsRef.current = new Set(all.map(t => t.id));
-      // Sort by urgency
-      all.sort((a, b) => {
-        const ua = URGENCY_ORDER[getUrgency(a)];
-        const ub = URGENCY_ORDER[getUrgency(b)];
-        if (ua !== ub) return ua - ub;
-        const da = a.due_date || '9999';
-        const db2 = b.due_date || '9999';
-        return da.localeCompare(db2);
-      });
-      setTasks(all);
+      setTasks(sortTasks(all));
       setLastRefresh(new Date());
     } catch (e: unknown) {
       setTasksErr((e as Error)?.message || 'Failed to load tasks');
@@ -338,7 +576,7 @@ export default function StreamPage() {
     }
   }, []);
 
-  // ── Load bookings (from /manager/stream/bookings — bookings table) ──────────
+  // ── Load bookings ────────────────────────────────────────────────────────────
   const loadBookings = useCallback(async () => {
     setBookingsLoading(true);
     setBookingsErr('');
@@ -362,8 +600,6 @@ export default function StreamPage() {
       const res = await apiFetch<{ task: ManagerTaskCardTask }>(`/tasks/detail/${taskId}`);
       setDrawerTask(res.task);
     } catch {
-      // Drawer still opens with what we know from the stream row
-      // Find task in current list for minimal shell — avoids empty property_id
       const known = tasks.find(t => t.id === taskId);
       if (known) {
         setDrawerTask({
@@ -389,12 +625,17 @@ export default function StreamPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [loadTasks]);
 
-  // Load bookings only when tab is first opened
   useEffect(() => {
     if (activeTab === 'bookings' && !bookingsLoaded) {
       loadBookings();
     }
   }, [activeTab, bookingsLoaded, loadBookings]);
+
+  // ── Derived values ────────────────────────────────────────────────────────────
+  const overdueCount = tasks.filter(t => getUrgency(t) === 'overdue').length;
+  const todayCount = tasks.filter(t => getUrgency(t) === 'today').length;
+  const unassignedCount = tasks.filter(t => !t.assigned_to && !t.taken_over_by).length;
+  const scopedPropertyIds = [...new Set(tasks.map(t => t.property_id).filter(Boolean))];
 
   // ── Tab button style ─────────────────────────────────────────────────────────
   const tabBtn = (tab: StreamTab): React.CSSProperties => ({
@@ -408,11 +649,6 @@ export default function StreamPage() {
     cursor: 'pointer',
     transition: 'all 120ms ease',
   });
-
-  // ── Stats for header ─────────────────────────────────────────────────────────
-  const overdueCount = tasks.filter(t => getUrgency(t) === 'overdue').length;
-  const todayCount = tasks.filter(t => getUrgency(t) === 'today').length;
-  const unassignedCount = tasks.filter(t => !t.assigned_to && !t.taken_over_by).length;
 
   return (
     <DraftGuard>
@@ -432,7 +668,7 @@ export default function StreamPage() {
                 Active tasks · Booking runway · Updated every 20s
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, color: 'var(--color-text-faint)' }}>
                 {lastRefresh.toLocaleTimeString()}
               </span>
@@ -441,6 +677,19 @@ export default function StreamPage() {
                 style={{ background: 'transparent', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '7px 14px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-dim)', cursor: 'pointer' }}
               >
                 ↻ Refresh
+              </button>
+              {/* Add Task — reuses POST /tasks/adhoc, not a new creation system */}
+              <button
+                id="stream-add-task-btn"
+                onClick={() => setShowAddTask(true)}
+                style={{
+                  background: 'var(--color-primary)', border: 'none',
+                  borderRadius: 'var(--radius-md)', padding: '7px 16px',
+                  fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add Task
               </button>
             </div>
           </div>
@@ -470,7 +719,7 @@ export default function StreamPage() {
           )}
         </div>
 
-        {/* ── Tabs: Tasks | Bookings (Sessions removed) ────────────────────── */}
+        {/* ── Tabs ─────────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           <button style={tabBtn('tasks')} onClick={() => setActiveTab('tasks')}>
             Tasks {tasks.length > 0 && `(${tasks.length})`}
@@ -546,8 +795,13 @@ export default function StreamPage() {
             {bookingsLoaded && !bookingsErr && bookings.length === 0 && (
               <div style={{ padding: '48px 0', textAlign: 'center' }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>📅</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4 }}>No upcoming bookings</div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-faint)' }}>No arrivals or departures in the next 7 days</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4 }}>No upcoming arrivals or departures</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-faint)', maxWidth: 340, margin: '0 auto', lineHeight: 1.5 }}>
+                  {scopedPropertyIds.length > 0
+                    ? `No confirmed arrivals or departures in your ${scopedPropertyIds.length === 1 ? `scoped property (${scopedPropertyIds[0]})` : `${scopedPropertyIds.length} scoped properties`} in the next 7 days.`
+                    : 'No confirmed arrivals or departures in your scoped properties in the next 7 days.'
+                  }
+                </div>
               </div>
             )}
             {bookingsLoaded && !bookingsErr && bookings.length > 0 && (
@@ -572,6 +826,7 @@ export default function StreamPage() {
             )}
             <div style={{ marginTop: 12, fontSize: 11, color: 'var(--color-text-faint)', textAlign: 'center' }}>
               Showing arrivals + departures: yesterday → next 7 days · confirmed bookings only
+              {scopedPropertyIds.length > 0 && ` · ${scopedPropertyIds.length} propert${scopedPropertyIds.length === 1 ? 'y' : 'ies'} in scope`}
             </div>
           </>
         )}
@@ -595,6 +850,15 @@ export default function StreamPage() {
         }}>
           Opening task…
         </div>
+      )}
+
+      {/* ── Add Task Modal ───────────────────────────────────────────────────── */}
+      {showAddTask && (
+        <AddTaskModal
+          onClose={() => setShowAddTask(false)}
+          onDone={() => { setShowAddTask(false); loadTasks(); }}
+          scopedPropertyIds={scopedPropertyIds.length > 0 ? scopedPropertyIds : undefined}
+        />
       )}
     </DraftGuard>
   );
