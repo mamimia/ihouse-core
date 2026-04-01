@@ -62,25 +62,53 @@ A COMPLETED task from yesterday is gone. Forever.
 **Operational booking runway. Not booking event history.**
 
 ### Data source
-`bookings` table. Operational window: **yesterday → +7 days**.
+`bookings` table (via `GET /manager/stream/bookings`).
 
-### Visibility rules
-- SHOW: confirmed bookings with arrival OR departure in the operational window
-- HIDE: cancelled/rejected, fully past (both dates before yesterday)
+### What "operationally alive" means
+A booking must be visible until the guest has checked out. **The window is not the only filter — status is.**
+
+| Booking state | Include? | Label |
+|---|---|---|
+| Guest departing today (`end_date = today`) | ✓ | "Departing Today" |
+| Guest arriving today (`start_date = today`) | ✓ | "Arriving Today" |
+| **Guest currently in property** (`start_date < today AND end_date > today`) | ✓ | "Active Stay — Out [date]" |
+| Departing tomorrow | ✓ | "Departing Tomorrow" |
+| Arriving tomorrow | ✓ | "Arriving Tomorrow" |
+| Upcoming in next 7 days | ✓ | "Arriving in Xd" |
+| Status: cancelled / rejected | ✗ | Hidden |
+| Status: checked_out / completed | ✗ | Hidden |
+
+**Active in-stay bookings are the highest operational priority.**
+A booking that started 3 days ago is still alive — the guest is in the property right now.
+Hiding it because `start_date` is older than `window_start` is a bug, not correct behavior.
+
+### Backend query — three-part merge (Phase 1037 fix)
+1. `start_date BETWEEN window_start AND window_end` — captures upcoming arrivals
+2. `end_date BETWEEN window_start AND window_end` — captures near-future departures
+3. `start_date < today AND end_date >= today` — **captures active in-stay bookings** (was missing)
+
+Results deduplicated by `booking_id`.
 
 ### Sort order
-1. Today's departures (checkout urgency)
-2. Today's arrivals
-3. Tomorrow's departures
-4. Tomorrow's arrivals
-5. Further future, ascending
+1. Departing today (checkout urgency — highest priority)
+2. Arriving today
+3. Active in-stay (sorted by end_date asc — soonest departure first)
+4. Departing tomorrow
+5. Arriving tomorrow
+6. Further upcoming (ascending by start_date)
 
 ### Row display
 - Property human name first
 - Guest name
 - Arrival / Departure dates
-- Status label: "Arriving Today" / "Active Stay" / "Departing Today" / "Arriving in Xd"
-- Task hint if relevant (e.g. "Cleaning: Pending")
+- Status label: "Arriving Today" / "Active Stay — Out Apr 5" / "Departing Today" / "Arriving in Xd"
+- Early Check-out indicator if `early_checkout_status = approved`
+
+### Booking click-through action (Phase 1037 addition)
+Clicking a booking row for an `active` or `checked_in` booking opens a booking action panel:
+- **Early Check-out** action → opens `EarlyCheckoutPanel` (existing component, `embedded={true}`)
+- This reuses the existing `POST /admin/bookings/{id}/early-checkout/request` + `/approve` endpoints
+- Do NOT build a new early checkout flow. Reuse what exists.
 
 ---
 
