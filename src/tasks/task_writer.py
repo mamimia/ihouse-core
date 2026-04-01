@@ -30,8 +30,18 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import time as _time, datetime, timezone
 from typing import Any, Optional
+
+# Phase 1033 — canonical kind → due_time defaults (mirrors WorkerTaskCard.getDefaultTime)
+_KIND_DUE_TIME: dict[str, str] = {
+    "CHECKOUT_VERIFY": "11:00:00",
+    "CHECKOUT_PREP":   "11:00:00",
+    "CLEANING":        "10:00:00",
+    "CHECKIN_PREP":    "14:00:00",
+    "GUEST_WELCOME":   "14:00:00",
+    "MAINTENANCE":     "17:00:00",
+}
 
 from tasks.task_automator import (
     TaskCancelAction,
@@ -62,6 +72,11 @@ def _get_supabase_client() -> Any:
 
 def _task_to_row(task: Task) -> dict:
     """Convert a Task dataclass to a Supabase-insertable dict."""
+    # Phase 1033 — write due_time from canonical kind default.
+    # This ensures the backend can compute hour-level timing gates without
+    # relying on the frontend's getDefaultTime() map.
+    _kind = task.kind.value.upper() if task.kind else ""
+    _due_time = _KIND_DUE_TIME.get(_kind)  # None for GENERAL / unknown
     return {
         "task_id": task.task_id,
         "tenant_id": task.tenant_id,
@@ -74,6 +89,7 @@ def _task_to_row(task: Task) -> dict:
         "booking_id": task.booking_id,
         "property_id": task.property_id,
         "due_date": task.due_date,
+        "due_time": _due_time,
         "title": task.title,
         "description": task.description,
         "created_at": task.created_at,
@@ -448,9 +464,15 @@ def reschedule_tasks_for_booking_amended(
                 logger.warning("task_writer: failed to build healing assignment_map for amended booking_id=%s: %s", booking_id, _exc)
 
         for action in actions:
-            update_payload = {"due_date": action.new_due_date, "updated_at": now}
-            
+            # Phase 1033 — preserve due_time on rescheduled tasks.
+            # due_date changes on amendment; due_time is kind-fixed and must not be lost.
             task_obj = next((t for t in existing_tasks if t.task_id == action.task_id), None)
+            _kind = (task_obj.kind.value if task_obj else "").upper()
+            update_payload = {
+                "due_date": action.new_due_date,
+                "due_time": _KIND_DUE_TIME.get(_kind),  # None for GENERAL
+                "updated_at": now,
+            }
             if task_obj and not task_obj.assigned_to:
                 healed_worker = assignment_map.get(task_obj.worker_role.value)
                 if healed_worker:

@@ -48,6 +48,7 @@ from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 from services.audit_writer import write_audit_event
 from tasks.task_model import TaskStatus, WorkerRole, VALID_TASK_TRANSITIONS
+from tasks.timing import compute_task_timing, enrich_tasks_with_timing, format_opens_in
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +276,11 @@ async def list_worker_tasks(
         tasks = [t for t in tasks if not _is_stale(t)]
         # ────────────────────────────────────────────────────────────────────────
 
+        # Phase 1033 — Enrich every task with canonical timing fields:
+        # effective_due_at, ack_allowed_at, start_allowed_at, ack_is_open, start_is_open
+        # Frontend uses these values directly; no local gate computation needed.
+        enrich_tasks_with_timing(tasks)
+
         return JSONResponse(
             status_code=200,
             content={
@@ -375,16 +381,11 @@ async def acknowledge_task(
 
     **No request body required.**
 
-    Phase 1027d — Acknowledge timing window:
-    (Touches the ACKNOWLEDGED state transition originally introduced in Phase 888 /
-    Phase 112 task lifecycle. This is the current active operational truth fix.)
-    Acknowledge is only permitted within 24 hours (1 day) of the task's due_date.
-    This prevents workers from mass-acknowledging months-in-advance tasks, which
-    distorts the operational queue by moving all future tasks into ACKNOWLEDGED
-    state before any work is imminent.
-
-    Window: task.due_date - 1 day ≤ today ≤ task.due_date
-    Tasks without a due_date are always acknowledgeable.
+    Phase 1033 — Acknowledge timing window (replaces Phase 1027d calendar-day gate):
+    Uses compute_task_timing() for hour-level UTC precision.
+    Window: ack_allowed_at = effective_due_at − 24h
+    MAINTENANCE/CRITICAL tasks: always open (ack_allowed_at = None).
+    Tasks without due_date: always open.
 
     Uses VALID_TASK_TRANSITIONS from task_model.py.
     Terminal tasks (COMPLETED/CANCELED) return 422 INVALID_TRANSITION.
@@ -392,35 +393,31 @@ async def acknowledge_task(
     try:
         db = client or _get_supabase_client()
 
-        # Look up task to enforce timing gate
+        # Phase 1033: Hour-level acknowledge gate via compute_task_timing()
         _task_res = (
             db.table("tasks")
-            .select("due_date, kind")
+            .select("due_date, due_time, kind, priority, urgency")
             .eq("task_id", task_id)
             .eq("tenant_id", tenant_id)
             .limit(1)
             .execute()
         )
         if _task_res.data:
-            _due_str = _task_res.data[0].get("due_date")
-            if _due_str:
-                from datetime import date as _date  # noqa: PLC0415
-                try:
-                    _due = _date.fromisoformat(_due_str)
-                    _today = _date.today()
-                    _days_until = (_due - _today).days
-                    # Allow ack within 1 calendar day of due date (same day, day before, or overdue)
-                    # Reject if task is 2+ calendar days in the future
-                    if _days_until > 1:
-                        return make_error_response(
-                            422,
-                            ErrorCode.INVALID_TRANSITION,
-                            f"Cannot acknowledge task: due date {_due_str} is {_days_until} day(s) away. "
-                            f"Acknowledge is only available within 24 hours of the task due date. "
-                            f"Check back on {(_due - __import__('datetime').timedelta(days=1)).isoformat()}.",
-                        )
-                except (ValueError, TypeError):
-                    pass  # unparseable date — allow, don't block
+            _now_utc = datetime.now(timezone.utc)
+            _timing = compute_task_timing(_task_res.data[0], now_utc=_now_utc)
+            if not _timing.ack_is_open and _timing.ack_allowed_at:
+                _opens_in = format_opens_in(_timing.ack_allowed_at, _now_utc)
+                return make_error_response(
+                    422,
+                    ErrorCode.INVALID_TRANSITION,
+                    f"Acknowledge not yet open. Opens in {_opens_in} "
+                    f"(at {_timing.ack_allowed_at.isoformat()}).",
+                    extra={
+                        "error_code": "ACKNOWLEDGE_TOO_EARLY",
+                        "ack_allowed_at": _timing.ack_allowed_at.isoformat(),
+                        "opens_in": _opens_in,
+                    },
+                )
 
     except Exception as _gate_exc:  # noqa: BLE001
         logger.warning("acknowledge_task: timing gate check failed (non-blocking): %s", _gate_exc)
@@ -461,69 +458,41 @@ async def start_task(
 
     **No request body required.**
 
-    Phase 1029 — Start timing gate:
-    START is the gate for "real work begins now". It must not open arbitrarily
-    far in advance (e.g. a worker cannot start checkout on a booking due in 5 days).
-
-    Rule by kind:
-    - CHECKOUT_VERIFY, CHECKOUT_PREP, CLEANING (canonical): START on due_date only
-      (days_until = 0). Rationale: checkout is same-day, cleaning follows checkout.
-    - CHECKIN_PREP, GUEST_WELCOME: START up to 1 day before due_date (days_until <= 1).
-      Rationale: check-in prep realistically begins the evening before.
-    - MAINTENANCE, GENERAL: no time gate (operational flexibility).
-
-    Hour-level gating (e.g. 'Start Cleaning only 1h before checkout')
-    requires due_time to be consistently stored. That is Phase 1030.
+    Phase 1033 — Start timing gate (replaces Phase 1029 calendar-day frozensets):
+    Uses compute_task_timing() for hour-level UTC precision.
+    Window: start_allowed_at = effective_due_at − 2h
+    MAINTENANCE/GENERAL kinds: start_allowed_at = None (always open — no gate).
+    CRITICAL tasks: always open regardless of kind.
+    Tasks without due_date: always open.
     """
     try:
         db = client or _get_supabase_client()
 
-        # Phase 1029: START timing gate
+        # Phase 1033: Hour-level start gate via compute_task_timing()
         _task_res = (
             db.table("tasks")
-            .select("due_date, kind")
+            .select("due_date, due_time, kind, priority, urgency")
             .eq("task_id", task_id)
             .eq("tenant_id", tenant_id)
             .limit(1)
             .execute()
         )
         if _task_res.data:
-            _due_str = _task_res.data[0].get("due_date")
-            _kind = (_task_res.data[0].get("kind") or "").upper()
-            if _due_str:
-                from datetime import date as _date
-                try:
-                    _due = _date.fromisoformat(_due_str)
-                    _today = _date.today()
-                    _days_until = (_due - _today).days
-
-                    # Strict same-day kinds: only allowed on the due_date itself
-                    _STRICT_SAME_DAY = frozenset({"CHECKOUT_VERIFY", "CHECKOUT_PREP", "CLEANING"})
-                    # Day-before-allowed kinds: allow start day before due_date
-                    _DAY_BEFORE_OK = frozenset({"CHECKIN_PREP", "GUEST_WELCOME"})
-                    # No gate kinds: maintenance, general, adhoc
-                    _NO_GATE = frozenset({"MAINTENANCE", "GENERAL"})
-
-                    if _kind in _STRICT_SAME_DAY and _days_until > 0:
-                        return make_error_response(
-                            422,
-                            ErrorCode.INVALID_TRANSITION,
-                            f"Cannot start {_kind} task: available only on the task due date "
-                            f"({_due_str}). Today is {_today.isoformat()} "
-                            f"({_days_until} day(s) early).",
-                        )
-                    elif _kind in _DAY_BEFORE_OK and _days_until > 1:
-                        return make_error_response(
-                            422,
-                            ErrorCode.INVALID_TRANSITION,
-                            f"Cannot start {_kind} task more than 1 day early. "
-                            f"Due date: {_due_str}. Today: {_today.isoformat()} "
-                            f"({_days_until} day(s) early). "
-                            f"You can start on {(_due - __import__('datetime').timedelta(days=1)).isoformat()}.",
-                        )
-                    # _NO_GATE kinds: no restriction, fall through
-                except (ValueError, TypeError):
-                    pass  # unparseable due_date — allow, don't block
+            _now_utc = datetime.now(timezone.utc)
+            _timing = compute_task_timing(_task_res.data[0], now_utc=_now_utc)
+            if not _timing.start_is_open and _timing.start_allowed_at:
+                _opens_in = format_opens_in(_timing.start_allowed_at, _now_utc)
+                return make_error_response(
+                    422,
+                    ErrorCode.INVALID_TRANSITION,
+                    f"Start not yet open. Opens in {_opens_in} "
+                    f"(at {_timing.start_allowed_at.isoformat()}).",
+                    extra={
+                        "error_code": "START_TOO_EARLY",
+                        "start_allowed_at": _timing.start_allowed_at.isoformat(),
+                        "opens_in": _opens_in,
+                    },
+                )
 
     except Exception as _gate_exc:
         logger.warning("start_task: timing gate check failed (non-blocking): %s", _gate_exc)
