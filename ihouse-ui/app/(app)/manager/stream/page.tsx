@@ -52,6 +52,9 @@ type StreamBooking = {
   status: string;
   external_ref?: string;
   urgency_label: string;
+  // Phase 1037: early checkout fields
+  early_checkout_status?: string;
+  early_checkout_eligible?: boolean;
 };
 
 type StreamTab = 'tasks' | 'bookings';
@@ -279,28 +282,40 @@ function TaskRow({
   );
 }
 
-function BookingRow({ booking }: { booking: StreamBooking }) {
+function BookingRow({ booking, onClick }: { booking: StreamBooking; onClick: () => void }) {
   const isUrgent = booking.urgency_label.includes('Today');
+  const isActive = booking.urgency_label.startsWith('Active Stay');
   const propName = booking.property_name || booking.property_id;
   const propCode = (booking.property_name && booking.property_id !== booking.property_name) ? booking.property_id : null;
 
   const urgencyColor = booking.urgency_label === 'Departing Today' ? '#ef4444'
     : booking.urgency_label === 'Arriving Today' ? '#10b981'
     : booking.urgency_label === 'Arriving Tomorrow' ? '#f59e0b'
-    : booking.urgency_label === 'Active Stay' ? '#6366f1'
+    : isActive ? '#6366f1'
     : '#6b7280';
 
+  const ecStatus = booking.early_checkout_status || 'none';
+  const ecApproved = ecStatus === 'approved';
+  const ecEligible = booking.early_checkout_eligible;
+
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 20px',
-      borderBottom: '1px solid var(--color-border)',
-      background: isUrgent ? `${urgencyColor}06` : 'transparent',
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 20px',
+        borderBottom: '1px solid var(--color-border)',
+        background: isUrgent || isActive ? `${urgencyColor}06` : 'transparent',
+        cursor: 'pointer',
+        transition: 'background 120ms ease',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-2)')}
+      onMouseLeave={e => (e.currentTarget.style.background = isUrgent || isActive ? `${urgencyColor}06` : 'transparent')}
+    >
       {/* Urgency bar */}
       <div style={{
         width: 3, borderRadius: 2, alignSelf: 'stretch',
-        background: urgencyColor, opacity: 0.7, flexShrink: 0,
+        background: urgencyColor, opacity: isActive ? 1.0 : 0.7, flexShrink: 0,
       }} />
 
       {/* Property */}
@@ -313,10 +328,16 @@ function BookingRow({ booking }: { booking: StreamBooking }) {
         )}
       </div>
 
-      {/* Guest + urgency */}
+      {/* Guest + ref + dates */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {booking.guest_name}
+          {/* Early checkout indicator */}
+          {ecApproved && (
+            <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' }}>
+              EARLY C/O
+            </span>
+          )}
         </div>
         <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginTop: 2 }}>
           {booking.external_ref && `${booking.external_ref} · `}{fmtDate(booking.start_date)} → {fmtDate(booking.end_date)}
@@ -331,6 +352,272 @@ function BookingRow({ booking }: { booking: StreamBooking }) {
       }}>
         {booking.urgency_label}
       </span>
+
+      {/* Action hint for in-stay / early-checkout-eligible */}
+      {ecEligible && (
+        <span style={{ fontSize: 10, color: 'var(--color-text-faint)', flexShrink: 0 }}>
+          ›
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ── Booking Action Panel (slide-in drawer for in-stay bookings) ────────────────
+// Reuses EarlyCheckoutPanel logic via a lightweight fetch-and-render approach.
+// Does NOT rebuild the early checkout flow — it links to the existing endpoint.
+
+function BookingActionPanel({ booking, onClose }: { booking: StreamBooking; onClose: () => void }) {
+  const [ecState, setEcState] = useState<{
+    early_checkout_status: string;
+    original_checkout_date: string;
+    caller_can_approve: boolean;
+    request: { recorded: boolean; proposed_date: string | null; source: string | null; note: string | null; at: string };
+    approval: { approved: boolean; effective_at: string; effective_date: string; approved_by: string | null; approved_at: string; reason: string | null; approval_note: string | null };
+    task: { task_id: string; due_date: string; is_early_checkout: boolean; status: string } | null;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  // Request form
+  const [reqSource, setReqSource] = useState('phone');
+  const [reqDate, setReqDate] = useState('');
+  const [reqNote, setReqNote] = useState('');
+  // Approve form
+  const [appDate, setAppDate] = useState('');
+  const [appTime, setAppTime] = useState('11:00');
+  const [appReason, setAppReason] = useState('');
+
+  const loadState = useCallback(async () => {
+    setLoading(true);
+    setLoadErr('');
+    try {
+      const res = await apiFetch<{
+        early_checkout_status: string;
+        original_checkout_date: string;
+        caller_can_approve: boolean;
+        request: { recorded: boolean; proposed_date: string | null; source: string | null; note: string | null; at: string };
+        approval: { approved: boolean; effective_at: string; effective_date: string; approved_by: string | null; approved_at: string; reason: string | null; approval_note: string | null };
+        task: { task_id: string; due_date: string; is_early_checkout: boolean; status: string } | null;
+      }>(`/admin/bookings/${booking.booking_id}/early-checkout`);
+      setEcState(res);
+      if (res.request?.proposed_date && !appDate) setAppDate(res.request.proposed_date);
+      if (res.approval?.effective_date && !appDate) setAppDate(res.approval.effective_date);
+    } catch (e) {
+      setLoadErr((e as Error)?.message || 'Failed to load early checkout state.');
+    }
+    setLoading(false);
+  }, [booking.booking_id]);
+
+  useEffect(() => { loadState(); }, [loadState]);
+
+  const flash = (type: 'ok' | 'err', text: string) => {
+    setMsg({ type, text });
+    setTimeout(() => setMsg(null), 4000);
+  };
+
+  const handleRequest = async () => {
+    setSubmitting(true);
+    try {
+      await apiFetch(`/admin/bookings/${booking.booking_id}/early-checkout/request`, {
+        method: 'POST',
+        body: JSON.stringify({ request_source: reqSource, request_note: reqNote || undefined, proposed_date: reqDate || undefined }),
+      });
+      flash('ok', 'Request recorded.');
+      await loadState();
+    } catch (e) { flash('err', (e as Error)?.message || 'Request failed.'); }
+    setSubmitting(false);
+  };
+
+  const handleApprove = async () => {
+    if (!appDate) { flash('err', 'Effective checkout date is required.'); return; }
+    setSubmitting(true);
+    try {
+      await apiFetch(`/admin/bookings/${booking.booking_id}/early-checkout/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ early_checkout_date: appDate, early_checkout_time: appTime || '11:00', reason: appReason || undefined }),
+      });
+      flash('ok', `Approved. Checkout task rescheduled to ${appDate}.`);
+      await loadState();
+    } catch (e) { flash('err', (e as Error)?.message || 'Approval failed.'); }
+    setSubmitting(false);
+  };
+
+  const propName = booking.property_name || booking.property_id;
+  const ecStatus = ecState?.early_checkout_status || 'none';
+  const canApprove = ecState?.caller_can_approve || false;
+  const isCheckedIn = ['checked_in', 'active'].includes((booking.status || '').toLowerCase());
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 500, display: 'flex', justifyContent: 'flex-end',
+    }}>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
+      {/* Panel */}
+      <div style={{
+        position: 'relative', width: '100%', maxWidth: 480,
+        background: 'var(--color-surface)', boxShadow: '-4px 0 40px rgba(0,0,0,0.25)',
+        display: 'flex', flexDirection: 'column', overflowY: 'auto',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px 14px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-text)' }}>Booking Actions</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dim)', marginTop: 2 }}>{propName}</div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-faint)', marginTop: 2 }}>
+              {booking.guest_name} · {fmtDate(booking.start_date)} → {fmtDate(booking.end_date)}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--color-text-faint)', padding: '4px 8px', lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Status badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>Early checkout status:</span>
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+              background: ecStatus === 'approved' ? '#dcfce7' : ecStatus === 'requested' ? '#fef3c7' : 'var(--color-surface-2)',
+              color: ecStatus === 'approved' ? '#15803d' : ecStatus === 'requested' ? '#d97706' : 'var(--color-text-dim)',
+            }}>
+              {ecStatus === 'none' ? 'No early checkout' : ecStatus === 'requested' ? '⏳ Request received' : ecStatus === 'approved' ? '✅ Approved' : ecStatus === 'completed' ? '🏁 Completed' : ecStatus}
+            </span>
+          </div>
+
+          {/* Feedback */}
+          {msg && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+              background: msg.type === 'ok' ? '#dcfce7' : '#fee2e2',
+              color: msg.type === 'ok' ? '#15803d' : '#dc2626',
+              border: `1px solid ${msg.type === 'ok' ? '#86efac' : '#fca5a5'}`,
+            }}>
+              {msg.type === 'ok' ? '✅' : '❌'} {msg.text}
+            </div>
+          )}
+
+          {loading && <div style={{ fontSize: 12, color: 'var(--color-text-faint)' }}>Loading early checkout state…</div>}
+          {!loading && loadErr && <div style={{ color: '#ef4444', fontSize: 12 }}>{loadErr}</div>}
+
+          {/* APPROVED: show summary */}
+          {!loading && !loadErr && ecStatus === 'approved' && ecState && (
+            <div style={{ background: 'var(--color-bg)', border: '2px solid #86efac', borderRadius: 10, padding: '14px 16px', fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 8, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Approval Details</div>
+              <div style={{ color: 'var(--color-text-dim)' }}>Effective date: <strong style={{ color: 'var(--color-text)' }}>{ecState.approval?.effective_date || '—'}</strong></div>
+              <div style={{ color: 'var(--color-text-dim)', marginTop: 4 }}>Approved by: <strong style={{ color: 'var(--color-text)' }}>{ecState.approval?.approved_by || '—'}</strong></div>
+              {ecState.approval?.reason && <div style={{ color: 'var(--color-text-dim)', marginTop: 4 }}>Reason: {ecState.approval.reason}</div>}
+              {ecState.task?.is_early_checkout && (
+                <div style={{ marginTop: 8, padding: '6px 10px', background: '#fef3c7', borderRadius: 6, fontSize: 11, color: '#d97706', fontWeight: 600 }}>
+                  🔴 Checkout task rescheduled to {fmtDate(ecState.task.due_date)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* INTAKE FORM: none state, guest is checked in */}
+          {!loading && !loadErr && ecStatus === 'none' && isCheckedIn && (
+            <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', marginBottom: 12 }}>🔴 Record Early Departure Request</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Request source *</label>
+                  <select value={reqSource} onChange={e => setReqSource(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 }}>
+                    <option value="phone">📞 Phone call</option>
+                    <option value="message">💬 Message</option>
+                    <option value="guest_portal">🌐 Guest portal</option>
+                    <option value="ops_escalation">⚡ Ops escalation</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Proposed date (optional)</label>
+                  <input type="date" value={reqDate} onChange={e => setReqDate(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Staff note (optional)</label>
+                  <textarea value={reqNote} onChange={e => setReqNote(e.target.value)} rows={2}
+                    placeholder="e.g. Guest called, emergency flight change…"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }} />
+                </div>
+                <button onClick={handleRequest} disabled={submitting || !reqSource}
+                  style={{ padding: '9px 18px', borderRadius: 7, border: 'none', background: 'var(--color-primary)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: submitting ? 0.6 : 1 }}>
+                  {submitting ? 'Recording…' : 'Record Request →'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* APPROVE FORM: requested state + caller can approve */}
+          {!loading && !loadErr && ecStatus === 'requested' && canApprove && (
+            <div style={{ background: 'var(--color-bg)', border: '2px solid #fde68a', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', marginBottom: 4 }}>✅ Grant Early Checkout Approval</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 12 }}>
+                Original checkout: {fmtDate(ecState?.original_checkout_date)}.
+                This will reschedule the checkout task and cleaning task.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Effective date *</label>
+                    <input type="date" value={appDate} onChange={e => setAppDate(e.target.value)}
+                      max={ecState?.original_checkout_date}
+                      style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12, boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Effective time</label>
+                    <input type="time" value={appTime} onChange={e => setAppTime(e.target.value)}
+                      style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12, boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Reason / guest explanation</label>
+                  <input type="text" value={appReason} onChange={e => setAppReason(e.target.value)}
+                    placeholder="e.g. Flight change, family emergency…"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12, boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ fontSize: 10, color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 10px' }}>
+                  <strong>Operational scope only.</strong> Financial/refund adjustments must be handled separately through the booking channel.
+                </div>
+                <button onClick={handleApprove} disabled={submitting || !appDate}
+                  style={{ padding: '9px 18px', borderRadius: 7, border: 'none', background: '#d97706', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: submitting || !appDate ? 0.6 : 1 }}>
+                  {submitting ? 'Approving…' : '✅ Approve Early Check-out'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* REQUEST PENDING, no approve right */}
+          {!loading && !loadErr && ecStatus === 'requested' && !canApprove && (
+            <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, padding: '12px 14px', fontSize: 12, color: '#92400e' }}>
+              ⏳ Request recorded. Awaiting approval from Admin or an authorized Operational Manager.
+            </div>
+          )}
+
+          {/* COMPLETED */}
+          {!loading && !loadErr && ecStatus === 'completed' && (
+            <div style={{ background: '#dbeafe', border: '1px solid #93c5fd', borderRadius: 8, padding: '12px 14px', fontSize: 12, color: '#1d4ed8' }}>
+              🏁 Early checkout completed.
+            </div>
+          )}
+
+          {/* LATE CHECK-IN coordination note */}
+          {!loading && isCheckedIn && (
+            <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--color-text)', marginBottom: 6 }}>🕐 Late Arrival / Coordination</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
+                Late arrival coordination is a booking-level operation. Use
+                {' '}<strong>/manager/bookings</strong> to add coordination notes, update expected ETA,
+                or set coordination status for this booking.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -543,6 +830,8 @@ export default function StreamPage() {
   const [drawerTask, setDrawerTask] = useState<ManagerTaskCardTask | null>(null);
   const [loadingTask, setLoadingTask] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
+  // Phase 1037: booking action panel state (early checkout / late arrival)
+  const [activeBooking, setActiveBooking] = useState<StreamBooking | null>(null);
 
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -795,11 +1084,11 @@ export default function StreamPage() {
             {bookingsLoaded && !bookingsErr && bookings.length === 0 && (
               <div style={{ padding: '48px 0', textAlign: 'center' }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>📅</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4 }}>No upcoming arrivals or departures</div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-faint)', maxWidth: 340, margin: '0 auto', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-dim)', marginBottom: 4 }}>No active or upcoming bookings</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-faint)', maxWidth: 360, margin: '0 auto', lineHeight: 1.5 }}>
                   {scopedPropertyIds.length > 0
-                    ? `No confirmed arrivals or departures in your ${scopedPropertyIds.length === 1 ? `scoped property (${scopedPropertyIds[0]})` : `${scopedPropertyIds.length} scoped properties`} in the next 7 days.`
-                    : 'No confirmed arrivals or departures in your scoped properties in the next 7 days.'
+                    ? `No checked-in or upcoming bookings in your ${scopedPropertyIds.length === 1 ? `scoped property (${scopedPropertyIds[0]})` : `${scopedPropertyIds.length} scoped properties`} in the next 7 days.`
+                    : 'No checked-in or upcoming bookings in your scoped properties in the next 7 days.'
                   }
                 </div>
               </div>
@@ -820,12 +1109,16 @@ export default function StreamPage() {
                   ))}
                 </div>
                 {bookings.map(b => (
-                  <BookingRow key={b.booking_id} booking={b} />
+                  <BookingRow
+                    key={b.booking_id}
+                    booking={b}
+                    onClick={() => b.early_checkout_eligible ? setActiveBooking(b) : undefined}
+                  />
                 ))}
               </div>
             )}
             <div style={{ marginTop: 12, fontSize: 11, color: 'var(--color-text-faint)', textAlign: 'center' }}>
-              Showing arrivals + departures: yesterday → next 7 days · confirmed bookings only
+              Active in-stay + arrivals/departures: yesterday → next 7 days · confirmed bookings only
               {scopedPropertyIds.length > 0 && ` · ${scopedPropertyIds.length} propert${scopedPropertyIds.length === 1 ? 'y' : 'ies'} in scope`}
             </div>
           </>
@@ -858,6 +1151,14 @@ export default function StreamPage() {
           onClose={() => setShowAddTask(false)}
           onDone={() => { setShowAddTask(false); loadTasks(); }}
           scopedPropertyIds={scopedPropertyIds.length > 0 ? scopedPropertyIds : undefined}
+        />
+      )}
+
+      {/* ── Booking Action Panel (Phase 1037: early checkout / coordination) ── */}
+      {activeBooking && (
+        <BookingActionPanel
+          booking={activeBooking}
+          onClose={() => { setActiveBooking(null); loadBookings(); }}
         />
       )}
     </DraftGuard>

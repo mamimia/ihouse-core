@@ -1422,21 +1422,31 @@ async def manager_alerts(
 
 
 # ===========================================================================
-# Phase 1035 — GET /manager/stream/bookings
-# Operational booking runway for OM Stream: upcoming arrivals + departures
+# Phase 1035/1037 — GET /manager/stream/bookings
+# Operational booking runway for OM Stream.
 # ===========================================================================
 # Data source: bookings table (NOT audit_events).
-# Window: yesterday → +7 days.
-# Returns only confirmed bookings in that window, sorted by urgency.
+#
+# A booking is operationally alive until the guest checks out.
+# Three-part merge:
+#   1. start_date in window → captures upcoming arrivals
+#   2. end_date in window   → captures near-future departures
+#   3. start_date < today AND end_date >= today → captures ACTIVE IN-STAY bookings
+#      (Phase 1037 fix: these were invisible in the original two-query implementation)
+#
+# Excludes: cancelled, rejected, checked_out, completed.
 
 from datetime import datetime, timedelta, timezone
 
 _BOOKING_RUNWAY_DAYS_BACK = 1
 _BOOKING_RUNWAY_DAYS_FORWARD = 7
 
+# Terminal statuses — exclude from operational runway
+_TERMINAL_BOOKING_STATUSES = frozenset({"cancelled", "canceled", "rejected", "checked_out", "completed"})
+
 @router.get(
     "/manager/stream/bookings",
-    summary="Operational booking runway for OM Stream (Phase 1035)",
+    summary="Operational booking runway for OM Stream (Phase 1035/1037)",
 )
 async def manager_stream_bookings(
     identity: dict = Depends(jwt_identity),
@@ -1474,41 +1484,47 @@ async def manager_stream_bookings(
             if not prop_ids:
                 return JSONResponse(status_code=200, content={"bookings": [], "total": 0})
 
-        # Query bookings in operational window
-        # bookings columns: booking_id, property_id, start_date, end_date, status, guest_name
+        # ── Three-part query to capture all operationally live bookings ─────────
+        # Supabase does not support OR across different columns in a single query.
+        # We run three separate queries and merge+deduplicate the results.
+        _BOOKING_SELECT = (
+            "booking_id, property_id, start_date, end_date, status, guest_name, "
+            "external_ref, early_checkout_status"
+        )
         try:
-            q = db.table("bookings").select(
-                "booking_id, property_id, start_date, end_date, status, guest_name, external_ref"
-            )
+            # Query 1: bookings arriving within the window (start_date in range)
+            q1 = db.table("bookings").select(_BOOKING_SELECT)
             if prop_ids is not None:
-                q = q.in_("property_id", prop_ids)
-            # Bookings that start OR end within the window
-            # Supabase: use gte/lte filters; OR logic requires two queries
-            q_start = q.gte("start_date", window_start).lte("start_date", window_end)
-            start_res = q_start.execute()
-            start_rows = start_res.data or []
+                q1 = q1.in_("property_id", prop_ids)
+            q1 = q1.gte("start_date", window_start).lte("start_date", window_end)
+            start_rows = (q1.execute().data or [])
 
-            q_end = (
-                db.table("bookings").select(
-                    "booking_id, property_id, start_date, end_date, status, guest_name, external_ref"
-                )
-            )
+            # Query 2: bookings departing within the window (end_date in range)
+            q2 = db.table("bookings").select(_BOOKING_SELECT)
             if prop_ids is not None:
-                q_end = q_end.in_("property_id", prop_ids)
-            q_end = q_end.gte("end_date", window_start).lte("end_date", window_end)
-            end_res = q_end.execute()
-            end_rows = end_res.data or []
+                q2 = q2.in_("property_id", prop_ids)
+            q2 = q2.gte("end_date", window_start).lte("end_date", window_end)
+            end_rows = (q2.execute().data or [])
 
-            # Merge + deduplicate
+            # Query 3 (Phase 1037 fix): active in-stay bookings
+            # start_date < today AND end_date >= today → guest is currently in property
+            # These were completely invisible in the Phase 1035 two-query model because
+            # their start_date is before window_start.
+            q3 = db.table("bookings").select(_BOOKING_SELECT)
+            if prop_ids is not None:
+                q3 = q3.in_("property_id", prop_ids)
+            q3 = q3.lt("start_date", today_str).gte("end_date", today_str)
+            instay_rows = (q3.execute().data or [])
+
+            # Merge all three + deduplicate, excluding terminal statuses
             seen_ids: set = set()
             all_bookings = []
-            for row in start_rows + end_rows:
+            for row in start_rows + end_rows + instay_rows:
                 bid = row.get("booking_id")
                 if bid and bid not in seen_ids:
                     seen_ids.add(bid)
-                    # Filter: confirmed only (not cancelled)
                     st = str(row.get("status") or "").lower()
-                    if st not in ("cancelled", "canceled", "rejected"):
+                    if st not in _TERMINAL_BOOKING_STATUSES:
                         all_bookings.append(row)
         except Exception as qe:
             logger.warning("manager_stream_bookings: query error %s", qe)
@@ -1526,21 +1542,35 @@ async def manager_stream_bookings(
                 pass
 
         # Urgency labelling + sort key
+        # Priority: Departing Today (1) → Arriving Today (2) → Active In-Stay (3)
+        # → Departing Tomorrow (4) → Arriving Tomorrow (5) → Upcoming (6)
         def _urgency(booking: dict) -> tuple:
             sd = str(booking.get("start_date") or "")
             ed = str(booking.get("end_date") or "")
-            # today's departures first (1), today's arrivals (2), tomorrow out (3)...
-            if ed == today_str: return (1, ed, sd)
-            if sd == today_str: return (2, sd, ed)
-            if ed > today_str and ed <= window_end: return (3, ed, sd)
-            return (4, sd, ed)
+            if ed == today_str:                        return (1, ed, sd)  # departing today
+            if sd == today_str:                        return (2, sd, ed)  # arriving today
+            if sd < today_str and ed > today_str:      return (3, ed, sd)  # active in-stay (soonest out first)
+            try:
+                dep_days = (datetime.strptime(ed, "%Y-%m-%d").date() - now.date()).days
+                arr_days = (datetime.strptime(sd, "%Y-%m-%d").date() - now.date()).days
+                if dep_days == 1: return (4, ed, sd)   # departing tomorrow
+                if arr_days == 1: return (5, sd, ed)   # arriving tomorrow
+            except Exception:
+                pass
+            return (6, sd, ed)  # upcoming
 
         def _label(booking: dict) -> str:
             sd = str(booking.get("start_date") or "")
             ed = str(booking.get("end_date") or "")
             if sd == today_str: return "Arriving Today"
             if ed == today_str: return "Departing Today"
-            if sd < today_str and ed >= today_str: return "Active Stay"
+            if sd < today_str and ed > today_str:
+                # Active in-stay: show checkout date so manager knows when it ends
+                try:
+                    ed_fmt = datetime.strptime(ed, "%Y-%m-%d").strftime("%b %-d")
+                    return f"Active Stay — Out {ed_fmt}"
+                except Exception:
+                    return "Active Stay"
             # Days until arrival
             try:
                 days = (datetime.strptime(sd, "%Y-%m-%d").date() - now.date()).days
@@ -1550,21 +1580,30 @@ async def manager_stream_bookings(
                 pass
             return "Upcoming"
 
+        def _is_eligible_for_early_checkout(booking: dict) -> bool:
+            """True if booking is checked_in/active and early checkout has not been completed."""
+            st = str(booking.get("status") or "").lower()
+            ec = str(booking.get("early_checkout_status") or "none").lower()
+            return st in ("checked_in", "active") and ec != "completed"
+
         all_bookings.sort(key=_urgency)
 
         out = []
         for b in all_bookings:
             pid = b.get("property_id") or ""
+            ec_status = b.get("early_checkout_status") or "none"
             out.append({
-                "booking_id":    b.get("booking_id"),
-                "property_id":   pid,
-                "property_name": prop_name_map.get(pid) or pid,
-                "guest_name":    b.get("guest_name") or "Guest",
-                "start_date":    b.get("start_date"),
-                "end_date":      b.get("end_date"),
-                "status":        b.get("status"),
-                "external_ref":  b.get("external_ref"),
-                "urgency_label": _label(b),
+                "booking_id":                    b.get("booking_id"),
+                "property_id":                   pid,
+                "property_name":                 prop_name_map.get(pid) or pid,
+                "guest_name":                    b.get("guest_name") or "Guest",
+                "start_date":                    b.get("start_date"),
+                "end_date":                      b.get("end_date"),
+                "status":                        b.get("status"),
+                "external_ref":                  b.get("external_ref"),
+                "urgency_label":                 _label(b),
+                "early_checkout_status":         ec_status,
+                "early_checkout_eligible":       _is_eligible_for_early_checkout(b),
             })
 
         return JSONResponse(status_code=200, content={"bookings": out, "total": len(out)})
