@@ -39,6 +39,11 @@ type CleaningTask = {
     checkout_time?: string;
     next_checkin_time?: string;
     deadline?: string;
+    // Phase 1033: server-computed timing fields from compute_task_timing()
+    ack_is_open?: boolean;
+    ack_allowed_at?: string;
+    start_is_open?: boolean;
+    start_allowed_at?: string;
 };
 
 type ChecklistItem = {
@@ -728,6 +733,10 @@ export function CleanerWizard({ onCompleted }: { onCompleted?: () => void }) {
                                         onStart={() => openDetail(t)}
                                         onAcknowledge={t.status === 'PENDING' ? () => acknowledgeTask(t) : undefined}
                                         onNavigate={() => navigateToProperty(t.task_id)}
+                                        ackIsOpen={t.ack_is_open}
+                                        ackAllowedAt={t.ack_allowed_at}
+                                        startIsOpen={t.start_is_open}
+                                        startAllowedAt={t.start_allowed_at}
                                     />
                                 ))}
                             </>
@@ -750,6 +759,10 @@ export function CleanerWizard({ onCompleted }: { onCompleted?: () => void }) {
                                             onStart={() => openDetail(t)}
                                             onAcknowledge={t.status === 'PENDING' ? () => acknowledgeTask(t) : undefined}
                                             onNavigate={() => navigateToProperty(t.task_id)}
+                                            ackIsOpen={t.ack_is_open}
+                                            ackAllowedAt={t.ack_allowed_at}
+                                            startIsOpen={t.start_is_open}
+                                            startAllowedAt={t.start_allowed_at}
                                         />
                                     </div>
                                 ))}

@@ -143,41 +143,45 @@ export function LiveCountdown({ targetDate, targetTime, status }: CountdownProps
     );
 }
 
-function AckButton({ date, time, onAcknowledge }: { date: string, time: string, onAcknowledge: () => void }) {
+// ── AckButton — uses server-provided ack_is_open / ack_allowed_at ───────────
+// Phase 1033: gate decision comes from server. Local computation removed.
+// At rest: always shows "Acknowledge".
+// On early press: flashes "Opens in Xh Ym" for 3 seconds then reverts.
+
+function computeOpensIn(allowedAtIso: string): string {
+    const delta = new Date(allowedAtIso).getTime() - Date.now();
+    if (delta <= 0) return '';
+    const totalMins = Math.floor(delta / 60000);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+    return `${m}m`;
+}
+
+function AckButton({
+    onAcknowledge,
+    ackIsOpen,
+    ackAllowedAt,
+}: {
+    onAcknowledge: () => void;
+    ackIsOpen?: boolean;
+    ackAllowedAt?: string;
+}) {
     const [msg, setMsg] = useState('');
 
     const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (msg) return; // Prevent multiple clicks during cooldown
-        
-        if (!date) {
+        if (msg) return; // prevent double-tap during flash
+
+        const open = ackIsOpen !== false; // undefined = treat as open
+        if (open) {
             onAcknowledge();
             return;
         }
-        const parsedDate = date && date !== 'Unknown' ? date : new Date().toISOString().split('T')[0];
-        const target = new Date(`${parsedDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
-        if (isNaN(target)) {
-            onAcknowledge();
-            return;
-        }
-        const diff = target - Date.now();
-        const twentyFourHours = 24 * 60 * 60 * 1000;
-        
-        if (diff > twentyFourHours) {
-            const h = Math.floor(diff / 3600000);
-            const m = Math.floor((diff % 3600000) / 60000);
-            const days = Math.floor(h / 24);
-            const remainingH = h % 24;
-            
-            let timeStr = '';
-            if (days > 0) timeStr = `${days}d ${remainingH}h`;
-            else timeStr = `${h}h ${m}m`;
-            
-            setMsg(`Available in ${timeStr}`);
-            setTimeout(() => setMsg(''), 5000);
-        } else {
-            onAcknowledge();
-        }
+        // Window not yet open — flash "Opens in Xh Ym"
+        const label = ackAllowedAt ? computeOpensIn(ackAllowedAt) : '';
+        setMsg(label ? `Opens in ${label}` : 'Opens soon');
+        setTimeout(() => setMsg(''), 3000);
     };
 
     return (
@@ -191,6 +195,57 @@ function AckButton({ date, time, onAcknowledge }: { date: string, time: string, 
             transition: 'all 0.2s',
         }}>
             {msg || 'Acknowledge'}
+        </button>
+    );
+}
+
+// ── StartButton — mirrors AckButton, uses server-provided start_is_open ───────
+// Phase 1033: same compact flash pattern.
+// At rest: always shows the task-specific start label.
+// On early press: flashes "Opens in Xh Ym" for 3 seconds then reverts.
+// MAINTENANCE kind: startIsOpen is always true (no gate) — behaves as normal button.
+
+function StartButton({
+    label,
+    baseColor,
+    onStart,
+    startIsOpen,
+    startAllowedAt,
+}: {
+    label: string;
+    baseColor: string;
+    onStart: () => void;
+    startIsOpen?: boolean;
+    startAllowedAt?: string;
+}) {
+    const [msg, setMsg] = useState('');
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (msg) return;
+
+        const open = startIsOpen !== false; // undefined = treat as open
+        if (open) {
+            onStart();
+            return;
+        }
+        const timeLabel = startAllowedAt ? computeOpensIn(startAllowedAt) : '';
+        setMsg(timeLabel ? `Opens in ${timeLabel}` : 'Opens soon');
+        setTimeout(() => setMsg(''), 3000);
+    };
+
+    return (
+        <button onClick={handleClick} style={{
+            flex: 2, padding: '8px 6px',
+            background: msg ? 'var(--color-surface-2)' : baseColor,
+            color: msg ? 'var(--color-text-dim)' : '#fff',
+            border: msg ? '1px solid var(--color-border)' : 'none',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 11, fontWeight: 700,
+            cursor: msg ? 'default' : 'pointer',
+            transition: 'all 0.2s',
+        }}>
+            {msg || label}
         </button>
     );
 }
@@ -230,6 +285,13 @@ export interface WorkerTaskCardProps {
     isEarlyCheckout?: boolean;
     earlyCheckoutEffectiveAt?: string;   // TIMESTAMPTZ from booking_state
     originalCheckoutDate?: string;       // original booking check_out for reference display
+
+    // Phase 1033: Server-computed timing fields from compute_task_timing().
+    // Frontend reads these directly — no local gate computation.
+    ackIsOpen?: boolean;        // true = window open, false = too early, undefined = treat as open
+    ackAllowedAt?: string;      // ISO timestamp — used to compute "Opens in Xh Ym" flash
+    startIsOpen?: boolean;      // same semantics for Start action
+    startAllowedAt?: string;    // ISO timestamp
 }
 
 // ── Component — dense 2-column layout ────────────────────────────────────────
@@ -243,6 +305,7 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
         actionLabel, onStart, onAcknowledge, onNavigate,
         isActionable = true, lockedLabel,
         isEarlyCheckout, earlyCheckoutEffectiveAt, originalCheckoutDate,
+        ackIsOpen, ackAllowedAt, startIsOpen, startAllowedAt,
     } = props;
 
     // Kind metadata
@@ -449,21 +512,20 @@ export default function WorkerTaskCard(props: WorkerTaskCardProps) {
                 >
                     {isPending && onAcknowledge && (
                         <AckButton
-                            date={date}
-                            time={countdownTime}
                             onAcknowledge={onAcknowledge}
+                            ackIsOpen={ackIsOpen}
+                            ackAllowedAt={ackAllowedAt}
                         />
                     )}
                     {onStart && (
                         isActionable ? (
-                            <button onClick={onStart} style={{
-                                flex: 2, padding: '8px 6px',
-                                background: baseColor, color: '#fff',
-                                border: 'none', borderRadius: 'var(--radius-sm)',
-                                fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                            }}>
-                                {actionLabel || (inProgress ? 'Resume →' : defaultAction + ' →')}
-                            </button>
+                            <StartButton
+                                label={actionLabel || (inProgress ? 'Resume →' : defaultAction + ' →')}
+                                baseColor={baseColor}
+                                onStart={onStart}
+                                startIsOpen={startIsOpen}
+                                startAllowedAt={startAllowedAt}
+                            />
                         ) : (
                             <button disabled style={{
                                 flex: 2, padding: '8px 6px',

@@ -58,6 +58,11 @@ type CheckoutTask = {
     property_latitude?: number | null;
     property_longitude?: number | null;
     property_address?: string | null;
+    // Phase 1033: server-computed timing fields
+    ack_is_open?: boolean;
+    ack_allowed_at?: string;
+    start_is_open?: boolean;
+    start_allowed_at?: string;
 };
 
 function getBookingId(b: Booking): string {
@@ -218,6 +223,10 @@ function CheckoutTaskCard({ t, onStart, onAcknowledge, showNotice }: {
             isEarlyCheckout={t.is_early_checkout}
             earlyCheckoutEffectiveAt={t.early_checkout_effective_at}
             originalCheckoutDate={t.is_early_checkout ? (t.original_due_date || t.check_out) : undefined}
+            ackIsOpen={t.ack_is_open}
+            ackAllowedAt={t.ack_allowed_at}
+            startIsOpen={isActionable ? t.start_is_open : false}
+            startAllowedAt={t.start_allowed_at}
         />
     );
 }

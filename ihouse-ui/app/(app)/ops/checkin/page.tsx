@@ -49,6 +49,11 @@ type Booking = {
     property_latitude?: number;
     property_longitude?: number;
     property_address?: string;
+    // Phase 1033: server-computed timing fields (from task enrichment)
+    ack_is_open?: boolean;
+    ack_allowed_at?: string;
+    start_is_open?: boolean;
+    start_allowed_at?: string;
 };
 
 type ChargeConfig = {
@@ -235,6 +240,10 @@ function BookingCardList({ bookings, onStart, onAcknowledge, showNotice }: {
                                 showNotice('📍 No location data for this property');
                             }
                         }}
+                        ackIsOpen={b.ack_is_open}
+                        ackAllowedAt={b.ack_allowed_at}
+                        startIsOpen={b.start_is_open}
+                        startAllowedAt={b.start_allowed_at}
                     />
                 );
             })}
@@ -407,6 +416,11 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
                         _needs_booking_enrichment: true,
                         task_id: t.task_id,
                         _task_status: t.status,
+                        // Phase 1033: carry timing fields from new task
+                        ack_is_open: t.ack_is_open,
+                        ack_allowed_at: t.ack_allowed_at,
+                        start_is_open: t.start_is_open,
+                        start_allowed_at: t.start_allowed_at,
                     });
                 } else {
                     const existing = bookingMap.get(bId);
@@ -414,6 +428,11 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
                         existing.status = existing.status || t.status || 'Upcoming';
                         existing.task_id = t.task_id;
                         existing._task_status = t.status;
+                        // Phase 1033: carry server timing fields onto the booking object
+                        existing.ack_is_open = t.ack_is_open;
+                        existing.ack_allowed_at = t.ack_allowed_at;
+                        existing.start_is_open = t.start_is_open;
+                        existing.start_allowed_at = t.start_allowed_at;
                     }
                 }
             });
