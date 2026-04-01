@@ -512,36 +512,38 @@ async def takeover_start_task(
 async def reassign_task(
     task_id: str,
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
     POST /tasks/{task_id}/reassign
 
-    Only valid when task is MANAGER_EXECUTING.
-    Returns task to PENDING with a new assigned_to.
-
-    The SAME task continues — no new task is created.
-    Full history is preserved in task_actions.
+    Phase 1035: switched to jwt_identity (same as all other manager endpoints).
+    Works on any active in-flight task status.
 
     Body:
-        new_assignee_id (optional) — specific worker to assign; null = open pool
-        reason          (optional) — free-text reason for reassignment
+        new_assignee_id (optional) — specific worker UUID to assign; null = open pool
+        reason          (optional) — manager reason (internal, audit only)
+        handoff_note    (optional) — worker-visible message appended to tasks.notes[]
+                                     with source="handoff" — different from internal notes
 
-    Audit chain preserved:
-        - original_worker_id  → unchanged (first worker who was superseded)
-        - taken_over_by       → unchanged (manager who took over)
-        - new assigned_to     → new_assignee_id (the third actor, or null)
-        - task_actions        → MANAGER_TASK_REASSIGNED event
+    Worker notification:
+        - Previous assignee receives "task reassigned away" notification
+        - New assignee receives "task assigned to you" notification
+        - Handoff note (if any) is written to tasks.notes[] and visible on worker surface
     """
     new_assignee_id = str(body.get("new_assignee_id") or "").strip() or None
     reason = str(body.get("reason") or "").strip() or None
+    handoff_note = str(body.get("handoff_note") or "").strip() or None
 
     try:
         db = client if client is not None else _get_db()
 
-        # Permission check
-        caller_role = _get_caller_role(db, tenant_id)
+        # Phase 1035: jwt_identity (not jwt_auth) — same pattern as all manager endpoints
+        caller_role = str(identity.get("role", "worker")).strip()
+        caller_user_id = str(identity.get("user_id", "")).strip()
+        caller_name = _get_caller_display_name(db, caller_user_id)
+
         if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
             return make_error_response(
                 403, ErrorCode.VALIDATION_ERROR,
@@ -573,60 +575,107 @@ async def reassign_task(
             "updated_at": now,
         }).eq("task_id", task_id).execute()
 
+        task_kind_label = (task.get("kind") or task.get("task_kind") or "task").replace("_", " ").lower()
+        prop_label = task.get("property_id", "")
+        previous_assignee = task.get("assigned_to")
+
         # task_actions record
         try:
             db.table("task_actions").insert({
                 "id": _action_id("REASSIGN", task_id, now),
                 "task_id": task_id,
                 "action": "MANAGER_TASK_REASSIGNED",
-                "performed_by": tenant_id,
+                "performed_by": caller_user_id,
                 "details": {
                     "reassigned_to": new_assignee_id,
-                    "reassigned_by": tenant_id,
+                    "reassigned_by": caller_user_id,
+                    "reassigned_by_name": caller_name,
                     "caller_role": caller_role,
                     "reason": reason,
+                    "handoff_note": handoff_note,
                     # Audit chain snapshot
                     "original_worker_id": task.get("original_worker_id"),
                     "taken_over_by": task.get("taken_over_by"),
                     "taken_over_reason": task.get("taken_over_reason"),
+                    "previous_assignee": previous_assignee,
                 },
                 "created_at": now,
             }).execute()
         except Exception:
-            logger.warning("Phase 1022: failed to write MANAGER_TASK_REASSIGNED action for %s", task_id)
+            logger.warning("Phase 1035: failed to write MANAGER_TASK_REASSIGNED action for %s", task_id)
 
-        # Notify new assignee (best-effort)
-        if new_assignee_id:
+        # Write handoff_note to tasks.notes[] — worker-visible (source="handoff")
+        if handoff_note:
             try:
-                task_kind = task.get("task_kind", "Task")
-                prop = task.get("property_id", "")
+                existing_notes: list = task.get("notes") or []
+                note_entry = {
+                    "id": _action_id("HANDOFF_NOTE", task_id, now),
+                    "text": handoff_note,
+                    "author_id": caller_user_id,
+                    "author_name": caller_name,
+                    "author_role": caller_role,
+                    "source": "handoff",          # worker surface can filter on this
+                    "created_at": now,
+                }
+                db.table("tasks").update({
+                    "notes": existing_notes + [note_entry],
+                    "updated_at": now,
+                }).eq("task_id", task_id).execute()
+            except Exception as ne:
+                logger.warning("Phase 1035: failed to write handoff note for %s: %s", task_id, ne)
+
+        # Notify previous assignee that task was reassigned away (best-effort)
+        if previous_assignee and previous_assignee != new_assignee_id:
+            try:
                 db.table("notification_queue").insert({
-                    "id": _action_id("NOTIF_REASSIGN", task_id, now),
-                    "recipient_id": new_assignee_id,
+                    "id": _action_id("NOTIF_REASSIGN_OLD", task_id, now),
+                    "recipient_id": previous_assignee,
                     "channel": "auto",
-                    "message": f"You have been assigned a {task_kind} task at {prop}.",
-                    "notification_type": "task_assigned",
+                    "message": f"Your {task_kind_label} task at {prop_label} has been reassigned by {caller_name or 'a manager'}.",
+                    "notification_type": "task_reassigned_away",
                     "reference_type": "task",
                     "reference_id": task_id,
-                    "tenant_id": tenant_id,
+                    "tenant_id": identity.get("tenant_id", ""),
                     "status": "queued",
                     "created_at": now,
                 }).execute()
             except Exception:
                 pass
 
-        # Audit
+        # Notify new assignee (best-effort)
+        if new_assignee_id:
+            try:
+                msg = f"You have been assigned a {task_kind_label} task at {prop_label}."
+                if handoff_note:
+                    msg += f" Note from manager: {handoff_note[:120]}"
+                db.table("notification_queue").insert({
+                    "id": _action_id("NOTIF_REASSIGN", task_id, now),
+                    "recipient_id": new_assignee_id,
+                    "channel": "auto",
+                    "message": msg,
+                    "notification_type": "task_assigned",
+                    "reference_type": "task",
+                    "reference_id": task_id,
+                    "tenant_id": identity.get("tenant_id", ""),
+                    "status": "queued",
+                    "created_at": now,
+                }).execute()
+            except Exception:
+                pass
+
+        # Audit event
         try:
             from services.audit_writer import write_audit_event
             write_audit_event(
-                db, tenant_id=tenant_id, entity_type="task",
+                db, tenant_id=identity.get("tenant_id", ""), entity_type="task",
                 entity_id=task_id, action="MANAGER_TASK_REASSIGNED",
                 details={
                     "reassigned_to": new_assignee_id,
-                    "reassigned_by": tenant_id,
+                    "reassigned_by": caller_user_id,
                     "original_worker_id": task.get("original_worker_id"),
                     "taken_over_by": task.get("taken_over_by"),
                     "reason": reason,
+                    "handoff_note": handoff_note,
                 },
             )
         except Exception:
@@ -636,11 +685,13 @@ async def reassign_task(
             "task_id": task_id,
             "status": "PENDING",
             "new_assignee_id": new_assignee_id,
-            "reassigned_by": tenant_id,
+            "reassigned_by": caller_user_id,
+            "handoff_note_written": bool(handoff_note),
             "audit_chain": {
                 "original_worker_id": task.get("original_worker_id"),
                 "taken_over_by": task.get("taken_over_by"),
                 "taken_over_reason": task.get("taken_over_reason"),
+                "previous_assignee": previous_assignee,
                 "reassigned_to": new_assignee_id,
             },
         })
@@ -878,6 +929,31 @@ async def get_task_for_manager(
             except Exception:
                 pass
 
+        # Resolve assigned_to UUID → display name (best-effort)
+        assigned_to_name: Optional[str] = None
+        original_worker_name: Optional[str] = None
+        taken_over_by_name: Optional[str] = None
+        _resolve_ids = list(filter(None, [
+            task.get("assigned_to"), task.get("original_worker_id"), task.get("taken_over_by")
+        ]))
+        if _resolve_ids:
+            try:
+                _name_res = (
+                    db.table("tenant_permissions")
+                    .select("user_id, display_name")
+                    .in_("user_id", list(set(_resolve_ids)))
+                    .execute()
+                )
+                _name_map: Dict[str, str] = {
+                    r["user_id"]: (r.get("display_name") or r["user_id"][:14])
+                    for r in (_name_res.data or [])
+                }
+                assigned_to_name    = _name_map.get(task.get("assigned_to") or "") or None
+                original_worker_name= _name_map.get(task.get("original_worker_id") or "") or None
+                taken_over_by_name  = _name_map.get(task.get("taken_over_by") or "") or None
+            except Exception:
+                pass
+
         return JSONResponse(status_code=200, content={
             "task": {
                 **task,
@@ -891,6 +967,10 @@ async def get_task_for_manager(
                 "start_allowed_at": timing.get("start_allowed_at"),
                 "property_name":    property_name,
                 "notes":            task.get("notes") or [],
+                # Resolved display names for worker identity
+                "assigned_to_name":      assigned_to_name,
+                "original_worker_name":  original_worker_name,
+                "taken_over_by_name":    taken_over_by_name,
             },
         })
 
@@ -1321,14 +1401,27 @@ async def manager_alerts(
     summary="Manager team overview — worker load + coverage gaps (Phase 1033)",
 )
 async def manager_team(
+    task_kind: Optional[str] = None,   # Phase 1035: filter workers by task compatibility
     identity: dict = Depends(jwt_identity),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
     GET /manager/team
 
-    Phase 1033 fix: uses jwt_identity so Preview As and Act As sessions
-    resolve the correct role without a secondary DB lookup.
+    Phase 1033: uses jwt_identity.
+    Phase 1035: optional ?task_kind= param filters workers by lane compatibility.
+       CLEANING        → workers with 'cleaner' in worker_roles
+       CHECKIN_PREP    → workers with 'checkin' in worker_roles
+       CHECKOUT_VERIFY → workers with 'checkout' in worker_roles
+       MAINTENANCE     → workers with 'maintenance' in worker_roles
+       Combined tasks  → workers whose roles cover all required lanes
+
+    task_kind compatibility map:
+       CLEANING / GENERAL_CLEANING → lane CLEANING
+       CHECKIN_PREP / GUEST_WELCOME / SELF_CHECKIN_FOLLOWUP → lane CHECKIN_CHECKOUT
+       CHECKOUT_VERIFY → lane CHECKIN_CHECKOUT
+       MAINTENANCE → lane MAINTENANCE
+       (null / unknown) → all workers returned unfiltered
     """
     try:
         db = client if client is not None else _get_db()
@@ -1500,6 +1593,24 @@ async def manager_team(
                             "email": comm.get("email") or "",
                         },
                     })
+
+            # Phase 1035: filter by task_kind compatibility if requested
+            # TASK_KIND → required lanes mapping
+            _KIND_TO_LANES = {
+                "CLEANING": {"CLEANING"},
+                "GENERAL_CLEANING": {"CLEANING"},
+                "CHECKIN_PREP": {"CHECKIN_CHECKOUT"},
+                "GUEST_WELCOME": {"CHECKIN_CHECKOUT"},
+                "SELF_CHECKIN_FOLLOWUP": {"CHECKIN_CHECKOUT"},
+                "CHECKOUT_VERIFY": {"CHECKIN_CHECKOUT"},
+                "MAINTENANCE": {"MAINTENANCE"},
+            }
+            if task_kind and task_kind.upper() in _KIND_TO_LANES:
+                required_lanes = _KIND_TO_LANES[task_kind.upper()]
+                workers_out = [
+                    w for w in workers_out
+                    if w.get("lane") in required_lanes
+                ]
 
             properties_out.append({
                 "property_id": p,

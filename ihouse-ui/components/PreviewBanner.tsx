@@ -45,46 +45,49 @@ export default function PreviewBanner() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 16,
-                padding: '10px 20px',
-                background: 'linear-gradient(135deg, rgba(234,179,8,0.15) 0%, rgba(234,179,8,0.08) 100%)',
-                borderBottom: '2px solid rgba(234,179,8,0.5)',
+                gap: 12,
+                padding: '4px 16px',
+                background: 'rgba(234,179,8,0.12)',
+                borderBottom: '1px solid rgba(234,179,8,0.4)',
                 fontFamily: "'Inter', sans-serif",
-                fontSize: 13,
+                fontSize: 11,
                 fontWeight: 600,
                 color: '#EAB308',
-                backdropFilter: 'blur(8px)',
+                backdropFilter: 'blur(6px)',
                 letterSpacing: '0.02em',
+                minHeight: 28,
+                overflow: 'hidden',
             }}
         >
-            <span>👁 PREVIEW MODE: Viewing as {identityLabel}</span>
-            <span style={{ color: 'rgba(234,179,8,0.5)', fontWeight: 400 }}>|</span>
-            <span style={{ fontWeight: 400, opacity: 0.8 }}>Read-only — all actions disabled</span>
-            <span style={{ color: 'rgba(234,179,8,0.5)', fontWeight: 400 }}>|</span>
-            <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 11 }}>Data: tasks role-filtered · bookings admin-scoped</span>
-            <span style={{ color: 'rgba(234,179,8,0.5)', fontWeight: 400 }}>|</span>
+            <span>👁 PREVIEW: <strong>{identityLabel}</strong></span>
+            <span style={{ color: 'rgba(234,179,8,0.4)', fontWeight: 300 }}>·</span>
+            <span style={{ fontWeight: 400, opacity: 0.75 }}>Read-only</span>
+            <span style={{ color: 'rgba(234,179,8,0.4)', fontWeight: 300 }}>·</span>
             <button
                 onClick={() => clearPreview()}
                 style={{
-                    background: 'rgba(234,179,8,0.2)',
-                    border: '1px solid rgba(234,179,8,0.4)',
-                    borderRadius: 6,
-                    padding: '4px 14px',
-                    fontSize: 12,
-                    fontWeight: 600,
+                    background: 'rgba(234,179,8,0.16)',
+                    border: '1px solid rgba(234,179,8,0.35)',
+                    borderRadius: 4,
+                    padding: '2px 10px',
+                    fontSize: 10,
+                    fontWeight: 700,
                     color: '#EAB308',
                     cursor: 'pointer',
                     fontFamily: "'Inter', sans-serif",
                     transition: 'all 0.15s',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.03em',
+                    flexShrink: 0,
                 }}
                 onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.35)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.3)';
                 }}
                 onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.2)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.16)';
                 }}
             >
-                Close Preview
+                Close
             </button>
         </div>
     );

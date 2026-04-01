@@ -2,6 +2,7 @@
 
 /**
  * Phase 1034 (OM-1) — ManagerTaskCard
+ * Phase 1035 — Reassign UX hardening
  *
  * Manager intervention layer. Read-only timing strip + 3 intervention actions.
  * NOT a worker card. No Acknowledge/Start/Complete buttons.
@@ -9,13 +10,13 @@
  * Manager layer:  Monitor · Takeover-Start · Reassign · Note
  * Worker layer:   Acknowledge → Start → Complete  (separate surface, not here)
  *
- * Used as a drill-down panel from:
- *   - Stream page (task event expand)
- *   - Alert rail (alert task_id link)
- *   - Task Board (row → expand instead of navigate)
- *
- * Receives the task object from the parent — no internal data fetching.
- * Parent responsible for load/refresh after mutations.
+ * Phase 1035 changes:
+ *   - ReassignPanel: compatibility-filtered selector by task_kind → lane
+ *   - ReassignPanel: shows current worker name (not UUID)
+ *   - ReassignPanel: explicit handoff note field (worker-visible, source="handoff")
+ *     vs manager reason (internal only, audit storage)
+ *   - Worker info row: resolves display names from task data
+ *   - Note semantics: clearly labelled "internal manager note, not visible to workers"
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -33,8 +34,11 @@ export type ManagerTaskCardTask = {
   title?: string | null;
   due_date?: string | null;
   assigned_to?: string | null;
+  assigned_to_name?: string | null;       // Phase 1035: resolved display name
   original_worker_id?: string | null;
+  original_worker_name?: string | null;   // Phase 1035: resolved display name
   taken_over_by?: string | null;
+  taken_over_by_name?: string | null;     // Phase 1035: resolved display name
   taken_over_reason?: string | null;
   taken_over_at?: string | null;
   // Timing fields (from worker API, read-only for manager)
@@ -53,7 +57,7 @@ export type NoteObj = {
   author_name?: string;
   author_role?: string;
   created_at?: string;
-  source?: string;
+  source?: string;         // 'manager_note' | 'handoff' | 'system'
 };
 
 export type PropertyWorker = {
@@ -89,6 +93,23 @@ const KIND_LABEL: Record<string, string> = {
   GENERAL: 'General',
 };
 
+// task_kind → lane for compatibility filtering
+const KIND_TO_LANE: Record<string, string> = {
+  CLEANING:             'CLEANING',
+  GENERAL_CLEANING:     'CLEANING',
+  CHECKIN_PREP:         'CHECKIN_CHECKOUT',
+  GUEST_WELCOME:        'CHECKIN_CHECKOUT',
+  SELF_CHECKIN_FOLLOWUP:'CHECKIN_CHECKOUT',
+  CHECKOUT_VERIFY:      'CHECKIN_CHECKOUT',
+  MAINTENANCE:          'MAINTENANCE',
+};
+
+const LANE_LABEL: Record<string, string> = {
+  CLEANING: 'Cleaning staff',
+  CHECKIN_CHECKOUT: 'Check-in / Check-out staff',
+  MAINTENANCE: 'Maintenance staff',
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function chip(color: string, bg: string, label: string) {
@@ -119,8 +140,14 @@ function opensIn(iso: string): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+/** Short display name: use resolved name, fall back to truncated UUID */
+function workerLabel(name?: string | null, uuid?: string | null): string | null {
+  if (name && name.trim()) return name;
+  if (uuid && uuid.trim()) return uuid.slice(0, 12) + '…';
+  return null;
+}
+
 // ── Timing Strip ─────────────────────────────────────────────────────────────
-// Read-only informational strip. No action buttons tied to worker gates.
 
 function TimingStrip({ task }: { task: ManagerTaskCardTask }) {
   const hasGates = task.ack_allowed_at || task.start_allowed_at;
@@ -162,8 +189,6 @@ function TimingStrip({ task }: { task: ManagerTaskCardTask }) {
 }
 
 // ── Takeover Start Panel ──────────────────────────────────────────────────────
-// Uses POST /tasks/{id}/takeover-start — timing bypass route.
-// Not the old /take-over (MANAGER_EXECUTING) path.
 
 function TakeoverStartPanel({
   task, onDone, onCancel,
@@ -203,12 +228,12 @@ function TakeoverStartPanel({
       </div>
       <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 12, lineHeight: 1.5 }}>
         Task walks atomically: {task.status} → IN_PROGRESS. You become the assigned executor.
-        The dedicated takeover-start route is the only timing bypass path — no global role bypass.
+        The dedicated takeover-start route is the only timing bypass path.
       </div>
       <textarea
         value={reason}
         onChange={e => setReason(e.target.value)}
-        placeholder="Reason (optional)"
+        placeholder="Reason (optional) — for internal audit trail"
         rows={2}
         style={{
           width: '100%', boxSizing: 'border-box',
@@ -229,32 +254,60 @@ function TakeoverStartPanel({
 }
 
 // ── Reassign Panel ────────────────────────────────────────────────────────────
-// Tier 1: property-scoped pool from /manager/team.
-// Tier 2: manual ID input (explicit opt-in).
+// Phase 1035:
+//   - Requires /manager/team?task_kind={kind} to get compatibility-filtered workers
+//   - Shows current assignee name at top
+//   - Worker selector: name first, with designation + load hints
+//   - Handoff note: separate from manager reason — written to tasks.notes[], worker-visible
+//   - Manager reason: internal only, audit storage only
 
 function ReassignPanel({
   task, onDone, onCancel,
 }: { task: ManagerTaskCardTask; onDone: () => void; onCancel: () => void }) {
   const [workers, setWorkers] = useState<PropertyWorker[]>([]);
   const [loadingWorkers, setLoadingWorkers] = useState(true);
+  const [workerError, setWorkerError] = useState('');
   const [selectedId, setSelectedId] = useState<string>('');
-  const [manualId, setManualId] = useState('');
   const [showManual, setShowManual] = useState(false);
-  const [reason, setReason] = useState('');
+  const [manualId, setManualId] = useState('');
+  const [reason, setReason] = useState('');          // internal manager reason (audit only)
+  const [handoffNote, setHandoffNote] = useState('');// worker-visible handoff message
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  const taskKind = task.task_kind || '';
+  const compatLane = KIND_TO_LANE[taskKind] || '';
+  const laneLabel = compatLane ? (LANE_LABEL[compatLane] || compatLane) : 'all workers';
+
+  // Current assignee label
+  const currentWorker = workerLabel(task.assigned_to_name, task.assigned_to);
+
   useEffect(() => {
     setLoadingWorkers(true);
-    apiFetch<{ properties: Array<{ property_id: string; workers: PropertyWorker[] }> }>('/manager/team')
+    setWorkerError('');
+    // Phase 1035: pass task_kind so backend returns only compatible workers
+    const qs = taskKind ? `?task_kind=${encodeURIComponent(taskKind)}` : '';
+    apiFetch<{ properties: Array<{ property_id: string; workers: PropertyWorker[] }> }>(`/manager/team${qs}`)
       .then(res => {
         const prop = (res.properties || []).find(p => p.property_id === task.property_id);
-        setWorkers(prop?.workers || []);
-        if (!prop?.workers?.length) setShowManual(true);
+        const compatible = prop?.workers || [];
+        setWorkers(compatible);
+        if (!compatible.length) {
+          // No property-scoped compatible workers — go straight to manual
+          setShowManual(true);
+          setWorkerError(
+            compatLane
+              ? `No ${laneLabel} found for ${task.property_id}. Use manual entry below.`
+              : `No workers found for ${task.property_id}.`
+          );
+        }
       })
-      .catch(() => setShowManual(true))
+      .catch(() => {
+        setShowManual(true);
+        setWorkerError('Could not load property workers. Use manual entry.');
+      })
       .finally(() => setLoadingWorkers(false));
-  }, [task.property_id]);
+  }, [task.property_id, taskKind, compatLane, laneLabel]);
 
   const assigneeId = showManual ? manualId.trim() : selectedId;
 
@@ -266,6 +319,7 @@ function ReassignPanel({
         body: JSON.stringify({
           new_assignee_id: assigneeId || null,
           reason: reason || null,
+          handoff_note: handoffNote || null,
         }),
       });
       onDone();
@@ -277,71 +331,149 @@ function ReassignPanel({
 
   return (
     <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 8, padding: '14px 16px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', marginBottom: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', marginBottom: 12 }}>
         👤 Reassign Task
       </div>
 
+      {/* Current assignee */}
+      <div style={{
+        background: 'rgba(139,92,246,0.06)', borderRadius: 6,
+        padding: '8px 12px', marginBottom: 14,
+        fontSize: 12, color: 'var(--color-text-dim)',
+        borderLeft: '3px solid rgba(139,92,246,0.35)',
+      }}>
+        <span style={{ fontSize: 10, color: 'var(--color-text-faint)', display: 'block', marginBottom: 2 }}>CURRENTLY ASSIGNED TO</span>
+        {currentWorker
+          ? <strong style={{ color: 'var(--color-text)' }}>{currentWorker}</strong>
+          : <span style={{ color: '#f59e0b', fontWeight: 600 }}>⚠ Unassigned (open pool)</span>
+        }
+      </div>
+
+      {/* Worker selector */}
       {loadingWorkers ? (
-        <div style={{ fontSize: 12, color: 'var(--color-text-faint)', marginBottom: 10 }}>Loading property workers…</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-faint)', marginBottom: 12 }}>
+          Loading compatible workers…
+        </div>
       ) : !showManual && workers.length > 0 ? (
         <>
           <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginBottom: 6 }}>
-            PROPERTY WORKERS — {task.property_id} (Tier 1 scope)
+            REASSIGN TO — {laneLabel || 'property workers'} · {task.property_id}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, background: selectedId === '' ? 'rgba(139,92,246,0.06)' : 'transparent', border: '1px solid var(--color-border)', cursor: 'pointer', fontSize: 12, color: 'var(--color-text-dim)' }}>
-              <input type="radio" name="worker" value="" checked={selectedId === ''} onChange={() => setSelectedId('')} style={{ accentColor: '#8b5cf6' }} />
-              Return to open pool (unassign)
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+            {/* Unassign option */}
+            <label style={workerRowStyle(selectedId === '')}>
+              <input type="radio" name="worker" value="" checked={selectedId === ''}
+                onChange={() => setSelectedId('')} style={{ accentColor: '#8b5cf6' }} />
+              <span style={{ fontSize: 12, color: 'var(--color-text-dim)', fontStyle: 'italic' }}>
+                Return to open pool (unassign)
+              </span>
             </label>
             {workers.map(w => (
-              <label key={w.user_id} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 10px', borderRadius: 6,
-                background: selectedId === w.user_id ? 'rgba(139,92,246,0.1)' : 'transparent',
-                border: selectedId === w.user_id ? '1px solid rgba(139,92,246,0.35)' : '1px solid var(--color-border)',
-                cursor: 'pointer', transition: 'all 0.12s',
-              }}>
-                <input type="radio" name="worker" value={w.user_id} checked={selectedId === w.user_id} onChange={() => setSelectedId(w.user_id)} style={{ accentColor: '#8b5cf6' }} />
+              <label key={w.user_id} style={workerRowStyle(selectedId === w.user_id)}>
+                <input type="radio" name="worker" value={w.user_id}
+                  checked={selectedId === w.user_id}
+                  onChange={() => setSelectedId(w.user_id)}
+                  style={{ accentColor: '#8b5cf6' }} />
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--color-text)' }}>{w.display_name}</span>
-                  <span style={{ fontSize: 10, color: 'var(--color-text-faint)', marginLeft: 8 }}>{w.designation} · {w.lane}</span>
-                  {(w.open_tasks ?? 0) > 0 && <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 6 }}>{w.open_tasks} tasks</span>}
+                  <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)' }}>
+                    {w.display_name || w.user_id.slice(0, 14) + '…'}
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-faint)', marginLeft: 8 }}>
+                    {w.designation}
+                    {w.lane && ` · ${w.lane.replace('_', '/')}`}
+                  </span>
+                  {(w.open_tasks ?? 0) > 0 && (
+                    <span style={{
+                      fontSize: 10, marginLeft: 6, fontWeight: 600,
+                      color: (w.open_tasks ?? 0) >= 3 ? '#ef4444' : '#f59e0b',
+                    }}>
+                      {w.open_tasks} open task{(w.open_tasks ?? 0) !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {(w.open_tasks ?? 0) === 0 && (
+                    <span style={{ fontSize: 10, marginLeft: 6, color: '#10b981', fontWeight: 600 }}>free</span>
+                  )}
                 </span>
-                {!w.is_active && <span style={{ fontSize: 9, color: '#ef4444' }}>INACTIVE</span>}
+                {!w.is_active && <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 700 }}>INACTIVE</span>}
               </label>
             ))}
           </div>
-          <button onClick={() => setShowManual(true)} style={{ fontSize: 11, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginBottom: 10 }}>
-            Show all eligible workers (Tier 2)
+          <button
+            onClick={() => setShowManual(true)}
+            style={{ fontSize: 11, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginBottom: 14 }}
+          >
+            Worker not listed? Enter ID manually (Tier 2)
           </button>
         </>
       ) : (
         <>
+          {workerError && (
+            <div style={{ fontSize: 11, color: '#f59e0b', marginBottom: 8, lineHeight: 1.4 }}>⚠ {workerError}</div>
+          )}
           <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginBottom: 4 }}>
-            {showManual && !loadingWorkers && workers.length > 0
-              ? 'Tier 2: Enter any worker ID'
-              : 'Enter worker ID (leave blank for open pool)'}
+            Worker user ID (UUID)
           </div>
           <input
             value={manualId}
             onChange={e => setManualId(e.target.value)}
-            placeholder="Worker user ID or leave blank"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 12, marginBottom: 10 }}
+            placeholder="Paste worker user ID, or leave blank to unassign"
+            style={inputStyle}
           />
           {workers.length > 0 && (
-            <button onClick={() => setShowManual(false)} style={{ fontSize: 11, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginBottom: 10 }}>
-              ← Back to property workers
+            <button
+              onClick={() => setShowManual(false)}
+              style={{ fontSize: 11, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginBottom: 14 }}
+            >
+              ← Back to worker list
             </button>
           )}
         </>
       )}
 
-      <input
-        value={reason}
-        onChange={e => setReason(e.target.value)}
-        placeholder="Reason for reassignment (optional)"
-        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 12, marginBottom: 10 }}
-      />
+      {/* ── Communication fields ─────────────────────────────────────────── */}
+      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12, marginTop: 4 }}>
+
+        {/* Handoff note — worker-visible */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#10b981', marginBottom: 4, letterSpacing: '0.04em' }}>
+            HANDOFF MESSAGE
+            <span style={{ fontWeight: 400, color: 'var(--color-text-faint)', marginLeft: 6 }}>
+              — visible to the new worker on their task surface
+            </span>
+          </div>
+          <textarea
+            value={handoffNote}
+            onChange={e => setHandoffNote(e.target.value)}
+            placeholder="Instructions for new worker e.g. Guest arriving 3pm, prioritise check-in prep"
+            rows={2}
+            style={{
+              width: '100%', boxSizing: 'border-box' as const,
+              padding: '8px 10px', borderRadius: 6,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-bg)', color: 'var(--color-text)',
+              fontSize: 12, marginBottom: 10, fontFamily: 'inherit',
+              resize: 'vertical' as const,
+            }}
+          />
+        </div>
+
+        {/* Manager reason — internal only */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', marginBottom: 4, letterSpacing: '0.04em' }}>
+            REASON FOR REASSIGNMENT
+            <span style={{ fontWeight: 400, color: 'var(--color-text-faint)', marginLeft: 6 }}>
+              — internal audit only, not shown to workers
+            </span>
+          </div>
+          <input
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="e.g. Worker unavailable, skill mismatch, schedule conflict"
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
       {err && <div style={{ fontSize: 11, color: '#ef4444', marginBottom: 8 }}>⚠ {err}</div>}
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={onCancel} style={btnStyle('#6b7280')}>Cancel</button>
@@ -354,6 +486,10 @@ function ReassignPanel({
 }
 
 // ── Note Panel ────────────────────────────────────────────────────────────────
+// Phase 1035 semantics: this is an INTERNAL manager note.
+// It is stored in tasks.notes[] with source="manager_note".
+// It is NOT shown on the worker task surface (no handoff intent).
+// Use the Reassign panel's Handoff Message field for worker-facing communication.
 
 function NotePanel({
   taskId, onDone, onCancel,
@@ -379,12 +515,16 @@ function NotePanel({
 
   return (
     <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '14px 16px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', marginBottom: 10 }}>✎ Add Operational Note</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>✎ Internal Manager Note</div>
+      <div style={{ fontSize: 10, color: 'var(--color-text-faint)', marginBottom: 10, lineHeight: 1.4 }}>
+        Stored in manager audit trail. Not shown to workers.
+        To send a message to the new worker during reassignment, use the Handoff Message field in the Reassign panel.
+      </div>
       <textarea
         autoFocus
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder="Operational note — visible in manager surface, not visible to workers"
+        placeholder="Operational note for manager/admin record…"
         rows={3}
         style={{
           width: '100%', boxSizing: 'border-box',
@@ -406,6 +546,12 @@ function NotePanel({
 
 // ── Notes List ────────────────────────────────────────────────────────────────
 
+const NOTE_SOURCE_LABEL: Record<string, { label: string; color: string }> = {
+  handoff:      { label: 'Handoff →',  color: '#10b981' },
+  manager_note: { label: 'Mgr Note',   color: '#f59e0b' },
+  system:       { label: 'System',     color: '#6b7280' },
+};
+
 function NotesList({ notes }: { notes: NoteObj[] }) {
   if (!notes.length) return (
     <div style={{ fontSize: 11, color: 'var(--color-text-faint)', padding: '8px 0', fontStyle: 'italic' }}>
@@ -414,27 +560,35 @@ function NotesList({ notes }: { notes: NoteObj[] }) {
   );
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {notes.map((n, i) => (
-        <div key={n.id || i} style={{
-          background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-          borderRadius: 8, padding: '10px 12px',
-        }}>
-          <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.5, marginBottom: 6 }}>
-            {n.text}
+      {notes.map((n, i) => {
+        const src = n.source ? NOTE_SOURCE_LABEL[n.source] : null;
+        return (
+          <div key={n.id || i} style={{
+            background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+            borderRadius: 8, padding: '10px 12px',
+            borderLeft: src ? `3px solid ${src.color}44` : '3px solid var(--color-border)',
+          }}>
+            {src && (
+              <div style={{ fontSize: 9, fontWeight: 700, color: src.color, letterSpacing: '0.06em', marginBottom: 4 }}>
+                {src.label}
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.5, marginBottom: 6 }}>
+              {n.text}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--color-text-faint)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {n.author_name && <span>by <strong style={{ color: 'var(--color-text-dim)' }}>{n.author_name}</strong></span>}
+              {n.author_role && <span>· {n.author_role}</span>}
+              {n.created_at && <span>· {fmtTime(n.created_at)}</span>}
+            </div>
           </div>
-          <div style={{ fontSize: 10, color: 'var(--color-text-faint)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {n.author_name && <span>by <strong style={{ color: 'var(--color-text-dim)' }}>{n.author_name}</strong></span>}
-            {n.author_role && <span>· {n.author_role}</span>}
-            {n.source && <span>· {n.source}</span>}
-            {n.created_at && <span>· {fmtTime(n.created_at)}</span>}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-// ── Button helper ─────────────────────────────────────────────────────────────
+// ── Style helpers ─────────────────────────────────────────────────────────────
 
 function btnStyle(color: string, disabled?: boolean): React.CSSProperties {
   return {
@@ -447,7 +601,27 @@ function btnStyle(color: string, disabled?: boolean): React.CSSProperties {
   };
 }
 
-// ── Action button in the main action bar ──────────────────────────────────────
+function workerRowStyle(selected: boolean): React.CSSProperties {
+  return {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '9px 12px', borderRadius: 8,
+    background: selected ? 'rgba(139,92,246,0.10)' : 'transparent',
+    border: selected ? '1px solid rgba(139,92,246,0.35)' : '1px solid var(--color-border)',
+    cursor: 'pointer', transition: 'all 0.12s',
+  };
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box',
+  padding: '8px 10px', borderRadius: 6,
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-bg)',
+  color: 'var(--color-text)',
+  fontSize: 12, marginBottom: 10,
+  fontFamily: 'inherit',
+};
+
+// ── Action bar ────────────────────────────────────────────────────────────────
 
 type ActivePanel = null | 'takeover' | 'reassign' | 'note';
 
@@ -490,13 +664,12 @@ export function ManagerTaskCard({
 }: {
   task: ManagerTaskCardTask;
   onClose?: () => void;
-  onMutated?: () => void;   // parent reload callback
+  onMutated?: () => void;
 }) {
   const [task, setTask] = useState<ManagerTaskCardTask>(initialTask);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [localNotes, setLocalNotes] = useState<NoteObj[]>(initialTask.notes || []);
 
-  // Sync if parent passes updated task
   useEffect(() => {
     setTask(initialTask);
     setLocalNotes(initialTask.notes || []);
@@ -508,8 +681,7 @@ export function ManagerTaskCard({
 
   const handleTakeoverDone = useCallback(() => {
     setActivePanel(null);
-    // Optimistically update status
-    setTask(t => ({ ...t, status: 'IN_PROGRESS', assigned_to: 'you' }));
+    setTask(t => ({ ...t, status: 'IN_PROGRESS' }));
     onMutated?.();
   }, [onMutated]);
 
@@ -522,7 +694,6 @@ export function ManagerTaskCard({
   const handleNoteDone = useCallback((newNote: NoteObj) => {
     setActivePanel(null);
     setLocalNotes(n => [...n, newNote]);
-    // Don't reload parent — note is appended in-place
   }, []);
 
   return (
@@ -532,7 +703,7 @@ export function ManagerTaskCard({
       borderRadius: 12,
       overflow: 'hidden',
     }}>
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{
         padding: '14px 16px',
         borderBottom: '1px solid var(--color-border)',
@@ -540,7 +711,6 @@ export function ManagerTaskCard({
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Manager layer badge — makes explicit this is oversight, not execution */}
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: '#818cf8', marginBottom: 6 }}>
             MANAGER INTERVENTION LAYER
           </div>
@@ -571,27 +741,35 @@ export function ManagerTaskCard({
         )}
       </div>
 
-      {/* ── Body ─────────────────────────────────────────────────────────── */}
+      {/* ── Body ──────────────────────────────────────────────────────────── */}
       <div style={{ padding: '14px 16px' }}>
 
-        {/* Worker info row */}
+        {/* Worker info row — Phase 1035: display names, not UUIDs */}
         <div style={{
-          display: 'flex', gap: 16, flexWrap: 'wrap',
+          display: 'flex', gap: 12, flexWrap: 'wrap',
           fontSize: 11, color: 'var(--color-text-dim)',
           marginBottom: 12, paddingBottom: 12,
           borderBottom: '1px solid var(--color-border)',
         }}>
-          {task.assigned_to && (
-            <span>Worker: <strong style={{ color: 'var(--color-text)', fontFamily: 'var(--font-mono)' }}>{task.assigned_to.slice(0, 14)}…</strong></span>
-          )}
-          {task.taken_over_by && (
-            <span style={{ color: '#f87171' }}>↩ Taken by: <strong>{task.taken_over_by.slice(0, 14)}…</strong></span>
+          {(task.assigned_to || task.assigned_to_name) ? (
+            <span>
+              Worker: <strong style={{ color: 'var(--color-text)' }}>
+                {workerLabel(task.assigned_to_name, task.assigned_to)}
+              </strong>
+            </span>
+          ) : null}
+          {(task.taken_over_by || task.taken_over_by_name) && (
+            <span style={{ color: '#f87171' }}>
+              ↩ Taken by: <strong>{workerLabel(task.taken_over_by_name, task.taken_over_by)}</strong>
+            </span>
           )}
           {task.taken_over_reason && (
             <span>Reason: <strong>{task.taken_over_reason.replace(/_/g, ' ')}</strong></span>
           )}
-          {task.original_worker_id && (
-            <span>Original: <strong style={{ fontFamily: 'var(--font-mono)' }}>{task.original_worker_id.slice(0, 14)}…</strong></span>
+          {(task.original_worker_id || task.original_worker_name) && (
+            <span>
+              Original: <strong>{workerLabel(task.original_worker_name, task.original_worker_id)}</strong>
+            </span>
           )}
           {!task.assigned_to && !task.taken_over_by && (
             <span style={{ color: '#f59e0b', fontWeight: 600 }}>⚠ No assigned worker</span>
@@ -601,10 +779,10 @@ export function ManagerTaskCard({
         {/* Read-only timing strip */}
         <TimingStrip task={task} />
 
-        {/* Action bar — manager-only actions, no worker buttons */}
+        {/* Action bar */}
         <ActionBar task={task} activePanel={activePanel} onSet={setActivePanel} />
 
-        {/* Active intervention panel */}
+        {/* Active panel */}
         {activePanel === 'takeover' && (
           <div style={{ marginBottom: 12 }}>
             <TakeoverStartPanel
@@ -633,7 +811,7 @@ export function ManagerTaskCard({
           </div>
         )}
 
-        {/* Notes section — always visible, shows after panel actions */}
+        {/* Notes — always visible */}
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>
             OPERATIONAL NOTES ({localNotes.length})
@@ -646,7 +824,6 @@ export function ManagerTaskCard({
 }
 
 // ── Slide-in Drawer Wrapper ───────────────────────────────────────────────────
-// Used by Stream page and Alert rail — slides in from right on task expand.
 
 export function ManagerTaskDrawer({
   task,

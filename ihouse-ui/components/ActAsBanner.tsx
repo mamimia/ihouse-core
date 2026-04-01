@@ -66,18 +66,20 @@ export default function ActAsBanner() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                flexWrap: 'wrap',
-                gap: '8px 16px',
-                padding: '10px 20px',
-                background: 'linear-gradient(135deg, rgba(239,68,68,0.18) 0%, rgba(220,38,38,0.10) 100%)',
-                borderBottom: '2px solid rgba(239,68,68,0.55)',
+                flexWrap: 'nowrap',
+                gap: '0 12px',
+                padding: '4px 16px',
+                background: 'rgba(239,68,68,0.14)',
+                borderBottom: '1px solid rgba(239,68,68,0.45)',
                 fontFamily: "'Inter', sans-serif",
-                fontSize: 13,
+                fontSize: 11,
                 fontWeight: 600,
                 color: '#EF4444',
-                backdropFilter: 'blur(8px)',
+                backdropFilter: 'blur(6px)',
                 letterSpacing: '0.02em',
                 userSelect: 'none',
+                minHeight: 28,
+                overflow: 'hidden',
             }}
         >
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -118,11 +120,11 @@ export default function ActAsBanner() {
                 id="act-as-end-session-btn"
                 onClick={() => endActAs()}
                 style={{
-                    background: 'rgba(239,68,68,0.22)',
-                    border: '1px solid rgba(239,68,68,0.45)',
-                    borderRadius: 6,
-                    padding: '4px 14px',
-                    fontSize: 12,
+                    background: 'rgba(239,68,68,0.18)',
+                    border: '1px solid rgba(239,68,68,0.4)',
+                    borderRadius: 4,
+                    padding: '2px 10px',
+                    fontSize: 10,
                     fontWeight: 700,
                     color: '#EF4444',
                     cursor: 'pointer',
@@ -130,6 +132,7 @@ export default function ActAsBanner() {
                     transition: 'background 0.15s',
                     textTransform: 'uppercase',
                     letterSpacing: '0.03em',
+                    flexShrink: 0,
                 }}
                 onMouseEnter={e => {
                     (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.4)';
