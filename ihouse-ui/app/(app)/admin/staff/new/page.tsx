@@ -391,9 +391,10 @@ export default function NewStaffPage() {
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
+  const [createdResult, setCreatedResult] = useState<{ user_id: string; email: string; magic_link?: string; delivery_method?: string } | null>(null);
+
   const handleSave = async () => {
     if (!staffEmail.trim()) { setError('Staff email is required.'); setActiveTab(0); return; }
-    // Strict email format check — this email becomes the auth identity
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(staffEmail.trim())) {
       setError('Invalid email address. The staff email is the auth identity — please double-check for typos.'); setActiveTab(0); return;
@@ -402,9 +403,6 @@ export default function NewStaffPage() {
     if (role === 'worker' && workerRoles.length === 0) {
       setError('Select at least one worker role.'); setActiveTab(1); return;
     }
-    // Operational Manager must have at least one property assigned.
-    // A manager with no property scope is unusable — enforce this before save,
-    // not as a silent backend failure.
     if (role === 'manager' && assignedProperties.length === 0) {
       setError('Operational Manager must be assigned to at least one property. Select a property in the Role & Assignment tab before saving.');
       setActiveTab(1);
@@ -413,9 +411,11 @@ export default function NewStaffPage() {
     setError(null);
     setSaving(true);
     try {
-      const resolvedUserId = staffEmail.trim();
-      const body: Record<string, any> = {
-        user_id: resolvedUserId,
+      // Phase 1037: Call POST /admin/staff — creates a real Supabase auth user FIRST
+      // (via invite_user_by_email), then provisions tenant_permissions with the real UUID.
+      // This is identical in outcome to the approve-onboarding flow.
+      const payload: Record<string, any> = {
+        email: staffEmail.trim(),
         role,
         display_name: (preferredName || fullName).trim() || undefined,
         phone: phoneNumber.trim() ? `${phoneCode}${phoneNumber.trim()}` : undefined,
@@ -429,15 +429,14 @@ export default function NewStaffPage() {
         notes: notes.trim() || undefined,
         worker_roles: role === 'worker' ? workerRoles : [],
         maintenance_specializations: role === 'worker' && workerRoles.includes('maintenance') ? maintenanceSpecs : [],
+        property_ids: assignedProperties,
+        frontend_url: typeof window !== 'undefined' ? window.location.origin : undefined,
         comm_preference: {
           whatsapp: whatsapp.trim() || undefined,
           telegram: telegram.trim() || undefined,
           line: line.trim() || undefined,
           sms: sms.trim() || undefined,
-          // Phase 947: comm_preference.email MUST equal staffEmail (the auth identity).
-          // If personalEmail differs, it goes in a separate field, not here.
-          // This prevents the FK/comm_email divergence that broke the Tiki Toto flow.
-          email: staffEmail.trim(),
+          email: staffEmail.trim(),   // Phase 947: must match auth email
           date_of_birth: dateOfBirth || undefined,
           start_date: startDate || undefined,
           preferred_contact: preferredContact || undefined,
@@ -452,27 +451,25 @@ export default function NewStaffPage() {
           work_permit_status: autoDocStatus(workPermitStatus, workPermitExpiry),
         },
       };
-      await apiFetch('/permissions', { method: 'POST', body: JSON.stringify(body) });
 
-      // Assign properties
-      for (const propertyId of assignedProperties) {
-        await apiFetch('/staff/assignments', {
-          method: 'POST',
-          body: JSON.stringify({ user_id: resolvedUserId, property_id: propertyId }),
-        });
-      }
+      const result = await apiFetch<{
+        status: string;
+        user_id: string;
+        email: string;
+        magic_link?: string;
+        delivery_method?: string;
+      }>('/admin/staff', { method: 'POST', body: JSON.stringify(payload) });
 
-      router.push('/admin/staff?created=1');
+      // Show the result with magic link so admin can share it if the email didn't arrive
+      setCreatedResult(result);
     } catch (e: any) {
-      // Try to surface the real backend error detail.
-      // The apiFetch above throws with message = HTTP status code (e.g. '400').
-      // Re-fetch the response body if possible, otherwise use message.
       let msg = 'Save failed. Please check the details and try again.';
-      // Check if the error has a parsed detail from the backend
       if (e?.detail) {
         msg = e.detail;
       } else if (e?.message && e.message !== '400' && e.message !== '500') {
         msg = e.message;
+      } else if (e?.message === '429') {
+        msg = 'Email rate limit reached. Wait ~60 minutes or use a different email address.';
       } else if (e?.message === '400') {
         msg = 'Save failed: one or more fields are invalid. Check that all selected properties are approved and all required fields are filled.';
       }
@@ -1010,7 +1007,84 @@ export default function NewStaffPage() {
         >
           {saving ? 'Creating…' : '+ Create Staff Member'}
         </button>
-      </div>
+    </div>
+
+      {/* ── Success overlay — shown after staff member is created ─────────────── */}
+      {createdResult && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div style={{
+            background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-border)',
+            padding: 32, maxWidth: 480, width: '100%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>✅</div>
+            <h2 style={{ margin: '0 0 8px', fontSize: 'var(--text-xl)', fontWeight: 700 }}>
+              Staff member created
+            </h2>
+            <p style={{ margin: '0 0 20px', color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>
+              <strong>{createdResult.email}</strong> has been added to your team.
+              {createdResult.delivery_method === 'email_invite_sent'
+                ? ' An invite email was sent — they can click the link to set their password.'
+                : ' Copy the access link below to share it manually.'}
+            </p>
+
+            {createdResult.magic_link && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                  Access Link — copy to share manually
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    readOnly
+                    value={createdResult.magic_link}
+                    style={{
+                      flex: 1, background: 'var(--color-surface-2)',
+                      border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                      padding: '8px 10px', fontSize: 11, color: 'var(--color-text-dim)',
+                      outline: 'none', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <button
+                    onClick={() => navigator.clipboard.writeText(createdResult.magic_link!)}
+                    style={{
+                      background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-sm)', padding: '8px 14px',
+                      fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >Copy</button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => router.push(`/admin/staff/${createdResult.user_id}`)}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-primary)', color: '#fff', border: 'none',
+                  fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer',
+                }}
+              >View Staff Profile →</button>
+              <button
+                onClick={() => { setCreatedResult(null); router.push('/admin/staff/new'); }}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-surface-2)', color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                  fontWeight: 600, fontSize: 'var(--text-sm)', cursor: 'pointer',
+                }}
+              >+ Add Another</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

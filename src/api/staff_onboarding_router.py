@@ -1089,3 +1089,237 @@ async def repair_worker_email(
     except Exception as exc:
         logger.exception("Phase 947d: repair-email failed for user_id=%s: %s", user_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# POST /admin/staff  — Phase 1037: Manual staff creation (in-office path)
+#
+# Identical outcome to approve-onboarding:
+#   1. invite_user_by_email  →  real Supabase auth UUID
+#   2. Write tenant_permissions with that UUID
+#   3. Write property assignments
+#   4. Set force_reset = True so the worker sets a password on first login
+# ---------------------------------------------------------------------------
+
+class ManualCreateStaffRequest(BaseModel):
+    email: str = Field(..., description="Staff email — becomes the Supabase auth identity")
+    role: str = Field("worker", description="Role: admin | manager | worker | owner")
+    display_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    photo_url: Optional[str] = None
+    language: str = Field("en")
+    is_active: bool = Field(True)
+    notes: Optional[str] = None
+    worker_roles: list[str] = Field(default_factory=list)
+    maintenance_specializations: list[str] = Field(default_factory=list)
+    comm_preference: Dict[str, Any] = Field(default_factory=dict)
+    property_ids: list[str] = Field(default_factory=list)
+    frontend_url: Optional[str] = Field(None, description="Frontend origin URL for auth redirect")
+
+
+@router.post(
+    "/admin/staff",
+    tags=["admin"],
+    openapi_extra={"security": [{"BearerAuth": []}]},
+    status_code=201,
+)
+async def manual_create_staff(
+    body: ManualCreateStaffRequest,
+    req: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Phase 1037 — Manual in-office staff creation.
+
+    Equivalent to approving an onboarding invite but without the invite/form pipeline.
+    Creates a real Supabase auth user first, then provisions tenant_permissions.
+
+    Steps:
+    1. invite_user_by_email -> real UUID (or generate_link for existing users)
+    2. Set force_reset = True on user metadata
+    3. Write tenant_permissions row with the real UUID
+    4. Write property assignments
+    5. Return { user_id, email, magic_link, delivery_method }
+    """
+    from supabase import create_client
+    import time as _time
+
+    db = _get_db()
+    url = os.environ["SUPABASE_URL"]
+    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+    admin_client = create_client(url, key)
+
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        return make_error_response(
+            status_code=400, code="VALIDATION_ERROR",
+            extra={"detail": "A valid email is required."},
+        )
+
+    from services.canonical_roles import CANONICAL_ROLES as _VALID_ROLES
+    if body.role not in _VALID_ROLES:
+        return make_error_response(
+            status_code=400, code="VALIDATION_ERROR",
+            extra={"detail": f"role must be one of: {sorted(_VALID_ROLES)}"},
+        )
+
+    try:
+        resolved_front = _resolve_frontend_url(body.frontend_url, req.headers.get("origin"))
+    except ValueError as ve:
+        return make_error_response(
+            status_code=500, code="CONFIGURATION_ERROR",
+            extra={"detail": str(ve)},
+        )
+
+    # ── Step 1: Create / resolve Supabase auth user ──────────────────────────
+    user_id: Optional[str] = None
+    delivery_method: str = "unknown"
+    action_link: str = ""
+
+    try:
+        auth_res = admin_client.auth.admin.invite_user_by_email(
+            email,
+            options={
+                "data": {
+                    "full_name": body.display_name or "",
+                    "force_reset": True,
+                },
+                "redirect_to": f"{resolved_front}/auth/callback",
+            },
+        )
+        user_id = auth_res.user.id
+        delivery_method = "email_invite_sent"
+        action_link = _extract_action_link(auth_res)
+        logger.info("manual_create_staff: invite sent to %s -> user_id=%s", email, user_id)
+
+    except Exception as invite_exc:
+        exc_str = str(invite_exc).lower()
+        if "already" in exc_str or "exists" in exc_str:
+            logger.info("manual_create_staff: user %s already exists -- generating magic link", email)
+            try:
+                link_res = admin_client.auth.admin.generate_link(
+                    {
+                        "type": "magiclink",
+                        "email": email,
+                        "options": {"redirect_to": f"{resolved_front}/auth/callback"},
+                    }
+                )
+                user_id = link_res.user.id
+                action_link = _extract_action_link(link_res)
+                delivery_method = "existing_user_magic_link"
+            except Exception as link_exc:
+                logger.exception("manual_create_staff: generate_link failed for %s: %s", email, link_exc)
+                return make_error_response(
+                    status_code=500, code="AUTH_LINK_FAILED",
+                    extra={"detail": f"Failed to generate access link for existing user: {link_exc}"},
+                )
+        elif "rate limit" in exc_str:
+            return make_error_response(
+                status_code=429, code="RATE_LIMIT",
+                extra={"detail": f"Supabase email rate limit hit for {email}. Wait ~60 minutes."},
+            )
+        else:
+            logger.exception("manual_create_staff: invite failed for %s: %s", email, invite_exc)
+            return make_error_response(
+                status_code=500, code="AUTH_INVITE_FAILED",
+                extra={"detail": f"Failed to create auth account: {invite_exc}"},
+            )
+
+    # ── Step 2: Set force_reset on auth user metadata ─────────────────────────
+    try:
+        existing_meta = admin_client.auth.admin.get_user_by_id(user_id).user.user_metadata or {}
+        existing_meta["force_reset"] = True
+        existing_meta["access_link_sent_at"] = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+        existing_meta.pop("access_link_opened_at", None)
+        admin_client.auth.admin.update_user_by_id(user_id, {"user_metadata": existing_meta})
+    except Exception as meta_exc:
+        logger.warning("manual_create_staff: could not set force_reset for %s: %s", user_id, meta_exc)
+
+    # ── Step 3: Normalize worker_roles ────────────────────────────────────────
+    wroles = list(body.worker_roles or [])
+    if "checkin/checkout" in wroles:
+        wroles = [r for r in wroles if r != "checkin/checkout"]
+        if "checkin" not in wroles: wroles.append("checkin")
+        if "checkout" not in wroles: wroles.append("checkout")
+    if body.role == "manager":
+        wroles = []
+    resolved_worker_role: Optional[str] = wroles[0] if (body.role == "worker" and wroles) else None
+
+    # ── Step 4: Guarantee comm_preference.email == auth email ─────────────────
+    comm = dict(body.comm_preference or {})
+    comm["email"] = email  # always force match to auth email
+
+    # ── Step 5: Write tenant_permissions with real UUID ───────────────────────
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+
+    perm_row: dict = {
+        "tenant_id":   tenant_id,
+        "user_id":     user_id,
+        "role":        body.role,
+        "worker_roles": wroles,
+        "worker_role": resolved_worker_role,
+        "is_active":   body.is_active,
+        "display_name": body.display_name or "",
+        "phone":       body.phone or "",
+        "language":    body.language,
+        "photo_url":   body.photo_url or "",
+        "address":     body.address or "",
+        "emergency_contact": body.emergency_contact or "",
+        "comm_preference": comm,
+        "notes":       body.notes or "",
+        "maintenance_specializations": body.maintenance_specializations,
+        "created_at":  now,
+        "updated_at":  now,
+    }
+
+    try:
+        admin_client.table("tenant_permissions").upsert(
+            perm_row, on_conflict="tenant_id,user_id"
+        ).execute()
+    except Exception as perm_exc:
+        logger.critical(
+            "manual_create_staff PARTIAL_FAILURE: auth user created but permissions write failed. "
+            "user_id=%s email=%s tenant=%s error=%s",
+            user_id, email, tenant_id, perm_exc,
+        )
+        return make_error_response(
+            status_code=500, code="PERMISSIONS_WRITE_FAILED",
+            extra={
+                "detail": (
+                    f"Auth account was created for {email} (user_id={user_id}), "
+                    "but the permission record could not be saved. "
+                    "Please retry -- the auth account already exists so no duplicate will be created."
+                ),
+                "user_id": user_id,
+            },
+        )
+
+    # ── Step 6: Write property assignments ────────────────────────────────────
+    assignment_errors: list[str] = []
+    for pid in (body.property_ids or []):
+        try:
+            db.table("staff_assignments").upsert(
+                {"tenant_id": tenant_id, "user_id": user_id, "property_id": pid},
+                on_conflict="tenant_id,user_id,property_id",
+            ).execute()
+        except Exception as asgn_exc:
+            logger.warning("manual_create_staff: property assignment %s failed: %s", pid, asgn_exc)
+            assignment_errors.append(pid)
+
+    logger.info(
+        "manual_create_staff: COMPLETE user_id=%s email=%s role=%s tenant=%s delivery=%s",
+        user_id, email, body.role, tenant_id, delivery_method,
+    )
+
+    return JSONResponse(status_code=201, content={
+        "status": "created",
+        "user_id": user_id,
+        "email": email,
+        "role": body.role,
+        "delivery_method": delivery_method,
+        "magic_link": action_link,
+        "assignment_errors": assignment_errors,
+    })
