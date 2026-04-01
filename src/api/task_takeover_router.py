@@ -809,11 +809,11 @@ async def get_task_context(
 )
 async def get_task_for_manager(
     task_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
-    GET /tasks/{task_id}
+    GET /tasks/detail/{task_id}
 
     Phase 1034 (OM-1): Returns the full task row enriched with timing fields
     and property display name for ManagerTaskCard drill-down.
@@ -822,10 +822,14 @@ async def get_task_for_manager(
     Timing fields: ack_is_open, ack_allowed_at, start_is_open, start_allowed_at
     Extra fields: property_name (display), notes (list, never null)
     Permission: manager (property-scoped) or admin (all). Workers cannot access.
+
+    Phase 1033 pattern: uses jwt_identity so Preview As and Act As sessions
+    correctly resolve the caller role and user_id from the JWT directly.
     """
     try:
         db = client if client is not None else _get_db()
-        caller_role = _get_caller_role(db, tenant_id)
+        caller_role = str(identity.get("role", "worker")).strip()
+        caller_user_id = str(identity.get("user_id", "")).strip()
         if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
             return make_error_response(
                 403, ErrorCode.VALIDATION_ERROR,
@@ -841,7 +845,7 @@ async def get_task_for_manager(
 
         # Manager property scope check
         if caller_role == "manager":
-            prop_ids = set(_get_manager_property_ids(db, tenant_id))
+            prop_ids = set(_get_manager_property_ids(db, caller_user_id))
             task_property = task.get("property_id", "")
             if task_property and prop_ids and task_property not in prop_ids:
                 return make_error_response(
@@ -1019,18 +1023,21 @@ async def manager_task_board(
 async def add_task_note(
     task_id: str,
     body: Dict[str, Any],
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
     POST /tasks/{task_id}/notes
 
-    Adds an operational note to a task. Notes are stored in task_actions
-    with action=OPERATIONAL_NOTE and are visible to managers and admins.
-    Workers do NOT receive a notification for notes.
+    Adds an operational note to a task. Notes are stored in tasks.notes[] JSONB
+    and dual-written to task_actions for the audit trail.
+    Visible to managers and admins only. Workers not notified.
 
     Body:
         note  (required) — free-text operational note
+
+    Phase 1033 pattern: uses jwt_identity so Preview As and Act As sessions
+    correctly resolve the caller role and user_id without a secondary DB lookup.
     """
     note = str(body.get("note") or "").strip()
     if not note:
@@ -1041,7 +1048,8 @@ async def add_task_note(
 
     try:
         db = client if client is not None else _get_db()
-        caller_role = _get_caller_role(db, tenant_id)
+        caller_role = str(identity.get("role", "worker")).strip()
+        caller_user_id = str(identity.get("user_id", "")).strip()
         if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
             return make_error_response(
                 403, ErrorCode.VALIDATION_ERROR,
@@ -1049,7 +1057,7 @@ async def add_task_note(
             )
 
         # Resolve author display name for attribution
-        author_name = _get_caller_display_name(db, tenant_id)
+        author_name = _get_caller_display_name(db, caller_user_id)
 
         # Verify task exists and belongs to supervised properties (manager scope)
         task_res = db.table("tasks").select("id, status, property_id, notes").eq("id", task_id).limit(1).execute()
@@ -1059,7 +1067,7 @@ async def add_task_note(
 
         task = task_rows[0]
         if caller_role == "manager":
-            prop_ids = _get_manager_property_ids(db, tenant_id)
+            prop_ids = _get_manager_property_ids(db, caller_user_id)
             if task.get("property_id") not in prop_ids:
                 return make_error_response(
                     403, ErrorCode.VALIDATION_ERROR,
@@ -1073,7 +1081,7 @@ async def add_task_note(
         note_obj = {
             "id": note_id,
             "text": note,
-            "author_id": tenant_id,
+            "author_id": caller_user_id,
             "author_name": author_name,
             "author_role": caller_role,
             "created_at": now,
@@ -1101,10 +1109,10 @@ async def add_task_note(
                 "id": note_id,
                 "task_id": task_id,
                 "action": "OPERATIONAL_NOTE",
-                "performed_by": tenant_id,
+                "performed_by": caller_user_id,
                 "details": {
                     "note": note,
-                    "author_id": tenant_id,
+                    "author_id": caller_user_id,
                     "author_name": author_name,
                     "author_role": caller_role,
                     "source": "manager",
