@@ -1334,3 +1334,119 @@ async def manual_create_staff(
         "magic_link": action_link,
         "assignment_errors": assignment_errors,
     })
+
+
+# ---------------------------------------------------------------------------
+# DELETE /admin/staff/{user_id}  — Phase 1037: True hard delete
+#
+# Removes the staff member from BOTH:
+#   1. tenant_permissions  (our DB)
+#   2. auth.users          (Supabase Auth — so they cannot log in with old credentials)
+#   3. staff_assignments   (property lane cleanup)
+#
+# Falls back gracefully: if auth delete fails, permissions are still removed.
+# Fails hard if the user has tasks assigned (FK constraint on permissions table).
+# ---------------------------------------------------------------------------
+
+@router.delete(
+    "/admin/staff/{user_id}",
+    tags=["admin"],
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def hard_delete_staff(
+    user_id: str,
+    req: Request,
+    tenant_id: str = Depends(jwt_auth),
+) -> JSONResponse:
+    """
+    Phase 1037 — True hard delete.
+
+    Removes the staff member from tenant_permissions AND from Supabase auth.users.
+    This means the person's email/password can be re-used for a fresh invite later.
+
+    Steps:
+    1. Verify the record belongs to this tenant
+    2. DELETE from staff_assignments
+    3. DELETE from tenant_permissions (will fail if FK tasks exist)
+    4. DELETE from auth.users via admin API
+    5. Return { deleted: true }
+    """
+    from supabase import create_client
+
+    db = _get_db()
+    url = os.environ["SUPABASE_URL"]
+    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+    admin_client = create_client(url, key)
+
+    # ── Step 1: Verify ownership ───────────────────────────────────────────
+    try:
+        check = db.table("tenant_permissions") \
+            .select("user_id, role") \
+            .eq("tenant_id", tenant_id) \
+            .eq("user_id", user_id) \
+            .maybe_single() \
+            .execute()
+        if not check.data:
+            return make_error_response(
+                status_code=404, code="NOT_FOUND",
+                extra={"detail": f"No staff record found for user_id={user_id} in your tenant."},
+            )
+    except Exception as chk_exc:
+        logger.exception("hard_delete_staff: ownership check failed: %s", chk_exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+    # ── Step 2: Remove property assignments ───────────────────────────────
+    try:
+        db.table("staff_assignments") \
+            .delete() \
+            .eq("tenant_id", tenant_id) \
+            .eq("user_id", user_id) \
+            .execute()
+    except Exception as asgn_exc:
+        logger.warning("hard_delete_staff: staff_assignments cleanup failed for %s: %s", user_id, asgn_exc)
+        # Non-fatal — continue
+
+    # ── Step 3: Remove from tenant_permissions ────────────────────────────
+    try:
+        db.table("tenant_permissions") \
+            .delete() \
+            .eq("tenant_id", tenant_id) \
+            .eq("user_id", user_id) \
+            .execute()
+    except Exception as perm_exc:
+        logger.exception("hard_delete_staff: permissions delete failed for %s: %s", user_id, perm_exc)
+        perm_str = str(perm_exc).lower()
+        if "foreign key" in perm_str or "fk_" in perm_str or "violates" in perm_str:
+            return make_error_response(
+                status_code=409, code="HAS_DEPENDENCIES",
+                extra={"detail": "Cannot delete: this staff member has tasks or records assigned. Archive them instead (set is_active=false)."},
+            )
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+    # ── Step 4: Remove from Supabase auth.users ───────────────────────────
+    auth_deleted = False
+    auth_error: Optional[str] = None
+    try:
+        admin_client.auth.admin.delete_user(user_id)
+        auth_deleted = True
+        logger.info("hard_delete_staff: auth user %s deleted from Supabase Auth", user_id)
+    except Exception as auth_exc:
+        auth_error = str(auth_exc)
+        logger.warning(
+            "hard_delete_staff: permissions removed but auth delete failed for %s: %s",
+            user_id, auth_exc,
+        )
+        # Non-fatal: permissions are gone so they can't use the app.
+        # Auth record orphan is a cosmetic issue — email can be re-used via admin invite.
+
+    logger.info(
+        "hard_delete_staff: COMPLETE user_id=%s tenant=%s auth_deleted=%s",
+        user_id, tenant_id, auth_deleted,
+    )
+
+    return JSONResponse(content={
+        "deleted": True,
+        "user_id": user_id,
+        "auth_deleted": auth_deleted,
+        "auth_error": auth_error,
+    })

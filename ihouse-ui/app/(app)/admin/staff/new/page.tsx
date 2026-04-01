@@ -1061,6 +1061,15 @@ export default function NewStaffPage() {
                       flexShrink: 0,
                     }}
                   >Copy</button>
+                  <a
+                    href={`mailto:${createdResult.email}?subject=${encodeURIComponent('Your Access Link — ' + (typeof window !== 'undefined' ? window.location.hostname : 'Domaniqo'))}&body=${encodeURIComponent('Hello,\n\nYour access link is ready. Click the link below to set up your account:\n\n' + createdResult.magic_link + '\n\nThis link expires in 24 hours. If you have any issues, contact your manager.')}`}
+                    style={{
+                      background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-sm)', padding: '8px 14px',
+                      fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', cursor: 'pointer',
+                      flexShrink: 0, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
+                    }}
+                  >✉ Email</a>
                 </div>
               </div>
             )}

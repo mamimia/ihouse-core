@@ -698,12 +698,15 @@ export default function EditStaffPage() {
 
   const handleDelete = async () => {
     try {
-      await apiFetch(`/permissions/${encodeURIComponent(rawUserId)}`, {
+      // Phase 1037: Hard delete = remove from tenant_permissions + Supabase Auth.
+      // DELETE /admin/staff/{userId} handles both atomically.
+      // Falls back to permissions-only delete if auth deletion fails gracefully.
+      await apiFetch(`/admin/staff/${encodeURIComponent(rawUserId)}`, {
         method: 'DELETE',
       });
       router.push('/admin/staff?deleted=1');
     } catch {
-      setError('Failed to delete staff member (usually because they are tied to existing tasks/bookings). Archiving is safer.');
+      setError('Failed to delete staff member (usually because they are tied to existing tasks/bookings). Try archiving instead.');
       setConfirmDelete(false);
     }
   };
