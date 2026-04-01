@@ -83,7 +83,16 @@ export default function ActAsBanner() {
             }}
         >
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                🔴 <strong>ACTING AS:</strong>&nbsp;{identityLabel}
+                🔴 <strong>ACTING AS:</strong>&nbsp;
+                <span style={{ color: 'var(--color-text)', opacity: 0.85 }}>{roleLabel}</span>
+                {personName && (
+                    <>
+                        <span style={{ color: 'rgba(239,68,68,0.35)', fontWeight: 300 }}>·</span>
+                        <span style={{ color: '#10b981', fontWeight: 800, fontSize: 12, letterSpacing: '0.01em' }}>
+                            {personName}
+                        </span>
+                    </>
+                )}
             </span>
 
             <span style={{ color: 'rgba(239,68,68,0.35)', fontWeight: 300 }}>|</span>

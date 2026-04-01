@@ -1028,7 +1028,13 @@ async def manager_task_board(
             )
 
         # Build base query — open tasks
+        # Runway rule (Phase 1037):
+        #   - Overdue tasks (due_date < today): always show, no cutoff
+        #   - Future tasks: cap at today + 30 days
+        #   - Never show far-future tasks (August, September, next year, etc.)
         open_statuses = ["PENDING", "ACKNOWLEDGED", "IN_PROGRESS", "MANAGER_EXECUTING"]
+        _TASK_HORIZON_DAYS = 30  # forward cap
+        task_horizon_date = (datetime.now(timezone.utc) + timedelta(days=_TASK_HORIZON_DAYS)).strftime("%Y-%m-%d")
         query = (
             db.table("tasks")
             .select(
@@ -1055,6 +1061,10 @@ async def manager_task_board(
                     "total": 0,
                 })
             query = query.in_("property_id", prop_ids)
+
+        # Apply 30-day forward horizon: exclude tasks due more than 30 days from now.
+        # Overdue tasks have no lower bound — they are always visible until resolved.
+        query = query.lte("due_date", task_horizon_date)
 
         res = query.order("due_date", desc=False).execute()
         tasks = res.data or []
