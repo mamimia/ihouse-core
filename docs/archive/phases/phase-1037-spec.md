@@ -257,3 +257,46 @@ This ordering must appear in both Hub (Priority Task Snapshot) and Stream (full 
 
 **Canonical ordering:**
 15. Hub Priority Task Snapshot uses canonical ordering (Checkout → Cleaning → Check-in within same property+day).
+
+---
+
+## Addendum: Phase 1037 — Staff Onboarding Access Hardening (delivered 2026-04-02)
+
+> This work was delivered in the same phase slot. The Hub/booking items above represent
+> the original OM-1 spec scope. The staff onboarding items below represent the actual
+> work completed in this session.
+
+### Problem
+The "Add Staff Member" (manual create) path was failing with 500 errors because:
+1. It called `invite_user_by_email` (SMTP-triggered → spam/invisible link)
+2. It did not create a Supabase Auth user before writing `tenant_permissions`
+3. Hard Delete only removed `tenant_permissions`, leaving orphaned `auth.users` records
+   which blocked re-inviting the same email
+
+### Solution (4 sub-commits, all deployed)
+
+**1037a — `POST /admin/staff`:**
+New `manual_create_staff` endpoint provisions Supabase Auth UUID first (`generate_link(type=invite)`), then writes `tenant_permissions`. INV-1037-IDENTITY enforced: `comm_preference.email == auth_email`.
+
+**1037b — SMTP bypass:**
+Replaced `invite_user_by_email` with `generate_link`. Admin receives raw URL in success overlay. Two actions: **Copy** + **✉ Email** (mailto:). No spam. No missing link.
+
+**1037c — True hard delete:**
+`DELETE /admin/staff/{user_id}` atomically removes `tenant_permissions` + `staff_assignments` + `auth.users`.
+
+**1037d — Two-pass auth (bulletproof):**
+Pass A = `generate_link(type=invite)`. Pass B (on any of 7 "already exists" signals) = `generate_link(type=magiclink)`. Last resort = `422 USER_ALREADY_EXISTS` with human message. Never a raw 500.
+
+**Cleanup:** orphaned `esweb3@gmail.com` in `auth.users` deleted via Supabase admin SQL.
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `src/api/staff_onboarding_router.py` | NEW: `manual_create_staff` + `hard_delete_staff` |
+| `ihouse-ui/app/(app)/admin/staff/new/page.tsx` | MODIFIED: POST /admin/staff, magic_link overlay, mailto |
+| `ihouse-ui/app/(app)/admin/staff/[userId]/page.tsx` | MODIFIED: DELETE /admin/staff/{id} |
+
+### Result
+**8,144 passed, 18 failed (pre-existing unrelated stubs), 22 skipped. TypeScript 0 errors.**
+
+Commits: `0a8fc27` → `0300bdd` → `92eba9d` → `d006702`

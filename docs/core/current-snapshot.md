@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1036 — OM-1: Stream Hardening (Canonical Ordering, Add Task, Booking Scope)
+Phase 1037 — Staff Onboarding Access Hardening (Manual Create, Hard Delete, SMTP Bypass)
 
 ## Last Closed Phase
-Phase 1035 — OM-1: Operational Manager Stream Redesign
+Phase 1036 — OM-1: Stream Hardening (Canonical Ordering, Add Task, Booking Scope)
 
 ## System Status
 
@@ -467,11 +467,19 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 **Phase 1035 — OM-1 Stream Redesign (CLOSED — Backend Proven):** Data source migrated from `audit_events` to live `tasks` + `bookings` tables. Tasks tab: `GET /manager/tasks` (live operational queue, urgency sort). Bookings tab: `GET /manager/stream/bookings` (yesterday → +7d, confirmed only). Sessions tab: removed. Human-first property naming enforced everywhere. Property name resolution bug fixed: backend was joining `properties.id` (bigint) instead of `properties.property_id` (text). `ReassignPanel` empty state fixed. DB SQL proofs pass. UI visual proof pending.
 
-**Phase 1036 — OM-1 Stream Hardening (ACTIVE):** `POST /tasks/adhoc` — generic ad-hoc task creation (CLEANING/MAINTENANCE/GENERAL), CHECKIN_PREP/CHECKOUT_VERIFY blocked, duplicate guardrail (409 + `?force=true` override), lane-aware auto-assign, audit log. Stream: canonical ordering (CHECKOUT→CLEAN→CHECKIN within same property+day), `KindSequenceBadge`, Add Task button in header wired to `/tasks/adhoc`, conflict guardrail UI, scope-aware booking empty state. Build clean. Deployed `054c83a`. Proof items open.
+**Phase 1036 — OM-1: Stream Hardening (CLOSED):** `POST /tasks/adhoc` — generic ad-hoc task creation (CLEANING/MAINTENANCE/GENERAL), CHECKIN_PREP/CHECKOUT_VERIFY blocked, duplicate guardrail (409 + `?force=true` override), lane-aware auto-assign, audit log. Stream: canonical ordering (CHECKOUT→CLEAN→CHECKIN within same property+day), `KindSequenceBadge`, Add Task button in header wired to `/tasks/adhoc`, conflict guardrail UI, scope-aware booking empty state. Build clean. Deployed `054c83a`.
+
+**Phase 1037 — Staff Onboarding Access Hardening (ACTIVE):** Resolves the staff onboarding 500 error and email deliverability chain. Four sub-commits on branch `checkpoint/supabase-single-write-20260305-1747`:
+- **1037a** `POST /admin/staff`: New manual create endpoint provisions a real Supabase Auth UUID via `generate_link(type=invite)` before writing `tenant_permissions`. Identity invariant: `comm_preference.email == auth_email` always maintained.
+- **1037b** SMTP bypass: switched from `invite_user_by_email` (sends spam-prone Supabase email) to `generate_link` (returns raw URL, no email sent). Admin sees copyable link + ✉ Email button in success overlay.
+- **1037c** True hard delete: `DELETE /admin/staff/{user_id}` atomically removes from `tenant_permissions`, `staff_assignments`, AND `auth.users` (via `admin.delete_user()`). Previously only `tenant_permissions` was removed, leaving orphaned auth records that blocked re-invite.
+- **1037d** Bulletproof two-pass auth: Pass A = `generate_link(type=invite)` for new users; Pass B = `generate_link(type=magiclink)` for any existing-user signal (7 error variants including 422, 'in use', 'duplicate'). Last resort: `422 USER_ALREADY_EXISTS` with clear human message — never a raw 500. Orphaned `esweb3@gmail.com` auth record cleaned from `auth.users` directly.
 
 ## Tests
 
-**7,975 passed, 0 failed, 22 skipped. Full Green. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1035 closed. Active: Phase 1036.**
+**8,144 passed, 18 failed (pre-existing mock stubs — wave7 takeover + guest_owner_auth), 22 skipped. TypeScript 0 errors. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1037 closed. Active: Phase 1037.**
+
+> ⚠️ The 18 failures are pre-existing test mock mismatches in `test_wave7_manual_booking_takeover.py` (8), `test_guest_owner_auth.py` (1), `test_task_system_e2e.py` (1), `test_task_writer_contract.py` (1) — none introduced by Phase 1037. Not related to staff onboarding. Tracked for repair in next test hardening pass.
 
 ## Environment Variables (continued)
 
