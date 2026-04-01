@@ -1452,216 +1452,459 @@ function AlertRail({ alerts, loading }: { alerts: AlertItem[]; loading: boolean 
     );
 }
 
-// Main page
+
+// ---------------------------------------------------------------------------
+// Priority Task Snapshot (Hub-only, max 10 rows, links to Stream for more)
 // ---------------------------------------------------------------------------
 
-export default function ManagerPage() {
-    const [events, setEvents] = useState<AuditEvent[]>([]);
+function PriorityTaskSnapshot() {
+    const [tasks, setTasks]     = useState<ManagerTask[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [entityFilter, setEntityFilter] = useState<'all' | 'task' | 'booking'>('all');
-    const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-    const [prevIds, setPrevIds] = useState<Set<number>>(new Set());
+    const [err, setErr]         = useState('');
+    const [takeoverTask, setTakeoverTask]   = useState<ManagerTask | null>(null);
+    const [executingTask, setExecutingTask] = useState<ManagerTask | null>(null);
+
+    const MAX_ROWS = 10;
 
     const load = useCallback(async () => {
-        setLoading(true); setError(null);
+        setLoading(true); setErr('');
         try {
-            const params: Parameters<typeof api.getAuditEvents>[0] = { limit: 100 };
-            if (entityFilter !== 'all') params.entity_type = entityFilter;
-            const res = await api.getAuditEvents(params);
-            setEvents(res.events);
-            setLastRefresh(new Date());
-            setPrevIds(prev => new Set([...prev, ...res.events.map(e => e.id)]));
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : 'Failed to load audit events');
+            const res = await apiFetch<{ groups: Record<string, ManagerTask[]>; total: number }>('/manager/tasks');
+            const groups = res.groups || {};
+            // Canonical Hub priority order: executing → pending → acknowledged → in_progress
+            const all: ManagerTask[] = [
+                ...(groups.manager_executing || []),
+                ...(groups.pending           || []),
+                ...(groups.acknowledged      || []),
+                ...(groups.in_progress       || []),
+            ];
+            setTasks(all);
+        } catch (e: any) {
+            setErr(e?.message || 'Failed to load tasks.');
         } finally {
             setLoading(false);
         }
-    }, [entityFilter]);
+    }, []);
 
     useEffect(() => { load(); }, [load]);
 
-    // Cockpit-first: derive alert items from live audit stream.
-    // No new API endpoint — derived from existing stream data.
-    // Step 3 replaces this with a dedicated /manager/alerts endpoint.
-    const hubAlerts: AlertItem[] = events.slice(0, 60).reduce<AlertItem[]>((acc, ev) => {
-        if (ev.action === 'MANAGER_TAKEOVER_INITIATED') {
-            acc.push({ type: ev.action, severity: 'high', title: 'Manager takeover active', task_id: ev.entity_id });
-        } else if (ev.action === 'BOOKING_FLAGS_UPDATED') {
-            acc.push({ type: ev.action, severity: 'warning', title: 'Booking flags updated' });
-        }
-        return acc;
-    }, []).slice(0, 8);
+    const handleTakeoverComplete = (updated: ManagerTask) => {
+        setExecutingTask(updated);
+        load();
+    };
 
-    // Operational metrics derived from stream
-    const acknowledged = events.filter(e => e.action === 'TASK_ACKNOWLEDGED').length;
-    const completed    = events.filter(e => e.action === 'TASK_COMPLETED').length;
-    const flagged      = events.filter(e => e.action === 'BOOKING_FLAGS_UPDATED').length;
-    const takeovers    = events.filter(e => e.action === 'MANAGER_TAKEOVER_INITIATED').length;
-    const managerDone  = events.filter(e => e.action === 'MANAGER_TASK_COMPLETED').length;
+    const snapshot = tasks.slice(0, MAX_ROWS);
+    const overflow = tasks.length - MAX_ROWS;
 
-    const btnBase: React.CSSProperties = {
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-full)',
-        padding: 'var(--space-1) var(--space-4)',
-        fontSize: 'var(--text-xs)',
-        fontWeight: 600,
-        cursor: 'pointer',
-        transition: 'all var(--transition-fast)',
-        letterSpacing: '0.04em',
+    const sc = STATUS_CONFIG;
+    const dot = PRIORITY_DOT;
+
+    return (
+        <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            overflow: 'hidden',
+            marginBottom: 'var(--space-6)',
+        }}>
+            {/* Header */}
+            <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--color-border)',
+                background: 'linear-gradient(135deg,rgba(239,68,68,0.05),rgba(245,158,11,0.03))',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 15 }}>⚡</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                        Priority Tasks
+                    </span>
+                    {!loading && (
+                        <span style={{
+                            fontSize: 11, fontWeight: 700,
+                            padding: '1px 8px', borderRadius: 'var(--radius-full)',
+                            background: tasks.length > 0 ? 'rgba(239,68,68,0.14)' : 'var(--color-surface-3)',
+                            color: tasks.length > 0 ? '#f87171' : 'var(--color-text-dim)',
+                        }}>{tasks.length} open</span>
+                    )}
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button id="hub-tasks-refresh" onClick={load} disabled={loading} style={{
+                        background: 'transparent', border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-dim)', borderRadius: 6,
+                        padding: '3px 10px', fontSize: 11, cursor: 'pointer', opacity: loading ? 0.5 : 1,
+                    }}>↺</button>
+                    <a href="/manager/stream" style={{
+                        fontSize: 11, fontWeight: 600, color: 'var(--color-primary)',
+                        textDecoration: 'none', padding: '3px 10px',
+                        border: '1px solid var(--color-primary)',
+                        borderRadius: 6, opacity: 0.8,
+                    }}>View all in Stream →</a>
+                </div>
+            </div>
+
+            {/* Loading skeleton */}
+            {loading && tasks.length === 0 && (
+                [...Array(4)].map((_, i) => (
+                    <div key={i} style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <div style={{ height: 10, width: 160, background: 'var(--color-surface-3)', borderRadius: 4 }} />
+                        <div style={{ height: 10, width: 80, background: 'var(--color-surface-3)', borderRadius: 4 }} />
+                    </div>
+                ))
+            )}
+
+            {/* Error */}
+            {err && <div style={{ padding: '10px 16px', color: 'var(--color-danger)', fontSize: 12 }}>⚠ {err}</div>}
+
+            {/* Empty */}
+            {!loading && tasks.length === 0 && !err && (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-dim)' }}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>✓</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>All clear</div>
+                    <div style={{ fontSize: 12, marginTop: 4 }}>No open tasks in your properties right now.</div>
+                </div>
+            )}
+
+            {/* Task rows — compact */}
+            {snapshot.map(t => {
+                const cfg = sc[t.status] ?? sc['PENDING'];
+                const isTakenOver = t.status === 'MANAGER_EXECUTING';
+                const canTakeover = ['PENDING', 'ACKNOWLEDGED', 'IN_PROGRESS'].includes(t.status);
+                return (
+                    <div key={t.id} style={{
+                        display: 'grid', gridTemplateColumns: '1fr 80px 80px',
+                        gap: 8, padding: '9px 16px', alignItems: 'center',
+                        borderBottom: '1px solid var(--color-border)',
+                        background: isTakenOver ? 'rgba(239,68,68,0.025)' : 'transparent',
+                    }}>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: dot[t.priority] ?? '#94a3b8', flexShrink: 0 }} />
+                                <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {t.title || KIND_LABEL[t.task_kind] || t.task_kind}
+                                </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--color-text-dim)', paddingLeft: 13 }}>
+                                {/* Human-first: property name via title context, fallback to property_id */}
+                                {t.property_id}
+                                {t.due_date && <span style={{ marginLeft: 8, color: 'var(--color-text-faint)' }}>· {t.due_date}</span>}
+                            </div>
+                        </div>
+                        <div>
+                            <span style={{
+                                fontSize: 10, fontWeight: 700,
+                                padding: '2px 7px', borderRadius: 'var(--radius-full)',
+                                background: cfg.bg, color: cfg.color, whiteSpace: 'nowrap',
+                            }}>{cfg.label}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            {canTakeover ? (
+                                <button id={`hub-takeover-${t.id}`} onClick={() => setTakeoverTask(t)} style={{
+                                    background: 'linear-gradient(135deg,#ef4444,#dc2626)',
+                                    color: '#fff', border: 'none', borderRadius: 5,
+                                    padding: '4px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                                    boxShadow: '0 1px 5px rgba(239,68,68,0.25)', whiteSpace: 'nowrap',
+                                }}>⚡ Take Over</button>
+                            ) : isTakenOver ? (
+                                <button id={`hub-execute-${t.id}`} onClick={() => setExecutingTask(t)} style={{
+                                    background: 'linear-gradient(135deg,#10b981,#059669)',
+                                    color: '#fff', border: 'none', borderRadius: 5,
+                                    padding: '4px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                                    boxShadow: '0 1px 5px rgba(16,185,129,0.25)', whiteSpace: 'nowrap',
+                                }}>▶ Execute</button>
+                            ) : null}
+                        </div>
+                    </div>
+                );
+            })}
+
+            {/* Overflow link */}
+            {overflow > 0 && (
+                <div style={{ padding: '10px 16px', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface-2)' }}>
+                    <a href="/manager/stream" style={{ fontSize: 12, color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}>
+                        +{overflow} more tasks — Open full Stream →
+                    </a>
+                </div>
+            )}
+
+            {/* Takeover modal */}
+            {takeoverTask && (
+                <TakeoverModal
+                    task={takeoverTask}
+                    onClose={() => setTakeoverTask(null)}
+                    onTakeoverComplete={handleTakeoverComplete}
+                />
+            )}
+            {/* Execution drawer */}
+            {executingTask && (
+                <ManagerExecutionDrawer
+                    task={executingTask}
+                    onClose={() => setExecutingTask(null)}
+                    onCompleted={() => { setExecutingTask(null); load(); }}
+                />
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Today's Booking Snapshot (Hub-only, today's arrivals + departures)
+// ---------------------------------------------------------------------------
+
+type HubBooking = {
+    booking_id: string;
+    property_id: string;
+    property_name: string;
+    guest_name: string;
+    check_in: string;
+    check_out: string;
+    urgency_label: string;
+    status: string;
+    early_checkout_eligible: boolean;
+};
+
+function TodayBookingSnapshot() {
+    const [bookings, setBookings] = useState<HubBooking[]>([]);
+    const [loading, setLoading]   = useState(true);
+
+    useEffect(() => {
+        apiFetch<{ bookings: HubBooking[] }>('/manager/stream/bookings')
+            .then(r => {
+                const today = new Date().toISOString().slice(0, 10);
+                // Hub shows only today's arrivals, departures, and active in-stays
+                const todayOnly = (r.bookings || []).filter(b => {
+                    const ci = b.check_in || '';
+                    const co = b.check_out || '';
+                    return ci === today || co === today || (ci < today && co > today);
+                });
+                setBookings(todayOnly);
+            })
+            .catch(() => setBookings([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    if (loading) return (
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 'var(--space-6)' }}>
+            <div style={{ height: 12, width: 140, background: 'var(--color-surface-3)', borderRadius: 4, marginBottom: 12 }} />
+            {[...Array(2)].map((_, i) => <div key={i} style={{ height: 10, width: '60%', background: 'var(--color-surface-3)', borderRadius: 4, marginBottom: 8 }} />)}
+        </div>
+    );
+
+    return (
+        <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            overflow: 'hidden',
+            marginBottom: 'var(--space-6)',
+        }}>
+            <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '12px 16px',
+                borderBottom: bookings.length > 0 ? '1px solid var(--color-border)' : 'none',
+                background: 'linear-gradient(135deg,rgba(59,130,246,0.05),rgba(16,185,129,0.03))',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span>📋</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                        Today&apos;s Bookings
+                    </span>
+                    <span style={{
+                        fontSize: 11, fontWeight: 700,
+                        padding: '1px 8px', borderRadius: 'var(--radius-full)',
+                        background: bookings.length > 0 ? 'rgba(59,130,246,0.14)' : 'var(--color-surface-3)',
+                        color: bookings.length > 0 ? '#60a5fa' : 'var(--color-text-dim)',
+                    }}>{bookings.length}</span>
+                </div>
+                <a href="/manager/stream" style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'none', opacity: 0.8 }}>
+                    Full runway in Stream →
+                </a>
+            </div>
+
+            {bookings.length === 0 ? (
+                <div style={{ padding: '20px 16px', color: 'var(--color-text-dim)', fontSize: 13, textAlign: 'center' }}>
+                    No arrivals, departures, or active stays today.
+                </div>
+            ) : (
+                bookings.map(b => (
+                    <div key={b.booking_id} style={{
+                        display: 'grid', gridTemplateColumns: '1fr 120px',
+                        gap: 8, padding: '9px 16px', alignItems: 'center',
+                        borderBottom: '1px solid var(--color-border)',
+                    }}>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {b.property_name}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 1 }}>
+                                {b.guest_name}
+                                {b.check_in && <span style={{ marginLeft: 8, color: 'var(--color-text-faint)' }}>In: {b.check_in}</span>}
+                                {b.check_out && <span style={{ marginLeft: 8, color: 'var(--color-text-faint)' }}>Out: {b.check_out}</span>}
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <span style={{
+                                fontSize: 10, fontWeight: 700,
+                                padding: '2px 8px', borderRadius: 'var(--radius-full)',
+                                background: b.urgency_label?.includes('Active') ? 'rgba(16,185,129,0.12)' :
+                                            b.urgency_label?.includes('Arriving') ? 'rgba(59,130,246,0.12)' :
+                                            'rgba(245,158,11,0.12)',
+                                color: b.urgency_label?.includes('Active') ? '#10b981' :
+                                       b.urgency_label?.includes('Arriving') ? '#60a5fa' :
+                                       '#f59e0b',
+                                whiteSpace: 'nowrap',
+                            }}>
+                                {b.urgency_label}
+                            </span>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Operational Summary Strip — 4 chips from real API data
+// ---------------------------------------------------------------------------
+
+function OpsStrip() {
+    const [ops, setOps] = useState<{ arrivals_today: number; departures_today: number; cleanings_due_today: number } | null>(null);
+    const [alertCount, setAlertCount] = useState(0);
+
+    useEffect(() => {
+        apiFetch<{ arrivals_today: number; departures_today: number; cleanings_due_today: number }>('/operations/today')
+            .then(r => setOps(r))
+            .catch(() => {});
+        apiFetch<{ alerts: { severity: string }[] }>('/manager/alerts')
+            .then(r => setAlertCount((r.alerts || []).filter(a => a.severity === 'critical' || a.severity === 'high').length))
+            .catch(() => {});
+    }, []);
+
+    const chips = [
+        { label: 'Check-ins',   value: ops?.arrivals_today   ?? '—', color: '#22c55e', icon: '→' },
+        { label: 'Check-outs',  value: ops?.departures_today ?? '—', color: '#60a5fa', icon: '←' },
+        { label: 'Cleanings',   value: ops?.cleanings_due_today ?? '—', color: '#f59e0b', icon: '🧹' },
+        { label: 'Alerts',      value: alertCount || '—', color: alertCount > 0 ? '#ef4444' : '#94a3b8', icon: '⚠' },
+    ];
+
+    return (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 'var(--space-6)', flexWrap: 'wrap' }}>
+            {chips.map(c => (
+                <div key={c.label} style={{
+                    flex: '1 1 120px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-lg)',
+                    padding: '14px 16px',
+                    display: 'flex', flexDirection: 'column', gap: 4,
+                    minWidth: 110,
+                }}>
+                    <span style={{ fontSize: 22, fontWeight: 700, color: c.color, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                        {c.value}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                        {c.label}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Hub Page — compact command dashboard
+// ---------------------------------------------------------------------------
+
+export default function ManagerPage() {
+    const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+    const refresh = () => {
+        setLastRefresh(new Date());
+        // Force child components to re-mount via key change
+        window.location.reload();
     };
 
     return (
-        <div style={{ maxWidth: 1100 }}>
+        <div style={{ maxWidth: 900 }}>
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
             `}</style>
 
-            {/* ── COCKPIT HEADER ────────────────────────────────────── */}
+            {/* ── Page header ──────────────────────────────────────────── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-6)' }}>
                 <div>
-                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-1)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-                        Operational Manager · {lastRefresh ? lastRefresh.toLocaleTimeString() : 'loading…'}
+                    <p style={{ fontSize: 10, color: 'var(--color-text-faint)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                        Operational Manager · {lastRefresh.toLocaleTimeString()}
                     </p>
-                    <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+                    <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0 }}>
                         Command <span style={{ color: 'var(--color-primary)' }}>Hub</span>
                     </h1>
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
-                        Operational state · Alerts · Interventions · Stream
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginTop: 6 }}>
+                        What needs your attention right now?
                     </p>
                 </div>
-                <button
-                    id="manager-refresh"
-                    onClick={load}
-                    disabled={loading}
-                    style={{
-                        background: loading ? 'var(--color-surface-3)' : 'var(--color-primary)',
-                        color: '#fff', border: 'none',
-                        borderRadius: 'var(--radius-md)',
-                        padding: 'var(--space-2) var(--space-5)',
-                        fontSize: 'var(--text-sm)', fontWeight: 600,
-                        opacity: loading ? 0.7 : 1,
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        transition: 'all var(--transition-fast)',
-                    }}
-                >
-                    {loading ? '⟳  Refreshing…' : '↺  Refresh'}
-                </button>
-            </div>
-
-            {/* ── 1. ALERT RAIL — first thing a manager sees ────────── */}
-            <AlertRail alerts={hubAlerts} loading={loading} />
-
-            {/* ── 2. OPERATIONAL METRICS ────────────────────────────── */}
-            <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-8)', flexWrap: 'wrap' }}>
-                <MetricChip label="Takeovers active"  value={takeovers}    color="#f87171" />
-                <MetricChip label="Manager completed" value={managerDone}  color="#34d399" />
-                <MetricChip label="Task acked"        value={acknowledged} color="#60a5fa" />
-                <MetricChip label="Task completed"    value={completed}    color="#34d399" />
-                <MetricChip label="Flags updated"     value={flagged}      color="#fbbf24" />
-                <MetricChip label="Stream events"     value={events.length} color="var(--color-text)" />
-            </div>
-
-            {/* ── 3. TASK BOARD — intervention layer ────────────────── */}
-            <TaskBoard />
-
-            {/* ── 4. LIVE STREAM ────────────────────────────────────── */}
-            <div style={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                overflow: 'hidden',
-                marginBottom: 'var(--space-8)',
-            }}>
-                <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: 'var(--space-4) var(--space-5)',
-                    borderBottom: '1px solid var(--color-border)',
-                    background: 'var(--color-surface-2)',
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                        <span style={{ fontSize: 14 }}>📡</span>
-                        <h2 style={{
-                            fontSize: 'var(--text-sm)', fontWeight: 600,
-                            color: 'var(--color-text-dim)', textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                        }}>Live Stream</h2>
-                        <span style={{
-                            fontSize: 'var(--text-xs)', fontWeight: 700,
-                            padding: '1px 8px', borderRadius: 'var(--radius-full)',
-                            background: 'var(--color-surface-3)',
-                            color: 'var(--color-text-dim)',
-                        }}>{events.length}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                        {(['all', 'task', 'booking'] as const).map(f => (
-                            <button
-                                key={f}
-                                id={`filter-${f}`}
-                                onClick={() => setEntityFilter(f)}
-                                style={{
-                                    ...btnBase,
-                                    background: entityFilter === f ? 'var(--color-primary)' : 'transparent',
-                                    color: entityFilter === f ? '#fff' : 'var(--color-text-dim)',
-                                    borderColor: entityFilter === f ? 'var(--color-primary)' : 'var(--color-border)',
-                                }}
-                            >
-                                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1) + 's'}
-                            </button>
-                        ))}
-                    </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <a href="/manager/stream" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-dim)', borderRadius: 'var(--radius-md)',
+                        padding: '7px 14px', fontSize: 12, fontWeight: 600,
+                        textDecoration: 'none', transition: 'all 0.15s',
+                    }}>
+                        📡 Open Stream
+                    </a>
+                    <button
+                        id="hub-refresh"
+                        onClick={refresh}
+                        style={{
+                            background: 'var(--color-primary)', color: '#fff', border: 'none',
+                            borderRadius: 'var(--radius-md)', padding: '7px 16px',
+                            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}
+                    >
+                        ↺ Refresh
+                    </button>
                 </div>
-
-                <div style={{
-                    display: 'grid', gridTemplateColumns: '160px 1fr 180px 80px',
-                    gap: 'var(--space-4)', padding: 'var(--space-2) var(--space-5)',
-                    borderBottom: '1px solid var(--color-border)',
-                    background: 'var(--color-surface-2)',
-                }}>
-                    {['Action', 'Entity', 'Actor', 'When'].map(h => (
-                        <span key={h} style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</span>
-                    ))}
-                </div>
-
-                {error && (
-                    <div style={{ padding: 'var(--space-4) var(--space-5)', color: 'var(--color-danger)', fontSize: 'var(--text-sm)', background: 'rgba(239,68,68,0.06)', borderBottom: '1px solid var(--color-border)' }}>⚠ {error}</div>
-                )}
-                {loading && events.length === 0 && (
-                    Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 180px 80px', gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-5)', borderBottom: '1px solid var(--color-border)', alignItems: 'center' }}>
-                            {[100, 200, 140, 50].map((w, j) => (
-                                <div key={j} style={{ height: 12, width: w, background: 'var(--color-surface-3)', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />
-                            ))}
-                        </div>
-                    ))
-                )}
-                {!loading && events.length === 0 && !error && (
-                    <div style={{ padding: 'var(--space-16)', textAlign: 'center', color: 'var(--color-text-dim)' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: 'var(--space-3)' }}>📡</div>
-                        <div style={{ fontWeight: 600 }}>Stream is quiet</div>
-                        <div style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>Events appear here as the team takes action.</div>
-                    </div>
-                )}
-                {events.map(ev => (
-                    <AuditRow key={ev.id} ev={ev} isNew={!prevIds.has(ev.id)} />
-                ))}
             </div>
 
-            {/* ── 5. COPILOT BRIEFING — secondary tool ──────────────── */}
+            {/* ── 1. Morning Briefing — first thing the manager sees ──── */}
             <MorningBriefingWidget />
 
-            {/* ── 6. BOOKING AUDIT LOOKUP — secondary drill-down ────── */}
-            <BookingAuditLookup />
+            {/* ── 2. Operational Summary Strip ─────────────────────────── */}
+            <OpsStrip />
 
+            {/* ── 3. Priority Task Snapshot — max 10 rows ──────────────── */}
+            <PriorityTaskSnapshot />
+
+            {/* ── 4. Today's Booking Snapshot ──────────────────────────── */}
+            <TodayBookingSnapshot />
+
+            {/* ── 5. Booking Audit Lookup — demoted tool ───────────────── */}
+            <details style={{ marginTop: 'var(--space-4)' }}>
+                <summary style={{
+                    cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                    color: 'var(--color-text-dim)', padding: '8px 4px',
+                    listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                    <span>🔍</span> Booking Audit Lookup
+                    <span style={{ fontSize: 10, color: 'var(--color-text-faint)', fontWeight: 400, marginLeft: 4 }}>(expand)</span>
+                </summary>
+                <div style={{ marginTop: 12 }}>
+                    <BookingAuditLookup />
+                </div>
+            </details>
+
+            {/* Footer */}
             <div style={{
-                marginTop: 'var(--space-10)',
-                paddingTop: 'var(--space-6)',
+                marginTop: 'var(--space-8)',
+                paddingTop: 'var(--space-4)',
                 borderTop: '1px solid var(--color-border)',
-                fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)',
+                fontSize: 11, color: 'var(--color-text-faint)',
                 display: 'flex', justifyContent: 'space-between',
             }}>
-                <span>Domaniqo — Operational Manager · Phase 1033 Hub</span>
-                <span>Source: audit_events · actor_id = JWT sub</span>
+                <span>Domaniqo — Command Hub · Phase 1037</span>
+                <span>Full operational view → <a href="/manager/stream" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>Stream</a></span>
             </div>
         </div>
     );
