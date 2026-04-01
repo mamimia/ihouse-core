@@ -84,6 +84,10 @@ class StartActAsRequest(BaseModel):
                              description="The role to act as")
     ttl_seconds: int = Field(default=_DEFAULT_TTL_SECONDS, ge=60, le=_MAX_TTL_SECONDS,
                              description="Session TTL in seconds (60-14400)")
+    target_user_id: Optional[str] = Field(default=None,
+                                          description="Specific user to impersonate. "
+                                                      "When set, JWT sub = target_user_id. "
+                                                      "Required for identity-scoped roles (manager).")
     context: Optional[dict] = Field(default=None,
                                     description="Optional scope narrowing (property_id, etc.)")
 
@@ -154,10 +158,54 @@ async def start_act_as(
     if not admin_user_id or not tenant_id:
         return err("INVALID_IDENTITY", "Missing user_id or tenant_id in JWT", status=403)
 
+    # Phase 1033: Person-specific impersonation
+    # When target_user_id is provided, verify it exists and has the target_role,
+    # then mint the JWT with sub = target_user_id so all identity-scoped
+    # data queries resolve against the target person.
+    effective_user_id = admin_user_id
+    target_display_name: Optional[str] = None
+
+    if body.target_user_id:
+        try:
+            db_check = _get_supabase_client()
+            tp_res = (
+                db_check.table("tenant_permissions")
+                .select("user_id, display_name, role, is_active")
+                .eq("user_id", body.target_user_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+            tp_rows = tp_res.data or []
+            if not tp_rows:
+                return err(
+                    "TARGET_USER_NOT_FOUND",
+                    f"User '{body.target_user_id}' not found in this tenant.",
+                    status=422,
+                )
+            tp_row = tp_rows[0]
+            if tp_row.get("role") != body.target_role:
+                return err(
+                    "ROLE_MISMATCH",
+                    f"User '{body.target_user_id}' has role '{tp_row.get('role')}', "
+                    f"not '{body.target_role}'. Cannot impersonate as a different role.",
+                    status=422,
+                )
+            if not tp_row.get("is_active", True):
+                return err(
+                    "TARGET_USER_INACTIVE",
+                    f"User '{body.target_user_id}' is inactive and cannot be impersonated.",
+                    status=422,
+                )
+            effective_user_id = body.target_user_id
+            target_display_name = tp_row.get("display_name") or body.target_user_id
+        except Exception as exc:
+            logger.exception("act-as/start: target_user_id lookup failed: %s", exc)
+            return err("TARGET_USER_LOOKUP_FAILED", f"Failed to verify target user: {exc}", status=500)
+
     # Phase 866 (Model B): 409 single-session check removed.
-    # An admin may open multiple concurrent Act As sessions. Each is independently
-    # tracked via its unique session_id and independently isolated in browser tabs.
-    
+    # An admin may open multiple concurrent Act As sessions.
+
     # Create session record
     session_id = str(uuid.uuid4())
     now_utc = datetime.now(timezone.utc)
@@ -170,13 +218,27 @@ async def start_act_as(
             "real_admin_user_id": admin_user_id,
             "real_admin_email": admin_email,
             "acting_as_role": body.target_role,
+            "acting_as_user_id": effective_user_id if effective_user_id != admin_user_id else None,
             "acting_as_context": body.context or {},
             "tenant_id": tenant_id,
             "expires_at": expires_at.isoformat(),
         }).execute()
     except Exception as exc:
-        logger.exception("act-as/start: session creation failed: %s", exc)
-        return err("SESSION_CREATION_FAILED", f"Failed to create session: {exc}", status=500)
+        # acting_as_user_id column might not exist yet — retry without it
+        logger.warning("act-as/start: retry insert without acting_as_user_id: %s", exc)
+        try:
+            db.table("acting_sessions").insert({
+                "id": session_id,
+                "real_admin_user_id": admin_user_id,
+                "real_admin_email": admin_email,
+                "acting_as_role": body.target_role,
+                "acting_as_context": body.context or {},
+                "tenant_id": tenant_id,
+                "expires_at": expires_at.isoformat(),
+            }).execute()
+        except Exception as exc2:
+            logger.exception("act-as/start: session creation failed: %s", exc2)
+            return err("SESSION_CREATION_FAILED", f"Failed to create session: {exc2}", status=500)
 
     # Issue scoped act_as JWT
     jwt_secret = os.environ.get("IHOUSE_JWT_SECRET", "")
@@ -185,13 +247,17 @@ async def start_act_as(
 
     now_ts = int(time.time())
     jwt_payload = {
-        "sub": admin_user_id,               # Real identity — NEVER changes
+        # Phase 1033: sub = effective_user_id (target person when person-specific, else admin)
+        "sub": effective_user_id,
+        "user_id": effective_user_id,           # Explicit — used by jwt_identity()
         "tenant_id": tenant_id,
-        "role": body.target_role,            # Effective permissions
-        "token_type": "act_as",              # Canonical signal
-        "acting_session_id": session_id,     # Links to session record
-        "real_admin_id": admin_user_id,      # Explicit redundancy for safety
+        "role": body.target_role,                # Effective permissions
+        "token_type": "act_as",                  # Canonical signal
+        "acting_session_id": session_id,         # Links to session record
+        "real_admin_id": admin_user_id,          # Preserved for audit
         "real_admin_email": admin_email,
+        "target_user_id": effective_user_id,     # Explicit — person-specific flag
+        "is_person_specific": effective_user_id != admin_user_id,
         "auth_method": "act_as",
         "iat": now_ts,
         "exp": now_ts + body.ttl_seconds,
@@ -225,6 +291,9 @@ async def start_act_as(
     return ok({
         "session_id": session_id,
         "acting_as_role": body.target_role,
+        "acting_as_user_id": effective_user_id,
+        "acting_as_display_name": target_display_name or "(role session)",
+        "is_person_specific": effective_user_id != admin_user_id,
         "token": act_as_token,
         "expires_at": expires_at.isoformat(),
         "ttl_seconds": body.ttl_seconds,
@@ -397,3 +466,58 @@ async def act_as_status(
     except Exception as exc:
         logger.exception("act-as/status: error: %s", exc)
         return err("STATUS_FAILED", f"Failed to check status: {exc}", status=500)
+# ---------------------------------------------------------------------------
+# GET /auth/act-as/users  — list impersonatable users for a given role
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/auth/act-as/users",
+    summary="List users available for person-specific Act As (Phase 1033)",
+)
+async def act_as_users(
+    role: str,
+    identity: dict = Depends(jwt_identity),
+) -> JSONResponse:
+    """
+    GET /auth/act-as/users?role=manager
+
+    Returns active users in the requested role so the UI can render
+    a second person-picker dropdown after the admin selects a role.
+    Admin only. Non-production only.
+    """
+    if _is_production():
+        return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+    real_role = identity.get("role", "")
+    is_preview = identity.get("is_preview", False)
+    if is_preview or real_role != "admin":
+        return err("ADMIN_REQUIRED", "Only admins can list Act As users", status=403)
+
+    if role not in _ACTABLE_ROLES:
+        return err("INVALID_ROLE", f"Unknown role: {role}", status=422)
+
+    tenant_id = identity.get("tenant_id", "")
+
+    try:
+        db = _get_supabase_client()
+        res = (
+            db.table("tenant_permissions")
+            .select("user_id, display_name, is_active")
+            .eq("tenant_id", tenant_id)
+            .eq("role", role)
+            .eq("is_active", True)
+            .order("display_name")
+            .execute()
+        )
+        users = [
+            {
+                "user_id": r["user_id"],
+                "display_name": r.get("display_name") or r["user_id"],
+            }
+            for r in (res.data or [])
+            if r.get("user_id")
+        ]
+        return ok({"role": role, "users": users, "count": len(users)})
+    except Exception as exc:
+        logger.exception("act-as/users: error: %s", exc)
+        return err("QUERY_FAILED", f"Failed to list users: {exc}", status=500)
