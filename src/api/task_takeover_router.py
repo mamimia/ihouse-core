@@ -920,7 +920,7 @@ async def get_task_for_manager(
                 prop_res = (
                     db.table("properties")
                     .select("display_name")
-                    .eq("id", prop_id)
+                    .eq("property_id", prop_id)   # property_id is the text key, not id (bigint)
                     .limit(1)
                     .execute()
                 )
@@ -1095,9 +1095,10 @@ async def manager_task_board(
 
         if all_prop_ids:
             try:
-                pr = db.table("properties").select("id, display_name").in_("id", all_prop_ids).execute()
+                # Key: use property_id (text) not id (bigint surrogate)
+                pr = db.table("properties").select("property_id, display_name").in_("property_id", all_prop_ids).execute()
                 for row in (pr.data or []):
-                    property_name_map[row["id"]] = row.get("display_name") or row["id"]
+                    property_name_map[row["property_id"]] = row.get("display_name") or row["property_id"]
             except Exception:
                 pass
 
@@ -1518,9 +1519,9 @@ async def manager_stream_bookings(
         prop_name_map: Dict[str, str] = {}
         if scope_prop_ids:
             try:
-                pn = db.table("properties").select("id, display_name").in_("id", scope_prop_ids).execute()
+                pn = db.table("properties").select("property_id, display_name").in_("property_id", scope_prop_ids).execute()
                 for row in (pn.data or []):
-                    prop_name_map[row["id"]] = row.get("display_name") or row["id"]
+                    prop_name_map[row["property_id"]] = row.get("display_name") or row["property_id"]
             except Exception:
                 pass
 
