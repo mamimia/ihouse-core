@@ -198,9 +198,9 @@ async def start_act_as(
                     return True  # exact top-level match (manager, owner, etc.)
                 if target in WORKER_SUBROLES:
                     if target == "checkin_checkout":
-                        return s_role == "worker" and bool(
-                            set(w_roles) & {"checkin", "checkout"}
-                        )
+                        # Must have BOTH checkin AND checkout — not just either one.
+                        return s_role == "worker" and \
+                            {"checkin", "checkout"}.issubset(set(w_roles))
                     return s_role == "worker" and target in w_roles
                 return False
 
@@ -546,7 +546,9 @@ async def act_as_users(
             "maintenance":      ("contains", ["maintenance"]),
             "checkin":          ("contains", ["checkin"]),
             "checkout":         ("contains", ["checkout"]),
-            "checkin_checkout": ("overlaps", ["checkin", "checkout"]),
+            # checkin_checkout requires BOTH checkin AND checkout — not just either one.
+            # A person who only does checkin is NOT a checkin_checkout person.
+            "checkin_checkout": ("contains", ["checkin", "checkout"]),
         }
 
         all_users: list[dict] = []
@@ -566,29 +568,17 @@ async def act_as_users(
         elif role in WORKER_SUBROLE_FILTER:
             filter_type, lane_values = WORKER_SUBROLE_FILTER[role]
 
-            # Query 1: modern model — role='worker', worker_roles contains/overlaps lane
-            if filter_type == "contains":
-                # worker_roles @> ARRAY[lane] — contains all listed values
-                res1 = (
-                    db.table("tenant_permissions")
-                    .select("user_id, display_name, is_active")
-                    .eq("tenant_id", tenant_id)
-                    .eq("role", "worker")
-                    .eq("is_active", True)
-                    .contains("worker_roles", lane_values)
-                    .execute()
-                )
-            else:
-                # overlaps — worker_roles && ARRAY['checkin','checkout']
-                res1 = (
-                    db.table("tenant_permissions")
-                    .select("user_id, display_name, is_active")
-                    .eq("tenant_id", tenant_id)
-                    .eq("role", "worker")
-                    .eq("is_active", True)
-                    .overlaps("worker_roles", lane_values)
-                    .execute()
-                )
+            # Query 1: modern model — role='worker', worker_roles contains lane(s)
+            # All cases now use 'contains' — checkin_checkout requires both keys present.
+            res1 = (
+                db.table("tenant_permissions")
+                .select("user_id, display_name, is_active")
+                .eq("tenant_id", tenant_id)
+                .eq("role", "worker")
+                .eq("is_active", True)
+                .contains("worker_roles", lane_values)
+                .execute()
+            )
 
             # Query 2: legacy model — role column = lane name directly
             # (e.g., role='cleaner' stored directly — some legacy records)
