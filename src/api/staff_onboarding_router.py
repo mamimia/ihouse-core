@@ -1173,41 +1173,52 @@ async def manual_create_staff(
             extra={"detail": str(ve)},
         )
 
-    # ── Step 1: Create / resolve Supabase auth user ──────────────────────────
+    # ── Step 1: Create auth user and get the access link back ───────────────
+    # Phase 1037 fix: use generate_link(type="invite") instead of invite_user_by_email.
+    # invite_user_by_email fires a Supabase-generated email that:
+    #   - Goes to spam (Supabase default SMTP has poor deliverability)
+    #   - Gmail strips hyperlinks from spam, so the link is invisible in the email
+    # generate_link returns the raw URL so the admin can share it via WhatsApp/LINE/SMS
+    # which is how Thai hospitality workers actually communicate anyway.
     user_id: Optional[str] = None
     delivery_method: str = "unknown"
     action_link: str = ""
 
     try:
-        auth_res = admin_client.auth.admin.invite_user_by_email(
-            email,
-            options={
-                "data": {
-                    "full_name": body.display_name or "",
-                    "force_reset": True,
+        link_res = admin_client.auth.admin.generate_link(
+            {
+                "type": "invite",
+                "email": email,
+                "options": {
+                    "data": {
+                        "full_name": body.display_name or "",
+                        "force_reset": True,
+                    },
+                    "redirect_to": f"{resolved_front}/auth/callback",
                 },
-                "redirect_to": f"{resolved_front}/auth/callback",
-            },
+            }
         )
-        user_id = auth_res.user.id
-        delivery_method = "email_invite_sent"
-        action_link = _extract_action_link(auth_res)
-        logger.info("manual_create_staff: invite sent to %s -> user_id=%s", email, user_id)
+        user_id = link_res.user.id
+        action_link = _extract_action_link(link_res)
+        delivery_method = "invite_link_generated"
+        logger.info("manual_create_staff: invite link generated for %s -> user_id=%s link_len=%d",
+                    email, user_id, len(action_link))
 
     except Exception as invite_exc:
         exc_str = str(invite_exc).lower()
-        if "already" in exc_str or "exists" in exc_str:
+        if "already" in exc_str or "exists" in exc_str or "registered" in exc_str:
+            # User already has a Supabase auth account — generate a fresh magic link instead
             logger.info("manual_create_staff: user %s already exists -- generating magic link", email)
             try:
-                link_res = admin_client.auth.admin.generate_link(
+                ml_res = admin_client.auth.admin.generate_link(
                     {
                         "type": "magiclink",
                         "email": email,
                         "options": {"redirect_to": f"{resolved_front}/auth/callback"},
                     }
                 )
-                user_id = link_res.user.id
-                action_link = _extract_action_link(link_res)
+                user_id = ml_res.user.id
+                action_link = _extract_action_link(ml_res)
                 delivery_method = "existing_user_magic_link"
             except Exception as link_exc:
                 logger.exception("manual_create_staff: generate_link failed for %s: %s", email, link_exc)
@@ -1218,10 +1229,10 @@ async def manual_create_staff(
         elif "rate limit" in exc_str:
             return make_error_response(
                 status_code=429, code="RATE_LIMIT",
-                extra={"detail": f"Supabase email rate limit hit for {email}. Wait ~60 minutes."},
+                extra={"detail": f"Supabase rate limit hit for {email}. Wait ~60 minutes."},
             )
         else:
-            logger.exception("manual_create_staff: invite failed for %s: %s", email, invite_exc)
+            logger.exception("manual_create_staff: generate_link failed for %s: %s", email, invite_exc)
             return make_error_response(
                 status_code=500, code="AUTH_INVITE_FAILED",
                 extra={"detail": f"Failed to create auth account: {invite_exc}"},

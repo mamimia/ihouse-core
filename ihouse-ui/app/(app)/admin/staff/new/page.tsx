@@ -1028,9 +1028,11 @@ export default function NewStaffPage() {
             </h2>
             <p style={{ margin: '0 0 20px', color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)' }}>
               <strong>{createdResult.email}</strong> has been added to your team.
-              {createdResult.delivery_method === 'email_invite_sent'
-                ? ' An invite email was sent — they can click the link to set their password.'
-                : ' Copy the access link below to share it manually.'}
+              {createdResult.delivery_method === 'invite_link_generated'
+                ? ' Copy the access link below and share it via WhatsApp, LINE, or SMS. No email was sent.'
+                : createdResult.delivery_method === 'existing_user_magic_link'
+                ? ' This person already has an account. Share the magic link below to give them fresh access.'
+                : ' Copy the access link below and share it directly with the staff member.'}
             </p>
 
             {createdResult.magic_link && (
