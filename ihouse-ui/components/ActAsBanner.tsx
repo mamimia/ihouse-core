@@ -42,6 +42,14 @@ export default function ActAsBanner() {
     const roleLabel = ROLE_LABELS[session.actingAsRole] || session.actingAsRole.replace('_', ' ');
     const isUrgent = session.remainingSeconds < 300;
 
+    // Person name stored by act-as/page.tsx when person-specific session started
+    const personName = typeof window !== 'undefined'
+        ? (sessionStorage.getItem('ihouse_act_as_display_name') || '')
+        : '';
+
+    // Full identity label: "Ops Manager · Nana G" or just "Ops Manager"
+    const identityLabel = personName ? `${roleLabel} · ${personName}` : roleLabel;
+
     // Detect new-tab case: original token sentinel was used
     const isNewTab = typeof window !== 'undefined'
         && (sessionStorage.getItem('ihouse_act_as_original_token') === '__new_tab__'
@@ -73,7 +81,7 @@ export default function ActAsBanner() {
             }}
         >
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                🔴 <strong>ACTING AS:</strong>&nbsp;{roleLabel}
+                🔴 <strong>ACTING AS:</strong>&nbsp;{identityLabel}
             </span>
 
             <span style={{ color: 'rgba(239,68,68,0.35)', fontWeight: 300 }}>|</span>

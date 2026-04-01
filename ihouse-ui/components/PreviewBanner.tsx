@@ -27,6 +27,14 @@ export default function PreviewBanner() {
 
     const roleLabel = ROLE_LABELS[previewRole] || previewRole;
 
+    // Person name stored by preview/page.tsx when person-specific preview started
+    const personName = typeof window !== 'undefined'
+        ? (sessionStorage.getItem('ihouse_preview_display_name') || '')
+        : '';
+
+    // Full identity label: "Ops Manager · Nana G" or just "Ops Manager"
+    const identityLabel = personName ? `${roleLabel} · ${personName}` : roleLabel;
+
     return (
         <div
             id="preview-mode-banner"
@@ -49,7 +57,7 @@ export default function PreviewBanner() {
                 letterSpacing: '0.02em',
             }}
         >
-            <span>👁 PREVIEW MODE: Viewing as {roleLabel}</span>
+            <span>👁 PREVIEW MODE: Viewing as {identityLabel}</span>
             <span style={{ color: 'rgba(234,179,8,0.5)', fontWeight: 400 }}>|</span>
             <span style={{ fontWeight: 400, opacity: 0.8 }}>Read-only — all actions disabled</span>
             <span style={{ color: 'rgba(234,179,8,0.5)', fontWeight: 400 }}>|</span>

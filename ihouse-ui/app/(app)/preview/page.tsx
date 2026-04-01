@@ -26,22 +26,33 @@ export function PreviewPageContent() {
 
     useEffect(() => {
         const role = searchParams?.get('role');
+        const name = searchParams?.get('name') || '';
+        const userId = searchParams?.get('user_id') || '';
+
         if (role) {
             sessionStorage.setItem('ihouse_preview_role', role);
+            // Persist person identity so PreviewBanner shows "Ops Manager · Nana G"
+            if (name) {
+                sessionStorage.setItem('ihouse_preview_display_name', decodeURIComponent(name));
+            } else {
+                sessionStorage.removeItem('ihouse_preview_display_name');
+            }
+            if (userId) {
+                sessionStorage.setItem('ihouse_preview_user_id', decodeURIComponent(userId));
+            } else {
+                sessionStorage.removeItem('ihouse_preview_user_id');
+            }
 
-            // Canonical route map — must match admin-preview-and-act-as.md
             const PREVIEW_ROUTES: Record<string, string> = {
                 manager:          '/manager',
                 owner:            '/owner',
                 cleaner:          '/ops/cleaner',
                 checkin:          '/ops/checkin',
                 checkout:         '/ops/checkout',
-                checkin_checkout: '/ops/checkin-checkout',  // Phase 865: combined hub for staff with both capabilities
+                checkin_checkout: '/ops/checkin-checkout',
                 maintenance:      '/ops/maintenance',
             };
             const target = PREVIEW_ROUTES[role] ?? '/dashboard';
-
-            // Phase 867 — Emit structured audit event for preview open
             emitPreviewAudit('PREVIEW_OPENED', role, target);
 
             setTimeout(() => {

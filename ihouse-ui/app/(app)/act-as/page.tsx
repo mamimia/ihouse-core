@@ -35,17 +35,22 @@ function ActAsLandingContent() {
     useEffect(() => {
         const token = searchParams?.get('token');
         const role  = searchParams?.get('role');
+        const name  = searchParams?.get('name') || '';
 
         if (!token || !role) {
             setMsg('Missing token or role. Please start Act As from the admin sidebar.');
             return;
         }
 
-        // Store the act_as token in sessionStorage ONLY — tab-scoped, never touches
-        // the admin's localStorage token. This is the root fix for parallel tab isolation.
         try {
             setActAsTabToken(token);
             sessionStorage.setItem('ihouse_act_as_original_token', '__new_tab__');
+            // Persist person name so ActAsBanner can show "Ops Manager · Nana G"
+            if (name) {
+                sessionStorage.setItem('ihouse_act_as_display_name', decodeURIComponent(name));
+            } else {
+                sessionStorage.removeItem('ihouse_act_as_display_name');
+            }
         } catch (e) {
             setMsg('Failed to set session. Check browser storage permissions.');
             return;
@@ -54,7 +59,6 @@ function ActAsLandingContent() {
         const target = ROLE_ROUTES[role] ?? '/dashboard';
         setMsg(`Opening ${role.replace('_', ' ')} interface...`);
 
-        // Short delay for visual feedback, then redirect
         setTimeout(() => {
             window.location.href = target;
         }, 600);

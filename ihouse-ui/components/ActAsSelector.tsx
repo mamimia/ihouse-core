@@ -1,24 +1,21 @@
 'use client';
 
 /**
- * Phase 1033 — Act As Selector (Person-Specific for Manager)
+ * Phase 1033 — Act As Selector (All Roles Person-Specific)
  *
- * Two-step flow for roles that are identity-scoped (currently: manager):
+ * All roles now use a two-step flow:
  *   Step 1: Choose role
  *   Step 2: Choose specific person in that role
  *
- * For other roles (cleaner, checkin, etc.) the flow remains role-level only.
+ * There is NO generic role-level fallback.
+ * If a role has no active users, the ↗ button is blocked and
+ * "No users available for this role" is shown.
  *
- * Token minted with:
- *   sub = target_user_id   (for person-specific)
- *   sub = admin_user_id    (for generic role session)
+ * Token minted with sub = target_user_id for full identity-scoped QA.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useActAs } from '../lib/ActAsContext';
-
-// Roles that support person-specific impersonation (Step 2 person picker)
-const PERSON_SPECIFIC_ROLES = new Set(['manager']);
 
 const ACTABLE_ROLES = [
     { value: 'manager',          label: 'Ops Manager' },
@@ -43,11 +40,10 @@ export default function ActAsSelector() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Fetch person list when role changes to a person-specific role
     const fetchUsers = useCallback(async (role: string) => {
         setUsers([]);
         setSelectedUser(null);
-        if (!PERSON_SPECIFIC_ROLES.has(role)) return;
+        if (!role) return;
         setUsersLoading(true);
         try {
             const token = localStorage.getItem('ihouse_token');
@@ -73,9 +69,12 @@ export default function ActAsSelector() {
 
     // While acting, show status banner
     if (isActing && session) {
-        const label = (session as any).actingAsDisplayName
-            ? `${(session as any).actingAsDisplayName}`
-            : session.actingAsRole.replace('_', ' ');
+        const personName = typeof window !== 'undefined'
+            ? (sessionStorage.getItem('ihouse_act_as_display_name') || '')
+            : '';
+        const rolePart = session.actingAsRole.replace('_', ' ');
+        const label = personName ? `${rolePart} · ${personName}` : rolePart;
+
         return (
             <div style={{ padding: 'var(--space-2) var(--space-6)', marginTop: 4 }}>
                 <div style={{
@@ -111,9 +110,7 @@ export default function ActAsSelector() {
 
     if (!isAvailable) return null;
 
-    const needsPersonPicker = PERSON_SPECIFIC_ROLES.has(selectedRole);
-    // Ready to open: role chosen + (person chosen if required)
-    const canOpen = selectedRole && (!needsPersonPicker || selectedUser !== null);
+    const canOpen = selectedRole && selectedUser !== null;
 
     const handleOpen = async () => {
         if (!canOpen) return;
@@ -136,21 +133,17 @@ export default function ActAsSelector() {
                 return;
             }
 
-            const body: Record<string, unknown> = {
-                target_role: selectedRole,
-                ttl_seconds: 3600,
-            };
-            if (selectedUser) {
-                body.target_user_id = selectedUser.user_id;
-            }
-
             const res = await fetch(`${API_BASE}/auth/act-as/start`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${currentToken}`,
                 },
-                body: JSON.stringify(body),
+                body: JSON.stringify({
+                    target_role: selectedRole,
+                    target_user_id: selectedUser!.user_id,
+                    ttl_seconds: 3600,
+                }),
             });
 
             const data = await res.json();
@@ -173,12 +166,11 @@ export default function ActAsSelector() {
                 return;
             }
 
-            // Pass display name via URL so banner can show person name
-            const displayName = selectedUser?.display_name ?? '';
+            const displayName = selectedUser!.display_name;
             const url = `/act-as?token=${encodeURIComponent(actAsToken)}&role=${encodeURIComponent(selectedRole)}&name=${encodeURIComponent(displayName)}`;
             popup.location.href = url;
 
-            // Reset UI
+            // Reset
             setSelectedRole('');
             setSelectedUser(null);
             setUsers([]);
@@ -207,8 +199,7 @@ export default function ActAsSelector() {
                         background: 'rgba(239, 68, 68, 0.06)',
                         color: 'var(--color-text)', fontSize: 'var(--text-xs)',
                         outline: 'none', cursor: loading ? 'wait' : 'pointer',
-                        appearance: 'none' as const,
-                        boxSizing: 'border-box' as const,
+                        appearance: 'none' as const, boxSizing: 'border-box' as const,
                         lineHeight: 1, opacity: loading ? 0.6 : 1,
                     }}
                 >
@@ -219,37 +210,21 @@ export default function ActAsSelector() {
                         <option key={r.value} value={r.value}>{r.label}</option>
                     ))}
                 </select>
-
-                {/* Open button: shown only when no person picker needed, or person selected */}
-                {(!needsPersonPicker || selectedUser) && (
-                    <button
-                        onClick={handleOpen}
-                        disabled={!canOpen || loading}
-                        title="Open Act As session in new tab"
-                        style={{
-                            padding: 4, background: 'none', border: 'none',
-                            color: canOpen ? '#EF4444' : 'var(--color-text-dim)',
-                            fontSize: 14, lineHeight: 1,
-                            cursor: (canOpen && !loading) ? 'pointer' : 'not-allowed',
-                            opacity: (canOpen && !loading) ? 0.8 : 0.2,
-                            transition: 'opacity 0.15s', flexShrink: 0,
-                        }}
-                    >
-                        ↗
-                    </button>
-                )}
             </div>
 
-            {/* Step 2: Person picker (manager role only) */}
-            {needsPersonPicker && (
+            {/* Step 2: Person picker — always shown when role is selected */}
+            {selectedRole && (
                 <div style={{ marginTop: 6 }}>
                     {usersLoading ? (
                         <div style={{ fontSize: 10, color: 'var(--color-text-faint)', padding: '4px 0' }}>
-                            Loading managers…
+                            Loading users…
                         </div>
                     ) : users.length === 0 ? (
-                        <div style={{ fontSize: 10, color: 'var(--color-text-faint)', padding: '4px 0' }}>
-                            No active managers found
+                        <div style={{
+                            fontSize: 10, color: '#EF4444', padding: '4px 6px',
+                            background: 'rgba(239,68,68,0.08)', borderRadius: 4,
+                        }}>
+                            No active users for this role
                         </div>
                     ) : (
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -266,8 +241,7 @@ export default function ActAsSelector() {
                                     background: 'rgba(239, 68, 68, 0.08)',
                                     color: 'var(--color-text)', fontSize: 'var(--text-xs)',
                                     outline: 'none', cursor: 'pointer',
-                                    appearance: 'none' as const,
-                                    boxSizing: 'border-box' as const,
+                                    appearance: 'none' as const, boxSizing: 'border-box' as const,
                                     lineHeight: 1,
                                 }}
                             >
@@ -298,7 +272,6 @@ export default function ActAsSelector() {
                 </div>
             )}
 
-            {/* Error */}
             {error && (
                 <div style={{
                     marginTop: 4, fontSize: 10, color: '#EF4444',
