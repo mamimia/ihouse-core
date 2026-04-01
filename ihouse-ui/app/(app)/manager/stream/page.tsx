@@ -86,7 +86,7 @@ export default function StreamPage() {
         setLoadingTask(true);
         try {
             // Phase 1034: use GET /tasks/{id} — full task with timing + notes
-            const res = await apiFetch<{ task: ManagerTaskCardTask }>(`/tasks/${entityId}`);
+            const res = await apiFetch<{ task: ManagerTaskCardTask }>(`/tasks/detail/${entityId}`);
             setDrawerTask(res.task);
         } catch {
             // Fallback — open with minimal shell so manager can still see the panel

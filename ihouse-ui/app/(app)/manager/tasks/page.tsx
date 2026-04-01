@@ -381,7 +381,7 @@ export default function ManagerTasksPage() {
     setExpandedTaskId(task.id);
     setLoadingExpanded(true);
     try {
-      const res = await apiFetch<{ task: ManagerTaskCardTask }>(`/tasks/${task.id}`);
+      const res = await apiFetch<{ task: ManagerTaskCardTask }>(`/tasks/detail/${task.id}`);
       setExpandedTask(res.task);
     } catch {
       // Fallback: use row data as minimal task

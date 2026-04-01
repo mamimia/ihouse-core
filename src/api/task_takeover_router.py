@@ -804,8 +804,8 @@ async def get_task_context(
 # ===========================================================================
 
 @router.get(
-    "/tasks/{task_id}",
-    summary="Get single task for ManagerTaskCard (manager/admin only — Phase 1034)",
+    "/tasks/detail/{task_id}",
+    summary="Get single task enrichment for ManagerTaskCard — GET /tasks/detail/{task_id} (Phase 1034)",
 )
 async def get_task_for_manager(
     task_id: str,
