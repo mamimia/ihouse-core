@@ -210,7 +210,7 @@ async def take_over_task(
             )
 
         # --- Fetch task ---
-        task_res = db.table("tasks").select("*").eq("id", task_id).limit(1).execute()
+        task_res = db.table("tasks").select("*").eq("task_id", task_id).limit(1).execute()
         task_rows = task_res.data or []
         if not task_rows:
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
@@ -256,7 +256,7 @@ async def take_over_task(
             "taken_over_reason": reason,
             "taken_over_notes": notes,
             "updated_at": now,
-        }).eq("id", task_id).execute()
+        }).eq("task_id", task_id).execute()
 
         # --- task_actions: MANAGER_TAKEOVER_INITIATED ---
         try:
@@ -403,7 +403,7 @@ async def takeover_start_task(
             )
 
         # Fetch task
-        task_res = db.table("tasks").select("*").eq("id", task_id).limit(1).execute()
+        task_res = db.table("tasks").select("*").eq("task_id", task_id).limit(1).execute()
         task_rows = task_res.data or []
         if not task_rows:
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
@@ -457,7 +457,7 @@ async def takeover_start_task(
             update_payload["assigned_to"] = tenant_id
         # else: caught above by terminal/MANAGER_EXECUTING checks
 
-        db.table("tasks").update(update_payload).eq("id", task_id).execute()
+        db.table("tasks").update(update_payload).eq("task_id", task_id).execute()
         final_status = update_payload.get("status", current_status)
 
         # task_actions: TASK_TAKEOVER_STARTED
@@ -549,7 +549,7 @@ async def reassign_task(
             )
 
         # Fetch task
-        task_res = db.table("tasks").select("*").eq("id", task_id).limit(1).execute()
+        task_res = db.table("tasks").select("*").eq("task_id", task_id).limit(1).execute()
         task_rows = task_res.data or []
         if not task_rows:
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
@@ -571,7 +571,7 @@ async def reassign_task(
             "status": "PENDING",
             "assigned_to": new_assignee_id,
             "updated_at": now,
-        }).eq("id", task_id).execute()
+        }).eq("task_id", task_id).execute()
 
         # task_actions record
         try:
@@ -678,13 +678,13 @@ def _notify_worker_of_takeover(
 
         now = _now_iso()
         db.table("notification_queue").insert({
-            "id": _action_id("NOTIF_TAKEOVER", task["id"], now),
+            "id": _action_id("NOTIF_TAKEOVER", task.get("task_id", task.get("id", "")), now),
             "recipient_id": original_worker,
             "channel": "auto",
             "message": message,
             "notification_type": "task_takeover",
             "reference_type": "task",
-            "reference_id": task["id"],
+            "reference_id": task.get("task_id", task.get("id", "")),
             "tenant_id": tenant_id,
             "status": "queued",
             "created_at": now,
@@ -694,7 +694,7 @@ def _notify_worker_of_takeover(
             from channels.sse_broker import sse_broker
             import asyncio
             asyncio.create_task(sse_broker.publish("TASK_MANAGER_EXECUTING", {
-                "task_id": task["id"],
+                "task_id": task.get("task_id", task.get("id", "")),
                 "original_worker": original_worker,
                 "taken_over_by": manager_id,
                 "reason": reason,
@@ -787,7 +787,7 @@ async def get_task_context(
 ) -> JSONResponse:
     try:
         db = client if client is not None else _get_db()
-        task_res = db.table("tasks").select("*").eq("id", task_id).limit(1).execute()
+        task_res = db.table("tasks").select("*").eq("task_id", task_id).limit(1).execute()
         task_rows = task_res.data or []
         if not task_rows:
             return make_error_response(404, "NOT_FOUND")
@@ -836,7 +836,7 @@ async def get_task_for_manager(
                 extra={"detail": "Only managers and admins can access this endpoint."},
             )
 
-        task_res = db.table("tasks").select("*").eq("id", task_id).limit(1).execute()
+        task_res = db.table("tasks").select("*").eq("task_id", task_id).limit(1).execute()
         task_rows = task_res.data or []
         if not task_rows:
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
@@ -881,6 +881,10 @@ async def get_task_for_manager(
         return JSONResponse(status_code=200, content={
             "task": {
                 **task,
+                # Normalize column names to match ManagerTaskCardTask type
+                "id":           task.get("task_id"),         # frontend expects 'id'
+                "task_kind":    task.get("kind"),             # frontend expects 'task_kind'
+                # Timing enrichment
                 "ack_is_open":      timing.get("ack_is_open"),
                 "ack_allowed_at":   timing.get("ack_allowed_at"),
                 "start_is_open":    timing.get("start_is_open"),
@@ -948,7 +952,7 @@ async def manager_task_board(
         query = (
             db.table("tasks")
             .select(
-                "id, task_kind, status, priority, booking_id, property_id, "
+                "task_id, kind, status, priority, booking_id, property_id, "
                 "assigned_to, original_worker_id, taken_over_by, taken_over_reason, "
                 "taken_over_at, taken_over_notes, due_date, title, created_at, updated_at"
             )
@@ -999,10 +1003,19 @@ async def manager_task_board(
 
         total = sum(len(v) for v in groups.values())
 
+        # Normalize: add 'id' and 'task_kind' aliases so ManagerTaskCard type works
+        def _normalize(t: dict) -> dict:
+            out = dict(t)
+            if "id" not in out:
+                out["id"] = out.get("task_id")
+            if "task_kind" not in out:
+                out["task_kind"] = out.get("kind")
+            return out
+
         return JSONResponse(status_code=200, content={
             "manager_id": caller_user_id,
             "role": caller_role,
-            "groups": groups,
+            "groups": {k: [_normalize(t) for t in v] for k, v in groups.items()},
             "total": total,
         })
 
@@ -1060,7 +1073,7 @@ async def add_task_note(
         author_name = _get_caller_display_name(db, caller_user_id)
 
         # Verify task exists and belongs to supervised properties (manager scope)
-        task_res = db.table("tasks").select("id, status, property_id, notes").eq("id", task_id).limit(1).execute()
+        task_res = db.table("tasks").select("task_id, status, property_id, notes").eq("task_id", task_id).limit(1).execute()
         task_rows = task_res.data or []
         if not task_rows:
             return make_error_response(404, "NOT_FOUND", extra={"detail": f"Task '{task_id}' not found."})
@@ -1098,7 +1111,7 @@ async def add_task_note(
             db.table("tasks").update({
                 "notes": updated_notes,
                 "updated_at": now,
-            }).eq("id", task_id).execute()
+            }).eq("task_id", task_id).execute()
         except Exception as notes_err:
             logger.warning("Phase 1034: failed to append note to tasks.notes[] for %s: %s", task_id, notes_err)
             # Fallback: still write to task_actions so note is not lost
