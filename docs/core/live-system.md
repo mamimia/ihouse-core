@@ -3,7 +3,7 @@
 This document describes the current technical architecture of the
 running system.
 
-**Last updated: Phase 1032 — Live Staging Proof + Baton-Transfer Closure (2026-03-31)**
+**Last updated: Phase 1033 — Canonical Task Timing Hardening (2026-04-01)**
 
 ## Core Architecture
 
@@ -182,8 +182,9 @@ All **14 providers** implemented at full parity:
 
 | Endpoint | Description | Phase |
 |----------|-------------|-------|
-| `GET /worker/tasks` | Worker's own assigned tasks | 123 |
-| `PATCH /worker/tasks/{task_id}/acknowledge` | Acknowledge a task (starts ACK SLA clock) | 123 |
+| `GET /worker/tasks` | Worker's own assigned tasks — enriched with `ack_is_open`, `ack_allowed_at`, `start_is_open`, `start_allowed_at` (Phase 1033) | 123/1033 |
+| `PATCH /worker/tasks/{task_id}/acknowledge` | Acknowledge — enforces hour-level UTC gate; returns `ACKNOWLEDGE_TOO_EARLY` + `opens_in` if early | 123/1033 |
+| `PATCH /worker/tasks/{task_id}/start` | Start task — enforces `start_allowed_at` gate; returns `START_TOO_EARLY` + `opens_in` if early; CRITICAL + MAINTENANCE bypass | 1033 |
 | `PATCH /worker/tasks/{task_id}/complete` | Mark task complete | 123 |
 | `GET /worker/preferences` | Worker's channel preferences | 201 |
 | `PUT /worker/preferences` | Upsert channel preference | 201 |
@@ -515,6 +516,18 @@ All **14 providers** implemented at full parity:
 | `GET /permissions/{user_id}` | Single permission record | 165 |
 | `POST /staff/assignments` | Upsert staff-property assignment (lane-aware, priority-aware) | 1028/1031/1032 |
 | `PATCH /staff/assignments/{id}/baton-transfer` | Lane-aware baton-transfer with promotion notice write | 1030 |
+
+### Operational Manager (Phase 1033)
+
+| Endpoint | Description | Phase |
+|----------|-------------|-------|
+| `POST /tasks/{task_id}/take-over` | Manager/admin takes over task (→ `MANAGER_EXECUTING`); scoped to assigned properties for manager, global for admin | 1022/1033 |
+| `POST /tasks/{task_id}/reassign` | Manager/admin reassigns task to new worker or releases to open pool | 1022/1033 |
+| `POST /tasks/{task_id}/notes` | Append attributed note (`author_id`, `author_name`, `created_at`, `source`) to `tasks.notes[]` | 1033 |
+| `GET /tasks/{task_id}/context` | Full task context for manager execution surface | 1033 |
+| `GET /manager/tasks` | Manager's scoped task board | 1033 |
+| `GET /manager/alerts` | Manager-specific task alerts and audit events | 1033 |
+| `GET /manager/team-overview` | Worker roster + lane coverage matrix per property | 1033 |
 
 ### Property Dashboard (Phase 505)
 

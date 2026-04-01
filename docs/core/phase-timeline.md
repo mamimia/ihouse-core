@@ -8808,3 +8808,54 @@ The worker home promotion banner calls `/permissions/me` to read `comm_preferenc
 - Promotion notice acknowledgement flow (worker dismisses banner → PATCH to mark acknowledged) not built in this phase.
 
 Spec: `docs/archive/phases/phase-1032-spec.md`
+
+## Phase 1033 — Canonical Task Timing Hardening (Closed)
+
+**Status:** Closed
+**Date:** 2026-04-01
+**Commit:** `1480f03`
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+Migrated task-action timing from a fragmented, frontend-heavy, calendar-day model to a backend-canonical, hour-level UTC model.
+
+**Backend (Railway — auto-deployed):**
+- NEW `src/tasks/timing.py`: `compute_task_timing()` — computes `effective_due_at`, `ack_allowed_at` (due−24h), `start_allowed_at` (due−2h). CRITICAL bypasses all gates. MAINTENANCE/GENERAL have no start gate.
+- `src/api/worker_router.py`: `/worker/tasks` enriches every task with `ack_is_open`, `ack_allowed_at`, `start_is_open`, `start_allowed_at`. `/acknowledge` and `/start` use hour-level UTC gates, return structured `ACKNOWLEDGE_TOO_EARLY` / `START_TOO_EARLY` errors.
+- `src/tasks/task_writer.py`: `due_time` written at task creation with kind-based defaults; preserved during reschedule.
+
+**Frontend (Vercel — deployed `domaniqo-staging.vercel.app`):**
+- `WorkerTaskCard.tsx`: `AckButton` + `StartButton` read server timing fields. On early press → flash "Opens in Xh Ym" for 3s, then revert.
+- `cleaner/page.tsx`, `checkout/page.tsx`, `checkin/page.tsx`: all pages extend their task type and thread timing props through to `WorkerTaskCard`.
+
+**Staging proofs:** Check-in timing ✅ Check-out timing ✅ Maintenance 🔲 (no task available)
+
+**Product decision locked:** OM task model. Worker layer = Acknowledge/Start/Complete. Manager layer = Monitor/Takeover/Reassign/Note. `ManagerTaskCard` as drill-down intervention layer. Phase OM-1 spec approved — not yet built.
+
+Spec: `docs/archive/phases/phase-1033-spec.md`
+
+## Phase 1034 — OM-1: Manager Task Intervention Model (Open)
+
+**Status:** Open
+**Date opened:** 2026-04-01
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+**Prerequisite:** Phase 1033 — Canonical Task Timing Hardening
+
+Goal: Implement the manager-level task intervention model approved in Phase 1033. Manager layer (Monitor/Takeover/Reassign/Note) is strictly separate from the worker layer (Acknowledge/Start/Complete). `ManagerTaskCard` provided as a drill-down intervention component — not replacing Hub/Stream/Alerts/Team as primary OM surfaces.
+
+**Approved design (from Phase 1033 product lock):**
+- `POST /worker/tasks/{id}/takeover-start` — dedicated route: PENDING→ACKNOWLEDGED→IN_PROGRESS atomic walk; bypasses timing gates; audit: `TASK_TAKEOVER_STARTED`
+- `PATCH /worker/tasks/{id}/reassign` — updates `assigned_to`; property-scoped Tier 1 / explicit tenant-wide Tier 2 opt-in
+- `PATCH /worker/tasks/{id}/notes` — appends `{text, author_id, author_name, created_at, source}` to `tasks.notes[]`
+- `ManagerTaskCard.tsx` — timing strip (read-only), `[Takeover] [Reassign] [Note ✎]`, no worker execution buttons
+- Stream page: task event expand → `ManagerTaskCard` drill-down layer
+- `ManagerExecutionDrawer`: use `takeover-start` endpoint, not `forceCompleteTask`
+
+**4 locked constraints (from Phase 1033 decision):**
+1. Takeover bypass via dedicated route ONLY — no global role bypass on ack/start endpoints
+2. Reassign: Tier 1 = property-scoped; Tier 2 = explicit tenant-wide opt-in only
+3. Notes: `author_id` + `author_name` + `created_at` + `source` — not ephemeral
+4. `ManagerTaskCard` in drill-down layer only — Hub/Stream/Alerts/Team remain primary OM surfaces
+
+**Not in scope:** Force Advance.
+
+Spec: `docs/archive/phases/phase-1034-spec.md`

@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1033 — (Next — to be determined). Phases 841–1032 closed.
+Phase 1034 — OM-1: Manager Task Intervention Model. Phases 841–1033 closed.
 
 ## Last Closed Phase
 
-Phase 1032 — Live Staging Proof + Baton-Transfer Closure.
+Phase 1033 — Canonical Task Timing Hardening.
 
 ## Current Objective
 
@@ -38,6 +38,36 @@ Closed all deferred live-flow proofs and resolved two source-of-truth gaps found
 - Legacy KPG-500 task distribution (7 Backup / 2 Primary) is a pre-guard artifact, not a current write-path failure.
 
 Commits: `fb5b3ea` → `6eedbda` → `a414a8c`. Branch: `checkpoint/supabase-single-write-20260305-1747`.
+
+✅ **Phase 1033 — Canonical Task Timing Hardening — CLOSED** (2026-04-01)
+
+Implementation landed across multiple workstreams. Documentation closure was incomplete at first — now completed via this pass.
+
+**BUILT + STAGING-PROVEN:**
+- `src/tasks/timing.py` — `compute_task_timing()`: hour-level UTC timing gates. `ack_allowed_at` = due−24h, `start_allowed_at` = due−2h. CRITICAL bypass. MAINTENANCE/GENERAL no start gate.
+- `src/api/worker_router.py` — `/worker/tasks` enriched with 4 timing fields; `/acknowledge` + `/start` enforce gates; `ACKNOWLEDGE_TOO_EARLY` / `START_TOO_EARLY` structured errors returned.
+- `src/tasks/task_writer.py` — `due_time` written at task creation (kind-default map); preserved on amendment reschedule.
+- `WorkerTaskCard.tsx` — `AckButton` + `StartButton` server-driven; "Opens in Xh Ym" flash; `computeOpensIn()` replaces local math.
+- `cleaner/page.tsx`, `checkout/page.tsx`, `checkin/page.tsx` — 4 timing fields extended and threaded through.
+- Staging proofs: check-in timing ✅ check-out timing ✅
+
+**BUILT, SURFACED — not screenshot-proven:**
+- OM shell + Hub (cockpit-first), Alerts, Stream, Team, Bookings, Calendar pages (`/manager/...`).
+- `task_takeover_router.py` expanded: `/manager/alerts`, `/manager/team-overview`, `/tasks/{id}/notes`.
+- Act As / Preview As: person-specific (`name` + `user_id`); banners show "Role · [Person Name]".
+- Staff onboarding: manager validation, role lock, approval history, Work Permit rule, combined checkin+checkout tile.
+- Auth fixes: `/act-as` + `/preview` in `PUBLIC_PREFIXES`; `apiFetch` logout on 401 only.
+- Maintenance timing gate: built but staging proof 🔲 (no live task available during session).
+
+**OPEN (carried into Phase 1034+):**
+- `ManagerTaskCard.tsx` intervention component — not built.
+- Dedicated `POST /tasks/{id}/takeover-start` bypass route — not built.
+- Reassign Tier 1/Tier 2 UI panel — not built.
+- Note inline input UI — not built.
+- Promotion notice acknowledgement PATCH — deferred from Phase 1032.
+
+**Product decision locked:** Worker layer = Acknowledge/Start/Complete. Manager layer = Monitor/Takeover/Reassign/Note. `ManagerTaskCard` is drill-down/intervention only — not replacing Hub/Stream/Alerts/Team.
+Commits: `305a083` → `e79adb2` → `cd8a04a` → `1480f03`. Branch: `checkpoint/supabase-single-write-20260305-1747`.
 
 
 - System reset to zero-state (Phase 830)
@@ -101,7 +131,8 @@ Phase 1029 — Default Worker Task Filter COMPLETED Exclusion Hardened      ← 
 Phase 1030 — Task Lifecycle & Assignment Hardening                         ← CLOSED
 Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection   ← CLOSED
 Phase 1032 — Live Staging Proof + Baton-Transfer Closure                    ← CLOSED
-Phase 1033 — Next workstream (to be determined)                             ← ACTIVE
+Phase 1033 — Canonical Task Timing Hardening (+ OM Surface, Act As)         ← CLOSED
+Phase 1034 — OM-1: Manager Task Intervention Model                          ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)

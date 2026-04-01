@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1033 — (Next — to be determined)
+Phase 1034 — OM-1: Manager Task Intervention Model
 
 ## Last Closed Phase
-Phase 1032 — Live Staging Proof + Baton-Transfer Closure
+Phase 1033 — Canonical Task Timing Hardening
 
 ## System Status
 
@@ -44,6 +44,17 @@ Phase 1032 — Live Staging Proof + Baton-Transfer Closure
 - **Live staging proofs (all confirmed):** baton-transfer E2E (KPG-500: Joey→Backup, แพรวา→Primary), promotion notice JSONB write in DB, `GET /permissions/me` HTTP 200, worker promotion banner visible in `/worker` UI (screenshot), `POST /staff/assignments` existing-row returns 201.
 - **Final staging state:** KPG-500 CLEANING lane — แพรวา=Primary (priority=1), Joey=Backup (priority=2). This is a real live state change from the proof pass.
 - **Open (not blocking):** promotion notice acknowledgement PATCH not built; legacy KPG-500 task distribution is pre-guard artifact, not a current write-path failure.
+
+**Phase 1033 — Canonical Task Timing Hardening (+ OM Surface, Act As, Staff Onboarding):**
+Implementation landed across multiple workstreams. Documentation closure was incomplete — now completed.
+- **Worker Timing Gate Model (BUILT + STAGING-PROVEN):** `src/tasks/timing.py` — `compute_task_timing()`: `effective_due_at`, `ack_allowed_at` = due−24h, `start_allowed_at` = due−2h. CRITICAL priority bypasses all gates unconditionally. MAINTENANCE/GENERAL: no start gate. `due_time` kind-defaults written at task creation (`_KIND_DUE_TIME` map) and preserved on amendment reschedule. Worker router enriches every task response with 4 timing fields; `/acknowledge` and `/start` enforce hour-level UTC gates; structured errors `ACKNOWLEDGE_TOO_EARLY` / `START_TOO_EARLY` with `opens_in`.
+- **Server-Driven Frontend Gates (BUILT + STAGING-PROVEN for checkin/checkout):** `WorkerTaskCard.tsx` — `AckButton` + `StartButton` components read server-provided fields. "Opens in Xh Ym" flash on early press (3s then revert). `computeOpensIn()` replaces local date math. All 3 worker op pages (`cleaner`, `checkout`, `checkin`) extended with 4 timing props threaded to `WorkerTaskCard`. Maintenance timing gate: BUILT but staging proof 🔲 (no live task available during session).
+- **Operational Manager Surface (BUILT, SURFACED — not screenshot-proven):** OM shell + 6-page navigation (Hub, Alerts, Stream, Team, Bookings, Calendar). Hub is cockpit-first: Alert rail → Metrics → Task Board → Stream. `task_takeover_router.py` expanded: `/manager/alerts`, `/manager/team-overview`, `/tasks/{id}/notes` endpoints. `DraftGuard` on all OM draft pages (admin-only access while surface matures). Team page: real data — property names, lane coverage matrix, worker roster.
+- **Person-Specific Act As / Preview As (BUILT, SURFACED — not screenshot-proven):** Both surfaces carry `name` + `user_id` query params. Banners display "Role · [Person Name]". `checkin_checkout` dual-role validation fixed (requires BOTH checkin AND checkout). Auth fixes: `/act-as` + `/preview` added to `PUBLIC_PREFIXES`; `apiFetch` logout on 401 only (never 403).
+- **Staff Onboarding Hardening (BUILT, SURFACED — not screenshot-proven):** Manager role validation, canonical role lock enforced, approval history always visible, Work Permit rule, combined checkin+checkout tile.
+- **Product Decision Locked:** OM task model. Worker layer = Acknowledge/Start/Complete. Manager layer = Monitor/Takeover/Reassign/Note. `ManagerTaskCard` as drill-down intervention layer only. Phase 1034 (OM-1) spec approved — not yet built.
+- **INV-1033-TIMING:** `ack_allowed_at` = `effective_due_at` − 24h; `start_allowed_at` = `effective_due_at` − 2h. CRITICAL bypasses all gates. Frontend timing state is derived exclusively from server-provided fields — no local computation.
+- Commits: `305a083` → `e79adb2` (OM surface + Act As + staff onboarding), `cd8a04a`, `1480f03` (timing model). Branch: `checkpoint/supabase-single-write-20260305-1747`.
 
 ## Deferred Items — Managed Open Items Registry
 
@@ -454,7 +465,7 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 ## Tests
 
-**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Phases 1021–1032 closed. Next: Phase 1033.**
+**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Phases 1021–1033 closed. Next: Phase 1034 (OM-1). Post-Phase 1033 test re-run pending.**
 
 ## Environment Variables (continued)
 
