@@ -8747,31 +8747,6 @@ Spec: `docs/archive/phases/phase-1030-spec.md`
 
 ## Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection (Closed)
 
-**Status:** Closed
-**Date:** 2026-03-31
-**Commits:** `b5f5e8f` → `7dcb4da` → `89d3f45`
-**Branch:** `checkpoint/supabase-single-write-20260305-1747`
-
-Root cause discovered: `POST /staff/assignments` never wrote `priority` — it relied on `DEFAULT 1`. Every worker on every property got `priority=1`, making `ORDER BY priority ASC LIMIT 1` non-deterministic for workers in the same lane.
-
-**Code fixes (b5f5e8f):**
-Early-checkout healing now walks `candidate_ids` in priority order (Primary first, not arbitrary DB order). Backfill path: if a priority=1 worker already exists in the lane, backfill is skipped (prevents Backup stealing NULL tasks). Ownerless task guard: both failure paths emit `ERROR OWNERLESS_TASK_CREATED` — no silent NULL-assignment. Test suite: 4 pre-existing mismatches fixed; 161 tests pass.
-
-**DB + API normalization (7dcb4da):**
-Migration `phase_1031_assignment_priority_normalization`: adds `chk_priority_positive`, trigger `fn_guard_assignment_priority_uniqueness` (blocks duplicate priority per lane on INSERT/UPDATE), DB function `get_next_lane_priority()`. API write path rewritten: resolves worker lane from `worker_roles`, queries MAX(priority)+1 in lane, sets correct priority at insert time.
-
-**Canonical lane enforcement (89d3f45):**
-Lane model locked: CLEANING / MAINTENANCE / CHECKIN_CHECKOUT only. UNKNOWN is not a valid model state.
-Migration `phase_1031c_remove_invalid_lane_assignments`: removed 11 invalid rows (8 `manager_not_worker`, 2 `ghost_no_permission_record`, 1 `owner_not_worker`). All removals in audit table `phase_1031c_removed_assignments`.
-Migration `phase_1031c_db_guard_no_role_assignments`: trigger `fn_guard_assignment_requires_operational_lane` blocks any INSERT for a worker without a valid operational lane at the DB level. API returns `400 NO_OPERATIONAL_LANE` before the DB trigger is even reached.
-
-**Proofs (DB):** invalid_rows_remaining=0, all 14 rows map to real lanes, zero priority collisions, ownerless_active_tasks=0, KPG-500 and KPG-502 Primary selection is deterministic.
-
-**Open (not blocking):** Pre-guard KPG-500 CLEANING task distribution (7 Backup / 2 Primary — legacy, not current write-path failure). Baton-transfer and promotion-banner live staging proof deferred. Amendment healing for misassigned (not just NULL) tasks deferred to Phase 1032+. DB UNIQUE constraint on lane deferred pending schema redesign (trigger is strongest available enforcement without materializing lane column).
-
-Invariants added: INV-1031-A (backfill skips if Primary exists), INV-1031-B (OWNERLESS_TASK_CREATED on every NULL-assignment path), INV-1031-C (early-checkout healing selects minimum-priority cleaner first), INV-1031-D (no worker without valid lane enters assignment stack).
-
-Spec: `docs/archive/phases/phase-1031-spec.md`
 
 ## Phase 1032 — Live Staging Proof + Baton-Transfer Closure (Closed)
 
@@ -8859,3 +8834,99 @@ Goal: Implement the manager-level task intervention model approved in Phase 1033
 **Not in scope:** Force Advance.
 
 Spec: `docs/archive/phases/phase-1034-spec.md`
+
+---
+
+## Phase 1034 — OM-1: Manager Task Intervention Model (Closed)
+
+**Status:** CLOSED — implementation landed, surfaced, backend-proven. Full UI proof pending.
+**Date closed:** 2026-04-01
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+**What was built and deployed:**
+- `POST /tasks/{id}/takeover-start` — admin-bypasses timing gates, atomic PENDING→IN_PROGRESS walk, `task_actions` audit with `TASK_TAKEOVER_STARTED`.
+- `POST /tasks/{id}/reassign` — `assigned_to` update, property-scoped compatible workers list, optional `handoff_note` written to `tasks.notes[]` as `source="handoff"`.
+- `POST /tasks/{id}/notes` — appends `{text, author, source, created_at}` to `tasks.notes[]`; `source` required (`manager_note` | `handoff`).
+- `ManagerTaskCard.tsx` + `ManagerTaskDrawer` — timing strip (read-only), Takeover / Reassign / Note actions. No worker execution buttons.
+- `ReassignPanel` — compatibility-filtered by task kind; named workers (not UUIDs); manual ID fallback collapsed.
+- `jwt_auth` / `jwt_identity` fix — admin/manager endpoints use `jwt_identity` (dict); worker endpoints use `jwt_auth` (tenant_id str). Mixed use was causing 500 errors on note save.
+- `task_id` / `id` field normalization — `/manager/tasks` response key normalized to `id` throughout.
+
+**Backend-proven (DB SQL):**
+- `KPG-500 → "Emuna Villa"` via correct `properties.property_id` join ✓
+- `tasks.notes[source="handoff"]` written correctly ✓
+- Worker `GET /tasks/{id}` `select("*")` returns `notes` column ✓
+
+**Open (carried forward):**
+- Reassign execution E2E: `assigned_to` change confirmed in DB after real UI flow.
+- Worker sees handoff note card on their task surface.
+
+---
+
+## Phase 1035 — OM-1: Operational Manager Stream Redesign (Closed — Backend Proven)
+
+**Status:** CLOSED — implementation complete, backend-proven. UI visual proof pending.
+**Date closed:** 2026-04-01
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+**Core problem solved:** Stream was querying `audit_events` (historical log). This made the OM surface behave like an audit feed instead of a live operational command surface.
+
+**Data source migration:**
+- Tasks tab: `audit_events` → `GET /manager/tasks` (live `tasks` table: PENDING / ACKNOWLEDGED / IN_PROGRESS / MANAGER_EXECUTING).
+- Bookings tab: `audit_events` → `GET /manager/stream/bookings` (live `bookings` table, yesterday → +7 days, confirmed bookings only).
+- Sessions tab: removed from OM Stream entirely. Belongs in `/admin/audit`.
+
+**Property naming fix:**
+- All OM surfaces now show human name first ("Emuna Villa"), code secondary ("KPG-500").
+- Backend bug fixed: was joining `properties.id` (bigint surrogate) instead of `properties.property_id` (text code). Fixed in `manager_task_board`, `get_task_for_manager`, `manager_stream_bookings`.
+
+**`ReassignPanel` empty state fixed:** no raw `.` string; shows "No [lane] workers found for [Property Name]".
+
+**DB SQL proofs:**
+- `KPG-500 → "Emuna Villa"` via `properties.property_id` join ✓
+- Apr 5 turnover chain staging data confirmed: CHECKOUT_VERIFY + CLEANING (Apr 5), CHECKIN_PREP (Apr 11) ✓
+- Booking runway endpoint correct; empty for manager scope (KPG-500 has no bookings in window — correct) ✓
+
+**Honest proof status:**
+- Property naming: backend-proven in DB. UI screenshot not yet captured.
+- Bookings tab: endpoint and scope logic correct. Data state is the limiting factor on staging.
+- Reassign + Handoff: backend-proven in DB. End-to-end UI proof pending.
+
+Product spec: `docs/core/stream-product-spec.md`
+
+---
+
+## Phase 1036 — OM-1: Stream Hardening — Canonical Ordering, Add Task, Booking Scope (Active)
+
+**Status:** ACTIVE — built and deployed. Proof pending.
+**Date opened:** 2026-04-01
+**Commit:** `054c83a`
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+**Backend — `POST /tasks/adhoc` (new, Phase 1036):**
+- Generic multi-kind ad-hoc task creation for managers and admins: CLEANING | MAINTENANCE | GENERAL.
+- CHECKIN_PREP / CHECKOUT_VERIFY explicitly blocked with a clear error — these are booking-generated and must not be duplicated ad-hoc.
+- **Duplicate guardrail:** returns `409 DUPLICATE_TASK_CONFLICT` with `conflict_tasks[]` if an open CLEANING task already exists on the same property within ±1 day of the requested due_date. Client may pass `?force=true` to override (valid case: extra cleaning between stays).
+- Lane-aware auto-assign: same priority-ordered logic as `POST /tasks/cleaning/adhoc`.
+- Audit written to `admin_audit_log`.
+- This is NOT a second task creation system — it is a generalization of the existing `cleaning/adhoc` pattern.
+
+**Frontend — `stream/page.tsx` additions:**
+- **Canonical ordering (locked product rule):**  
+  Within same property + due_date band: `CHECKOUT_VERIFY (1) → CLEANING (2) → CHECKIN_PREP (3)`.  
+  Full sort key: urgency (primary) → due_date → property_id group → `CANONICAL_KIND_ORDER`.  
+  Matches the real operational workflow: guest departs → property cleaned → new guest arrives.  
+  `KindSequenceBadge` component: per-row visual label (CHECKOUT / CLEAN / CHECK-IN).
+- **Add Task button:** in Stream header. Opens `AddTaskModal` → `POST /tasks/adhoc`. Pre-populates with scoped property list. Not a new creation system.
+- **Conflict guardrail UI:** 409 response shows amber warning with "Create Anyway (Extra Task)" override path.
+- **Scope-aware booking empty state:** reads live scoped property IDs from task data.  
+  Shows: "No confirmed arrivals or departures in your scoped property (KPG-500) in the next 7 days."  
+  Footer footnote also shows `N properties in scope`.
+
+**Build verification:** `py_compile` clean ✓ `tsc --noEmit` 0 errors ✓ `next build` exit 0 ✓ Vercel deployed ✓
+
+**Open proof items before phase close:**
+1. Reassign E2E: `assigned_to` DB change after real UI flow.
+2. Handoff note: worker sees note card on their task surface.
+3. Add Task: confirm creates task in Stream, confirm conflict 409 fires for duplicate CLEANING.
+4. Canonical ordering: screenshot of `CHECKOUT → CLEAN → CHECK-IN` sequence in real stream rows.

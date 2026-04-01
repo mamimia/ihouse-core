@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1034 — OM-1: Manager Task Intervention Model
+Phase 1036 — OM-1: Stream Hardening (Canonical Ordering, Add Task, Booking Scope)
 
 ## Last Closed Phase
-Phase 1033 — Canonical Task Timing Hardening
+Phase 1035 — OM-1: Operational Manager Stream Redesign
 
 ## System Status
 
@@ -463,9 +463,15 @@ Tier 3 — External (one of:)
 
 Phase 345 — see `docs/core/planning/` for next cycle.
 
+**Phase 1034 — OM-1 Manager Task Intervention Model (CLOSED):** `POST /tasks/{id}/takeover-start` (timing-gate bypass, atomic walk, audit), `POST /tasks/{id}/reassign` (property-scoped workers, handoff note), `POST /tasks/{id}/notes` (source-typed), `ManagerTaskCard.tsx` + `ManagerTaskDrawer` (read-only timing strip, Takeover/Reassign/Note), `ReassignPanel` (named workers, kind-filtered). `jwt_auth` vs `jwt_identity` bug fixed. `task_id`/`id` field normalized. Backend-proven in DB. End-to-end UI proof pending.
+
+**Phase 1035 — OM-1 Stream Redesign (CLOSED — Backend Proven):** Data source migrated from `audit_events` to live `tasks` + `bookings` tables. Tasks tab: `GET /manager/tasks` (live operational queue, urgency sort). Bookings tab: `GET /manager/stream/bookings` (yesterday → +7d, confirmed only). Sessions tab: removed. Human-first property naming enforced everywhere. Property name resolution bug fixed: backend was joining `properties.id` (bigint) instead of `properties.property_id` (text). `ReassignPanel` empty state fixed. DB SQL proofs pass. UI visual proof pending.
+
+**Phase 1036 — OM-1 Stream Hardening (ACTIVE):** `POST /tasks/adhoc` — generic ad-hoc task creation (CLEANING/MAINTENANCE/GENERAL), CHECKIN_PREP/CHECKOUT_VERIFY blocked, duplicate guardrail (409 + `?force=true` override), lane-aware auto-assign, audit log. Stream: canonical ordering (CHECKOUT→CLEAN→CHECKIN within same property+day), `KindSequenceBadge`, Add Task button in header wired to `/tasks/adhoc`, conflict guardrail UI, scope-aware booking empty state. Build clean. Deployed `054c83a`. Proof items open.
+
 ## Tests
 
-**Backend: 7,975 passed, 0 failed, 22 skipped. 8,005 tests collected across 294 active test files. 126 API router files. 63+ frontend pages. 48 RLS-protected tables. 6 storage buckets (1 public, 5 private). Phase 981 closed. Full Green. Phases 1021–1033 closed. Next: Phase 1034 (OM-1). Post-Phase 1033 test re-run pending.**
+**7,975 passed, 0 failed, 22 skipped. Full Green. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1035 closed. Active: Phase 1036.**
 
 ## Environment Variables (continued)
 

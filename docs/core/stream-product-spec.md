@@ -149,3 +149,81 @@ This phase is NOT closed until all nine are proven:
 7. Handoff message → written to `tasks.notes[]` with `source="handoff"` → verified DB or curl
 8. Property human name is primary label in all OM surfaces
 9. Broken empty state `"No workers found for ."` is fixed
+
+**Status (2026-04-01):** Items 1, 2, 3, 5 (empty state fix), 7, 8 — backed proven via DB SQL. Items 4, 6 — pending UI proof. Phase 1035 closed pending final UI visual proof.
+
+---
+
+## Phase 1036 Additions (Active)
+
+### Canonical Task Ordering — Locked Product Rule
+
+Within the same property + same operational day (due_date), tasks MUST appear in canonical workflow order:
+
+```
+CHECKOUT_VERIFY  (1) ← guest departs, property turns over
+CLEANING         (2) ← property cleaned between stays
+CHECKIN_PREP     (3) ← new guest arrives
+```
+
+This is the real operational sequence. The manager must be able to read a turnover chain at a glance.
+
+**Implementation:** Sort key within same urgency band and due_date:  
+`property_id` (group) → `CANONICAL_KIND_ORDER` (workflow order within property+date group).
+
+MAINTENANCE and GENERAL are appended after the canonical chain (order 4, 7).
+
+`KindSequenceBadge` component renders a tiny color-coded label per row:  
+`CHECKOUT` (red) / `CLEAN` (amber) / `CHECK-IN` (green).
+
+---
+
+### Add Task — Quick Action
+
+Stream is a command surface, not a passive view. Managers must be able to create operational tasks from Stream directly.
+
+**Entry point:** "Add Task" button in Stream header.
+
+**Backend:** `POST /tasks/adhoc` — the **only** ad-hoc task creation endpoint for managers.
+- This is NOT a second task creation system.
+- It is a generalization of the existing `POST /tasks/cleaning/adhoc` pattern.
+
+**Allowed kinds (ad-hoc creatable):**
+| Kind | Allowed | Reason |
+|---|---|---|
+| CLEANING | ✓ | Extra cleaning, inter-stay refresh |
+| MAINTENANCE | ✓ | Repair, inspection |
+| GENERAL | ✓ | Any operational intervention |
+| CHECKIN_PREP | ✗ | Booking-generated. Not ad-hoc. |
+| CHECKOUT_VERIFY | ✗ | Booking-generated. Not ad-hoc. |
+
+**Duplicate guardrail:**  
+For CLEANING tasks: returns `409 DUPLICATE_TASK_CONFLICT` with `conflict_tasks[]` if an open CLEANING task already exists on the same property within ±1 day.  
+Manager may override with `?force=true` — valid case: extra cleaning between stays, guest complaint mid-stay.
+
+**Conflict UI:** Amber warning on 409. "Create Anyway (Extra Task)" override path. Manager sees conflict context before deciding.
+
+---
+
+### Booking Empty State — Scope-Aware Wording
+
+The empty state for the Bookings tab must be scope-aware and explicit.
+
+**If manager-scoped (assigned properties only):**  
+`"No confirmed arrivals or departures in your scoped property (KPG-500) in the next 7 days."`
+
+**If multi-property scope:**  
+`"No confirmed arrivals or departures in your N scoped properties in the next 7 days."`
+
+**This is not an error.** Explicitly communicates that the scope is applied and the result is correct.
+
+Footer footnote also shows: `N properties in scope`.
+
+---
+
+## Phase 1036 — Closure Conditions
+
+1. Reassign execution: `assigned_to` field changes in DB after real UI flow (not just API proof).
+2. Handoff note visibility: worker sees the note card on their task surface (not just DB proof).
+3. Add Task: create a task from Stream, confirm it appears in Stream, confirm conflict guardrail fires for a duplicate CLEANING attempt.
+4. Canonical ordering: screenshot confirms `CHECKOUT → CLEAN → CHECK-IN` sequence renders correctly in real stream rows.

@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1034 — OM-1: Manager Task Intervention Model. Phases 841–1033 closed.
+Phase 1036 — OM-1: Stream Hardening. Phases 841–1035 closed.
 
 ## Last Closed Phase
 
-Phase 1033 — Canonical Task Timing Hardening.
+Phase 1035 — OM-1: Operational Manager Stream Redesign.
 
 ## Current Objective
 
@@ -69,6 +69,45 @@ Implementation landed across multiple workstreams. Documentation closure was inc
 **Product decision locked:** Worker layer = Acknowledge/Start/Complete. Manager layer = Monitor/Takeover/Reassign/Note. `ManagerTaskCard` is drill-down/intervention only — not replacing Hub/Stream/Alerts/Team.
 Commits: `305a083` → `e79adb2` → `cd8a04a` → `1480f03`. Branch: `checkpoint/supabase-single-write-20260305-1747`.
 
+✅ **Phase 1034 — OM-1: Manager Task Intervention Model — CLOSED** (2026-04-01)
+
+- `POST /tasks/{id}/takeover-start`: timing-gate bypass, atomic PENDING→IN_PROGRESS, `task_actions` audit.
+- `POST /tasks/{id}/reassign`: property-scoped workers, `handoff_note` → `tasks.notes[source=handoff]`, `task_actions` audit.
+- `POST /tasks/{id}/notes`: source-typed note append (manager_note | handoff).
+- `ManagerTaskCard.tsx` + `ManagerTaskDrawer`: read-only timing strip, Takeover/Reassign/Note. No worker execution buttons.
+- `ReassignPanel`: kind-compatible named workers, collapsed manual fallback.
+- Bug fixes: `jwt_auth`/`jwt_identity` mixed use (was causing 500 on note save); `task_id`/`id` field normalization.
+- Backend-proven in DB: property name resolution (`KPG-500 → "Emuna Villa"`), handoff note, worker endpoint.
+- End-to-end UI proof: pending (reassign execution, worker handoff card visibility).
+
+✅ **Phase 1035 — OM-1: Stream Redesign — CLOSED** (2026-04-01, backend proven)
+
+- Stream migrated from `audit_events` (history) to live `tasks` + `bookings` tables.
+- Tasks: `GET /manager/tasks`, urgency sort (overdue→today→upcoming→future).
+- Bookings: `GET /manager/stream/bookings`, yesterday→+7d, confirmed only.
+- Sessions tab: removed from OM Stream.
+- Property name resolution bug fixed: was joining `properties.id` (bigint), now `properties.property_id` (text code).
+- `ReassignPanel` empty state fixed: human-readable, no raw `.` string.
+- DB SQL proofs pass. UI visual proof pending.
+
+🔵 **Phase 1036 — OM-1: Stream Hardening — ACTIVE** (2026-04-01, deployed `054c83a`)
+
+**Backend:**
+- `POST /tasks/adhoc`: generic ad-hoc task creation for managers (CLEANING/MAINTENANCE/GENERAL). CHECKIN_PREP/CHECKOUT_VERIFY blocked. Duplicate guardrail: 409 + `?force=true` for valid extra cleaning case. Lane-aware auto-assign. Audit log.
+
+**Frontend (stream/page.tsx):**
+- Canonical ordering rule: within same property+day — CHECKOUT_VERIFY(1) → CLEANING(2) → CHECKIN_PREP(3). `KindSequenceBadge` renders per-row.
+- Add Task button in Stream header → `AddTaskModal` → `POST /tasks/adhoc`. Reuses backend. Not a second system.
+- Conflict guardrail UI: amber warning on 409, force-override path.
+- Scope-aware booking empty state: reads scoped property IDs from live task data.
+
+**Open proof items:**
+1. Reassign execution E2E (UI → DB `assigned_to` change).
+2. Handoff note on worker surface.
+3. Add Task create flow and duplicate guardrail E2E.
+4. Canonical ordering screenshot.
+5. Phase docs — now complete after this pass.
+
 
 - System reset to zero-state (Phase 830)
 - Auth E2E proven: dev-login → JWT → API access
@@ -132,7 +171,9 @@ Phase 1030 — Task Lifecycle & Assignment Hardening                         ←
 Phase 1031 — Assignment Priority Normalization & Canonical Lane Protection   ← CLOSED
 Phase 1032 — Live Staging Proof + Baton-Transfer Closure                    ← CLOSED
 Phase 1033 — Canonical Task Timing Hardening (+ OM Surface, Act As)         ← CLOSED
-Phase 1034 — OM-1: Manager Task Intervention Model                          ← ACTIVE
+Phase 1034 — OM-1: Manager Task Intervention Model                          ← CLOSED
+Phase 1035 — OM-1: Operational Manager Stream Redesign                       ← CLOSED (backend proven)
+Phase 1036 — OM-1: Stream Hardening (Canonical Ordering, Add Task, Scope)    ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)
