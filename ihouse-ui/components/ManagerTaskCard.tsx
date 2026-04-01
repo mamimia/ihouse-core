@@ -292,13 +292,14 @@ function ReassignPanel({
         const prop = (res.properties || []).find(p => p.property_id === task.property_id);
         const compatible = prop?.workers || [];
         setWorkers(compatible);
-        if (!compatible.length) {
+      if (!compatible.length) {
           // No property-scoped compatible workers — go straight to manual
           setShowManual(true);
+          const propDisplay = task.property_name || task.property_id || 'this property';
           setWorkerError(
             compatLane
-              ? `No ${laneLabel} found for ${task.property_id}. Use manual entry below.`
-              : `No workers found for ${task.property_id}.`
+              ? `No ${laneLabel} found for ${propDisplay}. Enter the worker ID below or leave blank to unassign.`
+              : `No workers found for ${propDisplay}.`
           );
         }
       })
@@ -402,7 +403,7 @@ function ReassignPanel({
             onClick={() => setShowManual(true)}
             style={{ fontSize: 11, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', marginBottom: 14 }}
           >
-            Worker not listed? Enter ID manually (Tier 2)
+            Not seeing the right worker? Enter ID manually
           </button>
         </>
       ) : (

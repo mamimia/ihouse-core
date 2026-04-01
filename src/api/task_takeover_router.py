@@ -1083,13 +1083,42 @@ async def manager_task_board(
 
         total = sum(len(v) for v in groups.values())
 
-        # Normalize: add 'id' and 'task_kind' aliases so ManagerTaskCard type works
+        # Batch-resolve property names and worker display names for human-first display
+        all_prop_ids = list({t.get("property_id") for t in tasks if t.get("property_id")})
+        all_worker_ids = list({
+            uid for t in tasks for uid in [t.get("assigned_to"), t.get("taken_over_by"), t.get("original_worker_id")]
+            if uid
+        })
+
+        property_name_map: Dict[str, str] = {}
+        worker_name_map: Dict[str, str] = {}
+
+        if all_prop_ids:
+            try:
+                pr = db.table("properties").select("id, display_name").in_("id", all_prop_ids).execute()
+                for row in (pr.data or []):
+                    property_name_map[row["id"]] = row.get("display_name") or row["id"]
+            except Exception:
+                pass
+
+        if all_worker_ids:
+            try:
+                wr = db.table("tenant_permissions").select("user_id, display_name").in_("user_id", all_worker_ids).execute()
+                for row in (wr.data or []):
+                    worker_name_map[row["user_id"]] = row.get("display_name") or row["user_id"][:14]
+            except Exception:
+                pass
+
+        # Normalize: alias columns + inject resolved names for human-first display
         def _normalize(t: dict) -> dict:
             out = dict(t)
-            if "id" not in out:
-                out["id"] = out.get("task_id")
-            if "task_kind" not in out:
-                out["task_kind"] = out.get("kind")
+            out["id"] = out.get("task_id")
+            out["task_kind"] = out.get("kind")
+            prop_id = out.get("property_id") or ""
+            out["property_name"] = property_name_map.get(prop_id) or prop_id
+            out["assigned_to_name"] = worker_name_map.get(out.get("assigned_to") or "") or None
+            out["taken_over_by_name"] = worker_name_map.get(out.get("taken_over_by") or "") or None
+            out["original_worker_name"] = worker_name_map.get(out.get("original_worker_id") or "") or None
             return out
 
         return JSONResponse(status_code=200, content={
@@ -1392,6 +1421,158 @@ async def manager_alerts(
 
 
 # ===========================================================================
+# Phase 1035 — GET /manager/stream/bookings
+# Operational booking runway for OM Stream: upcoming arrivals + departures
+# ===========================================================================
+# Data source: bookings table (NOT audit_events).
+# Window: yesterday → +7 days.
+# Returns only confirmed bookings in that window, sorted by urgency.
+
+from datetime import datetime, timedelta, timezone
+
+_BOOKING_RUNWAY_DAYS_BACK = 1
+_BOOKING_RUNWAY_DAYS_FORWARD = 7
+
+@router.get(
+    "/manager/stream/bookings",
+    summary="Operational booking runway for OM Stream (Phase 1035)",
+)
+async def manager_stream_bookings(
+    identity: dict = Depends(jwt_identity),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    GET /manager/stream/bookings
+
+    Phase 1035: Returns the operational booking runway for the Ops Manager Stream.
+    Source: bookings table (not audit_events).
+    Window: yesterday → +7 days.
+    Shows confirmed bookings with arrival OR departure in the window.
+    Not booking event history.
+    """
+    try:
+        db = client if client is not None else _get_db()
+        caller_role = str(identity.get("role", "worker")).strip()
+        caller_user_id = str(identity.get("user_id", "")).strip()
+
+        if caller_role not in _TAKEOVER_AUTHORIZED_ROLES:
+            return make_error_response(
+                403, ErrorCode.VALIDATION_ERROR,
+                extra={"detail": "Only managers and admins can view booking runway."},
+            )
+
+        now = datetime.now(timezone.utc)
+        window_start = (now - timedelta(days=_BOOKING_RUNWAY_DAYS_BACK)).strftime("%Y-%m-%d")
+        window_end   = (now + timedelta(days=_BOOKING_RUNWAY_DAYS_FORWARD)).strftime("%Y-%m-%d")
+        today_str    = now.strftime("%Y-%m-%d")
+
+        # Fetch property IDs in scope (manager-scoped; admin sees all)
+        prop_ids: Optional[List[str]] = None
+        if caller_role == "manager":
+            prop_ids = _get_manager_property_ids(db, caller_user_id)
+            if not prop_ids:
+                return JSONResponse(status_code=200, content={"bookings": [], "total": 0})
+
+        # Query bookings in operational window
+        # bookings columns: booking_id, property_id, start_date, end_date, status, guest_name
+        try:
+            q = db.table("bookings").select(
+                "booking_id, property_id, start_date, end_date, status, guest_name, external_ref"
+            )
+            if prop_ids is not None:
+                q = q.in_("property_id", prop_ids)
+            # Bookings that start OR end within the window
+            # Supabase: use gte/lte filters; OR logic requires two queries
+            q_start = q.gte("start_date", window_start).lte("start_date", window_end)
+            start_res = q_start.execute()
+            start_rows = start_res.data or []
+
+            q_end = (
+                db.table("bookings").select(
+                    "booking_id, property_id, start_date, end_date, status, guest_name, external_ref"
+                )
+            )
+            if prop_ids is not None:
+                q_end = q_end.in_("property_id", prop_ids)
+            q_end = q_end.gte("end_date", window_start).lte("end_date", window_end)
+            end_res = q_end.execute()
+            end_rows = end_res.data or []
+
+            # Merge + deduplicate
+            seen_ids: set = set()
+            all_bookings = []
+            for row in start_rows + end_rows:
+                bid = row.get("booking_id")
+                if bid and bid not in seen_ids:
+                    seen_ids.add(bid)
+                    # Filter: confirmed only (not cancelled)
+                    st = str(row.get("status") or "").lower()
+                    if st not in ("cancelled", "canceled", "rejected"):
+                        all_bookings.append(row)
+        except Exception as qe:
+            logger.warning("manager_stream_bookings: query error %s", qe)
+            all_bookings = []
+
+        # Resolve property names
+        scope_prop_ids = list({b.get("property_id") for b in all_bookings if b.get("property_id")})
+        prop_name_map: Dict[str, str] = {}
+        if scope_prop_ids:
+            try:
+                pn = db.table("properties").select("id, display_name").in_("id", scope_prop_ids).execute()
+                for row in (pn.data or []):
+                    prop_name_map[row["id"]] = row.get("display_name") or row["id"]
+            except Exception:
+                pass
+
+        # Urgency labelling + sort key
+        def _urgency(booking: dict) -> tuple:
+            sd = str(booking.get("start_date") or "")
+            ed = str(booking.get("end_date") or "")
+            # today's departures first (1), today's arrivals (2), tomorrow out (3)...
+            if ed == today_str: return (1, ed, sd)
+            if sd == today_str: return (2, sd, ed)
+            if ed > today_str and ed <= window_end: return (3, ed, sd)
+            return (4, sd, ed)
+
+        def _label(booking: dict) -> str:
+            sd = str(booking.get("start_date") or "")
+            ed = str(booking.get("end_date") or "")
+            if sd == today_str: return "Arriving Today"
+            if ed == today_str: return "Departing Today"
+            if sd < today_str and ed >= today_str: return "Active Stay"
+            # Days until arrival
+            try:
+                days = (datetime.strptime(sd, "%Y-%m-%d").date() - now.date()).days
+                if days == 1: return "Arriving Tomorrow"
+                if days > 1: return f"Arriving in {days}d"
+            except Exception:
+                pass
+            return "Upcoming"
+
+        all_bookings.sort(key=_urgency)
+
+        out = []
+        for b in all_bookings:
+            pid = b.get("property_id") or ""
+            out.append({
+                "booking_id":    b.get("booking_id"),
+                "property_id":   pid,
+                "property_name": prop_name_map.get(pid) or pid,
+                "guest_name":    b.get("guest_name") or "Guest",
+                "start_date":    b.get("start_date"),
+                "end_date":      b.get("end_date"),
+                "status":        b.get("status"),
+                "external_ref":  b.get("external_ref"),
+                "urgency_label": _label(b),
+            })
+
+        return JSONResponse(status_code=200, content={"bookings": out, "total": len(out)})
+
+    except Exception as exc:
+        logger.exception("manager_stream_bookings error: %s", exc)
+        return make_error_response(500, ErrorCode.INTERNAL_ERROR)
+
+
 # Phase 1033 — GET /manager/team
 # Team overview: workers, task load, coverage gaps per property+lane
 # ===========================================================================
