@@ -118,10 +118,10 @@ def _get_caller_role(db: Any, tenant_id: str) -> str:
 
 
 def _get_manager_property_ids(db: Any, manager_id: str) -> List[str]:
-    """Return the property IDs assigned to this manager (staff assignments)."""
+    """Return the property IDs assigned to this manager."""
     try:
         res = (
-            db.table("staff_assignments")
+            db.table("staff_property_assignments")
             .select("property_id")
             .eq("user_id", manager_id)
             .execute()
@@ -1048,9 +1048,11 @@ async def manager_team(
                 "total_workers": 0,
             })
 
-        # ── Fetch all assignments in scope ───────────────────────────────────
-        q_assignments = db.table("staff_assignments").select(
-            "user_id, property_id, operational_lane, priority"
+        # ── Fetch all worker-property assignments in scope ──────────────────
+        # Table: staff_property_assignments (user_id, property_id, priority)
+        # No operational_lane column — lane is derived from worker_roles in tenant_permissions.
+        q_assignments = db.table("staff_property_assignments").select(
+            "user_id, property_id, priority"
         )
         if prop_ids is not None:
             q_assignments = q_assignments.in_("property_id", prop_ids)
@@ -1066,22 +1068,24 @@ async def manager_team(
             try:
                 prop_res = (
                     db.table("properties")
-                    .select("id, name")
+                    .select("id, display_name")
                     .in_("id", scope_props)
                     .execute()
                 )
                 for row in (prop_res.data or []):
-                    property_names[row["id"]] = row.get("name") or row["id"]
+                    property_names[row["id"]] = row.get("display_name") or row["id"]
             except Exception:
                 pass
 
-        # ── Fetch worker permission records (display_name, comm_preference, role) ─
+        # ── Fetch worker permission records (display_name, role, worker_roles, comm_preference) ─
+        # worker_roles is a list like ["cleaner"], ["checkin", "checkout"], ["maintenance"]
+        # This is the canonical lane source — no operational_lane column exists.
         worker_data: Dict[str, Dict] = {}
         if worker_ids:
             try:
                 perm_res = (
                     db.table("tenant_permissions")
-                    .select("user_id, display_name, role, comm_preference, is_active")
+                    .select("user_id, display_name, role, worker_roles, comm_preference, is_active")
                     .in_("user_id", worker_ids)
                     .execute()
                 )
@@ -1110,7 +1114,15 @@ async def manager_team(
             except Exception:
                 pass
 
-        # ── Build per-property output ────────────────────────────────────
+        # ── Worker-role → canonical lane mapping ────────────────────────────
+        ROLE_TO_LANE = {
+            "cleaner": "CLEANING",
+            "maintenance": "MAINTENANCE",
+            "checkin": "CHECKIN_CHECKOUT",
+            "checkout": "CHECKIN_CHECKOUT",
+        }
+
+        # ── Build per-property output ────────────────────────────────────────
         lanes = ["CLEANING", "MAINTENANCE", "CHECKIN_CHECKOUT"]
 
         # Group assignments by property
@@ -1122,10 +1134,23 @@ async def manager_team(
         for p in scope_props:
             workers_in_prop = prop_workers.get(p, [])
 
+            # Expand each assignment into per-lane rows using worker_roles
+            expanded: List[Dict] = []
+            for row in workers_in_prop:
+                uid = row.get("user_id") or ""
+                prio = row.get("priority") or 99
+                winfo = worker_data.get(uid, {})
+                w_roles: List[str] = winfo.get("worker_roles") or []
+                lanes_for_worker = list({ROLE_TO_LANE[r] for r in w_roles if r in ROLE_TO_LANE})
+                if not lanes_for_worker:
+                    lanes_for_worker = ["UNKNOWN"]
+                for wlane in lanes_for_worker:
+                    expanded.append({"user_id": uid, "property_id": p, "priority": prio, "lane": wlane})
+
             # Build lane coverage map: lane → {priority: user_id}
             lane_coverage: Dict[str, Dict[int, str]] = {lane: {} for lane in lanes}
-            for row in workers_in_prop:
-                lane = row.get("operational_lane") or ""
+            for row in expanded:
+                lane = row.get("lane") or ""
                 prio = row.get("priority") or 99
                 uid = row.get("user_id") or ""
                 if lane in lane_coverage:
@@ -1136,17 +1161,17 @@ async def manager_team(
                 if 1 not in lane_coverage.get(lane, {})
             ]
 
-            # Build worker list for this property
+            # Build worker list for this property (one row per worker+lane combination)
             workers_out = []
-            seen_workers = set()
-            for row in sorted(workers_in_prop, key=lambda r: (r.get("operational_lane") or "", r.get("priority") or 99)):
+            seen_workers: set = set()
+            for row in sorted(expanded, key=lambda r: (r.get("lane") or "", r.get("priority") or 99)):
                 uid = row.get("user_id") or ""
-                lane = row.get("operational_lane") or ""
+                lane = row.get("lane") or ""
                 prio = row.get("priority") or 99
                 winfo = worker_data.get(uid, {})
                 comm = winfo.get("comm_preference") or {}
                 open_tasks = (task_counts.get(uid) or {}).get(p, 0)
-                designation = "Primary" if prio == 1 else ("Backup" if prio == 2 else f"Priority {prio}")
+                designation = "Primary" if prio == 1 else ("Backup" if prio == 2 else f"Backup {prio - 1}")
 
                 entry_key = (uid, lane)
                 if entry_key not in seen_workers:
@@ -1159,8 +1184,8 @@ async def manager_team(
                         "lane": lane,
                         "priority": prio,
                         "designation": designation,
-                        "open_tasks": open_tasks,       # frontend field name
-                        "open_tasks_on_property": open_tasks,  # legacy alias
+                        "open_tasks": open_tasks,
+                        "open_tasks_on_property": open_tasks,
                         "contact": {
                             "line": comm.get("line_id") or comm.get("line") or "",
                             "phone": comm.get("phone") or "",
