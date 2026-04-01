@@ -1173,17 +1173,26 @@ async def manual_create_staff(
             extra={"detail": str(ve)},
         )
 
-    # ── Step 1: Create auth user and get the access link back ───────────────
-    # Phase 1037 fix: use generate_link(type="invite") instead of invite_user_by_email.
-    # invite_user_by_email fires a Supabase-generated email that:
-    #   - Goes to spam (Supabase default SMTP has poor deliverability)
-    #   - Gmail strips hyperlinks from spam, so the link is invisible in the email
-    # generate_link returns the raw URL so the admin can share it via WhatsApp/LINE/SMS
-    # which is how Thai hospitality workers actually communicate anyway.
+    # ── Step 1: Resolve auth user — two-pass strategy ────────────────────────
+    # Phase 1037d: Two-pass to avoid 500 on "user already exists".
+    #
+    # Pass A: probe auth.users to see if the email already has an account.
+    #         Supabase Admin list_users does not support email lookup directly,
+    #         so we use a raw query via admin generate_link and catch gracefully.
+    #
+    # If the user is NEW:
+    #   generate_link(type="invite")  → creates the user + returns the invite URL
+    # If the user ALREADY EXISTS:
+    #   generate_link(type="magiclink")  → returns a fresh login URL, no user creation
+    #   This never 500s because magiclink works for any confirmed or unconfirmed user.
+    #
+    # In both cases, the admin sees a copyable link + mailto button in the UI.
     user_id: Optional[str] = None
     delivery_method: str = "unknown"
     action_link: str = ""
 
+    # ── Pass A: Try invite (new user path) ────────────────────────────────
+    _existing_user_detected = False
     try:
         link_res = admin_client.auth.admin.generate_link(
             {
@@ -1206,36 +1215,57 @@ async def manual_create_staff(
 
     except Exception as invite_exc:
         exc_str = str(invite_exc).lower()
-        if "already" in exc_str or "exists" in exc_str or "registered" in exc_str:
-            # User already has a Supabase auth account — generate a fresh magic link instead
-            logger.info("manual_create_staff: user %s already exists -- generating magic link", email)
-            try:
-                ml_res = admin_client.auth.admin.generate_link(
-                    {
-                        "type": "magiclink",
-                        "email": email,
-                        "options": {"redirect_to": f"{resolved_front}/auth/callback"},
-                    }
-                )
-                user_id = ml_res.user.id
-                action_link = _extract_action_link(ml_res)
-                delivery_method = "existing_user_magic_link"
-            except Exception as link_exc:
-                logger.exception("manual_create_staff: generate_link failed for %s: %s", email, link_exc)
-                return make_error_response(
-                    status_code=500, code="AUTH_LINK_FAILED",
-                    extra={"detail": f"Failed to generate access link for existing user: {link_exc}"},
-                )
+        # Supabase throws various messages for existing users across SDK versions:
+        # "user already registered", "email address is already in use",
+        # "a user with this email address has already been registered", etc.
+        _already_signals = ("already", "exists", "registered", "in use", "duplicate", "conflict", "422")
+        if any(sig in exc_str for sig in _already_signals):
+            _existing_user_detected = True
+            logger.info("manual_create_staff: user %s already in auth — falling back to magiclink", email)
         elif "rate limit" in exc_str:
             return make_error_response(
                 status_code=429, code="RATE_LIMIT",
-                extra={"detail": f"Supabase rate limit hit for {email}. Wait ~60 minutes."},
+                extra={"detail": f"Email rate limit reached for {email}. Wait ~60 minutes or use a different email."},
             )
         else:
-            logger.exception("manual_create_staff: generate_link failed for %s: %s", email, invite_exc)
+            # Unknown error — log the full message and surface it clearly
+            logger.exception("manual_create_staff: generate_link(invite) failed for %s: %s", email, invite_exc)
             return make_error_response(
                 status_code=500, code="AUTH_INVITE_FAILED",
-                extra={"detail": f"Failed to create auth account: {invite_exc}"},
+                extra={"detail": f"Could not create auth account for {email}. Error: {invite_exc}"},
+            )
+
+    # ── Pass B: Existing user — generate magic link (never fails on existing users) ──
+    if _existing_user_detected:
+        try:
+            ml_res = admin_client.auth.admin.generate_link(
+                {
+                    "type": "magiclink",
+                    "email": email,
+                    "options": {"redirect_to": f"{resolved_front}/auth/callback"},
+                }
+            )
+            user_id = ml_res.user.id
+            action_link = _extract_action_link(ml_res)
+            delivery_method = "existing_user_magic_link"
+            logger.info("manual_create_staff: magic link generated for existing user %s -> user_id=%s",
+                        email, user_id)
+        except Exception as ml_exc:
+            # Last resort: surface a clear human message — never a raw 500
+            ml_str = str(ml_exc).lower()
+            logger.exception("manual_create_staff: magiclink fallback failed for %s: %s", email, ml_exc)
+            if "rate limit" in ml_str:
+                detail = f"{email} already has an account. Rate limit hit — wait ~60 minutes before generating a new access link."
+            else:
+                detail = (
+                    f"{email} already has a Supabase Auth account "
+                    f"(user may have been previously invited). "
+                    f"You can re-add them via the staff profile page, or contact support. "
+                    f"Technical detail: {ml_exc}"
+                )
+            return make_error_response(
+                status_code=422, code="USER_ALREADY_EXISTS",
+                extra={"detail": detail, "email": email},
             )
 
     # ── Step 2: Set force_reset on auth user metadata ─────────────────────────

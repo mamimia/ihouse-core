@@ -463,15 +463,21 @@ export default function NewStaffPage() {
       // Show the result with magic link so admin can share it if the email didn't arrive
       setCreatedResult(result);
     } catch (e: any) {
+      // apiFetch throws with e.message = HTTP status code string, e.detail = backend detail if parsed
       let msg = 'Save failed. Please check the details and try again.';
       if (e?.detail) {
+        // Backend returned a structured error with a human detail message
         msg = e.detail;
-      } else if (e?.message && e.message !== '400' && e.message !== '500') {
-        msg = e.message;
+      } else if (e?.message === '422') {
+        msg = `${e.email ? e.email + ' already ' : 'This email '} already has an account in the system. If they were previously deleted, the auth record may still exist. Contact support or use a different email.`;
       } else if (e?.message === '429') {
         msg = 'Email rate limit reached. Wait ~60 minutes or use a different email address.';
+      } else if (e?.message === '409') {
+        msg = 'Cannot delete: this staff member has tasks or records assigned. Archive them instead.';
       } else if (e?.message === '400') {
-        msg = 'Save failed: one or more fields are invalid. Check that all selected properties are approved and all required fields are filled.';
+        msg = 'Invalid fields — check that all required fields are filled and all selected properties are approved.';
+      } else if (e?.message && e.message !== '500' && e.message !== '0') {
+        msg = e.message;
       }
       setError(msg);
     } finally {
