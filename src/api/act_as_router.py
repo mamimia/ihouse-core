@@ -170,7 +170,7 @@ async def start_act_as(
             db_check = _get_supabase_client()
             tp_res = (
                 db_check.table("tenant_permissions")
-                .select("user_id, display_name, role, is_active")
+                .select("user_id, display_name, role, worker_roles, is_active")
                 .eq("user_id", body.target_user_id)
                 .eq("tenant_id", tenant_id)
                 .limit(1)
@@ -184,11 +184,32 @@ async def start_act_as(
                     status=422,
                 )
             tp_row = tp_rows[0]
-            if tp_row.get("role") != body.target_role:
+
+            # Validate role match — accounting for the worker sub-role model:
+            # Worker sub-roles (cleaner/maintenance/checkin/checkout/checkin_checkout)
+            # have top-level role='worker' and specialisation in worker_roles[].
+            stored_role = tp_row.get("role") or ""
+            stored_worker_roles: list = tp_row.get("worker_roles") or []
+
+            WORKER_SUBROLES = {"cleaner", "maintenance", "checkin", "checkout", "checkin_checkout"}
+
+            def _user_qualifies_for_target(target: str, s_role: str, w_roles: list) -> bool:
+                if target == s_role:
+                    return True  # exact top-level match (manager, owner, etc.)
+                if target in WORKER_SUBROLES:
+                    if target == "checkin_checkout":
+                        return s_role == "worker" and bool(
+                            set(w_roles) & {"checkin", "checkout"}
+                        )
+                    return s_role == "worker" and target in w_roles
+                return False
+
+            if not _user_qualifies_for_target(body.target_role, stored_role, stored_worker_roles):
                 return err(
                     "ROLE_MISMATCH",
-                    f"User '{body.target_user_id}' has role '{tp_row.get('role')}', "
-                    f"not '{body.target_role}'. Cannot impersonate as a different role.",
+                    f"User '{body.target_user_id}' (role='{stored_role}', "
+                    f"worker_roles={stored_worker_roles}) does not qualify "
+                    f"for target_role='{body.target_role}'.",
                     status=422,
                 )
             if not tp_row.get("is_active", True):
@@ -202,6 +223,7 @@ async def start_act_as(
         except Exception as exc:
             logger.exception("act-as/start: target_user_id lookup failed: %s", exc)
             return err("TARGET_USER_LOOKUP_FAILED", f"Failed to verify target user: {exc}", status=500)
+
 
     # Phase 866 (Model B): 409 single-session check removed.
     # An admin may open multiple concurrent Act As sessions.
@@ -500,23 +522,107 @@ async def act_as_users(
 
     try:
         db = _get_supabase_client()
-        res = (
-            db.table("tenant_permissions")
-            .select("user_id, display_name, is_active")
-            .eq("tenant_id", tenant_id)
-            .eq("role", role)
-            .eq("is_active", True)
-            .order("display_name")
-            .execute()
-        )
+
+        # ── Role → DB query strategy ──────────────────────────────────────────
+        # tenant_permissions has two relevant columns:
+        #   role        — top-level system role: 'admin', 'manager', 'owner', 'worker'
+        #   worker_roles[] — functional lane for workers: ['cleaner'], ['maintenance'],
+        #                    ['checkin'], ['checkout'], ['checkin','checkout']
+        #
+        # manager / owner / admin → query by top-level role column
+        # cleaner / maintenance / checkin / checkout / checkin_checkout
+        #   → query role='worker' + filter by worker_roles[] contains/overlaps
+        #   → also union with users who have the lane directly as role (legacy)
+        #
+        # checkin_checkout = workers with checkin OR checkout in worker_roles
+        # (they may have both, or just one — include both cases)
+
+        # Top-level roles: query role column directly
+        TOP_LEVEL_ROLES = {"manager", "owner", "admin"}
+
+        # Worker sub-roles: map to worker_roles[] filter
+        WORKER_SUBROLE_FILTER = {
+            "cleaner":          ("contains", ["cleaner"]),
+            "maintenance":      ("contains", ["maintenance"]),
+            "checkin":          ("contains", ["checkin"]),
+            "checkout":         ("contains", ["checkout"]),
+            "checkin_checkout": ("overlaps", ["checkin", "checkout"]),
+        }
+
+        all_users: list[dict] = []
+
+        if role in TOP_LEVEL_ROLES:
+            res = (
+                db.table("tenant_permissions")
+                .select("user_id, display_name, is_active")
+                .eq("tenant_id", tenant_id)
+                .eq("role", role)
+                .eq("is_active", True)
+                .order("display_name")
+                .execute()
+            )
+            all_users = res.data or []
+
+        elif role in WORKER_SUBROLE_FILTER:
+            filter_type, lane_values = WORKER_SUBROLE_FILTER[role]
+
+            # Query 1: modern model — role='worker', worker_roles contains/overlaps lane
+            if filter_type == "contains":
+                # worker_roles @> ARRAY[lane] — contains all listed values
+                res1 = (
+                    db.table("tenant_permissions")
+                    .select("user_id, display_name, is_active")
+                    .eq("tenant_id", tenant_id)
+                    .eq("role", "worker")
+                    .eq("is_active", True)
+                    .contains("worker_roles", lane_values)
+                    .execute()
+                )
+            else:
+                # overlaps — worker_roles && ARRAY['checkin','checkout']
+                res1 = (
+                    db.table("tenant_permissions")
+                    .select("user_id, display_name, is_active")
+                    .eq("tenant_id", tenant_id)
+                    .eq("role", "worker")
+                    .eq("is_active", True)
+                    .overlaps("worker_roles", lane_values)
+                    .execute()
+                )
+
+            # Query 2: legacy model — role column = lane name directly
+            # (e.g., role='cleaner' stored directly — some legacy records)
+            legacy_role = lane_values[0] if lane_values else role
+            res2 = (
+                db.table("tenant_permissions")
+                .select("user_id, display_name, is_active")
+                .eq("tenant_id", tenant_id)
+                .eq("role", legacy_role)
+                .eq("is_active", True)
+                .execute()
+            )
+
+            # Merge and deduplicate by user_id
+            seen: set = set()
+            merged: list[dict] = []
+            for row in (res1.data or []) + (res2.data or []):
+                uid = row.get("user_id", "")
+                if uid and uid not in seen:
+                    seen.add(uid)
+                    merged.append(row)
+            all_users = merged
+
         users = [
             {
                 "user_id": r["user_id"],
                 "display_name": r.get("display_name") or r["user_id"],
             }
-            for r in (res.data or [])
+            for r in all_users
             if r.get("user_id")
         ]
+        # Sort by display name after merge
+        users.sort(key=lambda u: (u["display_name"] or "").lower())
+
         return ok({"role": role, "users": users, "count": len(users)})
     except Exception as exc:
         logger.exception("act-as/users: error: %s", exc)
