@@ -337,6 +337,7 @@ interface ManagerTask {
     status: string;
     priority: string;
     property_id: string;
+    property_name?: string;          // Phase 1044: resolved display_name from properties table
     booking_id?: string;
     assigned_to?: string;
     original_worker_id?: string;
@@ -346,6 +347,33 @@ interface ManagerTask {
     due_date: string;
     title: string;
     created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1044 — Human-operational task title
+// Replaces raw ICAL/booking-ID polluted title with: "Villa Name — Task Kind"
+// Used on all OM-facing task list / snapshot surfaces.
+// ---------------------------------------------------------------------------
+const OPERATIONAL_KIND_LABEL: Record<string, string> = {
+    CLEANING:              'Checkout Cleaning',
+    CHECKIN_PREP:          'Check-in Prep',
+    CHECKOUT_VERIFY:       'Checkout Verification',
+    GUEST_WELCOME:         'Guest Welcome',
+    MAINTENANCE:           'Maintenance',
+    SELF_CHECKIN_FOLLOWUP: 'Self Check-in Follow-up',
+    GENERAL:               'General Task',
+};
+
+function buildOperationalTaskTitle(task: ManagerTask): string {
+    const propertyLabel = task.property_name || task.property_id;
+    // Special case: early checkout cleaning has a more specific label
+    const isEarlyCheckout = (task as any).is_early_checkout === true;
+    const rawKind = task.task_kind?.toUpperCase?.() ?? task.task_kind;
+    const kindLabel =
+        rawKind === 'CLEANING' && isEarlyCheckout
+            ? 'Post-checkout Cleaning'
+            : (OPERATIONAL_KIND_LABEL[rawKind] ?? rawKind);
+    return `${propertyLabel} — ${kindLabel}`;
 }
 
 function TakeoverModal({
@@ -430,7 +458,7 @@ function TakeoverModal({
                     fontSize: 'var(--text-sm)', marginBottom: 'var(--space-5)',
                     display: 'flex', flexDirection: 'column', gap: 4,
                 }}>
-                    <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{task.title || task.task_kind}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{buildOperationalTaskTitle(task)}</div>
                     <div style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>
                         Status: <strong style={{ color: 'var(--color-warn)' }}>{task.status}</strong>
                         {task.assigned_to && <span style={{ marginLeft: 12 }}>Currently: <strong>{task.assigned_to.slice(0, 12)}…</strong></span>}
@@ -958,11 +986,11 @@ function TaskRow({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
                     <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {task.title || task.task_kind}
+                        {buildOperationalTaskTitle(task)}
                     </span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-dim)', paddingLeft: 15 }}>
-                    {task.property_id}
+                    <span style={{ fontFamily: 'var(--font-mono)', opacity: 0.65 }}>{task.property_id}</span>
                     {task.due_date && <span style={{ marginLeft: 8, color: 'var(--color-text-faint)' }}>Due {task.due_date}</span>}
                     {isTakenOver && task.original_worker_id && (
                         <span style={{ marginLeft: 8, color: '#f87171' }}>↩ was: {task.original_worker_id.slice(0, 10)}…</span>
@@ -1585,12 +1613,11 @@ function PriorityTaskSnapshot() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
                                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: dot[t.priority] ?? '#94a3b8', flexShrink: 0 }} />
                                 <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {t.title || KIND_LABEL[t.task_kind] || t.task_kind}
+                                    {buildOperationalTaskTitle(t)}
                                 </span>
                             </div>
                             <div style={{ fontSize: 11, color: 'var(--color-text-dim)', paddingLeft: 13 }}>
-                                {/* Human-first: property name via title context, fallback to property_id */}
-                                {t.property_id}
+                                <span style={{ fontFamily: 'var(--font-mono)', opacity: 0.65 }}>{t.property_id}</span>
                                 {t.due_date && <span style={{ marginLeft: 8, color: 'var(--color-text-faint)' }}>· {t.due_date}</span>}
                             </div>
                         </div>
