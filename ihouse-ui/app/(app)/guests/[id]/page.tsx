@@ -1415,7 +1415,22 @@ export default function GuestDossierPage() {
                                 <CheckinRecordBlock record={stay.checkin_record} stayStatus={stay.status} />
 
                                 {/* Portal / QR (Issue #2 — actionable) */}
-                                <PortalBlock portal={stay.portal} guest={guest} stay={stay} />
+                                <PortalBlock
+                                    portal={stay.portal}
+                                    guest={guest}
+                                    stay={stay}
+                                    onGeneratePortalFull={async () => {
+                                        const res = await apiFetch<{ token: string }>(
+                                            `/admin/guest-token/${encodeURIComponent(stay.booking_id)}`,
+                                            {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ guest_email: '', ttl_days: 30 }),
+                                            }
+                                        );
+                                        return `${window.location.origin}/guest/${res.token}`;
+                                    }}
+                                />
 
                                 {/* Settlement (Issue #3 — richer) */}
                                 <SettlementBlock stay={stay} />
