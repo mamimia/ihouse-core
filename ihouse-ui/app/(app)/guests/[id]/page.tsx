@@ -19,7 +19,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
-    api, Guest, GuestDossier, DossierStay, DossierActivity,
+    api, apiFetch, Guest, GuestDossier, DossierStay, DossierActivity,
     DossierPhoto, DossierCheckinRecord, DossierPortal, DossierMeter
 } from '../../../../lib/api';
 
@@ -320,7 +320,17 @@ function PhotoGrid({ photos, title }: { photos: DossierPhoto[]; title: string })
 // Portal Block — tight action card
 // ---------------------------------------------------------------------------
 
-function PortalBlock({ portal, guest, stay }: { portal: DossierPortal; guest: Guest; stay: DossierStay }) {
+function PortalBlock({
+    portal, guest, stay, onGenerate,
+}: {
+    portal: DossierPortal;
+    guest: Guest;
+    stay: DossierStay;
+    onGenerate?: () => Promise<void>;
+}) {
+    const [generating, setGenerating] = useState(false);
+    const [genError, setGenError] = useState<string | null>(null);
+
     const channels = [
         { key: 'email',    label: 'Email',    icon: '📧', available: !!guest.email },
         { key: 'phone',    label: 'SMS',      icon: '📱', available: !!guest.phone },
@@ -331,6 +341,20 @@ function PortalBlock({ portal, guest, stay }: { portal: DossierPortal; guest: Gu
     const hasAnyChannel = channels.some(c => c.available);
     const checkedIn = isCheckedIn(stay);
     const generated = portal.qr_generated;
+
+    const handleGenerate = async () => {
+        if (!onGenerate || generating) return;
+        setGenerating(true);
+        setGenError(null);
+        try {
+            await onGenerate();
+        } catch (err: unknown) {
+            const e = err as { message?: string };
+            setGenError(e?.message || 'Failed to generate portal link.');
+        } finally {
+            setGenerating(false);
+        }
+    };
 
     return (
         <div style={{
@@ -361,8 +385,13 @@ function PortalBlock({ portal, guest, stay }: { portal: DossierPortal; guest: Gu
                 </div>
                 {/* Primary action */}
                 {!generated && checkedIn && (
-                    <button style={{ ...btnPrimary, padding: '5px 14px' }} title="Regenerate portal link if auto-gen failed">
-                        🔗 Generate QR
+                    <button
+                        style={{ ...btnPrimary, padding: '5px 14px', opacity: generating ? 0.6 : 1 }}
+                        disabled={generating}
+                        onClick={handleGenerate}
+                        title="Generate guest portal link and QR code"
+                    >
+                        {generating ? '⏳ Generating…' : '🔗 Generate QR'}
                     </button>
                 )}
                 {!generated && !checkedIn && (
@@ -377,6 +406,17 @@ function PortalBlock({ portal, guest, stay }: { portal: DossierPortal; guest: Gu
                     </a>
                 )}
             </div>
+
+            {/* Inline error */}
+            {genError && (
+                <div style={{
+                    marginTop: 8, padding: '6px 10px', borderRadius: 6,
+                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                    fontSize: 12, color: '#ef4444',
+                }}>
+                    ⚠ {genError}
+                </div>
+            )}
 
             {/* Send actions — only when generated */}
             {generated && (
@@ -840,7 +880,13 @@ function CheckoutRecordBlock({ stay }: { stay: DossierStay }) {
 // Stay Card (Issue #5 — deeper expandable structure)
 // ---------------------------------------------------------------------------
 
-function StayCard({ stay, guest, expanded, onToggle }: { stay: DossierStay; guest: Guest; expanded: boolean; onToggle: () => void }) {
+function StayCard({ stay, guest, expanded, onToggle, onGeneratePortal }: {
+    stay: DossierStay;
+    guest: Guest;
+    expanded: boolean;
+    onToggle: () => void;
+    onGeneratePortal?: (bookingId: string) => Promise<void>;
+}) {
     const nights = nightCount(stay.check_in, stay.check_out);
     const deposit = stay.settlement?.deposit;
     const hasEarlyCheckout = stay.early_checkout && stay.early_checkout.status !== 'none' && !!stay.early_checkout.status;
@@ -892,7 +938,15 @@ function StayCard({ stay, guest, expanded, onToggle }: { stay: DossierStay; gues
                     </div>
 
                     {/* Portal / QR */}
-                    <PortalBlock portal={stay.portal} guest={guest} stay={stay} />
+                    <PortalBlock
+                        portal={stay.portal}
+                        guest={guest}
+                        stay={stay}
+                        onGenerate={onGeneratePortal
+                            ? () => onGeneratePortal(stay.booking_id)
+                            : undefined
+                        }
+                    />
 
                     {/* Settlement */}
                     <SettlementBlock stay={stay} />
@@ -1364,6 +1418,10 @@ export default function GuestDossierPage() {
                                     guest={guest}
                                     expanded={expandedStay === dossier.current_stay.booking_id}
                                     onToggle={() => setExpandedStay(s => s === dossier.current_stay!.booking_id ? null : dossier.current_stay!.booking_id)}
+                                    onGeneratePortal={async (bookingId) => {
+                                        await apiFetch(`/admin/guest-token/${encodeURIComponent(bookingId)}`, { method: 'POST' });
+                                        await load();
+                                    }}
                                 />
                             )}
                             {dossier.stay_history.map(s => (
@@ -1373,6 +1431,10 @@ export default function GuestDossierPage() {
                                     guest={guest}
                                     expanded={expandedStay === s.booking_id}
                                     onToggle={() => setExpandedStay(p => p === s.booking_id ? null : s.booking_id)}
+                                    onGeneratePortal={async (bookingId) => {
+                                        await apiFetch(`/admin/guest-token/${encodeURIComponent(bookingId)}`, { method: 'POST' });
+                                        await load();
+                                    }}
                                 />
                             ))}
                         </>
