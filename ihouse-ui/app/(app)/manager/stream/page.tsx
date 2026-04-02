@@ -18,6 +18,20 @@ import DraftGuard from '@/components/DraftGuard';
 import { apiFetch } from '@/lib/api';
 import { ManagerTaskDrawer, type ManagerTaskCardTask } from '@/components/ManagerTaskCard';
 
+// ── Responsive hooks ──────────────────────────────────────────────────────────
+
+/** Returns true when viewport width < 640px (portrait mobile breakpoint) */
+function useIsMobile(): boolean {
+  const [mob, setMob] = useState(false);
+  useEffect(() => {
+    const check = () => setMob(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return mob;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type TaskStatus = 'PENDING' | 'ACKNOWLEDGED' | 'IN_PROGRESS' | 'MANAGER_EXECUTING';
@@ -282,7 +296,7 @@ function TaskRow({
   );
 }
 
-function BookingRow({ booking, onClick }: { booking: StreamBooking; onClick: () => void }) {
+function BookingRow({ booking, onClick, isMobile }: { booking: StreamBooking; onClick: () => void; isMobile: boolean }) {
   const isUrgent = booking.urgency_label.includes('Today');
   const isActive = booking.urgency_label.startsWith('Active Stay');
   const propName = booking.property_name || booking.property_id;
@@ -298,6 +312,64 @@ function BookingRow({ booking, onClick }: { booking: StreamBooking; onClick: () 
   const ecApproved = ecStatus === 'approved';
   const ecEligible = booking.early_checkout_eligible;
 
+  // ── Mobile card layout (portrait < 640px) ────────────────────────────────
+  if (isMobile) {
+    return (
+      <div
+        onClick={onClick}
+        style={{
+          padding: '12px 14px',
+          borderBottom: '1px solid var(--color-border)',
+          background: isUrgent || isActive ? `${urgencyColor}06` : 'transparent',
+          cursor: 'pointer',
+          display: 'flex', flexDirection: 'column', gap: 6,
+          borderLeft: `3px solid ${urgencyColor}`,
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-2)')}
+        onMouseLeave={e => (e.currentTarget.style.background = isUrgent || isActive ? `${urgencyColor}06` : 'transparent')}
+      >
+        {/* Row 1: property name + urgency chip */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            {propName}
+          </div>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, flexShrink: 0,
+            background: `${urgencyColor}18`, color: urgencyColor,
+            border: `1px solid ${urgencyColor}33`, whiteSpace: 'nowrap',
+          }}>
+            {booking.urgency_label}
+          </span>
+        </div>
+        {/* Row 2: guest + dates */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            👤 {booking.guest_name}
+            {ecApproved && (
+              <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' }}>
+                EARLY C/O
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--color-text-faint)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {fmtDate(booking.start_date)} → {fmtDate(booking.end_date)}
+          </div>
+        </div>
+        {/* Row 3: ref code + action hint */}
+        {(propCode || booking.external_ref || ecEligible) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 10, color: 'var(--color-text-faint)' }}>
+              {propCode && <span style={{ marginRight: 6 }}>{propCode}</span>}
+              {booking.external_ref && <span>{booking.external_ref}</span>}
+            </span>
+            {ecEligible && <span style={{ fontSize: 10, color: 'var(--color-primary)', fontWeight: 600 }}>Tap › action</span>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Desktop table row layout ─────────────────────────────────────────────
   return (
     <div
       onClick={onClick}
@@ -332,7 +404,6 @@ function BookingRow({ booking, onClick }: { booking: StreamBooking; onClick: () 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {booking.guest_name}
-          {/* Early checkout indicator */}
           {ecApproved && (
             <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' }}>
               EARLY C/O
@@ -353,11 +424,8 @@ function BookingRow({ booking, onClick }: { booking: StreamBooking; onClick: () 
         {booking.urgency_label}
       </span>
 
-      {/* Action hint for in-stay / early-checkout-eligible */}
       {ecEligible && (
-        <span style={{ fontSize: 10, color: 'var(--color-text-faint)', flexShrink: 0 }}>
-          ›
-        </span>
+        <span style={{ fontSize: 10, color: 'var(--color-text-faint)', flexShrink: 0 }}>›</span>
       )}
     </div>
   );
@@ -811,7 +879,22 @@ function AddTaskModal({
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function StreamPage() {
-  const [activeTab, setActiveTab] = useState<StreamTab>('tasks');
+  // ── Phase 1038: persist activeTab to sessionStorage so orientation change
+  // (which triggers a resize but NOT a remount) does NOT reset the tab.
+  const [activeTab, setActiveTab] = useState<StreamTab>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('stream_active_tab') as StreamTab | null;
+      if (saved === 'tasks' || saved === 'bookings') return saved;
+    }
+    return 'tasks';
+  });
+
+  const switchTab = useCallback((tab: StreamTab) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') sessionStorage.setItem('stream_active_tab', tab);
+  }, []);
+
+  const isMobile = useIsMobile();
 
   // Tasks state
   const [tasks, setTasks] = useState<StreamTask[]>([]);
@@ -1010,10 +1093,10 @@ export default function StreamPage() {
 
         {/* ── Tabs ─────────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <button style={tabBtn('tasks')} onClick={() => setActiveTab('tasks')}>
+          <button style={tabBtn('tasks')} onClick={() => switchTab('tasks')}>
             Tasks {tasks.length > 0 && `(${tasks.length})`}
           </button>
-          <button style={tabBtn('bookings')} onClick={() => setActiveTab('bookings')}>
+          <button style={tabBtn('bookings')} onClick={() => switchTab('bookings')}>
             Bookings {activeTab === 'bookings' && bookings.length > 0 ? `(${bookings.length})` : ''}
           </button>
         </div>
@@ -1094,28 +1177,43 @@ export default function StreamPage() {
               </div>
             )}
             {bookingsLoaded && !bookingsErr && bookings.length > 0 && (
-              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
-                {/* Column headers */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 20px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
-                  <div style={{ width: 3, flexShrink: 0 }} />
-                  {[
-                    { label: 'PROPERTY', flex: '0 0 200px' },
-                    { label: 'GUEST', flex: 1 },
-                    { label: 'STATUS', flex: '0 0 130px', align: 'right' as const },
-                  ].map(h => (
-                    <div key={h.label} style={{ flex: h.flex, fontSize: 9, fontWeight: 700, color: 'var(--color-text-faint)', letterSpacing: '0.1em', textAlign: h.align }}>
-                      {h.label}
-                    </div>
+              // ── Mobile portrait → card list; Desktop → table ──────────────
+              isMobile ? (
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+                  {bookings.map(b => (
+                    <BookingRow
+                      key={b.booking_id}
+                      booking={b}
+                      isMobile={true}
+                      onClick={() => b.early_checkout_eligible ? setActiveBooking(b) : undefined}
+                    />
                   ))}
                 </div>
-                {bookings.map(b => (
-                  <BookingRow
-                    key={b.booking_id}
-                    booking={b}
-                    onClick={() => b.early_checkout_eligible ? setActiveBooking(b) : undefined}
-                  />
-                ))}
-              </div>
+              ) : (
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+                  {/* Column headers — desktop only */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 20px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+                    <div style={{ width: 3, flexShrink: 0 }} />
+                    {[
+                      { label: 'PROPERTY', flex: '0 0 200px' },
+                      { label: 'GUEST', flex: 1 },
+                      { label: 'STATUS', flex: '0 0 130px', align: 'right' as const },
+                    ].map(h => (
+                      <div key={h.label} style={{ flex: h.flex, fontSize: 9, fontWeight: 700, color: 'var(--color-text-faint)', letterSpacing: '0.1em', textAlign: h.align }}>
+                        {h.label}
+                      </div>
+                    ))}
+                  </div>
+                  {bookings.map(b => (
+                    <BookingRow
+                      key={b.booking_id}
+                      booking={b}
+                      isMobile={false}
+                      onClick={() => b.early_checkout_eligible ? setActiveBooking(b) : undefined}
+                    />
+                  ))}
+                </div>
+              )
             )}
             <div style={{ marginTop: 12, fontSize: 11, color: 'var(--color-text-faint)', textAlign: 'center' }}>
               Active in-stay + arrivals/departures: yesterday → next 7 days · confirmed bookings only

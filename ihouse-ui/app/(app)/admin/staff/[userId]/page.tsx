@@ -1386,13 +1386,15 @@ export default function EditStaffPage() {
                     const isSupervisory = role === 'manager' || role === 'admin' || role === 'owner';
 
                     // ── Supervisory-scope property rows ─────────────────────────
-                    // For manager / admin / owner: show names of existing supervisors.
-                    // No Primary/Backup logic applies.
+                    // For manager / admin / owner: show ALL assigned supervisors
+                    // as name chips. Show first 2, then "+N more" overflow chip.
                     if (isSupervisory) {
-                      // Supervisors already assigned to this property (from lane endpoint)
-                      const existingSupervisors: { user_id: string; display_name: string; role: string }[] =
-                        (laneInfo?.supervisors || []).filter((s: any) => s.user_id !== rawUserId);
-                      const selfAssigned = (laneInfo?.supervisors || []).some((s: any) => s.user_id === rawUserId);
+                      // ALL supervisors for this property (backend already deduplicates)
+                      const allSupervisors: { user_id: string; display_name: string; role: string }[] =
+                        laneInfo?.supervisors || [];
+                      const CHIP_LIMIT = 2;
+                      const visibleSupervisors = allSupervisors.slice(0, CHIP_LIMIT);
+                      const overflowCount = allSupervisors.length - CHIP_LIMIT;
 
                       return (
                         <div key={p.id} style={{
@@ -1414,18 +1416,31 @@ export default function EditStaffPage() {
 
                           <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{p.name}</span>
 
-                          {/* Existing supervisors chip strip */}
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                            {existingSupervisors.map((s: any) => (
-                              <span key={s.user_id} title={`${s.role}`} style={{
+                          {/* All supervisors chip strip — max 2 visible + overflow */}
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'nowrap' }}>
+                            {visibleSupervisors.map((s: any) => (
+                              <span key={s.user_id} title={`${s.role}: ${s.display_name}`} style={{
                                 fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
-                                background: 'rgba(180,130,60,0.12)', color: '#c8954a',
-                                border: '1px solid rgba(180,130,60,0.25)', whiteSpace: 'nowrap',
+                                background: s.user_id === rawUserId
+                                  ? 'rgba(99,102,241,0.15)' : 'rgba(180,130,60,0.12)',
+                                color: s.user_id === rawUserId ? 'var(--color-primary)' : '#c8954a',
+                                border: `1px solid ${s.user_id === rawUserId ? 'rgba(99,102,241,0.3)' : 'rgba(180,130,60,0.25)'}`,
+                                whiteSpace: 'nowrap',
                               }}>
                                 👤 {s.display_name}
                               </span>
                             ))}
-                            {existingSupervisors.length === 0 && !assigned && (
+                            {overflowCount > 0 && (
+                              <span title={allSupervisors.slice(CHIP_LIMIT).map((s: any) => s.display_name).join(', ')} style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                                background: 'rgba(100,100,100,0.1)', color: 'var(--color-text-dim)',
+                                border: '1px solid var(--color-border)', whiteSpace: 'nowrap',
+                                cursor: 'help',
+                              }}>
+                                +{overflowCount}
+                              </span>
+                            )}
+                            {allSupervisors.length === 0 && !assigned && (
                               <span style={{
                                 fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 99,
                                 background: 'rgba(63,185,80,0.08)', color: '#3fb950',
