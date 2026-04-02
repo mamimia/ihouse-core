@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1041 — P1: OM Hub and Next-Layer Product Depth. Phases 841–1040 closed.
+Phase 1047B — Guest Portal Host Identity Block. Phases 841–1047A-name closed (1047A-name: effectively closed).
 
 ## Last Closed Phase
 
-Phase 1040 — P0: System Closure, Regression, Docs Alignment.
+Phase 1047A-name — Guest Portal No-Leak + Schema Alignment (Effectively Closed).
 
 ## Current Objective
 
@@ -201,7 +201,10 @@ Phase 1038 — Supervisory Role Assignment Hardening                           �
 Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips    ← CLOSED
 Phase 1039 — OM Role & Assignment Inline Help (Supervisory Model)            ← CLOSED
 Phase 1040 — P0: System Closure, Regression, Docs Alignment                   ← CLOSED
-Phase 1041 — P1: OM Hub and Next-Layer Product Depth                          ← ACTIVE
+Phase 1041–1046 — OM Hub Depth, Morning Briefing, Task Board, Checkout Audit  ← CLOSED
+Phase 1047A — Guest Portal Foundation Repair                                   ← CLOSED
+Phase 1047A-name — Guest Portal No-Leak + Schema Alignment                     ← EFFECTIVELY CLOSED
+Phase 1047B — Guest Portal Host Identity Block                                 ← ACTIVE (deployed, proof pending)
 ```
 
 ### Staging Deployment Truth (Proven 855A)

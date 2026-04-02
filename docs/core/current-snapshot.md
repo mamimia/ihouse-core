@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1041 — P1: OM Hub and Next-Layer Product Depth
+Phase 1047B — Guest Portal Host Identity Block
 
 ## Last Closed Phase
-Phase 1040 — P0: System Closure, Regression, Docs Alignment
+Phase 1047A-name — Guest Portal No-Leak + Schema Alignment (Effectively Closed)
 
 ## System Status
 
@@ -500,3 +500,18 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 | Var | Default | Effect |
 |-----|---------|--------|
 | `IHOUSE_ACCESS_TOKEN_SECRET` | required | HMAC-SHA256 secret for access tokens (Phase 399) |
+
+**Phase 1041–1046 (OM Hub Depth through Checkout Audit):** OM Hub stream redesign, property name resolution fix, canonical task ordering, Add Task adhoc, Morning Briefing, Task Board, checkout workstream audit. Deployed through multiple commits on `checkpoint/supabase-single-write-20260305-1747`.
+
+**Phase 1047A — Guest Portal Foundation Repair (CLOSED):** Fixed 5 functional regressions in `/guest/[token]`: cover photo SELECT gap, house info JSON unwrap, status chip hardcoded, guest message POST key (`message` → `content`), Generate QR unconnected. Foundation repair only. Commits: `940fecd` → `1ec8122`.
+
+**Phase 1047A-name — Guest Portal No-Leak + Schema Alignment (EFFECTIVELY CLOSED):**
+Locked product rule: no internal identifier may appear on any guest-facing surface. Root cause: backend was querying 6 non-existent properties columns causing silent nulls → fallback to internal codes. Fixed: `name`→`display_name`, `check_in_time`→`checkin_time`, `check_out_time`→`checkout_time`, `welcome_message`→`description`, `checkout_notes`→`extra_notes`, `manager_*`→`owner_phone`/`owner_email`. OTA placeholder guest names sanitized. Real property name "Emuna Villa TEST" staging-proven. OPEN: WhatsApp/contact proof; untested variants. Commit: `54ef82c`.
+
+**Phase 1047B — Guest Portal Host Identity Block (BUILT + DEPLOYED, PROOF PENDING):**
+3 new `portal_host_*` columns on `properties` (Supabase migration applied). Backend portal response extended. Admin "GUEST PORTAL — HOST IDENTITY" section in General tab with clear framing (display-layer only, not routing truth). `PortalHostBlock` component: invisible when name null, compact without intro, initials fallback without photo. TypeScript 0 errors. Vercel + Railway deployed. Commit: `215e9f8`. Staging proof (screenshot with host name set) required before full closure.
+
+**OPEN ITEMS (Guest Portal Workstream):**
+- WhatsApp/contact proof (renders with real phone, pre-fill functional) — tracked separately, not blocking
+- Untested guest-facing portal variants not on the proven path
+- Phase 1047B staging screenshot (portal with portal_host_name set)

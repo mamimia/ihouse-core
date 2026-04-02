@@ -8930,3 +8930,47 @@ Product spec: `docs/core/stream-product-spec.md`
 2. Handoff note: worker sees note card on their task surface.
 3. Add Task: confirm creates task in Stream, confirm conflict 409 fires for duplicate CLEANING.
 4. Canonical ordering: screenshot of `CHECKOUT → CLEAN → CHECK-IN` sequence in real stream rows.
+
+---
+
+## Phase 1047A — Guest Portal Foundation Repair (Closed)
+
+**Status:** Closed
+**Date Closed:** 2026-04-02
+**Commit:** `940fecd` → `1ec8122` → `54ef82c`
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+Five functional regressions fixed in the `/guest/[token]` portal: cover photo render, house info unwrap, status chip, guest message POST key, Generate QR wiring. No redesign — foundation repair only.
+
+Spec: `docs/archive/phases/phase-1047A-spec.md`
+
+---
+
+## Phase 1047A-name — Guest Portal No-Leak + Schema Alignment (Effectively Closed)
+
+**Status:** Effectively Closed
+**Date Closed:** 2026-04-03
+**Commit:** `54ef82c`
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+Locked product rule: no internal identifier on any guest-facing surface. Root-cause fix: properties table was being queried for 6 non-existent columns (`name`, `check_in_time`, `manager_*`…). Aligned backend to real schema (`display_name`, `checkin_time`, `checkout_time`, `description`, `extra_notes`, `owner_phone`, `owner_email`). Real property name "Emuna Villa TEST" now renders in tested portal path.
+
+PROVEN: on tested guest portal path and audited fallback/source chain.
+OPEN: WhatsApp/contact proof; untested guest-facing variants.
+
+Spec: `docs/archive/phases/phase-1047A-spec.md`
+
+---
+
+## Phase 1047B — Guest Portal Host Identity Block (Active — Built, Deployed, Proof Pending)
+
+**Status:** Active — built and deployed, proof pending
+**Date Opened:** 2026-04-03
+**Commit:** `215e9f8`
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+Added guest-facing host identity block (display layer only — not routing truth). Three new `portal_host_*` columns on `properties` (DB migration applied). Backend SELECT and response updated. Admin settings "GUEST PORTAL — HOST IDENTITY" section added. `PortalHostBlock` frontend component: null → invisible, name-only → compact, photo → avatar, initials fallback.
+
+Open: staging proof screenshots required before closure.
+
+Spec: `docs/archive/phases/phase-1047b-spec.md`

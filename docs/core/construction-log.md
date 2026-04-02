@@ -5446,3 +5446,34 @@ Build: clean exit code 0. Deployed to staging (commit `91f7114`, `domaniqo-stagi
 
 Key files: `src/tasks/task_model.py`, `src/api/task_takeover_router.py`, `ihouse-ui/app/(app)/manager/page.tsx`, `ihouse-ui/app/(app)/ops/checkin/page.tsx`, `ihouse-ui/app/(app)/ops/checkout/page.tsx`, `ihouse-ui/app/(app)/ops/cleaner/page.tsx`, `ihouse-ui/app/(app)/ops/maintenance/page.tsx`.
 Spec: `docs/archive/phases/phase-1022-spec.md`
+
+## Phase 1047A Closure — Guest Portal Foundation Repair
+
+**Date:** 2026-04-02
+
+Phase 1047A closed. Fixed five functional regressions in the `/guest/[token]` portal that had accumulated without being caught: cover photo not rendering (missing from SELECT), house info silently null (JSON key mismatch), status chip hardcoded, guest message send silently failing (wrong POST key `message` should be `content`), Generate QR button not wired to state. No redesign — pure repair.
+
+Key files: `src/api/guest_portal_router.py`, `ihouse-ui/app/(public)/guest/[token]/page.tsx`, `ihouse-ui/app/(app)/guests/[id]/page.tsx`.
+Spec: `docs/archive/phases/phase-1047A-spec.md`
+
+## Phase 1047A-name Closure — Guest Portal No-Leak + Schema Alignment
+
+**Date:** 2026-04-03
+
+Phase 1047A-name effectively closed. Locked product rule: no internal identifier (property codes, booking refs, unit IDs) may appear on guest-facing surface. Root cause found: backend was querying six non-existent properties columns — silent nulls causing fallback to internal IDs. Aligned to real schema. Proved real property name "Emuna Villa TEST" rendering on tested portal path. Fallback path ("Your Villa") also proved. OTA placeholder guest names sanitized.
+
+PROVEN: tested guest portal path and audited fallback chain.
+OPEN: WhatsApp/contact proof; untested variants.
+
+Key files: `src/api/guest_portal_router.py`, `ihouse-ui/app/(public)/guest/[token]/page.tsx`.
+Commits: `940fecd` → `1ec8122` → `54ef82c`
+Spec: `docs/archive/phases/phase-1047A-spec.md`
+
+## Phase 1047B Closure — Guest Portal Host Identity Block (Deployed, Proof Pending)
+
+**Date:** 2026-04-03
+
+Phase 1047B built and deployed. Three `portal_host_*` columns added to `properties` (Supabase migration). Backend portal response extended. Admin "GUEST PORTAL — HOST IDENTITY" section added to property General tab. `PortalHostBlock` frontend component: invisible when name null, compact when intro absent, initials fallback when photo absent. All field names prefixed `portal_host_` to mark them as presentation-layer only — not routing truth, owner truth, or system identity. TypeScript clean. Vercel + Railway deployed (`215e9f8`). Staging proof required before full closure.
+
+Key files: `src/api/guest_portal_router.py`, `ihouse-ui/app/(public)/guest/[token]/page.tsx`, `ihouse-ui/app/(app)/admin/properties/[propertyId]/page.tsx`.
+Spec: `docs/archive/phases/phase-1047b-spec.md`
