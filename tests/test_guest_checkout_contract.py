@@ -11,6 +11,7 @@ Tests for:
   6. Revoked token path — rejected at portal level
   7. Unknown step rejected
   8. complete without required steps rejected
+  9. _compute_token_ttl — booking-date-anchored TTL (three paths: effective_at, date, fallback)
 """
 from __future__ import annotations
 
@@ -155,6 +156,111 @@ class TestGuestCheckoutTokenType:
         raw_token, _ = issue_access_token(TokenType.GUEST_CHECKOUT, "booking-xyz", ttl_seconds=-1)
         claims = verify_access_token(raw_token, expected_type=TokenType.GUEST_CHECKOUT)
         assert claims is None
+
+
+# ===========================================================================
+# 9. _compute_token_ttl — booking-date-anchored TTL
+# ===========================================================================
+
+class TestComputeTokenTTL:
+    """
+    _compute_token_ttl() must derive TTL from the booking's effective checkout
+    time, not a flat constant.
+
+    Three resolution paths (in priority order):
+      1. early_checkout_effective_at (precise TIMESTAMPTZ) → expires eff_at + 4h
+      2. date fallback (early_checkout_date or check_out at 11:00 UTC) → + 4h
+      3. no date data → fallback constant (24h)
+    """
+
+    def test_ttl_uses_early_checkout_effective_at(self):
+        """Path 1: precise effective_at → TTL anchored to that moment + 4h."""
+        from datetime import datetime, timezone, timedelta
+        from api.guest_checkout_router import _compute_token_ttl
+
+        # Effective checkout 6 hours from now with 4h grace = ~10h from now
+        eff = datetime.now(tz=timezone.utc) + timedelta(hours=6)
+        booking = {
+            "early_checkout_approved": True,
+            "early_checkout_effective_at": eff.isoformat(),
+            "early_checkout_date": None,
+            "check_out": "2026-04-05",
+        }
+        ttl = _compute_token_ttl(booking)
+        # Should be approximately 6h (eff) + 4h (grace) = 10h = 36000s
+        # Allow ±30s for test execution time
+        assert 36000 - 30 <= ttl <= 36000 + 30, f"Expected ~36000s, got {ttl}"
+
+    def test_ttl_uses_checkout_date_when_no_effective_at(self):
+        """Path 2: regular checkout on a future date → TTL to that date at 11:00 UTC + 4h."""
+        from datetime import datetime, timezone, timedelta, date as date_type
+        from api.guest_checkout_router import _compute_token_ttl
+
+        # Checkout tomorrow
+        tomorrow = (datetime.now(tz=timezone.utc) + timedelta(days=1)).date()
+        booking = {
+            "early_checkout_approved": False,
+            "early_checkout_effective_at": None,
+            "early_checkout_date": None,
+            "check_out": tomorrow.isoformat(),
+        }
+        now = datetime.now(tz=timezone.utc)
+        target = datetime(tomorrow.year, tomorrow.month, tomorrow.day,
+                          11, 0, 0, tzinfo=timezone.utc) + timedelta(hours=4)
+        expected = int((target - now).total_seconds())
+
+        ttl = _compute_token_ttl(booking)
+        assert abs(ttl - expected) <= 5, f"Expected ~{expected}s, got {ttl}"
+
+    def test_ttl_uses_early_checkout_date_when_approved_but_no_effective_at(self):
+        """Path 2 (early): early date is used when approved but no precise TIMESTAMPTZ."""
+        from datetime import datetime, timezone, timedelta
+        from api.guest_checkout_router import _compute_token_ttl
+
+        in_two_days = (datetime.now(tz=timezone.utc) + timedelta(days=2)).date()
+        booking = {
+            "early_checkout_approved": True,
+            "early_checkout_effective_at": None,   # no precise time
+            "early_checkout_date": in_two_days.isoformat(),
+            "check_out": "2026-04-10",             # original, should be ignored
+        }
+        now = datetime.now(tz=timezone.utc)
+        target = datetime(in_two_days.year, in_two_days.month, in_two_days.day,
+                          11, 0, 0, tzinfo=timezone.utc) + timedelta(hours=4)
+        expected = int((target - now).total_seconds())
+
+        ttl = _compute_token_ttl(booking)
+        assert abs(ttl - expected) <= 5, f"Expected ~{expected}s, got {ttl}"
+
+    def test_ttl_minimum_floor_when_checkout_already_past(self):
+        """
+        If checkout + grace is already in the past (e.g. staff sends token late),
+        TTL must not be zero or negative — floor is 1 hour.
+        """
+        from api.guest_checkout_router import _compute_token_ttl
+
+        booking = {
+            "early_checkout_approved": False,
+            "early_checkout_effective_at": None,
+            "early_checkout_date": None,
+            "check_out": "2020-01-01",  # well in the past
+        }
+        ttl = _compute_token_ttl(booking)
+        assert ttl >= 3600, f"Expected at least 3600s floor, got {ttl}"
+
+    def test_ttl_fallback_when_no_date_data(self):
+        """Path 3: no date data at all → 24h fallback constant."""
+        from api.guest_checkout_router import _compute_token_ttl, _TOKEN_TTL_FALLBACK_SECONDS
+
+        booking = {
+            "early_checkout_approved": False,
+            "early_checkout_effective_at": None,
+            "early_checkout_date": None,
+            "check_out": None,
+            "booking_id": "test-fallback",
+        }
+        ttl = _compute_token_ttl(booking)
+        assert ttl == _TOKEN_TTL_FALLBACK_SECONDS
 
 
 # ===========================================================================
