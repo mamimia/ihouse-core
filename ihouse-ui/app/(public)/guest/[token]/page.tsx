@@ -44,6 +44,10 @@ interface GuestPortalData {
     number_of_guests?: number;
     deposit_status?: string;
     checkout_notes?: string;
+    // Phase 1047B — Guest Portal Host Identity (display layer only, not routing truth)
+    portal_host_name?: string | null;
+    portal_host_photo_url?: string | null;
+    portal_host_intro?: string | null;
 }
 
 interface HouseInfo {
@@ -228,6 +232,83 @@ function WelcomeHeader({ data }: { data: GuestPortalData }) {
                     )}
                 </div>
             )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1047B — Guest Portal Host Identity Block
+// Display layer only. Renders only when portal_host_name is set.
+// No name → renders nothing. Photo missing → initials avatar. Intro missing → compact.
+// ---------------------------------------------------------------------------
+
+function PortalHostBlock({ data }: { data: GuestPortalData }) {
+    if (!data.portal_host_name) return null;
+
+    const name = data.portal_host_name;
+    const initial = name.charAt(0).toUpperCase();
+    const hasPhoto = !!data.portal_host_photo_url;
+    const intro = data.portal_host_intro?.trim() || null;
+
+    return (
+        <div style={{
+            background: 'rgba(30, 58, 95, 0.6)',
+            border: '1px solid rgba(42, 74, 127, 0.7)',
+            borderRadius: RADIUS,
+            padding: '16px 20px',
+            marginBottom: 4,
+            display: 'flex',
+            alignItems: intro ? 'flex-start' : 'center',
+            gap: 16,
+        }}>
+            {/* Avatar: photo or initials */}
+            {hasPhoto ? (
+                <img
+                    src={data.portal_host_photo_url!}
+                    alt={name}
+                    style={{
+                        width: 48, height: 48, borderRadius: '50%',
+                        objectFit: 'cover', flexShrink: 0,
+                        border: '2px solid rgba(99, 102, 241, 0.5)',
+                    }}
+                    onError={e => {
+                        // fallback to initials-style div on photo error
+                        const el = e.currentTarget;
+                        el.style.display = 'none';
+                        el.parentElement!.querySelector<HTMLDivElement>('[data-initials]')!.style.display = 'flex';
+                    }}
+                />
+            ) : null}
+            {/* Initials avatar — shown when no photo, or as fallback */}
+            <div
+                data-initials=""
+                style={{
+                    width: 48, height: 48, borderRadius: '50%',
+                    background: 'rgba(99, 102, 241, 0.25)',
+                    border: '2px solid rgba(99, 102, 241, 0.4)',
+                    color: '#a5b4fc',
+                    fontSize: 18, fontWeight: 700,
+                    flexShrink: 0,
+                    display: hasPhoto ? 'none' : 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                }}
+            >
+                {initial}
+            </div>
+            {/* Text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: '#93c5fd', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                    Your Host
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: TEXT, marginBottom: intro ? 6 : 0 }}>
+                    {name}
+                </div>
+                {intro && (
+                    <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.55 }}>
+                        {intro}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -600,6 +681,9 @@ export default function GuestPortalPage() {
 
                 {/* Section 1 — Welcome / Stay Header */}
                 <WelcomeHeader data={data} />
+
+                {/* Phase 1047B — Host Identity Block (renders only when portal_host_name is set) */}
+                <PortalHostBlock data={data} />
 
                 {/* Section 2 — Home Essentials */}
                 <SectionHeader emoji="🏡" label="Home Essentials" />

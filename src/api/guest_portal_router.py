@@ -216,10 +216,12 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                     prop_res = (
                         db.table("properties")
                         # 1047A ROOT FIX: align to actual schema (no 'name', no 'check_in_time' etc.)
+                        # Phase 1047B: add portal_host_* (guest-facing display layer only)
                         .select("property_id, display_name, address, wifi_name, wifi_password, "
                                 "checkin_time, checkout_time, house_rules, "
                                 "emergency_contact, description, extra_notes, "
-                                "cover_photo_url")
+                                "cover_photo_url, "
+                                "portal_host_name, portal_host_photo_url, portal_host_intro")
                         .eq("property_id", property_id)
                         .limit(1)
                         .execute()
@@ -315,6 +317,10 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                 "number_of_guests": booking_data.get("number_of_guests"),
                 "deposit_status": deposit_status,
                 "checkout_notes": prop_data.get("extra_notes"),
+                # Phase 1047B — Guest Portal Host Identity (display layer only, not routing truth)
+                "portal_host_name":      prop_data.get("portal_host_name") or None,
+                "portal_host_photo_url": prop_data.get("portal_host_photo_url") or None,
+                "portal_host_intro":     prop_data.get("portal_host_intro") or None,
             })
         except Exception:
             pass  # Fall through to fallback

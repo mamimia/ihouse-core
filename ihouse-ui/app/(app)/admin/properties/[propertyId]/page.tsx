@@ -222,6 +222,10 @@ export default function PropertyDetailPage() {
     const [newRule, setNewRule] = useState('');
     // Owner Contact Snapshot — Phase 844
     const [editOwnerPhone, setEditOwnerPhone] = useState('');
+    // Phase 1047B — Guest Portal Host Identity (display layer only, not routing truth)
+    const [editPortalHostName, setEditPortalHostName] = useState('');
+    const [editPortalHostPhotoUrl, setEditPortalHostPhotoUrl] = useState('');
+    const [editPortalHostIntro, setEditPortalHostIntro] = useState('');
     const [editOwnerEmail, setEditOwnerEmail] = useState('');
     // Amenities — Phase 844
     const [editAmenities, setEditAmenities] = useState<string[]>([]);
@@ -323,6 +327,10 @@ export default function PropertyDetailPage() {
                 setEditOwnerPhone(pp.owner_phone || '');
                 setEditOwnerEmail(pp.owner_email || '');
                 setEditAmenities(Array.isArray(pp.amenities) ? pp.amenities : []);
+                // Phase 1047B — portal_host_* are guest-facing display fields only
+                setEditPortalHostName(pp.portal_host_name || '');
+                setEditPortalHostPhotoUrl(pp.portal_host_photo_url || '');
+                setEditPortalHostIntro(pp.portal_host_intro || '');
             }
             if (photosRes.status === 'fulfilled') setPhotos(photosRes.value?.photos || []);
             if (galleryRes.status === 'fulfilled') setGalleryPhotos(galleryRes.value?.photos || []);
@@ -1185,6 +1193,10 @@ export default function PropertyDetailPage() {
                             owner_phone: editOwnerPhone.trim() || null,
                             owner_email: editOwnerEmail.trim() || null,
                             amenities: editAmenities,
+                            // Phase 1047B — guest portal display layer only
+                            portal_host_name: editPortalHostName.trim() || null,
+                            portal_host_photo_url: editPortalHostPhotoUrl.trim() || null,
+                            portal_host_intro: editPortalHostIntro.trim().slice(0, 200) || null,
                         };
                         Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
                         const updated = await apiFetch(`/properties/${propertyId}`, { method: 'PATCH', body: JSON.stringify(body) });
@@ -1400,6 +1412,83 @@ export default function PropertyDetailPage() {
                         </div>
 
 
+                        {/* ── Section: Guest Portal — Host Identity ──────────────── */}
+                        {/* Phase 1047B: display-layer only — not routing, not owner truth, not system identity */}
+                        <div style={{
+                            ...sHead,
+                            color: 'var(--color-primary)',
+                            borderBottom: '1px solid rgba(99,102,241,0.25)',
+                        }}>Guest Portal — Host Identity</div>
+                        <div style={{
+                            background: 'rgba(99,102,241,0.04)',
+                            border: '1px solid rgba(99,102,241,0.15)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: 'var(--space-4)',
+                            marginBottom: 'var(--space-2)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 'var(--space-1)',
+                        }}>
+                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', lineHeight: 1.5 }}>
+                                Controls what guests see in their stay portal. This is guest-facing presentation content only —
+                                not your property identity, contact routing, or system account.
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                            <div>
+                                <label style={lStyle}>Display Name <span style={{ fontWeight: 400, color: 'var(--color-text-faint)' }}>(shown to guest in portal)</span></label>
+                                <input
+                                    id="portal-host-name"
+                                    style={iStyle}
+                                    value={editPortalHostName}
+                                    onChange={e => setEditPortalHostName(e.target.value)}
+                                    placeholder="e.g. Nadia, The Domaniqo Team"
+                                />
+                            </div>
+                            <div>
+                                <label style={lStyle}>Photo URL <span style={{ fontWeight: 400, color: 'var(--color-text-faint)' }}>(optional — avatar shown in guest portal)</span></label>
+                                <input
+                                    id="portal-host-photo-url"
+                                    style={iStyle}
+                                    value={editPortalHostPhotoUrl}
+                                    onChange={e => setEditPortalHostPhotoUrl(e.target.value)}
+                                    placeholder="https://…"
+                                />
+                                {editPortalHostPhotoUrl && (
+                                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <img
+                                            src={editPortalHostPhotoUrl}
+                                            alt="Host avatar preview"
+                                            style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--color-border)' }}
+                                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        />
+                                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Preview</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label style={lStyle}>
+                                    Welcome Note
+                                    <span style={{ fontWeight: 400, color: 'var(--color-text-faint)' }}> (optional · max 200 chars · plain text · shown below name in guest portal)</span>
+                                </label>
+                                <textarea
+                                    id="portal-host-intro"
+                                    style={{ ...iStyle, resize: 'vertical', minHeight: 72 }}
+                                    value={editPortalHostIntro}
+                                    onChange={e => setEditPortalHostIntro(e.target.value.slice(0, 200))}
+                                    placeholder="A short, warm welcome. This is not a reply commitment."
+                                    maxLength={200}
+                                />
+                                <div style={{ fontSize: 'var(--text-xs)', color: editPortalHostIntro.length > 180 ? 'var(--color-warn)' : 'var(--color-text-faint)', marginTop: 4 }}>
+                                    {editPortalHostIntro.length}/200 · Plain text only · Not a reply commitment
+                                </div>
+                            </div>
+                            {!editPortalHostName && (
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontStyle: 'italic' }}>
+                                    Display Name is required for the host identity block to appear in the guest portal.
+                                </div>
+                            )}
+                        </div>
 
                         {/* Save button — General property details */}
                         <div style={{ marginTop: 'var(--space-6)', display: 'flex', justifyContent: 'flex-end' }}>
