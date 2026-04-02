@@ -57,7 +57,15 @@ async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers || {}),
     },
   });
-  if (!res.ok) throw new Error(`${res.status}`);
+  if (!res.ok) {
+    // Phase 1038: Read body before throwing so the real backend reason is surfaced.
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      detail = body?.detail || body?.message || body?.error || detail;
+    } catch { /* ignore JSON parse failure */ }
+    throw new Error(detail);
+  }
   return res.json();
 }
 
@@ -325,7 +333,7 @@ export default function EditStaffPage() {
 
   // Phase 1030: Priority/Primary/Backup state for each assigned property
   // propertyLaneData[property_id] → { is_primary, priority, lane_count }
-  const [propertyLaneData, setPropertyLaneData] = useState<Record<string, { is_primary: boolean; priority: number; lane_count: number; lanes: Record<string, any[]> }>>({});
+  const [propertyLaneData, setPropertyLaneData] = useState<Record<string, { is_primary: boolean; priority: number; lane_count: number; lanes: Record<string, any[]>; supervisors?: { user_id: string; display_name: string; role: string; photo_url?: string; is_active?: boolean; assigned_at?: string }[] }>>({});
   // Baton-transfer confirmation modal
   const [batonPreview, setBatonPreview] = useState<{
     user_id: string; property_id: string; property_name: string;
@@ -513,11 +521,19 @@ export default function EditStaffPage() {
       setAssignedProperties(propIds);
       setOriginalAssignments(propIds);
 
-      // Phase 1030: Fetch lane/priority data for each assigned property
-      if (propIds.length > 0) {
+      // Phase 1038: Fetch lane/priority data for ALL available properties (not just assigned).
+      // This lets us show existing supervisors on every row — even unassigned ones.
+      if (propsRes) {
+        const allPropIds = (
+          propsRes.properties || propsRes.items || propsRes.data || []
+        )
+          .filter((p: any) => !p.status || p.status === 'approved')
+          .map((p: any) => p.id || p.property_id)
+          .filter(Boolean);
+
         const laneDataMap: Record<string, any> = {};
         await Promise.all(
-          propIds.map(async (pid: string) => {
+          allPropIds.map(async (pid: string) => {
             try {
               const laneRes = await apiFetch<any>(`/staff/property-lane/${encodeURIComponent(pid)}`);
               laneDataMap[pid] = laneRes;
@@ -676,8 +692,8 @@ export default function EditStaffPage() {
       setLegacyRole(undefined); // successfully normalized
       setSuccess('Staff member updated.');
       setTimeout(() => setSuccess(null), 3000);
-    } catch (e) {
-      setError('Save failed. Please try again.');
+    } catch (e: any) {
+      setError(e?.message || 'Save failed. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -1366,8 +1382,63 @@ export default function EditStaffPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {availableProperties.map(p => {
                     const assigned = assignedProperties.includes(p.id);
-                    // Derive this worker's current status in this property's lanes
                     const laneInfo = propertyLaneData[p.id];
+                    const isSupervisory = role === 'manager' || role === 'admin' || role === 'owner';
+
+                    // ── Supervisory-scope property rows ─────────────────────────
+                    // For manager / admin / owner: show names of existing supervisors.
+                    // No Primary/Backup logic applies.
+                    if (isSupervisory) {
+                      // Supervisors already assigned to this property (from lane endpoint)
+                      const existingSupervisors: { user_id: string; display_name: string; role: string }[] =
+                        (laneInfo?.supervisors || []).filter((s: any) => s.user_id !== rawUserId);
+                      const selfAssigned = (laneInfo?.supervisors || []).some((s: any) => s.user_id === rawUserId);
+
+                      return (
+                        <div key={p.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                          background: assigned ? 'rgba(99,102,241,0.06)' : 'var(--color-surface-2)',
+                          border: `1px solid ${assigned ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                          borderRadius: 'var(--radius-sm)', transition: 'all 0.15s',
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={assigned}
+                            onChange={() =>
+                              setAssignedProperties(prev =>
+                                prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]
+                              )
+                            }
+                            style={{ accentColor: 'var(--color-primary)', flexShrink: 0 }}
+                          />
+
+                          <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{p.name}</span>
+
+                          {/* Existing supervisors chip strip */}
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            {existingSupervisors.map((s: any) => (
+                              <span key={s.user_id} title={`${s.role}`} style={{
+                                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
+                                background: 'rgba(180,130,60,0.12)', color: '#c8954a',
+                                border: '1px solid rgba(180,130,60,0.25)', whiteSpace: 'nowrap',
+                              }}>
+                                👤 {s.display_name}
+                              </span>
+                            ))}
+                            {existingSupervisors.length === 0 && !assigned && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 99,
+                                background: 'rgba(63,185,80,0.08)', color: '#3fb950',
+                                border: '1px solid rgba(63,185,80,0.2)', whiteSpace: 'nowrap',
+                              }}>No supervisor yet</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // ── Worker lane property rows ────────────────────────────────
+                    // For workers: show Primary / Backup / Will be Primary as before.
                     let thisPriority = 1;
                     let laneCount = 0;
                     if (laneInfo?.lanes) {
@@ -1379,7 +1450,6 @@ export default function EditStaffPage() {
                     }
                     const isCurrentPrimary = assigned && thisPriority === 1;
                     const backupNum = assigned && thisPriority > 1 ? thisPriority - 1 : null;
-                    // What will this worker become if added (for unassigned properties)?
                     const wouldBePrimary = !assigned && laneCount === 0;
                     const wouldBeBackup = !assigned && laneCount > 0;
 
@@ -1418,7 +1488,7 @@ export default function EditStaffPage() {
 
                         <span style={{ flex: 1, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{p.name}</span>
 
-                        {/* Primary/Backup badge for assigned properties */}
+                        {/* Primary/Backup badge for assigned worker properties */}
                         {assigned && (
                           <span style={{
                             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
@@ -1431,7 +1501,7 @@ export default function EditStaffPage() {
                           </span>
                         )}
 
-                        {/* Preview badge for unassigned properties — what would they become? */}
+                        {/* Preview badge for unassigned properties */}
                         {!assigned && wouldBePrimary && (
                           <span style={{
                             fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99,

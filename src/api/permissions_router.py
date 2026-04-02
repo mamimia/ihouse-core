@@ -1233,55 +1233,118 @@ async def create_staff_assignment(
                 is_new_assignment = False
                 computed_priority = existing.data[0].get("priority", 1)
             else:
-                # Resolve the worker's lane from their roles
+                # Resolve the user's system role AND worker_roles in one query.
+                # Phase 1038: Differentiate between supervisory roles and workers.
+                # Supervisory roles (manager, admin, owner) get a flat priority=100
+                # and bypass lane logic entirely — they are scope assignments, not lane slots.
                 roles_res = (
                     db.table("tenant_permissions")
-                    .select("worker_roles")
+                    .select("worker_roles, role")
                     .eq("tenant_id", tenant_id)
                     .eq("user_id", user_id)
                     .limit(1)
                     .execute()
                 )
-                worker_roles = (roles_res.data or [{}])[0].get("worker_roles") or []
+                perm_row = (roles_res.data or [{}])[0]
+                worker_roles = perm_row.get("worker_roles") or []
+                sys_role = perm_row.get("role", "")
 
-                if "cleaner" in worker_roles:
+                # ── Supervisory bypass ─────────────────────────────────────────
+                # manager / admin / owner are supervisory-scope assignments.
+                # They do NOT enter the worker lane stack and do NOT need worker_roles.
+                # The DB trigger (fn_guard_assignment_requires_operational_lane) already
+                # permits these roles (Phase 1033). We just need to not reject them here.
+                if sys_role in ("manager", "admin", "owner"):
+                    computed_priority = 100  # neutral supervisor slot — never conflicts with worker lanes 1-N
+                    logger.info(
+                        "post_staff_assignment: supervisory assignment — user=%s role=%s property=%s priority=100",
+                        user_id, sys_role, property_id,
+                    )
+
+                # ── Worker lane resolution ─────────────────────────────────────
+                elif "cleaner" in worker_roles:
                     lane = "CLEANING"
                     lane_filter_col = "cleaner"
                     lane_filter_type = "contains"
+                    # Compute next priority via DB function
+                    try:
+                        fn_res = db.rpc(
+                            "get_next_lane_priority",
+                            {"p_tenant_id": tenant_id, "p_property_id": property_id, "p_lane": lane}
+                        ).execute()
+                        computed_priority = fn_res.data if isinstance(fn_res.data, int) else 1
+                    except Exception as _fn_exc:
+                        logger.warning(
+                            "post_staff_assignment: get_next_lane_priority RPC failed lane=%s: %s. Fallback to 1.",
+                            lane, _fn_exc,
+                        )
+                        computed_priority = 1
+                    logger.info(
+                        "post_staff_assignment: user=%s property=%s lane=%s → priority=%d (new=True)",
+                        user_id, property_id, lane, computed_priority,
+                    )
                 elif "maintenance" in worker_roles:
                     lane = "MAINTENANCE"
                     lane_filter_col = "maintenance"
                     lane_filter_type = "contains"
+                    try:
+                        fn_res = db.rpc(
+                            "get_next_lane_priority",
+                            {"p_tenant_id": tenant_id, "p_property_id": property_id, "p_lane": lane}
+                        ).execute()
+                        computed_priority = fn_res.data if isinstance(fn_res.data, int) else 1
+                    except Exception as _fn_exc:
+                        logger.warning(
+                            "post_staff_assignment: get_next_lane_priority RPC failed lane=%s: %s. Fallback to 1.",
+                            lane, _fn_exc,
+                        )
+                        computed_priority = 1
+                    logger.info(
+                        "post_staff_assignment: user=%s property=%s lane=%s → priority=%d (new=True)",
+                        user_id, property_id, lane, computed_priority,
+                    )
                 elif "checkin" in worker_roles or "checkout" in worker_roles:
                     lane = "CHECKIN_CHECKOUT"
                     lane_filter_col = None
                     lane_filter_type = "overlap"
+                    try:
+                        fn_res = db.rpc(
+                            "get_next_lane_priority",
+                            {"p_tenant_id": tenant_id, "p_property_id": property_id, "p_lane": lane}
+                        ).execute()
+                        computed_priority = fn_res.data if isinstance(fn_res.data, int) else 1
+                    except Exception as _fn_exc:
+                        logger.warning(
+                            "post_staff_assignment: get_next_lane_priority RPC failed lane=%s: %s. Fallback to 1.",
+                            lane, _fn_exc,
+                        )
+                        computed_priority = 1
+                    logger.info(
+                        "post_staff_assignment: user=%s property=%s lane=%s → priority=%d (new=True)",
+                        user_id, property_id, lane, computed_priority,
+                    )
                 else:
-                    # Phase 1031c — HARD BLOCK: no valid lane = no operational assignment.
-                    # A worker without recognized worker_roles has no lane and must not
-                    # enter the Primary/Backup stack. This is not a fallback case — it is
-                    # an invalid request. Managers, owners, and no-role users accessing
-                    # this endpoint are a configuration error.
-                    #
-                    # Diagnosis: if worker_roles exists but is empty → misconfigured worker
-                    #            if no tenant_permissions row at all → ghost user
+                    # True worker with no recognized operational lane.
+                    # This is a configuration error — reject with clear message.
                     if not roles_res.data:
                         detail = (
-                            f"Worker '{user_id}' has no tenant_permissions record. "
+                            f"Staff member '{user_id}' has no tenant_permissions record. "
                             "This user does not exist in the system. "
-                            "Create the user with proper worker_roles before assigning them to a property."
+                            "Create the user before assigning them to a property."
                         )
                     else:
                         detail = (
-                            f"Worker '{user_id}' has no operational lane (worker_roles is empty or unrecognized). "
-                            "A worker must have at least one of: cleaner, maintenance, checkin, checkout. "
-                            "Assign the correct worker_roles first, then create the property assignment."
+                            f"Staff member '{user_id}' (role='{sys_role}') has no operational lane "
+                            "(worker_roles is empty or unrecognized). "
+                            "Workers must have at least one of: cleaner, maintenance, checkin, checkout. "
+                            "Supervisory roles (manager, admin, owner) do not need worker_roles — "
+                            "if this person has a supervisory role, please save the profile Role first, "
+                            "then assign properties."
                         )
                     logger.warning(
-                        "post_staff_assignment: BLOCKED — user=%s has no valid lane for property=%s. "
-                        "worker_roles=%s system_role=%s. Assignment rejected.",
-                        user_id, property_id, worker_roles,
-                        (roles_res.data or [{}])[0].get("role", "unknown"),
+                        "post_staff_assignment: BLOCKED — user=%s role=%s has no valid lane for property=%s. "
+                        "worker_roles=%s",
+                        user_id, sys_role, property_id, worker_roles,
                     )
                     return make_error_response(
                         status_code=400,
@@ -1290,30 +1353,12 @@ async def create_staff_assignment(
                             "detail": detail,
                             "user_id": user_id,
                             "property_id": property_id,
+                            "sys_role": sys_role,
                             "worker_roles_found": worker_roles,
-                            "valid_roles": ["cleaner", "maintenance", "checkin", "checkout"],
+                            "valid_worker_roles": ["cleaner", "maintenance", "checkin", "checkout"],
+                            "valid_supervisory_roles": ["manager", "admin", "owner"],
                         },
                     )
-
-                # Compute next priority via DB function
-                try:
-                    fn_res = db.rpc(
-                        "get_next_lane_priority",
-                        {"p_tenant_id": tenant_id, "p_property_id": property_id, "p_lane": lane}
-                    ).execute()
-                    computed_priority = fn_res.data if isinstance(fn_res.data, int) else 1
-                except Exception as _fn_exc:
-                    logger.warning(
-                        "post_staff_assignment: get_next_lane_priority RPC failed for %s/%s lane=%s: %s. "
-                        "Falling back to manual MAX+1 query.",
-                        property_id, user_id, lane, _fn_exc,
-                    )
-                    computed_priority = 1  # absolute fallback — RPC is best-effort
-
-                logger.info(
-                    "post_staff_assignment: user=%s property=%s lane=%s → priority=%d (new=%s)",
-                    user_id, property_id, lane, computed_priority, is_new_assignment,
-                )
         except Exception as _priority_exc:
             # If the lane-resolution block itself failed (network/DB error), do NOT
             # silently fall back to priority=1. That would create a corrupt assignment.
@@ -1624,14 +1669,16 @@ async def get_property_lane_workers(
         user_ids = [r["user_id"] for r in rows]
         perm_res = (
             db.table("tenant_permissions")
-            .select("user_id, display_name, worker_roles, photo_url, is_active")
+            .select("user_id, display_name, role, worker_roles, photo_url, is_active")
             .eq("tenant_id", tenant_id)
             .in_("user_id", user_ids)
             .execute()
         )
         perm_map = {p["user_id"]: p for p in (perm_res.data or [])}
 
-        # Lane classification
+        _SUPERVISORY_ROLES = {"manager", "admin", "owner"}
+
+        # Lane classification (workers only)
         def _lane(roles: list) -> str:
             if not roles:
                 return "unassigned"
@@ -1645,29 +1692,47 @@ async def get_property_lane_workers(
             return "other"
 
         lanes: dict = {}
+        # Phase 1038: Supervisory users (manager/admin/owner) are returned separately.
+        # They do not participate in worker lanes and must not appear in the lane stack.
+        supervisors: list = []
+
         for spa_row in rows:
             uid = spa_row["user_id"]
             perm = perm_map.get(uid, {})
+            sys_role = perm.get("role", "worker")
             worker_roles = perm.get("worker_roles") or []
-            lane = _lane(worker_roles)
-            if lane not in lanes:
-                lanes[lane] = []
-            priority = spa_row.get("priority", 1)
-            lanes[lane].append({
-                "user_id":      uid,
-                "display_name": perm.get("display_name", uid),
-                "photo_url":    perm.get("photo_url"),
-                "worker_roles": worker_roles,
-                "priority":     priority,
-                "is_primary":   priority == 1,
-                "label":        "Primary" if priority == 1 else f"Backup {priority - 1}",
-                "is_active":    perm.get("is_active", True),
-                "assigned_at":  spa_row.get("assigned_at"),
-            })
+
+            if sys_role in _SUPERVISORY_ROLES:
+                # Supervisory-scope assignment — goes into supervisors[], not lanes
+                supervisors.append({
+                    "user_id":      uid,
+                    "display_name": perm.get("display_name", uid),
+                    "photo_url":    perm.get("photo_url"),
+                    "role":         sys_role,
+                    "is_active":    perm.get("is_active", True),
+                    "assigned_at":  spa_row.get("assigned_at"),
+                })
+            else:
+                lane = _lane(worker_roles)
+                if lane not in lanes:
+                    lanes[lane] = []
+                priority = spa_row.get("priority", 1)
+                lanes[lane].append({
+                    "user_id":      uid,
+                    "display_name": perm.get("display_name", uid),
+                    "photo_url":    perm.get("photo_url"),
+                    "worker_roles": worker_roles,
+                    "priority":     priority,
+                    "is_primary":   priority == 1,
+                    "label":        "Primary" if priority == 1 else f"Backup {priority - 1}",
+                    "is_active":    perm.get("is_active", True),
+                    "assigned_at":  spa_row.get("assigned_at"),
+                })
 
         return JSONResponse(status_code=200, content={
             "property_id": property_id,
-            "lanes": lanes,
+            "lanes":       lanes,
+            "supervisors": supervisors,   # Phase 1038: manager/admin/owner assigned to this property
         })
     except Exception as exc:
         logger.exception("GET /staff/property-lane/%s error: %s", property_id, exc)
