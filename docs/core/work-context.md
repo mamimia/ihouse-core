@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1040 — P0: System Closure, Regression, Docs Alignment. Phases 841–1039 closed.
+Phase 1041 — P1: OM Hub and Next-Layer Product Depth. Phases 841–1040 closed.
 
 ## Last Closed Phase
 
-Phase 1039 — OM Role & Assignment Inline Help.
+Phase 1040 — P0: System Closure, Regression, Docs Alignment.
 
 ## Current Objective
 
@@ -200,7 +200,8 @@ Phase 1037 — Staff Onboarding Access Hardening                               �
 Phase 1038 — Supervisory Role Assignment Hardening                           ← CLOSED
 Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips    ← CLOSED
 Phase 1039 — OM Role & Assignment Inline Help (Supervisory Model)            ← CLOSED
-Phase 1040 — P0: System Closure, Regression, Docs Alignment                   ← ACTIVE
+Phase 1040 — P0: System Closure, Regression, Docs Alignment                   ← CLOSED
+Phase 1041 — P1: OM Hub and Next-Layer Product Depth                          ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)

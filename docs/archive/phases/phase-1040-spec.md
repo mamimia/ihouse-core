@@ -33,7 +33,9 @@ The following 6 product truths are now surfaced in the Role & Assignment tab whe
 
 ## Regression Results
 
-All 4 tests PASS. Staging URL: `https://domaniqo-staging.vercel.app`. Captured 2026-04-02.
+4 tests run, 5 distinct items verified. All PASS. Staging URL: `https://domaniqo-staging.vercel.app`. Captured 2026-04-02.
+
+> **Note on count:** Test 1 covers two separate verification items (chips render + save succeeds), which is why the proof table lists 5 rows across 4 test scenarios.
 
 ### Test 1 — OM assignment save + supervisor chips ✅ PASS
 
@@ -81,7 +83,9 @@ No horizontal overflow. Table layout NOT used. 5 bookings total visible.
 | File | Change |
 |------|--------|
 | `docs/core/current-snapshot.md` | Phase 1039 closed entry added; current phase = 1040; tests line updated to "Phases 981–1039 closed" |
-| `docs/core/work-context.md` | Phase 1039 closed; Phase 1040 active — updated in same commit |
+| `docs/core/work-context.md` | Phase 1039 closed; Phase 1040 active — updated in commit `7703f39` |
+| `docs/core/current-snapshot.md` | Updated again in consistency fix commit: current phase = 1041, last closed = 1040 |
+| `docs/core/work-context.md` | Updated again in consistency fix commit: 1040 CLOSED, 1041 ACTIVE |
 | `docs/archive/phases/phase-1040-spec.md` | This file |
 
 ---
@@ -109,10 +113,10 @@ No additional doc file needed. The note is in current-snapshot where it will sur
 
 ## Closure Conditions
 
-- [x] docs aligned: current-snapshot Phase 1039 closed, Phase 1040 active
+- [x] docs aligned: current-snapshot Phase 1039 closed, Phase 1040 closed, Phase 1041 active
 - [x] OM product truth surfaced in UI — verified in regression (Test 1, 1039 delivery)
-- [x] OM assignment save works — Test 1 PASS
-- [x] Multiple OM chips render correctly — Test 1 PASS
+- [x] OM assignment save works — Test 1a PASS
+- [x] Multiple OM chips render correctly — Test 1b PASS
 - [x] Real backend errors surface in UI — Test 2 PASS (specific message, not generic)
 - [x] Mobile Bookings portrait usable — Test 3 PASS
 - [x] Orientation change does not reset Bookings to Tasks — Test 4 PASS
