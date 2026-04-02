@@ -46,6 +46,7 @@ class TokenType(str, Enum):
     ONBOARD = "onboard"
     STAFF_ONBOARD = "staff_onboard"
     SELF_CHECKIN = "self_checkin"
+    GUEST_CHECKOUT = "guest_checkout"  # Phase 1045 — guest-facing checkout confirmation portal
 
 
 # ---------------------------------------------------------------------------

@@ -519,6 +519,11 @@ app.include_router(self_checkin_router)
 from api.self_checkin_portal_router import router as self_checkin_portal_router  # noqa: E402  # Phase 1006
 app.include_router(self_checkin_portal_router)
 
+from api.guest_checkout_router import router_generate as guest_checkout_generate_router  # noqa: E402  # Phase 1045
+from api.guest_checkout_router import router_portal as guest_checkout_portal_router   # noqa: E402  # Phase 1045
+app.include_router(guest_checkout_generate_router)   # JWT-protected: POST /bookings/{id}/guest-checkout-token
+app.include_router(guest_checkout_portal_router)     # Public token-gated: GET/POST /guest-checkout/{token}/*
+
 from api.booking_admin_close_router import router as booking_admin_close_router  # noqa: E402  # Admin Close Stay
 app.include_router(booking_admin_close_router)
 
