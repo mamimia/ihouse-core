@@ -1,9 +1,9 @@
 # Phase 1039 — OM Role & Assignment Inline Help
 
-**Status:** Built & Deployed — UI proof pending
+**Status:** CLOSED
 **Prerequisite:** Phase 1038b (Mobile Stream Responsive Hardening + Multi-Supervisor Chips)
-**Date deployed:** 2026-04-02
-**Commit:** `cb51bf8`
+**Date closed:** 2026-04-02
+**Commit:** `cb51bf8` (UI code) · `cab19ea` (spec doc)
 **Branch:** `checkpoint/supabase-single-write-20260305-1747`
 
 ## Goal
@@ -38,12 +38,22 @@ UI only. No backend changes. No new endpoints. No schema changes.
 
 ## Closure Conditions
 
-- [ ] UI screenshot: OM info block visible on Role & Assignment tab for a manager user
-- [ ] UI screenshot: Supervisory context note visible above Assigned Properties list
-- [ ] Both visible on desktop
-- [ ] TypeScript: 0 errors ✅ (verified before deploy)
-- [ ] Deployed to staging: ✅ `https://domaniqo-staging.vercel.app` (commit `cb51bf8`, chore `ecc0de4`)
+- [x] UI screenshot: OM info block visible on Role & Assignment tab for a manager user — ✅ proven on staging (Nana G, Operational Manager)
+- [x] UI screenshot: Supervisory context note visible above Assigned Properties list — ✅ proven on staging (desktop view)
+- [x] Both visible on desktop — ✅ desktop screenshot captured
+- [x] Mobile view: OM info block visible and readable — ✅ mobile screenshot captured (single-column, no overflow)
+- [x] TypeScript: 0 errors — ✅ verified before deploy
+- [x] Deployed to staging: ✅ `https://domaniqo-staging.vercel.app`
+
+## Staging Proof
+
+Captured 2026-04-02. Staff member: Nana G (role: Operational Manager).
+
+**Desktop:** OM info block lower bullets ("🚫 Primary / Backup does not apply to OM", "👤 The name chips on each villa row...") + supervisory context note ("Supervisory assignment: Checking a villa grants...") + property rows with `👤 Nana G` and `👤 03304` chips on assigned villas; `No supervisor yet` on unassigned.
+
+**Mobile:** Role summary card shows "Operational Manager" + Edit. OM info block header "🏢 Operational Manager — Supervisory Scope Role" + first three bullets fully readable in single-column layout.
 
 ## Status
 
-**Not closed.** Built and deployed. UI proof pending — screenshots not yet captured.
+**CLOSED.** Built, deployed, staging proof captured (desktop + mobile).
+

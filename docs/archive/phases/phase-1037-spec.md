@@ -1,9 +1,24 @@
 # Phase 1037 — Hub Restructure + Booking Runway Correction
 
-**Status:** SPEC LOCKED — v2 (revised after second product review)
+**Status:** SPLIT — see annotation below before reading
 **Date locked:** 2026-04-01
 **Branch:** `checkpoint/supabase-single-write-20260305-1747`
 **Prerequisite:** Phase 1036
+
+> **⚠️ READER NOTE — This file contains two distinct things:**
+>
+> **Part A (Sections 1–10, lines 10–261): Hub Restructure + Booking Runway + Early Check-out reuse**
+> This is a **planning spec only**. It was written and locked as product design before implementation.
+> The closure conditions listed in Section 10 were **not implemented** in Phase 1037.
+> This work was deferred. It is not proven. Do not treat these sections as delivered.
+>
+> **Part B (Addendum, line 263 onward): Staff Onboarding Access Hardening**
+> This is **actually delivered work**. Four sub-commits (`0a8fc27` → `0300bdd` → `92eba9d` → `d006702`) were deployed.
+> This is the content that represents Phase 1037's real closure: manual create (`POST /admin/staff`),
+> SMTP bypass via `generate_link`, true hard delete (`auth.users` + `tenant_permissions` + `staff_assignments`),
+> bulletproof two-pass auth. TypeScript 0 errors. 8,144 tests passed.
+>
+> These two bodies of work share a phase slot. They should not be confused.
 
 ---
 
