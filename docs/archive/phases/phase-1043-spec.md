@@ -1,7 +1,7 @@
 # Phase 1043 — Morning Briefing Truth-Model Correction
 
 **Status:** CLOSED  
-**Prerequisite:** Phase 1042 (Morning Briefing Data Audit)  
+**Commit:** `97d3414`  
 **Date closed:** 2026-04-02  
 **Branch:** `checkpoint/supabase-single-write-20260305-1747`
 
@@ -105,15 +105,15 @@ Removed: `"DLQ alerts"` from the priority signal list.
 ## Closure Conditions
 
 - [x] `_fetch_tenant_tasks_summary` returns date-aware buckets (`overdue`, `due_today`, `due_soon`, `future`, `actionable_now`)
-- [x] Heuristic briefing correctly says "0 tasks need immediate attention" when actionable_now = 0
-- [x] Heuristic briefing correctly surfaces "N tasks scheduled ahead" as non-alarming background info
+- [x] Heuristic briefing correctly says `"No tasks overdue or due today. 2 task(s) coming up in the next 3 days."` — staging PROVEN
+- [x] Heuristic briefing correctly surfaces `"Total_open task(s) scheduled ahead."` as non-alarming background info when actionable_now = 0
 - [x] DLQ removed from OM briefing context in `_get_operations_context()`
 - [x] DLQ removed from LLM system prompt priority list
 - [x] DLQ conditional branches removed from `_build_heuristic_briefing()`
 - [x] DLQ action item removed from structured `action_items` list
-- [x] `_fetch_dlq_summary` still present in codebase (not deleted) for admin context endpoint
-- [x] TypeScript 0 errors (no frontend change)
-- [x] Python — no import errors, heuristic functions intact
-- [x] Staging deployed + verified — briefing wording reflects truth
+- [x] `_fetch_dlq_summary` still present in codebase (not deleted) for admin context endpoint `GET /ai/context/operations-day`
+- [x] 152 tests passed, 0 failed (affected test files updated to reflect new contract)
+- [x] Staging PROVEN — briefing reads: `"No tasks overdue or due today. 2 task(s) coming up in the next 3 days."` / `"Top action: Confirm daily operations are on track."` / No DLQ text visible
+- [x] Commit `97d3414` pushed to `checkpoint/supabase-single-write-20260305-1747`
 
 **Status: CLOSED — Morning Briefing truth model corrected for OM.**
