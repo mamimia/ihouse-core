@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1039 — OM Role & Assignment Inline Help (Supervisory Model Explanations)
+Phase 1040 — P0: System Closure, Regression, Docs Alignment
 
 ## Last Closed Phase
-Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips
+Phase 1039 — OM Role & Assignment Inline Help
 
 ## System Status
 
@@ -479,13 +479,15 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 **Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips (CLOSED):** (1) `activeTab` persisted to `sessionStorage` — survives orientation change/resize, no more Bookings→Tasks reset. (2) `BookingRow` isMobile prop: mobile portrait renders vertical card layout (3 rows); desktop unchanged. (3) Supervisor chip strip shows ALL supervisors for property — first 2 as chips, `+N` overflow, current user highlighted purple. `No supervisor yet` only when truly empty. Commit `eae8705`.
 
+**Phase 1039 — OM Role & Assignment Inline Help (CLOSED):** Two UI additions to `[userId]/page.tsx`: (1) OM info block — renders when `role === 'manager'`, explains supervisory scope model in 5 bullets (what OM is, multi-villa, multi-OM, no Primary/Backup, what chips mean). (2) Supervisory context note — renders for manager/admin, placed above Assigned Properties list. UI-only change. TypeScript 0 errors. Staging proof captured on Nana G (Operational Manager) — desktop + mobile. Commits `cb51bf8` (code) + `22c8815` (spec closed).
+
 ## Operational Troubleshooting Note
 
 > **Anti-Gravity workspace freeze root cause (2026-04-02):** `.git/config` contained `extensions.worktreeconfig=true` which caused Anti-Gravity to become silent/unresponsive inside this repo. Fixed by: `git config --local --unset extensions.worktreeconfig`. **Do not reintroduce this setting.** If Anti-Gravity becomes silent again inside this repo, check `.git/config` first.
 
 ## Tests
 
-**8,144 passed, 18 failed (pre-existing mock stubs — wave7 takeover + guest_owner_auth), 22 skipped. TypeScript 0 errors. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1038b closed. Active: Phase 1039.**
+**8,144 passed, 18 failed (pre-existing mock stubs — wave7 takeover + guest_owner_auth), 22 skipped. TypeScript 0 errors. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1039 closed. Active: Phase 1040.**
 
 > ⚠️ The 18 failures are pre-existing test mock mismatches in `test_wave7_manual_booking_takeover.py` (8), `test_guest_owner_auth.py` (1), `test_task_system_e2e.py` (1), `test_task_writer_contract.py` (1) — none introduced by Phase 1038/1038b. Tracked for repair in next test hardening pass.
 

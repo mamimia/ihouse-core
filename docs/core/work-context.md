@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1039 — OM Role & Assignment Inline Help. Phases 841–1038b closed.
+Phase 1040 — P0: System Closure, Regression, Docs Alignment. Phases 841–1039 closed.
 
 ## Last Closed Phase
 
-Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips.
+Phase 1039 — OM Role & Assignment Inline Help.
 
 ## Current Objective
 
@@ -199,7 +199,8 @@ Phase 1036 — OM-1: Stream Hardening (Canonical Ordering, Add Task, Scope)    �
 Phase 1037 — Staff Onboarding Access Hardening                               ← CLOSED
 Phase 1038 — Supervisory Role Assignment Hardening                           ← CLOSED
 Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips    ← CLOSED
-Phase 1039 — OM Role & Assignment Inline Help (Supervisory Model)            ← ACTIVE
+Phase 1039 — OM Role & Assignment Inline Help (Supervisory Model)            ← CLOSED
+Phase 1040 — P0: System Closure, Regression, Docs Alignment                   ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)
