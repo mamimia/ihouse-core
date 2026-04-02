@@ -22,12 +22,38 @@ type Task = {
   status: string;
   priority: string;
   property_id: string;
+  property_name?: string | null;   // Phase 1044: display_name resolved by backend
   assigned_to?: string | null;
   taken_over_by?: string | null;
   taken_over_reason?: string | null;
   due_date?: string | null;
   title?: string | null;
 };
+
+// ---------------------------------------------------------------------------
+// Phase 1044 — Human-operational task title
+// Replaces raw ICAL/booking-ID polluted title with: "Villa Name — Task Kind"
+// ---------------------------------------------------------------------------
+const OPERATIONAL_KIND_LABEL: Record<string, string> = {
+  CLEANING:              'Checkout Cleaning',
+  CHECKIN_PREP:          'Check-in Prep',
+  CHECKOUT_VERIFY:       'Checkout Verification',
+  GUEST_WELCOME:         'Guest Welcome',
+  MAINTENANCE:           'Maintenance',
+  SELF_CHECKIN_FOLLOWUP: 'Self Check-in Follow-up',
+  GENERAL:               'General Task',
+};
+
+function buildOperationalTaskTitle(task: Task): string {
+  const propertyLabel = task.property_name || task.property_id;
+  const isEarlyCheckout = (task as any).is_early_checkout === true;
+  const rawKind = task.task_kind?.toUpperCase?.() ?? task.task_kind;
+  const kindLabel =
+    rawKind === 'CLEANING' && isEarlyCheckout
+      ? 'Post-checkout Cleaning'
+      : (OPERATIONAL_KIND_LABEL[rawKind] ?? rawKind);
+  return `${propertyLabel} — ${kindLabel}`;
+}
 
 type Groups = {
   manager_executing: Task[];
@@ -166,7 +192,7 @@ function ReassignModal({ task, onClose, onDone }: { task: Task; onClose: () => v
           Reassign Task
         </h3>
         <p style={{ margin: '0 0 16px', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
-          {task.title || task.task_kind} · {task.property_id}
+          {buildOperationalTaskTitle(task)} · <span style={{ fontFamily: 'var(--font-mono)', opacity: 0.65 }}>{task.property_id}</span>
         </p>
         <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
           Worker ID (leave blank to return to open pool)
@@ -249,7 +275,7 @@ function TaskRow({
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-            {task.title || task.task_kind}
+            {buildOperationalTaskTitle(task)}
           </span>
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
@@ -259,7 +285,7 @@ function TaskRow({
           }}>{task.status.replace('_', ' ')}</span>
         </div>
         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', marginTop: 3, display: 'flex', gap: 12 }}>
-          <span>{task.property_id}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', opacity: 0.65 }}>{task.property_id}</span>
           <span>Due: {fmtDate(task.due_date)}</span>
           {task.assigned_to && <span>Worker: {task.assigned_to.slice(0, 8)}…</span>}
         </div>
