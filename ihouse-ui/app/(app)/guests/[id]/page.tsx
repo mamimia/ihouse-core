@@ -321,96 +321,127 @@ function PhotoGrid({ photos, title }: { photos: DossierPhoto[]; title: string })
 // ---------------------------------------------------------------------------
 
 function PortalBlock({
-    portal, guest, stay, onGenerate,
+    portal, guest, stay, onGeneratePortalFull,
 }: {
     portal: DossierPortal;
     guest: Guest;
     stay: DossierStay;
-    onGenerate?: () => Promise<void>;
+    /** Called on Generate — resolves with the fresh portal URL to open */
+    onGeneratePortalFull?: () => Promise<string>;
 }) {
     const [generating, setGenerating] = useState(false);
     const [genError, setGenError] = useState<string | null>(null);
+    // freshUrl: set after generation, shown as copyable link + mailto
+    const [freshUrl, setFreshUrl] = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
 
-    const channels = [
-        { key: 'email',    label: 'Email',    icon: '📧', available: !!guest.email },
-        { key: 'phone',    label: 'SMS',      icon: '📱', available: !!guest.phone },
-        { key: 'whatsapp', label: 'WhatsApp', icon: '💬', available: !!guest.whatsapp },
-        { key: 'line',     label: 'LINE',     icon: '🟢', available: !!guest.line_id },
-        { key: 'telegram', label: 'Telegram', icon: '✈️', available: !!guest.telegram },
-    ];
-    const hasAnyChannel = channels.some(c => c.available);
     const checkedIn = isCheckedIn(stay);
     const generated = portal.qr_generated;
 
+    // Effective URL — either just-generated or existing portal_url
+    const activeUrl = freshUrl || portal.portal_url || null;
+
     const handleGenerate = async () => {
-        if (!onGenerate || generating) return;
+        if (!onGeneratePortalFull || generating) return;
         setGenerating(true);
         setGenError(null);
         try {
-            await onGenerate();
+            const url = await onGeneratePortalFull();
+            setFreshUrl(url);
+            // Open the portal in a new tab immediately
+            window.open(url, '_blank', 'noopener,noreferrer');
         } catch (err: unknown) {
             const e = err as { message?: string };
-            setGenError(e?.message || 'Failed to generate portal link.');
+            setGenError(e?.message || 'Failed to generate portal link. Check API connectivity.');
         } finally {
             setGenerating(false);
         }
     };
 
+    const copyUrl = () => {
+        if (!activeUrl) return;
+        navigator.clipboard.writeText(activeUrl).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+
+    const mailtoHref = activeUrl
+        ? `mailto:${guest.email || ''}?subject=${encodeURIComponent('Your Stay Portal — ' + (stay.property_name || 'iHouse'))}&body=${encodeURIComponent('Here is your personal guest portal link:\n\n' + activeUrl + '\n\nThis link gives you access to your stay information, home guide, and departure instructions.')}`
+        : '#';
+
+    // Status display
+    const isReady = generated || !!freshUrl;
+    const statusLabel = freshUrl
+        ? '🔗 Portal Generated'
+        : generated ? '🔗 Portal Ready' : '⬜ Portal Not Yet Generated';
+    const statusColor = isReady ? '#3fb850' : 'var(--color-text-dim)';
+
     return (
         <div style={{
             ...cardStyle,
-            background: generated ? 'rgba(63,185,80,0.04)' : 'var(--color-surface)',
-            borderColor: generated ? 'rgba(63,185,80,0.2)' : 'var(--color-border)',
+            background: isReady ? 'rgba(63,185,80,0.04)' : 'var(--color-surface)',
+            borderColor: isReady ? 'rgba(63,185,80,0.2)' : 'var(--color-border)',
             padding: '16px 20px',
         }}>
             {/* Header row: status + primary action inline */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: generated ? 10 : 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>{generated ? '🔗' : '⬜'}</span>
-                    <div>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: generated ? '#3fb850' : 'var(--color-text-dim)' }}>
-                            {generated ? 'Portal Ready' : 'Portal Not Yet Generated'}
-                        </span>
-                        {portal.issued_at && (
-                            <span style={{ fontSize: 11, color: 'var(--color-muted)', marginLeft: 8 }}>
-                                issued {fmtDate(portal.issued_at, true)}
-                            </span>
-                        )}
-                        {portal.expires_at && (
-                            <span style={{ fontSize: 11, color: 'var(--color-muted)', marginLeft: 8 }}>
-                                · expires {fmtDate(portal.expires_at, true)}
-                            </span>
-                        )}
-                    </div>
-                </div>
-                {/* Primary action */}
-                {!generated && checkedIn && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: statusColor }}>
+                    {statusLabel}
+                </span>
+
+                {/* Not yet generated + checked in → Generate button */}
+                {!isReady && checkedIn && (
                     <button
                         style={{ ...btnPrimary, padding: '5px 14px', opacity: generating ? 0.6 : 1 }}
-                        disabled={generating}
+                        disabled={generating || !onGeneratePortalFull}
                         onClick={handleGenerate}
-                        title="Generate guest portal link and QR code"
+                        title="Generate guest portal link and open in new tab"
                     >
                         {generating ? '⏳ Generating…' : '🔗 Generate QR'}
                     </button>
                 )}
-                {!generated && !checkedIn && (
+
+                {/* Not generated + not checked in */}
+                {!isReady && !checkedIn && (
                     <span style={{ fontSize: 11, color: 'var(--color-muted)' }}>Awaiting check-in</span>
                 )}
-                {generated && portal.portal_url && (
+
+                {/* Already existed before this session — open portal */}
+                {isReady && !freshUrl && activeUrl && (
                     <a
-                        href={portal.portal_url} target="_blank" rel="noopener noreferrer"
-                        style={{ ...btnSecondary, textDecoration: 'none', padding: '5px 14px' }}
+                        href={activeUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ ...btnSecondary, textDecoration: 'none', padding: '5px 14px', fontSize: 12 }}
                     >
                         ↗ Open Portal
                     </a>
                 )}
+
+                {/* Regenerate if already ready */}
+                {isReady && checkedIn && (
+                    <button
+                        style={{ ...btnSecondary, padding: '5px 14px', opacity: generating ? 0.6 : 1 }}
+                        disabled={generating || !onGeneratePortalFull}
+                        onClick={handleGenerate}
+                        title="Regenerate and open a new portal link"
+                    >
+                        {generating ? '⏳…' : '🔄 Regenerate'}
+                    </button>
+                )}
             </div>
 
-            {/* Inline error */}
+            {/* Meta: issued/expires */}
+            {(portal.issued_at || portal.expires_at) && !freshUrl && (
+                <div style={{ fontSize: 11, color: 'var(--color-muted)', marginBottom: 8 }}>
+                    {portal.issued_at && <>issued {fmtDate(portal.issued_at, true)}</>}
+                    {portal.expires_at && <> · expires {fmtDate(portal.expires_at, true)}</>}
+                </div>
+            )}
+
+            {/* Error */}
             {genError && (
                 <div style={{
-                    marginTop: 8, padding: '6px 10px', borderRadius: 6,
+                    margin: '6px 0', padding: '6px 10px', borderRadius: 6,
                     background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
                     fontSize: 12, color: '#ef4444',
                 }}>
@@ -418,35 +449,50 @@ function PortalBlock({
                 </div>
             )}
 
-            {/* Send actions — only when generated */}
-            {generated && (
-                <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10, marginTop: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 10 }}>
-                        Send via
-                    </span>
-                    {channels.map(ch => (
-                        <button
-                            key={ch.key}
-                            style={{
-                                ...(ch.available ? btnSecondary : btnDisabled),
-                                padding: '3px 10px', fontSize: 11, marginRight: 6, marginBottom: 4,
-                            }}
-                            disabled={!ch.available}
-                            title={ch.available ? `Send portal link via ${ch.label}` : `${ch.label} not configured — add in Contact tab`}
-                        >
-                            {ch.icon} {ch.label}
-                        </button>
-                    ))}
-                    {!hasAnyChannel && (
-                        <span style={{ fontSize: 11, color: 'var(--color-danger)', marginLeft: 4 }}>
-                            ⚠ No channels — add contact details first
+            {/* Post-generation panel: URL + Copy + Mailto */}
+            {activeUrl && (
+                <div style={{
+                    marginTop: 8, padding: '10px 14px',
+                    background: 'var(--color-surface-2)', borderRadius: 8,
+                    border: '1px solid var(--color-border)',
+                }}>
+                    {/* Portal URL — copyable */}
+                    <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 6, wordBreak: 'break-all' }}>
+                        <span style={{ fontWeight: 600, marginRight: 6 }}>Link:</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>
+                            {activeUrl.length > 60 ? activeUrl.slice(0, 58) + '…' : activeUrl}
                         </span>
-                    )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {/* Open in new tab */}
+                        <a
+                            href={activeUrl} target="_blank" rel="noopener noreferrer"
+                            style={{ ...btnPrimary, textDecoration: 'none', padding: '4px 12px', fontSize: 11 }}
+                        >
+                            ↗ Open Portal
+                        </a>
+                        {/* Copy link */}
+                        <button
+                            onClick={copyUrl}
+                            style={{ ...btnSecondary, padding: '4px 12px', fontSize: 11 }}
+                        >
+                            {copied ? '✓ Copied!' : '📋 Copy Link'}
+                        </button>
+                        {/* Mailto */}
+                        <a
+                            href={mailtoHref}
+                            style={{ ...btnSecondary, textDecoration: 'none', padding: '4px 12px', fontSize: 11 }}
+                            title={guest.email ? `Send to ${guest.email}` : 'No email on file — opens default mail client'}
+                        >
+                            📧 Send Email
+                        </a>
+                    </div>
                 </div>
             )}
         </div>
     );
 }
+
 
 // ---------------------------------------------------------------------------
 // Check-in Record Block — compact with expandable operational detail
@@ -885,7 +931,7 @@ function StayCard({ stay, guest, expanded, onToggle, onGeneratePortal }: {
     guest: Guest;
     expanded: boolean;
     onToggle: () => void;
-    onGeneratePortal?: (bookingId: string) => Promise<void>;
+    onGeneratePortal?: (bookingId: string) => Promise<string>;
 }) {
     const nights = nightCount(stay.check_in, stay.check_out);
     const deposit = stay.settlement?.deposit;
@@ -942,7 +988,7 @@ function StayCard({ stay, guest, expanded, onToggle, onGeneratePortal }: {
                         portal={stay.portal}
                         guest={guest}
                         stay={stay}
-                        onGenerate={onGeneratePortal
+                        onGeneratePortalFull={onGeneratePortal
                             ? () => onGeneratePortal(stay.booking_id)
                             : undefined
                         }
@@ -1419,8 +1465,17 @@ export default function GuestDossierPage() {
                                     expanded={expandedStay === dossier.current_stay.booking_id}
                                     onToggle={() => setExpandedStay(s => s === dossier.current_stay!.booking_id ? null : dossier.current_stay!.booking_id)}
                                     onGeneratePortal={async (bookingId) => {
-                                        await apiFetch(`/admin/guest-token/${encodeURIComponent(bookingId)}`, { method: 'POST' });
-                                        await load();
+                                        // POST with required body; returns { token, expires_at, ... }
+                                        const PORTAL_BASE = window.location.origin + '/guest';
+                                        const res = await apiFetch<{ token: string }>(
+                                            `/admin/guest-token/${encodeURIComponent(bookingId)}`,
+                                            {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ guest_email: '', ttl_days: 30 }),
+                                            }
+                                        );
+                                        return `${PORTAL_BASE}/${res.token}`;
                                     }}
                                 />
                             )}
@@ -1432,8 +1487,16 @@ export default function GuestDossierPage() {
                                     expanded={expandedStay === s.booking_id}
                                     onToggle={() => setExpandedStay(p => p === s.booking_id ? null : s.booking_id)}
                                     onGeneratePortal={async (bookingId) => {
-                                        await apiFetch(`/admin/guest-token/${encodeURIComponent(bookingId)}`, { method: 'POST' });
-                                        await load();
+                                        const PORTAL_BASE = window.location.origin + '/guest';
+                                        const res = await apiFetch<{ token: string }>(
+                                            `/admin/guest-token/${encodeURIComponent(bookingId)}`,
+                                            {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ guest_email: '', ttl_days: 30 }),
+                                            }
+                                        );
+                                        return `${PORTAL_BASE}/${res.token}`;
                                     }}
                                 />
                             ))}
