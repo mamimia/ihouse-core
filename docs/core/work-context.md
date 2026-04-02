@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1037 — Staff Onboarding Access Hardening. Phases 841–1036 closed.
+Phase 1039 — OM Role & Assignment Inline Help. Phases 841–1038b closed.
 
 ## Last Closed Phase
 
-Phase 1036 — OM-1: Stream Hardening (Canonical Ordering, Add Task, Booking Scope).
+Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips.
 
 ## Current Objective
 
@@ -96,21 +96,39 @@ Commits: `305a083` → `e79adb2` → `cd8a04a` → `1480f03`. Branch: `checkpoin
 - Stream: canonical ordering (CHECKOUT→CLEAN→CHECKIN same property+day). `KindSequenceBadge`. Add Task in header. Conflict guardrail UI. Scope-aware booking empty state.
 - Build clean. Deployed `054c83a`.
 
-🔵 **Phase 1037 — Staff Onboarding Access Hardening — ACTIVE** (2026-04-01/02)
+✅ **Phase 1037 — Staff Onboarding Access Hardening — CLOSED** (2026-04-02)
 
-Resolves staff onboarding 500 and SMTP deliverability. Four sub-commits:
+Four sub-commits: 1037a=manual create with real auth UUID; 1037b=SMTP bypass via generate_link; 1037c=true hard delete from auth.users; 1037d=bulletproof two-pass auth (7 exist-signal variants, never raw 500). Orphaned `esweb3@gmail.com` cleaned. Commits: `0a8fc27` → `0300bdd` → `92eba9d` → `d006702`.
 
-1. **1037a**: `POST /admin/staff` — new manual create endpoint. Provisions Supabase Auth UUID first (via `generate_link(type=invite)`), then writes `tenant_permissions`. Prevents FK/identity divergence.
-2. **1037b**: SMTP bypass — `invite_user_by_email` → `generate_link`. No email sent. Admin gets raw URL in success overlay + ✉ Email (mailto) button.
-3. **1037c**: True hard delete — `DELETE /admin/staff/{user_id}` removes `tenant_permissions` + `staff_assignments` + `auth.users`. Previously auth record was orphaned, blocking re-invite of same email.
-4. **1037d**: Two-pass auth — Pass A=invite, Pass B=magiclink on any exist-signal (7 variants). Never returns raw 500. `422 USER_ALREADY_EXISTS` with clear human message as last resort. Orphaned `esweb3@gmail.com` cleaned from `auth.users`.
+✅ **Phase 1038 — Supervisory Role Assignment Hardening — CLOSED** (2026-04-02)
 
-**Key files changed:**
-- `src/api/staff_onboarding_router.py` — `manual_create_staff` + `hard_delete_staff`
-- `ihouse-ui/app/(app)/admin/staff/new/page.tsx` — success overlay, mailto, error handling
-- `ihouse-ui/app/(app)/admin/staff/[userId]/page.tsx` — handleDelete calls new DELETE endpoint
+- Root cause fixed: `POST /staff/assignments` was applying worker-lane validation to supervisory roles (manager/admin/owner) — now bypasses with `priority=100`.
+- `GET /staff/property-lane/{id}` returns `supervisors[]` alongside worker lanes.
+- Frontend: property rows branch on role. Supervisory → supervisor name chips (👤 Name). Worker rows unchanged (Primary/Backup).
+- Real backend errors surfaced in UI: `apiFetch` reads body before throw; `handleSave` catch uses `e.message`.
+- Orphaned `0330` tenant_permissions + staff_assignments rows cleaned.
+- Commit: `b4150cf`.
 
-Commits: `0a8fc27` → `0300bdd` → `92eba9d` → `d006702`. Branch: `checkpoint/supabase-single-write-20260305-1747`.
+✅ **Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips — CLOSED** (2026-04-02)
+
+- `activeTab` persisted to `sessionStorage` — survives orientation change, no more Bookings→Tasks reset.
+- `BookingRow` isMobile prop: mobile portrait renders vertical 3-row card layout; desktop unchanged.
+- Supervisor chip strip: shows ALL supervisors for property. First 2 as chips, `+N` overflow. Current user's chip = purple. Others = amber. `No supervisor yet` only when truly empty.
+- Commit: `eae8705`. Build clean. Deployed to Vercel staging.
+
+🔵 **Phase 1039 — OM Role & Assignment Inline Help — ACTIVE** (2026-04-02)
+
+Add human-readable inline explanatory text and help UI on the Role & Assignment screen for supervisory roles, especially Operational Manager.
+
+Operator must be able to understand directly from the UI:
+- Operational Manager is a supervisory scope role (not a worker lane)
+- One OM can supervise multiple villas
+- Multiple OMs can be assigned to the same villa
+- Primary/Backup does not apply to OM
+- The names shown on property rows are the OMs already assigned to that villa
+- Assigning an OM gives managerial scope, not worker-lane task ownership
+
+**Scope:** UI only. No backend changes required. Inline help block, info tooltip, or styled info card on the Role & Assignment tab of the staff detail page (`[userId]/page.tsx`). Must be visible when `role === 'manager'` and when supervisory property rows are rendered.
 
 
 - System reset to zero-state (Phase 830)
@@ -178,7 +196,10 @@ Phase 1033 — Canonical Task Timing Hardening (+ OM Surface, Act As)         �
 Phase 1034 — OM-1: Manager Task Intervention Model                          ← CLOSED
 Phase 1035 — OM-1: Operational Manager Stream Redesign                       ← CLOSED (backend proven)
 Phase 1036 — OM-1: Stream Hardening (Canonical Ordering, Add Task, Scope)    ← CLOSED
-Phase 1037 — Staff Onboarding Access Hardening                                 ← ACTIVE
+Phase 1037 — Staff Onboarding Access Hardening                               ← CLOSED
+Phase 1038 — Supervisory Role Assignment Hardening                           ← CLOSED
+Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips    ← CLOSED
+Phase 1039 — OM Role & Assignment Inline Help (Supervisory Model)            ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)

@@ -1228,6 +1228,32 @@ export default function EditStaffPage() {
               </div>
             )}
 
+            {/* ── Phase 1039: Supervisory Role Info Block (OM) ──────────────────
+                 Shown when role = manager. Explains the scope model directly
+                 in the UI so the operator doesn't need to check docs. */}
+            {role === 'manager' && (
+              <div style={{
+                background: 'rgba(99,102,241,0.05)',
+                border: '1px solid rgba(99,102,241,0.18)',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 16px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 16 }}>🏢</span>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-primary)' }}>
+                    Operational Manager — Supervisory Scope Role
+                  </span>
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', lineHeight: 1.75, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div>📋 <strong style={{ color: 'var(--color-text)' }}>What this role does:</strong> An Operational Manager oversees property operations at a managerial level — monitoring tasks, taking over stuck tasks, reassigning, and adding intervention notes. This is a supervisory scope role, not a worker lane.</div>
+                  <div>🏠 <strong style={{ color: 'var(--color-text)' }}>One OM can supervise multiple villas.</strong> Assign this person to as many properties as needed — each assignment grants them managerial oversight of that villa.</div>
+                  <div>👥 <strong style={{ color: 'var(--color-text)' }}>Multiple OMs can be assigned to the same villa.</strong> There is no single-OM limit per property. All assigned OMs have the same scope.</div>
+                  <div>🚫 <strong style={{ color: 'var(--color-text)' }}>Primary / Backup does not apply to OM.</strong> That model is for worker lanes (cleaning, maintenance, check-in/out) only. OMs are not in a worker lane and are never ranked as Primary or Backup.</div>
+                  <div>👤 <strong style={{ color: 'var(--color-text)' }}>The name chips on each villa row</strong> show the Operational Managers already assigned to supervise that property. Checking the box below assigns this person as an additional supervisor.</div>
+                </div>
+              </div>
+            )}
+
             {/* Phase 1021-C: Linked Owner Profile — read-only summary (editable on Owners side) */}
             {role === 'owner' && (
               <div>
@@ -1346,6 +1372,19 @@ export default function EditStaffPage() {
                 >?
                 </button>
               </div>
+
+              {/* Phase 1039: Context note for supervisory property rows */}
+              {(role === 'manager' || role === 'admin') && (
+                <div style={{
+                  fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)',
+                  padding: '8px 12px', marginBottom: 4,
+                  background: 'rgba(99,102,241,0.04)',
+                  border: '1px solid rgba(99,102,241,0.1)',
+                  borderRadius: 'var(--radius-sm)', lineHeight: 1.6,
+                }}>
+                  <strong style={{ color: 'var(--color-text)' }}>Supervisory assignment:</strong> Checking a villa grants this person managerial scope over that property. The chips on each row show other supervisors already assigned. Multiple supervisors per villa is normal and expected.
+                </div>
+              )}
 
               {/* ── Primary/Backup Help Panel ── */}
               {showPBHelp && (

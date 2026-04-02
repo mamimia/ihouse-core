@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1037 — Staff Onboarding Access Hardening (Manual Create, Hard Delete, SMTP Bypass)
+Phase 1039 — OM Role & Assignment Inline Help (Supervisory Model Explanations)
 
 ## Last Closed Phase
-Phase 1036 — OM-1: Stream Hardening (Canonical Ordering, Add Task, Booking Scope)
+Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips
 
 ## System Status
 
@@ -469,17 +469,25 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 
 **Phase 1036 — OM-1: Stream Hardening (CLOSED):** `POST /tasks/adhoc` — generic ad-hoc task creation (CLEANING/MAINTENANCE/GENERAL), CHECKIN_PREP/CHECKOUT_VERIFY blocked, duplicate guardrail (409 + `?force=true` override), lane-aware auto-assign, audit log. Stream: canonical ordering (CHECKOUT→CLEAN→CHECKIN within same property+day), `KindSequenceBadge`, Add Task button in header wired to `/tasks/adhoc`, conflict guardrail UI, scope-aware booking empty state. Build clean. Deployed `054c83a`.
 
-**Phase 1037 — Staff Onboarding Access Hardening (ACTIVE):** Resolves the staff onboarding 500 error and email deliverability chain. Four sub-commits on branch `checkpoint/supabase-single-write-20260305-1747`:
+**Phase 1037 — Staff Onboarding Access Hardening (CLOSED):** Resolves the staff onboarding 500 error and email deliverability chain. Four sub-commits on branch `checkpoint/supabase-single-write-20260305-1747`:
 - **1037a** `POST /admin/staff`: New manual create endpoint provisions a real Supabase Auth UUID via `generate_link(type=invite)` before writing `tenant_permissions`. Identity invariant: `comm_preference.email == auth_email` always maintained.
 - **1037b** SMTP bypass: switched from `invite_user_by_email` (sends spam-prone Supabase email) to `generate_link` (returns raw URL, no email sent). Admin sees copyable link + ✉ Email button in success overlay.
 - **1037c** True hard delete: `DELETE /admin/staff/{user_id}` atomically removes from `tenant_permissions`, `staff_assignments`, AND `auth.users` (via `admin.delete_user()`). Previously only `tenant_permissions` was removed, leaving orphaned auth records that blocked re-invite.
 - **1037d** Bulletproof two-pass auth: Pass A = `generate_link(type=invite)` for new users; Pass B = `generate_link(type=magiclink)` for any existing-user signal (7 error variants including 422, 'in use', 'duplicate'). Last resort: `422 USER_ALREADY_EXISTS` with clear human message — never a raw 500. Orphaned `esweb3@gmail.com` auth record cleaned from `auth.users` directly.
 
+**Phase 1038 — Supervisory Role Assignment Hardening (CLOSED):** Fixes root cause of OM assignment failure. `POST /staff/assignments` was applying worker-lane validation to supervisory roles — now bypasses for manager/admin/owner with `priority=100`. `GET /staff/property-lane/{id}` returns `supervisors[]` alongside worker lanes. Frontend property rows branch on role: supervisory → supervisor name chips (👤 Name); workers → Primary/Backup badges unchanged. Real backend errors surfaced in UI (`apiFetch` reads body before throw; `handleSave` catch uses `e.message`). Orphaned `0330` rows cleaned. Commit `b4150cf`.
+
+**Phase 1038b — Mobile Stream Responsive Hardening + Multi-Supervisor Chips (CLOSED):** (1) `activeTab` persisted to `sessionStorage` — survives orientation change/resize, no more Bookings→Tasks reset. (2) `BookingRow` isMobile prop: mobile portrait renders vertical card layout (3 rows); desktop unchanged. (3) Supervisor chip strip shows ALL supervisors for property — first 2 as chips, `+N` overflow, current user highlighted purple. `No supervisor yet` only when truly empty. Commit `eae8705`.
+
+## Operational Troubleshooting Note
+
+> **Anti-Gravity workspace freeze root cause (2026-04-02):** `.git/config` contained `extensions.worktreeconfig=true` which caused Anti-Gravity to become silent/unresponsive inside this repo. Fixed by: `git config --local --unset extensions.worktreeconfig`. **Do not reintroduce this setting.** If Anti-Gravity becomes silent again inside this repo, check `.git/config` first.
+
 ## Tests
 
-**8,144 passed, 18 failed (pre-existing mock stubs — wave7 takeover + guest_owner_auth), 22 skipped. TypeScript 0 errors. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1037 closed. Active: Phase 1037.**
+**8,144 passed, 18 failed (pre-existing mock stubs — wave7 takeover + guest_owner_auth), 22 skipped. TypeScript 0 errors. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1038b closed. Active: Phase 1039.**
 
-> ⚠️ The 18 failures are pre-existing test mock mismatches in `test_wave7_manual_booking_takeover.py` (8), `test_guest_owner_auth.py` (1), `test_task_system_e2e.py` (1), `test_task_writer_contract.py` (1) — none introduced by Phase 1037. Not related to staff onboarding. Tracked for repair in next test hardening pass.
+> ⚠️ The 18 failures are pre-existing test mock mismatches in `test_wave7_manual_booking_takeover.py` (8), `test_guest_owner_auth.py` (1), `test_task_system_e2e.py` (1), `test_task_writer_contract.py` (1) — none introduced by Phase 1038/1038b. Tracked for repair in next test hardening pass.
 
 ## Environment Variables (continued)
 
