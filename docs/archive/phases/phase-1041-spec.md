@@ -3,6 +3,7 @@
 **Status:** CLOSED
 **Prerequisite:** Phase 1040
 **Date closed:** 2026-04-02
+**Commits:** `430abf7` (implementation) — deployed to `domaniqo-staging.vercel.app`
 **Branch:** `checkpoint/supabase-single-write-20260305-1747`
 
 ---
@@ -80,13 +81,13 @@ This phase does NOT redesign the Hub layout, does NOT add new backend endpoints,
 
 ## Closure Conditions
 
-- [x] Morning Briefing auto-loads on Hub mount — no manual click required
-- [x] AlertRail renders between OpsStrip and PriorityTaskSnapshot
+- [x] Morning Briefing auto-loads on Hub mount — no manual click required (**verified staging:** briefing content + action items visible immediately; button reads "Refresh Briefing")
+- [x] AlertRail renders between OpsStrip and PriorityTaskSnapshot (**verified staging:** "✓ No active alerts" banner visible between ops chips and task list)
 - [x] Alerts fetched once, shared — no double fetch
 - [x] Hub Refresh does not trigger `window.location.reload()`
-- [x] Footer updated to Phase 1041
+- [x] Footer updated to Phase 1041 (**verified staging:** "Domaniqo — Command Hub · Phase 1041" in footer)
 - [x] Alert overflow text cleaned (no planning-note leakage)
 - [x] TypeScript 0 errors
-- [x] Staging deployed + verified
+- [x] Staging deployed + verified — screenshots captured 2026-04-02
 
 **Status: CLOSED.**
