@@ -238,33 +238,68 @@ class TestFetchAvailabilitySummary:
 
 class TestFetchTenantTasksSummary:
     def test_groups_by_priority_and_kind(self):
+        today = date.today().isoformat()
         rows = [
-            {"task_id": "t1", "kind": "CLEANING", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat()},
-            {"task_id": "t2", "kind": "CLEANING", "status": "IN_PROGRESS", "priority": "NORMAL", "created_at": datetime.now(tz=timezone.utc).isoformat()},
-            {"task_id": "t3", "kind": "MAINTENANCE", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat()},
+            {"task_id": "t1", "kind": "CLEANING", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat(), "due_date": today},
+            {"task_id": "t2", "kind": "CLEANING", "status": "IN_PROGRESS", "priority": "NORMAL", "created_at": datetime.now(tz=timezone.utc).isoformat(), "due_date": today},
+            {"task_id": "t3", "kind": "MAINTENANCE", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat(), "due_date": today},
         ]
         db = _mock_db({"tasks": rows})
         result = _fetch_tenant_tasks_summary(db, TENANT)
         assert result["total_open"] == 3
-        assert result["by_priority"]["HIGH"] == 2
+        # Phase 1043: by_priority_actionable counts only overdue + due_today tasks
+        assert result["by_priority_actionable"]["HIGH"] == 2
         assert result["by_kind"]["CLEANING"] == 2
         assert result["by_kind"]["MAINTENANCE"] == 1
+
+    def test_date_aware_buckets_split_correctly(self):
+        today = date.today().isoformat()
+        future = (date.today() + timedelta(days=30)).isoformat()
+        overdue = (date.today() - timedelta(days=1)).isoformat()
+        rows = [
+            {"task_id": "t1", "kind": "CLEANING", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat(), "due_date": overdue},
+            {"task_id": "t2", "kind": "CLEANING", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat(), "due_date": today},
+            {"task_id": "t3", "kind": "CLEANING", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat(), "due_date": future},
+        ]
+        db = _mock_db({"tasks": rows})
+        result = _fetch_tenant_tasks_summary(db, TENANT)
+        assert result["total_open"] == 3
+        assert result["overdue"] == 1
+        assert result["due_today"] == 1
+        assert result["future"] == 1
+        assert result["actionable_now"] == 2
+        assert result["by_priority_actionable"].get("HIGH", 0) == 2  # future HIGH excluded
+
+    def test_all_future_tasks_yield_zero_actionable(self):
+        future = (date.today() + timedelta(days=30)).isoformat()
+        rows = [
+            {"task_id": "t1", "kind": "CHECKIN_PREP", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat(), "due_date": future},
+            {"task_id": "t2", "kind": "CHECKIN_PREP", "status": "PENDING", "priority": "HIGH", "created_at": datetime.now(tz=timezone.utc).isoformat(), "due_date": future},
+        ]
+        db = _mock_db({"tasks": rows})
+        result = _fetch_tenant_tasks_summary(db, TENANT)
+        assert result["total_open"] == 2
+        assert result["actionable_now"] == 0
+        assert result["future"] == 2
+        assert result["by_priority_actionable"] == {}
 
     def test_critcal_past_ack_sla_counts_pending_over_5min(self):
         old_time = (datetime.now(tz=timezone.utc) - timedelta(minutes=10)).isoformat()
         fresh_time = (datetime.now(tz=timezone.utc) - timedelta(seconds=30)).isoformat()
+        today = date.today().isoformat()
         rows = [
-            {"task_id": "t1", "kind": "GENERAL", "status": "PENDING", "priority": "CRITICAL", "created_at": old_time},
-            {"task_id": "t2", "kind": "GENERAL", "status": "PENDING", "priority": "CRITICAL", "created_at": fresh_time},
+            {"task_id": "t1", "kind": "GENERAL", "status": "PENDING", "priority": "CRITICAL", "created_at": old_time, "due_date": today},
+            {"task_id": "t2", "kind": "GENERAL", "status": "PENDING", "priority": "CRITICAL", "created_at": fresh_time, "due_date": today},
         ]
         db = _mock_db({"tasks": rows})
         result = _fetch_tenant_tasks_summary(db, TENANT)
-        assert result["critical_past_ack_sla"] == 1  # Only the old one
+        assert result["critical_past_ack_sla"] == 1  # only the old one
 
     def test_returns_zeros_on_empty(self):
         db = _mock_db({"tasks": []})
         result = _fetch_tenant_tasks_summary(db, TENANT)
         assert result["total_open"] == 0
+        assert result["actionable_now"] == 0
         assert result["critical_past_ack_sla"] == 0
 
 

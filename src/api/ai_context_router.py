@@ -266,29 +266,68 @@ def _fetch_availability_summary(
 # ---------------------------------------------------------------------------
 
 def _fetch_tenant_tasks_summary(db: Any, tenant_id: str) -> Dict[str, Any]:
-    """Count open tasks by priority and kind across all properties."""
+    """Count open tasks by priority and kind across all properties.
+
+    Phase 1043: date-aware bucketing.
+    Returns overdue / due_today / due_soon / future / actionable_now counts.
+    priority breakdown is over actionable_now tasks only (not future scheduled work).
+    """
     try:
         result = (
             db.table("tasks")
-            .select("task_id, kind, status, priority, created_at")
+            .select("task_id, kind, status, priority, created_at, due_date")
             .eq("tenant_id", tenant_id)
             .in_("status", ["PENDING", "ACKNOWLEDGED", "IN_PROGRESS"])
             .execute()
         )
         rows = result.data or []
 
-        by_priority: Dict[str, int] = {}
+        from datetime import date as _date, timedelta as _timedelta
+        today = _date.today()
+        soon_cutoff = today + _timedelta(days=3)  # "due soon" = within 3 days
+
+        overdue = 0
+        due_today = 0
+        due_soon = 0
+        future = 0
         by_kind: Dict[str, int] = {}
+        by_priority_actionable: Dict[str, int] = {}  # only overdue + due_today
         critical_unacked = 0
         now = datetime.now(tz=timezone.utc)
 
         for r in rows:
             p = str(r.get("priority") or "NORMAL")
             k = str(r.get("kind") or "GENERAL")
-            by_priority[p] = by_priority.get(p, 0) + 1
             by_kind[k] = by_kind.get(k, 0) + 1
 
-            # Critical unacked within last 5 minutes = still within SLA
+            # Date bucket
+            raw_due = r.get("due_date")
+            is_actionable = False
+            if raw_due:
+                try:
+                    due = _date.fromisoformat(str(raw_due))
+                    if due < today:
+                        overdue += 1
+                        is_actionable = True
+                    elif due == today:
+                        due_today += 1
+                        is_actionable = True
+                    elif due <= soon_cutoff:
+                        due_soon += 1
+                    else:
+                        future += 1
+                except Exception:
+                    future += 1  # unparseable due_date → treat as future
+            else:
+                # No due_date: treat as actionable-now (unknown schedule = must surface)
+                due_today += 1
+                is_actionable = True
+
+            # Priority breakdown: actionable tasks only
+            if is_actionable:
+                by_priority_actionable[p] = by_priority_actionable.get(p, 0) + 1
+
+            # Critical unacked > 5-minute SLA
             if p == "CRITICAL" and str(r.get("status")) == "PENDING":
                 try:
                     created = datetime.fromisoformat(
@@ -300,15 +339,27 @@ def _fetch_tenant_tasks_summary(db: Any, tenant_id: str) -> Dict[str, Any]:
                 except Exception:
                     pass
 
+        actionable_now = overdue + due_today
+
         return {
             "total_open": len(rows),
-            "by_priority": by_priority,
+            "actionable_now": actionable_now,   # overdue + due_today — these need attention
+            "overdue": overdue,
+            "due_today": due_today,
+            "due_soon": due_soon,               # within 3 days — heads-up, not alarm
+            "future": future,                   # scheduled ahead — background only
+            "by_priority_actionable": by_priority_actionable,  # priority of actionable tasks only
             "by_kind": by_kind,
             "critical_past_ack_sla": critical_unacked,
         }
     except Exception as exc:  # noqa: BLE001
         logger.warning("ai_context.tenant_tasks: %s", exc)
-        return {"total_open": 0, "by_priority": {}, "by_kind": {}, "critical_past_ack_sla": 0}
+        return {
+            "total_open": 0, "actionable_now": 0,
+            "overdue": 0, "due_today": 0, "due_soon": 0, "future": 0,
+            "by_priority_actionable": {}, "by_kind": {},
+            "critical_past_ack_sla": 0,
+        }
 
 
 def _fetch_tenant_operations(db: Any, tenant_id: str) -> Dict[str, Any]:

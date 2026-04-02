@@ -7,7 +7,7 @@ Tests both copilot endpoints:
 Group A: Manager Morning Briefing — Heuristic Path
   ✓  Heuristic briefing with normal ops → structured output
   ✓  Critical SLA breach → action items with ACKNOWLEDGE_TASKS
-  ✓  DLQ alert → action items with REVIEW_DLQ
+  ✓  DLQ signal NOT surfaced (Phase 1043 — DLQ removed from OM briefing)
   ✓  High arrival day → briefing mentions arrivals
   ✓  Combined alerts → multiple action items
 
@@ -60,14 +60,17 @@ def _ops_context(**overrides):
         },
         "tasks": {
             "total_open": 4,
-            "by_priority": {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 1},
+            "actionable_now": 0,
+            "overdue": 0,
+            "due_today": 0,
+            "due_soon": 1,
+            "future": 3,
+            "by_priority_actionable": {},
             "critical_past_ack_sla": 0,
         },
-        "dlq": {"unprocessed_count": 0, "alert": False},
         "outbound_sync": {"failure_rate_24h": 0.0},
         "ai_hints": {
             "critical_tasks_over_sla": 0,
-            "dlq_alert": False,
             "sync_degraded": False,
             "high_arrival_day": False,
             "high_departure_day": False,
@@ -103,14 +106,15 @@ class TestManagerBriefingHeuristic:
         assert any(i["action"] == "ACKNOWLEDGE_TASKS" for i in items)
         assert items[0]["priority"] == "CRITICAL"
 
-    def test_dlq_alert_produces_review_action(self):
-        ctx = _ops_context(
-            ai_hints={"dlq_alert": True},
-            dlq={"unprocessed_count": 7, "alert": True},
-        )
+    def test_dlq_signal_not_surfaced_in_om_briefing(self):
+        """Phase 1043: DLQ removed from OM briefing path. Even if context has dlq key, it must not appear in output."""
+        ctx = _ops_context()
+        ctx["dlq"] = {"unprocessed_count": 7, "alert": True}  # artificially injected
         text, items = _build_heuristic_briefing(ctx)
-        assert "DLQ" in text
-        assert any(i["action"] == "REVIEW_DLQ" for i in items)
+        # DLQ must NOT appear in OM briefing text or action items
+        assert "DLQ" not in text
+        assert "Dead Letter" not in text
+        assert not any(i["action"] == "REVIEW_DLQ" for i in items)
 
     def test_high_arrival_day_mentions_check_ins(self):
         ctx = _ops_context(
@@ -122,16 +126,16 @@ class TestManagerBriefingHeuristic:
         assert any(i.get("action") == "CONFIRM_CHECKINS" for i in items)
 
     def test_combined_alerts(self):
+        """Phase 1043: combined critical SLA + sync degraded. DLQ removed from action items."""
         ctx = _ops_context(
-            ai_hints={"critical_tasks_over_sla": 1, "dlq_alert": True, "sync_degraded": True},
-            dlq={"unprocessed_count": 3, "alert": True},
+            ai_hints={"critical_tasks_over_sla": 1, "sync_degraded": True},
             outbound_sync={"failure_rate_24h": 0.3},
         )
         _, items = _build_heuristic_briefing(ctx)
         action_types = {i["action"] for i in items}
         assert "ACKNOWLEDGE_TASKS" in action_types
-        assert "REVIEW_DLQ" in action_types
         assert "CHECK_SYNC" in action_types
+        assert "REVIEW_DLQ" not in action_types  # DLQ removed from OM briefing
 
 
 # ---------------------------------------------------------------------------

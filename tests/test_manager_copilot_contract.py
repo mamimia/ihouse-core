@@ -13,7 +13,7 @@ Tests cover:
     _build_heuristic_briefing:
         - empty context produces valid output
         - critical SLA breach appears in briefing + action_items
-        - DLQ alert appears in briefing + action_items
+        - DLQ signal NOT surfaced in OM briefing (Phase 1043)
         - sync degraded appears in briefing + action_items
         - high arrival day appears in briefing
         - top_action prioritizes critical SLA over others
@@ -25,7 +25,7 @@ Tests cover:
         - language defaults to 'en'
         - unsupported language falls back to 'en'
         - action_items is a list
-        - context_signals contains expected keys
+        - context_signals contains expected keys (no dlq key — Phase 1043)
 """
 from __future__ import annotations
 
@@ -48,12 +48,16 @@ from api.manager_copilot_router import _build_heuristic_briefing
 TENANT = "tenant-test"
 
 def _empty_context() -> dict:
+    """Phase 1043: DLQ removed from OM briefing context."""
     return {
         "operations": {"date": "2026-03-11", "arrivals_count": 0, "departures_count": 0, "cleanings_due": 0, "active_bookings": 0},
-        "tasks": {"total_open": 0, "by_priority": {}, "by_kind": {}, "critical_past_ack_sla": 0},
-        "dlq": {"unprocessed_count": 0, "alert": False},
+        "tasks": {
+            "total_open": 0, "actionable_now": 0,
+            "overdue": 0, "due_today": 0, "due_soon": 0, "future": 0,
+            "by_priority_actionable": {}, "by_kind": {}, "critical_past_ack_sla": 0,
+        },
         "outbound_sync": {"event_count_24h": 0, "failure_rate_24h": None},
-        "ai_hints": {"critical_tasks_over_sla": 0, "dlq_alert": False, "sync_degraded": False, "high_arrival_day": False, "high_departure_day": False},
+        "ai_hints": {"critical_tasks_over_sla": 0, "sync_degraded": False, "high_arrival_day": False, "high_departure_day": False},
     }
 
 def _context_with(**overrides) -> dict:
@@ -64,8 +68,6 @@ def _context_with(**overrides) -> dict:
     ops.update({k: v for k, v in overrides.items() if k in ops})
     tasks = ctx["tasks"]
     tasks.update({k: v for k, v in overrides.items() if k in tasks})
-    dlq = ctx["dlq"]
-    dlq.update({k: v for k, v in overrides.items() if k in dlq})
     sync = ctx["outbound_sync"]
     sync.update({k: v for k, v in overrides.items() if k in sync})
     return ctx
@@ -158,10 +160,9 @@ class TestBuildHeuristicBriefing:
         assert "ACKNOWLEDGE_TASKS" in action_types
 
     def test_critical_sla_top_action_priority(self):
-        ctx = _context_with(critical_tasks_over_sla=1, dlq_alert=True, sync_degraded=True)
+        ctx = _context_with(critical_tasks_over_sla=1, sync_degraded=True)
         ctx["ai_hints"]["critical_tasks_over_sla"] = 1
         ctx["tasks"]["critical_past_ack_sla"] = 1
-        ctx["ai_hints"]["dlq_alert"] = True
         ctx["ai_hints"]["sync_degraded"] = True
         text, items = _build_heuristic_briefing(ctx)
         # critical takes priority in Top Action
@@ -169,15 +170,14 @@ class TestBuildHeuristicBriefing:
         action_priorities = [a["priority"] for a in items]
         assert "CRITICAL" in action_priorities
 
-    def test_dlq_alert_in_text_and_actions(self):
-        ctx = _context_with(dlq_alert=True)
-        ctx["ai_hints"]["dlq_alert"] = True
-        ctx["dlq"]["alert"] = True
-        ctx["dlq"]["unprocessed_count"] = 7
+    def test_dlq_not_surfaced_in_om_briefing(self):
+        """Phase 1043: DLQ must never appear in OM Morning Briefing text or action items."""
+        ctx = _empty_context()
         text, items = _build_heuristic_briefing(ctx)
-        assert "DLQ" in text or "Dead Letter" in text
-        action_types = [a["action"] for a in items]
-        assert "REVIEW_DLQ" in action_types
+        assert "DLQ" not in text
+        assert "Dead Letter" not in text
+        assert "replay" not in text.lower()
+        assert not any(i["action"] == "REVIEW_DLQ" for i in items)
 
     def test_sync_degraded_in_text_and_actions(self):
         ctx = _context_with(sync_degraded=True)
@@ -200,12 +200,17 @@ class TestBuildHeuristicBriefing:
         text, items = _build_heuristic_briefing(ctx)
         assert "No open tasks" in text
 
-    def test_open_tasks_with_high_priority_mentioned(self):
+    def test_scheduled_future_tasks_not_framed_as_problems(self):
+        """Phase 1043: future-only tasks must say scheduled ahead, not alarm."""
         ctx = _empty_context()
         ctx["tasks"]["total_open"] = 3
-        ctx["tasks"]["by_priority"] = {"HIGH": 2, "NORMAL": 1}
+        ctx["tasks"]["future"] = 3
+        ctx["tasks"]["actionable_now"] = 0
         text, items = _build_heuristic_briefing(ctx)
         assert "3" in text
+        assert "scheduled" in text.lower() or "attention" in text.lower()
+        # Must NOT say 13 high/critical or similar alarmist language
+        assert "CRITICAL" not in text or "SLA" in text  # only CRITICAL if SLA breach
 
 
 # ---------------------------------------------------------------------------
@@ -326,9 +331,9 @@ class TestMorningBriefingEndpoint:
         signals = resp.json()["context_signals"]
         assert "operations" in signals
         assert "tasks" in signals
-        assert "dlq" in signals
         assert "outbound_sync" in signals
         assert "ai_hints" in signals
+        assert "dlq" not in signals  # Phase 1043: DLQ removed from OM context
 
     def test_response_always_has_generated_at(self, monkeypatch):
         from fastapi.testclient import TestClient

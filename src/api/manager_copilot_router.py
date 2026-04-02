@@ -77,11 +77,12 @@ Your role: produce concise, decision-ready morning briefings for duty managers.
 
 Rules:
 - Respond ONLY in the requested language.
-- Lead with the most urgent items (SLA breaches, high arrivals days, DLQ alerts).
+- Lead with the most urgent items: SLA breaches, overdue tasks, tasks due today, high-activity arrival/departure days.
 - Use 3–5 bullet points maximum. Each bullet: 1–2 sentences.
 - End with a single "Top Action" line summarizing what the manager should do first.
 - Do NOT invent information. Only use the data provided.
 - Do NOT mention AI, LLMs, or that you are an AI assistant.
+- Do NOT surface scheduled future tasks as operational problems. Only surface tasks that are overdue or due today.
 - Tone: professional, calm, direct. Like a well-prepared ops coordinator.
 """
 
@@ -105,10 +106,12 @@ def _build_heuristic_briefing(context: Dict[str, Any]) -> tuple[str, List[Dict[s
     Build a deterministic text briefing + action items from the context dict.
     Used when LLM is unconfigured or fails.
     Returns (briefing_text, action_items).
+
+    Phase 1043: uses date-aware task buckets (actionable_now, due_soon, future).
+    DLQ removed — not a valid OM signal (global, stale, no OM action path).
     """
     ops = context.get("operations", {})
     tasks = context.get("tasks", {})
-    dlq = context.get("dlq", {})
     sync = context.get("outbound_sync", {})
     hints = context.get("ai_hints", {})
 
@@ -117,73 +120,86 @@ def _build_heuristic_briefing(context: Dict[str, Any]) -> tuple[str, List[Dict[s
     departures = ops.get("departures_count", 0)
     cleanings = ops.get("cleanings_due", 0)
     active = ops.get("active_bookings", 0)
-    total_tasks = tasks.get("total_open", 0)
+
+    # Phase 1043: date-aware task reading
+    actionable_now = tasks.get("actionable_now", 0)   # overdue + due_today
+    overdue = tasks.get("overdue", 0)
+    due_today = tasks.get("due_today", 0)
+    due_soon = tasks.get("due_soon", 0)                # next 3 days
+    future = tasks.get("future", 0)                    # beyond 3 days
+    by_priority_actionable = tasks.get("by_priority_actionable", {})
+    total_open = tasks.get("total_open", 0)
+
     critical_sla = hints.get("critical_tasks_over_sla", 0)
-    dlq_alert = hints.get("dlq_alert", False)
     sync_degraded = hints.get("sync_degraded", False)
     high_arrival = hints.get("high_arrival_day", False)
     high_departure = hints.get("high_departure_day", False)
 
     lines = [f"Morning briefing for {today}:"]
 
-    # Arrivals / departures
+    # Arrivals / departures / active stays
     if high_arrival or high_departure:
-        lines.append(f"• High-activity day — {arrivals} check-in(s), {departures} check-out(s), {cleanings} cleaning(s) required.")
+        lines.append(f"• High-activity day — {arrivals} check-in(s), {departures} check-out(s), {cleanings} cleaning(s) required. {active} active booking(s).")
     else:
         lines.append(f"• {arrivals} check-in(s), {departures} check-out(s), {cleanings} cleaning(s) today. {active} active booking(s).")
 
-    # Critical SLA
+    # Critical SLA breach — always surfaces first
     if critical_sla > 0:
         lines.append(f"• ⚠ {critical_sla} CRITICAL task(s) past 5-minute ACK SLA — immediate acknowledgement required.")
 
-    # Open tasks
-    if total_tasks > 0:
-        by_priority = tasks.get("by_priority", {})
-        high = by_priority.get("HIGH", 0) + by_priority.get("CRITICAL", 0)
-        if high > 0:
-            lines.append(f"• {total_tasks} open task(s) — {high} high/critical priority. Review task queue.")
+    # Phase 1043: date-aware task wording
+    if actionable_now > 0:
+        high_actionable = by_priority_actionable.get("HIGH", 0) + by_priority_actionable.get("CRITICAL", 0)
+        parts = []
+        if overdue > 0:
+            parts.append(f"{overdue} overdue")
+        if due_today > 0:
+            parts.append(f"{due_today} due today")
+        detail = " + ".join(parts)
+        if high_actionable > 0:
+            lines.append(f"• {actionable_now} task(s) need attention now ({detail}) — {high_actionable} high priority. Review task queue.")
         else:
-            lines.append(f"• {total_tasks} open task(s). No critical priority.")
+            lines.append(f"• {actionable_now} task(s) need attention now ({detail}).")
+    elif due_soon > 0:
+        lines.append(f"• No tasks overdue or due today. {due_soon} task(s) coming up in the next 3 days.")
     else:
-        lines.append("• No open tasks at this time.")
+        if total_open > 0:
+            lines.append(f"• No tasks need immediate attention. {total_open} task(s) scheduled ahead.")
+        else:
+            lines.append("• No open tasks.")
 
-    # DLQ alert
-    if dlq_alert:
-        dlq_count = dlq.get("unprocessed_count", "?")
-        lines.append(f"• ⚠ DLQ alert: {dlq_count} unprocessed OTA events. Review Dead Letter Queue.")
-
-    # Sync degraded
+    # Outbound sync degraded (tenant-scoped — valid OM signal)
     if sync_degraded:
         rate = sync.get("failure_rate_24h", "?")
         lines.append(f"• ⚠ Outbound sync degraded: {rate:.0%} failure rate in last 24h." if isinstance(rate, float) else "• ⚠ Outbound sync degraded — check provider connections.")
 
-    # Top action
+    # Top action — DLQ removed from priority chain
     if critical_sla > 0:
         top_action = f"Top action: Acknowledge {critical_sla} overdue CRITICAL task(s) immediately."
-    elif dlq_alert:
-        top_action = "Top action: Review and replay Dead Letter Queue entries."
-    elif sync_degraded:
-        top_action = "Top action: Investigate outbound sync failures."
+    elif actionable_now > 0:
+        top_action = f"Top action: Review {actionable_now} task(s) that need attention today."
     elif high_arrival:
         top_action = "Top action: Confirm check-in preparations for today's arrivals."
+    elif sync_degraded:
+        top_action = "Top action: Investigate outbound sync failures."
     else:
-        top_action = "Top action: Review open tasks and confirm daily operations are on track."
+        top_action = "Top action: Confirm daily operations are on track."
 
     lines.append(f"\n{top_action}")
     briefing_text = "\n".join(lines)
 
-    # Structured action items
+    # Structured action items — DLQ removed
     action_items: List[Dict[str, Any]] = []
     if critical_sla > 0:
         action_items.append({"priority": "CRITICAL", "action": "ACKNOWLEDGE_TASKS", "description": f"Acknowledge {critical_sla} critical task(s) past SLA"})
-    if dlq_alert:
-        action_items.append({"priority": "HIGH", "action": "REVIEW_DLQ", "description": "Inspect and replay unprocessed Dead Letter Queue entries"})
+    if actionable_now > 0 and not critical_sla:
+        action_items.append({"priority": "HIGH", "action": "REVIEW_TASKS_NOW", "description": f"Review {actionable_now} task(s) that are overdue or due today"})
     if sync_degraded:
         action_items.append({"priority": "HIGH", "action": "CHECK_SYNC", "description": "Investigate outbound sync degradation"})
     if high_arrival:
         action_items.append({"priority": "NORMAL", "action": "CONFIRM_CHECKINS", "description": f"Confirm check-in preparations for {arrivals} arrival(s)"})
-    if total_tasks > 0 and not critical_sla:
-        action_items.append({"priority": "NORMAL", "action": "REVIEW_TASKS", "description": f"Review {total_tasks} open task(s)"})
+    if not action_items:
+        action_items.append({"priority": "NORMAL", "action": "CONFIRM_OPS", "description": "Review open task queue and confirm daily operations are on track"})
 
     return briefing_text, action_items
 
@@ -197,20 +213,22 @@ def _get_operations_context(db: Any, tenant_id: str) -> Dict[str, Any]:
     Inline implementation of the operations-day context (mirrors
     Phase 222 GET /ai/context/operations-day, but callable directly
     without HTTP round-trip).
+
+    Phase 1043: DLQ removed from OM context.
+    _fetch_dlq_summary is NOT called here — DLQ is a global, unstoped,
+    admin-only infrastructure signal with no OM action path.
+    The admin endpoint GET /ai/context/operations-day still includes DLQ.
     """
     from api.ai_context_router import (
         _fetch_tenant_operations,
         _fetch_tenant_tasks_summary,
-        _fetch_dlq_summary,
         _fetch_sync_summary,
     )
     ops = _fetch_tenant_operations(db, tenant_id)
     tasks = _fetch_tenant_tasks_summary(db, tenant_id)
-    dlq = _fetch_dlq_summary(db)
     sync = _fetch_sync_summary(db, tenant_id)
     hints = {
         "critical_tasks_over_sla": tasks.get("critical_past_ack_sla", 0),
-        "dlq_alert": dlq.get("alert", False),
         "sync_degraded": (
             sync.get("failure_rate_24h") is not None
             and sync.get("failure_rate_24h", 0) > 0.2
@@ -218,7 +236,7 @@ def _get_operations_context(db: Any, tenant_id: str) -> Dict[str, Any]:
         "high_arrival_day": ops.get("arrivals_count", 0) >= 3,
         "high_departure_day": ops.get("departures_count", 0) >= 3,
     }
-    return {"operations": ops, "tasks": tasks, "dlq": dlq, "outbound_sync": sync, "ai_hints": hints}
+    return {"operations": ops, "tasks": tasks, "outbound_sync": sync, "ai_hints": hints}
 
 
 def _get_db() -> Any:
