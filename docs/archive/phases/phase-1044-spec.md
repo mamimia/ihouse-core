@@ -1,8 +1,8 @@
 # Phase 1044 — OM Hub: Human-Operational Task Title Surface
 
-**Status:** ACTIVE  
-**Prerequisite:** Phase 1043 (Morning Briefing Truth-Model Correction)  
-**Date opened:** 2026-04-02  
+**Status:** CLOSED  
+**Commits:** `61e0a15` (page.tsx), `2854dd8` (tasks/page.tsx)  
+**Date closed:** 2026-04-02  
 **Branch:** `checkpoint/supabase-single-write-20260305-1747`
 
 ---
@@ -129,14 +129,19 @@ function buildOperationalTaskTitle(task: ManagerTask): string {
 
 ## Closure Conditions
 
-- [ ] `ManagerTask` interface has `property_name?: string`
-- [ ] `buildOperationalTaskTitle()` implemented and used in all 3 surfaces
-- [ ] `PriorityTaskSnapshot` on Hub shows `"Emuna Villa — Check-in Prep"` format
-- [ ] `FullTaskBoard` task rows show same human format
-- [ ] `TakeoverModal` shows same human format
-- [ ] `property_id` code (e.g. `KPG-500`) remains as dim secondary text only
-- [ ] No ICAL identifiers visible on primary task list surface
-- [ ] Vercel deploy successful
-- [ ] Staging screenshot proof captured
+- [x] `ManagerTask` interface has `property_name?: string`
+- [x] `Task` type in `tasks/page.tsx` has `property_name?: string`
+- [x] `buildOperationalTaskTitle()` implemented consistently in both files
+- [x] `PriorityTaskSnapshot` on Hub shows `"Emuna Villa — Check-in Prep"` format — staging PROVEN
+- [x] `PriorityTaskSnapshot` secondary row: `KPG-500 · 2026-04-20` in dim mono font
+- [x] Full Task Board (`/manager/tasks`) shows same human format — staging PROVEN
+- [x] `TakeoverModal` shows same human format
+- [x] `ReassignModal` shows human format + `property_id` as dim mono code
+- [x] `property_id` code (`KPG-500`) as dim mono secondary text only — never in primary title
+- [x] No ICAL identifiers visible on any primary task list surface
+- [x] Next.js build clean — exit code 0, 0 TypeScript errors
+- [x] Vercel deploy successful — `domaniqo-staging.vercel.app`
+- [x] Staging screenshot proof: Task Board shows `Emuna Villa — Checkout Cleaning`, `Emuna Villa — Check-in Prep`, `Emuna Villa — Checkout Verification`
+- [x] `task_automator.py` NOT changed — DB title is append-only truth; display is presentation layer
 
-**Status: OPEN**
+**Status: CLOSED — OM task surfaces are now human-operational.**
