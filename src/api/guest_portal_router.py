@@ -264,6 +264,15 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                 except Exception:
                     pass  # fall back to booking-level name
 
+            # Phase 1047A-name: sanitize OTA platform placeholder names
+            # These are internal platform strings that must not be shown to guests.
+            _OTA_PLACEHOLDER_NAMES = {
+                'reserved', 'airbnb (not available)', 'not available',
+                'guest', 'traveler', 'traveller', 'vrbo guest',
+            }
+            if canonical_guest_name and canonical_guest_name.lower().strip() in _OTA_PLACEHOLDER_NAMES:
+                canonical_guest_name = None  # frontend will show generic 'Welcome'
+
             # 2d. Phase 64 — Deposit status for Your Stay section
             deposit_status: Optional[str] = None
             try:
@@ -287,7 +296,9 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                 "booking_status": booking_data.get("status"),
                 "cover_photo_url": prop_data.get("cover_photo_url"),  # Phase 1047A
                 # Section 2 — Home Essentials
-                "property_name": prop_data.get("name", property_id or booking_ref),
+                # Phase 1047A-name: NEVER fall back to property_id or booking_ref.
+                # Those are internal operational identifiers. Frontend uses guest-safe 'Your Villa'.
+                "property_name": prop_data.get("name") or None,
                 "property_address": prop_data.get("address"),
                 "wifi_name": prop_data.get("wifi_name"),
                 "wifi_password": prop_data.get("wifi_password"),
@@ -304,9 +315,11 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
         except Exception:
             pass  # Fall through to fallback
 
-    # 3. Fallback: token is valid but DB not available — return minimal data
+    # 3. Fallback: token is valid but DB not available — return minimal data.
+    # Phase 1047A-name: DO NOT include booking_ref or property_id in property_name.
+    # Frontend guard renders 'Your Villa' when property_name is None.
     return JSONResponse(status_code=200, content={
-        "property_name": f"Property ({booking_ref})",
+        "property_name": None,
         "check_in_time": "15:00",
         "check_out_time": "11:00",
         "house_rules": [],
@@ -408,8 +421,10 @@ async def guest_contact(token: str, client: Optional[Any] = None) -> JSONRespons
 
         prop = rows[0]
         phone = prop.get("manager_whatsapp") or prop.get("manager_phone") or ""
-        property_name = prop.get("name", "")
-        wa_link = f"https://wa.me/{phone.replace('+', '').replace(' ', '')}?text=Hi, I'm staying at {property_name}" if phone else None
+        # Phase 1047A-name: use human property name in pre-fill, or guest-safe generic fallback.
+        # Never embed a property code or internal ID in the WhatsApp message text.
+        human_prop_name = prop.get("name") or "your villa"
+        wa_link = f"https://wa.me/{phone.replace('+', '').replace(' ', '')}?text=Hi%2C+I%27m+a+guest+staying+at+{human_prop_name.replace(' ', '+')}" if phone else None
 
         return JSONResponse(status_code=200, content={
             "whatsapp_link": wa_link,

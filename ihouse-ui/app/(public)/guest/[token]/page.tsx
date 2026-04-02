@@ -166,14 +166,14 @@ function HouseInfoItem({ icon, label, value }: { icon: string; label: string; va
 // Section 1 — Welcome / Stay Header
 // ---------------------------------------------------------------------------
 
-// Phase 1047A — real status chip (was hardcoded ✅ Checked In)
+// Phase 1047A-name: unknown status values must also NOT leak through as raw internal strings.
 function _stayStatusChip(status?: string | null): string {
     const s = (status || '').toLowerCase().replace(/-/g, '_');
     if (['checked_in', 'checkedin', 'instay', 'active'].includes(s)) return '✅ In Stay';
     if (['confirmed'].includes(s)) return '📅 Upcoming';
     if (['checked_out', 'checkedout', 'completed'].includes(s)) return '✔ Checked Out';
-    if (s) return status!;
-    return '🏡 Active';
+    // Phase 1047A-name: unknown values fall to generic guest-safe label, not the raw status string
+    return '🏡 In Stay';
 }
 
 function WelcomeHeader({ data }: { data: GuestPortalData }) {
@@ -203,7 +203,8 @@ function WelcomeHeader({ data }: { data: GuestPortalData }) {
                 {data.guest_name ? `Welcome, ${data.guest_name.split(' ')[0]}` : 'Welcome'}
             </div>
             <div style={{ fontSize: 16, color: '#93c5fd', fontWeight: 600, marginBottom: 16 }}>
-                {data.property_name}
+                {/* Phase 1047A-name: backend returns null when name missing — never fall through to a code */}
+                {data.property_name || 'Your Villa'}
             </div>
             {(data.check_in || data.check_out) && (
                 <div style={{ display: 'flex', gap: 12 }}>
