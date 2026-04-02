@@ -215,10 +215,11 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                 try:
                     prop_res = (
                         db.table("properties")
+                        # 1047A ROOT FIX: align to actual schema (no 'name', no 'check_in_time' etc.)
                         .select("property_id, display_name, address, wifi_name, wifi_password, "
-                                "check_in_time, check_out_time, house_rules, "
-                                "emergency_contact, welcome_message, checkout_notes, "
-                                "cover_photo_url")  # Phase 1047A
+                                "checkin_time, checkout_time, house_rules, "
+                                "emergency_contact, description, extra_notes, "
+                                "cover_photo_url")
                         .eq("property_id", property_id)
                         .limit(1)
                         .execute()
@@ -302,15 +303,18 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                 "property_address": prop_data.get("address"),
                 "wifi_name": prop_data.get("wifi_name"),
                 "wifi_password": prop_data.get("wifi_password"),
-                "check_in_time": prop_data.get("check_in_time", "15:00"),
-                "check_out_time": prop_data.get("check_out_time", "11:00"),
+                # 1047A ROOT FIX: actual columns are checkin_time / checkout_time
+                "check_in_time": prop_data.get("checkin_time", "15:00"),
+                "check_out_time": prop_data.get("checkout_time", "11:00"),
                 "house_rules": prop_data.get("house_rules") or [],
                 "emergency_contact": prop_data.get("emergency_contact"),
-                "welcome_message": prop_data.get("welcome_message"),
+                # 1047A ROOT FIX: no welcome_message column — use description
+                "welcome_message": prop_data.get("description"),
                 # Section 6 — Your Stay
+                # 1047A ROOT FIX: no checkout_notes column — use extra_notes
                 "number_of_guests": booking_data.get("number_of_guests"),
                 "deposit_status": deposit_status,
-                "checkout_notes": prop_data.get("checkout_notes"),
+                "checkout_notes": prop_data.get("extra_notes"),
             })
         except Exception:
             pass  # Fall through to fallback
@@ -410,8 +414,9 @@ async def guest_contact(token: str, client: Optional[Any] = None) -> JSONRespons
         db = client if client is not None else _get_supabase_client()
         result = (
             db.table("properties")
-            # Phase 1047A-name ROOT FIX: 'name' column does not exist — use 'display_name'
-            .select("display_name, manager_phone, manager_email, manager_whatsapp")
+            # 1047A ROOT FIX: actual columns are owner_phone, owner_email
+            # manager_phone / manager_email / manager_whatsapp do not exist in schema
+            .select("display_name, owner_phone, owner_email")
             .eq("property_id", ctx["property_id"])
             .limit(1)
             .execute()
@@ -421,15 +426,19 @@ async def guest_contact(token: str, client: Optional[Any] = None) -> JSONRespons
             return JSONResponse(status_code=200, content={"whatsapp_link": None, "phone": None, "email": None})
 
         prop = rows[0]
-        phone = prop.get("manager_whatsapp") or prop.get("manager_phone") or ""
-        # Phase 1047A-name ROOT FIX: read 'display_name', not 'name'.
+        phone = prop.get("owner_phone") or ""
+        # 1047A-name: use actual display_name or guest-safe fallback in WhatsApp pre-fill
         human_prop_name = prop.get("display_name") or "your villa"
-        wa_link = f"https://wa.me/{phone.replace('+', '').replace(' ', '')}?text=Hi%2C+I%27m+a+guest+staying+at+{human_prop_name.replace(' ', '+')}" if phone else None
+        wa_link = (
+            f"https://wa.me/{phone.replace('+', '').replace(' ', '')}"
+            f"?text=Hi%2C+I%27m+a+guest+staying+at+{human_prop_name.replace(' ', '+')}"
+            if phone else None
+        )
 
         return JSONResponse(status_code=200, content={
             "whatsapp_link": wa_link,
-            "phone": prop.get("manager_phone"),
-            "email": prop.get("manager_email"),
+            "phone": prop.get("owner_phone"),
+            "email": prop.get("owner_email"),
         })
     except Exception as exc:
         logger.exception("guest_contact error: %s", exc)
