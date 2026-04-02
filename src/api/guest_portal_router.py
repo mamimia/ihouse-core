@@ -217,7 +217,8 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                         db.table("properties")
                         .select("property_id, name, address, wifi_name, wifi_password, "
                                 "check_in_time, check_out_time, house_rules, "
-                                "emergency_contact, welcome_message, checkout_notes")
+                                "emergency_contact, welcome_message, checkout_notes, "
+                                "cover_photo_url")  # Phase 1047A
                         .eq("property_id", property_id)
                         .limit(1)
                         .execute()
@@ -284,6 +285,7 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                 "check_in": booking_data.get("check_in"),
                 "check_out": booking_data.get("check_out"),
                 "booking_status": booking_data.get("status"),
+                "cover_photo_url": prop_data.get("cover_photo_url"),  # Phase 1047A
                 # Section 2 — Home Essentials
                 "property_name": prop_data.get("name", property_id or booking_ref),
                 "property_address": prop_data.get("address"),

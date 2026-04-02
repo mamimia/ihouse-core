@@ -29,6 +29,7 @@ interface GuestPortalData {
     check_in?: string;
     check_out?: string;
     booking_status?: string;
+    cover_photo_url?: string;      // Phase 1047A — wired from properties.cover_photo_url
     // Section 2 — Home Essentials
     property_name: string;
     property_address?: string;
@@ -61,6 +62,7 @@ interface ContactInfo {
     phone?: string;
     email?: string;
     line?: string;
+    whatsapp_link?: string;   // Phase 1047A — returned by /contact endpoint
 }
 
 interface ExtraItem {
@@ -164,6 +166,16 @@ function HouseInfoItem({ icon, label, value }: { icon: string; label: string; va
 // Section 1 — Welcome / Stay Header
 // ---------------------------------------------------------------------------
 
+// Phase 1047A — real status chip (was hardcoded ✅ Checked In)
+function _stayStatusChip(status?: string | null): string {
+    const s = (status || '').toLowerCase().replace(/-/g, '_');
+    if (['checked_in', 'checkedin', 'instay', 'active'].includes(s)) return '✅ In Stay';
+    if (['confirmed'].includes(s)) return '📅 Upcoming';
+    if (['checked_out', 'checkedout', 'completed'].includes(s)) return '✔ Checked Out';
+    if (s) return status!;
+    return '🏡 Active';
+}
+
 function WelcomeHeader({ data }: { data: GuestPortalData }) {
     const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
@@ -172,9 +184,20 @@ function WelcomeHeader({ data }: { data: GuestPortalData }) {
             background: `linear-gradient(135deg, #1e3a5f 0%, #1a2744 100%)`,
             borderRadius: RADIUS, padding: 24, marginBottom: 4,
             border: `1px solid #2a4a7f`,
+            overflow: 'hidden',
         }}>
+            {/* Phase 1047A: cover photo hero image if set */}
+            {data.cover_photo_url && (
+                <div style={{
+                    margin: '-24px -24px 16px -24px',
+                    height: 160,
+                    background: `url(${data.cover_photo_url}) center/cover no-repeat`,
+                    borderRadius: `${RADIUS} ${RADIUS} 0 0`,
+                }} />
+            )}
+            {/* Phase 1047A: real status — was hardcoded '✅ Checked In' */}
             <div style={{ fontSize: 13, color: '#93c5fd', marginBottom: 8, fontWeight: 600 }}>
-                ✅ Checked In
+                {_stayStatusChip(data.booking_status)}
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, color: TEXT, marginBottom: 4, letterSpacing: '-0.02em' }}>
                 {data.guest_name ? `Welcome, ${data.guest_name.split(' ')[0]}` : 'Welcome'}
@@ -218,7 +241,8 @@ function HowThisHomeWorks({ token, apiBase }: { token: string; apiBase: string }
     useEffect(() => {
         fetch(`${apiBase}/guest/${encodeURIComponent(token)}/house-info`)
             .then(r => r.ok ? r.json() : null)
-            .then(d => d && setInfo(d))
+            // Phase 1047A: backend wraps in { info: {...} } — unwrap before setting state
+            .then(d => d && setInfo(d.info ?? d))
             .catch(() => {});
     }, [token, apiBase]);
 
@@ -257,6 +281,8 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
     const [msgSent, setMsgSent] = useState(false);
     const [msgText, setMsgText] = useState('');
     const [sending, setSending] = useState(false);
+    // Phase 1047A: surface real send errors instead of silently swallowing them
+    const [msgError, setMsgError] = useState<string | null>(null);
 
     useEffect(() => {
         fetch(`${apiBase}/guest/${encodeURIComponent(token)}/contact`)
@@ -268,14 +294,24 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
     const sendMessage = async () => {
         if (!msgText.trim()) return;
         setSending(true);
+        setMsgError(null);
         try {
-            await fetch(`${apiBase}/guest/${encodeURIComponent(token)}/messages`, {
+            // Phase 1047A: body key was 'message' — backend expects 'content'
+            const resp = await fetch(`${apiBase}/guest/${encodeURIComponent(token)}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: msgText }),
+                body: JSON.stringify({ content: msgText }),
             });
+            // Phase 1047A: check real response status before showing success
+            if (!resp.ok) {
+                const body = await resp.json().catch(() => ({}));
+                setMsgError(body?.detail || 'Something went wrong. Please try again.');
+                return;
+            }
             setMsgSent(true);
             setMsgText('');
+        } catch {
+            setMsgError('Unable to send. Please check your connection and try again.');
         } finally {
             setSending(false);
         }
@@ -283,13 +319,30 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
 
     return (
         <>
-            <SectionHeader emoji="🆘" label="Need Help?" />
+            <SectionHeader emoji="💬" label="Need Help?" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Phase 1047A: contact.phone is correct. contact.whatsapp_link now available. */}
+                {/* contact.line was never returned by the /contact endpoint — removed. */}
                 {contact?.phone && (
                     <InfoCard icon="📞" label="Call / WhatsApp" value={contact.phone} />
                 )}
-                {contact?.line && (
-                    <InfoCard icon="💬" label="LINE ID" value={contact.line} />
+                {contact?.whatsapp_link && (
+                    <a
+                        href={contact.whatsapp_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            background: SURFACE, border: `1px solid ${BORDER}`,
+                            borderRadius: RADIUS, padding: 16, textDecoration: 'none',
+                        }}
+                    >
+                        <span style={{ fontSize: 22, flexShrink: 0 }}>💬</span>
+                        <div>
+                            <div style={{ fontSize: 11, color: DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>WhatsApp</div>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: '#25d366' }}>Open WhatsApp</div>
+                        </div>
+                    </a>
                 )}
                 <div style={{
                     background: SURFACE, border: `1px solid ${BORDER}`,
@@ -299,12 +352,14 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
                         Send a message to your host
                     </div>
                     {msgSent ? (
-                        <div style={{ fontSize: 14, color: '#34d399', fontWeight: 600 }}>✅ Message sent!</div>
+                        <div style={{ fontSize: 14, color: '#34d399', fontWeight: 600 }}>
+                            ✅ Your message was sent. We&apos;ll get back to you shortly.
+                        </div>
                     ) : (
                         <>
                             <textarea
                                 value={msgText}
-                                onChange={e => setMsgText(e.target.value)}
+                                onChange={e => { setMsgText(e.target.value); setMsgError(null); }}
                                 placeholder="Type your message…"
                                 rows={3}
                                 style={{
@@ -314,6 +369,12 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
                                     fontFamily: 'inherit',
                                 }}
                             />
+                            {/* Phase 1047A: show real error when send fails */}
+                            {msgError && (
+                                <div style={{ fontSize: 13, color: '#f87171', marginTop: 8 }}>
+                                    ⚠ {msgError}
+                                </div>
+                            )}
                             <button
                                 onClick={sendMessage}
                                 disabled={sending || !msgText.trim()}
