@@ -1212,6 +1212,9 @@ function MorningBriefingWidget() {
     const [error, setError] = useState<string | null>(null);
     const [language, setLanguage] = useState('en');
 
+    // Phase 1041: auto-load on mount
+    useEffect(() => { doFetch(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const doFetch = useCallback(async () => {
         setLoading(true); setError(null);
         try {
@@ -1275,6 +1278,7 @@ function MorningBriefingWidget() {
                         <option value="th">TH</option>
                         <option value="ja">JA</option>
                     </select>
+                    {/* Phase 1041: briefing auto-loads; button is now Refresh only */}
                     <button
                         id="generate-briefing"
                         onClick={doFetch}
@@ -1287,7 +1291,7 @@ function MorningBriefingWidget() {
                             boxShadow: '0 0 12px rgba(99,102,241,0.25)',
                         }}
                     >
-                        {loading ? 'Generating...' : data ? 'Refresh' : 'Generate Briefing'}
+                        {loading ? 'Generating…' : 'Refresh Briefing'}
                     </button>
                 </div>
             </div>
@@ -1302,7 +1306,7 @@ function MorningBriefingWidget() {
                 {!data && !loading && !error && (
                     <div style={{ textAlign: 'center', padding: 'var(--space-8) 0', color: 'var(--color-text-dim)' }}>
                         <div style={{ fontSize: '2rem', marginBottom: 8 }}>&#9728;</div>
-                        <div style={{ fontSize: 'var(--text-sm)' }}>Click Generate Briefing to get today&#39;s morning summary.</div>
+                        <div style={{ fontSize: 'var(--text-sm)' }}>Loading morning briefing…</div>
                     </div>
                 )}
 
@@ -1444,7 +1448,7 @@ function AlertRail({ alerts, loading }: { alerts: AlertItem[]; loading: boolean 
                 ))}
                 {alerts.length > 8 && (
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', padding: '4px 12px' }}>
-                        +{alerts.length - 8} more — Alerts page coming in Step 3
+                        +{alerts.length - 8} more — <a href="/manager/alerts" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>View all alerts →</a>
                     </div>
                 )}
             </div>
@@ -1768,24 +1772,16 @@ function TodayBookingSnapshot() {
 // Operational Summary Strip — 4 chips from real API data
 // ---------------------------------------------------------------------------
 
-function OpsStrip() {
-    const [ops, setOps] = useState<{ arrivals_today: number; departures_today: number; cleanings_due_today: number } | null>(null);
-    const [alertCount, setAlertCount] = useState(0);
-
-    useEffect(() => {
-        apiFetch<{ arrivals_today: number; departures_today: number; cleanings_due_today: number }>('/operations/today')
-            .then(r => setOps(r))
-            .catch(() => {});
-        apiFetch<{ alerts: { severity: string }[] }>('/manager/alerts')
-            .then(r => setAlertCount((r.alerts || []).filter(a => a.severity === 'critical' || a.severity === 'high').length))
-            .catch(() => {});
-    }, []);
-
+// Phase 1041: OpsStrip now receives alertCount from parent (shared fetch — no duplicate API call)
+function OpsStrip({ alertCount, ops }: {
+    alertCount: number;
+    ops: { arrivals_today: number; departures_today: number; cleanings_due_today: number } | null;
+}) {
     const chips = [
-        { label: 'Check-ins',   value: ops?.arrivals_today   ?? '—', color: '#22c55e', icon: '→' },
-        { label: 'Check-outs',  value: ops?.departures_today ?? '—', color: '#60a5fa', icon: '←' },
-        { label: 'Cleanings',   value: ops?.cleanings_due_today ?? '—', color: '#f59e0b', icon: '🧹' },
-        { label: 'Alerts',      value: alertCount || '—', color: alertCount > 0 ? '#ef4444' : '#94a3b8', icon: '⚠' },
+        { label: 'Check-ins',   value: ops?.arrivals_today   ?? '—', color: '#22c55e' },
+        { label: 'Check-outs',  value: ops?.departures_today ?? '—', color: '#60a5fa' },
+        { label: 'Cleanings',   value: ops?.cleanings_due_today ?? '—', color: '#f59e0b' },
+        { label: 'Alerts',      value: alertCount > 0 ? alertCount : '—', color: alertCount > 0 ? '#ef4444' : '#94a3b8' },
     ];
 
     return (
@@ -1816,14 +1812,38 @@ function OpsStrip() {
 // Hub Page — compact command dashboard
 // ---------------------------------------------------------------------------
 
+// Phase 1041: shared Hub data fetch — alerts + ops fetched once, passed to children
+function useHubData(refreshKey: number) {
+    const [alerts, setAlerts] = useState<AlertItem[]>([]);
+    const [alertsLoading, setAlertsLoading] = useState(true);
+    const [ops, setOps] = useState<{ arrivals_today: number; departures_today: number; cleanings_due_today: number } | null>(null);
+
+    useEffect(() => {
+        setAlertsLoading(true);
+        apiFetch<{ alerts: AlertItem[] }>('/manager/alerts')
+            .then(r => setAlerts(r.alerts || []))
+            .catch(() => setAlerts([]))
+            .finally(() => setAlertsLoading(false));
+        apiFetch<{ arrivals_today: number; departures_today: number; cleanings_due_today: number }>('/operations/today')
+            .then(r => setOps(r))
+            .catch(() => {});
+    }, [refreshKey]);
+
+    return { alerts, alertsLoading, ops };
+}
+
 export default function ManagerPage() {
+    const [refreshKey, setRefreshKey] = useState(0);
     const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
+    // Phase 1041: soft refresh — no window.location.reload()
     const refresh = () => {
+        setRefreshKey(k => k + 1);
         setLastRefresh(new Date());
-        // Force child components to re-mount via key change
-        window.location.reload();
     };
+
+    const { alerts, alertsLoading, ops } = useHubData(refreshKey);
+    const alertCount = alerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
 
     return (
         <div style={{ maxWidth: 900 }}>
@@ -1868,19 +1888,22 @@ export default function ManagerPage() {
                 </div>
             </div>
 
-            {/* ── 1. Morning Briefing — first thing the manager sees ──── */}
-            <MorningBriefingWidget />
+            {/* ── 1. Morning Briefing — auto-loads on mount (Phase 1041) ── */}
+            <MorningBriefingWidget key={refreshKey} />
 
             {/* ── 2. Operational Summary Strip ─────────────────────────── */}
-            <OpsStrip />
+            <OpsStrip alertCount={alertCount} ops={ops} />
 
-            {/* ── 3. Priority Task Snapshot — max 10 rows ──────────────── */}
-            <PriorityTaskSnapshot />
+            {/* ── 3. Alert Rail — mounted (Phase 1041 fix) ─────────────── */}
+            <AlertRail alerts={alerts} loading={alertsLoading} />
 
-            {/* ── 4. Today's Booking Snapshot ──────────────────────────── */}
-            <TodayBookingSnapshot />
+            {/* ── 4. Priority Task Snapshot — max 10 rows ──────────────── */}
+            <PriorityTaskSnapshot key={refreshKey} />
 
-            {/* ── 5. Booking Audit Lookup — demoted tool ───────────────── */}
+            {/* ── 5. Today's Booking Snapshot ──────────────────────────── */}
+            <TodayBookingSnapshot key={refreshKey} />
+
+            {/* ── 6. Booking Audit Lookup — demoted tool ───────────────── */}
             <details style={{ marginTop: 'var(--space-4)' }}>
                 <summary style={{
                     cursor: 'pointer', fontSize: 12, fontWeight: 600,
@@ -1903,7 +1926,7 @@ export default function ManagerPage() {
                 fontSize: 11, color: 'var(--color-text-faint)',
                 display: 'flex', justifyContent: 'space-between',
             }}>
-                <span>Domaniqo — Command Hub · Phase 1037</span>
+                <span>Domaniqo — Command Hub · Phase 1041</span>
                 <span>Full operational view → <a href="/manager/stream" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>Stream</a></span>
             </div>
         </div>
