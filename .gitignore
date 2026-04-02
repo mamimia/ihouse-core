@@ -44,3 +44,4 @@ ngrok.log
 ngrok_test.log
 serveo.log
 .vercel
+.claude/worktrees/
