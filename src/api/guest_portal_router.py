@@ -215,7 +215,7 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                 try:
                     prop_res = (
                         db.table("properties")
-                        .select("property_id, name, address, wifi_name, wifi_password, "
+                        .select("property_id, display_name, address, wifi_name, wifi_password, "
                                 "check_in_time, check_out_time, house_rules, "
                                 "emergency_contact, welcome_message, checkout_notes, "
                                 "cover_photo_url")  # Phase 1047A
@@ -296,9 +296,9 @@ async def guest_portal_by_token(token: str, client: Optional[Any] = None) -> JSO
                 "booking_status": booking_data.get("status"),
                 "cover_photo_url": prop_data.get("cover_photo_url"),  # Phase 1047A
                 # Section 2 — Home Essentials
-                # Phase 1047A-name: NEVER fall back to property_id or booking_ref.
-                # Those are internal operational identifiers. Frontend uses guest-safe 'Your Villa'.
-                "property_name": prop_data.get("name") or None,
+                # Phase 1047A-name ROOT FIX: read 'display_name', not 'name' (column does not exist).
+                # Backend returns None when missing — frontend renders 'Your Villa'.
+                "property_name": prop_data.get("display_name") or None,
                 "property_address": prop_data.get("address"),
                 "wifi_name": prop_data.get("wifi_name"),
                 "wifi_password": prop_data.get("wifi_password"),
@@ -410,7 +410,8 @@ async def guest_contact(token: str, client: Optional[Any] = None) -> JSONRespons
         db = client if client is not None else _get_supabase_client()
         result = (
             db.table("properties")
-            .select("name, manager_phone, manager_email, manager_whatsapp")
+            # Phase 1047A-name ROOT FIX: 'name' column does not exist — use 'display_name'
+            .select("display_name, manager_phone, manager_email, manager_whatsapp")
             .eq("property_id", ctx["property_id"])
             .limit(1)
             .execute()
@@ -421,9 +422,8 @@ async def guest_contact(token: str, client: Optional[Any] = None) -> JSONRespons
 
         prop = rows[0]
         phone = prop.get("manager_whatsapp") or prop.get("manager_phone") or ""
-        # Phase 1047A-name: use human property name in pre-fill, or guest-safe generic fallback.
-        # Never embed a property code or internal ID in the WhatsApp message text.
-        human_prop_name = prop.get("name") or "your villa"
+        # Phase 1047A-name ROOT FIX: read 'display_name', not 'name'.
+        human_prop_name = prop.get("display_name") or "your villa"
         wa_link = f"https://wa.me/{phone.replace('+', '').replace(' ', '')}?text=Hi%2C+I%27m+a+guest+staying+at+{human_prop_name.replace(' ', '+')}" if phone else None
 
         return JSONResponse(status_code=200, content={
