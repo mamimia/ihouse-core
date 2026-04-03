@@ -41,20 +41,20 @@ complementary presentation layer. The backend gate is the canonical enforcement 
 
 | Item | Reviewer | Final State |
 |------|----------|-------------|
-| 06 — Manager FULL_ACCESS / admin surface | Sonia | ✅ Fully closed — frontend layout guard + `admin_only_auth` backend gate |
-| 07 — Cash deposit UNIQUE constraint | Victor | ✅ Fully closed (prior pass) — migration applied, 0 duplicates confirmed |
-| 08 — Offline photo upload failure | Marco | ⚠️ Real residual risk, partially mitigated — sentinel URL preserves record, bytes lost |
-| 09 — Deactivation auto-cleanup | Hana | ✅ Fully closed (prior pass) — PATCH endpoint clears assignments + PENDING tasks atomically |
-| 10 — Multi-role worker navigation | Marco | ✅ Fully closed (prior pass) — `resolveSecondaryRoles()` surfaces secondary work areas |
+| 06 — Manager FULL_ACCESS / admin surface reachability | Sonia | ✅ Fully closed — frontend layout guard + `admin_only_auth` backend gate both applied |
+| 07 — Auth error handling, saga compensation, wizard state | Talia | ✅ Auth errors proven resolved; 🔵 saga/wizard resume/checkout-skip are intentional future gaps |
+| 08 — Offline photo upload failure chain | Marco | ⚠️ Real residual risk, partially mitigated — sentinel URL preserves DB record, photo bytes can be permanently lost |
+| 09 — Deactivation auto-cleanup + session invalidation | Hana | ✅ Deactivation clears assignments + PENDING tasks; 🔵 session invalidation is confirmed future gap (auth-layer redesign required) |
+| 10 — Property readiness gate + cleaning completion | Claudia | ✅ Fully closed — readiness gate proven, force_complete role-gated, post-cleaning status downgrade applied |
 
 ## PKA-Bridge Group C — Final Closure Summary
 
 | Item | Reviewer | Final State |
 |------|----------|-------------|
-| 11 — Storage bucket RLS | Oren | ✅ Fully closed — live SQL audit confirmed all PII buckets private; public buckets intentional |
-| 12 — DB tables UNIQUE constraints | Victor | ✅ Fully closed (merged into 07/09 fixes) |
-| 13 — Session invalidation on deactivation | Sonia | 🔵 Future gap — requires auth-layer redesign (Redis revocation list); current deactivation blocks login but existing sessions persist until expiry |
-| 14 — Receipt/statement accuracy | Hana | ✅ Verified correct — settlement calculation uses correct rate at time of booking |
+| 11 — Owner portal financial data + PDF + visibility flags | Miriam | ✅ Mostly closed — portal proven, statement honesty correct, PDF confirmed; visibility flags + payout persistence + fee versioning are intentional future gaps |
+| 12 — Financial lifecycle + deposit UNIQUE constraint | Victor | ✅ Fully closed — 7-state lifecycle proven, UNIQUE constraint on cash_deposits applied, deposit lifecycle correct |
+| 13 — Storage bucket RLS + PII access model | Oren | ✅ Fully closed — live SQL audit confirmed all PII buckets private; public buckets intentional; dev-mode test-token now gated; worker PII strip applied |
+| 14 — Guest portal sections + self check-in + messaging | Yael | ✅ Mostly closed — portal 7-section architecture proven, check-in gates correct, messaging proven; empty states + post-checkout flow are intentional future gaps |
 
 ## Result
 

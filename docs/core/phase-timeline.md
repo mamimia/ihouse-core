@@ -9175,20 +9175,20 @@ Applied to:
 
 | Item | Final State |
 |------|-------------|
-| 06 Sonia — Manager FULL_ACCESS / admin surface | ✅ Fully closed — both layers (frontend guard + backend auth) |
-| 07 Victor — Cash deposit UNIQUE constraint | ✅ Fully closed (prior pass) |
-| 08 Marco — Offline photo upload failure | ⚠️ Real residual risk, partially mitigated |
-| 09 Hana — Deactivation auto-cleanup | ✅ Fully closed (prior pass) |
-| 10 Marco — Multi-role worker navigation | ✅ Fully closed (prior pass) |
+| 06 Sonia — Manager FULL_ACCESS / admin surface reachability | ✅ Fully closed — frontend layout guard + backend admin_only_auth both applied |
+| 07 Talia — Auth error handling, saga compensation, wizard state | ✅ Auth errors proven resolved; 🔵 saga/wizard resume/checkout-skip are intentional future gaps |
+| 08 Marco — Offline photo upload failure chain | ⚠️ Real residual risk, partially mitigated — photo bytes can be permanently lost |
+| 09 Hana — Deactivation auto-cleanup + session invalidation | ✅ Deactivation fixed; 🔵 session invalidation is confirmed future gap |
+| 10 Claudia — Property readiness gate + cleaning completion | ✅ Fully closed — readiness gate proven, force_complete role-gated, post-cleaning downgrade applied |
 
 ### Group C Final Closure State
 
 | Item | Final State |
 |------|-------------|
-| 11 Oren — Storage bucket RLS | ✅ Fully closed |
-| 12 Victor — DB UNIQUE constraints | ✅ Fully closed |
-| 13 Sonia — Session invalidation on deactivation | 🔵 Intentional future gap (auth-layer redesign required) |
-| 14 Hana — Receipt/statement accuracy | ✅ Verified correct |
+| 11 Miriam — Owner portal financial data, PDF, visibility flags | ✅ Mostly closed — portal + PDF proven; visibility flags/payout persistence/fee versioning are intentional future gaps |
+| 12 Victor — Financial lifecycle + deposit UNIQUE constraint | ✅ Fully closed — 7-state lifecycle proven, cash_deposits UNIQUE constraint applied |
+| 13 Oren — Storage bucket RLS + PII access model | ✅ Fully closed — all PII buckets private confirmed in live DB; public buckets intentional; test-token gated; worker PII strip applied |
+| 14 Yael — Guest portal sections + self check-in + messaging | ✅ Mostly closed — portal architecture proven; empty states + post-checkout are intentional future gaps |
 
 ### Test Result
 
