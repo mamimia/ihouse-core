@@ -233,6 +233,7 @@ export default function GuestsPage() {
             <style>{`
                 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes instayPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
             `}</style>
 
             {/* Header */}
@@ -328,18 +329,16 @@ export default function GuestsPage() {
                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 >
                                     <Td>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                            <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{g.full_name}</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                            <span style={{ color: 'var(--color-text)' }}>{g.full_name}</span>
                                             {g.active_stay && (
                                                 <span style={{
-                                                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                                                    padding: '2px 9px', borderRadius: 999,
-                                                    background: 'rgba(63,185,80,0.1)',
-                                                    border: '1px solid rgba(63,185,80,0.25)',
-                                                    color: '#3fb850', fontSize: 11, fontWeight: 700,
-                                                    width: 'fit-content',
+                                                    fontSize: 11,
+                                                    color: '#3fb850',
+                                                    fontWeight: 500,
+                                                    animation: 'instayPulse 2s ease-in-out infinite',
                                                 }}>
-                                                    🟢 In Stay — {g.active_stay.property_display_name}
+                                                    In Stay — {g.active_stay.property_display_name}
                                                 </span>
                                             )}
                                         </div>
