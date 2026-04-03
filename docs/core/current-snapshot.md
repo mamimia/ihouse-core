@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1048 — Guest Chat Model (OM Routing + Dossier Thread + Inbox)
+Phase 1053 — Guest Portal Thread View (BUILT + SURFACED — manual proof pending)
 
 ## Last Closed Phase
-Phase 1047-polish — Note Area Persistence + Host Photo Asset Card (PROVEN)
+Phase 1052 — Host Reply Path (PROVEN — 2026-04-03)
 
 ## System Status
 
@@ -520,7 +520,28 @@ Admin Host Identity section now has real file upload (reuses `uploadPropertyPhot
 **Phase 1047-polish — Note Area Persistence + Photo Asset Card (PROVEN — 2026-04-03):**
 Note form no longer replaces itself with success state. Success banner (auto-clears 4s) appears above persistent textarea. Guest can send multiple notes per session. Admin host photo section shows correct empty/selected states. Manual proof accepted. Commit: `361371f`.
 
+**Phase 1048 — Guest Chat Model: OM Routing + Dossier Thread + Inbox (SURFACED — 2026-04-03):**
+Established canonical guest-to-host messaging model. `resolve_conversation_owner()` stamps `assigned_om_id` on every guest message insert. Guest Dossier Chat tab surfaced. Inbox backend (`GET /manager/guest-inbox`) built. ProveTest 1048 DB-confirmed. Architectural locks: conversation is per-stay (`booking_id`), never guest-lifetime; `tenant_id` never sender identity; `assigned_om_id` is routing scaffold only (not final long-term ownership model). Commits through `65c45ea`.
+
+**Phase 1049B — Guests List In-Stay Indicator (SURFACED — 2026-04-03):**
+In-stay guest floats to top. Soft-pulse green secondary line "In Stay — [Property Name]" directly under guest name. Fade-pulse only on the text line, ~2s cycle. No badge/chip treatment.
+
+**Phase 1050 — Guest Dossier Chat Tab (SURFACED — 2026-04-03):**
+Dedicated Chat tab in Guest Dossier. Per-stay threads, chronological, most-recent stay first.
+
+**Phase 1051 — Operational Guest Inbox UI (SURFACED — 2026-04-03):**
+`/manager/inbox` as primary OM operational surface. `Inbox` in OMSidebar and OMBottomNav. Thread list + `ThreadDrawer`. Confirmed reachable from live manager surface. Commits: `ed2bee1`, `f17ddd2`.
+
+**Phase 1052 — Host Reply Path (PROVEN — 2026-04-03):**
+Staff reply proven end-to-end. `POST /manager/guest-messages/{booking_id}/reply`. Identity invariant LOCKED: `sender_id = caller's user_id` (NOT `tenant_id`), `sender_type = 'host'`. Root bug fixed: scope guard was fetching `.limit(1)` without ordering, hitting pre-1048 rows with `assigned_om_id=null`, returning 403. Fixed: scan all rows, check ANY for ownership. DB proof: `sender_type='host'`, `sender_id=10de26bb-...` confirmed. Reply visible in inbox drawer AND Guest Dossier Chat tab. Commits: `65c45ea`, `e24bfe2`.
+
+**Phase 1053 — Guest Portal Thread View (BUILT + SURFACED — 2026-04-03):**
+`ConversationThread` component in guest portal "Need Help?" section, above note form. Guest messages (right, blue) and host replies (left, subtle) rendered. Host labeled `portal_host_name` or "Your Host" — never internal identity. 30s poll + immediate re-fetch on guest send. Null path clean. Root bug fixed: `GET /{token}/messages` was using `.eq("booking_ref")` since Phase 670 — wrong column, always returned 0 rows. Fixed to `.eq("booking_id")`. Identity rule (`sender_id = user_id, NOT tenant_id`) documented in endpoint. Commit: `c2d2f55`. Manual portal proof pending.
+
 **OPEN ITEMS (carried forward):**
+- 1053 manual portal proof — pending (deployed, awaiting verification)
+- `assigned_om_id` long-term ownership model — currently routing scaffold only; final ownership model deferred
 - Uploaded host photo renders in guest portal (end-to-end) — OPEN
 - WhatsApp contact proof — OPEN, not blocking
 - Portal variant testing (multiple properties) — OPEN, not blocking
+

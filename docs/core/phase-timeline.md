@@ -8974,3 +8974,99 @@ Added guest-facing host identity block (display layer only — not routing truth
 Open: staging proof screenshots required before closure.
 
 Spec: `docs/archive/phases/phase-1047b-spec.md`
+
+---
+
+## Phase 1048 — Guest Chat Model: OM Routing + Dossier Thread + Inbox Backend (SURFACED)
+
+**Date:** 2026-04-03
+**Status:** SURFACED — backend routing proven in DB; Dossier Chat tab visible on staging; inbox backend built.
+**Commits:** `65c45ea` and predecessors
+**Branch:** `checkpoint/supabase-single-write-20260305-1747`
+
+Established the canonical guest-to-host messaging model:
+- `guest_chat_messages` table is the single store for all guest/host messages
+- `assigned_om_id` stamped at insert time via `resolve_conversation_owner()` — current staff routing truth
+- Guest Dossier Chat tab surfaced: per-stay thread history, most-recent stay first
+- `GET /manager/guest-inbox` backend built; threads scoped to caller's property assignments
+- **ProveTest 1048 confirmed in DB:** `assigned_om_id = 10de26bb-...` (Nana G's user_id) correct
+
+**Architectural locks established:**
+- Conversation is per-stay (`booking_id`), not guest-lifetime
+- `tenant_id` is never sender identity
+- `assigned_om_id` is routing scaffold, not final long-term ownership model
+- Guest Dossier Chat → canonical per-stay history surface for staff
+
+---
+
+## Phase 1049B — Guests List In-Stay Prioritization (SURFACED)
+
+**Date:** 2026-04-03
+**Status:** SURFACED — in-stay guest floated to top; soft-pulse green secondary line under name.
+
+In-stay guests sorted to top of the Guests list. In-stay indicator: small secondary green text line directly under guest name with soft fade-pulse animation (~2s), showing "In Stay — [Property Name]". No chip/badge. Only the text pulses, not the name.
+
+---
+
+## Phase 1050 — Guest Dossier Chat Tab (SURFACED)
+
+**Date:** 2026-04-03
+**Status:** SURFACED — Chat tab visible in Guest Dossier for active stay.
+
+Dedicated Chat tab added to Guest Dossier. Shows per-stay message threads in chronological order, most-recent stay first. Both guest and host messages rendered.
+
+---
+
+## Phase 1051 — Operational Guest Inbox UI (SURFACED)
+
+**Date:** 2026-04-03
+**Status:** SURFACED — manually confirmed on live staging.
+**Commits:** `ed2bee1`, `f17ddd2`
+
+Surfaced the OM inbox as a first-class operational surface:
+- `/manager/inbox` route built
+- `💬 Inbox` added to OMSidebar (desktop) and OMBottomNav (mobile)
+- Thread list: guest name, property, latest message preview, unread state
+- `ThreadDrawer`: click → full thread history
+- Reachable without guessing hidden routes
+
+---
+
+## Phase 1052 — Host Reply Path (PROVEN)
+
+**Date:** 2026-04-03
+**Status:** PROVEN — manually confirmed on live staging.
+**Commits:** `65c45ea` (endpoint), `e24bfe2` (scope guard fix)
+
+Staff reply path implemented and proven end-to-end:
+- `POST /manager/guest-messages/{booking_id}/reply` endpoint
+- **Identity invariant locked:** `sender_id = caller's user_id`; `sender_type = 'host'`; `tenant_id` never used as sender identity
+- Reply input in `ThreadDrawer`: textarea + send button + optimistic UI
+- **Root bug fixed:** scope guard was fetching `.limit(1)` without ordering, hitting pre-1048 rows with `assigned_om_id=null`, returning 403. Fixed: fetch all rows, check ANY for ownership.
+
+**Proven in staging:**
+- Reply sends from `/manager/inbox`
+- DB row: `sender_type='host'`, `sender_id=10de26bb-...` (Nana G user_id — NOT tenant_id)
+- Reply visible in inbox drawer immediately
+- Reply visible in Guest Dossier Chat tab for same stay
+
+---
+
+## Phase 1053 — Guest Portal Thread View (BUILT + SURFACED — proof pending)
+
+**Date:** 2026-04-03
+**Status:** BUILT + SURFACED — deployed to Vercel. Manual proof pending.
+**Commit:** `c2d2f55`
+
+Guest-facing thread view added to the portal:
+- `ConversationThread` component inside "Need Help?" card, above note form
+- Shows all messages for current stay (guest + host), chronological order
+- Guest messages: right-aligned, blue tint, labeled "You"
+- Host messages: left-aligned, subtle tint, labeled `portal_host_name` or "Your Host"
+- 30s poll + immediate re-fetch after guest sends
+- Null path: renders nothing when no messages yet
+- Note form stays open below thread at all times
+
+**Root bug fixed:** `GET /{token}/messages` was querying `.eq("booking_ref", ...)` since Phase 670 — wrong column name. Correct: `.eq("booking_id", ...)`. Had returned 0 rows on every call since the endpoint existed.
+
+**Identity rule explicitly documented** in endpoint docstring: `sender_id = user_id (NOT tenant_id)`.

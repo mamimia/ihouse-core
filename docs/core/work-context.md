@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1048 — Guest Chat Model (OM Routing + Dossier Thread + Inbox). Phases 841–1047-polish closed.
+Phase 1053 — Guest Portal Thread View. Phases 841–1052 closed.
 
 ## Last Closed Phase
 
-Phase 1047-polish — Note Area Persistence + Host Photo Asset Card (PROVEN 2026-04-03).
+Phase 1052 — Host Reply Path (PROVEN 2026-04-03).
 
 ## Current Objective
 
@@ -208,7 +208,12 @@ Phase 1047B — Guest Portal Host Identity Block                                
 Phase 1047C — Guest Messaging Honesty + Schema Repair                          ← PROVEN (2026-04-03)
 Phase 1047E — Host Photo Upload                                                ← BUILT + SURFACED
 Phase 1047-polish — Note Area Persistence + Photo Asset Card                   ← PROVEN (2026-04-03)
-Phase 1048 — Guest Chat Model (OM Routing + Dossier Thread + Inbox)            ← ACTIVE
+Phase 1048 — Guest Chat Model (OM Routing + Dossier Thread + Inbox)            ← SURFACED (2026-04-03)
+Phase 1049B — Guests List In-Stay Indicator                                    ← SURFACED (2026-04-03)
+Phase 1050 — Guest Dossier Chat Tab                                            ← SURFACED (2026-04-03)
+Phase 1051 — Operational Guest Inbox UI                                        ← SURFACED (2026-04-03)
+Phase 1052 — Host Reply Path                                                   ← PROVEN (2026-04-03)
+Phase 1053 — Guest Portal Thread View                                          ← BUILT + SURFACED (proof pending)
 ```
 
 ### Staging Deployment Truth (Proven 855A)

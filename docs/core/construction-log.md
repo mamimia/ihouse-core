@@ -5477,3 +5477,60 @@ Phase 1047B built and deployed. Three `portal_host_*` columns added to `properti
 
 Key files: `src/api/guest_portal_router.py`, `ihouse-ui/app/(public)/guest/[token]/page.tsx`, `ihouse-ui/app/(app)/admin/properties/[propertyId]/page.tsx`.
 Spec: `docs/archive/phases/phase-1047b-spec.md`
+
+---
+
+## Phase 1048 Closure — Guest Chat Model: OM Routing + Dossier Thread + Inbox
+
+**Date:** 2026-04-03
+
+Phase 1048 surfaced. Established the canonical guest messaging model: `guest_chat_messages` as the single store, `assigned_om_id` stamped at insert via `resolve_conversation_owner()`, Guest Dossier Chat tab visible, inbox backend built. ProveTest 1048 proven in DB. Architectural locks set: per-stay conversation, `tenant_id` never sender identity, `assigned_om_id` is routing scaffold only.
+
+Key files: `src/services/guest_messaging.py`, `src/api/guest_portal_router.py`, `src/api/guest_inbox_router.py`, `ihouse-ui/app/(app)/guests/[id]/page.tsx`.
+Spec: `docs/archive/phases/phase-1048-spec.md`
+
+---
+
+## Phase 1049B / 1050 Closure — In-Stay Indicator + Guest Dossier Chat Tab
+
+**Date:** 2026-04-03
+
+1049B: In-stay guests sorted to top. Soft-pulse green secondary line "In Stay — [Property]" under name. No badge/chip. Only text pulses.
+1050: Chat tab added to Guest Dossier. Per-stay threads, chronological order.
+
+Key files: `ihouse-ui/app/(app)/guests/page.tsx`, `ihouse-ui/app/(app)/guests/[id]/page.tsx`.
+
+---
+
+## Phase 1051 Closure — Operational Guest Inbox UI
+
+**Date:** 2026-04-03
+
+Inbox surfaced as primary OM operational tool. `/manager/inbox` route, `💬 Inbox` in sidebar + mobile nav. Thread list + `ThreadDrawer`. Confirmed reachable without guessing routes.
+
+Key files: `ihouse-ui/app/(app)/manager/inbox/page.tsx`.
+Spec: `docs/archive/phases/phase-1051-spec.md`
+
+---
+
+## Phase 1052 Closure — Host Reply Path (PROVEN)
+
+**Date:** 2026-04-03
+
+Reply path proven end-to-end. Identity invariant locked: `sender_id = caller user_id` always. Root bug found and fixed: scope guard `.limit(1)` was fetching pre-1048 rows with `assigned_om_id=null`, returning 403 NOT_ASSIGNED for all legitimate replies. Fixed to scan all rows. DB proof: host reply row with correct `sender_type='host'` and `sender_id=10de26bb-...`.
+
+Key files: `src/api/guest_inbox_router.py`, `ihouse-ui/app/(app)/manager/inbox/page.tsx`.
+Commits: `65c45ea` (endpoint), `e24bfe2` (fix).
+Spec: `docs/archive/phases/phase-1052-spec.md`
+
+---
+
+## Phase 1053 Closure — Guest Portal Thread View (BUILT + SURFACED)
+
+**Date:** 2026-04-03
+
+Thread view in guest portal deployed. `ConversationThread` component inside "Need Help?" above note form. 30s poll. Host labeled as `portal_host_name` or "Your Host" — never internal identity. Root bug fixed: `GET /{token}/messages` was using `.eq("booking_ref")` since Phase 670 — wrong column, always returned 0 rows. Fixed to `.eq("booking_id")`. Identity rule (`sender_id = user_id, NOT tenant_id`) documented in endpoint docstring. Manual proof pending.
+
+Key files: `src/api/guest_portal_router.py`, `ihouse-ui/app/(public)/guest/[token]/page.tsx`.
+Commit: `c2d2f55`.
+Spec: `docs/archive/phases/phase-1053-spec.md`
