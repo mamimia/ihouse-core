@@ -1449,87 +1449,124 @@ export default function PropertyDetailPage() {
                             <div>
                                 <label style={lStyle}>Host Photo <span style={{ fontWeight: 400, color: 'var(--color-text-faint)' }}>(optional · shown as avatar in guest portal)</span></label>
 
-                                {/* Phase 1047E — Upload Photo (primary path) */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                                    {/* Preview */}
-                                    {editPortalHostPhotoUrl ? (
+                                {editPortalHostPhotoUrl ? (
+                                    /* ── Selected state: asset card ─────────────────────── */
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: 14,
+                                        background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
+                                        borderRadius: 10, padding: '10px 14px', marginTop: 6,
+                                    }}>
                                         <img
                                             src={editPortalHostPhotoUrl}
-                                            alt="Host avatar preview"
-                                            style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--color-border)', flexShrink: 0 }}
+                                            alt="Host photo preview"
+                                            style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(99,102,241,0.3)', flexShrink: 0 }}
                                             onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                         />
-                                    ) : (
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                <span style={{
+                                                    fontSize: 'var(--text-xs)', fontWeight: 700,
+                                                    background: 'rgba(99,102,241,0.15)', color: '#a5b4fc',
+                                                    borderRadius: 4, padding: '1px 6px',
+                                                }}>PHOTO SET</span>
+                                            </div>
+                                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', wordBreak: 'break-all', marginBottom: 8 }}>
+                                                {editPortalHostPhotoUrl.length > 60 ? editPortalHostPhotoUrl.slice(0, 57) + '…' : editPortalHostPhotoUrl}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                {/* Change */}
+                                                <label style={{
+                                                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                    padding: '4px 10px', borderRadius: 6,
+                                                    background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
+                                                    color: 'var(--color-text-secondary)', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                    cursor: uploadingHostPhoto ? 'not-allowed' : 'pointer',
+                                                    opacity: uploadingHostPhoto ? 0.6 : 1,
+                                                }}>
+                                                    {uploadingHostPhoto ? '⏳ Uploading…' : '↺ Change'}
+                                                    <input type="file" accept={ACCEPTED_IMAGE_TYPES} style={{ display: 'none' }} disabled={uploadingHostPhoto}
+                                                        onChange={async e => {
+                                                            const file = e.target.files?.[0]; if (!file) return;
+                                                            setUploadingHostPhoto(true);
+                                                            try {
+                                                                const { getToken } = await import('@/lib/api');
+                                                                const tok = getToken(); if (!tok) throw new Error('Not authenticated');
+                                                                const result = await uploadPropertyPhoto(file, propertyId, 'reference', tok);
+                                                                setEditPortalHostPhotoUrl(result.url);
+                                                                showNotice('Photo updated — click Save to apply');
+                                                            } catch (err: any) { showNotice(err?.message || 'Upload failed'); }
+                                                            finally { setUploadingHostPhoto(false); e.target.value = ''; }
+                                                        }}
+                                                    />
+                                                </label>
+                                                {/* Remove */}
+                                                <button type="button" onClick={() => setEditPortalHostPhotoUrl('')} style={{
+                                                    padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(248,81,73,0.2)',
+                                                    background: 'rgba(248,81,73,0.06)', color: '#f85149',
+                                                    fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                                                }}>Remove</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* ── Empty state: upload CTA ────────────────────────── */
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: 12,
+                                        border: '1.5px dashed rgba(99,102,241,0.25)', borderRadius: 10,
+                                        padding: '12px 16px', marginTop: 6,
+                                        background: 'rgba(99,102,241,0.03)',
+                                    }}>
                                         <div style={{
                                             width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
-                                            background: 'rgba(99,102,241,0.12)', border: '2px dashed rgba(99,102,241,0.3)',
+                                            background: 'rgba(99,102,241,0.08)', border: '1.5px dashed rgba(99,102,241,0.25)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: 22, color: 'rgba(99,102,241,0.5)',
-                                        }}>+</div>
-                                    )}
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        {/* Upload button */}
-                                        <label style={{
-                                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                                            padding: '6px 14px', borderRadius: 8, cursor: uploadingHostPhoto ? 'not-allowed' : 'pointer',
-                                            background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)',
-                                            color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', fontWeight: 600,
-                                            opacity: uploadingHostPhoto ? 0.6 : 1,
-                                        }}>
-                                            {uploadingHostPhoto ? '⏳ Uploading…' : '📷 Upload Photo'}
-                                            <input
-                                                type="file"
-                                                accept={ACCEPTED_IMAGE_TYPES}
-                                                style={{ display: 'none' }}
-                                                disabled={uploadingHostPhoto}
-                                                onChange={async e => {
-                                                    const file = e.target.files?.[0];
-                                                    if (!file) return;
-                                                    setUploadingHostPhoto(true);
-                                                    try {
-                                                        const { getToken } = await import('@/lib/api');
-                                                        const tok = getToken();
-                                                        if (!tok) throw new Error('Not authenticated');
-                                                        // Reuse existing upload infra — 'reference' photo type
-                                                        const result = await uploadPropertyPhoto(file, propertyId, 'reference', tok);
-                                                        setEditPortalHostPhotoUrl(result.url);
-                                                        showNotice('Photo uploaded — click Save to apply');
-                                                    } catch (err: any) {
-                                                        showNotice(err?.message || 'Upload failed');
-                                                    } finally {
-                                                        setUploadingHostPhoto(false);
-                                                        // Reset file input
-                                                        e.target.value = '';
-                                                    }
-                                                }}
-                                            />
-                                        </label>
-                                        {editPortalHostPhotoUrl && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditPortalHostPhotoUrl('')}
-                                                style={{
-                                                    background: 'none', border: 'none', cursor: 'pointer',
-                                                    color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)', textAlign: 'left',
-                                                }}
-                                            >Remove photo</button>
-                                        )}
+                                            fontSize: 20, color: 'rgba(99,102,241,0.4)',
+                                        }}>👤</div>
+                                        <div>
+                                            <label style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                                padding: '7px 16px', borderRadius: 8,
+                                                background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)',
+                                                color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', fontWeight: 700,
+                                                cursor: uploadingHostPhoto ? 'not-allowed' : 'pointer',
+                                                opacity: uploadingHostPhoto ? 0.6 : 1, marginBottom: 4,
+                                            }}>
+                                                {uploadingHostPhoto ? '⏳ Uploading…' : '📷 Upload Photo'}
+                                                <input type="file" accept={ACCEPTED_IMAGE_TYPES} style={{ display: 'none' }} disabled={uploadingHostPhoto}
+                                                    onChange={async e => {
+                                                        const file = e.target.files?.[0]; if (!file) return;
+                                                        setUploadingHostPhoto(true);
+                                                        try {
+                                                            const { getToken } = await import('@/lib/api');
+                                                            const tok = getToken(); if (!tok) throw new Error('Not authenticated');
+                                                            const result = await uploadPropertyPhoto(file, propertyId, 'reference', tok);
+                                                            setEditPortalHostPhotoUrl(result.url);
+                                                            showNotice('Photo uploaded — click Save to apply');
+                                                        } catch (err: any) { showNotice(err?.message || 'Upload failed'); }
+                                                        finally { setUploadingHostPhoto(false); e.target.value = ''; }
+                                                    }}
+                                                />
+                                            </label>
+                                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>JPG, PNG or WebP · max 15 MB</div>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* URL fallback — advanced / secondary */}
-                                <div style={{ marginTop: 4 }}>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 4 }}>Or paste a direct image URL:</div>
+                                {/* URL fallback — collapsed details for advanced use */}
+                                <details style={{ marginTop: 8 }}>
+                                    <summary style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', cursor: 'pointer', userSelect: 'none' }}>
+                                        Use a direct image URL instead
+                                    </summary>
                                     <input
                                         id="portal-host-photo-url"
-                                        style={iStyle}
+                                        style={{ ...iStyle, marginTop: 6 }}
                                         value={editPortalHostPhotoUrl}
                                         onChange={e => setEditPortalHostPhotoUrl(e.target.value)}
                                         placeholder="https://…"
                                     />
-                                </div>
+                                </details>
                             </div>
+
                             <div>
                                 <label style={lStyle}>
                                     Welcome Note

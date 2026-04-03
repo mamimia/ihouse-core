@@ -366,6 +366,13 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
     // Phase 1047A: surface real send errors instead of silently swallowing them
     const [msgError, setMsgError] = useState<string | null>(null);
 
+    // Phase 1047-polish: auto-dismiss success banner after 4s
+    useEffect(() => {
+        if (!msgSent) return;
+        const t = setTimeout(() => setMsgSent(false), 4000);
+        return () => clearTimeout(t);
+    }, [msgSent]);
+
     useEffect(() => {
         fetch(`${apiBase}/guest/${encodeURIComponent(token)}/contact`)
             .then(r => r.ok ? r.json() : null)
@@ -434,45 +441,52 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
                     <div style={{ fontSize: 12, color: DIM, marginBottom: 10, fontWeight: 600 }}>
                         Leave us a note
                     </div>
-                    {msgSent ? (
-                        <div style={{ fontSize: 14, color: '#34d399', fontWeight: 600 }}>
-                            ✅ Note sent — thank you.
+
+                    {/* Phase 1047-polish: success banner — stays above form, auto-clears */}
+                    {msgSent && (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.25)',
+                            borderRadius: 8, padding: '8px 12px', marginBottom: 10,
+                            fontSize: 13, color: '#34d399', fontWeight: 600,
+                        }}>
+                            <span>✅</span>
+                            <span>We got your note — thank you.</span>
                         </div>
-                    ) : (
-                        <>
-                            <textarea
-                                value={msgText}
-                                onChange={e => { setMsgText(e.target.value); setMsgError(null); }}
-                                placeholder="Any questions or special requests…"
-                                rows={3}
-                                style={{
-                                    width: '100%', background: '#0f1421', border: `1px solid ${BORDER}`,
-                                    borderRadius: 10, padding: '10px 12px', color: TEXT,
-                                    fontSize: 14, resize: 'vertical', boxSizing: 'border-box',
-                                    fontFamily: 'inherit',
-                                }}
-                            />
-                            {/* Phase 1047A: show real error when send fails */}
-                            {msgError && (
-                                <div style={{ fontSize: 13, color: '#f87171', marginTop: 8 }}>
-                                    ⚠ {msgError}
-                                </div>
-                            )}
-                            <button
-                                onClick={sendMessage}
-                                disabled={sending || !msgText.trim()}
-                                style={{
-                                    marginTop: 10, width: '100%', padding: '10px 0',
-                                    background: PRIMARY, border: 'none', borderRadius: 10,
-                                    color: '#fff', fontWeight: 700, fontSize: 14,
-                                    cursor: sending || !msgText.trim() ? 'not-allowed' : 'pointer',
-                                    opacity: !msgText.trim() ? 0.5 : 1,
-                                }}
-                            >
-                                {sending ? 'Sending…' : 'Send Note'}
-                            </button>
-                        </>
                     )}
+
+                    {/* Input area always visible — conversation stays open */}
+                    <textarea
+                        value={msgText}
+                        onChange={e => { setMsgText(e.target.value); setMsgError(null); }}
+                        placeholder="Any questions or special requests…"
+                        rows={3}
+                        style={{
+                            width: '100%', background: '#0f1421', border: `1px solid ${BORDER}`,
+                            borderRadius: 10, padding: '10px 12px', color: TEXT,
+                            fontSize: 14, resize: 'vertical', boxSizing: 'border-box',
+                            fontFamily: 'inherit',
+                        }}
+                    />
+                    {/* Phase 1047A: show real error when send fails */}
+                    {msgError && (
+                        <div style={{ fontSize: 13, color: '#f87171', marginTop: 8 }}>
+                            ⚠ {msgError}
+                        </div>
+                    )}
+                    <button
+                        onClick={sendMessage}
+                        disabled={sending || !msgText.trim()}
+                        style={{
+                            marginTop: 10, width: '100%', padding: '10px 0',
+                            background: PRIMARY, border: 'none', borderRadius: 10,
+                            color: '#fff', fontWeight: 700, fontSize: 14,
+                            cursor: sending || !msgText.trim() ? 'not-allowed' : 'pointer',
+                            opacity: !msgText.trim() ? 0.5 : 1,
+                        }}
+                    >
+                        {sending ? 'Sending…' : 'Send Note'}
+                    </button>
                 </div>
             </div>
         </>
