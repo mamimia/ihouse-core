@@ -1,14 +1,17 @@
 'use client';
 
 /**
- * Phase 1051 — Operational Guest Inbox
+ * Phase 1051 / 1052 — Operational Guest Inbox + Reply Path
  * Route: /manager/inbox
  *
- * Live triage surface for the assigned staff member.
- * Backend: GET /manager/guest-messages  (scoped to caller's user_id via JWT)
- * One row per stay-thread, sorted: unread first → newest last_message_at.
- * Click row → slide-in thread drawer (read-only; reply is Phase 1052).
- * Opening a thread calls PATCH /manager/guest-messages/{booking_id}/read to mark read.
+ * 1051: Inbox list (one row per stay-thread), sorted unread-first.
+ *       Click row → slide-in thread drawer (read-only view).
+ * 1052: Real reply input in the drawer.
+ *       POST /manager/guest-messages/{booking_id}/reply
+ *       sender_type='host', sender_id=caller user_id (NOT tenant_id).
+ *       New message appended optimistically. Drawer stays open.
+ *       Dossier Chat tab picks up the reply on next load (shared DB table).
+ *       Guest portal: NOT exposed yet (Phase 1053).
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -94,14 +97,20 @@ function ThreadDrawer({
     conversation,
     onClose,
     onMarkedRead,
+    onReplySent,
 }: {
     conversation: ConversationSummary;
     onClose: () => void;
     onMarkedRead: (booking_id: string) => void;
+    onReplySent: (booking_id: string, message: string) => void;
 }) {
     const [messages, setMessages] = useState<ThreadMessage[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // Phase 1052 — reply state
+    const [replyText, setReplyText] = useState('');
+    const [sending, setSending] = useState(false);
+    const [sendError, setSendError] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -141,6 +150,29 @@ function ThreadDrawer({
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [onClose]);
+
+    // Phase 1052 — send a host reply
+    const sendReply = async () => {
+        const text = replyText.trim();
+        if (!text || sending) return;
+        setSending(true);
+        setSendError(null);
+        try {
+            const res = await apiFetch<{ message: ThreadMessage }>(
+                `/manager/guest-messages/${encodeURIComponent(conversation.booking_id)}/reply`,
+                { method: 'POST', body: JSON.stringify({ message: text }) }
+            );
+            // Optimistic append
+            setMessages(prev => [...prev, res.message]);
+            setReplyText('');
+            // Update inbox list last_message
+            onReplySent(conversation.booking_id, text);
+        } catch {
+            setSendError('Could not send. Please retry.');
+        } finally {
+            setSending(false);
+        }
+    };
 
     return (
         <>
@@ -285,23 +317,79 @@ function ThreadDrawer({
                     )}
                 </div>
 
-                {/* Reply footer — placeholder until Phase 1052 */}
+                {/* Reply footer — Phase 1052 */}
                 <div style={{
-                    padding: '12px 20px',
+                    padding: '12px 16px',
                     borderTop: '1px solid var(--color-border)',
                     background: 'var(--color-surface-2)',
                     flexShrink: 0,
                 }}>
+                    {sendError && (
+                        <div style={{
+                            fontSize: 11, color: '#ef4444',
+                            marginBottom: 8,
+                        }}>⚠ {sendError}</div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                        <textarea
+                            value={replyText}
+                            onChange={e => setReplyText(e.target.value)}
+                            onKeyDown={e => {
+                                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                    e.preventDefault();
+                                    sendReply();
+                                }
+                            }}
+                            placeholder="Reply to guest… (⌘↵ to send)"
+                            rows={2}
+                            disabled={sending}
+                            style={{
+                                flex: 1,
+                                resize: 'none',
+                                background: 'var(--color-surface)',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: 8,
+                                color: 'var(--color-text)',
+                                fontSize: 13,
+                                padding: '8px 12px',
+                                fontFamily: 'inherit',
+                                lineHeight: 1.5,
+                                outline: 'none',
+                                opacity: sending ? 0.6 : 1,
+                                transition: 'border-color .15s',
+                            }}
+                            onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+                            onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
+                        />
+                        <button
+                            onClick={sendReply}
+                            disabled={sending || !replyText.trim()}
+                            style={{
+                                flexShrink: 0,
+                                padding: '0 16px',
+                                height: 60,
+                                background: sending || !replyText.trim()
+                                    ? 'var(--color-surface-3,#2d2d2d)'
+                                    : 'linear-gradient(135deg,#6366f1,#4f46e5)',
+                                border: 'none',
+                                borderRadius: 8,
+                                color: '#fff',
+                                fontSize: 13, fontWeight: 700,
+                                cursor: sending || !replyText.trim() ? 'not-allowed' : 'pointer',
+                                opacity: sending || !replyText.trim() ? 0.55 : 1,
+                                transition: 'all .15s',
+                                boxShadow: sending || !replyText.trim() ? 'none' : '0 2px 10px rgba(99,102,241,0.4)',
+                                display: 'flex', alignItems: 'center', gap: 6,
+                            }}
+                        >
+                            {sending ? '…' : '↑ Send'}
+                        </button>
+                    </div>
                     <div style={{
-                        padding: '10px 14px',
-                        background: 'var(--color-surface)',
-                        border: '1px dashed var(--color-border)',
-                        borderRadius: 8,
-                        fontSize: 12, color: 'var(--color-text-dim)',
-                        textAlign: 'center',
-                        fontStyle: 'italic',
+                        fontSize: 10, color: 'var(--color-muted)',
+                        marginTop: 5, textAlign: 'right',
                     }}>
-                        Reply path coming in Phase 1052
+                        Host reply · not visible to guest yet
                     </div>
                 </div>
             </div>
@@ -453,6 +541,15 @@ export default function ManagerInboxPage() {
         setConversations(prev =>
             prev.map(c => c.booking_id === booking_id ? { ...c, unread_count: 0 } : c)
         );
+    }, []);
+
+    // Update inbox row when a reply is sent (Phase 1052)
+    const handleReplySent = useCallback((booking_id: string, message: string) => {
+        setConversations(prev => prev.map(c =>
+            c.booking_id === booking_id
+                ? { ...c, last_message: message, last_sender_type: 'host', last_message_at: new Date().toISOString() }
+                : c
+        ));
     }, []);
 
     const totalUnread = conversations.reduce((s, c) => s + c.unread_count, 0);
@@ -665,6 +762,7 @@ export default function ManagerInboxPage() {
                     conversation={openThread}
                     onClose={() => setOpenThread(null)}
                     onMarkedRead={handleMarkedRead}
+                    onReplySent={handleReplySent}
                 />
             )}
         </div>

@@ -1,13 +1,14 @@
 """
-Guest Inbox Router — Phase 1049
-================================
+Guest Inbox Router — Phase 1049 / 1052
+=======================================
 
 Operational inbox for the staff member currently assigned to a stay's conversation thread.
 
 Endpoints:
-    GET  /manager/guest-messages                      — inbox: all assigned stay-threads
-    GET  /manager/guest-messages/{booking_id}         — full thread for one stay
-    PATCH /manager/guest-messages/{booking_id}/read   — mark all messages in thread as read
+    GET  /manager/guest-messages                           — inbox: all assigned stay-threads
+    GET  /manager/guest-messages/{booking_id}              — full thread for one stay
+    PATCH /manager/guest-messages/{booking_id}/read        — mark all messages in thread as read
+    POST  /manager/guest-messages/{booking_id}/reply       — send a host reply into the thread
 
 Auth: jwt_identity (same pattern as all OM endpoints — supports Act As / Preview As sessions).
 
@@ -21,6 +22,11 @@ Thread model:
     One thread = one stay (one booking_id).
     The inbox returns one entry per stay-thread, not one entry per message.
     Sorted: unread first, then newest last_message_at.
+
+Reply identity rule (Phase 1052):
+    sender_id = caller's user_id  (NOT tenant_id — shared too broadly).
+    sender_type = 'host'
+    This makes host replies attributable to the specific responding person.
 """
 from __future__ import annotations
 
@@ -386,4 +392,118 @@ async def mark_thread_read(
 
     except Exception as exc:
         logger.exception("mark_thread_read error: %s", exc)
+        return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
+
+
+# ---------------------------------------------------------------------------
+# POST /manager/guest-messages/{booking_id}/reply — Phase 1052
+# ---------------------------------------------------------------------------
+
+@router.post("/{booking_id}/reply", summary="Send a host reply into a stay-thread (Phase 1052)")
+async def reply_to_guest(
+    booking_id: str,
+    body: dict,
+    identity: dict = Depends(jwt_identity),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Sends a host reply into the given stay-thread.
+
+    Stored in guest_chat_messages as:
+        sender_type   = 'host'
+        sender_id     = caller's user_id  (NOT tenant_id — per Phase 1052 identity rule)
+        message       = body['message']
+        booking_id    = path param
+        property_id   = resolved from existing thread messages
+        assigned_om_id = preserved from existing thread messages (Phase 1048 scaffold)
+        tenant_id     = caller's tenant_id (for multi-tenant isolation)
+
+    Scope guard: caller must be the assigned_om_id on existing thread messages, or role=admin.
+
+    Returns the new message row immediately so the UI can append it optimistically.
+
+    Guest-side portal visibility: NOT exposed yet. Phase 1053 controls that gate.
+    """
+    caller_user_id = str(identity.get("user_id", "")).strip()
+    caller_tenant_id = str(identity.get("tenant_id", "")).strip()
+    caller_role = str(identity.get("role", "")).strip()
+
+    if not caller_user_id:
+        return JSONResponse(status_code=401, content={"error": "CALLER_NOT_IDENTIFIED"})
+
+    message_text = (body.get("message") or "").strip()
+    if not message_text:
+        return JSONResponse(status_code=400, content={"error": "EMPTY_MESSAGE"})
+
+    if len(message_text) > 4000:
+        return JSONResponse(status_code=400, content={"error": "MESSAGE_TOO_LONG"})
+
+    try:
+        db = client if client is not None else _get_db()
+
+        # --- 1. Fetch existing thread to resolve property_id + assigned_om_id ---
+        existing_res = (
+            db.table("guest_chat_messages")
+            .select("id,property_id,assigned_om_id,tenant_id")
+            .eq("booking_id", booking_id)
+            .limit(1)
+            .execute()
+        )
+        existing = existing_res.data or []
+
+        if not existing:
+            return JSONResponse(status_code=404, content={"error": "THREAD_NOT_FOUND"})
+
+        # Scope guard: caller must own this thread or be admin
+        owned = any(r.get("assigned_om_id") == caller_user_id for r in existing)
+        if not owned and caller_role not in ("admin",):
+            return JSONResponse(status_code=403, content={"error": "NOT_ASSIGNED"})
+
+        # Resolve property_id and assigned_om_id from existing thread
+        thread_row = existing[0]
+        property_id = thread_row.get("property_id") or ""
+        assigned_om_id = thread_row.get("assigned_om_id") or caller_user_id
+        # Use tenant from existing thread (consistent isolation scope)
+        thread_tenant = thread_row.get("tenant_id") or caller_tenant_id
+
+        # --- 2. Insert the host reply ---
+        now_iso = datetime.now(tz=timezone.utc).isoformat()
+        new_row = {
+            "booking_id":    booking_id,
+            "property_id":   property_id,
+            "tenant_id":     thread_tenant,
+            "sender_type":   "host",
+            "sender_id":     caller_user_id,   # user_id — NOT tenant_id (Phase 1052 identity rule)
+            "message":       message_text,
+            "assigned_om_id": assigned_om_id,  # preserve scaffold from thread
+            "read_at":       now_iso,           # host's own message is implicitly read
+            "created_at":    now_iso,
+        }
+
+        insert_res = (
+            db.table("guest_chat_messages")
+            .insert(new_row)
+            .execute()
+        )
+        inserted = (insert_res.data or [{}])[0]
+
+        logger.info(
+            "reply_to_guest: booking=%s sender_user_id=%s msg_len=%d",
+            booking_id, caller_user_id, len(message_text),
+        )
+
+        return JSONResponse(status_code=201, content={
+            "message": {
+                "id":          inserted.get("id"),
+                "booking_id":  booking_id,
+                "sender_type": "host",
+                "sender_id":   caller_user_id,
+                "message":     message_text,
+                "read_at":     now_iso,
+                "created_at":  now_iso,
+            }
+        })
+
+    except Exception as exc:
+        logger.exception("reply_to_guest error: %s", exc)
         return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
