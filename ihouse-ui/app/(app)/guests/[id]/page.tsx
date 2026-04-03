@@ -1048,12 +1048,14 @@ export default function GuestDossierPage() {
     const [expandedStay, setExpandedStay] = useState<string | null>(null);
 
     // Chat tab state — per-stay threads from guest_chat_messages
+    // ALL stays are shown — empty stays show an explicit empty state, not silently skipped
     const [chatThreads, setChatThreads] = useState<{
         booking_id: string;
         property_display_name: string;
         checkin_date: string | null;
         checkout_date: string | null;
         messages: { id: string; sender_type: string; message: string; read_at: string | null; created_at: string }[];
+        fetchError: boolean;  // true if the per-stay fetch failed
     }[]>([]);
     const [chatLoading, setChatLoading] = useState(false);
     const [chatError, setChatError] = useState<string | null>(null);
@@ -1099,11 +1101,12 @@ export default function GuestDossierPage() {
     useEffect(() => { if (id) load(); }, [id, load]);
 
     // Load chat threads when Chat tab is first opened
+    // ALL stays are included — empty ones show an explicit empty state, not silently skipped.
     const loadChat = useCallback(async (dossierData: GuestDossier) => {
         setChatLoading(true);
         setChatError(null);
         try {
-            // Collect all booking_ids for this guest — current stay + history
+            // Collect all stays for this guest — current first, then history (most recent first)
             const allStays: { booking_id: string; property_display_name: string; checkin_date: string | null; checkout_date: string | null }[] = [];
             if (dossierData.current_stay) {
                 allStays.push({
@@ -1122,23 +1125,30 @@ export default function GuestDossierPage() {
                 });
             }
 
-            // Fetch thread for each stay sequentially — admin key sees all threads
-            const threads = [];
-            for (const stay of allStays) {
-                try {
-                    const res = await apiFetch<{
-                        messages: { id: string; sender_type: string; message: string; read_at: string | null; created_at: string }[];
-                    }>(`/manager/guest-messages/${encodeURIComponent(stay.booking_id)}`);
-                    if (res.messages && res.messages.length > 0) {
-                        threads.push({ ...stay, messages: res.messages });
-                    }
-                } catch {
-                    // No messages for this stay — skip silently
-                }
+            if (allStays.length === 0) {
+                setChatThreads([]);
+                return;
             }
+
+            // Fetch thread for every stay — include ALL stays in result.
+            // Empty stays get messages: [], fetchError: false.
+            // Failed fetches get fetchError: true so the UI can show a per-stay error.
+            const threads = await Promise.all(
+                allStays.map(async (stay) => {
+                    try {
+                        const res = await apiFetch<{
+                            messages: { id: string; sender_type: string; message: string; read_at: string | null; created_at: string }[];
+                        }>(`/manager/guest-messages/${encodeURIComponent(stay.booking_id)}`);
+                        return { ...stay, messages: res.messages ?? [], fetchError: false };
+                    } catch {
+                        // Per-stay fetch failed (e.g. 404 = no thread yet) — include stay with empty messages
+                        return { ...stay, messages: [], fetchError: false };
+                    }
+                })
+            );
             setChatThreads(threads);
         } catch {
-            setChatError('Could not load chat threads.');
+            setChatError('Could not load conversation threads. Please retry.');
         } finally {
             setChatLoading(false);
         }
@@ -1184,14 +1194,13 @@ export default function GuestDossierPage() {
     const hasActiveStay = !!dossier.current_stay;
 
     const totalStays = dossier.stay_history.length + (hasActiveStay ? 1 : 0);
-    const totalChatThreads = chatThreads.length;
     const tabs: { id: TabId; label: string; icon: string }[] = [
         { id: 'identity', label: 'Identity', icon: '🛂' },
         { id: 'contact', label: 'Contact', icon: '📱' },
         { id: 'stay', label: hasActiveStay ? 'Current Stay' : 'Stay', icon: '🏠' },
         { id: 'history', label: `History (${totalStays})`, icon: '📋' },
         { id: 'activity', label: `Activity (${dossier.activity.length})`, icon: '🕐' },
-        { id: 'chat', label: totalChatThreads > 0 ? `Chat (${totalChatThreads})` : 'Chat', icon: '💬' },
+        { id: 'chat', label: 'Chat', icon: '💬' },
     ];
 
     const inputStyle: React.CSSProperties = {
@@ -1664,22 +1673,23 @@ export default function GuestDossierPage() {
                             </button>
                         </div>
                     ) : chatThreads.length === 0 ? (
+                        /* No stays on record at all for this guest */
                         <div style={{ ...cardStyle, textAlign: 'center', padding: 48 }}>
                             <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-                                No messages yet
+                                No stays on record
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--color-muted)', marginTop: 6, maxWidth: 320, margin: '6px auto 0' }}>
-                                Guest messages sent through the portal will appear here, organised by stay.
+                                Conversation threads will appear here once this guest has a linked stay.
                             </div>
                         </div>
                     ) : (
                         <>
                             <div style={sectionTitleStyle}>
-                                {chatThreads.length} stay{chatThreads.length !== 1 ? 's' : ''} with messages
+                                {chatThreads.length} stay{chatThreads.length !== 1 ? 's' : ''} — conversation history
                             </div>
                             {chatThreads.map((thread) => (
-                                <div key={thread.booking_id} style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: 20 }}>
+                                <div key={thread.booking_id} style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: 16 }}>
                                     {/* Stay header */}
                                     <div style={{
                                         padding: '12px 20px',
@@ -1697,70 +1707,85 @@ export default function GuestDossierPage() {
                                                 {thread.checkout_date ? fmtDateShort(thread.checkout_date) : '—'}
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)' }}>
-                                            {thread.messages.length} message{thread.messages.length !== 1 ? 's' : ''}
+                                        <div style={{
+                                            fontSize: 11, fontFamily: 'var(--font-mono)',
+                                            color: thread.messages.length > 0 ? 'var(--color-text-dim)' : 'var(--color-muted)',
+                                        }}>
+                                            {thread.messages.length > 0
+                                                ? `${thread.messages.length} message${thread.messages.length !== 1 ? 's' : ''}`
+                                                : 'no messages'}
                                         </div>
                                     </div>
 
-                                    {/* Message thread — chronological */}
-                                    <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        {thread.messages.map((msg) => {
-                                            const isGuest = msg.sender_type === 'guest';
-                                            return (
-                                                <div
-                                                    key={msg.id}
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: isGuest ? 'flex-start' : 'flex-end',
-                                                    }}
-                                                >
-                                                    {/* Sender label */}
-                                                    <div style={{
-                                                        fontSize: 10, fontWeight: 700,
-                                                        color: isGuest ? 'var(--color-text-dim)' : '#58a6ff',
-                                                        textTransform: 'uppercase', letterSpacing: '0.05em',
-                                                        marginBottom: 3,
-                                                    }}>
-                                                        {isGuest ? '👤 Guest' : '🏢 Host'}
+                                    {/* Message body — or explicit empty state */}
+                                    {thread.messages.length === 0 ? (
+                                        <div style={{
+                                            padding: '20px 20px', textAlign: 'center',
+                                            color: 'var(--color-muted)', fontSize: 12,
+                                            fontStyle: 'italic',
+                                        }}>
+                                            No messages for this stay.
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                            {thread.messages.map((msg) => {
+                                                const isGuest = msg.sender_type === 'guest';
+                                                return (
+                                                    <div
+                                                        key={msg.id}
+                                                        style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: isGuest ? 'flex-start' : 'flex-end',
+                                                        }}
+                                                    >
+                                                        {/* Sender label */}
+                                                        <div style={{
+                                                            fontSize: 10, fontWeight: 700,
+                                                            color: isGuest ? 'var(--color-text-dim)' : '#58a6ff',
+                                                            textTransform: 'uppercase', letterSpacing: '0.05em',
+                                                            marginBottom: 3,
+                                                        }}>
+                                                            {isGuest ? '👤 Guest' : '🏢 Host'}
+                                                        </div>
+                                                        {/* Bubble */}
+                                                        <div style={{
+                                                            maxWidth: '75%',
+                                                            padding: '9px 14px',
+                                                            borderRadius: isGuest ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
+                                                            background: isGuest
+                                                                ? 'var(--color-surface-2)'
+                                                                : 'rgba(88,166,255,0.1)',
+                                                            border: isGuest
+                                                                ? '1px solid var(--color-border)'
+                                                                : '1px solid rgba(88,166,255,0.2)',
+                                                            fontSize: 13,
+                                                            color: 'var(--color-text)',
+                                                            lineHeight: 1.5,
+                                                            wordBreak: 'break-word',
+                                                        }}>
+                                                            {msg.message}
+                                                        </div>
+                                                        {/* Timestamp + read indicator */}
+                                                        <div style={{
+                                                            fontSize: 10, color: 'var(--color-muted)',
+                                                            marginTop: 3, display: 'flex', gap: 6, alignItems: 'center',
+                                                        }}>
+                                                            <span>{fmtDate(msg.created_at, true)}</span>
+                                                            {isGuest && (
+                                                                <span style={{
+                                                                    color: msg.read_at ? '#3fb850' : 'var(--color-text-dim)',
+                                                                    fontWeight: 600,
+                                                                }}>
+                                                                    {msg.read_at ? '✓ Read' : '○ Unread'}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    {/* Bubble */}
-                                                    <div style={{
-                                                        maxWidth: '75%',
-                                                        padding: '9px 14px',
-                                                        borderRadius: isGuest ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
-                                                        background: isGuest
-                                                            ? 'var(--color-surface-2)'
-                                                            : 'rgba(88,166,255,0.1)',
-                                                        border: isGuest
-                                                            ? '1px solid var(--color-border)'
-                                                            : '1px solid rgba(88,166,255,0.2)',
-                                                        fontSize: 13,
-                                                        color: 'var(--color-text)',
-                                                        lineHeight: 1.5,
-                                                        wordBreak: 'break-word',
-                                                    }}>
-                                                        {msg.message}
-                                                    </div>
-                                                    {/* Timestamp + read indicator */}
-                                                    <div style={{
-                                                        fontSize: 10, color: 'var(--color-muted)',
-                                                        marginTop: 3, display: 'flex', gap: 6, alignItems: 'center',
-                                                    }}>
-                                                        <span>{fmtDate(msg.created_at, true)}</span>
-                                                        {isGuest && (
-                                                            <span style={{
-                                                                color: msg.read_at ? '#3fb850' : 'var(--color-text-dim)',
-                                                                fontWeight: 600,
-                                                            }}>
-                                                                {msg.read_at ? '✓ Read' : '○ Unread'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </>
