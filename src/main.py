@@ -492,6 +492,9 @@ app.include_router(worker_availability_router)
 from api.guest_messages_router import router as guest_messages_router  # noqa: E402  # Phase 236
 app.include_router(guest_messages_router)
 
+from api.guest_inbox_router import router as guest_inbox_router  # noqa: E402  # Phase 1049
+app.include_router(guest_inbox_router)
+
 from api.booking_checkin_router import router as booking_checkin_router  # noqa: E402  # Phase 398
 app.include_router(booking_checkin_router)
 
