@@ -350,19 +350,27 @@ async def guest_send_message(token: str, body: Dict[str, Any], client: Optional[
     if not content:
         return JSONResponse(status_code=400, content={"error": "VALIDATION_ERROR", "detail": "'content' is required."})
 
+    # Validate token context has both required NOT NULL fields before attempting insert
+    booking_id = ctx.get("booking_ref", "")
+    property_id = ctx.get("property_id", "")
+    tenant_id = ctx.get("tenant_id", "")
+    if not booking_id or not property_id:
+        logger.warning("guest_send_message: incomplete token context — booking_ref=%r property_id=%r", booking_id, property_id)
+        return JSONResponse(status_code=500, content={"error": "CONTEXT_ERROR", "detail": "Token context incomplete."})
+
     from datetime import datetime, timezone
     now = datetime.now(tz=timezone.utc).isoformat()
     # Phase 1047C fix: align to actual guest_chat_messages schema
-    # - column is 'booking_id', not 'booking_ref'
-    # - column is 'message', not 'content'
+    # Columns: booking_id (NOT NULL), property_id (NOT NULL), tenant_id (NOT NULL),
+    #          sender_type (NOT NULL), message (NOT NULL)
+    # booking_ref from token IS the booking_id value in this table
     row = {
-        "booking_id": ctx["booking_ref"],   # booking_ref IS the booking_id value
+        "booking_id":  booking_id,
+        "property_id": property_id,
+        "tenant_id":   tenant_id,
         "sender_type": "guest",
-        "message": content[:2000],          # column is 'message', not 'content'
-        "created_at": now,
+        "message":     content[:2000],
     }
-    if ctx.get("tenant_id"):
-        row["tenant_id"] = ctx["tenant_id"]
 
     try:
         db = client if client is not None else _get_supabase_client()

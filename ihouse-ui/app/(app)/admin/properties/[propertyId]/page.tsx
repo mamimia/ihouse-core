@@ -225,6 +225,7 @@ export default function PropertyDetailPage() {
     // Phase 1047B — Guest Portal Host Identity (display layer only, not routing truth)
     const [editPortalHostName, setEditPortalHostName] = useState('');
     const [editPortalHostPhotoUrl, setEditPortalHostPhotoUrl] = useState('');
+    const [uploadingHostPhoto, setUploadingHostPhoto] = useState(false);
     const [editPortalHostIntro, setEditPortalHostIntro] = useState('');
     const [editOwnerEmail, setEditOwnerEmail] = useState('');
     // Amenities — Phase 844
@@ -1446,25 +1447,88 @@ export default function PropertyDetailPage() {
                                 />
                             </div>
                             <div>
-                                <label style={lStyle}>Photo URL <span style={{ fontWeight: 400, color: 'var(--color-text-faint)' }}>(optional — avatar shown in guest portal)</span></label>
-                                <input
-                                    id="portal-host-photo-url"
-                                    style={iStyle}
-                                    value={editPortalHostPhotoUrl}
-                                    onChange={e => setEditPortalHostPhotoUrl(e.target.value)}
-                                    placeholder="https://…"
-                                />
-                                {editPortalHostPhotoUrl && (
-                                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <label style={lStyle}>Host Photo <span style={{ fontWeight: 400, color: 'var(--color-text-faint)' }}>(optional · shown as avatar in guest portal)</span></label>
+
+                                {/* Phase 1047E — Upload Photo (primary path) */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                                    {/* Preview */}
+                                    {editPortalHostPhotoUrl ? (
                                         <img
                                             src={editPortalHostPhotoUrl}
                                             alt="Host avatar preview"
-                                            style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--color-border)' }}
+                                            style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--color-border)', flexShrink: 0 }}
                                             onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                         />
-                                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>Preview</span>
+                                    ) : (
+                                        <div style={{
+                                            width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+                                            background: 'rgba(99,102,241,0.12)', border: '2px dashed rgba(99,102,241,0.3)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 22, color: 'rgba(99,102,241,0.5)',
+                                        }}>+</div>
+                                    )}
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        {/* Upload button */}
+                                        <label style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                                            padding: '6px 14px', borderRadius: 8, cursor: uploadingHostPhoto ? 'not-allowed' : 'pointer',
+                                            background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)',
+                                            color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', fontWeight: 600,
+                                            opacity: uploadingHostPhoto ? 0.6 : 1,
+                                        }}>
+                                            {uploadingHostPhoto ? '⏳ Uploading…' : '📷 Upload Photo'}
+                                            <input
+                                                type="file"
+                                                accept={ACCEPTED_IMAGE_TYPES}
+                                                style={{ display: 'none' }}
+                                                disabled={uploadingHostPhoto}
+                                                onChange={async e => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    setUploadingHostPhoto(true);
+                                                    try {
+                                                        const { getToken } = await import('@/lib/api');
+                                                        const tok = getToken();
+                                                        if (!tok) throw new Error('Not authenticated');
+                                                        // Reuse existing upload infra — 'reference' photo type
+                                                        const result = await uploadPropertyPhoto(file, propertyId, 'reference', tok);
+                                                        setEditPortalHostPhotoUrl(result.url);
+                                                        showNotice('Photo uploaded — click Save to apply');
+                                                    } catch (err: any) {
+                                                        showNotice(err?.message || 'Upload failed');
+                                                    } finally {
+                                                        setUploadingHostPhoto(false);
+                                                        // Reset file input
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                        {editPortalHostPhotoUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditPortalHostPhotoUrl('')}
+                                                style={{
+                                                    background: 'none', border: 'none', cursor: 'pointer',
+                                                    color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)', textAlign: 'left',
+                                                }}
+                                            >Remove photo</button>
+                                        )}
                                     </div>
-                                )}
+                                </div>
+
+                                {/* URL fallback — advanced / secondary */}
+                                <div style={{ marginTop: 4 }}>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 4 }}>Or paste a direct image URL:</div>
+                                    <input
+                                        id="portal-host-photo-url"
+                                        style={iStyle}
+                                        value={editPortalHostPhotoUrl}
+                                        onChange={e => setEditPortalHostPhotoUrl(e.target.value)}
+                                        placeholder="https://…"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label style={lStyle}>
