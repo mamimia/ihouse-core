@@ -68,6 +68,7 @@ const OM_NAV: NavItem[] = [
     { label: 'Hub',      href: '/manager',          icon: '⚡', section: 'primary' },
     { label: 'Alerts',   href: '/manager/alerts',   icon: '🔴', section: 'primary' },
     { label: 'Stream',   href: '/manager/stream',   icon: '📡', section: 'primary' },
+    { label: 'Inbox',    href: '/manager/inbox',    icon: '💬', section: 'primary' },
     { label: 'Team',     href: '/manager/team',     icon: '👥', section: 'primary' },
     // Supporting — intervention layers
     { label: 'Bookings', href: '/manager/bookings', icon: '📋', section: 'supporting' },
@@ -75,7 +76,7 @@ const OM_NAV: NavItem[] = [
 ];
 
 // Routes that exist as real pages in this phase
-const LIVE_ROUTES = new Set(['/manager', '/manager/alerts', '/manager/stream', '/manager/team']);
+const LIVE_ROUTES = new Set(['/manager', '/manager/alerts', '/manager/stream', '/manager/team', '/manager/inbox']);
 
 // ---------------------------------------------------------------------------
 // Props

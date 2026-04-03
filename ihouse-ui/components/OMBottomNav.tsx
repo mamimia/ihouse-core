@@ -43,13 +43,13 @@ function getOMMode(): OMMode {
 type Tab = { label: string; href: string; icon: string };
 
 const PRIMARY_TABS: Tab[] = [
-    { label: 'Hub',    href: '/manager',        icon: '⚡' },
-    { label: 'Alerts', href: '/manager/alerts', icon: '🔴' },
-    { label: 'Stream', href: '/manager/stream', icon: '📡' },
-    { label: 'Team',   href: '/manager/team',   icon: '👥' },
+    { label: 'Hub',    href: '/manager',         icon: '⚡' },
+    { label: 'Alerts', href: '/manager/alerts',  icon: '🔴' },
+    { label: 'Stream', href: '/manager/stream',  icon: '📡' },
+    { label: 'Inbox',  href: '/manager/inbox',   icon: '💬' },
 ];
 
-const LIVE_ROUTES = new Set(['/manager', '/manager/alerts', '/manager/stream', '/manager/team']);
+const LIVE_ROUTES = new Set(['/manager', '/manager/alerts', '/manager/stream', '/manager/team', '/manager/inbox']);
 
 // ---------------------------------------------------------------------------
 // Component
@@ -84,7 +84,7 @@ export default function OMBottomNav() {
         }
     };
 
-    const moreActive = ['/manager/bookings', '/manager/tasks'].some(h => pathname.startsWith(h));
+    const moreActive = ['/manager/bookings', '/manager/tasks', '/manager/team'].some(h => pathname.startsWith(h));
 
     // ── Styles ─────────────────────────────────────────────────────────────
 
@@ -196,6 +196,13 @@ export default function OMBottomNav() {
                     background: 'var(--color-border)',
                     margin: '0 auto 16px',
                 }} />
+                <div
+                    style={sheetItemStyle}
+                    onClick={() => handleNav('/manager/team')}
+                >
+                    <span style={{ fontSize: 18 }}>👥</span>
+                    Team
+                </div>
                 <div
                     style={sheetItemStyle}
                     onClick={() => handleNav('/manager/bookings')}
