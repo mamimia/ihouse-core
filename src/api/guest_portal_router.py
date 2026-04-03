@@ -465,7 +465,8 @@ async def guest_location(token: str, client: Optional[Any] = None) -> JSONRespon
         db = client if client is not None else _get_supabase_client()
         result = (
             db.table("properties")
-            .select("name, address, latitude, longitude")
+            # Phase 1047C: removed non-existent 'name' column — address/latitude/longitude confirmed to exist
+            .select("address, latitude, longitude")
             .eq("property_id", ctx["property_id"])
             .limit(1)
             .execute()
@@ -670,7 +671,12 @@ async def checkout_worker_view(
         try:
             prop_res = (
                 db.table("properties")
-                .select("name, door_code, special_notes, checkout_notes")
+                # Phase 1047C: align to actual DB schema
+                # name → display_name (name column does not exist)
+                # special_notes → does not exist, removed
+                # checkout_notes → extra_notes (checkout_notes does not exist)
+                # door_code → confirmed to exist
+                .select("display_name, door_code, extra_notes")
                 .eq("property_id", property_id)
                 .limit(1)
                 .execute()
@@ -732,10 +738,9 @@ async def checkout_worker_view(
                 "status": booking.get("status"),
             },
             "property": {
-                "name": prop_data.get("name"),
+                "name": prop_data.get("display_name"),   # Phase 1047C: was prop_data.get("name") — column does not exist
                 "door_code": prop_data.get("door_code"),
-                "special_notes": prop_data.get("special_notes"),
-                "checkout_notes": prop_data.get("checkout_notes"),
+                "checkout_notes": prop_data.get("extra_notes"),  # Phase 1047C: was checkout_notes — column does not exist
             },
             "deposit": deposit_data,
             "reference_photos": ref_photos,

@@ -430,19 +430,20 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
                     background: SURFACE, border: `1px solid ${BORDER}`,
                     borderRadius: RADIUS, padding: 16,
                 }}>
+                    {/* Phase 1047C: honest copy — no false response promise */}
                     <div style={{ fontSize: 12, color: DIM, marginBottom: 10, fontWeight: 600 }}>
-                        Send a message to your host
+                        Leave us a note
                     </div>
                     {msgSent ? (
                         <div style={{ fontSize: 14, color: '#34d399', fontWeight: 600 }}>
-                            ✅ Your message was sent. We&apos;ll get back to you shortly.
+                            ✅ Note sent — thank you.
                         </div>
                     ) : (
                         <>
                             <textarea
                                 value={msgText}
                                 onChange={e => { setMsgText(e.target.value); setMsgError(null); }}
-                                placeholder="Type your message…"
+                                placeholder="Any questions or special requests…"
                                 rows={3}
                                 style={{
                                     width: '100%', background: '#0f1421', border: `1px solid ${BORDER}`,
@@ -468,7 +469,7 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
                                     opacity: !msgText.trim() ? 0.5 : 1,
                                 }}
                             >
-                                {sending ? 'Sending…' : 'Send Message'}
+                                {sending ? 'Sending…' : 'Send Note'}
                             </button>
                         </>
                     )}
