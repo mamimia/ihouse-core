@@ -441,12 +441,15 @@ async def reply_to_guest(
     try:
         db = client if client is not None else _get_db()
 
-        # --- 1. Fetch existing thread to resolve property_id + assigned_om_id ---
+        # --- 1. Fetch ALL messages for this booking to resolve ownership + context ---
+        # Must fetch all rows, not limit(1), because early messages may have assigned_om_id=null
+        # (written before Phase 1048 routing was in place). Ownership is established if ANY
+        # row in the thread has assigned_om_id = caller_user_id.
         existing_res = (
             db.table("guest_chat_messages")
-            .select("id,property_id,assigned_om_id,tenant_id")
+            .select("id,property_id,assigned_om_id,tenant_id,created_at")
             .eq("booking_id", booking_id)
-            .limit(1)
+            .order("created_at", desc=True)   # newest first — best source for context
             .execute()
         )
         existing = existing_res.data or []
@@ -454,17 +457,23 @@ async def reply_to_guest(
         if not existing:
             return JSONResponse(status_code=404, content={"error": "THREAD_NOT_FOUND"})
 
-        # Scope guard: caller must own this thread or be admin
+        # Scope guard: caller owns thread if ANY row has assigned_om_id == caller_user_id
         owned = any(r.get("assigned_om_id") == caller_user_id for r in existing)
         if not owned and caller_role not in ("admin",):
+            logger.warning(
+                "reply_to_guest: 403 NOT_ASSIGNED booking=%s caller=%s assigned_om_ids=%s",
+                booking_id, caller_user_id,
+                list({r.get("assigned_om_id") for r in existing}),
+            )
             return JSONResponse(status_code=403, content={"error": "NOT_ASSIGNED"})
 
-        # Resolve property_id and assigned_om_id from existing thread
-        thread_row = existing[0]
-        property_id = thread_row.get("property_id") or ""
-        assigned_om_id = thread_row.get("assigned_om_id") or caller_user_id
-        # Use tenant from existing thread (consistent isolation scope)
-        thread_tenant = thread_row.get("tenant_id") or caller_tenant_id
+        # Resolve property_id + assigned_om_id from most recent routed row (non-null assigned_om_id)
+        # Falls back to any row if no routed row exists
+        routed_rows = [r for r in existing if r.get("assigned_om_id")]
+        context_row = routed_rows[0] if routed_rows else existing[0]
+        property_id = context_row.get("property_id") or ""
+        assigned_om_id = context_row.get("assigned_om_id") or caller_user_id
+        thread_tenant = context_row.get("tenant_id") or caller_tenant_id
 
         # --- 2. Insert the host reply ---
         now_iso = datetime.now(tz=timezone.utc).isoformat()
