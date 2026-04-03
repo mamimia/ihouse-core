@@ -267,9 +267,61 @@ async def list_guests(
                 or term in (r.get("email") or "").lower()
             ]
 
+        # --- Track B: enrich with active in-stay booking context ---
+        # One extra query against booking_state for the returned guest_ids.
+        # active_stay is appended only for guests currently checked in.
+        # Source of truth: booking_state.status in ('checked_in', 'instay', 'active').
+        active_stay_map: dict = {}
+        if rows:
+            guest_ids = [r["id"] for r in rows if r.get("id")]
+            try:
+                bs_res = (
+                    db.table("booking_state")
+                    .select("booking_id,guest_id,property_id,status,check_in,check_out")
+                    .in_("guest_id", guest_ids)
+                    .in_("status", ["checked_in", "instay", "active", "CheckedIn"])
+                    .execute()
+                )
+                bs_rows = bs_res.data or []
+
+                # Gather property display names for active stays
+                prop_ids = list({r["property_id"] for r in bs_rows if r.get("property_id")})
+                prop_names: dict = {}
+                if prop_ids:
+                    prop_res = (
+                        db.table("properties")
+                        .select("property_id,display_name")
+                        .in_("property_id", prop_ids)
+                        .execute()
+                    )
+                    for p in (prop_res.data or []):
+                        prop_names[p["property_id"]] = p.get("display_name") or p["property_id"]
+
+                for bs in bs_rows:
+                    gid = bs.get("guest_id")
+                    if not gid or gid in active_stay_map:
+                        continue  # keep first (most recent) active stay per guest
+                    pid = bs.get("property_id", "")
+                    active_stay_map[gid] = {
+                        "booking_id": bs.get("booking_id"),
+                        "property_id": pid,
+                        "property_display_name": prop_names.get(pid, pid),
+                        "check_in": bs.get("check_in"),
+                        "check_out": bs.get("check_out"),
+                    }
+            except Exception as exc:
+                logger.warning("list_guests: active_stay enrichment failed (non-blocking): %s", exc)
+
+        # Sort: in-stay guests first, then by created_at desc (already from DB)
+        def _sort_key(r: dict) -> tuple:
+            in_stay = r["id"] in active_stay_map
+            return (0 if in_stay else 1,)
+
+        rows.sort(key=_sort_key)
+
         return JSONResponse(
             status_code=200,
-            content={"count": len(rows), "guests": [_serialize(r) for r in rows]},
+            content={"count": len(rows), "guests": [_serialize(r, active_stay_map.get(r.get("id"))) for r in rows]},
         )
 
     except Exception as exc:  # noqa: BLE001
@@ -463,8 +515,13 @@ async def patch_guest(
 # Internal serialiser
 # ---------------------------------------------------------------------------
 
-def _serialize(row: dict) -> dict:
-    """Return a clean JSON-safe representation of a guests row."""
+def _serialize(row: dict, active_stay: dict | None = None) -> dict:
+    """Return a clean JSON-safe representation of a guests row.
+
+    active_stay (optional): enriched in-stay booking context from booking_state.
+    Only present if the guest is currently checked in.
+    Provides: booking_id, property_id, property_display_name, check_in, check_out.
+    """
     return {
         "id":                 row.get("id"),
         "tenant_id":          row.get("tenant_id"),
@@ -484,4 +541,6 @@ def _serialize(row: dict) -> dict:
         "preferred_channel":  row.get("preferred_channel"),
         "created_at":         row.get("created_at"),
         "updated_at":         row.get("updated_at"),
+        # Track B: active in-stay enrichment (null when not in stay)
+        "active_stay":        active_stay,
     }

@@ -328,7 +328,21 @@ export default function GuestsPage() {
                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 >
                                     <Td>
-                                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{g.full_name}</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{g.full_name}</span>
+                                            {g.active_stay && (
+                                                <span style={{
+                                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                    padding: '2px 9px', borderRadius: 999,
+                                                    background: 'rgba(63,185,80,0.1)',
+                                                    border: '1px solid rgba(63,185,80,0.25)',
+                                                    color: '#3fb850', fontSize: 11, fontWeight: 700,
+                                                    width: 'fit-content',
+                                                }}>
+                                                    🟢 In Stay — {g.active_stay.property_display_name}
+                                                </span>
+                                            )}
+                                        </div>
                                     </Td>
                                     <Td muted={!g.email}>{g.email ?? '—'}</Td>
                                     <Td muted={!g.phone}>{g.phone ?? '—'}</Td>

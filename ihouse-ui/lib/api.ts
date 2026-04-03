@@ -404,6 +404,14 @@ export interface Guest {
     preferred_channel: string | null;
     created_at: string;
     updated_at: string;
+    // Phase 1050 Track B — active in-stay enrichment (null when not in stay)
+    active_stay: {
+        booking_id: string;
+        property_id: string;
+        property_display_name: string;
+        check_in: string | null;
+        check_out: string | null;
+    } | null;
 }
 
 export interface GuestListResponse {
