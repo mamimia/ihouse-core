@@ -408,22 +408,73 @@ async def guest_send_message(token: str, body: Dict[str, Any], client: Optional[
         return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
 
 
-@router.get("/{token}/messages", summary="Guest reads messages (Phase 670)")
+@router.get("/{token}/messages", summary="Guest reads thread history (Phase 670 / 1053)")
 async def guest_get_messages(token: str, client: Optional[Any] = None) -> JSONResponse:
+    """
+    Returns the conversation thread for the guest's current stay.
+
+    Scoped: booking_id from token context only — one stay, no cross-stay leakage.
+    Returns: sender_type, message, created_at, id.
+    Internal fields (assigned_om_id, sender_id, tenant_id) are stripped — NOT exposed to guest.
+    Host messages are labeled with portal_host_name from property context (Phase 1053).
+
+    Phase 1052 identity rule:
+        sender_id = user_id (NOT tenant_id).
+        This field is not returned to guest; it is internal routing truth only.
+    """
     ctx = _resolve_token_ctx(token, client=client)
     if not ctx:
         return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
 
+    booking_id = ctx.get("booking_ref", "")
+    if not booking_id:
+        return JSONResponse(status_code=400, content={"error": "TOKEN_CONTEXT_INCOMPLETE"})
+
     try:
         db = client if client is not None else _get_supabase_client()
+
+        # Phase 1053 fix: column is booking_id, NOT booking_ref
+        # Previous version used .eq("booking_ref", ...) which always returned 0 rows.
         result = (
-            db.table("guest_chat_messages").select("*")
-            .eq("booking_ref", ctx["booking_ref"])
+            db.table("guest_chat_messages")
+            .select("id,sender_type,message,created_at")
+            .eq("booking_id", booking_id)   # FIXED: was "booking_ref" (wrong column name)
             .order("created_at", desc=False)
             .execute()
         )
         messages = result.data or []
-        return JSONResponse(status_code=200, content={"count": len(messages), "messages": messages})
+
+        # Resolve portal_host_name for host message labeling (display layer, not routing truth)
+        portal_host_name: str | None = None
+        try:
+            prop_res = (
+                db.table("properties")
+                .select("portal_host_name")
+                .eq("property_id", ctx.get("property_id", ""))
+                .limit(1)
+                .execute()
+            )
+            if prop_res.data:
+                portal_host_name = prop_res.data[0].get("portal_host_name") or None
+        except Exception:
+            pass
+
+        # Return only guest-safe fields — strip all internal routing fields
+        safe_messages = [
+            {
+                "id":          m["id"],
+                "sender_type": m["sender_type"],
+                "message":     m["message"],
+                "created_at":  m.get("created_at"),
+            }
+            for m in messages
+        ]
+
+        return JSONResponse(status_code=200, content={
+            "count":            len(safe_messages),
+            "messages":         safe_messages,
+            "portal_host_name": portal_host_name or "Your Host",
+        })
     except Exception as exc:
         logger.exception("guest_get_messages error: %s", exc)
         return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})

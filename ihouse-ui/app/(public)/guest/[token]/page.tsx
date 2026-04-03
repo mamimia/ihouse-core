@@ -14,7 +14,7 @@
  *   6. Your Stay            (guests, deposit, checkout guidance)
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import DMonogram from '../../../../components/DMonogram';
 import CompactLangSwitcher from '../../../../components/CompactLangSwitcher';
@@ -355,7 +355,135 @@ function HowThisHomeWorks({ token, apiBase }: { token: string; apiBase: string }
 }
 
 // ---------------------------------------------------------------------------
-// Section 4 — Need Help
+// Phase 1053 — Guest Conversation Thread
+// Fetches GET /{token}/messages — shows history above the note form.
+// Polls every 30s. Host labeled as portal_host_name or "Your Host".
+// ---------------------------------------------------------------------------
+
+interface PortalMessage {
+    id: string;
+    sender_type: string;   // 'guest' | 'host'
+    message: string;
+    created_at: string | null;
+}
+
+function fmtMsgTime(iso: string | null): string {
+    if (!iso) return '';
+    try {
+        const d = new Date(iso);
+        const diffMs = Date.now() - d.getTime();
+        const diffMin = Math.floor(diffMs / 60000);
+        if (diffMin < 1) return 'just now';
+        if (diffMin < 60) return `${diffMin}m ago`;
+        const h = Math.floor(diffMin / 60);
+        if (h < 24) return `${h}h ago`;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch { return ''; }
+}
+
+function ConversationThread({ token, apiBase, newMsgSignal }: {
+    token: string;
+    apiBase: string;
+    newMsgSignal: number;   // increments when guest sends a new note → triggers immediate re-fetch
+}) {
+    const [messages, setMessages] = useState<PortalMessage[]>([]);
+    const [hostLabel, setHostLabel] = useState('Your Host');
+    const [loaded, setLoaded] = useState(false);
+
+    const fetchMessages = useCallback(async () => {
+        try {
+            const resp = await fetch(`${apiBase}/guest/${encodeURIComponent(token)}/messages`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            setMessages(data.messages ?? []);
+            if (data.portal_host_name) setHostLabel(data.portal_host_name);
+            setLoaded(true);
+        } catch { /* non-blocking */ }
+    }, [token, apiBase]);
+
+    // Mount fetch + 30s poll
+    useEffect(() => {
+        fetchMessages();
+        const interval = setInterval(fetchMessages, 30000);
+        return () => clearInterval(interval);
+    }, [fetchMessages]);
+
+    // Immediate re-fetch when guest sends a new message
+    useEffect(() => {
+        if (newMsgSignal > 0) {
+            setTimeout(fetchMessages, 800); // small delay for backend write to settle
+        }
+    }, [newMsgSignal, fetchMessages]);
+
+    // Null path — no messages yet
+    if (!loaded || messages.length === 0) return null;
+
+    return (
+        <div style={{ marginBottom: 16 }}>
+            <div style={{
+                fontSize: 11, color: DIM, fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                marginBottom: 10,
+            }}>
+                Conversation
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {messages.map(msg => {
+                    const isGuest = msg.sender_type === 'guest';
+                    return (
+                        <div
+                            key={msg.id}
+                            style={{
+                                display: 'flex', flexDirection: 'column',
+                                alignItems: isGuest ? 'flex-end' : 'flex-start',
+                            }}
+                        >
+                            {/* Sender label */}
+                            <div style={{
+                                fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
+                                textTransform: 'uppercase',
+                                color: isGuest ? '#60a5fa' : '#93c5fd',
+                                marginBottom: 3,
+                            }}>
+                                {isGuest ? 'You' : hostLabel}
+                            </div>
+                            {/* Bubble */}
+                            <div style={{
+                                maxWidth: '82%',
+                                padding: '9px 13px',
+                                borderRadius: isGuest
+                                    ? '16px 4px 16px 16px'
+                                    : '4px 16px 16px 16px',
+                                background: isGuest
+                                    ? 'rgba(59,130,246,0.18)'
+                                    : 'rgba(255,255,255,0.06)',
+                                border: isGuest
+                                    ? '1px solid rgba(59,130,246,0.3)'
+                                    : `1px solid ${BORDER}`,
+                                fontSize: 14, color: TEXT,
+                                lineHeight: 1.55, wordBreak: 'break-word',
+                            }}>
+                                {msg.message}
+                            </div>
+                            {/* Timestamp */}
+                            {msg.created_at && (
+                                <div style={{ fontSize: 10, color: FAINT, marginTop: 3 }}>
+                                    {fmtMsgTime(msg.created_at)}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+            <div style={{
+                height: 1, background: BORDER, margin: '14px 0 4px',
+            }} />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Section 4 — Need Help (updated Phase 1053: thread above form)
 // ---------------------------------------------------------------------------
 
 function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
@@ -365,6 +493,8 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
     const [sending, setSending] = useState(false);
     // Phase 1047A: surface real send errors instead of silently swallowing them
     const [msgError, setMsgError] = useState<string | null>(null);
+    // Phase 1053: signal to ConversationThread to re-fetch after guest sends
+    const [sentSignal, setSentSignal] = useState(0);
 
     // Phase 1047-polish: auto-dismiss success banner after 4s
     useEffect(() => {
@@ -399,6 +529,8 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
             }
             setMsgSent(true);
             setMsgText('');
+            // Phase 1053: trigger thread re-fetch to show the sent message
+            setSentSignal(prev => prev + 1);
         } catch {
             setMsgError('Unable to send. Please check your connection and try again.');
         } finally {
@@ -437,6 +569,9 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
                     background: SURFACE, border: `1px solid ${BORDER}`,
                     borderRadius: RADIUS, padding: 16,
                 }}>
+                    {/* Phase 1053: Conversation thread above the note form */}
+                    <ConversationThread token={token} apiBase={apiBase} newMsgSignal={sentSignal} />
+
                     {/* Phase 1047C: honest copy — no false response promise */}
                     <div style={{ fontSize: 12, color: DIM, marginBottom: 10, fontWeight: 600 }}>
                         Leave us a note
@@ -492,6 +627,7 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
         </>
     );
 }
+
 
 // ---------------------------------------------------------------------------
 // Section 5 — Around You
