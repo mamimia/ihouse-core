@@ -352,12 +352,17 @@ async def guest_send_message(token: str, body: Dict[str, Any], client: Optional[
 
     from datetime import datetime, timezone
     now = datetime.now(tz=timezone.utc).isoformat()
+    # Phase 1047C fix: align to actual guest_chat_messages schema
+    # - column is 'booking_id', not 'booking_ref'
+    # - column is 'message', not 'content'
     row = {
-        "booking_ref": ctx["booking_ref"],
+        "booking_id": ctx["booking_ref"],   # booking_ref IS the booking_id value
         "sender_type": "guest",
-        "content": content[:2000],
+        "message": content[:2000],          # column is 'message', not 'content'
         "created_at": now,
     }
+    if ctx.get("tenant_id"):
+        row["tenant_id"] = ctx["tenant_id"]
 
     try:
         db = client if client is not None else _get_supabase_client()

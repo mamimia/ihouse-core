@@ -78,6 +78,10 @@ _PROPERTY_DETAIL_FIELDS = [
     # GPS / Location — Phase 844
     "gps_source",  # string — how GPS was obtained
     # Note: latitude and longitude are handled separately as floats below
+    # Phase 1047B — Guest portal display layer (presentation-only, not routing/owner/audit truth)
+    "portal_host_name",
+    "portal_host_photo_url",
+    "portal_host_intro",
 ]
 
 # Numeric fields that require type conversion in PATCH
@@ -127,6 +131,10 @@ def _format_property(row: Dict[str, Any]) -> Dict[str, Any]:
         "status":        row.get("status"),
         "created_at":    row.get("created_at"),
         "updated_at":    row.get("updated_at"),
+        # Phase 1047B — Guest portal display layer (presentation-only)
+        "portal_host_name":      row.get("portal_host_name"),
+        "portal_host_photo_url": row.get("portal_host_photo_url"),
+        "portal_host_intro":     row.get("portal_host_intro"),
     }
     # Include all detail fields
     for f in _PROPERTY_DETAIL_FIELDS:
