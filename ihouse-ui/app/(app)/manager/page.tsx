@@ -1953,8 +1953,11 @@ export default function ManagerPage() {
                 fontSize: 11, color: 'var(--color-text-faint)',
                 display: 'flex', justifyContent: 'space-between',
             }}>
-                <span>Domaniqo — Command Hub · Phase 1041</span>
-                <span>Full operational view → <a href="/manager/stream" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>Stream</a></span>
+                <span>Domaniqo — Command Hub · Phase 1051</span>
+                <span style={{ display: 'flex', gap: 16 }}>
+                    <a href="/manager/inbox" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>💬 Guest Inbox</a>
+                    <a href="/manager/stream" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>Stream →</a>
+                </span>
             </div>
         </div>
     );
