@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1047B — Guest Portal Host Identity Block
+Phase 1048 — Guest Chat Model (OM Routing + Dossier Thread + Inbox)
 
 ## Last Closed Phase
-Phase 1047A-name — Guest Portal No-Leak + Schema Alignment (Effectively Closed)
+Phase 1047-polish — Note Area Persistence + Host Photo Asset Card (PROVEN)
 
 ## System Status
 
@@ -508,10 +508,19 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 **Phase 1047A-name — Guest Portal No-Leak + Schema Alignment (EFFECTIVELY CLOSED):**
 Locked product rule: no internal identifier may appear on any guest-facing surface. Root cause: backend was querying 6 non-existent properties columns causing silent nulls → fallback to internal codes. Fixed: `name`→`display_name`, `check_in_time`→`checkin_time`, `check_out_time`→`checkout_time`, `welcome_message`→`description`, `checkout_notes`→`extra_notes`, `manager_*`→`owner_phone`/`owner_email`. OTA placeholder guest names sanitized. Real property name "Emuna Villa TEST" staging-proven. OPEN: WhatsApp/contact proof; untested variants. Commit: `54ef82c`.
 
-**Phase 1047B — Guest Portal Host Identity Block (BUILT + DEPLOYED, PROOF PENDING):**
-3 new `portal_host_*` columns on `properties` (Supabase migration applied). Backend portal response extended. Admin "GUEST PORTAL — HOST IDENTITY" section in General tab with clear framing (display-layer only, not routing truth). `PortalHostBlock` component: invisible when name null, compact without intro, initials fallback without photo. TypeScript 0 errors. Vercel + Railway deployed. Commit: `215e9f8`. Staging proof (screenshot with host name set) required before full closure.
+**Phase 1047B — Guest Portal Host Identity Block (PROVEN — manual confirmed 2026-04-03):**
+3 `portal_host_*` columns on `properties`. Backend portal response extended. Admin "GUEST PORTAL — HOST IDENTITY" section with clear display-layer-only framing. `PortalHostBlock` component: invisible when name null, initials fallback. Persistence fix: fields were missing from `_PROPERTY_DETAIL_FIELDS` whitelist. All staging paths proven manually. **Invariant locked: `portal_host_*` is presentation only — never routing, audit, or owner truth.** Commits: `215e9f8`, `8994396`.
 
-**OPEN ITEMS (Guest Portal Workstream):**
-- WhatsApp/contact proof (renders with real phone, pre-fill functional) — tracked separately, not blocking
-- Untested guest-facing portal variants not on the proven path
-- Phase 1047B staging screenshot (portal with portal_host_name set)
+**Phase 1047C — Guest Messaging Honesty + Schema Repair (PROVEN — manual confirmed 2026-04-03):**
+`guest_send_message` was failing with 500 on every call due to 3 DB schema mismatches: `booking_ref`→`booking_id`, `content`→`message`, and missing `property_id` (NOT NULL). All corrected. Early-exit guard added for incomplete token context. Guest copy updated: no false response promise. 3 rows confirmed in `guest_chat_messages` in DB. Commits: `88e5fd9`.
+
+**Phase 1047E — Host Photo Upload (BUILT + SURFACED — 2026-04-03):**
+Admin Host Identity section now has real file upload (reuses `uploadPropertyPhoto()` + existing backend proxy). Two state UX: empty (dashed placeholder + upload CTA) / selected (asset card: 72px avatar, PHOTO SET badge, Change/Remove controls). URL input collapsed under disclosure. Uploaded URL stored as `portal_host_photo_url`. Guest portal renders real photo when set. End-to-end portal render proof OPEN. Commits: `88e5fd9`, `361371f`.
+
+**Phase 1047-polish — Note Area Persistence + Photo Asset Card (PROVEN — 2026-04-03):**
+Note form no longer replaces itself with success state. Success banner (auto-clears 4s) appears above persistent textarea. Guest can send multiple notes per session. Admin host photo section shows correct empty/selected states. Manual proof accepted. Commit: `361371f`.
+
+**OPEN ITEMS (carried forward):**
+- Uploaded host photo renders in guest portal (end-to-end) — OPEN
+- WhatsApp contact proof — OPEN, not blocking
+- Portal variant testing (multiple properties) — OPEN, not blocking

@@ -358,35 +358,45 @@ async def guest_send_message(token: str, body: Dict[str, Any], client: Optional[
         logger.warning("guest_send_message: incomplete token context — booking_ref=%r property_id=%r", booking_id, property_id)
         return JSONResponse(status_code=500, content={"error": "CONTEXT_ERROR", "detail": "Token context incomplete."})
 
-    from datetime import datetime, timezone
-    now = datetime.now(tz=timezone.utc).isoformat()
-    # Phase 1047C fix: align to actual guest_chat_messages schema
-    # Columns: booking_id (NOT NULL), property_id (NOT NULL), tenant_id (NOT NULL),
-    #          sender_type (NOT NULL), message (NOT NULL)
+    # Phase 1048: Resolve the canonical conversation owner (OM or admin fallback).
+    # This stamps assigned_om_id at insert time — the routing truth for inbox/dossier/reassignment.
+    # Resolution failure is non-blocking: guest send succeeds even if OM lookup fails.
+    try:
+        db = client if client is not None else _get_supabase_client()
+        from services.guest_messaging import resolve_conversation_owner
+        assigned_om_id = resolve_conversation_owner(db, property_id, tenant_id)
+    except Exception as exc:
+        logger.warning("guest_send_message: owner resolution failed (non-blocking): %s", exc)
+        assigned_om_id = tenant_id  # last-resort fallback
+        db = client if client is not None else _get_supabase_client()
+
+    # Phase 1047C + 1048: canonical insert row
+    # Columns: booking_id, property_id, tenant_id, sender_type, message, assigned_om_id
     # booking_ref from token IS the booking_id value in this table
     row = {
-        "booking_id":  booking_id,
-        "property_id": property_id,
-        "tenant_id":   tenant_id,
-        "sender_type": "guest",
-        "message":     content[:2000],
+        "booking_id":    booking_id,
+        "property_id":   property_id,
+        "tenant_id":     tenant_id,
+        "sender_type":   "guest",
+        "message":       content[:2000],
+        "assigned_om_id": assigned_om_id,
     }
 
     try:
-        db = client if client is not None else _get_supabase_client()
         result = db.table("guest_chat_messages").insert(row).execute()
         rows = result.data or []
         if not rows:
             return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
 
-        # SSE notify manager
+        # SSE notify manager — best-effort, non-blocking
         try:
             from channels.sse_broker import broker
-            if ctx.get("tenant_id"):
+            if tenant_id:
                 broker.publish_alert(
-                    tenant_id=ctx["tenant_id"],
+                    tenant_id=tenant_id,
                     event_type="GUEST_MESSAGE_NEW",
-                    booking_ref=ctx["booking_ref"],
+                    booking_ref=booking_id,
+                    assigned_om_id=assigned_om_id,
                     content_preview=content[:80],
                 )
         except Exception:

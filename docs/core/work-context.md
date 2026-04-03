@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1047B — Guest Portal Host Identity Block. Phases 841–1047A-name closed (1047A-name: effectively closed).
+Phase 1048 — Guest Chat Model (OM Routing + Dossier Thread + Inbox). Phases 841–1047-polish closed.
 
 ## Last Closed Phase
 
-Phase 1047A-name — Guest Portal No-Leak + Schema Alignment (Effectively Closed).
+Phase 1047-polish — Note Area Persistence + Host Photo Asset Card (PROVEN 2026-04-03).
 
 ## Current Objective
 
@@ -204,7 +204,11 @@ Phase 1040 — P0: System Closure, Regression, Docs Alignment                   
 Phase 1041–1046 — OM Hub Depth, Morning Briefing, Task Board, Checkout Audit  ← CLOSED
 Phase 1047A — Guest Portal Foundation Repair                                   ← CLOSED
 Phase 1047A-name — Guest Portal No-Leak + Schema Alignment                     ← EFFECTIVELY CLOSED
-Phase 1047B — Guest Portal Host Identity Block                                 ← ACTIVE (deployed, proof pending)
+Phase 1047B — Guest Portal Host Identity Block                                 ← PROVEN (2026-04-03)
+Phase 1047C — Guest Messaging Honesty + Schema Repair                          ← PROVEN (2026-04-03)
+Phase 1047E — Host Photo Upload                                                ← BUILT + SURFACED
+Phase 1047-polish — Note Area Persistence + Photo Asset Card                   ← PROVEN (2026-04-03)
+Phase 1048 — Guest Chat Model (OM Routing + Dossier Thread + Inbox)            ← ACTIVE
 ```
 
 ### Staging Deployment Truth (Proven 855A)
