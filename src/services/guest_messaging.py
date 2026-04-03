@@ -9,16 +9,33 @@ Thread model:
     A guest with multiple stays has multiple independent threads.
     There is no guest-level persistent chat — threads are stay-scoped.
 
-Ownership model:
-    Default owner = Operational Manager assigned to the property.
-    Resolution: staff_property_assignments WHERE role='manager' ORDER BY priority ASC LIMIT 1.
-    Fallback 1: tenant_permissions WHERE role='admin' LIMIT 1.
-    Fallback 2: the tenant_id from the token context (the operator's own ID).
+Ownership model — current (Phase 1048 scaffold):
+    The `assigned_om_id` field on `guest_chat_messages` is a TEMPORARY routing
+    scaffold, not the permanent long-term ownership model.
 
-Invariant:
-    portal_host_* fields play NO role in routing or ownership.
-    They are guest-facing display data only (display name, photo, intro).
-    The conversation owner is always determined from staff_property_assignments.
+    It exists to give inbox queries a scoping anchor while the broader conversation
+    model is built out (Phases 1049–1056). The value may be an OM's tenant_id,
+    an admin's tenant_id, or the operator's own tenant_id — it is not OM-only.
+
+    The canonical long-term ownership record will be the
+    `guest_conversation_assignments` table (Phase 1054), which:
+    - Records every ownership transfer with full audit trail
+    - Supports any staff role (OM, admin, concierge, named staff)
+    - Is the source of truth for who is responsible for a thread
+
+    When Phase 1054 is built, both `assigned_om_id` (for query efficiency)
+    AND `guest_conversation_assignments` (for canonical truth) will be updated
+    on every reassignment.
+
+Resolution order (current — Phase 1048):
+    1. Staff assigned to property with role='manager' (primary OM, lowest priority)
+    2. Any tenant with role='admin' (admin fallback)
+    3. tenant_id from token context (last resort)
+
+portal_host_* invariant:
+    portal_host_name, portal_host_photo_url, portal_host_intro play NO role here.
+    They are guest-facing display data only (Phase 1047B).
+    Never use them for routing, ownership, or audit.
 """
 from __future__ import annotations
 
