@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance — Operational UI Direction v2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .page-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: #171A1F;
+        }
+
+        .page-subtitle {
+            font-size: 12px;
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .screen-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow: 0 0 0 2px #D1D6DC, 0 2px 0 3px #B8BEC6, 0 12px 48px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-top: 12px;
+            text-align: center;
+            letter-spacing: 0.05em;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 26px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            font-size: 11.5px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .signal {
+            display: flex;
+            gap: 4px;
+        }
+
+        /* App Header */
+        .app-header {
+            height: 50px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 13px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .header-subtitle {
+            font-size: 9px;
+            color: #6B7280;
+            margin-top: 2px;
+        }
+
+        .avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #B56E45;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+        }
+
+        /* Day Health Strip */
+        .day-health {
+            background: #171A1F;
+            color: white;
+            padding: 8px 13px;
+            font-size: 10px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .health-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .health-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .health-dot.critical {
+            background: #DC2626;
+            animation: blink 1.5s infinite;
+        }
+
+        .health-dot.high {
+            background: #F59E0B;
+        }
+
+        .health-dot.normal {
+            background: #6B7280;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 13px;
+            background: #F9F7F4;
+        }
+
+        .screen-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .screen-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .screen-content::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        .section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 13px 0 9px 0;
+            padding: 0 4px;
+        }
+
+        /* Priority Cards */
+        .job-card {
+            background: white;
+            border-left: 3px solid #D1D5DB;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid;
+        }
+
+        .job-card.critical {
+            background: #FFF4F4;
+            border-left-color: #DC2626;
+            box-shadow: 0 0 0 0 rgba(220,38,38,0);
+            animation: pulse-card-critical 2s infinite;
+        }
+
+        .job-card.high {
+            background: #FFFCF0;
+            border-left-color: #F59E0B;
+            box-shadow: 0 0 0 0 rgba(181,110,69,0);
+            animation: pulse-card 2s infinite;
+        }
+
+        .job-card.normal {
+            background: white;
+            border-left-color: #D1D5DB;
+        }
+
+        .job-card.mini {
+            padding: 8px;
+            font-size: 9px;
+        }
+
+        .card-row-1 {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 7px;
+        }
+
+        .priority-badge {
+            font-size: 7px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        .priority-badge.critical {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .priority-badge.high {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .priority-badge.normal {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+
+        .issue-tag {
+            font-size: 7.5px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: #F5EAE3;
+            color: #B56E45;
+        }
+
+        .sla-pill {
+            font-size: 7px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+            margin-left: auto;
+        }
+
+        .sla-pill.breach {
+            background: #DC2626;
+            color: white;
+        }
+
+        .sla-pill.warning {
+            background: #FEF3C7;
+            color: #92400E;
+            animation: pulse-sla 1s infinite;
+        }
+
+        .sla-pill.ok {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+
+        .nav-button {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            background: #F3F4F6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #6B7280;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .issue-description {
+            font-size: 10.5px;
+            color: #374151;
+            line-height: 1.3;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-meta {
+            font-size: 9px;
+            color: #6B7280;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 7px;
+        }
+
+        .access-code-pill {
+            background: #171A1F;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .lock-icon {
+            width: 9px;
+            height: 9px;
+            display: inline-block;
+        }
+
+        .card-cta {
+            width: 100%;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .card-cta.primary {
+            background: #B56E45;
+            color: white;
+        }
+
+        .card-cta.primary:hover {
+            background: #A85A35;
+        }
+
+        .card-cta.danger {
+            background: #DC2626;
+            color: white;
+        }
+
+        .card-cta.ghost {
+            background: transparent;
+            border: 1px solid #D1D5DB;
+            color: #171A1F;
+        }
+
+        /* Detail Screen */
+        .detail-header {
+            background: white;
+            padding: 13px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .detail-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .detail-subtitle {
+            font-size: 10px;
+            color: #6B7280;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .access-code-block {
+            background: #171A1F;
+            border-radius: 9px;
+            padding: 10px 13px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .access-code-label {
+            font-size: 8.5px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 3px;
+        }
+
+        .access-code-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: 0.15em;
+        }
+
+        .copy-button {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .detail-section {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .detail-section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 7px;
+            font-size: 10px;
+        }
+
+        .detail-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #171A1F;
+            font-weight: 600;
+            text-align: right;
+            flex: 1;
+            margin-left: 8px;
+        }
+
+        .detail-value.copper {
+            color: #B56E45;
+        }
+
+        .detail-value.danger {
+            color: #DC2626;
+        }
+
+        .photo-slot {
+            border: 2px dashed #D1D5DB;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .photo-icon {
+            width: 24px;
+            height: 24px;
+            margin: 0 auto 6px;
+            color: #D1D5DB;
+        }
+
+        .photo-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .photo-sublabel {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .detail-cta-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .detail-cta {
+            flex: 1;
+            padding: 9px 12px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            cursor: pointer;
+        }
+
+        .detail-cta.primary {
+            background: #B56E45;
+            color: white;
+        }
+
+        .detail-cta.secondary {
+            background: transparent;
+            border: 1.5px solid #D1D5DB;
+            color: #171A1F;
+        }
+
+        /* Execution Screen */
+        .execution-bar {
+            background: #B56E45;
+            color: white;
+            padding: 10px 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .execution-timer {
+            background: rgba(255,255,255,0.2);
+            padding: 3px 7px;
+            border-radius: 4px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            letter-spacing: 0.05em;
+        }
+
+        .step-list {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            margin-bottom: 9px;
+        }
+
+        .step:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .step-circle.done {
+            background: #334036;
+        }
+
+        .step-circle.active {
+            background: #B56E45;
+        }
+
+        .step-circle.pending {
+            background: #D1D5DB;
+            color: #6B7280;
+        }
+
+        .step-content {
+            flex: 1;
+            padding-top: 3px;
+        }
+
+        .step-title {
+            font-size: 10px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .step-title.active {
+            color: #B56E45;
+        }
+
+        .step-subtitle {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-top: 1px;
+        }
+
+        .photo-pair {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #E5E7EB;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .photo-item {
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .photo-item.taken {
+            background: #E6EEE7;
+            border: 1.5px solid #90B092;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .photo-item.empty {
+            border: 2px dashed #D1D5DB;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .photo-check {
+            width: 28px;
+            height: 28px;
+            color: #334036;
+            margin-bottom: 4px;
+        }
+
+        .photo-camera {
+            width: 24px;
+            height: 24px;
+            color: #D1D5DB;
+            margin-bottom: 4px;
+        }
+
+        .photo-name {
+            font-size: 9px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .photo-name.taken {
+            color: #334036;
+        }
+
+        .cant-complete-link {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 9px;
+            font-weight: 600;
+            color: #B56E45;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            background: #334036;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            cursor: pointer;
+        }
+
+        .submit-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Profile Screen */
+        .profile-hero {
+            background: linear-gradient(140deg, #6B3A23, #B56E45);
+            padding: 20px 13px;
+            text-align: center;
+            color: white;
+        }
+
+        .profile-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0 auto 10px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .profile-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 3px;
+        }
+
+        .profile-role {
+            font-size: 10px;
+            color: rgba(255,255,255,0.85);
+            margin-bottom: 8px;
+        }
+
+        .profile-badge {
+            display: inline-block;
+            font-size: 8px;
+            font-weight: 700;
+            color: #334036;
+            background: rgba(255,255,255,0.9);
+            padding: 4px 8px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .profile-section {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 13px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .profile-section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .skills-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .skill-tag {
+            font-size: 8px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 3px;
+            background: #F5EAE3;
+            color: #B56E45;
+        }
+
+        .add-skill-link {
+            font-size: 9px;
+            color: #B56E45;
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .profile-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 0;
+            border-bottom: 1px solid #E5E7EB;
+            font-size: 10px;
+        }
+
+        .profile-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-label {
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .profile-value {
+            color: #171A1F;
+            font-weight: 600;
+        }
+
+        .connected-badge {
+            font-size: 8px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: #E6EEE7;
+            color: #334036;
+            font-weight: 700;
+        }
+
+        .toggle-switch {
+            width: 32px;
+            height: 18px;
+            border-radius: 9px;
+            background: #D1D5DB;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .toggle-switch.on {
+            background: #B56E45;
+        }
+
+        .toggle-knob {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: white;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: left 0.2s;
+        }
+
+        .toggle-switch.on .toggle-knob {
+            left: 16px;
+        }
+
+        .sign-out-button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1.5px solid #FCA5A5;
+            background: transparent;
+            color: #DC2626;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            height: 50px;
+            background: white;
+            border-top: 1px solid #E5E7EB;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            cursor: pointer;
+            color: #9CA3AF;
+            font-size: 8px;
+            font-weight: 600;
+            text-align: center;
+            flex: 1;
+        }
+
+        .nav-item.active {
+            color: #B56E45;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+
+        @keyframes pulse-card {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(181,110,69,0);
+            }
+            50% {
+                box-shadow: 0 0 0 4px rgba(181,110,69,0.1);
+            }
+        }
+
+        @keyframes pulse-card-critical {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(220,38,38,0);
+            }
+            50% {
+                box-shadow: 0 0 0 4px rgba(220,38,38,0.1);
+            }
+        }
+
+        @keyframes pulse-sla {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Design Notes Bar */
+        .design-notes {
+            background: #171A1F;
+            color: white;
+            padding: 20px;
+            margin-top: 40px;
+            border-radius: 8px;
+        }
+
+        .notes-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            color: #B56E45;
+        }
+
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .note-item {
+            border-left: 3px solid #B56E45;
+            padding-left: 12px;
+        }
+
+        .note-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #B56E45;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        .note-text {
+            font-size: 10px;
+            line-height: 1.5;
+            color: #D1D5DB;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title">Maintenance — Operational UI Direction v2</div>
+        <div class="page-subtitle">Domaniqo · April 2026 · 4 screens: Job Queue · Job Detail · Job Execution · Profile</div>
+    </div>
+
+    <div class="phones-container">
+        <!-- Screen 1: Job Queue -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">
+                        <span>●●●●●</span>
+                    </div>
+                    <span>09:47</span>
+                </div>
+
+                <div class="app-header">
+                    <div>
+                        <div class="header-title">Job Queue</div>
+                        <div class="header-subtitle">Aroon Suphan · Friday 27 Mar</div>
+                    </div>
+                    <div class="avatar">AS</div>
+                </div>
+
+                <div class="day-health">
+                    <div class="health-item">
+                        <span class="health-dot critical"></span>
+                        <span>1 CRITICAL</span>
+                    </div>
+                    <div class="health-item">
+                        <span class="health-dot high"></span>
+                        <span>2 HIGH</span>
+                    </div>
+                    <div class="health-item">
+                        <span class="health-dot normal"></span>
+                        <span>3 NORMAL</span>
+                    </div>
+                    <div class="health-item" style="margin-left: 8px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,0.3);">
+                        <span style="color: #B56E45;">6 TOTAL</span>
+                    </div>
+                </div>
+
+                <div class="screen-content">
+                    <div class="section-header">Critical</div>
+                    <div class="job-card critical">
+                        <div class="card-row-1">
+                            <div class="priority-badge critical">CRITICAL</div>
+                            <div class="issue-tag">Plumbing</div>
+                            <div class="sla-pill breach">SLA BREACH</div>
+                            <div class="nav-button">⋮</div>
+                        </div>
+                        <div class="property-name">KPG Residence</div>
+                        <div class="issue-description">Water leak under kitchen sink — reported by guest</div>
+                        <div class="card-meta">
+                            <span class="access-code-pill">
+                                <svg class="lock-icon" viewBox="0 0 12 12" fill="currentColor"><path d="M3 5V3.5C3 2.12 4.12 1 5.5 1c1.38 0 2.5 1.12 2.5 2.5V5h2v6H1V5h2zm1-1.5h2V3.5c0-.83-.67-1.5-1.5-1.5S4 2.67 4 3.5V3.5z"/></svg>
+                                4821
+                            </span>
+                            <span style="color: #9CA3AF;">Reported 22:30 yesterday</span>
+                        </div>
+                        <button class="card-cta danger">Respond Now →</button>
+                    </div>
+
+                    <div class="section-header" style="margin-top: 15px;">High Priority</div>
+                    <div class="job-card high">
+                        <div class="card-row-1">
+                            <div class="priority-badge high">HIGH</div>
+                            <div class="issue-tag">Electrical</div>
+                            <div class="sla-pill warning">SLA 2H 30M</div>
+                            <div class="nav-button">⋮</div>
+                        </div>
+                        <div class="property-name">Emuna Villa</div>
+                        <div class="issue-description">Bedroom AC not working — guest check-in at 14:00</div>
+                        <div class="card-meta">
+                            <span class="access-code-pill">
+                                <svg class="lock-icon" viewBox="0 0 12 12" fill="currentColor"><path d="M3 5V3.5C3 2.12 4.12 1 5.5 1c1.38 0 2.5 1.12 2.5 2.5V5h2v6H1V5h2zm1-1.5h2V3.5c0-.83-.67-1.5-1.5-1.5S4 2.67 4 3.5V3.5z"/></svg>
+                                7734
+                            </span>
+                            <span style="color: #9CA3AF;">Now</span>
+                        </div>
+                        <button class="card-cta primary">Start Job →</button>
+                    </div>
+
+                    <div class="job-card normal">
+                        <div class="card-row-1">
+                            <div class="priority-badge normal">HIGH</div>
+                            <div class="issue-tag">Pool</div>
+                            <div class="sla-pill ok">SLA 4H</div>
+                            <div class="nav-button">⋮</div>
+                        </div>
+                        <div class="property-name">Zen Pool Villa</div>
+                        <div class="issue-description">Pool pump noise — abnormal vibration</div>
+                        <div class="card-meta">
+                            <span class="access-code-pill">
+                                <svg class="lock-icon" viewBox="0 0 12 12" fill="currentColor"><path d="M3 5V3.5C3 2.12 4.12 1 5.5 1c1.38 0 2.5 1.12 2.5 2.5V5h2v6H1V5h2zm1-1.5h2V3.5c0-.83-.67-1.5-1.5-1.5S4 2.67 4 3.5V3.5z"/></svg>
+                                2209
+                            </span>
+                            <span style="color: #9CA3AF;">1h ago</span>
+                        </div>
+                        <button class="card-cta ghost">View Job</button>
+                    </div>
+
+                    <div class="section-header" style="margin-top: 15px;">Normal</div>
+                    <div class="job-card normal mini">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <div class="priority-badge normal">NORMAL</div>
+                            <div class="issue-tag" style="font-size: 7px;">Gardening</div>
+                        </div>
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; margin-bottom: 2px;">Casa Norte</div>
+                        <div style="font-size: 9px; color: #6B7280;">Gate hinge broken</div>
+                    </div>
+
+                    <div class="job-card normal mini">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <div class="priority-badge normal">NORMAL</div>
+                            <div class="issue-tag" style="font-size: 7px;">General</div>
+                        </div>
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; margin-bottom: 2px;">Baan Siri 6</div>
+                        <div style="font-size: 9px; color: #6B7280;">Replace blown bulb</div>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></svg>
+                        Jobs
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-2.29-2.29c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l3 3c.39.39 1.02.39 1.41 0l3.54-4.29c.39-.49.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0z"/></svg>
+                        Issues
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M9 11H7v2h2v-2zm14-7H1v2h2v13c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6h2V4zm-2 13H5V6h16v11zm-6-10h-2v8h2V7z"/></svg>
+                        History
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        Profile
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">SCREEN 1: JOB QUEUE</div>
+        </div>
+
+        <!-- Screen 2: Job Detail -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">●●●●●</div>
+                    <span>09:47</span>
+                </div>
+
+                <div class="app-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 14px; color: #B56E45;">←</span>
+                        <div>
+                            <div class="header-title">Emuna Villa</div>
+                            <div class="header-subtitle">Bedroom AC · High Priority</div>
+                        </div>
+                    </div>
+                    <div class="priority-badge high" style="margin-right: 0;">HIGH</div>
+                </div>
+
+                <div class="screen-content">
+                    <div class="access-code-block">
+                        <div>
+                            <div class="access-code-label">Property Access Code</div>
+                            <div class="access-code-value">7734</div>
+                        </div>
+                        <button class="copy-button">📋</button>
+                    </div>
+
+                    <div class="detail-section">
+                        <div class="detail-section-header">Job Details</div>
+                        <div class="detail-row">
+                            <span class="detail-label">Issue</span>
+                            <span class="detail-value copper">Bedroom AC not working</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Type</span>
+                            <span class="detail-value">Electrical / HVAC</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Location</span>
+                            <span class="detail-value">Master bedroom, unit 1</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Reported by</span>
+                            <span class="detail-value">Ops Manager · 07:45</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Guest check-in</span>
+                            <span class="detail-value danger">Today 14:00 — 5h away</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">SLA deadline</span>
+                            <span class="detail-value copper">13:30 (4h 32m)</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <div class="detail-section-header">Before Photo</div>
+                        <div class="photo-slot">
+                            <svg class="photo-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                            <div class="photo-label">Take before photo to begin</div>
+                            <div class="photo-sublabel">Documents condition before work starts</div>
+                        </div>
+                    </div>
+
+                    <div class="detail-cta-row">
+                        <button class="detail-cta primary" style="flex: 2;">Start Job →</button>
+                        <button class="detail-cta secondary" style="flex: 1;">Can't Complete</button>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></svg>
+                        Jobs
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-2.29-2.29c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l3 3c.39.39 1.02.39 1.41 0l3.54-4.29c.39-.49.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0z"/></svg>
+                        Issues
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M9 11H7v2h2v-2zm14-7H1v2h2v13c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6h2V4zm-2 13H5V6h16v11zm-6-10h-2v8h2V7z"/></svg>
+                        History
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        Profile
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">SCREEN 2: JOB DETAIL</div>
+        </div>
+
+        <!-- Screen 3: Job Execution -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">●●●●●</div>
+                    <span>09:47</span>
+                </div>
+
+                <div class="execution-bar">
+                    <span>Fixing: Bedroom AC</span>
+                    <span class="execution-timer">00:23:41</span>
+                </div>
+
+                <div class="screen-content">
+                    <div class="step-list">
+                        <div class="step">
+                            <div class="step-circle done">✓</div>
+                            <div class="step-content">
+                                <div class="step-title">Assess Issue</div>
+                                <div class="step-subtitle">Completed at 09:24</div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-circle done">✓</div>
+                            <div class="step-content">
+                                <div class="step-title">Document Before</div>
+                                <div class="step-subtitle">Photo taken</div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-circle active">3</div>
+                            <div class="step-content">
+                                <div class="step-title active">Perform Fix</div>
+                                <div class="step-subtitle">In progress</div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-circle pending">4</div>
+                            <div class="step-content">
+                                <div class="step-title">Test & Verify</div>
+                                <div class="step-subtitle">Pending</div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-circle pending">5</div>
+                            <div class="step-content">
+                                <div class="step-title">Confirm Complete</div>
+                                <div class="step-subtitle">Pending</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="photo-pair">
+                        <div class="photo-item taken">
+                            <svg class="photo-check" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                            <div class="photo-name taken">Before</div>
+                        </div>
+                        <div class="photo-item empty">
+                            <svg class="photo-camera" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                            <div class="photo-name">After</div>
+                        </div>
+                    </div>
+
+                    <div class="cant-complete-link">Can't complete this job? Report blocker</div>
+
+                    <button class="submit-button" disabled>Complete Job ✓</button>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></svg>
+                        Jobs
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-2.29-2.29c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l3 3c.39.39 1.02.39 1.41 0l3.54-4.29c.39-.49.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0z"/></svg>
+                        Issues
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M9 11H7v2h2v-2zm14-7H1v2h2v13c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6h2V4zm-2 13H5V6h16v11zm-6-10h-2v8h2V7z"/></svg>
+                        History
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        Profile
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">SCREEN 3: JOB EXECUTION</div>
+        </div>
+
+        <!-- Screen 4: Profile -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">●●●●●</div>
+                    <span>09:47</span>
+                </div>
+
+                <div class="profile-hero">
+                    <div class="profile-avatar">AS</div>
+                    <div class="profile-name">Aroon Suphan</div>
+                    <div class="profile-role">Maintenance Technician</div>
+                    <div class="profile-badge">ACTIVE · SINCE MAR 2024</div>
+                </div>
+
+                <div class="screen-content" style="padding-top: 0;">
+                    <div class="profile-section">
+                        <div class="profile-section-title">Skills & Specialties</div>
+                        <div class="skills-container">
+                            <div class="skill-tag">Plumbing</div>
+                            <div class="skill-tag">Electrical</div>
+                            <div class="skill-tag">General</div>
+                        </div>
+                        <div class="add-skill-link">+ Add skill</div>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="profile-section-title">Account</div>
+                        <div class="profile-item">
+                            <span class="profile-label">Language</span>
+                            <span class="profile-value">Thai</span>
+                        </div>
+                        <div class="profile-item">
+                            <span class="profile-label">Phone</span>
+                            <span class="profile-value">+66 8XX XXX XXXX</span>
+                        </div>
+                        <div class="profile-item">
+                            <span class="profile-label">Email</span>
+                            <span class="profile-value" style="font-size: 9px;">aroon@domaniqo.co</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="profile-section-title">Connected Services</div>
+                        <div class="profile-item">
+                            <span class="profile-label">Google</span>
+                            <span class="connected-badge">Connected</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="profile-section-title">Preferences</div>
+                        <div class="profile-item">
+                            <span class="profile-label">Push Notifications</span>
+                            <div class="toggle-switch on">
+                                <div class="toggle-knob"></div>
+                            </div>
+                        </div>
+                        <div class="profile-item">
+                            <span class="profile-label">Sound</span>
+                            <div class="toggle-switch on">
+                                <div class="toggle-knob"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="sign-out-button">Sign Out</button>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></svg>
+                        Jobs
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-2.29-2.29c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41l3 3c.39.39 1.02.39 1.41 0l3.54-4.29c.39-.49.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0z"/></svg>
+                        Issues
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M9 11H7v2h2v-2zm14-7H1v2h2v13c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6h2V4zm-2 13H5V6h16v11zm-6-10h-2v8h2V7z"/></svg>
+                        History
+                    </div>
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        Profile
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">SCREEN 4: PROFILE</div>
+        </div>
+    </div>
+
+    <!-- Design Notes Bar -->
+    <div class="design-notes">
+        <div class="notes-title">DESIGN NOTES & EXPERT CONSTRAINTS</div>
+        <div class="notes-grid">
+            <div class="note-item">
+                <div class="note-label">Role Personality</div>
+                <div class="note-text">Priority-first, issue-driven. Maintenance work is not time-scheduled — it is severity-ranked by CRITICAL → HIGH → NORMAL. Cards sort by priority, never by time. The SLA pill shows response deadline, not checkout time. Vocabulary: Job, Issue, Work Order — never Task or Clean.</div>
+            </div>
+            <div class="note-item">
+                <div class="note-label">Access Code Always Visible</div>
+                <div class="note-text">Every job card and detail screen prominently displays the property access code. Maintenance workers arrive at locked properties — the access code is the most critical operational data they need immediately.</div>
+            </div>
+            <div class="note-item">
+                <div class="note-label">Distinct from Cleaner Role</div>
+                <div class="note-text">Maintenance uses issue type tags (Plumbing, Electrical, Pool, AC, General, Gardening) not room lists. Progress is step-based (Assess → Document → Fix → Test → Confirm), not room-by-room. Before/after photo pair required. Can't Complete path always visible for blockers.</div>
+            </div>
+            <div class="note-item">
+                <div class="note-label">Future Specialty Support</div>
+                <div class="note-text">The issue type tag system supports future sub-specialties. Each specialty has its own types and skill tags on Profile. Generalists see all jobs; specialists see filtered by their skill set. Profile shows maintenance-specific skill tags.</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

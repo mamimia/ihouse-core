@@ -310,6 +310,40 @@ async def create_checkin_settlement(
             or (charge_rule or {}).get("deposit_currency", "THB")
         ).upper()
 
+        # Phase 973 audit fix (Victor/12): Application-level deposit duplication guard.
+        # The cash_deposits table has no UNIQUE constraint on (booking_id, tenant_id).
+        # Without a guard, network retries or wizard re-entry create duplicate deposit records,
+        # causing settlement reads to pick the first match and orphan the second.
+        # This SELECT-before-INSERT guard closes the application-level gap.
+        # The schema-level UNIQUE constraint is tracked as a required migration item.
+        try:
+            existing_dep = (
+                db.table("cash_deposits")
+                .select("id, amount, currency, status, refund_amount, created_at")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+            if existing_dep.data:
+                existing = existing_dep.data[0]
+                logger.warning(
+                    "checkin-settlement: deposit already exists for booking_id=%s "
+                    "(id=%s, status=%s). Returning existing record. No duplicate created.",
+                    booking_id, existing.get("id"), existing.get("status"),
+                )
+                return JSONResponse(status_code=200, content={
+                    **existing,
+                    "deposit_already_exists": True,
+                    "booking_id": booking_id,
+                })
+        except Exception as _dep_check_exc:
+            logger.warning(
+                "checkin-settlement: duplicate deposit check failed for booking_id=%s: %s. "
+                "Proceeding with INSERT.",
+                booking_id, _dep_check_exc,
+            )
+
         # 1. Write to cash_deposits — the REAL deposit (Phase 964)
         cash_deposit_id = hashlib.sha256(
             f"DEP:{booking_id}:{now}".encode()

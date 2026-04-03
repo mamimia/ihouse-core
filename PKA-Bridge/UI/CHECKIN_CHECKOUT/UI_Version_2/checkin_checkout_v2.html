@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-In & Check-Out — Operational Direction v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+            padding: 40px 20px;
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .page-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        /* Main Layout */
+        .screens-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 32px;
+            max-width: 1400px;
+            margin: 0 auto 60px;
+        }
+
+        /* Phone Chrome */
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow: 0 0 0 2px #D1D6DC, 0 2px 0 3px #B8BEC6, 0 12px 48px rgba(0,0,0,.2), inset 0 0 0 1px rgba(255,255,255,.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            background: #F9F7F4;
+        }
+
+        .screen::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .screen::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .screen::-webkit-scrollbar-thumb {
+            background: #D1D6DB;
+            border-radius: 2px;
+        }
+
+        /* Screen Label */
+        .screen-label {
+            position: absolute;
+            top: -28px;
+            left: 0;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #334036;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        /* App Header */
+        .app-header {
+            padding: 16px;
+            background: #F9F7F4;
+            border-bottom: 1px solid #E5E7EB;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .avatar.moss {
+            background: #334036;
+        }
+
+        .avatar.copper {
+            background: #B56E45;
+        }
+
+        .app-header-content {
+            flex: 1;
+        }
+
+        .app-header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #171A1F;
+            line-height: 1.2;
+        }
+
+        .app-header-subtitle {
+            font-size: 12px;
+            color: #6B7280;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        /* Day Health Strip */
+        .day-health {
+            background: #171A1F;
+            color: white;
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .health-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .health-overdue {
+            animation: blink 1s infinite;
+            color: #DC2626;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Badge System */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge.arrival {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .badge.departure {
+            background: #F5EAE3;
+            color: #B56E45;
+        }
+
+        /* Urgency Pills */
+        .urgency-pill {
+            display: inline-flex;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .pill-safe {
+            background: white;
+            color: #6B7280;
+            border: 1px solid #D1D5DB;
+        }
+
+        .pill-approaching {
+            background: #FFFCF0;
+            color: #D97706;
+            border: 1px solid #F59E0B;
+        }
+
+        .pill-imminent {
+            background: #FBF1EC;
+            color: #B56E45;
+            border: 1px solid #B56E45;
+            animation: pulse-card 2s infinite;
+        }
+
+        .pill-overdue {
+            background: #FFF4F4;
+            color: #DC2626;
+            border: 1px solid #DC2626;
+            animation: blink 1s infinite;
+        }
+
+        /* Task Cards */
+        .task-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .task-card.arrival {
+            border-left: 4px solid #334036;
+        }
+
+        .task-card.departure {
+            border-left: 4px solid #B56E45;
+        }
+
+        .task-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,.08);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .task-badges {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .task-property {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .task-guest {
+            font-size: 12px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        .task-cta {
+            font-size: 11px;
+            font-weight: 700;
+            color: #334036;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        .task-cta.copper {
+            color: #B56E45;
+        }
+
+        .task-cta.red {
+            color: #DC2626;
+        }
+
+        /* Mini Cards */
+        .mini-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11px;
+            color: #6B7280;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mini-card-left {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .mini-card-property {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            color: #171A1F;
+            font-size: 12px;
+        }
+
+        /* Section Header */
+        .section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin: 8px 0 4px 0;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 0;
+            border-top: 1px solid #E5E7EB;
+            background: #F9F7F4;
+            margin-top: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+        }
+
+        .nav-item.active {
+            opacity: 1;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .nav-item.active .nav-label {
+            color: #334036;
+        }
+
+        /* Screen 2: Active Flow */
+        .flow-header {
+            padding: 16px;
+            border-bottom: 1px solid #E5E7EB;
+            background: #F9F7F4;
+        }
+
+        .flow-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .flow-property {
+            font-size: 11px;
+            color: #6B7280;
+            font-weight: 600;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        /* Step Tracker */
+        .step-tracker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin: 12px 16px;
+            padding: 12px;
+            background: #FFFFFF;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #E5E7EB;
+            transition: all 0.2s ease;
+        }
+
+        .step-dot.done {
+            background: #334036;
+        }
+
+        .step-dot.current {
+            width: 9px;
+            height: 9px;
+            background: #B56E45;
+            box-shadow: 0 0 0 3px rgba(181, 110, 69, 0.1);
+        }
+
+        .step-line {
+            width: 8px;
+            height: 2px;
+            background: #E5E7EB;
+        }
+
+        .step-line.done {
+            background: #334036;
+        }
+
+        .step-label {
+            font-size: 9px;
+            font-weight: 800;
+            color: #B56E45;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-left: auto;
+            padding-left: 8px;
+        }
+
+        /* Property Bar */
+        .property-bar {
+            padding: 12px 16px;
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            margin: 12px 16px;
+        }
+
+        .property-bar-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .property-bar-subtitle {
+            font-size: 11px;
+            color: #6B7280;
+            margin-bottom: 8px;
+        }
+
+        /* Checklist */
+        .checklist-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 10px;
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            margin: 6px 16px;
+        }
+
+        .checklist-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+
+        .checklist-icon.ok {
+            background: #D1FAE5;
+            color: #059669;
+        }
+
+        .checklist-icon.warning {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .checklist-icon.empty {
+            background: #F3F4F6;
+            border: 1px solid #D1D5DB;
+        }
+
+        .checklist-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .checklist-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .checklist-input {
+            font-size: 10px;
+            color: #9CA3AF;
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-style: italic;
+            max-width: 160px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Photo Slot */
+        .photo-slot {
+            margin: 12px 16px;
+            padding: 20px;
+            border: 2px dashed #D1D6DB;
+            border-radius: 8px;
+            text-align: center;
+            color: #9CA3AF;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        /* Flow Buttons */
+        .flow-buttons {
+            display: flex;
+            gap: 8px;
+            padding: 16px;
+            margin-top: auto;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: #6B7280;
+            border: 1px solid #E5E7EB;
+        }
+
+        .btn-ghost:hover {
+            background: #F3F4F6;
+        }
+
+        .btn-primary {
+            background: #334036;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2a3430;
+        }
+
+        .btn-primary.copper {
+            background: #B56E45;
+        }
+
+        .btn-primary.copper:hover {
+            background: #9d5a38;
+        }
+
+        /* Screen 3: History */
+        .history-header {
+            padding: 16px;
+            border-bottom: 1px solid #E5E7EB;
+            background: #F9F7F4;
+        }
+
+        .history-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .history-subtitle {
+            font-size: 12px;
+            color: #6B7280;
+            margin-top: 4px;
+        }
+
+        .filter-pill {
+            display: inline-block;
+            background: #334036;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .date-divider {
+            padding: 8px 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #9CA3AF;
+            background: #F9F7F4;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .history-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #E5E7EB;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .history-item.arrival {
+            border-left: 4px solid #334036;
+            padding-left: 12px;
+        }
+
+        .history-item.departure {
+            border-left: 4px solid #B56E45;
+            padding-left: 12px;
+        }
+
+        .history-property {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .history-guest {
+            font-size: 11px;
+            color: #6B7280;
+        }
+
+        .history-time {
+            font-size: 10px;
+            color: #9CA3AF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-ontime {
+            background: #D1FAE5;
+            color: #059669;
+        }
+
+        .status-late {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        /* Screen 4: Profile */
+        .profile-hero {
+            background: linear-gradient(140deg, #2a3430, #334036);
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .profile-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .profile-role {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .profile-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        .profile-section {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            margin: 12px 16px;
+            padding: 12px;
+        }
+
+        .profile-section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .profile-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 12px;
+        }
+
+        .profile-item-label {
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .profile-item-value {
+            color: #171A1F;
+            font-weight: 600;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .toggle {
+            width: 32px;
+            height: 18px;
+            border-radius: 9px;
+            background: #D1D5DB;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .toggle.on {
+            background: #334036;
+        }
+
+        .toggle-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: white;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: left 0.2s ease;
+        }
+
+        .toggle.on .toggle-dot {
+            left: 16px;
+        }
+
+        .btn-signout {
+            margin: 16px;
+            padding: 10px;
+            border: 1.5px solid #FCA5A5;
+            color: #DC2626;
+            background: transparent;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+        }
+
+        .btn-signout:hover {
+            background: #FFF4F4;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+
+        @keyframes pulse-card {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(181, 110, 69, 0); }
+            50% { box-shadow: 0 0 0 4px rgba(181, 110, 69, 0.1); }
+        }
+
+        @keyframes cd-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.55; }
+        }
+
+        /* Design Notes Bar */
+        .design-notes {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            background: #171A1F;
+            color: white;
+            padding: 40px;
+            margin-top: 60px;
+            border-radius: 12px;
+        }
+
+        .design-note {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .design-note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #B56E45;
+            text-transform: uppercase;
+        }
+
+        .design-note-text {
+            font-size: 12px;
+            line-height: 1.6;
+            color: #E5E7EB;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">Check-In & Check-Out — Operational Direction v2</h1>
+        <p class="page-subtitle">Domaniqo · April 2026 · 4 screens: Home · Active Flow · History · Profile</p>
+    </div>
+
+    <!-- Screens Container -->
+    <div class="screens-container">
+        <!-- SCREEN 1: HOME (Combined Queue) -->
+        <div style="position: relative;">
+            <div class="screen-label">Screen 1: Home</div>
+            <div class="phone">
+                <!-- App Header -->
+                <div class="app-header">
+                    <div class="avatar moss">MG</div>
+                    <div class="app-header-content">
+                        <div class="app-header-title">Check-In / Check-Out</div>
+                        <div class="app-header-subtitle">Maria Gonzalez · Friday 27 Mar</div>
+                    </div>
+                </div>
+
+                <!-- Day Health Strip -->
+                <div class="day-health">
+                    <div class="health-stat">2 OUT</div>
+                    <div class="health-stat">3 IN</div>
+                    <div class="health-stat">5 TODAY</div>
+                    <div class="health-stat health-overdue">⚠ 1 OVERDUE</div>
+                </div>
+
+                <!-- Content -->
+                <div class="content">
+                    <!-- OVERDUE Card -->
+                    <div class="task-card departure">
+                        <div class="task-header">
+                            <div class="task-badges">
+                                <span class="badge departure">DEPARTURE</span>
+                                <span class="urgency-pill pill-overdue">OVERDUE 23M</span>
+                            </div>
+                        </div>
+                        <div class="task-property">KPG Residence</div>
+                        <div class="task-guest">Krit Pongsak · Checkout 11:00</div>
+                        <div class="task-cta red">Resolve Now →</div>
+                    </div>
+
+                    <!-- IMMINENT Card -->
+                    <div class="task-card departure">
+                        <div class="task-header">
+                            <div class="task-badges">
+                                <span class="badge departure">DEPARTURE</span>
+                                <span class="urgency-pill pill-imminent">IN 8 MIN</span>
+                            </div>
+                        </div>
+                        <div class="task-property">Emuna Villa</div>
+                        <div class="task-guest">Sara Levi · Checkout 10:15</div>
+                        <div class="task-cta copper">Start Check-Out →</div>
+                    </div>
+
+                    <!-- APPROACHING Card -->
+                    <div class="task-card arrival">
+                        <div class="task-header">
+                            <div class="task-badges">
+                                <span class="badge arrival">ARRIVAL</span>
+                                <span class="urgency-pill pill-approaching">IN 1H 14M</span>
+                            </div>
+                        </div>
+                        <div class="task-property">Casa Norte</div>
+                        <div class="task-guest">Anna Müller · Check-in 11:30</div>
+                        <div class="task-cta">Prepare Check-In →</div>
+                    </div>
+
+                    <!-- Later Today Section -->
+                    <div class="section-header">Later Today</div>
+                    <div class="mini-card">
+                        <div class="mini-card-left">
+                            <div class="mini-card-property">Baan Siri 6</div>
+                            <span class="badge arrival" style="width: fit-content;">ARRIVAL</span>
+                        </div>
+                        <div style="font-size: 10px; color: #9CA3AF;">3:45 PM</div>
+                    </div>
+                    <div class="mini-card">
+                        <div class="mini-card-left">
+                            <div class="mini-card-property">The Shore</div>
+                            <span class="badge departure" style="width: fit-content;">DEPARTURE</span>
+                        </div>
+                        <div style="font-size: 10px; color: #9CA3AF;">4:30 PM</div>
+                    </div>
+                </div>
+
+                <!-- Bottom Navigation -->
+                <div class="bottom-nav">
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="#334036" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <div class="nav-label">Home</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"></path>
+                        </svg>
+                        <div class="nav-label">History</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <div class="nav-label">Profile</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: ACTIVE FLOW (Check-Out Wizard - Step 3/5) -->
+        <div style="position: relative;">
+            <div class="screen-label">Screen 2: Active Flow</div>
+            <div class="phone">
+                <!-- Flow Header -->
+                <div class="flow-header">
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 16px; color: #6B7280; cursor: pointer;">←</span>
+                        <div>
+                            <div class="flow-title">Check-Out Flow</div>
+                            <div class="flow-property">
+                                <span class="badge departure" style="width: fit-content;">DEPARTURE</span>
+                                KPG Residence · Krit Pongsak
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Tracker -->
+                <div class="step-tracker">
+                    <div class="step-dot done"></div>
+                    <div class="step-line done"></div>
+                    <div class="step-dot done"></div>
+                    <div class="step-line done"></div>
+                    <div class="step-dot current"></div>
+                    <div class="step-line"></div>
+                    <div class="step-dot"></div>
+                    <div class="step-line"></div>
+                    <div class="step-dot"></div>
+                    <div class="step-label">STEP 3/5</div>
+                </div>
+
+                <!-- Property Bar -->
+                <div class="property-bar">
+                    <div class="property-bar-title">Condition Check</div>
+                    <div class="property-bar-subtitle">Inspect each room · flag issues</div>
+                    <span class="urgency-pill pill-overdue" style="font-size: 9px;">OVERDUE</span>
+                </div>
+
+                <!-- Checklist Items -->
+                <div class="content" style="gap: 0;">
+                    <div class="checklist-item">
+                        <div class="checklist-icon ok">✓</div>
+                        <div class="checklist-content">
+                            <div class="checklist-label">Living room</div>
+                        </div>
+                    </div>
+                    <div class="checklist-item">
+                        <div class="checklist-icon warning">⚠</div>
+                        <div class="checklist-content">
+                            <div class="checklist-label">Bedroom 1</div>
+                            <input type="text" class="checklist-input" value="Stain on left bedside table..." readonly>
+                        </div>
+                    </div>
+                    <div class="checklist-item">
+                        <div class="checklist-icon empty"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-label">Kitchen</div>
+                        </div>
+                    </div>
+                    <div class="checklist-item">
+                        <div class="checklist-icon empty"></div>
+                        <div class="checklist-content">
+                            <div class="checklist-label">Bathroom</div>
+                        </div>
+                    </div>
+
+                    <!-- Photo Slot -->
+                    <div class="photo-slot">
+                        📷 Add room photo<br>(optional)
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flow-buttons">
+                    <button class="btn btn-ghost">← Back</button>
+                    <button class="btn btn-primary copper">Next: Deposit →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: HISTORY -->
+        <div style="position: relative;">
+            <div class="screen-label">Screen 3: History</div>
+            <div class="phone">
+                <!-- History Header -->
+                <div class="history-header">
+                    <div class="history-title">History</div>
+                    <div class="history-subtitle">Today · 4 completed
+                        <span class="filter-pill">TODAY</span>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="content" style="gap: 0; padding: 0;">
+                    <!-- Date Divider -->
+                    <div class="date-divider">Today — 27 Mar</div>
+
+                    <!-- History Item 1 -->
+                    <div class="history-item departure">
+                        <div class="history-property">
+                            <span class="badge departure">DEPARTURE</span>
+                            KPG Residence
+                        </div>
+                        <div class="history-guest">Krit Pongsak</div>
+                        <div class="history-time">
+                            <span>completed 11:23</span>
+                            <span class="status-badge status-late">+23 min late</span>
+                        </div>
+                    </div>
+
+                    <!-- History Item 2 -->
+                    <div class="history-item departure">
+                        <div class="history-property">
+                            <span class="badge departure">DEPARTURE</span>
+                            Emuna Villa
+                        </div>
+                        <div class="history-guest">Sara Levi</div>
+                        <div class="history-time">
+                            <span>completed 10:11</span>
+                            <span class="status-badge status-ontime">On time</span>
+                        </div>
+                    </div>
+
+                    <!-- History Item 3 -->
+                    <div class="history-item arrival">
+                        <div class="history-property">
+                            <span class="badge arrival">ARRIVAL</span>
+                            Casa Norte
+                        </div>
+                        <div class="history-guest">Anna Müller</div>
+                        <div class="history-time">
+                            <span>completed 11:38</span>
+                            <span class="status-badge status-ontime">On time</span>
+                        </div>
+                    </div>
+
+                    <!-- History Item 4 -->
+                    <div class="history-item arrival">
+                        <div class="history-property">
+                            <span class="badge arrival">ARRIVAL</span>
+                            Baan Siri 6
+                        </div>
+                        <div class="history-guest">Thomas Webb</div>
+                        <div class="history-time">
+                            <span>completed 13:07</span>
+                            <span class="status-badge status-late">+7 min late</span>
+                        </div>
+                    </div>
+
+                    <!-- Date Divider -->
+                    <div class="date-divider">Yesterday — 26 Mar</div>
+
+                    <!-- History Item 5 -->
+                    <div class="history-item departure">
+                        <div class="history-property">
+                            <span class="badge departure">DEPARTURE</span>
+                            The Shore
+                        </div>
+                        <div class="history-guest">James Patterson</div>
+                        <div class="history-time">
+                            <span>completed 10:45</span>
+                            <span class="status-badge status-ontime">On time</span>
+                        </div>
+                    </div>
+
+                    <!-- History Item 6 -->
+                    <div class="history-item arrival">
+                        <div class="history-property">
+                            <span class="badge arrival">ARRIVAL</span>
+                            Orchid Gardens
+                        </div>
+                        <div class="history-guest">Yuki Tanaka</div>
+                        <div class="history-time">
+                            <span>completed 14:22</span>
+                            <span class="status-badge status-ontime">On time</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Navigation -->
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <div class="nav-label">Home</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="#334036" stroke-width="2">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"></path>
+                        </svg>
+                        <div class="nav-label">History</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <div class="nav-label">Profile</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 4: PROFILE -->
+        <div style="position: relative;">
+            <div class="screen-label">Screen 4: Profile</div>
+            <div class="phone">
+                <!-- Profile Hero -->
+                <div class="profile-hero">
+                    <div class="profile-avatar">MG</div>
+                    <div class="profile-name">Maria Gonzalez</div>
+                    <div class="profile-role">Check-In & Check-Out Staff</div>
+                    <div class="profile-badge">ACTIVE · SINCE JAN 2024</div>
+                </div>
+
+                <!-- Content -->
+                <div class="content" style="gap: 0;">
+                    <!-- Account Section -->
+                    <div class="profile-section">
+                        <div class="profile-section-title">Account</div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Language</div>
+                            <div class="profile-item-value">English</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Phone</div>
+                            <div class="profile-item-value">+66 89 XXX XXXX</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Email</div>
+                            <div class="profile-item-value" style="font-size: 10px;">maria@domaniqo...</div>
+                        </div>
+                    </div>
+
+                    <!-- Connected Services Section -->
+                    <div class="profile-section">
+                        <div class="profile-section-title">Connected Services</div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Google</div>
+                            <div style="font-size: 9px; color: #059669; font-weight: 700;">● CONNECTED</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Password</div>
+                            <div style="font-size: 9px; color: #059669; font-weight: 700;">● CONNECTED</div>
+                        </div>
+                    </div>
+
+                    <!-- Preferences Section -->
+                    <div class="profile-section">
+                        <div class="profile-section-title">Preferences</div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Push notifications</div>
+                            <div class="toggle on">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Sound alerts</div>
+                            <div class="toggle on">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Language display</div>
+                            <div class="toggle on">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sign Out Button -->
+                <button class="btn-signout">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Design Notes Bar -->
+    <div class="design-notes">
+        <div class="design-note">
+            <div class="design-note-label">What Was Refined</div>
+            <div class="design-note-text">Screen 2 is the active step flow — the execution wizard. Type separation is strong: Deep Moss = arrivals, Signal Copper = departures, carried through card borders, badges, and active flow header.</div>
+        </div>
+        <div class="design-note">
+            <div class="design-note-label">Urgency System</div>
+            <div class="design-note-text">4 states on every task card. Safe → Approaching (amber, >30 min) → Imminent (copper, <30 min, pulsing) → Overdue (red, blinking). Day Health strip shows live stream counts.</div>
+        </div>
+        <div class="design-note">
+            <div class="design-note-label">Card Scan Order</div>
+            <div class="design-note-text">Worker reads left to right: type badge (ARRIVAL/DEPARTURE) → countdown pill → nav icon → property name → guest + time → CTA. All critical info in under 2 seconds.</div>
+        </div>
+        <div class="design-note">
+            <div class="design-note-label">What Stayed Calm</div>
+            <div class="design-note-text">History and Profile have no urgency animation. They are reporting surfaces, not action surfaces. The active flow screen uses copper only for the current-step indicator.</div>
+        </div>
+    </div>
+</body>
+</html>

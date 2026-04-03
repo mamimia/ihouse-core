@@ -71,7 +71,7 @@ def _audit_get(db, **kwargs):
         target_type=kwargs.get("target_type"),
         target_id=kwargs.get("target_id"),
         limit=kwargs.get("limit", 100),
-        tenant_id="t1",
+        identity={"tenant_id": "t1", "role": "admin"},
         client=db,
     ))
 

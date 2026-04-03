@@ -58,7 +58,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth
+from api.auth import admin_only_auth
 from api.error_models import make_error_response
 
 logger = logging.getLogger(__name__)
@@ -182,15 +182,18 @@ async def list_dlq_entries(
     source: Optional[str] = None,
     status: str = "all",
     limit: int = _DEFAULT_LIMIT,
-    tenant_id: str = Depends(jwt_auth),
+    # Phase 973 audit fix (Sonia/06): admin_only_auth replaces jwt_auth.
+    # Role=admin is now enforced at the backend for DLQ access.
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
     GET /admin/dlq?source=&status=&limit=
 
-    Lists DLQ entries. JWT auth required (admin surface).
+    Lists DLQ entries. Admin-only JWT auth required.
     Reads from ota_dead_letter only. Never writes.
     """
+    tenant_id = identity["tenant_id"]
     # Validate status filter
     if status not in _VALID_STATUSES:
         return make_error_response(
@@ -272,15 +275,16 @@ async def list_dlq_entries(
 )
 async def get_dlq_entry(
     envelope_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
     GET /admin/dlq/{envelope_id}
 
-    Returns full DLQ entry including raw_payload. JWT auth required.
+    Returns full DLQ entry including raw_payload. Admin-only JWT auth required.
     Reads from ota_dead_letter only. Never writes.
     """
+    tenant_id = identity["tenant_id"]  # noqa: F841 — available for future audit use
     try:
         db = client if client is not None else _get_supabase_client()
 
@@ -354,7 +358,7 @@ _ALREADY_APPLIED_REPLAY_STATUSES = frozenset({
 )
 async def replay_dlq_entry(
     envelope_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
     _replay_fn: Optional[Any] = None,
 ) -> JSONResponse:
@@ -363,8 +367,9 @@ async def replay_dlq_entry(
 
     Trigger replay for a single DLQ entry via envelope_id.
     Resolves to the numeric DB row id, then calls replay_dlq_row().
-    JWT auth required (admin surface).
+    Admin-only JWT auth required (role=admin enforced at backend).
     """
+    tenant_id = identity["tenant_id"]  # noqa: F841 — available for audit use
     # --- Resolve envelope_id → DB row ---
     try:
         db = client if client is not None else _get_supabase_client()

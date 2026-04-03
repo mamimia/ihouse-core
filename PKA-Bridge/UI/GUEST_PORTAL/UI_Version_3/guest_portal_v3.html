@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Portal UI v3 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* ========== SCREEN 1: WELCOME & YOUR STAY ========== */
+
+        .welcome-hero {
+            width: 100%;
+            min-height: 130px;
+            background: linear-gradient(135deg, #F5EFE6 0%, #2D5A3D 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 12px;
+            flex-shrink: 0;
+        }
+
+        .hero-property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .hero-greeting {
+            font-size: 12px;
+            color: rgba(45, 90, 61, 0.75);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .greeting-icon {
+            font-size: 14px;
+        }
+
+        .stay-card {
+            background: #FFFFFF;
+            border-radius: 12px;
+            border: 1px solid #E8DDD0;
+            padding: 14px;
+            margin: 12px 13px;
+            flex-shrink: 0;
+        }
+
+        .stay-card-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stay-dates {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .stay-date-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+        }
+
+        .stay-date-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .stay-date-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .stay-divider {
+            text-align: center;
+            color: #D1D6DC;
+            font-weight: 300;
+            font-size: 11px;
+        }
+
+        .stay-duration {
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #2D5A3D;
+            background: #F5EFE6;
+            padding: 4px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .stay-timeline {
+            width: 100%;
+            height: 3px;
+            background: #E8DDD0;
+            border-radius: 2px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .stay-timeline::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 65%;
+            background: #2D5A3D;
+            border-radius: 2px;
+        }
+
+        .quick-access {
+            padding: 12px 13px;
+        }
+
+        .quick-access-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .quick-tiles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .quick-tile {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .quick-tile:active {
+            background: #F5EFE6;
+            border-color: #2D5A3D;
+        }
+
+        .tile-icon {
+            font-size: 24px;
+        }
+
+        .tile-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .lang-selector {
+            position: absolute;
+            top: 34px;
+            right: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #2D5A3D;
+            display: flex;
+            gap: 4px;
+            z-index: 10;
+        }
+
+        .lang-selector span {
+            cursor: pointer;
+            padding: 2px 4px;
+        }
+
+        .lang-selector span.active {
+            text-decoration: underline;
+        }
+
+        /* ========== SCREEN 2: WI-FI & CONNECT ========== */
+
+        .app-header {
+            height: 50px;
+            background: #FFFFFF;
+            border-bottom: 1px solid #E8DDD0;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            flex-shrink: 0;
+            gap: 12px;
+        }
+
+        .header-back-btn {
+            width: 28px;
+            height: 28px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2D5A3D;
+            font-size: 18px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #2D5A3D;
+            flex: 1;
+        }
+
+        .scroll-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .scroll-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-content::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        .content-card {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        .card-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .card-subtitle {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        /* Wi-Fi specific */
+        .wifi-field {
+            background: #F9F7F4;
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+
+        .wifi-field-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 3px;
+        }
+
+        .wifi-field-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .wifi-field-value {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #171A1F;
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #2D5A3D;
+            font-size: 14px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .copy-feedback {
+            font-size: 8px;
+            color: #16A34A;
+            font-weight: 700;
+            margin-left: 4px;
+            opacity: 0;
+            animation: fadeInOut 1.5s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .qr-section {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .qr-placeholder {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto;
+            border: 2px dashed #D1D6DC;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #F9F7F4;
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .qr-instruction {
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.3;
+        }
+
+        .expandable-section {
+            border-top: 1px solid #E8DDD0;
+            margin-top: 8px;
+            padding-top: 8px;
+        }
+
+        .expandable-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 4px 0;
+        }
+
+        .expandable-header-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .expand-icon {
+            font-size: 12px;
+            color: #9CA3AF;
+            transition: transform 0.2s;
+        }
+
+        .expandable-content {
+            display: none;
+            margin-top: 8px;
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.4;
+            background: #F9F7F4;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        .expandable-content.open {
+            display: block;
+        }
+
+        .expand-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .help-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .help-step {
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.3;
+        }
+
+        .step-number {
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        /* ========== SCREEN 3: HOUSE GUIDE & ESSENTIALS ========== */
+
+        .guide-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .rule-item {
+            display: flex;
+            gap: 8px;
+            font-size: 10px;
+            color: #171A1F;
+            line-height: 1.3;
+        }
+
+        .rule-icon {
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .rule-text {
+            flex: 1;
+        }
+
+        .accordion-item {
+            border-top: 1px solid #E8DDD0;
+            padding: 10px 0;
+        }
+
+        .accordion-item:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 6px 0;
+            gap: 8px;
+        }
+
+        .accordion-header-left {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            align-items: flex-start;
+        }
+
+        .accordion-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .accordion-title-area {
+            flex: 1;
+        }
+
+        .accordion-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .accordion-preview {
+            font-size: 8.5px;
+            color: #9CA3AF;
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+
+        .accordion-chevron {
+            font-size: 12px;
+            color: #9CA3AF;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .accordion-chevron.open {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            display: none;
+            margin-top: 6px;
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.4;
+            background: #F9F7F4;
+            padding: 8px;
+            border-radius: 6px;
+            margin-left: 24px;
+        }
+
+        .accordion-content.open {
+            display: block;
+        }
+
+        .emergency-box {
+            background: #FEF3F2;
+            border: 1px solid #FECACA;
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: 8px;
+        }
+
+        .emergency-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: #DC2626;
+            margin-bottom: 4px;
+        }
+
+        .emergency-item {
+            font-size: 8.5px;
+            color: #7F1D1D;
+            margin-bottom: 3px;
+            line-height: 1.3;
+        }
+
+        .emergency-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ========== SCREEN 4: SELF CHECK-IN FORM ========== */
+
+        .form-section {
+            padding: 12px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .form-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #2D5A3D;
+            margin-bottom: 4px;
+        }
+
+        .form-context {
+            font-size: 9px;
+            color: #6B7280;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 10px;
+            border: 1px solid #E8DDD0;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            color: #171A1F;
+            background: #FFFFFF;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #2D5A3D;
+            background: #F5EFE6;
+        }
+
+        .form-input::placeholder {
+            color: #D1D5DB;
+        }
+
+        .progress-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .progress-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #D1D5DB;
+            cursor: pointer;
+        }
+
+        .progress-dot.active {
+            background: #2D5A3D;
+        }
+
+        .photo-section {
+            border: 2px dashed #D1D5DB;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .photo-icon {
+            font-size: 32px;
+            margin-bottom: 6px;
+        }
+
+        .photo-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .photo-hint {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .toggle-option {
+            font-size: 9px;
+            color: #2D5A3D;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+
+        .companions-section {
+            background: #F9F7F4;
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 12px;
+        }
+
+        .companions-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 6px;
+        }
+
+        .companion-row {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 6px;
+            padding: 6px;
+            margin-bottom: 6px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .companion-row input {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #E8DDD0;
+            border-radius: 4px;
+            font-size: 9px;
+        }
+
+        .add-companion-btn {
+            background: none;
+            border: 1px solid #2D5A3D;
+            color: #2D5A3D;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .form-button {
+            width: 100%;
+            padding: 14px;
+            background: #2D5A3D;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .form-button:active {
+            background: #1F3D2B;
+        }
+
+        /* ========== SCREEN 5: HOST MESSAGING ========== */
+
+        .messaging-header {
+            background: #2D5A3D;
+            color: #FFFFFF;
+            padding: 12px;
+            height: auto;
+            border-bottom: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .host-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .host-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .host-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .host-status {
+            font-size: 8px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            padding: 8px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            line-height: 1.3;
+            word-wrap: break-word;
+        }
+
+        .message-host {
+            align-self: flex-start;
+            background: #E8DDD0;
+            color: #171A1F;
+            border-radius: 0 12px 12px 12px;
+        }
+
+        .message-guest {
+            align-self: flex-end;
+            background: #2D5A3D;
+            color: #FFFFFF;
+            border-radius: 12px 0 12px 12px;
+        }
+
+        .message-time {
+            font-size: 8px;
+            color: #9CA3AF;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .message-input-area {
+            padding: 10px 12px;
+            border-top: 1px solid #E8DDD0;
+            display: flex;
+            gap: 8px;
+            background: #FFFFFF;
+            flex-shrink: 0;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #E8DDD0;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            color: #171A1F;
+            background: #F9F7F4;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #2D5A3D;
+            background: #FFFFFF;
+        }
+
+        .message-input::placeholder {
+            color: #D1D5DB;
+        }
+
+        .send-btn {
+            width: 28px;
+            height: 28px;
+            background: #2D5A3D;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .send-btn:active {
+            background: #1F3D2B;
+        }
+
+        /* ========== SCREEN 6: LOCATION & GETTING AROUND ========== */
+
+        .location-card {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .location-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .location-address {
+            font-size: 10px;
+            color: #171A1F;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .address-copy-btn {
+            background: none;
+            border: 1px solid #2D5A3D;
+            color: #2D5A3D;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .map-placeholder {
+            width: 100%;
+            height: 100px;
+            background: #F9F7F4;
+            border: 2px dashed #D1D5DB;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9CA3AF;
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .directions-card {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .directions-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .direction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .direction-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .direction-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .direction-value {
+            font-size: 9px;
+            color: #9CA3AF;
+            text-align: right;
+        }
+
+        .nearby-section {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        .nearby-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .nearby-item {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .nearby-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .nearby-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .nearby-info {
+            flex: 1;
+        }
+
+        .nearby-name {
+            font-size: 9px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .nearby-distance {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Guest Portal UI – V3 Prototype</h1>
+            <p>Significantly stronger hospitality presence. 6 screens: Welcome & Stay, Wi-Fi & Connect, House Guide, Self Check-In, Messaging, Location.</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">ROLE PERSONALITY</div>
+                <div class="note-text">Hospitality concierge. Zero friction. Warm, welcoming, premium. Token-scoped, transient guest portal. Wi-Fi in 10 seconds, mobile-first. Empty sections have context, no dead ends.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">V3 CHANGES FROM V2</div>
+                <div class="note-text">Significantly stronger hospitality hero. Prominent stay dates as HERO element. Wi-Fi section: QR code for network connection. Richer house guide with appliance accordion. Self check-in form for late/no-staff arrivals. Location section added. Expanded to 6 screens.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">KEY PATTERNS</div>
+                <div class="note-text">Warm forest green (#2D5A3D) for guest accents. Hospitality hero. Stay dates visually prominent. Tap-to-copy Wi-Fi. QR connect option. Accordion appliances. Self check-in with photo option. Full-screen chat. Location with nearby spots. Large 48px+ touch targets.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">SHAPED BY</div>
+                <div class="note-text">Yael (guest experience): Wi-Fi in 10 sec, post-checkout 48h. Oren (trust): Token security, guest scoped. Talia (interaction): Empty states, contextual, dynamic fields. Sonia (differentiation): Completely different from staff surfaces. Premium hospitality feel.</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+            <!-- Screen 1: Welcome & Your Stay -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span style="font-size: 10px;">📶</span>
+                            <span style="font-size: 10px;">📡</span>
+                            <span style="font-size: 10px;">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="welcome-hero">
+                            <div class="hero-property-name">Villa Orchid Residence</div>
+                            <div class="hero-greeting">
+                                <span class="greeting-icon">👋</span>
+                                <span>Welcome, James</span>
+                            </div>
+                        </div>
+
+                        <div class="stay-card">
+                            <div class="stay-card-title">Your Stay</div>
+                            <div class="stay-timeline"></div>
+                            <div class="stay-dates">
+                                <div class="stay-date-item">
+                                    <div class="stay-date-label">Check-In</div>
+                                    <div class="stay-date-value">Sat, Mar 15</div>
+                                </div>
+                                <div class="stay-divider">→</div>
+                                <div class="stay-date-item" style="text-align: right;">
+                                    <div class="stay-date-label">Check-Out</div>
+                                    <div class="stay-date-value">Tue, Mar 18</div>
+                                </div>
+                            </div>
+                            <div class="stay-duration">3 nights</div>
+                        </div>
+
+                        <div class="quick-access">
+                            <div class="quick-access-title">Quick Access</div>
+                            <div class="quick-tiles">
+                                <div class="quick-tile">
+                                    <div class="tile-icon">📡</div>
+                                    <div class="tile-label">Wi-Fi</div>
+                                </div>
+                                <div class="quick-tile">
+                                    <div class="tile-icon">📖</div>
+                                    <div class="tile-label">House Guide</div>
+                                </div>
+                                <div class="quick-tile">
+                                    <div class="tile-icon">📍</div>
+                                    <div class="tile-label">Location</div>
+                                </div>
+                                <div class="quick-tile">
+                                    <div class="tile-icon">💬</div>
+                                    <div class="tile-label">Host</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="lang-selector">
+                            <span class="active">EN</span>
+                            <span>|</span>
+                            <span>TH</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">1. Welcome & Your Stay</div>
+            </div>
+
+            <!-- Screen 2: Wi-Fi & Connect -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span style="font-size: 10px;">📶</span>
+                            <span style="font-size: 10px;">📡</span>
+                            <span style="font-size: 10px;">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <button class="header-back-btn">←</button>
+                        <div class="header-title">Stay Connected</div>
+                    </div>
+
+                    <div class="scroll-content">
+                        <div class="content-card">
+                            <div class="card-label">Wi-Fi Network</div>
+
+                            <div class="wifi-field">
+                                <div class="wifi-field-label">Network Name</div>
+                                <div class="wifi-field-row">
+                                    <div class="wifi-field-value">OchidVilla_5G</div>
+                                    <button class="copy-btn" title="Tap to copy">📋</button>
+                                </div>
+                            </div>
+
+                            <div class="wifi-field">
+                                <div class="wifi-field-label">Password</div>
+                                <div class="wifi-field-row">
+                                    <div class="wifi-field-value">Welcome2024</div>
+                                    <button class="copy-btn" title="Tap to copy">📋</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="card-label">Connect via QR</div>
+                            <div class="qr-section">
+                                <div class="qr-placeholder">⬜</div>
+                                <div class="qr-instruction">Scan with your phone camera to connect automatically</div>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="card-label">Troubleshooting</div>
+                            <div class="expandable-section">
+                                <div class="expandable-header" onclick="this.nextElementSibling.classList.toggle('open'); this.querySelector('.expand-icon').classList.toggle('open');">
+                                    <span class="expandable-header-label">Need Help Connecting?</span>
+                                    <span class="expand-icon">▼</span>
+                                </div>
+                                <div class="expandable-content">
+                                    <div class="help-steps">
+                                        <div class="help-step"><span class="step-number">iOS:</span> Settings → Wi-Fi → Select OchidVilla_5G → Enter password</div>
+                                        <div class="help-step"><span class="step-number">Android:</span> Settings → Network & Internet → Wi-Fi → Select OchidVilla_5G → Enter password</div>
+                                        <div class="help-step"><span class="step-number">Forget & Retry:</span> If connection fails, forget the network and reconnect</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">2. Wi-Fi & Connect</div>
+            </div>
+
+            <!-- Screen 3: House Guide & Essentials -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span style="font-size: 10px;">📶</span>
+                            <span style="font-size: 10px;">📡</span>
+                            <span style="font-size: 10px;">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <button class="header-back-btn">←</button>
+                        <div class="header-title">House Guide</div>
+                    </div>
+
+                    <div class="scroll-content">
+                        <div class="content-card">
+                            <div class="card-label">House Rules</div>
+                            <div class="guide-section">
+                                <div class="rule-item">
+                                    <span class="rule-icon">🚭</span>
+                                    <span class="rule-text">No Smoking Indoors</span>
+                                </div>
+                                <div class="rule-item">
+                                    <span class="rule-icon">🔇</span>
+                                    <span class="rule-text">Quiet Hours After 10 PM</span>
+                                </div>
+                                <div class="rule-item">
+                                    <span class="rule-icon">🏊</span>
+                                    <span class="rule-text">Pool Hours 7 AM – 9 PM</span>
+                                </div>
+                                <div class="rule-item">
+                                    <span class="rule-icon">🐾</span>
+                                    <span class="rule-text">No Pets Allowed</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="card-label">Check-In & Check-Out</div>
+                            <div style="font-size: 9px; color: #6B7280; line-height: 1.4;">
+                                <div style="margin-bottom: 4px;"><strong style="color: #171A1F;">Check-In:</strong> from 3:00 PM</div>
+                                <div style="margin-bottom: 4px;"><strong style="color: #171A1F;">Check-Out:</strong> by 11:00 AM</div>
+                                <div><strong style="color: #171A1F;">Late Checkout:</strong> Contact host for availability</div>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="card-label">Appliances & Essentials</div>
+                            <div class="accordion-item">
+                                <div class="accordion-header" onclick="this.nextElementSibling.classList.toggle('open'); this.querySelector('.accordion-chevron').classList.toggle('open');">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-icon">❄️</span>
+                                        <div class="accordion-title-area">
+                                            <div class="accordion-title">Air Conditioning</div>
+                                            <div class="accordion-preview">Remote on bedside...</div>
+                                        </div>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </div>
+                                <div class="accordion-content">Remote control is on the bedside table. Recommended setting: 24°C for comfortable sleep. Auto mode is recommended for efficiency.</div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <div class="accordion-header" onclick="this.nextElementSibling.classList.toggle('open'); this.querySelector('.accordion-chevron').classList.toggle('open');">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-icon">🧺</span>
+                                        <div class="accordion-title-area">
+                                            <div class="accordion-title">Washing Machine</div>
+                                            <div class="accordion-preview">Located in utility room...</div>
+                                        </div>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </div>
+                                <div class="accordion-content">Located in the utility room on the lower level. Standard cycle: Add detergent, load clothes, close door, and press START twice to begin.</div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <div class="accordion-header" onclick="this.nextElementSibling.classList.toggle('open'); this.querySelector('.accordion-chevron').classList.toggle('open');">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-icon">🍳</span>
+                                        <div class="accordion-title-area">
+                                            <div class="accordion-title">Kitchen Cooktop</div>
+                                            <div class="accordion-preview">Induction cooktop...</div>
+                                        </div>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </div>
+                                <div class="accordion-content">Induction cooktop with digital controls. Hold the power button for 3 seconds to activate. Use only induction-compatible cookware. Touch to adjust heat level.</div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <div class="accordion-header" onclick="this.nextElementSibling.classList.toggle('open'); this.querySelector('.accordion-chevron').classList.toggle('open');">
+                                    <div class="accordion-header-left">
+                                        <span class="accordion-icon">💧</span>
+                                        <div class="accordion-title-area">
+                                            <div class="accordion-title">Pool Pump</div>
+                                            <div class="accordion-preview">Automatic system...</div>
+                                        </div>
+                                    </div>
+                                    <span class="accordion-chevron">▼</span>
+                                </div>
+                                <div class="accordion-content">The pool pump runs automatically from 8 AM to 8 PM daily. Manual override switch is located by the equipment room. Contact host if you have concerns.</div>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="card-label">Emergency Contacts</div>
+                            <div class="emergency-box">
+                                <div class="emergency-title">⚠️ Emergency</div>
+                                <div class="emergency-item"><strong>Police / Ambulance:</strong> 191</div>
+                                <div class="emergency-item"><strong>Nearest Hospital:</strong> Bangkok Hospital Phuket (5 km)</div>
+                                <div class="emergency-item"><strong>Property Manager:</strong> +66 76 000 000</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">3. House Guide & Essentials</div>
+            </div>
+
+            <!-- Screen 4: Self Check-In Form -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span style="font-size: 10px;">📶</span>
+                            <span style="font-size: 10px;">📡</span>
+                            <span style="font-size: 10px;">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <button class="header-back-btn">←</button>
+                        <div class="header-title" style="text-align: center; flex: 1; margin: 0 -40px;">Check-In</div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-header">
+                            <div class="form-title">Complete Your Arrival</div>
+                            <div class="form-context">For self check-in and late arrivals</div>
+                        </div>
+
+                        <div class="progress-dots">
+                            <div class="progress-dot active"></div>
+                            <div class="progress-dot"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input class="form-input" type="text" value="James Patterson" placeholder="Enter your name">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">ID Photo</label>
+                            <div class="photo-section">
+                                <div class="photo-icon">📷</div>
+                                <div class="photo-label">Take a photo of your ID</div>
+                                <div class="photo-hint">Passport, Driver's License, or National ID</div>
+                            </div>
+                            <div class="toggle-option">Or enter details manually</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Passport / ID Number</label>
+                            <input class="form-input" type="text" placeholder="Enter ID number">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Nationality</label>
+                            <input class="form-input" type="text" value="United States" placeholder="Select nationality">
+                        </div>
+
+                        <div class="companions-section">
+                            <div class="companions-label">👥 Traveling with others?</div>
+                            <div class="companion-row">
+                                <input type="text" placeholder="Companion name">
+                                <input type="text" placeholder="ID" style="width: 50px;">
+                            </div>
+                            <button class="add-companion-btn">+ Add Companion</button>
+                        </div>
+
+                        <button class="form-button">Continue to Step 2</button>
+                    </div>
+                </div>
+                <div class="screen-label">4. Self Check-In Form</div>
+            </div>
+
+            <!-- Screen 5: Host Messaging -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span style="font-size: 10px;">📶</span>
+                            <span style="font-size: 10px;">📡</span>
+                            <span style="font-size: 10px;">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="messaging-header">
+                        <div class="host-avatar">NK</div>
+                        <div class="host-info">
+                            <div class="host-name">Khun Noi · Your Host</div>
+                            <div class="host-status">Usually responds within 30 min</div>
+                        </div>
+                    </div>
+
+                    <div class="messages-area">
+                        <div class="message-group">
+                            <div class="message-bubble message-host">Welcome to Villa Orchid! I'm here if you need anything during your stay. Don't hesitate to reach out 🌺</div>
+                        </div>
+
+                        <div class="message-time">Today, 10:35 AM</div>
+
+                        <div class="message-group">
+                            <div class="message-bubble message-guest">Hi! Is there a good restaurant nearby for dinner tonight?</div>
+                        </div>
+
+                        <div class="message-group">
+                            <div class="message-bubble message-host">Absolutely! I recommend Baan Rim Pa — amazing Thai seafood, about 10 min drive. Shall I arrange a taxi?</div>
+                            <div class="message-bubble message-host">Also, the night market opens at 5 PM if you prefer casual dining.</div>
+                        </div>
+
+                        <div class="message-group">
+                            <div class="message-bubble message-guest">That's perfect! Please arrange a taxi for 7 PM</div>
+                        </div>
+                    </div>
+
+                    <div class="message-input-area">
+                        <input class="message-input" type="text" placeholder="Type a message...">
+                        <button class="send-btn">➤</button>
+                    </div>
+                </div>
+                <div class="screen-label">5. Host Messaging</div>
+            </div>
+
+            <!-- Screen 6: Location & Getting Around -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span style="font-size: 10px;">📶</span>
+                            <span style="font-size: 10px;">📡</span>
+                            <span style="font-size: 10px;">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <button class="header-back-btn">←</button>
+                        <div class="header-title">Getting Around</div>
+                    </div>
+
+                    <div class="scroll-content">
+                        <div class="location-card">
+                            <div class="location-title">Property Location</div>
+                            <div class="map-placeholder">📍</div>
+                            <div class="location-address">123 Beach Road, Patong, Phuket 83150, Thailand</div>
+                            <button class="address-copy-btn">📋 Copy Address</button>
+                        </div>
+
+                        <div class="directions-card">
+                            <div class="directions-header">From Phuket Airport</div>
+                            <div class="direction-item">
+                                <span class="direction-label">By Taxi / Grab</span>
+                                <span class="direction-value">45 min</span>
+                            </div>
+                            <div class="direction-item">
+                                <span class="direction-label">Estimated Cost</span>
+                                <span class="direction-value">�฿600–800</span>
+                            </div>
+                            <div style="font-size: 9px; color: #6B7280; margin-top: 6px;">We recommend Grab taxi or hotel transfer for a hassle-free arrival.</div>
+                        </div>
+
+                        <div class="nearby-section">
+                            <div class="nearby-header">Nearby Essentials</div>
+
+                            <div class="nearby-item">
+                                <span class="nearby-icon">🏖️</span>
+                                <div class="nearby-info">
+                                    <div class="nearby-name">Patong Beach</div>
+                                    <div class="nearby-distance">5 min walk</div>
+                                </div>
+                            </div>
+
+                            <div class="nearby-item">
+                                <span class="nearby-icon">🍽️</span>
+                                <div class="nearby-info">
+                                    <div class="nearby-name">Baan Rim Pa Restaurant</div>
+                                    <div class="nearby-distance">3 min drive</div>
+                                </div>
+                            </div>
+
+                            <div class="nearby-item">
+                                <span class="nearby-icon">🏪</span>
+                                <div class="nearby-info">
+                                    <div class="nearby-name">7-Eleven Convenience Store</div>
+                                    <div class="nearby-distance">2 min walk</div>
+                                </div>
+                            </div>
+
+                            <div class="nearby-item">
+                                <span class="nearby-icon">🏥</span>
+                                <div class="nearby-info">
+                                    <div class="nearby-name">Bangkok Hospital Phuket</div>
+                                    <div class="nearby-distance">15 min drive</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">6. Location & Getting Around</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

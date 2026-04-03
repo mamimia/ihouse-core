@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance — V3 Issue-Driven Worker Surface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+            padding: 40px 20px;
+        }
+
+        .notes-bar {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .notes-section {
+            border-right: 1px solid #E5E7EB;
+            padding-right: 20px;
+        }
+
+        .notes-section:last-child {
+            border-right: none;
+            padding-right: 0;
+        }
+
+        .notes-section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #92400E;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .notes-item {
+            font-size: 12px;
+            color: #374151;
+            line-height: 1.4;
+            margin-bottom: 6px;
+        }
+
+        .notes-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .page-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: #171A1F;
+        }
+
+        .page-subtitle {
+            font-size: 12px;
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+            max-width: 2000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .screen-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow: 0 0 0 2px #D1D6DC, 0 2px 0 3px #B8BEC6, 0 12px 48px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-top: 12px;
+            text-align: center;
+            letter-spacing: 0.05em;
+            max-width: 300px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 26px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            font-size: 11.5px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .signal {
+            display: flex;
+            gap: 4px;
+        }
+
+        /* App Header */
+        .app-header {
+            height: 50px;
+            background: #171A1F;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 13px;
+            border-bottom: 1px solid #2D3139;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .header-subtitle {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-top: 2px;
+        }
+
+        .avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #92400E;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+        }
+
+        /* Day Health Strip */
+        .day-health {
+            background: #171A1F;
+            color: white;
+            padding: 8px 13px;
+            font-size: 10px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #2D3139;
+        }
+
+        .health-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .health-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .health-dot.critical {
+            background: #DC2626;
+            animation: blink 1.5s infinite;
+        }
+
+        .health-dot.high {
+            background: #F59E0B;
+        }
+
+        .health-dot.normal {
+            background: #6B7280;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 13px;
+            background: #F9F7F4;
+        }
+
+        .screen-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .screen-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .screen-content::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        .section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 13px 0 9px 0;
+            padding: 0 4px;
+        }
+
+        /* Priority Cards */
+        .job-card {
+            background: white;
+            border-left: 3px solid #D1D5DB;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid;
+        }
+
+        .job-card.critical {
+            background: #FFF4F4;
+            border-left-color: #DC2626;
+            box-shadow: 0 0 0 0 rgba(220,38,38,0);
+            animation: pulse-card-critical 2s infinite;
+        }
+
+        .job-card.high {
+            background: #FFFCF0;
+            border-left-color: #F59E0B;
+            box-shadow: 0 0 0 0 rgba(181,110,69,0);
+            animation: pulse-card 2s infinite;
+        }
+
+        .job-card.normal {
+            background: white;
+            border-left-color: #D1D5DB;
+        }
+
+        .job-card.mini {
+            padding: 8px;
+            font-size: 9px;
+        }
+
+        .card-row-1 {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 7px;
+        }
+
+        .priority-badge {
+            font-size: 7px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        .priority-badge.critical {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .priority-badge.high {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .priority-badge.normal {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+
+        .category-tag {
+            font-size: 7.5px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: #F5EAE3;
+            color: #B56E45;
+        }
+
+        /* Category colors */
+        .category-tag.pool {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .category-tag.plumbing {
+            background: #DBEAFE;
+            color: #0C4A6E;
+        }
+
+        .category-tag.electrical {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .category-tag.ac_heating {
+            background: #FED7AA;
+            color: #7C2D12;
+        }
+
+        .category-tag.bathroom {
+            background: #DBEAFE;
+            color: #0C4A6E;
+        }
+
+        .category-tag.kitchen {
+            background: #F5E4D7;
+            color: #78350F;
+        }
+
+        .category-tag.structure {
+            background: #E5D3D3;
+            color: #78280F;
+        }
+
+        .sla-pill {
+            font-size: 7px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+            margin-left: auto;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .sla-pill.breach {
+            background: #DC2626;
+            color: white;
+            animation: blink 1.5s infinite;
+        }
+
+        .sla-pill.warning {
+            background: #FEF3C7;
+            color: #92400E;
+            animation: pulse-sla 1.5s infinite;
+        }
+
+        .sla-pill.ok {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+
+        .nav-button {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            background: #F3F4F6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #6B7280;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .issue-description {
+            font-size: 10.5px;
+            color: #374151;
+            line-height: 1.3;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-meta {
+            font-size: 9px;
+            color: #6B7280;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 7px;
+        }
+
+        .card-cta {
+            width: 100%;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .card-cta.primary {
+            background: #171A1F;
+            color: white;
+        }
+
+        .card-cta.primary:hover {
+            background: #2D3139;
+        }
+
+        .card-cta.success {
+            background: #10B981;
+            color: white;
+        }
+
+        .card-cta.warning {
+            background: #F59E0B;
+            color: white;
+        }
+
+        .card-cta.danger {
+            background: #DC2626;
+            color: white;
+        }
+
+        .card-cta.outline {
+            background: transparent;
+            border: 1px solid #D1D5DB;
+            color: #171A1F;
+        }
+
+        .card-cta.outline.warning {
+            border-color: #FEF3C7;
+            background: #FFFBEB;
+            color: #92400E;
+        }
+
+        /* Back button */
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: #6B7280;
+            cursor: pointer;
+            padding: 10px 0;
+            margin-bottom: 10px;
+        }
+
+        /* Detail Screen */
+        .detail-header {
+            padding: 13px 0;
+        }
+
+        .detail-banner {
+            border-radius: 8px;
+            padding: 12px 13px;
+            margin-bottom: 10px;
+            color: white;
+        }
+
+        .detail-banner.critical {
+            background: #DC2626;
+            animation: blink 2s infinite;
+        }
+
+        .detail-banner.high {
+            background: #F59E0B;
+        }
+
+        .detail-banner.normal {
+            background: #6B7280;
+        }
+
+        .sla-countdown {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .banner-severity {
+            font-size: 9px;
+            opacity: 0.9;
+        }
+
+        .detail-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 10px;
+        }
+
+        .detail-section {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .detail-section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 7px;
+            font-size: 10px;
+        }
+
+        .detail-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #171A1F;
+            font-weight: 600;
+        }
+
+        .access-code-block {
+            background: #171A1F;
+            border-radius: 9px;
+            padding: 10px 13px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .access-code-label {
+            font-size: 8.5px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 3px;
+        }
+
+        .access-code-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: 0.15em;
+        }
+
+        .copy-button {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Photos */
+        .photos-section {
+            margin-bottom: 10px;
+        }
+
+        .photos-grid {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .photo-thumb {
+            width: 70px;
+            height: 70px;
+            border-radius: 6px;
+            background: #E5E7EB;
+            border: 1px solid #D1D5DB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .photo-label {
+            font-size: 9px;
+            color: #6B7280;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        /* Work Screen */
+        .sla-header-chip {
+            background: #171A1F;
+            color: white;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sla-header-chip.warning {
+            background: #FEF3C7;
+            color: #92400E;
+            animation: pulse-sla 1.5s infinite;
+        }
+
+        .sla-header-chip.breach {
+            background: #DC2626;
+            color: white;
+            animation: blink 1.5s infinite;
+        }
+
+        .sla-header-chip.ok {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .work-context {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #E5E7EB;
+            opacity: 0.7;
+            font-size: 9px;
+            color: #6B7280;
+        }
+
+        .work-context strong {
+            color: #171A1F;
+        }
+
+        .work-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .form-group {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .form-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 10px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #92400E;
+            box-shadow: 0 0 0 3px rgba(146,64,14,0.1);
+        }
+
+        .photo-button {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #D1D5DB;
+            border-radius: 6px;
+            background: #F9F7F4;
+            cursor: pointer;
+            text-align: center;
+            font-size: 10px;
+            color: #6B7280;
+            font-weight: 600;
+        }
+
+        .completion-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        /* Cannot Complete Flow */
+        .reason-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .reason-card {
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            padding: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 10px;
+        }
+
+        .reason-card:hover {
+            border-color: #92400E;
+            background: #FFFBEB;
+        }
+
+        .reason-card.selected {
+            border-color: #92400E;
+            background: #FFFCF0;
+            font-weight: 600;
+        }
+
+        .reason-title {
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .reason-desc {
+            font-size: 9px;
+            color: #6B7280;
+        }
+
+        .blocked-warning {
+            background: #FEF3C7;
+            border: 1px solid #FCD34D;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 9px;
+            color: #92400E;
+            margin-bottom: 10px;
+        }
+
+        /* Documentation view */
+        .comparison-section {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .comparison-col {
+            flex: 1;
+        }
+
+        .comparison-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        .comparison-photo {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 6px;
+            background: #E5E7EB;
+            border: 1px solid #D1D5DB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        /* Profile Screen */
+        .profile-header {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #E5E7EB;
+            text-align: center;
+        }
+
+        .profile-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #92400E;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 auto 10px;
+        }
+
+        .profile-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .profile-role {
+            font-size: 9px;
+            color: #6B7280;
+            margin-bottom: 10px;
+        }
+
+        .skill-tags {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .skill-tag {
+            background: #F3F4F6;
+            color: #374151;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 3px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #E5E7EB;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 8px;
+            color: #6B7280;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            height: 50px;
+            background: white;
+            border-top: 1px solid #E5E7EB;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 5px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            font-size: 8px;
+            color: #6B7280;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .nav-item.active {
+            color: #92400E;
+            font-weight: 700;
+        }
+
+        .nav-icon {
+            font-size: 16px;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 49%, 100% {
+                opacity: 1;
+            }
+            50%, 99% {
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes pulse-sla {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(254,243,199,0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 4px rgba(254,243,199,0);
+            }
+        }
+
+        @keyframes pulse-card {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(181,110,69,0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 3px rgba(181,110,69,0);
+            }
+        }
+
+        @keyframes pulse-card-critical {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(220,38,38,0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 3px rgba(220,38,38,0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Notes Bar -->
+    <div class="notes-bar">
+        <div class="notes-section">
+            <div class="notes-section-title">Role Personality</div>
+            <div class="notes-item">Issue-driven: See only your issues</div>
+            <div class="notes-item">Priority-first: Urgent jobs pinned</div>
+            <div class="notes-item">Blocker-aware: Flag blocked work</div>
+            <div class="notes-item">Field resolver: Access codes, navigation, photos</div>
+        </div>
+        <div class="notes-section">
+            <div class="notes-section-title">V3 Changes from V2</div>
+            <div class="notes-item">6 screens (LIST → DETAIL → WORK)</div>
+            <div class="notes-item">14 issue categories w/ specialty mapping</div>
+            <div class="notes-item">Severity system: CRITICAL/HIGH/NORMAL</div>
+            <div class="notes-item">"Cannot Complete" V1 proposal (not yet built)</div>
+            <div class="notes-item">Before/after photo documentation</div>
+            <div class="notes-item">SLA always visible during work</div>
+        </div>
+        <div class="notes-section">
+            <div class="notes-section-title">Key Patterns</div>
+            <div class="notes-item">Priority badges with SLA countdown</div>
+            <div class="notes-item">Category tags (colored by type)</div>
+            <div class="notes-item">Access code block (tap-to-copy)</div>
+            <div class="notes-item">Before/after photo pairs</div>
+            <div class="notes-item">Work log textarea (required)</div>
+            <div class="notes-item">Complete & Resolve vs Cannot Complete</div>
+            <div class="notes-item">Skill tags from specialty mapping</div>
+        </div>
+        <div class="notes-section">
+            <div class="notes-section-title">Shaped By</div>
+            <div class="notes-item"><strong>Claudia:</strong> Escalation boundary, photo docs, critical issues block readiness</div>
+            <div class="notes-item"><strong>Marco:</strong> Access code prominent & copyable, navigation, before/after</div>
+            <div class="notes-item"><strong>Sonia:</strong> Maintenance-only scope, priority-first, no financial data</div>
+            <div class="notes-item"><strong>Talia:</strong> Priority badges instantly recognizable, SLA always visible, design for Cannot Complete</div>
+            <div class="notes-item"><strong>Hana:</strong> Performance: resolved count, avg resolution time, SLA compliance</div>
+        </div>
+    </div>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-title">MAINTENANCE — Issue-Driven Worker Surface</div>
+        <div class="page-subtitle">V3 Prototype • Route: /ops/maintenance • 3-view flow: LIST → DETAIL → WORK</div>
+    </div>
+
+    <!-- Phones Container -->
+    <div class="phones-container">
+        <!-- Screen 1: Job Queue (Home) -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">
+                        <span>📶</span><span>📡</span><span>🔋</span>
+                    </div>
+                    <span>9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div>
+                        <div class="header-title">Domaniqo · Maintenance</div>
+                        <div class="header-subtitle">Your work queue</div>
+                    </div>
+                    <div class="avatar">M</div>
+                </div>
+
+                <div class="day-health">
+                    <div class="health-item">
+                        <span class="health-dot critical"></span>
+                        <span>1 Critical</span>
+                    </div>
+                    <div class="health-item">
+                        <span class="health-dot high"></span>
+                        <span>3 Open</span>
+                    </div>
+                    <div class="health-item">
+                        <span class="health-dot normal"></span>
+                        <span>2 Resolved</span>
+                    </div>
+                </div>
+
+                <div class="screen-content">
+                    <!-- CRITICAL Section -->
+                    <div class="section-header">⚠️ CRITICAL</div>
+                    <div class="job-card critical">
+                        <div class="card-row-1">
+                            <span class="priority-badge critical">CRITICAL</span>
+                            <span class="category-tag electrical">ELECTRICAL</span>
+                            <span class="sla-pill breach">SLA exceeded +12m</span>
+                        </div>
+                        <div class="property-name">Ocean View Villa</div>
+                        <div class="issue-description">Power outage in master bedroom circuit</div>
+                        <div class="card-meta">
+                            <span>🕐 Reported 2h 15m ago</span>
+                        </div>
+                        <button class="card-cta primary">Start Job 🔧</button>
+                    </div>
+
+                    <!-- OPEN Section -->
+                    <div class="section-header" style="margin-top: 15px;">OPEN</div>
+                    <div class="job-card high">
+                        <div class="card-row-1">
+                            <span class="priority-badge high">HIGH</span>
+                            <span class="category-tag plumbing">PLUMBING</span>
+                            <span class="sla-pill warning">SLA: 12m</span>
+                        </div>
+                        <div class="property-name">Sunset Heights</div>
+                        <div class="issue-description">Leaking bathroom faucet</div>
+                        <div class="card-meta">
+                            <span>🕐 Reported 48m ago</span>
+                        </div>
+                        <button class="card-cta primary">Acknowledge →</button>
+                    </div>
+
+                    <div class="job-card normal">
+                        <div class="card-row-1">
+                            <span class="priority-badge normal">NORMAL</span>
+                            <span class="category-tag pool">POOL</span>
+                        </div>
+                        <div class="property-name">Beachfront Resort</div>
+                        <div class="issue-description">Pool filter maintenance due</div>
+                        <div class="card-meta">
+                            <span>🕐 Reported 5h ago</span>
+                        </div>
+                        <button class="card-cta outline">Acknowledge →</button>
+                    </div>
+
+                    <!-- IN PROGRESS Section -->
+                    <div class="section-header" style="margin-top: 15px;">IN PROGRESS</div>
+                    <div class="job-card normal mini">
+                        <div class="card-row-1">
+                            <span class="category-tag kitchen">KITCHEN</span>
+                            <span style="margin-left: auto; font-size: 9px; color: #6B7280;">Working 1h 15m</span>
+                        </div>
+                        <div class="property-name" style="font-size: 12px;">Downtown Condo</div>
+                        <div style="font-size: 9px; color: #6B7280;">Dishwasher installation</div>
+                        <button class="card-cta outline" style="font-size: 9px; padding: 6px;">Resume</button>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item active">
+                        <span class="nav-icon">🏠</span>
+                        <span>Home</span>
+                    </div>
+                    <div class="nav-item active">
+                        <span class="nav-icon">🔧</span>
+                        <span>Maintenance</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">✓</span>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">⚙</span>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">1. Job Queue (Home) — Priority-first list with SLA tracking</div>
+        </div>
+
+        <!-- Screen 2: Job Detail -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">
+                        <span>📶</span><span>📡</span><span>🔋</span>
+                    </div>
+                    <span>9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="cursor: pointer; color: white; font-size: 14px;">←</span>
+                        <div>
+                            <div class="header-title">Job Details</div>
+                        </div>
+                    </div>
+                    <div class="avatar">M</div>
+                </div>
+
+                <div class="screen-content">
+                    <!-- Priority Banner -->
+                    <div class="detail-banner critical">
+                        <div class="sla-countdown">SLA exceeded +12m</div>
+                        <div class="banner-severity">CRITICAL • Reported 2h 15m ago</div>
+                    </div>
+
+                    <!-- Property & Issue -->
+                    <div class="detail-title">Ocean View Villa</div>
+
+                    <div class="detail-section">
+                        <div class="detail-section-header">Issue</div>
+                        <div class="detail-row">
+                            <span class="detail-label">Category</span>
+                            <span class="detail-value">Electrical</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Severity</span>
+                            <span class="detail-value">CRITICAL</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Reported</span>
+                            <span class="detail-value">Today 2:15 PM</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Reporter</span>
+                            <span class="detail-value">Cleaning Staff</span>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="detail-section">
+                        <div class="detail-section-header">Description</div>
+                        <div style="font-size: 10px; line-height: 1.4; color: #374151;">Power outage affecting master bedroom and ensuite. Guests arriving in 4 hours. All breakers tested.</div>
+                    </div>
+
+                    <!-- Before Photos -->
+                    <div class="detail-section">
+                        <div class="detail-section-header">Before Photos</div>
+                        <div class="photos-grid">
+                            <div class="photo-thumb">📸</div>
+                            <div class="photo-thumb">📸</div>
+                        </div>
+                    </div>
+
+                    <!-- Access Code -->
+                    <div class="access-code-block">
+                        <div>
+                            <div class="access-code-label">Access Code</div>
+                            <div class="access-code-value">4523</div>
+                        </div>
+                        <button class="copy-button">📋</button>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <button class="card-cta primary" style="flex: 1;">📍 Navigate</button>
+                        <button class="card-cta outline" style="flex: 1;">📞 Call Mgr</button>
+                    </div>
+
+                    <button class="card-cta primary" style="width: 100%; padding: 10px;">Start Job 🔧</button>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <span class="nav-icon">🏠</span>
+                        <span>Home</span>
+                    </div>
+                    <div class="nav-item active">
+                        <span class="nav-icon">🔧</span>
+                        <span>Maintenance</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">✓</span>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">⚙</span>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">2. Job Detail — Full context with access code & navigation</div>
+        </div>
+
+        <!-- Screen 3: Active Work -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">
+                        <span>📶</span><span>📡</span><span>🔋</span>
+                    </div>
+                    <span>9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="cursor: pointer; color: white; font-size: 14px;">←</span>
+                        <div>
+                            <div class="header-title">Active Work</div>
+                        </div>
+                    </div>
+                    <div class="avatar">M</div>
+                </div>
+
+                <div class="screen-content">
+                    <!-- SLA Chip (Always Visible) -->
+                    <div class="sla-header-chip breach">
+                        ⚠️ CRITICAL — SLA exceeded +8m
+                    </div>
+
+                    <!-- Work Context -->
+                    <div class="work-context">
+                        <strong>Ocean View Villa</strong> • Electrical<br/>
+                        Master bedroom power outage
+                    </div>
+
+                    <!-- Before Evidence -->
+                    <div class="detail-section">
+                        <div class="detail-section-header">Before Evidence</div>
+                        <div class="photos-grid">
+                            <div class="photo-thumb">📸</div>
+                            <div class="photo-thumb">📸</div>
+                        </div>
+                    </div>
+
+                    <!-- Work Log -->
+                    <div class="form-group">
+                        <label class="form-label">What did you do?</label>
+                        <textarea class="form-input" placeholder="Describe work performed..." style="min-height: 70px;">Tested all breakers in panel. Found bedroom circuit breaker stuck. Replaced breaker unit. Verified power restored to outlets and wall switches. Guest notification pending.</textarea>
+                    </div>
+
+                    <!-- After Photos -->
+                    <div class="form-group">
+                        <label class="form-label">After Photo Evidence</label>
+                        <button class="photo-button">📷 Take After Photo</button>
+                        <div class="photos-grid" style="margin-top: 8px;">
+                            <div class="photo-thumb">📸</div>
+                            <div class="photo-thumb" style="border: 2px dashed #92400E;">+</div>
+                        </div>
+                    </div>
+
+                    <!-- Completion Options -->
+                    <div class="completion-buttons">
+                        <button class="card-cta success">✅ Complete & Resolve</button>
+                        <button class="card-cta outline warning">⚠️ Cannot Complete</button>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <span class="nav-icon">🏠</span>
+                        <span>Home</span>
+                    </div>
+                    <div class="nav-item active">
+                        <span class="nav-icon">🔧</span>
+                        <span>Maintenance</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">✓</span>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">⚙</span>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">3. Active Work — Work log, photos, SLA always visible</div>
+        </div>
+
+        <!-- Screen 4: Cannot Complete (Blocked) -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">
+                        <span>📶</span><span>📡</span><span>🔋</span>
+                    </div>
+                    <span>9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="cursor: pointer; color: white; font-size: 14px;">←</span>
+                        <div>
+                            <div class="header-title">Issue Blocked</div>
+                        </div>
+                    </div>
+                    <div class="avatar">M</div>
+                </div>
+
+                <div class="screen-content">
+                    <div class="blocked-warning">
+                        ⚠️ V1 PROPOSAL: Cannot Complete flow not yet built in current product
+                    </div>
+
+                    <!-- SLA Header -->
+                    <div class="sla-header-chip warning">
+                        🕐 Working 45m • SLA OK
+                    </div>
+
+                    <!-- Work Context -->
+                    <div class="work-context">
+                        <strong>Sunset Heights</strong> • Plumbing<br/>
+                        Leaking bathroom faucet
+                    </div>
+
+                    <!-- Reason Selector -->
+                    <div class="form-group">
+                        <label class="form-label">Why can't you complete this?</label>
+                        <div class="reason-cards">
+                            <div class="reason-card">
+                                <div class="reason-title">🛠️ Parts Needed</div>
+                                <div class="reason-desc">Waiting for replacement part delivery</div>
+                            </div>
+                            <div class="reason-card selected">
+                                <div class="reason-title">👨‍🔧 Need Specialist</div>
+                                <div class="reason-desc">Requires licensed plumber or specialized skill</div>
+                            </div>
+                            <div class="reason-card">
+                                <div class="reason-title">🔐 Access Blocked</div>
+                                <div class="reason-desc">Cannot access property or work area</div>
+                            </div>
+                            <div class="reason-card">
+                                <div class="reason-title">👤 Waiting for Guest</div>
+                                <div class="reason-desc">Guest needs to be present or approve</div>
+                            </div>
+                            <div class="reason-card">
+                                <div class="reason-title">📝 Other</div>
+                                <div class="reason-desc">Different blocking reason</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-group">
+                        <label class="form-label">What's blocking resolution?</label>
+                        <textarea class="form-input" placeholder="Describe the issue...">Faucet cartridge is a specialty part for this brand. Need to escalate to a licensed plumber who has stock or ordering access.</textarea>
+                    </div>
+
+                    <!-- Submit -->
+                    <button class="card-cta warning">Submit Blocked Status</button>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <span class="nav-icon">🏠</span>
+                        <span>Home</span>
+                    </div>
+                    <div class="nav-item active">
+                        <span class="nav-icon">🔧</span>
+                        <span>Maintenance</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">✓</span>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">⚙</span>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">4. Cannot Complete (Blocked) — Escalation flow with reason selection</div>
+        </div>
+
+        <!-- Screen 5: Before/After Documentation -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">
+                        <span>📶</span><span>📡</span><span>🔋</span>
+                    </div>
+                    <span>9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="cursor: pointer; color: white; font-size: 14px;">←</span>
+                        <div>
+                            <div class="header-title">Job Documentation</div>
+                        </div>
+                    </div>
+                    <div class="avatar">M</div>
+                </div>
+
+                <div class="screen-content">
+                    <!-- Job Badge -->
+                    <div class="detail-section">
+                        <div class="detail-row">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value" style="color: #10B981;">✓ Resolved</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Category</span>
+                            <span class="detail-value">Electrical</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Duration</span>
+                            <span class="detail-value">2h 15m</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Resolution</span>
+                            <span class="detail-value">Breaker replaced</span>
+                        </div>
+                    </div>
+
+                    <!-- Before/After Comparison -->
+                    <div class="detail-section">
+                        <div class="detail-section-header">Photo Evidence</div>
+                        <div class="comparison-section">
+                            <div class="comparison-col">
+                                <div class="comparison-label">Before</div>
+                                <div class="comparison-photo">📸</div>
+                            </div>
+                            <div class="comparison-col">
+                                <div class="comparison-label">After</div>
+                                <div class="comparison-photo">📸</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Work Log -->
+                    <div class="detail-section">
+                        <div class="detail-section-header">Work Log</div>
+                        <div style="font-size: 10px; line-height: 1.4; color: #374151;">
+                            Tested all breakers in panel. Found bedroom circuit breaker stuck in partial position. Replaced faulty breaker unit with identical model. Verified power restored to all outlets and wall switches. Confirmed guest arrival proceeding on schedule.
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <div class="stat-card" style="flex: 1;">
+                            <div class="stat-value">45m</div>
+                            <div class="stat-label">Response</div>
+                        </div>
+                        <div class="stat-card" style="flex: 1;">
+                            <div class="stat-value">2</div>
+                            <div class="stat-label">Photos</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <span class="nav-icon">🏠</span>
+                        <span>Home</span>
+                    </div>
+                    <div class="nav-item active">
+                        <span class="nav-icon">🔧</span>
+                        <span>Maintenance</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">✓</span>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">⚙</span>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">5. Before/After Documentation — Photo evidence & work trail</div>
+        </div>
+
+        <!-- Screen 6: Profile & Performance -->
+        <div class="screen-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <div class="signal">
+                        <span>📶</span><span>📡</span><span>🔋</span>
+                    </div>
+                    <span>9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div>
+                        <div class="header-title">Profile</div>
+                    </div>
+                    <div class="avatar">M</div>
+                </div>
+
+                <div class="screen-content">
+                    <!-- Profile Header -->
+                    <div class="profile-header">
+                        <div class="profile-avatar">M</div>
+                        <div class="profile-name">Marco Velazquez</div>
+                        <div class="profile-role">Maintenance Technician</div>
+                        <div class="skill-tags">
+                            <div class="skill-tag">Plumbing</div>
+                            <div class="skill-tag">Electrical</div>
+                            <div class="skill-tag">Pool</div>
+                        </div>
+                    </div>
+
+                    <!-- Today's Stats -->
+                    <div style="margin-bottom: 10px;">
+                        <div class="section-header">Today's Performance</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">3</div>
+                                <div class="stat-label">Resolved</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">1.2h</div>
+                                <div class="stat-label">Avg Time</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">100%</div>
+                                <div class="stat-label">SLA OK</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">1</div>
+                                <div class="stat-label">Active</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Queue Summary -->
+                    <div class="detail-section">
+                        <div class="detail-section-header">Your Queue</div>
+                        <div class="detail-row">
+                            <span class="detail-label">Critical</span>
+                            <span class="detail-value" style="color: #DC2626;">1</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Open</span>
+                            <span class="detail-value" style="color: #F59E0B;">3</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Assigned</span>
+                            <span class="detail-value">4 properties</span>
+                        </div>
+                    </div>
+
+                    <!-- Notifications -->
+                    <div class="detail-section">
+                        <div class="detail-section-header">Alerts</div>
+                        <div style="font-size: 10px; color: #6B7280; margin-bottom: 8px;">
+                            <input type="checkbox" checked> Push for urgent problems
+                        </div>
+                        <div style="font-size: 10px; color: #6B7280;">
+                            <input type="checkbox" checked> Email summaries
+                        </div>
+                    </div>
+
+                    <button class="card-cta outline" style="width: 100%; margin-top: 10px;">Sign Out</button>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <span class="nav-icon">🏠</span>
+                        <span>Home</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">🔧</span>
+                        <span>Maintenance</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-icon">✓</span>
+                        <span>Tasks</span>
+                    </div>
+                    <div class="nav-item active">
+                        <span class="nav-icon">⚙</span>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">6. Profile & Performance — Worker stats, skills, queue summary</div>
+        </div>
+    </div>
+</body>
+</html>

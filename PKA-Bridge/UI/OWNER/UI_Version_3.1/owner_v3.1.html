@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Portal UI v3.1 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Phone App Header */
+        .app-header {
+            height: 50px;
+            background: #171A1F;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            flex-shrink: 0;
+        }
+
+        .app-header.dark {
+            background: #171A1F;
+        }
+
+        .app-header.light {
+            background: #FFFFFF;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .header-titles {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .app-header.light .header-title {
+            color: #171A1F;
+        }
+
+        .header-subtitle {
+            font-size: 9.5px;
+            color: rgba(255,255,255,0.38);
+        }
+
+        .app-header.light .header-subtitle {
+            color: #9CA3AF;
+        }
+
+        .header-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #334036;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .header-action {
+            width: 24px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #E5E7EB;
+            font-size: 14px;
+        }
+
+        .app-header.light .header-action {
+            color: #9CA3AF;
+        }
+
+        .back-btn {
+            width: 24px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #171A1F;
+            font-size: 16px;
+        }
+
+        .app-header.light .back-btn {
+            color: #171A1F;
+        }
+
+        /* Greeting Banner */
+        .greeting-banner {
+            background: #FFFFFF;
+            padding: 12px 12px 10px;
+            border-bottom: 1px solid #F0EEE9;
+            flex-shrink: 0;
+        }
+
+        .greeting-main {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 3px;
+        }
+
+        .greeting-date {
+            font-size: 11px;
+            color: #9CA3AF;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* Portfolio Summary Card */
+        .portfolio-summary {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid #334036;
+            padding: 12px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .portfolio-label {
+            font-size: 10px;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-bottom: 5px;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .portfolio-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .portfolio-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .portfolio-meta {
+            font-size: 10px;
+            color: #6B7280;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 600;
+        }
+
+        /* KPI Tiles */
+        .kpi-row {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .kpi-tile {
+            flex: 1;
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid #334036;
+            padding: 10px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .kpi-number {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .kpi-label {
+            font-size: 9px;
+            color: #6B7280;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+
+        .occupancy-indicator {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: conic-gradient(#334036 0deg 313.2deg, #E5E7EB 313.2deg 360deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin: 0 auto;
+        }
+
+        /* Property Cards - Identity Cards */
+        .property-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid #334036;
+            padding: 0;
+            flex-shrink: 0;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .property-color-header {
+            height: 6px;
+            background: linear-gradient(90deg, #8B7B6A 0%, #A89680 100%);
+        }
+
+        .property-card.orchid .property-color-header {
+            background: linear-gradient(90deg, #8B7B6A 0%, #A89680 100%);
+        }
+
+        .property-card.beachside .property-color-header {
+            background: linear-gradient(90deg, #4A7B7B 0%, #6A9B9B 100%);
+        }
+
+        .property-card-content {
+            padding: 10px;
+        }
+
+        .property-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .property-type-badge {
+            background: #E6F4EA;
+            color: #2D6A4F;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .property-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 10px;
+        }
+
+        .property-stat-label {
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        .property-stat-value {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .occupancy-bar {
+            width: 100%;
+            height: 5px;
+            background: #E5E7EB;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .occupancy-fill {
+            height: 100%;
+            background: #334036;
+            border-radius: 2px;
+        }
+
+        .property-checkout {
+            font-size: 10px;
+            color: #6B7280;
+            padding-top: 6px;
+            border-top: 1px solid #F0EEE9;
+        }
+
+        .property-revenue {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .property-revenue-label {
+            font-size: 8px;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+
+        /* Property Detail Page Header */
+        .property-detail-header {
+            background: #FFFFFF;
+            padding: 12px;
+            flex-shrink: 0;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .property-detail-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .property-detail-meta {
+            font-size: 10px;
+            color: #9CA3AF;
+            line-height: 1.4;
+        }
+
+        /* Info Card */
+        .info-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid #334036;
+            padding: 12px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .info-card-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid #F0EEE9;
+            font-size: 10px;
+            gap: 8px;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #9CA3AF;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .info-value {
+            font-family: 'Manrope', sans-serif;
+            color: #171A1F;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .rules-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .rule-item {
+            font-size: 10px;
+            color: #171A1F;
+            line-height: 1.3;
+            padding: 6px;
+            background: #F9F7F4;
+            border-radius: 4px;
+        }
+
+        .rule-item::before {
+            content: "• ";
+            color: #334036;
+            font-weight: 700;
+        }
+
+        /* Booking Cards */
+        .booking-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid #334036;
+            padding: 10px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .booking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            gap: 6px;
+        }
+
+        .booking-guest {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .booking-status-pill {
+            font-size: 8px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'Manrope', sans-serif;
+            white-space: nowrap;
+        }
+
+        .booking-status-pill.confirmed {
+            background: #E6F4EA;
+            color: #2D6A4F;
+        }
+
+        .booking-status-pill.checked-in {
+            background: #E0F2FE;
+            color: #0C4A6E;
+        }
+
+        .booking-status-pill.completed {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+
+        .booking-dates {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-bottom: 6px;
+        }
+
+        .booking-amount {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 6px;
+        }
+
+        .booking-payment-status {
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        .booking-payment-status.received {
+            background: #E6F4EA;
+            color: #2D6A4F;
+        }
+
+        .booking-payment-status.pending {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .booking-footer {
+            font-size: 9px;
+            color: #9CA3AF;
+            padding-top: 6px;
+            border-top: 1px solid #F0EEE9;
+        }
+
+        /* Activity Section */
+        .section-divider {
+            padding: 8px 0 4px;
+            margin-top: 4px;
+            margin-bottom: 4px;
+        }
+
+        .section-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+            padding: 0 12px;
+        }
+
+        /* Statement Items */
+        .statement-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid #334036;
+            padding: 12px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .statement-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 12px;
+        }
+
+        .summary-section {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .summary-section.last {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .summary-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #9CA3AF;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            font-family: 'Manrope', sans-serif;
+            margin-bottom: 4px;
+        }
+
+        .summary-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .summary-sublabel {
+            font-size: 8px;
+            color: #9CA3AF;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 11px;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .expense-label {
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .expense-amount {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .net-payout {
+            background: #FBF1EC;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid #B56E45;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            margin-top: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .net-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #9CA3AF;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            font-family: 'Manrope', sans-serif;
+            margin-bottom: 4px;
+        }
+
+        .net-amount {
+            font-family: 'Manrope', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            color: #B56E45;
+        }
+
+        /* Transaction List */
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 9px 0;
+            border-bottom: 1px solid #F0EEE9;
+            font-size: 10px;
+        }
+
+        .transaction-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+
+        .transaction-desc {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            color: #171A1F;
+            font-size: 11px;
+        }
+
+        .transaction-date {
+            color: #9CA3AF;
+            font-size: 9px;
+        }
+
+        .transaction-amount {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 11px;
+        }
+
+        .transaction-income {
+            color: #2D6A4F;
+        }
+
+        .transaction-expense {
+            color: #B56E45;
+        }
+
+        /* Download Button */
+        .download-btn {
+            width: 100%;
+            height: 36px;
+            background: #171A1F;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 12px;
+        }
+
+        .download-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Disclaimer */
+        .disclaimer-text {
+            font-size: 9px;
+            color: #9CA3AF;
+            line-height: 1.4;
+            padding: 10px;
+            background: #F9F7F4;
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+
+        /* Profile Screen */
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #334036;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0 auto 12px;
+        }
+
+        .profile-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .profile-meta {
+            font-size: 10px;
+            color: #9CA3AF;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .settings-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+            border-left: 3px solid #334036;
+            padding: 12px;
+            flex-shrink: 0;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .settings-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+            margin-bottom: 10px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #F0EEE9;
+            font-size: 11px;
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-label {
+            color: #171A1F;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .toggle-switch {
+            width: 32px;
+            height: 18px;
+            border-radius: 9px;
+            background: #D1D5DB;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch.on {
+            background: #334036;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch.on::after {
+            left: 16px;
+        }
+
+        .support-btn {
+            width: 100%;
+            height: 36px;
+            background: #F9F7F4;
+            color: #171A1F;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+        }
+
+        .support-btn:hover {
+            background: #F0EEE9;
+        }
+
+        .domaniqo-logo {
+            text-align: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #334036;
+            padding: 12px 0;
+            border-top: 1px solid #E5E7EB;
+            margin-top: 12px;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            height: 56px;
+            background: #FFFFFF;
+            border-top: 1px solid #F0EEE9;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            cursor: pointer;
+            text-decoration: none;
+            color: #9CA3AF;
+            transition: all 0.2s ease;
+            border-top: 2px solid transparent;
+        }
+
+        .nav-item.active {
+            color: #334036;
+            border-top-color: #334036;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-label {
+            font-size: 9px;
+            font-weight: 700;
+            font-family: 'Manrope', sans-serif;
+            letter-spacing: 0.03em;
+        }
+
+        /* Animations */
+        @keyframes pulse-card {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+        }
+
+        @keyframes blink {
+            0%, 49%, 100% { opacity: 1; }
+            50%, 99% { opacity: 0.5; }
+        }
+
+        @keyframes cd-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Owner Portal — V3.1 Property-First Alignment</h1>
+            <p>Domaniqo Property Management · V3.1 refinement with tightened hierarchy, refined shadows, and consistent V3.1 language</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">Permission Model Corrected</div>
+                <div class="note-text">Visibility controls removed. Admin decides what data each Owner can see. Owner sees only what has been enabled. Screen 5 now shows Profile & Settings with Owner profile info, notification preferences, language selection, and support link only.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Card Refinement</div>
+                <div class="note-text">All cards now have subtle box-shadow (0 1px 3px rgba(0,0,0,0.08)) for grounded appearance. Left-accent 3px borders in #334036 (deep-moss) on property cards, KPI tiles, info cards, booking cards, statements. Net payout uses #B56E45 (signal-copper) accent. Spacing tightened by 1-2px throughout scroll areas and gaps.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Property-First Direction</div>
+                <div class="note-text">Owner surface remains property-centered: property cards dominant, revenue and occupancy prominent, no ops details visible. Portfolio summary uses left-accent borders. KPI rows tightened from 7px to 6px gap. Section labels now consistent with V3.1 style (uppercase, #6B7280). All financial data honest and clearly labeled.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Dark Header Softening</div>
+                <div class="note-text">App headers use rgba(255,255,255,0.08) border-bottom instead of solid colors. Header subtitle color refined to rgba(255,255,255,0.38) for consistent light header feel. All title sizing aligned: 12.5px for app headers, 14px for detail titles, 10px for labels. Consistency across light/dark variants maintained throughout.</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+            <!-- Screen 1: Portfolio Dashboard -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header (Dark) -->
+                    <div class="app-header dark">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Domaniqo</div>
+                                <div class="header-subtitle">Owner Portal</div>
+                            </div>
+                        </div>
+                        <button class="header-action">⚙️</button>
+                    </div>
+
+                    <!-- Greeting Banner -->
+                    <div class="greeting-banner">
+                        <div class="greeting-main">Good morning, Khun Somchai</div>
+                        <div class="greeting-date">March 3, 2025</div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Portfolio Summary -->
+                        <div class="portfolio-summary">
+                            <div class="portfolio-label">Portfolio Overview</div>
+                            <div class="portfolio-value">2 Properties</div>
+                            <div class="portfolio-footer">
+                                <span class="portfolio-meta">87% Overall Occupancy</span>
+                            </div>
+                        </div>
+
+                        <!-- Properties Section -->
+                        <div class="section-divider">
+                            <div class="section-label">Your Properties</div>
+                        </div>
+
+                        <!-- Property Card 1 -->
+                        <div class="property-card orchid">
+                            <div class="property-color-header"></div>
+                            <div class="property-card-content">
+                                <div class="property-header">
+                                    Villa Orchid Residence
+                                    <span class="property-type-badge">VILLA</span>
+                                </div>
+                                <div class="property-stat-row">
+                                    <span class="property-stat-label">Occupancy</span>
+                                    <span class="property-stat-value">92%</span>
+                                </div>
+                                <div class="occupancy-bar">
+                                    <div class="occupancy-fill" style="width: 92%"></div>
+                                </div>
+                                <div class="property-revenue-label">Received Revenue MTD</div>
+                                <div class="property-revenue">฿312K</div>
+                                <div class="property-checkout">Next checkout: Mar 5 at 11:00 AM</div>
+                            </div>
+                        </div>
+
+                        <!-- Property Card 2 -->
+                        <div class="property-card beachside">
+                            <div class="property-color-header"></div>
+                            <div class="property-card-content">
+                                <div class="property-header">
+                                    Beachside Bungalow
+                                    <span class="property-type-badge">VILLA</span>
+                                </div>
+                                <div class="property-stat-row">
+                                    <span class="property-stat-label">Occupancy</span>
+                                    <span class="property-stat-value">78%</span>
+                                </div>
+                                <div class="occupancy-bar">
+                                    <div class="occupancy-fill" style="width: 78%"></div>
+                                </div>
+                                <div class="property-revenue-label">Received Revenue MTD</div>
+                                <div class="property-revenue">฿285K</div>
+                                <div class="property-checkout">Next checkout: Mar 8 at 10:30 AM</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <a class="nav-item active">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Portfolio</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Property</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Performance</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">👤</div>
+                            <div class="nav-label">Profile</div>
+                        </a>
+                    </div>
+                </div>
+                <div class="screen-label">1. Portfolio Dashboard (Home)</div>
+            </div>
+
+            <!-- Screen 2: Property Page (Property-First) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header (Light with Back) -->
+                    <div class="app-header light">
+                        <button class="back-btn">←</button>
+                        <div class="header-titles" style="flex: 1; margin-left: 8px;">
+                            <div class="header-title" style="color: #171A1F; font-size: 12.5px;">Property</div>
+                        </div>
+                    </div>
+
+                    <!-- Property Detail Header -->
+                    <div class="property-detail-header" style="background: linear-gradient(90deg, #8B7B6A 0%, #A89680 100%); padding: 16px 12px;">
+                        <div class="property-detail-title" style="color: #FFFFFF; margin-bottom: 8px;">
+                            Villa Orchid Residence
+                        </div>
+                        <div class="property-detail-meta" style="color: rgba(255,255,255,0.8);">
+                            4 Bedrooms · Pool · Max 8 Guests · Rawai, Phuket
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Your Property Card -->
+                        <div class="info-card">
+                            <div class="info-card-title">Your Property</div>
+                            <div class="info-item">
+                                <span class="info-label">Type</span>
+                                <span class="info-value">Villa</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Bedrooms</span>
+                                <span class="info-value">4</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Max Guests</span>
+                                <span class="info-value">8</span>
+                            </div>
+                            <div class="info-item" style="border-bottom: none;">
+                                <span class="info-label">Amenities</span>
+                                <span class="info-value" style="text-align: right; font-size: 9px;">Pool, WiFi, AC, Kitchen</span>
+                            </div>
+                        </div>
+
+                        <!-- House Rules Card -->
+                        <div class="info-card">
+                            <div class="info-card-title">House Rules</div>
+                            <div class="rules-list">
+                                <div class="rule-item">Quiet hours 10 PM – 8 AM</div>
+                                <div class="rule-item">No smoking inside</div>
+                                <div class="rule-item">Pool hours 9 AM – 7 PM</div>
+                                <div class="rule-item">Pets allowed by request</div>
+                            </div>
+                        </div>
+
+                        <!-- Deposit Policy Card -->
+                        <div class="info-card">
+                            <div class="info-card-title">Deposit Policy</div>
+                            <div class="info-item">
+                                <span class="info-label">Amount</span>
+                                <span class="info-value">฿50,000</span>
+                            </div>
+                            <div class="info-item" style="border-bottom: none;">
+                                <span class="info-label">Refund</span>
+                                <span class="info-value" style="font-size: 9px;">Within 7 days</span>
+                            </div>
+                        </div>
+
+                        <!-- Stay Policies Card -->
+                        <div class="info-card">
+                            <div class="info-card-title">Stay Policies</div>
+                            <div class="info-item">
+                                <span class="info-label">Check-in</span>
+                                <span class="info-value">3:00 PM</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Check-out</span>
+                                <span class="info-value">11:00 AM</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Late Checkout</span>
+                                <span class="info-value" style="font-size: 9px;">฿1,000/hour</span>
+                            </div>
+                            <div class="info-item" style="border-bottom: none;">
+                                <span class="info-label">Electricity</span>
+                                <span class="info-value" style="font-size: 9px;">Included in rate</span>
+                            </div>
+                        </div>
+
+                        <!-- Property Notes Card -->
+                        <div class="info-card">
+                            <div class="info-card-title">Property Notes</div>
+                            <div style="font-size: 10px; color: #6B7280; line-height: 1.4;">
+                                Beautiful villa with modern amenities. Pool recently refurbished. WiFi password in welcome folder. Contact local manager for any issues.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <a class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Portfolio</div>
+                        </a>
+                        <a class="nav-item active">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Property</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Performance</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">👤</div>
+                            <div class="nav-label">Profile</div>
+                        </a>
+                    </div>
+                </div>
+                <div class="screen-label">2. Property Page (Property-First)</div>
+            </div>
+
+            <!-- Screen 3: Property Performance -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header (Light with Back) -->
+                    <div class="app-header light">
+                        <button class="back-btn">←</button>
+                        <div class="header-titles" style="flex: 1; margin-left: 8px;">
+                            <div class="header-title" style="color: #171A1F; font-size: 12px;">Villa Orchid · Performance</div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- KPI Tiles Row 1 -->
+                        <div class="kpi-row">
+                            <div class="kpi-tile">
+                                <div class="kpi-number">92%</div>
+                                <div class="kpi-label">Occupancy Rate</div>
+                            </div>
+                            <div class="kpi-tile">
+                                <div class="kpi-number">4</div>
+                                <div class="kpi-label">Upcoming</div>
+                            </div>
+                        </div>
+
+                        <!-- Revenue Section -->
+                        <div class="statement-card">
+                            <div class="summary-label" style="margin-bottom: 8px;">This Month Revenue</div>
+
+                            <div class="summary-section" style="margin-bottom: 8px; padding-bottom: 8px;">
+                                <div class="summary-label">Received Revenue</div>
+                                <div class="summary-value">฿312,000</div>
+                                <div class="summary-sublabel">Confirmed payments received</div>
+                            </div>
+
+                            <div class="summary-section last" style="margin-bottom: 0; padding-bottom: 0;">
+                                <div class="summary-label">Expected Revenue</div>
+                                <div class="summary-value" style="color: #9CA3AF; font-size: 14px;">฿48,000</div>
+                                <div class="summary-sublabel">Pending OTA collection</div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Bookings -->
+                        <div class="section-divider">
+                            <div class="section-label">Recent Bookings</div>
+                        </div>
+
+                        <!-- Booking Card 1 -->
+                        <div class="booking-card">
+                            <div class="booking-header">
+                                <div>
+                                    <div class="booking-guest">Guest J. S.</div>
+                                    <div class="booking-dates">Mar 2–5, 2025</div>
+                                </div>
+                                <span class="booking-status-pill confirmed">CONFIRMED</span>
+                            </div>
+                            <div class="booking-amount">฿12,500</div>
+                            <span class="booking-payment-status received">RECEIVED</span>
+                            <div class="booking-footer">3 nights · 2 guests</div>
+                        </div>
+
+                        <!-- Booking Card 2 -->
+                        <div class="booking-card">
+                            <div class="booking-header">
+                                <div>
+                                    <div class="booking-guest">Guest R. J.</div>
+                                    <div class="booking-dates">Feb 26 – Mar 1, 2025</div>
+                                </div>
+                                <span class="booking-status-pill completed">COMPLETED</span>
+                            </div>
+                            <div class="booking-amount">฿15,200</div>
+                            <span class="booking-payment-status received">RECEIVED</span>
+                            <div class="booking-footer">4 nights · 3 guests</div>
+                        </div>
+
+                        <!-- Booking Card 3 -->
+                        <div class="booking-card">
+                            <div class="booking-header">
+                                <div>
+                                    <div class="booking-guest">Guest A. C.</div>
+                                    <div class="booking-dates">Feb 18–24, 2025</div>
+                                </div>
+                                <span class="booking-status-pill completed">COMPLETED</span>
+                            </div>
+                            <div class="booking-amount">฿18,900</div>
+                            <span class="booking-payment-status pending">PENDING OTA</span>
+                            <div class="booking-footer">6 nights · 4 guests</div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <a class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Portfolio</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Property</div>
+                        </a>
+                        <a class="nav-item active">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Performance</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">👤</div>
+                            <div class="nav-label">Profile</div>
+                        </a>
+                    </div>
+                </div>
+                <div class="screen-label">3. Property Performance (Revenue Split)</div>
+            </div>
+
+            <!-- Screen 4: Financial Statement -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header (Light with Back) -->
+                    <div class="app-header light">
+                        <button class="back-btn">←</button>
+                        <div class="header-titles" style="flex: 1; margin-left: 8px;">
+                            <div class="header-title" style="color: #171A1F;">March 2025 Statement</div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Statement Card -->
+                        <div class="statement-card">
+                            <!-- Received Revenue -->
+                            <div class="summary-section">
+                                <div class="summary-label">Received Revenue</div>
+                                <div class="summary-value">฿312,000</div>
+                                <div class="summary-sublabel">Confirmed payments only</div>
+                            </div>
+
+                            <!-- Expenses Section -->
+                            <div class="summary-section">
+                                <div class="summary-label">Expenses</div>
+                                <div class="expense-item">
+                                    <span class="expense-label">Cleaning Costs</span>
+                                    <span class="expense-amount">-฿45,000</span>
+                                </div>
+                                <div class="expense-item">
+                                    <span class="expense-label">Maintenance</span>
+                                    <span class="expense-amount">-฿28,500</span>
+                                </div>
+                                <div class="expense-item" style="border-bottom: none;">
+                                    <span class="expense-label">Management Fee</span>
+                                    <span class="expense-amount">-฿42,360</span>
+                                </div>
+                            </div>
+
+                            <!-- Net Payout -->
+                            <div class="net-payout">
+                                <div class="net-label">Net Payout</div>
+                                <div class="net-amount">฿196,140</div>
+                            </div>
+                        </div>
+
+                        <!-- Transactions -->
+                        <div class="section-divider">
+                            <div class="section-label">Transactions</div>
+                        </div>
+
+                        <div class="statement-card" style="padding: 0;">
+                            <div class="transaction-item">
+                                <div class="transaction-left">
+                                    <div class="transaction-desc">Guest Booking</div>
+                                    <div class="transaction-date">Mar 5, 2025</div>
+                                </div>
+                                <div class="transaction-amount transaction-income">+฿12,500</div>
+                            </div>
+                            <div class="transaction-item">
+                                <div class="transaction-left">
+                                    <div class="transaction-desc">Cleaning Service</div>
+                                    <div class="transaction-date">Mar 5, 2025</div>
+                                </div>
+                                <div class="transaction-amount transaction-expense">-฿2,400</div>
+                            </div>
+                            <div class="transaction-item">
+                                <div class="transaction-left">
+                                    <div class="transaction-desc">Guest Booking</div>
+                                    <div class="transaction-date">Mar 1, 2025</div>
+                                </div>
+                                <div class="transaction-amount transaction-income">+฿15,200</div>
+                            </div>
+                            <div class="transaction-item">
+                                <div class="transaction-left">
+                                    <div class="transaction-desc">Maintenance (AC)</div>
+                                    <div class="transaction-date">Feb 28, 2025</div>
+                                </div>
+                                <div class="transaction-amount transaction-expense">-฿8,200</div>
+                            </div>
+                            <div class="transaction-item" style="border-bottom: none;">
+                                <div class="transaction-left">
+                                    <div class="transaction-desc">Management Fee</div>
+                                    <div class="transaction-date">Feb 28, 2025</div>
+                                </div>
+                                <div class="transaction-amount transaction-expense">-฿14,120</div>
+                            </div>
+                        </div>
+
+                        <!-- Download Button -->
+                        <button class="download-btn">📥 Download PDF</button>
+
+                        <!-- Disclaimer -->
+                        <div class="disclaimer-text">
+                            Revenue reflects confirmed payments. Pending OTA collections shown separately once confirmed.
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <a class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Portfolio</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Property</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Performance</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">👤</div>
+                            <div class="nav-label">Profile</div>
+                        </a>
+                    </div>
+                </div>
+                <div class="screen-label">4. Financial Statement (Honest Data)</div>
+            </div>
+
+            <!-- Screen 5: Profile & Settings (CORRECTED - removed visibility controls) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header (Dark) -->
+                    <div class="app-header dark">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Profile</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Profile Section -->
+                        <div style="padding: 0 12px; padding-top: 8px;">
+                            <div class="profile-avatar">KS</div>
+                            <div class="profile-name">Khun Somchai Sukumarprom</div>
+                            <div class="profile-meta">Member since January 2023</div>
+                        </div>
+
+                        <!-- Profile Info Card -->
+                        <div class="settings-card">
+                            <div class="settings-title">Profile Information</div>
+                            <div class="setting-item">
+                                <span class="setting-label">Email</span>
+                                <span style="font-size: 10px; color: #171A1F; font-weight: 600;">khun.somchai@email.com</span>
+                            </div>
+                            <div class="setting-item">
+                                <span class="setting-label">Phone</span>
+                                <span style="font-size: 10px; color: #171A1F; font-weight: 600;">+66 8 xxxx xxxx</span>
+                            </div>
+                            <div class="setting-item" style="border-bottom: none;">
+                                <span class="setting-label">Properties</span>
+                                <span style="font-size: 10px; color: #171A1F; font-weight: 600;">2 managed</span>
+                            </div>
+                        </div>
+
+                        <!-- Notification Preferences -->
+                        <div class="settings-card">
+                            <div class="settings-title">Notifications</div>
+                            <div class="setting-item">
+                                <span class="setting-label">Monthly Statement</span>
+                                <div class="toggle-switch on"></div>
+                            </div>
+                            <div class="setting-item">
+                                <span class="setting-label">Booking Alerts</span>
+                                <div class="toggle-switch on"></div>
+                            </div>
+                            <div class="setting-item" style="border-bottom: none;">
+                                <span class="setting-label">SMS Notifications</span>
+                                <div class="toggle-switch"></div>
+                            </div>
+                        </div>
+
+                        <!-- Preferences -->
+                        <div class="settings-card">
+                            <div class="settings-title">Preferences</div>
+                            <div class="setting-item" style="border-bottom: none;">
+                                <span class="setting-label">Language</span>
+                                <span style="font-size: 10px; color: #171A1F; font-weight: 600;">English</span>
+                            </div>
+                        </div>
+
+                        <!-- Support Button -->
+                        <button class="support-btn">💬 Contact Domaniqo Support</button>
+
+                        <!-- Domaniqo Logo / Sign Out -->
+                        <div class="domaniqo-logo">Domaniqo</div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <a class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Portfolio</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Property</div>
+                        </a>
+                        <a class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Performance</div>
+                        </a>
+                        <a class="nav-item active">
+                            <div class="nav-icon">👤</div>
+                            <div class="nav-label">Profile</div>
+                        </a>
+                    </div>
+                </div>
+                <div class="screen-label">5. Profile & Settings (Permission Model Corrected)</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

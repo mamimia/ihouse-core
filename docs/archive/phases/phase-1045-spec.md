@@ -34,13 +34,15 @@ Backend-only. No frontend in this phase.
 
 ## Closure Conditions
 
-- [ ] `TokenType.GUEST_CHECKOUT` exists in `access_token_service.py`
-- [ ] `booking_state` migration applied: `guest_checkout_initiated_at`, `guest_checkout_confirmed_at`, `guest_checkout_token_hash`, `guest_checkout_steps_completed`
-- [ ] `POST /bookings/{id}/guest-checkout-token` returns token + portal_url + expires_at
-- [ ] `GET /guest-checkout/{token}` returns booking context + step definitions
-- [ ] `POST /guest-checkout/{token}/complete` writes `guest_checkout_confirmed_at` + audit event
-- [ ] All 3 endpoints registered in `main.py`
-- [ ] Contract tests passing
-- [ ] Python build clean (no import errors, no test regressions)
+- [x] `TokenType.GUEST_CHECKOUT` exists in `access_token_service.py`
+- [x] `booking_state` migration applied: `guest_checkout_initiated_at`, `guest_checkout_confirmed_at`, `guest_checkout_token_hash`, `guest_checkout_steps_completed`
+- [x] `POST /bookings/{id}/guest-checkout-token` returns token + portal_url + expires_at + qr_data
+- [x] `GET /guest-checkout/{token}` returns booking context + step definitions + completion state
+- [x] `POST /guest-checkout/{token}/step/{key}` records step completion (3 keys, idempotent)
+- [x] `POST /guest-checkout/{token}/complete` writes `guest_checkout_confirmed_at` + audit event (idempotent)
+- [x] All 4 endpoints registered in `main.py`
+- [x] 21/21 contract tests passing (`tests/test_guest_checkout_contract.py`)
+- [x] Adjacent test suites clean (access_token, booking_guest_link, health — 43/43)
 
-**Status: OPEN**
+**Status: CLOSED — commit `63f9580`**  
+**Next: Phase 1046 — Guest Checkout Portal UI**

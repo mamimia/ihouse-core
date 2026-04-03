@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Console UI v2 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #4338CA;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            text-align: center;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+            flex-shrink: 0;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* App Header */
+        .app-header {
+            height: 50px;
+            background: #171A1F;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 14px;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .header-titles {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: -0.01em;
+        }
+
+        .header-subtitle {
+            font-size: 9.5px;
+            color: rgba(255,255,255,0.38);
+        }
+
+        .header-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* KPI Strip */
+        .kpi-strip {
+            background: #0F1115;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0;
+            padding: 0 14px;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .kpi-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid rgba(255,255,255,0.07);
+            gap: 2px;
+        }
+
+        .kpi-item:last-child {
+            border-right: none;
+        }
+
+        .kpi-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #FFFFFF;
+            line-height: 1.1;
+        }
+
+        .kpi-label {
+            font-size: 7.5px;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* System Health Card */
+        .health-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        .health-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .health-indicators {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .health-indicator {
+            background: #F9F7F4;
+            border-radius: 6px;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .health-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .health-dot.healthy {
+            background: #16A34A;
+        }
+
+        .health-dot.warning {
+            background: #F59E0B;
+        }
+
+        .health-dot.error {
+            background: #DC2626;
+        }
+
+        .health-text {
+            font-size: 9px;
+            font-weight: 600;
+            color: #171A1F;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .health-label {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        /* Quick Actions Grid */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .action-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-card:hover {
+            background: #FAFAFA;
+            border-color: #4338CA;
+        }
+
+        .action-icon {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .action-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .action-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #4338CA;
+        }
+
+        /* Activity Feed */
+        .activity-feed {
+            flex-shrink: 0;
+        }
+
+        .activity-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9CA3AF;
+            margin-bottom: 6px;
+        }
+
+        .activity-item {
+            background: #FFFFFF;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        .activity-text {
+            font-size: 9px;
+            color: #171A1F;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .activity-time {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            height: 56px;
+            background: #171A1F;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: stretch;
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-icon {
+            font-size: 16px;
+            opacity: 0.28;
+        }
+
+        .nav-item.active .nav-icon {
+            opacity: 1;
+        }
+
+        .nav-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.28);
+        }
+
+        .nav-item.active .nav-label {
+            color: #FFFFFF;
+        }
+
+        /* Back Header */
+        .back-header {
+            height: 42px;
+            display: flex;
+            align-items: center;
+            padding: 0 13px;
+            gap: 7px;
+            flex-shrink: 0;
+            background: #171A1F;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            cursor: pointer;
+        }
+
+        .back-arrow {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8.5px;
+            font-weight: 800;
+            color: rgba(255,255,255,0.45);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .back-title {
+            flex: 1;
+            text-align: right;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        /* People List */
+        .people-list {
+            flex-shrink: 0;
+        }
+
+        .person-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 10px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .person-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #4338CA;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .person-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .person-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .person-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .role-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        .role-badge.checkin {
+            background: #E0E7FF;
+            color: #4338CA;
+        }
+
+        .role-badge.cleaner {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .role-badge.maintenance {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .status-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .status-badge.active {
+            background: #E6F5E6;
+            color: #16A34A;
+        }
+
+        .status-badge.inactive {
+            background: #F3F4F6;
+            color: #9CA3AF;
+        }
+
+        .person-detail {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .warning-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #DC2626;
+            flex-shrink: 0;
+            animation: pulse-warning 1.5s infinite;
+        }
+
+        /* Properties List */
+        .property-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            border-left-width: 3px;
+            padding: 10px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .property-card.villa {
+            border-left-color: #4338CA;
+        }
+
+        .property-card.condo {
+            border-left-color: #B56E45;
+        }
+
+        .property-card.apartment {
+            border-left-color: #334036;
+        }
+
+        .property-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .type-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: #F0EEE9;
+            color: #6B7280;
+        }
+
+        .property-status {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        .property-status.active {
+            background: #E6F5E6;
+            color: #16A34A;
+        }
+
+        .property-status.onboarding {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .property-status.inactive {
+            background: #F3F4F6;
+            color: #9CA3AF;
+        }
+
+        .property-info {
+            font-size: 9px;
+            color: #6B7280;
+            margin-bottom: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .property-row {
+            display: flex;
+            gap: 8px;
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .property-revenue {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #B56E45;
+        }
+
+        /* Financial Dashboard */
+        .financial-header {
+            background: #0F1115;
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            flex-shrink: 0;
+        }
+
+        .financial-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 1px;
+        }
+
+        .financial-subtitle {
+            font-size: 9px;
+            color: rgba(255,255,255,0.38);
+        }
+
+        .summary-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 12px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .summary-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .summary-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .summary-label {
+            font-size: 9px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        .summary-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .summary-value.copper {
+            color: #B56E45;
+        }
+
+        .summary-value.green {
+            color: #16A34A;
+        }
+
+        .trend-arrow {
+            font-size: 10px;
+        }
+
+        /* Revenue Chart */
+        .revenue-section {
+            flex-shrink: 0;
+        }
+
+        .revenue-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9CA3AF;
+            margin-bottom: 8px;
+        }
+
+        .revenue-bar {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bar-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: #171A1F;
+            min-width: 60px;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 14px;
+            background: #F3F4F6;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .bar-fill.indigo {
+            background: #4338CA;
+        }
+
+        .bar-fill.copper {
+            background: #B56E45;
+        }
+
+        .bar-fill.moss {
+            background: #334036;
+        }
+
+        .bar-amount {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            color: #171A1F;
+            min-width: 35px;
+            text-align: right;
+        }
+
+        /* Payouts Section */
+        .payouts-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+
+        .payouts-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .payout-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px solid #F3F4F6;
+            font-size: 9px;
+        }
+
+        .payout-item:last-child {
+            border-bottom: none;
+        }
+
+        .payout-owner {
+            color: #171A1F;
+            font-weight: 600;
+        }
+
+        .payout-amount {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            color: #B56E45;
+        }
+
+        /* Action Buttons */
+        .fab {
+            position: absolute;
+            bottom: 70px;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #4338CA;
+            color: #FFFFFF;
+            border: none;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(67, 56, 202, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .fab:hover {
+            background: #3425a0;
+            box-shadow: 0 4px 12px rgba(67, 56, 202, 0.4);
+        }
+
+        .process-btn {
+            width: 100%;
+            height: 24px;
+            border: none;
+            border-radius: 6px;
+            background: #4338CA;
+            color: #FFFFFF;
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+
+        .process-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Animations */
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+
+        /* Filter Strip */
+        .filter-strip {
+            background: #FFFFFF;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+            padding: 6px;
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .filter-btn {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            background: #F3F4F6;
+            color: #9CA3AF;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn.active {
+            background: #4338CA;
+            color: #FFFFFF;
+        }
+
+        /* Count Header */
+        .count-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0 0 6px 0;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        /* Occupancy Bar */
+        .occupancy-bar {
+            width: 100%;
+            height: 3px;
+            background: #F3F4F6;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+
+        .occupancy-fill {
+            height: 100%;
+            background: #4338CA;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Admin Console — V2 Visual Direction</h1>
+            <p>Domaniqo Property Management · System Governance & Configuration Surface</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">ROLE PERSONALITY</div>
+                <div class="note-text">System governor — full CRUD authority across resources, manage people, properties, financials, settings</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">DESIGN ANCHOR</div>
+                <div class="note-text">Authority dashboard with indigo accent (#4338CA), deep navigation, comprehensive capability control</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">KEY PATTERNS</div>
+                <div class="note-text">CRUD lists, filter strips, role badges, status indicators, action buttons, activity feeds, KPI strips</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">SHAPED BY</div>
+                <div class="note-text">Daniel (RBAC), Sonia (differentiation), Talia (capability gates), Larry (cross-domain)</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+            <!-- Screen 1: Dashboard -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span class="status-icon">📶</span>
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header -->
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Domaniqo</div>
+                                <div class="header-subtitle">Admin Console</div>
+                            </div>
+                        </div>
+                        <div class="header-avatar">A</div>
+                    </div>
+
+                    <!-- KPI Strip -->
+                    <div class="kpi-strip">
+                        <div class="kpi-item">
+                            <div class="kpi-value">12</div>
+                            <div class="kpi-label">Properties</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-value">24</div>
+                            <div class="kpi-label">Staff</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-value">8</div>
+                            <div class="kpi-label">Bookings</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-value">$47K</div>
+                            <div class="kpi-label">Revenue</div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- System Health -->
+                        <div class="health-card">
+                            <div class="health-title">System Health</div>
+                            <div class="health-indicators">
+                                <div class="health-indicator">
+                                    <div class="health-dot healthy"></div>
+                                    <div class="health-text">
+                                        <div>API Status</div>
+                                        <div class="health-label">Healthy</div>
+                                    </div>
+                                </div>
+                                <div class="health-indicator">
+                                    <div class="health-dot healthy"></div>
+                                    <div class="health-text">
+                                        <div>Integrations</div>
+                                        <div class="health-label">3/3 Connected</div>
+                                    </div>
+                                </div>
+                                <div class="health-indicator">
+                                    <div class="health-dot warning"></div>
+                                    <div class="health-text">
+                                        <div>Pending Tasks</div>
+                                        <div class="health-label">12</div>
+                                    </div>
+                                </div>
+                                <div class="health-indicator">
+                                    <div class="health-dot error"></div>
+                                    <div class="health-text">
+                                        <div>Unresolved</div>
+                                        <div class="health-label">3 Alerts</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="actions-grid">
+                            <div class="action-card">
+                                <div class="action-icon">👥</div>
+                                <div class="action-label">Manage Staff</div>
+                                <div class="action-badge">24</div>
+                            </div>
+                            <div class="action-card">
+                                <div class="action-icon">🏠</div>
+                                <div class="action-label">Manage Properties</div>
+                                <div class="action-badge">12</div>
+                            </div>
+                            <div class="action-card">
+                                <div class="action-icon">📊</div>
+                                <div class="action-label">Financial Reports</div>
+                                <div class="action-badge">→</div>
+                            </div>
+                            <div class="action-card">
+                                <div class="action-icon">⚙️</div>
+                                <div class="action-label">System Settings</div>
+                                <div class="action-badge">→</div>
+                            </div>
+                        </div>
+
+                        <!-- Activity Feed -->
+                        <div class="activity-feed">
+                            <div class="activity-title">Recent Activity</div>
+                            <div class="activity-item">
+                                <div class="activity-text">✓ New staff member added</div>
+                                <div class="activity-time">2 hrs ago</div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-text">✓ Property Villa Orchid updated</div>
+                                <div class="activity-time">3 hrs ago</div>
+                            </div>
+                            <div class="activity-item">
+                                <div class="activity-text">✓ Owner statement generated</div>
+                                <div class="activity-time">5 hrs ago</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Nav -->
+                    <div class="bottom-nav">
+                        <div class="nav-item active">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Dashboard</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">People</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Properties</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">💰</div>
+                            <div class="nav-label">Finance</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙️</div>
+                            <div class="nav-label">Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 1: System Dashboard (Home)</div>
+            </div>
+
+            <!-- Screen 2: People Management -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span class="status-icon">📶</span>
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- Back Header -->
+                    <div class="back-header">
+                        <div class="back-arrow">← Back</div>
+                        <div class="back-title">People</div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Filter Strip -->
+                        <div class="filter-strip">
+                            <button class="filter-btn active">All</button>
+                            <button class="filter-btn">Staff</button>
+                            <button class="filter-btn">Owners</button>
+                            <button class="filter-btn">Guests</button>
+                        </div>
+
+                        <!-- Count -->
+                        <div class="count-header">24 Staff Members</div>
+
+                        <!-- People List -->
+                        <div class="people-list">
+                            <!-- Person Card 1 -->
+                            <div class="person-card">
+                                <div class="person-avatar">JD</div>
+                                <div class="person-content">
+                                    <div class="person-name">James DeVoe</div>
+                                    <div class="person-meta">
+                                        <span class="role-badge checkin">Check-In</span>
+                                        <span class="status-badge active">Active</span>
+                                    </div>
+                                    <div class="person-detail">3 properties · Last: 2h ago</div>
+                                </div>
+                            </div>
+
+                            <!-- Person Card 2 -->
+                            <div class="person-card">
+                                <div class="person-avatar" style="background: #334036;">MC</div>
+                                <div class="person-content">
+                                    <div class="person-name">Maya Chen</div>
+                                    <div class="person-meta">
+                                        <span class="role-badge cleaner">Cleaner</span>
+                                        <span class="status-badge active">Active</span>
+                                    </div>
+                                    <div class="person-detail">5 properties · Last: 1h ago</div>
+                                </div>
+                            </div>
+
+                            <!-- Person Card 3 - Warning -->
+                            <div class="person-card" style="border-left-color: #DC2626; border-left-width: 3px;">
+                                <div class="warning-indicator"></div>
+                                <div class="person-avatar" style="background: #DC2626;">RM</div>
+                                <div class="person-content">
+                                    <div class="person-name">Robert Murphy</div>
+                                    <div class="person-meta">
+                                        <span class="role-badge maintenance">Maintenance</span>
+                                        <span class="status-badge inactive">Inactive</span>
+                                    </div>
+                                    <div class="person-detail">SLA breach · 4h overdue</div>
+                                </div>
+                            </div>
+
+                            <!-- Person Card 4 -->
+                            <div class="person-card">
+                                <div class="person-avatar" style="background: #B56E45;">AK</div>
+                                <div class="person-content">
+                                    <div class="person-name">Amelia Knight</div>
+                                    <div class="person-meta">
+                                        <span class="role-badge checkin">Check-In</span>
+                                        <span class="status-badge active">Active</span>
+                                    </div>
+                                    <div class="person-detail">2 properties · Last: 30m ago</div>
+                                </div>
+                            </div>
+
+                            <!-- Person Card 5 -->
+                            <div class="person-card">
+                                <div class="person-avatar" style="background: #16A34A;">SP</div>
+                                <div class="person-content">
+                                    <div class="person-name">Sofia Patel</div>
+                                    <div class="person-meta">
+                                        <span class="role-badge cleaner">Cleaner</span>
+                                        <span class="status-badge active">Active</span>
+                                    </div>
+                                    <div class="person-detail">4 properties · Last: 15m ago</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FAB -->
+                    <div class="fab">+</div>
+
+                    <!-- Bottom Nav -->
+                    <div class="bottom-nav">
+                        <div class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Dashboard</div>
+                        </div>
+                        <div class="nav-item active">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">People</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Properties</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">💰</div>
+                            <div class="nav-label">Finance</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙️</div>
+                            <div class="nav-label">Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 2: People Management</div>
+            </div>
+
+            <!-- Screen 3: Property Management -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span class="status-icon">📶</span>
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- Back Header -->
+                    <div class="back-header">
+                        <div class="back-arrow">← Back</div>
+                        <div class="back-title">Properties</div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Filter Strip -->
+                        <div class="filter-strip">
+                            <button class="filter-btn active">All</button>
+                            <button class="filter-btn">Villas</button>
+                            <button class="filter-btn">Condos</button>
+                            <button class="filter-btn">Apts</button>
+                        </div>
+
+                        <!-- Count -->
+                        <div class="count-header">12 Properties</div>
+
+                        <!-- Property Cards -->
+                        <div class="property-card villa">
+                            <div class="property-header">
+                                <div class="property-name">Villa Orchid</div>
+                                <span class="type-badge">VILLA</span>
+                            </div>
+                            <div class="property-status active">Active</div>
+                            <div class="property-info">
+                                <div>Bali, Indonesia</div>
+                                <div class="property-row">
+                                    <span>5 rooms</span>
+                                    <span>3 staff</span>
+                                </div>
+                            </div>
+                            <div class="property-row">
+                                <span>Owner: Rajesh</span>
+                                <div class="property-revenue">$8,400/mo</div>
+                            </div>
+                            <div class="occupancy-bar">
+                                <div class="occupancy-fill" style="width: 85%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="property-card condo">
+                            <div class="property-header">
+                                <div class="property-name">Condo Sunset</div>
+                                <span class="type-badge">CONDO</span>
+                            </div>
+                            <div class="property-status active">Active</div>
+                            <div class="property-info">
+                                <div>Miami Beach, USA</div>
+                                <div class="property-row">
+                                    <span>2 rooms</span>
+                                    <span>2 staff</span>
+                                </div>
+                            </div>
+                            <div class="property-row">
+                                <span>Owner: Maria</span>
+                                <div class="property-revenue">$5,200/mo</div>
+                            </div>
+                            <div class="occupancy-bar">
+                                <div class="occupancy-fill" style="width: 72%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="property-card apartment">
+                            <div class="property-header">
+                                <div class="property-name">Apt Downtown</div>
+                                <span class="type-badge">APT</span>
+                            </div>
+                            <div class="property-status onboarding">Onboarding</div>
+                            <div class="property-info">
+                                <div>Barcelona, Spain</div>
+                                <div class="property-row">
+                                    <span>1 room</span>
+                                    <span>1 staff</span>
+                                </div>
+                            </div>
+                            <div class="property-row">
+                                <span>Owner: Elena</span>
+                                <div class="property-revenue">$2,800/mo</div>
+                            </div>
+                            <div class="occupancy-bar">
+                                <div class="occupancy-fill" style="width: 40%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="property-card villa">
+                            <div class="property-header">
+                                <div class="property-name">Villa Paradise</div>
+                                <span class="type-badge">VILLA</span>
+                            </div>
+                            <div class="property-status active">Active</div>
+                            <div class="property-info">
+                                <div>Phuket, Thailand</div>
+                                <div class="property-row">
+                                    <span>6 rooms</span>
+                                    <span>4 staff</span>
+                                </div>
+                            </div>
+                            <div class="property-row">
+                                <span>Owner: Priya</span>
+                                <div class="property-revenue">$9,100/mo</div>
+                            </div>
+                            <div class="occupancy-bar">
+                                <div class="occupancy-fill" style="width: 92%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FAB -->
+                    <div class="fab">+</div>
+
+                    <!-- Bottom Nav -->
+                    <div class="bottom-nav">
+                        <div class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Dashboard</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">People</div>
+                        </div>
+                        <div class="nav-item active">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Properties</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">💰</div>
+                            <div class="nav-label">Finance</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙️</div>
+                            <div class="nav-label">Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 3: Property Management</div>
+            </div>
+
+            <!-- Screen 4: Financial Overview -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span class="status-icon">📶</span>
+                            <span>9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- Back Header -->
+                    <div class="back-header">
+                        <div class="back-arrow">← Back</div>
+                        <div class="back-title">Finance</div>
+                    </div>
+
+                    <!-- Financial Header -->
+                    <div class="financial-header">
+                        <div class="financial-title">Financial Dashboard</div>
+                        <div class="financial-subtitle">Mar 2025</div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Summary Card -->
+                        <div class="summary-card">
+                            <div class="summary-row">
+                                <div class="summary-label">Total Revenue</div>
+                                <div class="summary-value copper">$34,500 <span class="trend-arrow">↑</span></div>
+                            </div>
+                            <div class="summary-row">
+                                <div class="summary-label">Total Expenses</div>
+                                <div class="summary-value">$12,200</div>
+                            </div>
+                            <div class="summary-row">
+                                <div class="summary-label">Net Profit</div>
+                                <div class="summary-value green">$22,300 <span class="trend-arrow">↑</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Revenue by Property -->
+                        <div class="revenue-section">
+                            <div class="revenue-title">Revenue by Property</div>
+                            <div class="revenue-bar">
+                                <div class="bar-label">Villa Orchid</div>
+                                <div class="bar-container">
+                                    <div class="bar-fill indigo" style="width: 87%;"></div>
+                                </div>
+                                <div class="bar-amount">$8.4K</div>
+                            </div>
+                            <div class="revenue-bar">
+                                <div class="bar-label">Villa Paradise</div>
+                                <div class="bar-container">
+                                    <div class="bar-fill copper" style="width: 94%;"></div>
+                                </div>
+                                <div class="bar-amount">$9.1K</div>
+                            </div>
+                            <div class="revenue-bar">
+                                <div class="bar-label">Condo Sunset</div>
+                                <div class="bar-container">
+                                    <div class="bar-fill moss" style="width: 54%;"></div>
+                                </div>
+                                <div class="bar-amount">$5.2K</div>
+                            </div>
+                            <div class="revenue-bar">
+                                <div class="bar-label">Apt Downtown</div>
+                                <div class="bar-container">
+                                    <div class="bar-fill indigo" style="width: 29%;"></div>
+                                </div>
+                                <div class="bar-amount">$2.8K</div>
+                            </div>
+                        </div>
+
+                        <!-- Pending Payouts -->
+                        <div class="payouts-card">
+                            <div class="payouts-title">Pending Payouts</div>
+                            <div class="payout-item">
+                                <span class="payout-owner">Rajesh</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="payout-amount">$8.4K</span>
+                                    <button class="process-btn">Process</button>
+                                </div>
+                            </div>
+                            <div class="payout-item">
+                                <span class="payout-owner">Priya</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="payout-amount">$9.1K</span>
+                                    <button class="process-btn">Process</button>
+                                </div>
+                            </div>
+                            <div class="payout-item">
+                                <span class="payout-owner">Maria</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="payout-amount">$5.2K</span>
+                                    <button class="process-btn">Process</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Commission Summary -->
+                        <div class="summary-card" style="margin-top: 8px;">
+                            <div class="summary-row">
+                                <div class="summary-label">Platform Commission (8%)</div>
+                                <div class="summary-value">$2,760</div>
+                            </div>
+                        </div>
+
+                        <!-- Export Button -->
+                        <button style="width: 100%; height: 32px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: #FFFFFF; font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; cursor: pointer; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; color: #171A1F;">Export Report</button>
+                    </div>
+
+                    <!-- Bottom Nav -->
+                    <div class="bottom-nav">
+                        <div class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Dashboard</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">People</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Properties</div>
+                        </div>
+                        <div class="nav-item active">
+                            <div class="nav-icon">💰</div>
+                            <div class="nav-label">Finance</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙️</div>
+                            <div class="nav-label">Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 4: Financial Overview</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

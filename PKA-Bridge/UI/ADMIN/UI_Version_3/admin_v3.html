@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Console UI v3 – Domaniqo Sovereign Governance Layer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #4338CA;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            text-align: center;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+            flex-shrink: 0;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* App Header */
+        .app-header {
+            height: 50px;
+            background: #171A1F;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 14px;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .header-titles {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: -0.01em;
+        }
+
+        .header-subtitle {
+            font-size: 9.5px;
+            color: rgba(255,255,255,0.38);
+        }
+
+        .header-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* KPI Strip */
+        .kpi-strip {
+            background: #0F1115;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0;
+            padding: 0 14px;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .kpi-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid rgba(255,255,255,0.07);
+            gap: 2px;
+        }
+
+        .kpi-item:last-child {
+            border-right: none;
+        }
+
+        .kpi-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #FFFFFF;
+            line-height: 1.1;
+        }
+
+        .kpi-label {
+            font-size: 7.5px;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 14px 12px;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D6DC;
+            border-radius: 2px;
+        }
+
+        /* Disclaimer Banner */
+        .disclaimer-banner {
+            background: rgba(67, 56, 202, 0.08);
+            border: 1px solid rgba(67, 56, 202, 0.2);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 9px;
+            color: rgba(67, 56, 202, 0.8);
+            margin-bottom: 12px;
+            line-height: 1.3;
+            font-weight: 500;
+        }
+
+        /* System Health Card */
+        .card {
+            background: #FFFFFF;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #F0EEE9;
+        }
+
+        .card-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .health-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #F0EEE9;
+            font-size: 11px;
+        }
+
+        .health-row:last-child {
+            border-bottom: none;
+        }
+
+        .health-label {
+            color: #6B7280;
+        }
+
+        .health-value {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-green {
+            background: #22C55E;
+        }
+
+        .status-amber {
+            background: #F59E0B;
+        }
+
+        /* Quick Navigation Grid */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .nav-item {
+            background: #FFFFFF;
+            border: 1px solid #F0EEE9;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .nav-item:active {
+            background: #F3F1EE;
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #171A1F;
+            margin-bottom: 3px;
+        }
+
+        .nav-badge {
+            font-size: 9px;
+            background: #4338CA;
+            color: #FFFFFF;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        /* Tab Strip */
+        .tab-strip {
+            display: flex;
+            gap: 0;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #F0EEE9;
+            background: #FFFFFF;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #6B7280;
+            text-align: center;
+            border-right: 1px solid #F0EEE9;
+            cursor: pointer;
+        }
+
+        .tab:last-child {
+            border-right: none;
+        }
+
+        .tab.active {
+            background: #F3F1EE;
+            color: #4338CA;
+            font-weight: 700;
+        }
+
+        /* Staff Card List */
+        .staff-card {
+            background: #FFFFFF;
+            border: 1px solid #F0EEE9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .staff-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .staff-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(67, 56, 202, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 11px;
+            color: #4338CA;
+            flex-shrink: 0;
+        }
+
+        .staff-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .staff-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .staff-role {
+            font-size: 9px;
+            color: #6B7280;
+        }
+
+        .staff-details {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .role-badge {
+            font-size: 8px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .role-cleaner {
+            background: rgba(134, 180, 113, 0.15);
+            color: #569044;
+        }
+
+        .role-checkin {
+            background: rgba(59, 130, 246, 0.15);
+            color: #2563EB;
+        }
+
+        .role-maintenance {
+            background: rgba(245, 158, 11, 0.15);
+            color: #D97706;
+        }
+
+        .status-pill {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-active {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22C55E;
+        }
+
+        .status-inactive {
+            background: rgba(107, 114, 128, 0.15);
+            color: #6B7280;
+        }
+
+        .staff-meta {
+            font-size: 9px;
+            color: #6B7280;
+            margin-top: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Property Card */
+        .property-card {
+            background: #FFFFFF;
+            border: 1px solid #F0EEE9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .property-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .property-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .property-type {
+            font-size: 8px;
+            font-weight: 700;
+            background: rgba(67, 56, 202, 0.1);
+            color: #4338CA;
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+
+        .property-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #6B7280;
+            margin-bottom: 8px;
+        }
+
+        .property-owner {
+            font-size: 9px;
+            color: #4338CA;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        /* Manager Card */
+        .manager-card {
+            background: #FFFFFF;
+            border: 1px solid #F0EEE9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .manager-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .manager-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(67, 56, 202, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 11px;
+            color: #4338CA;
+            flex-shrink: 0;
+        }
+
+        .manager-info {
+            flex: 1;
+        }
+
+        .manager-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .manager-email {
+            font-size: 9px;
+            color: #6B7280;
+        }
+
+        .capability-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .capability-pill {
+            font-size: 8px;
+            font-weight: 700;
+            background: rgba(67, 56, 202, 0.1);
+            color: #4338CA;
+            padding: 3px 6px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        /* Intake Card */
+        .intake-card {
+            background: #FFFFFF;
+            border: 1px solid #F0EEE9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .intake-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .intake-submitter {
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .intake-submitted {
+            font-size: 9px;
+            color: #6B7280;
+        }
+
+        .intake-property {
+            font-size: 11px;
+            font-weight: 600;
+            color: #4338CA;
+            margin-bottom: 6px;
+        }
+
+        .intake-badge {
+            font-size: 8px;
+            font-weight: 700;
+            background: rgba(245, 158, 11, 0.15);
+            color: #D97706;
+            padding: 3px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .intake-details {
+            font-size: 9px;
+            color: #6B7280;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .intake-photos {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .photo-placeholder {
+            width: 40px;
+            height: 30px;
+            background: #F0EEE9;
+            border-radius: 4px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .intake-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background: #4338CA;
+            color: #FFFFFF;
+        }
+
+        .btn-primary:active {
+            background: #3730A3;
+        }
+
+        .btn-secondary {
+            background: rgba(67, 56, 202, 0.1);
+            color: #4338CA;
+            border: 1px solid rgba(67, 56, 202, 0.2);
+        }
+
+        .btn-secondary:active {
+            background: rgba(67, 56, 202, 0.15);
+        }
+
+        .btn-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #D97706;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .btn-warning:active {
+            background: rgba(245, 158, 11, 0.25);
+        }
+
+        .btn-success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22C55E;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-success:active {
+            background: rgba(34, 197, 94, 0.25);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #EF4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:active {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-small {
+            padding: 6px 8px;
+            font-size: 8px;
+            flex: none;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            height: 50px;
+            background: #FFFFFF;
+            border-top: 1px solid #F0EEE9;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 6px;
+            flex-shrink: 0;
+        }
+
+        .nav-item-bottom {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            cursor: pointer;
+            color: #9CA3AF;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        .nav-item-bottom.active {
+            color: #4338CA;
+        }
+
+        .nav-icon-bottom {
+            font-size: 16px;
+        }
+
+        /* Visibility Toggle */
+        .visibility-section {
+            background: #F9F7F4;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+
+        .visibility-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .visibility-toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 10px;
+        }
+
+        .toggle-switch {
+            width: 28px;
+            height: 16px;
+            background: #D1D6DC;
+            border-radius: 8px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .toggle-switch.on {
+            background: #4338CA;
+        }
+
+        .toggle-knob {
+            width: 14px;
+            height: 14px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            transition: left 0.2s;
+        }
+
+        .toggle-switch.on .toggle-knob {
+            left: 13px;
+        }
+
+        /* Capability Delegation Panel */
+        .capability-section {
+            background: #FFFFFF;
+            border: 1px solid #F0EEE9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .capability-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .capability-row:last-child {
+            border-bottom: none;
+        }
+
+        .capability-info {
+            flex: 1;
+        }
+
+        .capability-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .capability-desc {
+            font-size: 8.5px;
+            color: #6B7280;
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+
+        /* Audit Feed */
+        .audit-entry {
+            background: #FFFFFF;
+            border: 1px solid #F0EEE9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 3px solid #4338CA;
+        }
+
+        .audit-action {
+            font-size: 10px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .audit-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+        }
+
+        .audit-entity {
+            font-size: 8px;
+            background: rgba(67, 56, 202, 0.1);
+            color: #4338CA;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .audit-time {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        /* Integration Status */
+        .integration-item {
+            background: #FFFFFF;
+            border: 1px solid #F0EEE9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .integration-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .integration-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .integration-status {
+            font-size: 8px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .integration-configured {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22C55E;
+        }
+
+        .integration-stub {
+            background: rgba(107, 114, 128, 0.15);
+            color: #6B7280;
+        }
+
+        /* Misc */
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+
+        .warning-text {
+            font-size: 9px;
+            color: #D97706;
+            font-weight: 600;
+        }
+
+        .immutable-note {
+            font-size: 8px;
+            color: #6B7280;
+            font-style: italic;
+            padding: 8px;
+            background: #F3F1EE;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 12px 0 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Admin Console UI v3</h1>
+            <p>Domaniqo Sovereign Governance Layer – Mobile Control Surface Prototype</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">Role Personality</div>
+                <div class="note-text">Sovereign governance, full authority, system configuration. Admin is NOT operational dashboard. Controls properties, staff, owners, managers, intake, integrations, permissions, audit. Desktop = canonical deep surface. Mobile = compressed control.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">V3 Changes from V2</div>
+                <div class="note-text">Expanded from 4 to 6 screens. Added intake review (property approval), manager delegation (7-capability toggles), integrations + audit feed. Distinguished Admin (governance) from Ops Manager (operations). Added system health indicators. Desktop disclaimer. Role badges for staff. Property visibility toggles.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Key Patterns</div>
+                <div class="note-text">System health (API, integrations, pending intake). People management (staff cards with role badges, manager capability delegation). Property governance (visibility controls per owner). Intake workflow (property submission review + approve/reject). Audit feed (immutable, append-only). Integration status (LINE/Telegram configured, WhatsApp/SMS/Email stubs). Capability-gated UI.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Shaped by</div>
+                <div class="note-text">Daniel (RBAC & route enforcement), Sonia (admin ≠ ops differentiation), Talia (capability-gated interactions), Hana (staff lifecycle & intake), Larry (governance layer coherence). Indigo #4338CA authority accent. No urgency animations — admin is deliberate control, not operational dashboard.</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+
+            <!-- SCREEN 1: System Overview (Home) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div style="font-size: 16px;">⚙️</div>
+                            <div class="header-titles">
+                                <div class="header-title">Domaniqo Admin</div>
+                                <div class="header-subtitle">Governance Console</div>
+                            </div>
+                        </div>
+                        <div class="header-avatar">A</div>
+                    </div>
+
+                    <div class="kpi-strip">
+                        <div class="kpi-item">
+                            <div class="kpi-value">24</div>
+                            <div class="kpi-label">Properties</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-value">47</div>
+                            <div class="kpi-label">Staff</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-value">12</div>
+                            <div class="kpi-label">Owners</div>
+                        </div>
+                        <div class="kpi-item">
+                            <div class="kpi-value">3</div>
+                            <div class="kpi-label">Managers</div>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="disclaimer-banner">
+                            💻 Compressed mobile view. Full admin at desktop.
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">System Health</div>
+                            <div class="health-row">
+                                <span class="health-label">API Status</span>
+                                <span class="health-value">
+                                    <span class="status-dot status-green"></span>
+                                    <span>Healthy</span>
+                                </span>
+                            </div>
+                            <div class="health-row">
+                                <span class="health-label">Integrations</span>
+                                <span class="health-value">
+                                    <span>3/3 Connected</span>
+                                </span>
+                            </div>
+                            <div class="health-row">
+                                <span class="health-label">Pending Intake</span>
+                                <span class="health-value">
+                                    <span class="status-dot status-amber"></span>
+                                    <span>2 Pending</span>
+                                </span>
+                            </div>
+                            <div class="health-row">
+                                <span class="health-label">Audit Events</span>
+                                <span class="health-value">47 Today</span>
+                            </div>
+                        </div>
+
+                        <div class="section-title">Quick Navigation</div>
+                        <div class="nav-grid">
+                            <div class="nav-item">
+                                <div class="nav-icon">👥</div>
+                                <div class="nav-label">People</div>
+                                <div class="nav-badge">47</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">🏠</div>
+                                <div class="nav-label">Properties</div>
+                                <div class="nav-badge">24</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">📋</div>
+                                <div class="nav-label">Intake</div>
+                                <div class="nav-badge">2</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">💰</div>
+                                <div class="nav-label">Finance</div>
+                                <div class="nav-badge">—</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">🔗</div>
+                                <div class="nav-label">Integrations</div>
+                                <div class="nav-badge">3</div>
+                            </div>
+                            <div class="nav-item">
+                                <div class="nav-icon">⚙️</div>
+                                <div class="nav-label">Settings</div>
+                                <div class="nav-badge">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <div class="nav-item-bottom active">
+                            <div class="nav-icon-bottom">🏠</div>
+                            <div>Overview</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">👥</div>
+                            <div>People</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏘️</div>
+                            <div>Properties</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🛡️</div>
+                            <div>Governance</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">⋯</div>
+                            <div>More</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">1. System Overview</div>
+            </div>
+
+            <!-- SCREEN 2: People Management -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div style="font-size: 16px;">👥</div>
+                            <div class="header-titles">
+                                <div class="header-title">People</div>
+                                <div class="header-subtitle">Staff & Managers</div>
+                            </div>
+                        </div>
+                        <div class="header-avatar">A</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="tab-strip">
+                            <div class="tab active">Staff <span style="font-size: 8px;">(24)</span></div>
+                            <div class="tab">Owners <span style="font-size: 8px;">(8)</span></div>
+                            <div class="tab">Managers <span style="font-size: 8px;">(3)</span></div>
+                        </div>
+
+                        <div class="staff-card">
+                            <div class="staff-header">
+                                <div class="staff-avatar">SA</div>
+                                <div class="staff-info">
+                                    <div class="staff-name">Somchai Anand</div>
+                                    <div class="staff-role">Senior Cleaner</div>
+                                </div>
+                            </div>
+                            <div class="staff-details">
+                                <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px;">
+                                    <span class="role-badge role-cleaner">CLEANER</span>
+                                    <span class="role-badge role-checkin">CHECK-IN</span>
+                                </div>
+                                <span class="status-pill status-active">🟢 ACTIVE</span>
+                            </div>
+                            <div class="staff-meta">
+                                <span>3 Properties</span>
+                                <span>94% SLA</span>
+                            </div>
+                        </div>
+
+                        <div class="staff-card">
+                            <div class="staff-header">
+                                <div class="staff-avatar">NA</div>
+                                <div class="staff-info">
+                                    <div class="staff-name">Niran Alessio</div>
+                                    <div class="staff-role">Maintenance</div>
+                                </div>
+                            </div>
+                            <div class="staff-details">
+                                <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px;">
+                                    <span class="role-badge role-maintenance">MAINTENANCE</span>
+                                </div>
+                                <span class="status-pill status-active">🟢 ACTIVE</span>
+                            </div>
+                            <div class="staff-meta">
+                                <span>2 Properties</span>
+                                <span>88% SLA</span>
+                            </div>
+                        </div>
+
+                        <div class="staff-card">
+                            <div class="warning-box" style="margin: 0 0 8px 0;">
+                                <div class="warning-text">⚠️ 2 tasks reassignment needed</div>
+                            </div>
+                            <div class="staff-header">
+                                <div class="staff-avatar">PR</div>
+                                <div class="staff-info">
+                                    <div class="staff-name">Prabhat Raj</div>
+                                    <div class="staff-role">Cleaner</div>
+                                </div>
+                            </div>
+                            <div class="staff-details">
+                                <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px;">
+                                    <span class="role-badge role-cleaner">CLEANER</span>
+                                </div>
+                                <span class="status-pill status-inactive">⚫ INACTIVE</span>
+                            </div>
+                            <div class="staff-meta">
+                                <span>Deactivated</span>
+                                <span>Reassigning...</span>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 8px; margin: 12px 0; padding-top: 8px; border-top: 1px solid #F0EEE9;">
+                            <button class="btn btn-primary" style="flex: 1; font-size: 10px;">+ Invite Staff</button>
+                            <button class="btn btn-secondary" style="flex: 1; font-size: 10px;">+ Invite Manager</button>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏠</div>
+                            <div>Overview</div>
+                        </div>
+                        <div class="nav-item-bottom active">
+                            <div class="nav-icon-bottom">👥</div>
+                            <div>People</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏘️</div>
+                            <div>Properties</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🛡️</div>
+                            <div>Governance</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">⋯</div>
+                            <div>More</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">2. People Management</div>
+            </div>
+
+            <!-- SCREEN 3: Property Governance -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div style="font-size: 16px;">🏠</div>
+                            <div class="header-titles">
+                                <div class="header-title">Properties</div>
+                                <div class="header-subtitle">Governance</div>
+                            </div>
+                        </div>
+                        <div class="header-avatar">A</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="property-card">
+                            <div class="property-header">
+                                <div>
+                                    <div class="property-name">Sunset Apartment</div>
+                                    <div style="margin-top: 2px;"><span class="property-type">APARTMENT</span></div>
+                                </div>
+                            </div>
+                            <div class="property-meta">
+                                <span>Kata Beach</span>
+                                <span class="status-pill status-active">ACTIVE</span>
+                            </div>
+                            <div class="property-owner">Owner: Priya Kapoor</div>
+                            <div class="property-meta">
+                                <span>6 Staff</span>
+                                <span>Intake: Pending</span>
+                            </div>
+                            <div class="visibility-section">
+                                <div class="visibility-label">Owner Visibility</div>
+                                <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+                                    <span>Revenue</span>
+                                    <div class="toggle-switch on"><div class="toggle-knob"></div></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+                                    <span>Bookings</span>
+                                    <div class="toggle-switch on"><div class="toggle-knob"></div></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+                                    <span>Occupancy</span>
+                                    <div class="toggle-switch on"><div class="toggle-knob"></div></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 9px;">
+                                    <span>Maintenance</span>
+                                    <div class="toggle-switch"><div class="toggle-knob"></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="property-card">
+                            <div class="property-header">
+                                <div>
+                                    <div class="property-name">Villa Orchid</div>
+                                    <div style="margin-top: 2px;"><span class="property-type">VILLA</span></div>
+                                </div>
+                            </div>
+                            <div class="property-meta">
+                                <span>Koh Phi Phi</span>
+                                <span class="status-pill status-active">ACTIVE</span>
+                            </div>
+                            <div class="property-owner">Owner: Raj Patel</div>
+                            <div class="property-meta">
+                                <span>4 Staff</span>
+                                <span>No pending</span>
+                            </div>
+                            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px; font-size: 9px;">Manage Property</button>
+                        </div>
+
+                        <div class="section-title">Pending Intake Review</div>
+                        <div class="property-card" style="background: #FFFBF0; border-color: #FED7AA;">
+                            <div class="intake-badge">🔍 PENDING REVIEW</div>
+                            <div class="property-name">Beachfront Bungalow</div>
+                            <div class="property-meta" style="margin: 6px 0 8px 0;">
+                                <span>Submitted 2h ago</span>
+                            </div>
+                            <button class="btn btn-warning" style="width: 100%; font-size: 9px;">Review Intake</button>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏠</div>
+                            <div>Overview</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">👥</div>
+                            <div>People</div>
+                        </div>
+                        <div class="nav-item-bottom active">
+                            <div class="nav-icon-bottom">🏘️</div>
+                            <div>Properties</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🛡️</div>
+                            <div>Governance</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">⋯</div>
+                            <div>More</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">3. Property Governance</div>
+            </div>
+
+            <!-- SCREEN 4: Intake Review -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div style="font-size: 16px;">📋</div>
+                            <div class="header-titles">
+                                <div class="header-title">Intake Review</div>
+                                <div class="header-subtitle">Property Submission</div>
+                            </div>
+                        </div>
+                        <div class="header-avatar">A</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="intake-card" style="border: 2px solid #FED7AA;">
+                            <div class="intake-header">
+                                <div>
+                                    <div class="intake-submitter">Submitted by: Amara</div>
+                                    <div class="intake-submitted">amara@mail.com</div>
+                                </div>
+                                <div class="intake-badge">PENDING</div>
+                            </div>
+                            <div class="intake-property">Sunset Apartment, Kata Beach</div>
+                            <div class="intake-details">
+                                <strong style="color: #171A1F; font-weight: 700;">Property Details:</strong><br/>
+                                3 Bedrooms • 2 Bathrooms • Max 6 Guests<br/>
+                                Monthly rent: $3,200<br/>
+                                Submitted: 2 hours ago
+                            </div>
+
+                            <div style="margin-bottom: 8px;">
+                                <div class="visibility-label">Property Photos</div>
+                                <div class="intake-photos">
+                                    <div class="photo-placeholder"></div>
+                                    <div class="photo-placeholder"></div>
+                                    <div class="photo-placeholder"></div>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 10px;">
+                                <label style="font-size: 9px; font-weight: 700; color: #171A1F; display: block; margin-bottom: 4px;">Admin Notes</label>
+                                <textarea style="width: 100%; padding: 6px; border: 1px solid #D1D6DC; border-radius: 4px; font-size: 9px; font-family: 'Inter', sans-serif; color: #171A1F; min-height: 50px; resize: none;" placeholder="Add notes for decision..."></textarea>
+                            </div>
+
+                            <div class="intake-actions">
+                                <button class="btn btn-success">Approve</button>
+                                <button class="btn btn-warning btn-small">More Info</button>
+                                <button class="btn btn-danger">Reject</button>
+                            </div>
+                        </div>
+
+                        <div class="section-title">Recent Submissions</div>
+
+                        <div class="intake-card">
+                            <div class="intake-header">
+                                <div>
+                                    <div class="intake-submitter">Beachfront Bungalow</div>
+                                    <div class="intake-submitted">3 days ago</div>
+                                </div>
+                                <div style="font-size: 8px; font-weight: 700; background: rgba(34, 197, 94, 0.15); color: #22C55E; padding: 3px 6px; border-radius: 4px;">APPROVED</div>
+                            </div>
+                        </div>
+
+                        <div class="intake-card">
+                            <div class="intake-header">
+                                <div>
+                                    <div class="intake-submitter">Mountain Lodge</div>
+                                    <div class="intake-submitted">5 days ago</div>
+                                </div>
+                                <div style="font-size: 8px; font-weight: 700; background: rgba(239, 68, 68, 0.15); color: #EF4444; padding: 3px 6px; border-radius: 4px;">REJECTED</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏠</div>
+                            <div>Overview</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">👥</div>
+                            <div>People</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏘️</div>
+                            <div>Properties</div>
+                        </div>
+                        <div class="nav-item-bottom active">
+                            <div class="nav-icon-bottom">🛡️</div>
+                            <div>Governance</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">⋯</div>
+                            <div>More</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">4. Intake Review</div>
+            </div>
+
+            <!-- SCREEN 5: Manager Delegation -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div style="font-size: 16px;">🎛️</div>
+                            <div class="header-titles">
+                                <div class="header-title">Manager Setup</div>
+                                <div class="header-subtitle">Capability Delegation</div>
+                            </div>
+                        </div>
+                        <div class="header-avatar">A</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div style="background: #FFFFFF; border: 1px solid #F0EEE9; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                            <div class="manager-header">
+                                <div class="manager-avatar">TN</div>
+                                <div class="manager-info">
+                                    <div class="manager-name">Tara Nair</div>
+                                    <div class="manager-email">tara@domaniqo.com</div>
+                                    <div style="font-size: 8px; color: #9CA3AF; margin-top: 3px;">Manager since Mar 2025</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-title">Delegated Capabilities</div>
+
+                        <div class="capability-section">
+                            <div class="capability-row">
+                                <div class="capability-info">
+                                    <div class="capability-name">Financial</div>
+                                    <div class="capability-desc">View/export financial reports, owner statements</div>
+                                </div>
+                                <div class="toggle-switch on"><div class="toggle-knob"></div></div>
+                            </div>
+
+                            <div class="capability-row">
+                                <div class="capability-info">
+                                    <div class="capability-name">Staffing</div>
+                                    <div class="capability-desc">Invite/deactivate workers, manage schedules</div>
+                                </div>
+                                <div class="toggle-switch on"><div class="toggle-knob"></div></div>
+                            </div>
+
+                            <div class="capability-row">
+                                <div class="capability-info">
+                                    <div class="capability-name">Properties</div>
+                                    <div class="capability-desc">Edit property details, manage configurations</div>
+                                </div>
+                                <div class="toggle-switch"><div class="toggle-knob"></div></div>
+                            </div>
+
+                            <div class="capability-row">
+                                <div class="capability-info">
+                                    <div class="capability-name">Bookings</div>
+                                    <div class="capability-desc">Modify bookings, handle cancellations</div>
+                                </div>
+                                <div class="toggle-switch on"><div class="toggle-knob"></div></div>
+                            </div>
+
+                            <div class="capability-row">
+                                <div class="capability-info">
+                                    <div class="capability-name">Maintenance</div>
+                                    <div class="capability-desc">Approve requests, assign priorities</div>
+                                </div>
+                                <div class="toggle-switch"><div class="toggle-knob"></div></div>
+                            </div>
+
+                            <div class="capability-row">
+                                <div class="capability-info">
+                                    <div class="capability-name">Settings</div>
+                                    <div class="capability-desc">Edit tenant settings, configurations</div>
+                                </div>
+                                <div class="toggle-switch"><div class="toggle-knob"></div></div>
+                            </div>
+
+                            <div class="capability-row" style="border-bottom: none;">
+                                <div class="capability-info">
+                                    <div class="capability-name">Intake</div>
+                                    <div class="capability-desc">Review property submissions, approve/reject</div>
+                                </div>
+                                <div class="toggle-switch"><div class="toggle-knob"></div></div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 12px; font-size: 10px;">Save Changes</button>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏠</div>
+                            <div>Overview</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">👥</div>
+                            <div>People</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏘️</div>
+                            <div>Properties</div>
+                        </div>
+                        <div class="nav-item-bottom active">
+                            <div class="nav-icon-bottom">🛡️</div>
+                            <div>Governance</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">⋯</div>
+                            <div>More</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">5. Manager Delegation</div>
+            </div>
+
+            <!-- SCREEN 6: Integrations & Audit -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div style="font-size: 16px;">🔌</div>
+                            <div class="header-titles">
+                                <div class="header-title">Integrations</div>
+                                <div class="header-subtitle">Config & Audit</div>
+                            </div>
+                        </div>
+                        <div class="header-avatar">A</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="section-title">Integration Status</div>
+
+                        <div class="integration-item">
+                            <div class="integration-header">
+                                <div class="integration-name">
+                                    <span>LINE</span>
+                                </div>
+                                <span class="integration-status integration-configured">
+                                    <span class="status-dot status-green"></span> Configured
+                                </span>
+                            </div>
+                            <div style="font-size: 9px; color: #6B7280; margin-bottom: 8px;">Messaging notifications enabled</div>
+                            <button class="btn btn-secondary btn-small">Reconfigure</button>
+                        </div>
+
+                        <div class="integration-item">
+                            <div class="integration-header">
+                                <div class="integration-name">
+                                    <span>Telegram</span>
+                                </div>
+                                <span class="integration-status integration-configured">
+                                    <span class="status-dot status-green"></span> Configured
+                                </span>
+                            </div>
+                            <div style="font-size: 9px; color: #6B7280; margin-bottom: 8px;">Bot token valid, alerts active</div>
+                            <button class="btn btn-secondary btn-small">Reconfigure</button>
+                        </div>
+
+                        <div class="integration-item">
+                            <div class="integration-header">
+                                <div class="integration-name">
+                                    <span>WhatsApp</span>
+                                </div>
+                                <span class="integration-status integration-stub">
+                                    <span>Not Configured</span>
+                                </span>
+                            </div>
+                            <div style="font-size: 9px; color: #6B7280; margin-bottom: 8px;">Stub — future integration</div>
+                            <button class="btn btn-secondary btn-small" style="opacity: 0.5;">Coming Soon</button>
+                        </div>
+
+                        <div class="integration-item">
+                            <div class="integration-header">
+                                <div class="integration-name">
+                                    <span>SMS</span>
+                                </div>
+                                <span class="integration-status integration-stub">
+                                    <span>Not Configured</span>
+                                </span>
+                            </div>
+                            <div style="font-size: 9px; color: #6B7280; margin-bottom: 8px;">Stub — future integration</div>
+                            <button class="btn btn-secondary btn-small" style="opacity: 0.5;">Coming Soon</button>
+                        </div>
+
+                        <div class="integration-item">
+                            <div class="integration-header">
+                                <div class="integration-name">
+                                    <span>Email</span>
+                                </div>
+                                <span class="integration-status integration-stub">
+                                    <span>Not Configured</span>
+                                </span>
+                            </div>
+                            <div style="font-size: 9px; color: #6B7280; margin-bottom: 8px;">Stub — future integration</div>
+                            <button class="btn btn-secondary btn-small" style="opacity: 0.5;">Coming Soon</button>
+                        </div>
+
+                        <div class="section-title">Audit Log</div>
+
+                        <div class="audit-entry">
+                            <div class="audit-action">Staff member 'Somchai' deactivated</div>
+                            <div class="audit-meta">
+                                <span class="audit-entity">STAFF</span>
+                                <span class="audit-time">2h ago</span>
+                            </div>
+                        </div>
+
+                        <div class="audit-entry">
+                            <div class="audit-action">Property 'Villa Orchid' visibility updated</div>
+                            <div class="audit-meta">
+                                <span class="audit-entity">PROPERTY</span>
+                                <span class="audit-time">4h ago</span>
+                            </div>
+                        </div>
+
+                        <div class="audit-entry">
+                            <div class="audit-action">Intake request #47 approved</div>
+                            <div class="audit-meta">
+                                <span class="audit-entity">INTAKE</span>
+                                <span class="audit-time">6h ago</span>
+                            </div>
+                        </div>
+
+                        <div class="audit-entry">
+                            <div class="audit-action">Manager 'Tara' capability delegation updated</div>
+                            <div class="audit-meta">
+                                <span class="audit-entity">MANAGER</span>
+                                <span class="audit-time">1d ago</span>
+                            </div>
+                        </div>
+
+                        <div class="immutable-note">
+                            🔒 Audit log is append-only. No entries can be deleted.
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏠</div>
+                            <div>Overview</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">👥</div>
+                            <div>People</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🏘️</div>
+                            <div>Properties</div>
+                        </div>
+                        <div class="nav-item-bottom">
+                            <div class="nav-icon-bottom">🛡️</div>
+                            <div>Governance</div>
+                        </div>
+                        <div class="nav-item-bottom active">
+                            <div class="nav-icon-bottom">⋯</div>
+                            <div>More</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">6. Integrations & Audit</div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,125 @@
+OPS_MANAGER V3.1 REFINEMENT SUMMARY
+===================================
+
+OVERVIEW
+--------
+V3.1 is a refinement pass on V3, strengthening operational depth and command-center authority. 
+The interface now reads as a REAL OPERATIONAL SYSTEM, not a display dashboard. All drill-down 
+paths feel deeper. Intervention logic is more structured. Information hierarchy is tighter.
+
+KEY REFINEMENTS
+---------------
+
+1. HUB/HOME SCREEN (Screen 1)
+   ---
+   V3 → V3.1 Changes:
+   - KPI strip now shows: PROPERTIES (24), READINESS (87%), ALERTS (2)
+   - Briefing card expanded to 3-stat grid: Progress % + Health status + SLA Risk count
+   - Each stream card shows: completion count + current count + blocker count
+   - Added contextual metadata: "SLA avg 1h 15m", "Next check: 11:30 AM", "ETA 10:45 AM"
+   - EFFECT: Morning briefing now conveys operational density, not just headline metrics
+
+2. ALERT DETAIL SCREEN (Screen 2)
+   ---
+   V3 → V3.1 Changes:
+   - Red header preserved, but interior restructured
+   - Added "Context" section: Property, Guest, Check-In time, Current time, SLA window remaining
+   - Added "Why This Matters" section: Narrative explaining SLA impact + guest impact
+   - ESCALATION SEQUENCE now explicit: 3-step timeline with numbered circles + narrative
+     ① Reassign Cleaner (Immediate)
+     ② Notify Guest (If reassignment in progress)
+     ③ Escalate to Admin (If no solution by 10:15 AM)
+   - Buttons follow sequence exactly: Reassign → Notify → Escalate → Note → Mark Resolved
+   - EFFECT: Intervention feels structural, not arbitrary. Manager understands the "why" behind each step.
+
+3. STREAM DRILL-DOWN (Screen 3)
+   ---
+   V3 → V3.1 Changes:
+   - Header now shows: "Cleaning Stream • 11 tasks • 8 done" (operational summary)
+   - Filter tabs: All, Active, Blocked (removed Pending/Done for focus)
+   - Card metadata enriched:
+     * "SLA in 1h 20m • ETA 10:45 AM" (countdown + clock time)
+     * "SLA in 2h 45m • ETA 11:20 AM"
+   - BLOCKED cards show: "Cleaner offline • Awaiting checkout"
+   - Readiness blockers added: "Guest not confirmed off-site • Key not returned"
+   - DONE cards show: "✓ Completed 9:32 AM • Ready for inspection"
+   - PENDING cards show scheduled times: "Starts after checkout"
+   - EFFECT: Filtering feels like a real operational tool. Manager can diagnose blockers at a glance.
+
+4. PROPERTY CONTEXT VIEW (Screen 4)
+   ---
+   V3 → V3.1 Changes:
+   - Timeline header now shows: "Today's Critical Path (Now: 9:44 AM)" with current time indicator
+   - Each timeline row shows precise metadata:
+     * "11:30 AM–1:30 PM • Maria J. → Reassign" (time window + current assignment + action)
+     * Status badges now contextualized: URGENT, BLOCKED, AT RISK, SCHEDULED
+   - Turnover chain labels: Out → Clean → QC → In (simplified, clearer)
+   - Timeline adds dependency arrows (visual chain)
+   - Issues card shows: "AC unit master bedroom — Niran K. assigned • In progress" (ownership + status)
+   - EFFECT: Timeline feels PRECISE, not abstract. Manager sees exact windows and blockers.
+
+5. TEAM STATUS SCREEN (Screen 5)
+   ---
+   V3 → V3.1 Changes:
+   - Header shows: "Team Status • 12 active" (context)
+   - Each team card now shows:
+     * Active Load: "4/5 Tasks • High Load" (capacity signaling)
+     * SLA Compliance: "SLA: 98%" (current rate)
+     * SLA TREND: "↑ Trend: Improving" / "→ Trend: Stable" / "↓ Trend: Declining"
+     * Task assignment: "Beachfront Bungalow • 3/5 rooms" (clear current work)
+   - Alert/offline cards show: "⚠️ SLA: 82%" with "↓ Trend: Declining" in red
+   - Status ring borders: Green (active), Amber (break), Red (alert), Gray (offline)
+   - EFFECT: Manager can see worker utilization + performance trend at a glance. SLA trend signals 
+     whether worker is struggling or recovering.
+
+6. COCKPIT/ANALYTICS SCREEN (Screen 6)
+   ---
+   V3 → V3.1 Changes:
+   - Section labels now uppercase: "System Metrics", "Stream Status", "Critical Incidents", "Team Utilization"
+   - KPI cards now: "Property Readiness" + "SLA Compliance" + "Active Turnovers" + "Avg Turnover Time"
+   - Stream rows show: Label + "8 Done", "2 Active", "1 Blocked" format (count-based, not percentages)
+   - Active Incidents section lists incidents with live dots: clear, scannable
+   - Utilization bars now labeled: "High Load (4–5 tasks)", "Medium Load (2–3 tasks)", "Low/Available"
+   - EFFECT: Cockpit is denser, more useful. Manager can glance and know system state.
+
+DESIGN SYSTEM (PRESERVED EXACTLY)
+----------------------------------
+- Typography: Manrope 800 (display/labels), Inter 400-500 (body)
+- Colors: deep-moss #334036, signal-copper #B56E45, midnight #171A1F, bg #F2EFEB
+- Urgency: 3px left-accent borders (safe gray, amber, copper, red)
+- Phone mockup: 300x622px, border-radius 36px
+- Dark app header (#171A1F) with copper subtitle
+- Bottom nav: 56px height, 5-tab pattern
+- Status bar: 26px white background
+
+CROSS-SYSTEM ALIGNMENT
+---------------------
+- Screen labels: UPPERCASE, Manrope 700, 11px, #6B7280, 0.5px letter-spacing
+- Notes bar: 4-column grid on dark background explaining refinements
+- All screens have consistent status bar (26px white)
+- Bottom nav uses consistent icon+label pattern (all 5 tabs present)
+
+FILE LOCATION
+-------------
+/sessions/zen-blissful-darwin/mnt/PKA-Bridge/UI/OPS_MANAGER/UI_Version_3.1/ops_manager_v3.1.html
+
+COMPLETENESS
+------------
+- 2062 lines of HTML
+- 6 phone mockups (complete)
+- All CSS inline in <style> block
+- Self-contained, renders without external dependencies
+- 440 balanced div elements
+- Full legend section explaining all codes + features
+- Notes bar with 4-column V3.1 context
+
+PHILOSOPHY
+----------
+V3.1 removed the remaining "dashboard/board" feeling. Every screen now supports:
+1. Deeper drill-down paths
+2. Structured intervention sequences
+3. Operational density (KPIs, blockers, timelines, trends)
+4. Clear information hierarchy (primary/secondary/tertiary)
+
+The Ops Manager role is COMMAND CENTER: sees all properties, all streams, all workers.
+Every action should feel authoritative, informed, and sequential.

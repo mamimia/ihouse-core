@@ -154,6 +154,44 @@ def _validate_permissions_field(permissions: Any) -> Optional[JSONResponse]:
 
 
 # ---------------------------------------------------------------------------
+# PII response filter helper (Phase 973 audit fix — Oren/13)
+# Worker identity document fields are sensitive PII. Only admin callers may
+# receive these columns in API responses. Non-admin callers get all non-PII
+# fields; PII keys are simply omitted from response objects.
+# ---------------------------------------------------------------------------
+
+_WORKER_PII_COLUMNS: frozenset = frozenset({
+    "id_number", "id_expiry_date", "id_photo_url",
+    "date_of_birth",
+    "work_permit_number", "work_permit_expiry_date", "work_permit_photo_url",
+})
+
+
+def _strip_pii_for_role(row: dict, caller_role: str) -> dict:
+    """Return a copy of `row` with PII columns removed if caller is not admin."""
+    if caller_role == "admin":
+        return row
+    return {k: v for k, v in row.items() if k not in _WORKER_PII_COLUMNS}
+
+
+def _get_caller_role(db: Any, tenant_id: str, request: Request) -> str:
+    """Best-effort: decode JWT from request to get caller user_id, then look up role."""
+    try:
+        import jwt as _jwt
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.removeprefix("Bearer ").strip()
+        payload = _jwt.decode(token, options={"verify_signature": False})
+        caller_user_id = payload.get("sub") or payload.get("user_id") or ""
+        if not caller_user_id:
+            return ""
+        # Look up stored role
+        perm = get_permission_record(db, tenant_id, caller_user_id)
+        return (perm or {}).get("role", "") if perm else ""
+    except Exception:
+        return ""
+
+
+# ---------------------------------------------------------------------------
 # GET /permissions — list all for tenant
 # ---------------------------------------------------------------------------
 
@@ -169,6 +207,7 @@ def _validate_permissions_field(permissions: Any) -> Optional[JSONResponse]:
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
 async def list_permissions(
+    request: Request,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
@@ -191,10 +230,13 @@ async def list_permissions(
             .execute()
         )
         rows = result.data or []
+        # Phase 973 audit fix (Oren/13): Strip worker PII columns for non-admin callers.
+        caller_role = _get_caller_role(db, tenant_id, request)
+        filtered_rows = [_strip_pii_for_role(row, caller_role) for row in rows]
         return JSONResponse(status_code=200, content={
             "tenant_id": tenant_id,
-            "count": len(rows),
-            "permissions": rows,
+            "count": len(filtered_rows),
+            "permissions": filtered_rows,
         })
     except Exception as exc:
         logger.exception("GET /permissions error: %s", exc)
@@ -288,6 +330,7 @@ async def get_my_permission(
 )
 async def get_permission(
     user_id: str,
+    request: Request,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
@@ -317,7 +360,9 @@ async def get_permission(
                 code=ErrorCode.PERMISSION_NOT_FOUND,
                 extra={"user_id": user_id},
             )
-        return JSONResponse(status_code=200, content=rows[0])
+        # Phase 973 audit fix (Oren/13): Strip worker PII columns for non-admin callers.
+        caller_role = _get_caller_role(db, tenant_id, request)
+        return JSONResponse(status_code=200, content=_strip_pii_for_role(rows[0], caller_role))
     except Exception as exc:
         logger.exception("GET /permissions/%s error: %s", user_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
@@ -840,13 +885,102 @@ async def patch_permission_profile(
         if "comm_preference" in updates:
             _sync_channels(db, tenant_id, user_id, updates["comm_preference"])
 
-        return JSONResponse(status_code=200, content={
+        # Phase 972 / Phase 973 audit fix (Hana/09 — final closure):
+        # Deactivation auto-cleanup.
+        # When is_active is being set to False:
+        #   1. Compute active assignments + pending task counts (for admin UI summary)
+        #   2. Auto-clear ALL staff_property_assignments for this worker
+        #   3. Call _clear_tasks_on_unassign per property to unset assigned_to on
+        #      future PENDING tasks (the same function used by the unassign endpoint)
+        # ACKNOWLEDGED and IN_PROGRESS tasks are intentionally NOT cleared —
+        # those represent active human commitments that need manual resolution.
+        # JWTs remain valid until TTL — this is an accepted characteristic of
+        # stateless JWT auth that requires a separate auth-layer fix outside this scope.
+        deactivation_summary = None
+        if updates.get("is_active") is False:
+            try:
+                assignments_res = (
+                    db.table("staff_property_assignments")
+                    .select("id, property_id")
+                    .eq("tenant_id", tenant_id)
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                active_assignments = assignments_res.data or []
+
+                pending_tasks_res = (
+                    db.table("tasks")
+                    .select("task_id", count="exact")
+                    .eq("tenant_id", tenant_id)
+                    .eq("assigned_to", user_id)
+                    .eq("status", "PENDING")
+                    .execute()
+                )
+                raw_pending = getattr(pending_tasks_res, "count", None)
+                pending_count = int(raw_pending) if raw_pending and isinstance(raw_pending, (int, float)) else len(pending_tasks_res.data or [])
+
+                # Auto-clear: remove all property assignments + unset PENDING tasks
+                total_tasks_cleared = 0
+                cleared_properties = []
+                failed_clears = []
+                for assignment in active_assignments:
+                    property_id = assignment.get("property_id")
+                    if not property_id:
+                        continue
+                    try:
+                        # Remove the assignment row
+                        db.table("staff_property_assignments").delete()\
+                            .eq("tenant_id", tenant_id)\
+                            .eq("user_id", user_id)\
+                            .eq("property_id", property_id)\
+                            .execute()
+                        # Clear PENDING tasks for this property
+                        clear_res = _clear_tasks_on_unassign(db, tenant_id, user_id, property_id)
+                        total_tasks_cleared += clear_res.get("cleared", 0)
+                        cleared_properties.append(property_id)
+                    except Exception as _clear_exc:
+                        logger.error(
+                            "deactivation: failed to clear assignment/tasks for user=%s "
+                            "property=%s: %s. Manual cleanup required.",
+                            user_id, property_id, _clear_exc,
+                        )
+                        failed_clears.append(property_id)
+
+                if cleared_properties:
+                    logger.info(
+                        "deactivation: auto-cleared %d assignments and %d PENDING tasks for user=%s",
+                        len(cleared_properties), total_tasks_cleared, user_id,
+                    )
+
+                deactivation_summary = {
+                    "active_property_assignments": len(active_assignments),
+                    "pending_tasks_at_deactivation": pending_count,
+                    "cleared_assignments": len(cleared_properties),
+                    "total_tasks_cleared": total_tasks_cleared,
+                    "failed_clears": failed_clears,
+                    "residual_warning": (
+                        f"Could not auto-clear {len(failed_clears)} property assignment(s): "
+                        f"{failed_clears}. Manual admin cleanup required."
+                    ) if failed_clears else None,
+                    "jwt_note": (
+                        "Existing JWTs remain valid until TTL expiry. "
+                        "Worker can no longer log in but in-flight sessions are not revoked."
+                    ),
+                }
+            except Exception as _deact_exc:
+                logger.warning("deactivation summary/cleanup failed for %s: %s", user_id, _deact_exc)
+
+        response_body: dict = {
             "status":     "updated",
             "tenant_id":  tenant_id,
             "user_id":    user_id,
             "updated":    list(updates.keys()),
             "updated_at": now,
-        })
+        }
+        if deactivation_summary is not None:
+            response_body["deactivation_summary"] = deactivation_summary
+
+        return JSONResponse(status_code=200, content=response_body)
     except Exception as exc:
         logger.exception("PATCH /permissions/%s error: %s", user_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)

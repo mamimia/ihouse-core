@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1053 — Guest Portal Thread View (BUILT + SURFACED — manual proof pending)
+Phase 1059 — Next (TBD)
 
 ## Last Closed Phase
-Phase 1052 — Host Reply Path (PROVEN — 2026-04-03)
+Phase 1058 — Operational Audit Closure: PKA-Bridge Group B + Group C + Backend Authorization Hardening (CLOSED — 2026-04-04)
 
 ## System Status
 
@@ -384,7 +384,7 @@ Tier 3 — External (one of:)
 |------|------|
 | `src/api/webhooks.py` | POST /webhooks/{provider} — OTA ingestion |
 | `src/api/financial_router.py` | GET /financial/{booking_id} |
-| `src/api/auth.py` | JWT verification |
+| `src/api/auth.py` | JWT verification + `admin_only_auth` dependency (Phase 1058) |
 | `src/api/rate_limiter.py` | Per-tenant rate limiting |
 | `src/api/health.py` | Dependency health checks |
 | `src/schemas/responses.py` | OpenAPI Pydantic response models |
@@ -488,11 +488,9 @@ Phase 345 — see `docs/core/planning/` for next cycle.
 > **Anti-Gravity workspace freeze root cause (2026-04-02):** `.git/config` contained `extensions.worktreeconfig=true` which caused Anti-Gravity to become silent/unresponsive inside this repo. Fixed by: `git config --local --unset extensions.worktreeconfig`. **Do not reintroduce this setting.** If Anti-Gravity becomes silent again inside this repo, check `.git/config` first.
 
 
-## Tests
+**Tests: 8,138 passed, 52 failed (pre-existing mock stubs), 22 skipped. TypeScript 0 errors.** All 52 failures are pre-existing — wave7, wave5, wave3, task model/router/system, guest portal, reconciliation. No failures introduced by Phase 1058.
 
-**8,144 passed, 18 failed (pre-existing mock stubs — wave7 takeover + guest_owner_auth), 22 skipped. TypeScript 0 errors. 294 test files. 126 API router files. 63 frontend pages. 48 RLS-protected tables. 6 storage buckets. Phases 981–1040 closed. Active: Phase 1041.**
-
-> ⚠️ The 18 failures are pre-existing test mock mismatches in `test_wave7_manual_booking_takeover.py` (8), `test_guest_owner_auth.py` (1), `test_task_system_e2e.py` (1), `test_task_writer_contract.py` (1) — none introduced by Phase 1038/1038b. Tracked for repair in next test hardening pass.
+> ⚠️ The 52 failures are pre-existing mock mismatches. Tracked for repair in dedicated test hardening pass.
 
 
 ## Environment Variables (continued)
@@ -538,7 +536,9 @@ Staff reply proven end-to-end. `POST /manager/guest-messages/{booking_id}/reply`
 **Phase 1053 — Guest Portal Thread View (BUILT + SURFACED — 2026-04-03):**
 `ConversationThread` component in guest portal "Need Help?" section, above note form. Guest messages (right, blue) and host replies (left, subtle) rendered. Host labeled `portal_host_name` or "Your Host" — never internal identity. 30s poll + immediate re-fetch on guest send. Null path clean. Root bug fixed: `GET /{token}/messages` was using `.eq("booking_ref")` since Phase 670 — wrong column, always returned 0 rows. Fixed to `.eq("booking_id")`. Identity rule (`sender_id = user_id, NOT tenant_id`) documented in endpoint. Commit: `c2d2f55`. Manual portal proof pending.
 
-**OPEN ITEMS (carried forward):**
+**Phase 1058 — Operational Audit Closure: PKA-Bridge Group B + Group C + Backend Authorization Hardening (CLOSED — 2026-04-04):**
+PKA-Bridge audit Groups B and C fully closed. Primary systemic fix: `admin_only_auth` FastAPI dependency in `src/api/auth.py`. Enforces `role == 'admin'` at backend for all admin-namespace and DLQ endpoints (14 total). Any non-admin caller receives HTTP 403 `CAPABILITY_DENIED` with `required_role` and `caller_role` in error payload. Applied to all 3 DLQ endpoints + all 11 admin-namespace endpoints. Test contracts updated in `test_dlq_e2e.py`, `test_admin_audit_log_contract.py`, `test_admin_properties_e2e.py`. Audit result files corrected: Sonia/06 now labeled "Fully closed — both layers"; Marco/08 reclassified to "Real residual risk, partially mitigated" (photo bytes can be permanently lost). Session invalidation on deactivation confirmed as intentional future gap. INV-1058-ADMIN-AUTH locked.
+
 - 1053 manual portal proof — pending (deployed, awaiting verification)
 - `assigned_om_id` long-term ownership model — currently routing scaffold only; final ownership model deferred
 - Uploaded host photo renders in guest portal (end-to-end) — OPEN

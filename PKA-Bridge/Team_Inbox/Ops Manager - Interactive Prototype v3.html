@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ops Manager — Interactive Prototype · Domaniqo</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#EDEAE6;font-family:'Inter',sans-serif;color:#171A1F;min-height:100vh}
+button{cursor:pointer;font-family:inherit}
+
+/* PAGE */
+.page-wrap{display:flex;flex-direction:column;min-height:100vh}
+.page-hdr{background:#171A1F;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ph-left{display:flex;align-items:center;gap:12px}
+.ph-logo{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#fff;letter-spacing:-.01em}
+.ph-div{width:1px;height:14px;background:rgba(255,255,255,.15)}
+.ph-title{font-size:11.5px;color:rgba(255,255,255,.45);font-weight:500}
+.ph-badge{font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;letter-spacing:.09em;color:rgba(255,255,255,.35);background:rgba(255,255,255,.07);padding:3px 9px;border-radius:3px;text-transform:uppercase}
+.ph-count{font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:rgba(255,255,255,.25)}
+.main-layout{display:flex;flex:1;min-height:0}
+
+/* SCREEN MAP */
+.screen-map{width:196px;flex-shrink:0;background:#fff;border-right:1px solid #E8EAED;overflow-y:auto;padding:6px 0 24px}
+.sm-section{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;color:#C4C9D4;text-transform:uppercase;letter-spacing:.1em;padding:12px 14px 3px;margin-top:2px}
+.sm-item{display:flex;align-items:center;gap:7px;padding:5px 14px;cursor:pointer;transition:background .08s}
+.sm-item:hover{background:#F8F9FA}
+.sm-item.sm-active{background:#F0F1FF}
+.sm-item.smc{padding-left:24px}
+.sm-item.smcc{padding-left:34px}
+.smd{width:6px;height:6px;border-radius:50%;background:#D1D5DB;flex-shrink:0}
+.smd-r{background:#EF4444}.smd-a{background:#F59E0B}.smd-g{background:#4ADE80}.smd-b{background:#3B82F6}
+.sm-item.sm-active .smd{background:#4F46E5}
+.sm-lbl{font-family:'Manrope',sans-serif;font-size:10px;font-weight:600;color:#374151;line-height:1.3}
+.sm-item.sm-active .sm-lbl{color:#4338CA;font-weight:700}
+
+/* PROTO CENTER */
+.proto-center{flex:1;display:flex;flex-direction:column;align-items:center;padding:18px 0 36px;overflow:auto}
+.breadcrumb{font-family:'Manrope',sans-serif;font-size:10px;font-weight:600;color:#9CA3AF;margin-bottom:10px}
+.breadcrumb span{color:#374151}
+
+.phone-chrome{width:300px;height:622px;border-radius:36px;background:#F9F7F4;box-shadow:0 0 0 1.5px #C8CDD5,0 2px 0 3px #B0B7C1,0 16px 52px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.6);overflow:hidden;display:flex;flex-direction:column;flex-shrink:0}
+
+.screen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.screen.s-act{display:flex}
+
+/* DESIGN NOTES */
+.design-notes{width:236px;flex-shrink:0;padding:18px 14px;overflow-y:auto}
+.dn-id{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#C4C9D4;margin-bottom:3px}
+.dn-title{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#171A1F;margin-bottom:10px;line-height:1.3}
+.dn-card{background:#fff;border-radius:8px;border:1px solid #E5E7EB;padding:10px 12px;margin-bottom:8px}
+.dn-cl{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px}
+.dn-cb{font-size:11px;color:#4B5563;line-height:1.65}
+.dn-cb strong{color:#171A1F;font-weight:600}
+.dn-flow{display:flex;gap:7px;padding:4px 0;border-bottom:1px solid #F5F6F7;align-items:flex-start}
+.dn-flow:last-child{border-bottom:none}
+.dn-fa{font-size:9px;color:#D1D5DB;flex-shrink:0;margin-top:2px}
+.dn-ft{font-size:10px;color:#6B7280;line-height:1.5}
+.dn-ft strong{color:#374151;font-weight:600}
+
+/* PRINCIPLE STRIP */
+.pstrip{background:#171A1F;padding:11px 24px;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.06)}
+.ps-l{font-family:'Manrope',sans-serif;font-size:7px;font-weight:800;color:rgba(255,255,255,.22);text-transform:uppercase;letter-spacing:.09em;margin-bottom:3px}
+.ps-v{font-size:9.5px;color:rgba(255,255,255,.45);line-height:1.55}
+.ps-v strong{color:rgba(255,255,255,.7)}
+
+/* ============================
+   PHONE COMPONENTS
+   ============================ */
+
+/* Status bar */
+.sb{height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0}
+.sb-w{background:#fff}.sb-d{background:#171A1F}.sb-r{background:#DC2626}.sb-am{background:#92400E}.sb-gr{background:#15803D}
+.sb-t{font-family:'Manrope',sans-serif;font-size:11px;font-weight:800}
+.sb-w .sb-t{color:#171A1F}.sb-d .sb-t,.sb-r .sb-t,.sb-am .sb-t,.sb-gr .sb-t{color:#fff}
+.sb-i{display:flex;align-items:center;gap:4px}
+
+/* App header */
+.aph{height:50px;background:#171A1F;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0}
+.aph-t{font-family:'Manrope',sans-serif;font-size:12.5px;font-weight:800;color:#fff;letter-spacing:-.01em}
+.aph-s{font-size:9px;color:rgba(255,255,255,.38);margin-top:1px}
+.aph-av{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+
+/* Back header */
+.bk-hdr{height:42px;display:flex;align-items:center;padding:0 13px;gap:7px;flex-shrink:0;cursor:pointer}
+.bkh-d{background:#171A1F;border-bottom:1px solid rgba(255,255,255,.07)}
+.bkh-r{background:#B91C1C}.bkh-am{background:#7C2D12}.bkh-gr{background:#14532D}
+.bkh-back{display:flex;align-items:center;gap:4px;font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em}
+.bkh-title{flex:1;text-align:right;font-family:'Manrope',sans-serif;font-size:11px;font-weight:800;color:#fff}
+
+/* Sub header (dark) */
+.sub-hdr{background:#0F1115;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.sh-title{font-family:'Manrope',sans-serif;font-size:12px;font-weight:800;color:#fff}
+.sh-sub{font-size:9px;color:rgba(255,255,255,.38);margin-top:1px}
+
+/* KPI strip */
+.kpi-strip{background:#0F1115;padding:8px 14px;display:flex;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)}
+.kpi{flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.07)}
+.kpi:last-child{border-right:none}
+.kv{font-family:'Manrope',sans-serif;font-size:16px;font-weight:800;color:#fff;line-height:1.1}
+.kv-r{color:#EF4444}.kv-a{color:#F59E0B}.kv-g{color:#4ADE80}
+.kl{font-size:7.5px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;font-family:'Manrope',sans-serif;font-weight:700}
+
+/* Scroll */
+.scroll{flex:1;overflow-y:auto;padding:10px 10px 6px;display:flex;flex-direction:column;gap:6px}
+.scroll::-webkit-scrollbar{width:0}
+
+/* Bottom nav (shared, outside screens) */
+.bnav{height:56px;background:#171A1F;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:stretch;flex-shrink:0}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;position:relative}
+.bni svg{width:17px;height:17px;stroke:rgba(255,255,255,.28);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.bni.bn-act svg{stroke:#fff}
+.bni-l{font-family:'Manrope',sans-serif;font-size:8px;font-weight:600;color:rgba(255,255,255,.28)}
+.bni.bn-act .bni-l{color:#fff}
+.bn-bdg::after{content:'';position:absolute;top:8px;right:16px;width:7px;height:7px;border-radius:50%;background:#EF4444;border:1.5px solid #171A1F}
+
+/* Section headers */
+.sec{display:flex;align-items:center;justify-content:space-between;padding:2px 1px 4px;flex-shrink:0}
+.sec-t{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em}
+.sec-c{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:1px 6px;border-radius:5px;background:#F3F4F6;color:#9CA3AF}
+.sec-c-r{background:#FEE2E2;color:#DC2626}
+
+/* Animations */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes pulse-r{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}50%{box-shadow:0 0 0 4px rgba(220,38,38,.12)}}
+
+/* MORNING BRIEFING CARD */
+.bc{background:linear-gradient(135deg,#0F1115,#1A2030);border-radius:10px;border:1px solid rgba(255,255,255,.07);padding:10px 12px;flex-shrink:0;cursor:pointer}
+.bc-date{font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-bottom:6px}
+.bc-hr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.bc-bar{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.bc-fill{height:100%;background:linear-gradient(90deg,#4ADE80,#34D399);border-radius:2px}
+.bc-pct{font-family:'Manrope',sans-serif;font-size:11px;font-weight:800;color:#4ADE80;flex-shrink:0}
+.bc-sum{font-size:10px;color:rgba(255,255,255,.5);margin-bottom:5px}
+.bc-sum strong{color:rgba(255,255,255,.8);font-weight:600}
+.bc-al{display:flex;align-items:center;gap:5px;margin-bottom:7px}
+.bc-dot{width:6px;height:6px;border-radius:50%;background:#EF4444;flex-shrink:0;animation:blink .8s ease-in-out infinite}
+.bc-txt{font-family:'Manrope',sans-serif;font-size:9.5px;font-weight:700;color:#FCA5A5}
+.bc-link{font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;color:rgba(255,255,255,.3)}
+
+/* ALERT CARDS */
+.ac{border-radius:10px;border:1.5px solid;border-left-width:3px;padding:8px 10px 8px 11px;cursor:pointer;flex-shrink:0}
+.ac-r{background:#FFF4F4;border-color:#FCA5A5;border-left-color:#DC2626;animation:pulse-r 1.2s ease-in-out infinite}
+.ac-a{background:#FFFCF0;border-color:#FDE68A;border-left-color:#F59E0B}
+.ac-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.ac-badge{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.06em}
+.acb-r{background:#FEE2E2;color:#DC2626}.acb-a{background:#FEF3C7;color:#92400E}
+.ac-time{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700}
+.act-r{color:#DC2626;animation:blink 1s ease-in-out infinite}.act-a{color:#92400E}
+.ac-prop{font-family:'Manrope',sans-serif;font-size:12px;font-weight:800;color:#171A1F;margin-bottom:1px}
+.ac-sub{font-size:9px;color:#6B7280;margin-bottom:6px}
+.ac-cta{width:100%;height:26px;border:none;border-radius:6px;font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;color:#fff}
+.ac-cta-r{background:#DC2626}.ac-cta-a{background:#F59E0B;color:#fff}
+
+/* STREAM CARDS (Hub) */
+.sc{background:#fff;border-radius:10px;border:1px solid #E5E7EB;overflow:hidden;cursor:pointer;flex-shrink:0}
+.sc-r{border-color:#FCA5A5}.sc-a{border-color:#FDE68A}
+.sc-top{padding:9px 11px;display:flex;align-items:center;justify-content:space-between}
+.sc-top-r{background:#FFF8F8}.sc-top-a{background:#FFFDF5}
+.sc-left{display:flex;align-items:center;gap:8px}
+.sc-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sc-icon svg{width:13px;height:13px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sc-name{font-family:'Manrope',sans-serif;font-size:11.5px;font-weight:800;color:#171A1F}
+.sc-wk{font-size:8.5px;color:#9CA3AF;margin-top:1px}
+.sc-right{display:flex;align-items:center;gap:5px}
+.sc-pills{display:flex;gap:3px}
+.scp{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:700;padding:2px 6px;border-radius:5px}
+.scp-g{background:#E6EEE7;color:#334036}.scp-a{background:#FEF3C7;color:#92400E}
+.scp-r{background:#FEE2E2;color:#DC2626}.scp-n{background:#F3F4F6;color:#9CA3AF}
+.sc-arr{color:#D1D5DB;font-size:13px}
+.sc-foot{padding:5px 11px;background:#FAFAFA;border-top:1px solid #F0EDE8;display:flex;align-items:center;justify-content:space-between}
+.sc-fl{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;color:#9CA3AF}
+.sc-int{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700}
+.sci-c{color:#B56E45}.sci-r{color:#DC2626;text-decoration:underline}
+
+/* ALERT DETAIL HEADER */
+.adh{padding:10px 13px 11px;flex-shrink:0}
+.adh-r{background:#DC2626}.adh-a{background:#92400E}
+.adh-bk{display:flex;align-items:center;gap:5px;font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;cursor:pointer}
+.adh-live{display:inline-flex;align-items:center;gap:4px;background:rgba(0,0,0,.2);border-radius:4px;padding:2px 7px;font-family:'Manrope',sans-serif;font-size:7px;font-weight:800;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.adh-ldot{width:5px;height:5px;border-radius:50%;background:#fff;animation:blink .7s ease-in-out infinite;flex-shrink:0}
+.adh-title{font-family:'Manrope',sans-serif;font-size:14px;font-weight:800;color:#fff;margin-bottom:2px}
+.adh-sub{font-size:9px;color:rgba(255,255,255,.7);margin-bottom:6px}
+.adh-impact{display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.18);border-radius:5px;padding:4px 9px;font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;color:rgba(255,255,255,.9)}
+
+/* DETAIL BLOCKS */
+.db{background:#fff;border-radius:9px;border:1px solid #EEEFF2;overflow:hidden;flex-shrink:0}
+.db-hd{padding:6px 12px;background:#FAFAFA;border-bottom:1px solid #F3F4F5;font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.1em}
+.db-r{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #F7F8F9}
+.db-r:last-child{border-bottom:none}
+.db-k{font-size:9.5px;color:#6B7280}
+.db-v{font-size:10px;font-weight:600;color:#374151;font-family:'Manrope',sans-serif}
+.dv-r{color:#DC2626}.dv-a{color:#92400E}.dv-c{color:#B56E45}.dv-g{color:#15803D}
+
+/* INTERVENTION BUTTONS */
+.int-lbl{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.1em;padding:2px 1px 5px;flex-shrink:0}
+.int-list{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.io{height:35px;border-radius:8px;border:none;font-family:'Manrope',sans-serif;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px}
+.io-dk{background:#171A1F;color:#fff}.io-bl{background:#1D4ED8;color:#fff}
+.io-am{background:#F59E0B;color:#fff}.io-gn{background:#16A34A;color:#fff}
+.io-gh{background:transparent;border:1.5px solid #E5E7EB;color:#374151}
+.io-dn{background:transparent;border:1.5px solid #FCA5A5;color:#DC2626}
+
+/* STREAM DETAIL HEADER */
+.sdh{background:#171A1F;padding:9px 13px;flex-shrink:0}
+.sdh-bk{display:flex;align-items:center;gap:5px;font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:3px;cursor:pointer}
+.sdh-title{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#fff}
+.sdh-meta{font-size:9px;color:rgba(255,255,255,.38);margin-top:2px}
+
+.sstrip{background:#0F1115;padding:6px 13px;display:flex;gap:4px;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)}
+.sspill{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;padding:3px 8px;border-radius:5px}
+.ssp-g{background:rgba(74,222,128,.15);color:#4ADE80}
+.ssp-a{background:rgba(245,158,11,.15);color:#F59E0B}
+.ssp-r{background:rgba(239,68,68,.15);color:#EF4444}
+.ssp-n{background:rgba(255,255,255,.07);color:rgba(255,255,255,.4)}
+
+.fbar{background:#fff;border-bottom:1.5px solid #F0EDE8;padding:0 10px;display:flex;flex-shrink:0}
+.ft{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;padding:7px 9px;color:#9CA3AF;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1.5px}
+.ft.ft-a{color:#171A1F;border-bottom-color:#171A1F}
+
+/* STREAM TASK CARDS */
+.stc{background:#fff;border-radius:9px;border:1px solid #EEEFF2;padding:8px 10px 8px 12px;border-left:2.5px solid #D1D5DB;cursor:pointer;flex-shrink:0}
+.stc-r{border-left-color:#DC2626;background:#FFF4F4}
+.stc-a{border-left-color:#F59E0B;background:#FFFCF0}
+.stc-dn{border-left-color:#334036;background:#F9FBF9}
+.stc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.stc-p{font-family:'Manrope',sans-serif;font-size:11.5px;font-weight:800;color:#171A1F}
+.stc-pill{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:700;padding:2px 6px;border-radius:4px}
+.stp-r{background:#DC2626;color:#fff}.stp-a{background:#FEF3C7;color:#92400E}
+.stp-n{background:#F3F4F6;color:#9CA3AF}.stp-dn{background:#E6EEE7;color:#334036}
+.stp-b{background:#EFF6FF;color:#1D4ED8}
+.stc-meta{font-size:9px;color:#9CA3AF;display:flex;gap:7px;align-items:center;margin-top:2px}
+.wchip{display:flex;align-items:center;gap:3px;background:#F3F4F6;padding:1px 5px;border-radius:4px}
+.wcd{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.wcd-g{background:#4ADE80}.wcd-a{background:#F59E0B}.wcd-r{background:#EF4444}.wcd-n{background:#D1D5DB}
+.wcn{font-family:'Manrope',sans-serif;font-size:8px;font-weight:600;color:#6B7280}
+
+/* MANAGER RECOMMENDATION CARD */
+.rec{background:#FFFCF0;border:1.5px solid #FDE68A;border-radius:9px;padding:9px 11px;flex-shrink:0}
+.rec-t{font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:#92400E;margin-bottom:3px}
+.rec-b{font-size:9px;color:#6B7280;line-height:1.6;margin-bottom:7px}
+.rec-btn{width:100%;height:28px;background:#171A1F;border:none;border-radius:6px;font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;color:#fff;cursor:pointer}
+
+/* TEAM CARDS */
+.tcard{background:#fff;border-radius:10px;border:1px solid #EEEFF2;padding:8px 10px;display:flex;align-items:flex-start;gap:8px;cursor:pointer;flex-shrink:0}
+.tc-al{background:#FFF8F8;border-color:#FCA5A5;border-left:3px solid #DC2626}
+.tc-wn{background:#FFFDF5;border-color:#FDE68A;border-left:3px solid #F59E0B}
+.tc-ok{border-left:3px solid transparent}
+.tc-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:10px;font-weight:800;color:#fff;flex-shrink:0;position:relative}
+.tc-ring{position:absolute;inset:-2px;border-radius:50%;border:2px solid transparent}
+.ring-g{border-color:#4ADE80}.ring-a{border-color:#F59E0B}.ring-r{border-color:#EF4444}
+.tc-inf{flex:1;min-width:0}
+.tc-nm{font-family:'Manrope',sans-serif;font-size:11px;font-weight:800;color:#171A1F}
+.tc-rl{font-size:8.5px;color:#9CA3AF;margin-top:1px}
+.tc-cu{font-size:9px;color:#6B7280;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-chips{display:flex;gap:4px;margin-top:5px}
+.tchip{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:2px 8px;border-radius:4px;border:1.5px solid;cursor:pointer}
+.tch-bl{border-color:#1D4ED8;color:#1D4ED8;background:#EFF6FF}
+.tch-n{border-color:#D1D5DB;color:#374151;background:#fff}
+.tch-r{border-color:#FCA5A5;color:#DC2626;background:#FFF4F4}
+.tc-rt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.tc-ld{font-family:'Manrope',sans-serif;font-size:14px;font-weight:800;color:#171A1F;line-height:1}
+.tc-ll{font-size:7.5px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em}
+.tc-tag{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:700;padding:1px 5px;border-radius:3px;margin-top:2px}
+.tct-r{background:#FEE2E2;color:#DC2626}.tct-a{background:#FEF3C7;color:#92400E}.tct-g{background:#DCFCE7;color:#166534}
+
+/* WORKER DETAIL HEADER */
+.wdh{background:#171A1F;padding:12px 13px;flex-shrink:0;display:flex;align-items:center;gap:11px}
+.wdh-av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;border:2px solid}
+.wdh-inf{flex:1}
+.wdh-nm{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#fff}
+.wdh-sub{font-size:9px;color:rgba(255,255,255,.4);margin-top:2px}
+.wdh-bdg{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;padding:3px 8px;border-radius:5px}
+.wdb-r{background:rgba(239,68,68,.18);color:#FCA5A5}
+.wdb-a{background:rgba(245,158,11,.18);color:#FCD34D}
+.wdb-g{background:rgba(74,222,128,.18);color:#4ADE80}
+
+/* LOAD BAR */
+.lb-wrap{background:#0F1115;padding:7px 13px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)}
+.lb-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.lb-lbl{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em}
+.lb-val{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;color:rgba(255,255,255,.55)}
+.lb{height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.lb-fill{height:100%;border-radius:2px}
+.lbf-r{background:#EF4444}.lbf-a{background:#F59E0B}.lbf-g{background:#4ADE80}
+
+/* BOOKING CARDS */
+.bkc{background:#fff;border-radius:10px;border:1px solid #E5E7EB;overflow:hidden;cursor:pointer;flex-shrink:0}
+.bkc-ex{border-color:#FCA5A5;border-left:3px solid #DC2626;background:#FFF8F8}
+.bkc-rk{border-color:#FDE68A;border-left:3px solid #F59E0B;background:#FFFDF5}
+.bkc-ok{border-left:3px solid #4ADE80}
+.bkc-bl{border-left:3px solid #3B82F6}
+.bk-top{padding:8px 11px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #F5F6F7}
+.bk-pr{font-family:'Manrope',sans-serif;font-size:11.5px;font-weight:800;color:#171A1F}
+.bk-bdg{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em}
+.bkb-act{background:#DCFCE7;color:#166534}.bkb-ex{background:#FEE2E2;color:#DC2626}
+.bkb-rk{background:#FEF3C7;color:#92400E}.bkb-lt{background:#EFF6FF;color:#1D4ED8}.bkb-ar{background:#F3E8FF;color:#7C3AED}
+.bk-body{padding:7px 11px}
+.bk-rw{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.bk-rw:last-child{margin-bottom:0}
+.bk-k{font-size:9px;color:#9CA3AF}
+.bk-v{font-size:9.5px;font-weight:600;color:#374151;font-family:'Manrope',sans-serif}
+.bkv-r{color:#DC2626}.bkv-a{color:#92400E}.bkv-g{color:#15803D}.bkv-b{color:#1D4ED8}
+.bk-ft{padding:5px 11px;background:#FAFAFA;border-top:1px solid #F0EDE8;display:flex;align-items:center;justify-content:space-between}
+.bk-lk{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;color:#9CA3AF}
+.bk-ac{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;color:#B56E45}
+
+/* TURNOVER CHAIN */
+.chain{display:flex;align-items:flex-start;padding:0 1px;flex-shrink:0}
+.cstep{flex:1;display:flex;flex-direction:column;align-items:center}
+.csi{background:#fff;border-radius:8px;border:1.5px solid #E5E7EB;padding:5px 3px;text-align:center;width:100%}
+.csi-dn{border-color:#334036;background:#F3FAF3}
+.csi-ac{border-color:#F59E0B;background:#FFFDF0}
+.csi-bk{border-color:#DC2626;background:#FFF5F5}
+.csi-pd{border-color:#E5E7EB}
+.cs-lbl{font-family:'Manrope',sans-serif;font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF}
+.cs-tm{font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:#374151;margin-top:1px}
+.cs-st{font-size:7px;font-weight:700;margin-top:1px}
+.cst-dn{color:#15803D}.cst-ac{color:#92400E}.cst-bk{color:#DC2626}.cst-pd{color:#9CA3AF}
+.carr{display:flex;align-items:flex-start;padding-top:12px;color:#D1D5DB;font-size:12px;flex-shrink:0}
+
+/* SUCCESS */
+.suc-hdr{background:#16A34A;padding:14px 13px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.suc-icon{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
+.suc-title{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#fff}
+.suc-sub{font-size:9.5px;color:rgba(255,255,255,.7);text-align:center;line-height:1.5}
+
+/* COCKPIT */
+.ckp-hdr{background:linear-gradient(160deg,#0A0E14,#131A24);padding:11px 13px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.07)}
+.ckp-ey{font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
+.ckp-dt{font-family:'Manrope',sans-serif;font-size:14px;font-weight:800;color:#fff}
+.ckp-hr{display:flex;align-items:center;gap:7px;margin-top:6px}
+.ckp-bar{flex:1;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.ckp-fill{height:100%;border-radius:2px}
+.ckp-pct{font-family:'Manrope',sans-serif;font-size:12px;font-weight:800;flex-shrink:0}
+.ckp-scroll{flex:1;overflow-y:auto;background:#0A0E14;padding:9px 10px;display:flex;flex-direction:column;gap:5px}
+.ckp-scroll::-webkit-scrollbar{width:0}
+.ck-row{display:flex;gap:5px}
+.ck-kpi{flex:1;background:rgba(255,255,255,.05);border-radius:7px;padding:7px 8px;border:1px solid rgba(255,255,255,.07)}
+.ck-kv{font-family:'Manrope',sans-serif;font-size:16px;font-weight:800;color:#fff;line-height:1}
+.ck-kl{font-size:7.5px;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.06em;margin-top:3px;font-family:'Manrope',sans-serif;font-weight:700}
+.ck-kv-r{color:#EF4444}.ck-kv-a{color:#F59E0B}.ck-kv-g{color:#4ADE80}
+.ck-sec{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;color:rgba(255,255,255,.22);text-transform:uppercase;letter-spacing:.1em;margin-top:3px;margin-bottom:1px}
+.ck-sr{background:rgba(255,255,255,.05);border-radius:8px;border:1px solid rgba(255,255,255,.07);padding:7px 10px;display:flex;align-items:center;justify-content:space-between}
+.ck-sn{font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:700;color:rgba(255,255,255,.72)}
+.ck-sm{font-size:8px;color:rgba(255,255,255,.32);margin-top:1px}
+.ck-pills{display:flex;gap:3px}
+.ckpil{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px}
+.ckp-g{background:rgba(74,222,128,.15);color:#4ADE80}
+.ckp-a{background:rgba(245,158,11,.15);color:#F59E0B}
+.ckp-r{background:rgba(239,68,68,.15);color:#EF4444}
+.ck-alert{display:flex;gap:8px;align-items:flex-start;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:7px 10px}
+.ck-adot{width:6px;height:6px;border-radius:50%;background:#EF4444;flex-shrink:0;margin-top:3px;animation:blink .8s ease-in-out infinite}
+.ck-at{font-size:9.5px;color:rgba(255,255,255,.58);line-height:1.55}
+.ck-at strong{color:#FCA5A5;font-weight:700}
+.ck-wr{background:rgba(255,255,255,.04);border-radius:7px;border:1px solid rgba(255,255,255,.06);padding:6px 10px;display:flex;align-items:center;justify-content:space-between}
+.ck-wn{font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:rgba(255,255,255,.68)}
+.ck-wt{font-size:8px;color:rgba(255,255,255,.32);margin-top:1px}
+.ck-ws{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px}
+
+/* STREAM SELECTOR */
+.ssel{background:#0F1115;padding:7px 10px;display:flex;gap:5px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)}
+.sst{font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.42);cursor:pointer;flex-shrink:0;border:1.5px solid transparent}
+.sst.sst-act{background:#fff;color:#171A1F}
+.sst.sst-al{border-color:rgba(239,68,68,.5);color:#FCA5A5;background:rgba(239,68,68,.1)}
+
+/* WORKER PICK */
+.wpc{background:#fff;border-radius:9px;border:1px solid #E5E7EB;padding:8px 11px;display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0;transition:border-color .1s}
+.wpc:hover{border-color:#6366F1;background:#FAFAFF}
+.wpc-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.wpc-inf{flex:1}
+.wpc-nm{font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;color:#171A1F}
+.wpc-dt{font-size:8.5px;color:#9CA3AF;margin-top:1px}
+.wpc-rt{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.wptag{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px}
+.wpt-av{background:#DCFCE7;color:#166534}.wpt-bz{background:#F3F4F6;color:#9CA3AF}
+.wpc-eta{font-size:8px;color:#9CA3AF}
+
+.una-lbl{font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;color:#C4C9D4;text-transform:uppercase;letter-spacing:.09em;padding:2px 1px;flex-shrink:0}
+.una-card{background:#FAFAFA;border-radius:9px;border:1px solid #F3F4F6;padding:7px 11px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.una-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:9px;font-weight:800;color:#fff;background:#D1D5DB;flex-shrink:0}
+.una-nm{font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:#9CA3AF}
+.una-rs{font-size:8.5px;color:#C4C9D4;margin-top:1px}
+
+/* NOTE CARDS */
+.ncard{background:#F0F4FF;border:1px solid #C7D7FF;border-radius:9px;padding:9px 11px;flex-shrink:0}
+.nc-t{font-family:'Manrope',sans-serif;font-size:9.5px;font-weight:700;color:#1D4ED8;margin-bottom:3px}
+.nc-b{font-size:9px;color:#374151;line-height:1.6}
+
+.depcard{background:#FEF3C7;border:1px solid #FDE68A;border-radius:9px;padding:9px 11px;flex-shrink:0}
+.dep-t{font-family:'Manrope',sans-serif;font-size:9.5px;font-weight:700;color:#92400E;margin-bottom:3px}
+.dep-b{font-size:9px;color:#78350F;line-height:1.6}
+
+/* ESCALATION FORM */
+.esc-form{background:#fff;border-radius:9px;border:1px solid #E5E7EB;overflow:hidden;flex-shrink:0}
+.ef-r{padding:7px 12px;border-bottom:1px solid #F5F6F7;display:flex;align-items:center;justify-content:space-between}
+.ef-r:last-child{border-bottom:none}
+.ef-k{font-size:9.5px;color:#6B7280}
+.ef-v{font-size:10px;font-weight:600;color:#374151;font-family:'Manrope',sans-serif}
+.ef-vr{color:#DC2626}
+
+.meth-row{display:flex;gap:5px;flex-shrink:0}
+.meth{flex:1;height:34px;border-radius:7px;border:1.5px solid #E5E7EB;background:#fff;font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;color:#6B7280;cursor:pointer}
+.meth.mact{border-color:#1D4ED8;background:#EFF6FF;color:#1D4ED8}
+
+/* STAFFING GROUP HEADER */
+.sgh{display:flex;align-items:center;gap:6px;padding:3px 1px 5px;flex-shrink:0}
+.sgh-l{font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.09em}
+.sgh-c{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:1px 6px;border-radius:4px}
+
+/* TASK SELECT (redistribute) */
+.tsel{background:#fff;border-radius:9px;border:1.5px solid #E5E7EB;padding:8px 11px;display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0;transition:border-color .1s}
+.tsel:hover{border-color:#6366F1}
+.tsel-chk{width:18px;height:18px;border-radius:5px;border:1.5px solid #D1D5DB;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff;transition:all .1s}
+.tsel.sel-act .tsel-chk{background:#4F46E5;border-color:#4F46E5}
+.tsel-inf{flex:1}
+.tsel-prop{font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;color:#171A1F}
+.tsel-det{font-size:8.5px;color:#9CA3AF;margin-top:1px}
+.tsel-pill{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0}
+
+/* PROP DETAIL HEADER (non-alert) */
+.pdh{background:#171A1F;padding:9px 13px;flex-shrink:0}
+.pdh-bk{display:flex;align-items:center;gap:5px;font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;cursor:pointer}
+.pdh-row{display:flex;align-items:center;justify-content:space-between}
+.pdh-prop{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#fff}
+.pdh-bdg{font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;padding:3px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em}
+.pdb-r{background:rgba(239,68,68,.2);color:#FCA5A5}
+.pdb-a{background:rgba(245,158,11,.2);color:#FCD34D}
+.pdb-g{background:rgba(74,222,128,.2);color:#4ADE80}
+.pdb-b{background:rgba(59,130,246,.2);color:#93C5FD}
+.pdh-sub{font-size:9px;color:rgba(255,255,255,.38);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- ═══ PAGE HEADER ═══ -->
+<div class="page-hdr">
+  <div class="ph-left">
+    <div class="ph-logo">Domaniqo</div>
+    <div class="ph-div"></div>
+    <div class="ph-title">Ops Manager — Interactive Prototype</div>
+    <div class="ph-badge">v3 · April 2026</div>
+  </div>
+  <div class="ph-count">25 screens · fully clickable</div>
+</div>
+
+<div class="main-layout">
+
+<!-- ═══ SCREEN MAP ═══ -->
+<div class="screen-map">
+  <div class="sm-section">A · Hub</div>
+  <div class="sm-item sm-active" onclick="go('s01')" id="map-s01"><div class="smd" id="dot-s01"></div><span class="sm-lbl">Hub — Default</span></div>
+  <div class="sm-item smc" onclick="go('s02')" id="map-s02"><div class="smd" id="dot-s02"></div><span class="sm-lbl">Morning Briefing</span></div>
+
+  <div class="sm-section">B · Alert Detail</div>
+  <div class="sm-item" onclick="go('s03')" id="map-s03"><div class="smd smd-r" id="dot-s03"></div><span class="sm-lbl">Alert: KPG Check-Out</span></div>
+  <div class="sm-item smc" onclick="go('s04')" id="map-s04"><div class="smd" id="dot-s04"></div><span class="sm-lbl">Reassign: Pick Worker</span></div>
+  <div class="sm-item smcc" onclick="go('s05')" id="map-s05"><div class="smd smd-g" id="dot-s05"></div><span class="sm-lbl">Reassign: Confirmed</span></div>
+  <div class="sm-item" onclick="go('s06')" id="map-s06"><div class="smd smd-a" id="dot-s06"></div><span class="sm-lbl">Alert: Emuna AC Risk</span></div>
+  <div class="sm-item smc" onclick="go('s07')" id="map-s07"><div class="smd" id="dot-s07"></div><span class="sm-lbl">Escalate to Owner</span></div>
+
+  <div class="sm-section">C · Stream</div>
+  <div class="sm-item" onclick="go('s08')" id="map-s08"><div class="smd" id="dot-s08"></div><span class="sm-lbl">Stream Tab Overview</span></div>
+  <div class="sm-item smc" onclick="go('s09')" id="map-s09"><div class="smd smd-r" id="dot-s09"></div><span class="sm-lbl">Check-Out Runway</span></div>
+  <div class="sm-item smcc" onclick="go('s10')" id="map-s10"><div class="smd" id="dot-s10"></div><span class="sm-lbl">Check-Out Item Detail</span></div>
+  <div class="sm-item smc" onclick="go('s11')" id="map-s11"><div class="smd smd-a" id="dot-s11"></div><span class="sm-lbl">Cleaner Runway</span></div>
+  <div class="sm-item smcc" onclick="go('s12')" id="map-s12"><div class="smd" id="dot-s12"></div><span class="sm-lbl">Cleaner Item Detail</span></div>
+  <div class="sm-item smcc" onclick="go('s13')" id="map-s13"><div class="smd" id="dot-s13"></div><span class="sm-lbl">Assign Support</span></div>
+  <div class="sm-item smc" onclick="go('s14')" id="map-s14"><div class="smd smd-a" id="dot-s14"></div><span class="sm-lbl">Maintenance Runway</span></div>
+  <div class="sm-item smcc" onclick="go('s15')" id="map-s15"><div class="smd" id="dot-s15"></div><span class="sm-lbl">Maintenance Item Detail</span></div>
+  <div class="sm-item smc" onclick="go('s16')" id="map-s16"><div class="smd smd-g" id="dot-s16"></div><span class="sm-lbl">Check-In Runway (calm)</span></div>
+
+  <div class="sm-section">D · Team</div>
+  <div class="sm-item" onclick="go('s17')" id="map-s17"><div class="smd smd-r" id="dot-s17"></div><span class="sm-lbl">Alerts Tab — Full List</span></div>
+  <div class="sm-item" onclick="go('s18')" id="map-s18"><div class="smd" id="dot-s18"></div><span class="sm-lbl">Team — Live Staffing</span></div>
+  <div class="sm-item smc" onclick="go('s19')" id="map-s19"><div class="smd smd-r" id="dot-s19"></div><span class="sm-lbl">Worker: Maria (overloaded)</span></div>
+  <div class="sm-item smcc" onclick="go('s20')" id="map-s20"><div class="smd" id="dot-s20"></div><span class="sm-lbl">Redistribute Work</span></div>
+  <div class="sm-item smc" onclick="go('s21')" id="map-s21"><div class="smd smd-a" id="dot-s21"></div><span class="sm-lbl">Worker: Noi (at capacity)</span></div>
+
+  <div class="sm-section">E · Bookings</div>
+  <div class="sm-item" onclick="go('s22')" id="map-s22"><div class="smd" id="dot-s22"></div><span class="sm-lbl">Bookings — Active Stays</span></div>
+  <div class="sm-item smc" onclick="go('s23')" id="map-s23"><div class="smd smd-r" id="dot-s23"></div><span class="sm-lbl">Booking: KPG Active Stay</span></div>
+  <div class="sm-item smc" onclick="go('s24')" id="map-s24"><div class="smd smd-a" id="dot-s24"></div><span class="sm-lbl">Booking: Early Check-Out</span></div>
+  <div class="sm-item smc" onclick="go('s25')" id="map-s25"><div class="smd smd-b" id="dot-s25"></div><span class="sm-lbl">Late Arrival Coordination</span></div>
+</div>
+
+<!-- ═══ PROTOTYPE CENTER ═══ -->
+<div class="proto-center">
+  <div class="breadcrumb" id="bcbar"><span id="bctext">Hub · Default State</span></div>
+
+  <div class="phone-chrome">
+
+    <!-- ════════════════════════════════
+         S01 — OPERATIONAL HUB
+         ════════════════════════════════ -->
+    <div class="screen s-act" id="s01">
+      <div class="sb sb-w"><span class="sb-t">9:41</span><div class="sb-i">
+        <svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="#171A1F" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="#171A1F" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="#171A1F" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="#171A1F" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="#D1D5DB" rx=".4"/></svg>
+        <svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="#171A1F" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="#171A1F"/><rect x="1" y="2" width="12" height="6" rx="1" fill="#171A1F"/></svg>
+      </div></div>
+      <div class="aph">
+        <div><div class="aph-t">Operations Hub</div><div class="aph-s">Pranee Thana · Thu 2 Apr · 09:41</div></div>
+        <div class="aph-av">PT</div>
+      </div>
+      <div class="kpi-strip">
+        <div class="kpi"><div class="kv">18</div><div class="kl">Total</div></div>
+        <div class="kpi"><div class="kv kv-g">9</div><div class="kl">Done</div></div>
+        <div class="kpi"><div class="kv kv-a">7</div><div class="kl">Active</div></div>
+        <div class="kpi"><div class="kv kv-r">2</div><div class="kl">Overdue</div></div>
+        <div class="kpi"><div class="kv">83%</div><div class="kl">On Time</div></div>
+      </div>
+      <div class="scroll">
+        <!-- Morning Briefing -->
+        <div class="bc" onclick="go('s02')">
+          <div class="bc-date">Thu 2 Apr · Morning Briefing</div>
+          <div class="bc-hr"><div class="bc-bar"><div class="bc-fill" style="width:83%"></div></div><span class="bc-pct">83%</span></div>
+          <div class="bc-sum">18 ops today · <strong>9 done, 7 active</strong></div>
+          <div class="bc-al"><div class="bc-dot"></div><span class="bc-txt">2 items need your attention now</span></div>
+          <div class="bc-link">Open full briefing →</div>
+        </div>
+        <!-- Needs Attention -->
+        <div class="sec"><span class="sec-t" style="color:#DC2626">Needs Attention</span><span class="sec-c sec-c-r">2</span></div>
+        <div class="ac ac-r" onclick="go('s03')">
+          <div class="ac-top"><span class="ac-badge acb-r">OVERDUE</span><span class="ac-time act-r">+23 MIN</span></div>
+          <div class="ac-prop">KPG Residence — Check-Out</div>
+          <div class="ac-sub">Maria Gonzalez · guest still in property</div>
+          <button class="ac-cta ac-cta-r">Intervene →</button>
+        </div>
+        <div class="ac ac-a" onclick="go('s06')">
+          <div class="ac-top"><span class="ac-badge acb-a">SLA RISK</span><span class="ac-time act-a">CHECK-IN 14:00</span></div>
+          <div class="ac-prop">Emuna Villa — AC Repair</div>
+          <div class="ac-sub">Aroon Suphan · not started · guest arrives in 4h</div>
+          <button class="ac-cta ac-cta-a">Review Maintenance →</button>
+        </div>
+        <!-- Operational Streams -->
+        <div class="sec" style="margin-top:2px"><span class="sec-t">Operational Streams</span><span class="sec-c">4</span></div>
+        <!-- Check-In: calm -->
+        <div class="sc" onclick="go('s16')">
+          <div class="sc-top">
+            <div class="sc-left">
+              <div class="sc-icon" style="background:#E6EEE7"><svg viewBox="0 0 24 24" stroke="#334036"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></div>
+              <div><div class="sc-name">Check-In</div><div class="sc-wk">2 workers · 4 today</div></div>
+            </div>
+            <div class="sc-right"><div class="sc-pills"><span class="scp scp-g">3 done</span><span class="scp scp-n">1 pending</span></div><span class="sc-arr">›</span></div>
+          </div>
+          <div class="sc-foot"><span class="sc-fl">View stream →</span></div>
+        </div>
+        <!-- Check-Out: alert -->
+        <div class="sc sc-r" onclick="go('s09')">
+          <div class="sc-top sc-top-r">
+            <div class="sc-left">
+              <div class="sc-icon" style="background:#FDECEA"><svg viewBox="0 0 24 24" stroke="#DC2626"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+              <div><div class="sc-name">Check-Out</div><div class="sc-wk">Maria G. · 3 today</div></div>
+            </div>
+            <div class="sc-right"><div class="sc-pills"><span class="scp scp-r">1 overdue</span><span class="scp scp-g">2 done</span></div><span class="sc-arr">›</span></div>
+          </div>
+          <div class="sc-foot"><span class="sc-fl">View stream →</span><span class="sc-int sci-r">Intervene</span></div>
+        </div>
+        <!-- Cleaner: amber -->
+        <div class="sc sc-a" onclick="go('s11')">
+          <div class="sc-top sc-top-a">
+            <div class="sc-left">
+              <div class="sc-icon" style="background:#FEF3C7"><svg viewBox="0 0 24 24" stroke="#92400E"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+              <div><div class="sc-name">Cleaner</div><div class="sc-wk">Noi C. · 4 cleans</div></div>
+            </div>
+            <div class="sc-right"><div class="sc-pills"><span class="scp scp-a">2 active</span><span class="scp scp-g">1 done</span></div><span class="sc-arr">›</span></div>
+          </div>
+          <div class="sc-foot"><span class="sc-fl">View stream →</span><span class="sc-int sci-c">Monitor</span></div>
+        </div>
+        <!-- Maintenance: amber/SLA risk -->
+        <div class="sc sc-a" onclick="go('s14')">
+          <div class="sc-top sc-top-a">
+            <div class="sc-left">
+              <div class="sc-icon" style="background:#F5EAE3"><svg viewBox="0 0 24 24" stroke="#B56E45"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+              <div><div class="sc-name">Maintenance</div><div class="sc-wk">Aroon S. · 3 jobs</div></div>
+            </div>
+            <div class="sc-right"><div class="sc-pills"><span class="scp scp-r">1 critical</span><span class="scp scp-a">2 high</span></div><span class="sc-arr">›</span></div>
+          </div>
+          <div class="sc-foot"><span class="sc-fl">View stream →</span><span class="sc-int sci-c">Review SLA</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S02 — MORNING BRIEFING COCKPIT
+         ════════════════════════════════ -->
+    <div class="screen" id="s02">
+      <div class="sb sb-d"><span class="sb-t">9:41</span><div class="sb-i">
+        <svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg>
+        <svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg>
+      </div></div>
+      <div class="bk-hdr bkh-d" onclick="go('s01')">
+        <div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Hub</div>
+        <div class="bkh-title">Morning Briefing</div>
+      </div>
+      <div class="ckp-hdr">
+        <div class="ckp-ey">Morning Briefing</div>
+        <div class="ckp-dt">Thursday, 2 April · 09:41</div>
+        <div class="ckp-hr">
+          <div class="ckp-bar"><div class="ckp-fill" style="width:83%;background:linear-gradient(90deg,#4ADE80,#34D399)"></div></div>
+          <span class="ckp-pct" style="color:#4ADE80">83%</span>
+        </div>
+      </div>
+      <div class="ckp-scroll">
+        <div class="ck-row">
+          <div class="ck-kpi"><div class="ck-kv">18</div><div class="ck-kl">Ops Today</div></div>
+          <div class="ck-kpi"><div class="ck-kv ck-kv-g">9</div><div class="ck-kl">Done</div></div>
+          <div class="ck-kpi"><div class="ck-kv ck-kv-a">7</div><div class="ck-kl">Active</div></div>
+          <div class="ck-kpi"><div class="ck-kv ck-kv-r">2</div><div class="ck-kl">Overdue</div></div>
+        </div>
+        <div class="ck-sec">Active Alerts</div>
+        <div class="ck-alert" style="cursor:pointer" onclick="go('s03')">
+          <div class="ck-adot"></div>
+          <div class="ck-at"><strong>KPG Residence Check-Out</strong> overdue +23 min · Maria G. unresponsive · chain at risk</div>
+        </div>
+        <div class="ck-alert" style="background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.15);cursor:pointer" onclick="go('s06')">
+          <div class="ck-adot" style="background:#F59E0B;animation:none"></div>
+          <div class="ck-at"><strong>Emuna Villa AC Repair</strong> not started · SLA risk · check-in 14:00 in 4h 15m</div>
+        </div>
+        <div class="ck-sec">Operational Streams</div>
+        <div class="ck-sr" style="cursor:pointer" onclick="go('s16')"><div><div class="ck-sn">Check-In</div><div class="ck-sm">2 workers · 4 today</div></div><div class="ck-pills"><span class="ckpil ckp-g">3 done</span><span class="ckpil" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.4);font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px">1 pending</span></div></div>
+        <div class="ck-sr" style="cursor:pointer;border-color:rgba(239,68,68,.2)" onclick="go('s09')"><div><div class="ck-sn">Check-Out</div><div class="ck-sm">Maria G. · 3 today</div></div><div class="ck-pills"><span class="ckpil ckp-r">1 overdue</span><span class="ckpil ckp-g">2 done</span></div></div>
+        <div class="ck-sr" style="cursor:pointer;border-color:rgba(245,158,11,.2)" onclick="go('s11')"><div><div class="ck-sn">Cleaner</div><div class="ck-sm">Noi C. · 4 cleans</div></div><div class="ck-pills"><span class="ckpil ckp-a">2 active</span><span class="ckpil ckp-g">1 done</span></div></div>
+        <div class="ck-sr" style="cursor:pointer;border-color:rgba(245,158,11,.2)" onclick="go('s14')"><div><div class="ck-sn">Maintenance</div><div class="ck-sm">Aroon S. · 3 jobs</div></div><div class="ck-pills"><span class="ckpil ckp-r">1 critical</span><span class="ckpil ckp-a">2 high</span></div></div>
+        <div class="ck-sec">Live Staffing</div>
+        <div class="ck-wr" style="cursor:pointer;border-color:rgba(239,68,68,.15)" onclick="go('s19')"><div><div class="ck-wn">Maria Gonzalez</div><div class="ck-wt">Check-Out · 4 tasks · 1 overdue</div></div><span class="ck-ws" style="background:rgba(239,68,68,.15);color:#FCA5A5">Overloaded</span></div>
+        <div class="ck-wr" style="cursor:pointer;border-color:rgba(245,158,11,.12)" onclick="go('s21')"><div><div class="ck-wn">Noi Chantra</div><div class="ck-wt">Cleaner · 4 cleans · 1 at risk</div></div><span class="ck-ws" style="background:rgba(245,158,11,.12);color:#FCD34D">At capacity</span></div>
+        <div class="ck-wr"><div><div class="ck-wn">Aroon Suphan</div><div class="ck-wt">Maintenance · 3 jobs · 1 critical</div></div><span class="ck-ws" style="background:rgba(245,158,11,.12);color:#FCD34D">Busy</span></div>
+        <div class="ck-sec">Today's Arrivals & Departures</div>
+        <div class="ck-wr" style="cursor:pointer" onclick="go('s23')"><div><div class="ck-wn">KPG Residence</div><div class="ck-wt">Departure 11:00 · overdue · check-in 14:00</div></div><span class="ckpil ckp-r">At risk</span></div>
+        <div class="ck-wr" style="cursor:pointer" onclick="go('s24')"><div><div class="ck-wn">Emuna Villa</div><div class="ck-wt">Early check-out request · guest departs today</div></div><span class="ckpil ckp-a">Exception</span></div>
+        <div class="ck-wr" style="cursor:pointer" onclick="go('s25')"><div><div class="ck-wn">Sunset Condo</div><div class="ck-wt">Late arrival confirmed · Pierre M. · 21:00</div></div><span class="ckpil ckp-g">Clean ✓</span></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S03 — ALERT DETAIL: KPG CHECK-OUT
+         ════════════════════════════════ -->
+    <div class="screen" id="s03">
+      <div class="sb sb-r"><span class="sb-t">9:43</span><div class="sb-i">
+        <svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg>
+        <svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg>
+      </div></div>
+      <div class="adh adh-r">
+        <div class="adh-bk" onclick="go('s01')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Hub · Check-Out</div>
+        <div class="adh-live"><div class="adh-ldot"></div> LIVE ALERT · OVERDUE</div>
+        <div class="adh-title">KPG Residence</div>
+        <div class="adh-sub">Check-Out · Scheduled 11:00 · +23 min overdue</div>
+        <div class="adh-impact"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg><span class="adh-impact-text">Guest still in property · Next check-in 14:00</span></div>
+      </div>
+      <div class="scroll" style="gap:7px">
+        <div class="db">
+          <div class="db-hd">Situation</div>
+          <div class="db-r"><span class="db-k">Property</span><span class="db-v">KPG Residence</span></div>
+          <div class="db-r"><span class="db-k">Assigned to</span><span class="db-v">Maria Gonzalez</span></div>
+          <div class="db-r"><span class="db-k">Task started</span><span class="db-v dv-r">Not started</span></div>
+          <div class="db-r"><span class="db-k">Overdue by</span><span class="db-v dv-r">+23 minutes</span></div>
+          <div class="db-r"><span class="db-k">Clean window</span><span class="db-v dv-a">Closes in 4h 15m</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Worker Status</div>
+          <div class="db-r"><span class="db-k">Maria Gonzalez</span><div style="display:flex;align-items:center;gap:5px"><div style="width:7px;height:7px;border-radius:50%;background:#F59E0B"></div><span class="db-v dv-c">Busy — active task</span></div></div>
+          <div class="db-r"><span class="db-k">Currently at</span><span class="db-v">Emuna Villa · Check-Out</span></div>
+          <div class="db-r"><span class="db-k">Load today</span><span class="db-v dv-r">4 tasks · 1 overdue</span></div>
+        </div>
+        <!-- Turnover chain -->
+        <div class="db">
+          <div class="db-hd">Turnover Chain · KPG Residence</div>
+          <div style="padding:9px 10px">
+            <div class="chain">
+              <div class="cstep"><div class="csi csi-bk"><div class="cs-lbl">Check-Out</div><div class="cs-tm">11:00</div><div class="cs-st cst-bk">Blocked</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Clean</div><div class="cs-tm">11:30</div><div class="cs-st cst-pd">Pending</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Check-In</div><div class="cs-tm">14:00</div><div class="cs-st cst-pd">Pending</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="int-lbl">Intervention Options</div>
+        <div class="int-list">
+          <button class="io io-dk" onclick="go('s04')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> Reassign to available worker</button>
+          <button class="io io-bl"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.62 4.83 2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72 12 12 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l1.27-.95a2 2 0 0 1 2.11-.45 12 12 0 0 0 2.81.7A2 2 0 0 1 22 17.65z"/></svg> Call Maria Gonzalez</button>
+          <button class="io io-gh"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Send message to Maria</button>
+          <button class="io io-dn" onclick="go('s07')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg> Escalate to property owner</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S04 — REASSIGN: PICK WORKER
+         ════════════════════════════════ -->
+    <div class="screen" id="s04">
+      <div class="sb sb-d"><span class="sb-t">9:44</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-d" onclick="go('s03')">
+        <div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Alert · KPG</div>
+        <div class="bkh-title">Reassign Task</div>
+      </div>
+      <div class="sub-hdr"><div class="sh-title">KPG Residence — Check-Out</div><div class="sh-sub">Select a worker to take over this task now</div></div>
+      <div class="scroll" style="gap:7px">
+        <div class="sec"><span class="sec-t" style="color:#15803D">Available Now</span><span class="sec-c" style="background:#DCFCE7;color:#166534">2</span></div>
+        <div class="wpc" onclick="go('s05')">
+          <div class="wpc-av" style="background:#4F46E5">SK</div>
+          <div class="wpc-inf"><div class="wpc-nm">Somchai K.</div><div class="wpc-dt">Check-Out · 1 task done · available</div></div>
+          <div class="wpc-rt"><span class="wptag wpt-av">Available</span><span class="wpc-eta">ETA 10 min</span></div>
+        </div>
+        <div class="wpc" onclick="go('s05')">
+          <div class="wpc-av" style="background:#7C3AED">AR</div>
+          <div class="wpc-inf"><div class="wpc-nm">Anchali R.</div><div class="wpc-dt">Check-Out · 0 active tasks · available</div></div>
+          <div class="wpc-rt"><span class="wptag wpt-av">Available</span><span class="wpc-eta">ETA 15 min</span></div>
+        </div>
+        <div class="una-lbl">Unavailable</div>
+        <div class="una-card">
+          <div class="una-av">MG</div>
+          <div><div class="una-nm">Maria Gonzalez</div><div class="una-rs">Busy — Emuna Villa Check-Out</div></div>
+        </div>
+        <div class="una-card">
+          <div class="una-av">AS</div>
+          <div><div class="una-nm">Aroon Suphan</div><div class="una-rs">Maintenance stream — different role</div></div>
+        </div>
+        <div style="margin-top:4px;padding:8px 0;border-top:1px solid #F0EDE8;flex-shrink:0">
+          <button class="io io-gh" style="width:100%" onclick="go('s03')">Cancel · back to alert</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S05 — REASSIGN: CONFIRMED
+         ════════════════════════════════ -->
+    <div class="screen" id="s05">
+      <div class="sb sb-gr"><span class="sb-t">9:45</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="suc-hdr">
+        <div class="suc-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="suc-title">Reassigned</div>
+        <div class="suc-sub">KPG Residence Check-Out<br>assigned to Somchai K.</div>
+      </div>
+      <div class="scroll" style="gap:7px">
+        <div class="db">
+          <div class="db-hd">Confirmation</div>
+          <div class="db-r"><span class="db-k">Property</span><span class="db-v">KPG Residence</span></div>
+          <div class="db-r"><span class="db-k">Task</span><span class="db-v">Check-Out</span></div>
+          <div class="db-r"><span class="db-k">New worker</span><span class="db-v dv-g">Somchai K.</span></div>
+          <div class="db-r"><span class="db-k">Worker ETA</span><span class="db-v">10 minutes</span></div>
+          <div class="db-r"><span class="db-k">Clean window</span><span class="db-v dv-a">Still open · 4h 05m</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Chain Updated</div>
+          <div style="padding:9px 10px">
+            <div class="chain">
+              <div class="cstep"><div class="csi csi-ac"><div class="cs-lbl">Check-Out</div><div class="cs-tm">~10:00</div><div class="cs-st cst-ac">In progress</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Clean</div><div class="cs-tm">10:30</div><div class="cs-st cst-pd">Pending</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Check-In</div><div class="cs-tm">14:00</div><div class="cs-st cst-pd" style="color:#15803D">Recoverable</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="ncard">
+          <div class="nc-t">Notifications sent</div>
+          <div class="nc-b">Maria Gonzalez notified of task removal. Somchai K. notified of new assignment. Chain timeline updated.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+          <button class="io io-dk" onclick="go('s01')">Return to Hub</button>
+          <button class="io io-gh" onclick="go('s09')">View Check-Out Stream</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S06 — ALERT DETAIL: EMUNA AC SLA RISK
+         ════════════════════════════════ -->
+    <div class="screen" id="s06">
+      <div class="sb sb-am"><span class="sb-t">9:45</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="adh adh-a">
+        <div class="adh-bk" onclick="go('s01')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Hub · Maintenance</div>
+        <div class="adh-live" style="background:rgba(0,0,0,.2)"><div class="adh-ldot" style="animation:none;background:#FCD34D"></div> SLA RISK · ACTIVE</div>
+        <div class="adh-title">Emuna Villa</div>
+        <div class="adh-sub">AC Repair · Not started · Guest arrives 14:00</div>
+        <div class="adh-impact"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg><span class="adh-impact-text">4h 15m window · Next guest affected if not resolved</span></div>
+      </div>
+      <div class="scroll" style="gap:7px">
+        <div class="db">
+          <div class="db-hd">Situation</div>
+          <div class="db-r"><span class="db-k">Property</span><span class="db-v">Emuna Villa</span></div>
+          <div class="db-r"><span class="db-k">Issue</span><span class="db-v">AC unit — cooling failure</span></div>
+          <div class="db-r"><span class="db-k">Assigned to</span><span class="db-v">Aroon Suphan</span></div>
+          <div class="db-r"><span class="db-k">Status</span><span class="db-v dv-r">Not started</span></div>
+          <div class="db-r"><span class="db-k">Aroon's ETA</span><span class="db-v dv-a">~11:30 (at KPG pool now)</span></div>
+          <div class="db-r"><span class="db-k">Guest check-in</span><span class="db-v dv-r">14:00 · 4h 15m away</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Turnover Chain · Emuna Villa</div>
+          <div style="padding:9px 10px">
+            <div class="chain">
+              <div class="cstep"><div class="csi csi-dn"><div class="cs-lbl">Check-Out</div><div class="cs-tm">09:00</div><div class="cs-st cst-dn">Done</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-ac"><div class="cs-lbl">Maintenance</div><div class="cs-tm">Now</div><div class="cs-st cst-bk">Not started</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Check-In</div><div class="cs-tm">14:00</div><div class="cs-st cst-pd">At risk</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="int-lbl">Intervention Options</div>
+        <div class="int-list">
+          <button class="io io-dk" onclick="go('s13')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> Assign support technician</button>
+          <button class="io io-bl"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.62 4.83 2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72 12 12 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l1.27-.95a2 2 0 0 1 2.11-.45 12 12 0 0 0 2.81.7A2 2 0 0 1 22 17.65z"/></svg> Call Aroon Suphan</button>
+          <button class="io io-gh" onclick="go('s24')">View booking · Emuna Villa</button>
+          <button class="io io-dn" onclick="go('s07')">Escalate to property owner</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S07 — ESCALATE TO OWNER
+         ════════════════════════════════ -->
+    <div class="screen" id="s07">
+      <div class="sb sb-d"><span class="sb-t">9:46</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-d" onclick="go('s06')">
+        <div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Alert · Emuna Villa</div>
+        <div class="bkh-title">Escalate</div>
+      </div>
+      <div class="sub-hdr"><div class="sh-title">Escalate to Property Owner</div><div class="sh-sub">Emuna Villa · Khun Wirat</div></div>
+      <div class="scroll" style="gap:7px">
+        <div class="esc-form">
+          <div class="ef-r"><span class="ef-k">To</span><span class="ef-v">Khun Wirat (Owner · Emuna Villa)</span></div>
+          <div class="ef-r"><span class="ef-k">Issue</span><span class="ef-v ef-vr">AC Repair — SLA Risk</span></div>
+          <div class="ef-r"><span class="ef-k">Priority</span><span class="ef-v ef-vr">URGENT</span></div>
+          <div class="ef-r"><span class="ef-k">Guest check-in</span><span class="ef-v">14:00 today · 4h 15m away</span></div>
+          <div class="ef-r"><span class="ef-k">Technician ETA</span><span class="ef-v">~11:30 · Aroon S.</span></div>
+        </div>
+        <div style="flex-shrink:0">
+          <div style="font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px">Send Via</div>
+          <div class="meth-row">
+            <button class="meth mact">WhatsApp</button>
+            <button class="meth">SMS</button>
+            <button class="meth">Call</button>
+          </div>
+        </div>
+        <div style="background:#FAFAFA;border-radius:9px;border:1px solid #E5E7EB;padding:9px 11px;flex-shrink:0">
+          <div style="font-family:'Manrope',sans-serif;font-size:8px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px">Message Preview</div>
+          <div style="font-size:9.5px;color:#374151;line-height:1.65">Hi Khun Wirat — urgent update on Emuna Villa. <strong style="color:#171A1F">AC repair not started</strong>, guest arriving 14:00. Aroon estimated arrival 11:30. Risk of guest discomfort if not resolved. I'm monitoring and have assigned support. Please advise if you want direct involvement. — Pranee</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+          <button class="io io-dk" onclick="go('s06')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07"/></svg> Send Escalation</button>
+          <button class="io io-gh" onclick="go('s06')">Cancel · back to alert</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S08 — STREAM TAB OVERVIEW
+         ════════════════════════════════ -->
+    <div class="screen" id="s08">
+      <div class="sb sb-d"><span class="sb-t">10:00</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="aph"><div><div class="aph-t">Operational Streams</div><div class="aph-s">Thu 2 Apr · live view</div></div></div>
+      <div class="ssel">
+        <div class="sst sst-act">All</div>
+        <div class="sst" onclick="go('s16')">Check-In</div>
+        <div class="sst sst-al" onclick="go('s09')">Check-Out</div>
+        <div class="sst sst-al" onclick="go('s11')">Cleaner</div>
+        <div class="sst sst-al" onclick="go('s14')">Maintenance</div>
+      </div>
+      <div class="scroll">
+        <div class="sc" onclick="go('s16')">
+          <div class="sc-top"><div class="sc-left"><div class="sc-icon" style="background:#E6EEE7"><svg viewBox="0 0 24 24" stroke="#334036"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></div><div><div class="sc-name">Check-In</div><div class="sc-wk">2 workers · 4 today</div></div></div><div class="sc-right"><div class="sc-pills"><span class="scp scp-g">3 done</span><span class="scp scp-n">1 pending</span></div><span class="sc-arr">›</span></div></div>
+          <div class="sc-foot"><span class="sc-fl">View stream →</span><span style="font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;color:#4ADE80">All on track</span></div>
+        </div>
+        <div class="sc sc-r" onclick="go('s09')">
+          <div class="sc-top sc-top-r"><div class="sc-left"><div class="sc-icon" style="background:#FDECEA"><svg viewBox="0 0 24 24" stroke="#DC2626"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div><div><div class="sc-name">Check-Out</div><div class="sc-wk">Maria G. · 3 today</div></div></div><div class="sc-right"><div class="sc-pills"><span class="scp scp-r">1 overdue</span><span class="scp scp-g">2 done</span></div><span class="sc-arr">›</span></div></div>
+          <div class="sc-foot"><span class="sc-fl">View stream →</span><span class="sc-int sci-r">1 needs intervention</span></div>
+        </div>
+        <div class="sc sc-a" onclick="go('s11')">
+          <div class="sc-top sc-top-a"><div class="sc-left"><div class="sc-icon" style="background:#FEF3C7"><svg viewBox="0 0 24 24" stroke="#92400E"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div><div><div class="sc-name">Cleaner</div><div class="sc-wk">Noi C. · 4 cleans</div></div></div><div class="sc-right"><div class="sc-pills"><span class="scp scp-a">1 at risk</span><span class="scp scp-g">1 done</span></div><span class="sc-arr">›</span></div></div>
+          <div class="sc-foot"><span class="sc-fl">View stream →</span><span class="sc-int sci-c">Monitor window</span></div>
+        </div>
+        <div class="sc sc-a" onclick="go('s14')">
+          <div class="sc-top sc-top-a"><div class="sc-left"><div class="sc-icon" style="background:#F5EAE3"><svg viewBox="0 0 24 24" stroke="#B56E45"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div><div class="sc-name">Maintenance</div><div class="sc-wk">Aroon S. · 3 jobs</div></div></div><div class="sc-right"><div class="sc-pills"><span class="scp scp-r">1 critical</span><span class="scp scp-a">2 high</span></div><span class="sc-arr">›</span></div></div>
+          <div class="sc-foot"><span class="sc-fl">View stream →</span><span class="sc-int sci-c">SLA at risk</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S09 — CHECK-OUT STREAM RUNWAY
+         ════════════════════════════════ -->
+    <div class="screen" id="s09">
+      <div class="sb sb-d"><span class="sb-t">9:43</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="sdh"><div class="sdh-bk" onclick="go('s08')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Streams</div><div class="sdh-title">Check-Out Stream</div><div class="sdh-meta">Maria Gonzalez · 3 today · Thu 2 Apr</div></div>
+      <div class="sstrip"><span class="sspill ssp-r">1 Overdue</span><span class="sspill ssp-a">1 Active</span><span class="sspill ssp-g">1 Done</span></div>
+      <div class="fbar"><span class="ft ft-a">All</span><span class="ft">Active</span><span class="ft">Done</span><span class="ft">Issues</span></div>
+      <div class="scroll">
+        <div class="stc stc-r" onclick="go('s10')">
+          <div class="stc-top"><span class="stc-p">KPG Residence</span><span class="stc-pill stp-r">Overdue +23m</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-a"></div><span class="wcn">Maria G.</span></div><span>Guest still in property</span></div>
+        </div>
+        <div class="stc stc-a">
+          <div class="stc-top"><span class="stc-p">Emuna Villa</span><span class="stc-pill stp-a">In progress</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Maria G.</span></div><span>Walk-through room 2/3</span></div>
+        </div>
+        <div class="stc stc-dn">
+          <div class="stc-top"><span class="stc-p">Baan Siri</span><span class="stc-pill stp-dn">Done · 08:45</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Maria G.</span></div><span>On time · signed off</span></div>
+        </div>
+        <div class="rec">
+          <div class="rec-t">Manager Recommendation</div>
+          <div class="rec-b">KPG Residence check-out is blocking the 14:00 check-in. Reassign immediately to protect the turnover chain.</div>
+          <button class="rec-btn" onclick="go('s04')">Reassign KPG Check-Out →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S10 — CHECK-OUT ITEM DETAIL: KPG
+         ════════════════════════════════ -->
+    <div class="screen" id="s10">
+      <div class="sb sb-d"><span class="sb-t">9:44</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="pdh"><div class="pdh-bk" onclick="go('s09')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Check-Out Stream</div><div class="pdh-row"><div class="pdh-prop">KPG Residence</div><span class="pdh-bdg pdb-r">OVERDUE</span></div><div class="pdh-sub">Check-Out · +23 min · guest still present</div></div>
+      <div class="scroll" style="gap:7px">
+        <div class="db">
+          <div class="db-hd">Situation</div>
+          <div class="db-r"><span class="db-k">Scheduled departure</span><span class="db-v">11:00</span></div>
+          <div class="db-r"><span class="db-k">Overdue by</span><span class="db-v dv-r">+23 minutes</span></div>
+          <div class="db-r"><span class="db-k">Guest</span><span class="db-v">Mr. & Mrs. Chen</span></div>
+          <div class="db-r"><span class="db-k">Worker assigned</span><span class="db-v">Maria G. (busy elsewhere)</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Turnover Chain · KPG Residence</div>
+          <div style="padding:9px 10px">
+            <div class="chain">
+              <div class="cstep"><div class="csi csi-bk"><div class="cs-lbl">Check-Out</div><div class="cs-tm">11:00</div><div class="cs-st cst-bk">Blocked</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Clean</div><div class="cs-tm">11:30</div><div class="cs-st cst-pd">Pending</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Check-In</div><div class="cs-tm">14:00</div><div class="cs-st cst-pd">At risk</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Booking Context</div>
+          <div class="db-r"><span class="db-k">Departing guest</span><span class="db-v">Mr. & Mrs. Chen</span></div>
+          <div class="db-r"><span class="db-k">Arriving guest</span><span class="db-v">Tomás Reyes</span></div>
+          <div class="db-r"><span class="db-k">Arrival time</span><span class="db-v dv-r">14:00 · confirmed</span></div>
+          <div class="db-r"><span class="db-k">Clean window needed</span><span class="db-v dv-a">~2h minimum</span></div>
+        </div>
+        <div class="rec">
+          <div class="rec-t">Recommended Action</div>
+          <div class="rec-b">Reassign check-out immediately. With 4h window to check-in, reassignment now is still recoverable.</div>
+          <button class="rec-btn" onclick="go('s04')">Reassign Check-Out →</button>
+        </div>
+        <div class="int-list">
+          <button class="io io-bl"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07"/></svg> Contact guest re: departure</button>
+          <button class="io io-gh" onclick="go('s23')">View booking details →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S11 — CLEANER STREAM RUNWAY
+         ════════════════════════════════ -->
+    <div class="screen" id="s11">
+      <div class="sb sb-d"><span class="sb-t">10:05</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="sdh"><div class="sdh-bk" onclick="go('s08')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Streams</div><div class="sdh-title">Cleaner Stream</div><div class="sdh-meta">Noi Chantra · 4 properties · Thu 2 Apr</div></div>
+      <div class="sstrip"><span class="sspill ssp-g">1 Done</span><span class="sspill ssp-a">2 Active</span><span class="sspill ssp-n">1 Pending</span><span style="flex:1"></span><span class="sspill ssp-r">1 At risk</span></div>
+      <div class="fbar"><span class="ft ft-a">All</span><span class="ft">Active</span><span class="ft">Done</span><span class="ft">Issues</span></div>
+      <div class="scroll">
+        <div class="stc stc-dn">
+          <div class="stc-top"><span class="stc-p">KPG Residence</span><span class="stc-pill stp-dn">Done · 09:44</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Noi</span></div><span>On time · signed off</span></div>
+        </div>
+        <div class="stc stc-a" onclick="go('s12')">
+          <div class="stc-top"><span class="stc-p">Emuna Villa</span><span class="stc-pill stp-a">Window 1h 20m</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-a"></div><span class="wcn">Noi</span></div><span>Room 2/4 · 8 photos pending</span></div>
+        </div>
+        <div class="stc stc-a">
+          <div class="stc-top"><span class="stc-p">Jasmine House</span><span class="stc-pill stp-a">In progress</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Pim</span></div><span>Room 1/3 · on track</span></div>
+        </div>
+        <div class="stc">
+          <div class="stc-top"><span class="stc-p">Sunset Condo</span><span class="stc-pill stp-n">Departs 13:00</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-n"></div><span class="wcn">Unassigned</span></div><span>Assign by 12:00</span></div>
+        </div>
+        <div class="rec">
+          <div class="rec-t">Emuna Villa — Window Closing</div>
+          <div class="rec-b">Noi is Room 2/4 with 1h 20m remaining. Support cleaner recommended to stay on track for the 14:00 check-in.</div>
+          <button class="rec-btn" onclick="go('s13')">Assign Support Cleaner →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S12 — CLEANER ITEM DETAIL: EMUNA
+         ════════════════════════════════ -->
+    <div class="screen" id="s12">
+      <div class="sb sb-d"><span class="sb-t">10:06</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="pdh"><div class="pdh-bk" onclick="go('s11')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Cleaner Stream</div><div class="pdh-row"><div class="pdh-prop">Emuna Villa</div><span class="pdh-bdg pdb-a">AT RISK</span></div><div class="pdh-sub">Cleaning · Room 2/4 · 1h 20m window remaining</div></div>
+      <div class="scroll" style="gap:7px">
+        <div class="db">
+          <div class="db-hd">Clean Progress</div>
+          <div class="db-r"><span class="db-k">Worker</span><span class="db-v">Noi Chantra</span></div>
+          <div class="db-r"><span class="db-k">Progress</span><span class="db-v dv-a">Room 2 of 4</span></div>
+          <div class="db-r"><span class="db-k">Photos</span><span class="db-v dv-a">8 pending upload</span></div>
+          <div class="db-r"><span class="db-k">Started</span><span class="db-v">09:50</span></div>
+          <div class="db-r"><span class="db-k">Expected finish</span><span class="db-v dv-a">~12:30 (tight)</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Timing Pressure</div>
+          <div class="db-r"><span class="db-k">Check-out completed</span><span class="db-v dv-g">09:00 ✓</span></div>
+          <div class="db-r"><span class="db-k">Clean started</span><span class="db-v">09:50</span></div>
+          <div class="db-r"><span class="db-k">Check-in deadline</span><span class="db-v dv-r">14:00</span></div>
+          <div class="db-r"><span class="db-k">Window remaining</span><span class="db-v dv-a">1h 20m</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Turnover Chain · Emuna Villa</div>
+          <div style="padding:9px 10px">
+            <div class="chain">
+              <div class="cstep"><div class="csi csi-dn"><div class="cs-lbl">Check-Out</div><div class="cs-tm">09:00</div><div class="cs-st cst-dn">Done</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-ac"><div class="cs-lbl">Clean</div><div class="cs-tm">09:50–</div><div class="cs-st cst-ac">Active</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Check-In</div><div class="cs-tm">14:00</div><div class="cs-st cst-pd">Pending</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="int-lbl">Manager Actions</div>
+        <div class="int-list">
+          <button class="io io-dk" onclick="go('s13')">Assign support cleaner</button>
+          <button class="io io-bl">Call Noi Chantra</button>
+          <button class="io io-gh">Mark as monitored</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S13 — ASSIGN SUPPORT
+         ════════════════════════════════ -->
+    <div class="screen" id="s13">
+      <div class="sb sb-d"><span class="sb-t">10:07</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-d" onclick="go('s12')"><div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Emuna Villa</div><div class="bkh-title">Assign Support</div></div>
+      <div class="sub-hdr"><div class="sh-title">Assign Support: Emuna Villa</div><div class="sh-sub">Select a support cleaner · need arrival by 10:30</div></div>
+      <div class="scroll" style="gap:7px">
+        <div class="sec"><span class="sec-t" style="color:#15803D">Available Cleaners</span><span class="sec-c" style="background:#DCFCE7;color:#166534">2</span></div>
+        <div class="wpc" onclick="go('s05')">
+          <div class="wpc-av" style="background:#DB2777">PS</div>
+          <div class="wpc-inf"><div class="wpc-nm">Pim Saengdao</div><div class="wpc-dt">Cleaner · Jasmine House done · free now</div></div>
+          <div class="wpc-rt"><span class="wptag wpt-av">Available</span><span class="wpc-eta">ETA 12 min</span></div>
+        </div>
+        <div class="wpc" onclick="go('s05')">
+          <div class="wpc-av" style="background:#0891B2">KT</div>
+          <div class="wpc-inf"><div class="wpc-nm">Kanya T.</div><div class="wpc-dt">Cleaner · 1 done today · available</div></div>
+          <div class="wpc-rt"><span class="wptag wpt-av">Available</span><span class="wpc-eta">ETA 18 min</span></div>
+        </div>
+        <div class="una-lbl">Not Available</div>
+        <div class="una-card"><div class="una-av">NC</div><div><div class="una-nm">Noi Chantra</div><div class="una-rs">Already cleaning Emuna Villa</div></div></div>
+        <div style="margin-top:4px;flex-shrink:0"><button class="io io-gh" style="width:100%" onclick="go('s12')">Cancel · back to item</button></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S14 — MAINTENANCE STREAM
+         ════════════════════════════════ -->
+    <div class="screen" id="s14">
+      <div class="sb sb-d"><span class="sb-t">10:05</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="sdh"><div class="sdh-bk" onclick="go('s08')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Streams</div><div class="sdh-title">Maintenance Stream</div><div class="sdh-meta">Aroon Suphan · 3 jobs · Thu 2 Apr</div></div>
+      <div class="sstrip"><span class="sspill ssp-r">1 Critical</span><span class="sspill ssp-a">2 High</span><span class="sspill ssp-n">0 Done</span></div>
+      <div class="fbar"><span class="ft ft-a">All</span><span class="ft">Critical</span><span class="ft">Active</span><span class="ft">Done</span></div>
+      <div class="scroll">
+        <div class="stc stc-r" onclick="go('s15')">
+          <div class="stc-top"><span class="stc-p">Emuna Villa</span><span class="stc-pill stp-r">Critical · Not started</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-a"></div><span class="wcn">Aroon</span></div><span>AC failure · check-in 14:00</span></div>
+        </div>
+        <div class="stc stc-a">
+          <div class="stc-top"><span class="stc-p">KPG Residence</span><span class="stc-pill stp-a">Active · High</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Aroon</span></div><span>Pool pump · in progress</span></div>
+        </div>
+        <div class="stc stc-a">
+          <div class="stc-top"><span class="stc-p">Baan Siri</span><span class="stc-pill stp-a">Active · High</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Aroon</span></div><span>Kitchen tap · queued after KPG</span></div>
+        </div>
+        <div class="rec">
+          <div class="rec-t">SLA Alert — Emuna Villa AC</div>
+          <div class="rec-b">Critical job not started. Aroon is at KPG pool pump (ETA Emuna: 11:30). Check-in 14:00 is at risk. Assign support or escalate.</div>
+          <button class="rec-btn" onclick="go('s15')">View Emuna AC Detail →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S15 — MAINTENANCE ITEM: EMUNA AC
+         ════════════════════════════════ -->
+    <div class="screen" id="s15">
+      <div class="sb sb-d"><span class="sb-t">10:06</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="pdh"><div class="pdh-bk" onclick="go('s14')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Maintenance Stream</div><div class="pdh-row"><div class="pdh-prop">Emuna Villa</div><span class="pdh-bdg pdb-r">CRITICAL</span></div><div class="pdh-sub">AC Repair · Not started · SLA at risk</div></div>
+      <div class="scroll" style="gap:7px">
+        <div class="db">
+          <div class="db-hd">Job Detail</div>
+          <div class="db-r"><span class="db-k">Issue</span><span class="db-v">AC unit — cooling failure</span></div>
+          <div class="db-r"><span class="db-k">Assigned</span><span class="db-v">Aroon Suphan</span></div>
+          <div class="db-r"><span class="db-k">Status</span><span class="db-v dv-r">Not started</span></div>
+          <div class="db-r"><span class="db-k">Aroon currently at</span><span class="db-v">KPG Residence · pool pump</span></div>
+          <div class="db-r"><span class="db-k">Aroon ETA to Emuna</span><span class="db-v dv-a">~11:30</span></div>
+          <div class="db-r"><span class="db-k">Guest check-in</span><span class="db-v dv-r">14:00</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Booking Impact</div>
+          <div class="db-r"><span class="db-k">Guest</span><span class="db-v">Khun Suparat (active stay)</span></div>
+          <div class="db-r"><span class="db-k">Next guest</span><span class="db-v">Arriving 14:00</span></div>
+          <div class="db-r"><span class="db-k">Risk level</span><span class="db-v dv-r">Guest comfort at risk</span></div>
+        </div>
+        <div class="int-lbl">Manager Actions</div>
+        <div class="int-list">
+          <button class="io io-dk" onclick="go('s13')">Assign support technician</button>
+          <button class="io io-bl">Call Aroon — request earlier ETA</button>
+          <button class="io io-am" onclick="go('s24')">View booking context</button>
+          <button class="io io-dn" onclick="go('s07')">Escalate to owner</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S16 — CHECK-IN STREAM (calm)
+         ════════════════════════════════ -->
+    <div class="screen" id="s16">
+      <div class="sb sb-d"><span class="sb-t">10:10</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="sdh"><div class="sdh-bk" onclick="go('s08')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Streams</div><div class="sdh-title">Check-In Stream</div><div class="sdh-meta">2 workers · 4 check-ins · Thu 2 Apr</div></div>
+      <div class="sstrip"><span class="sspill ssp-g">3 Done</span><span class="sspill ssp-n">1 Pending</span><span style="flex:1"></span><span style="font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;padding:3px 8px;border-radius:5px;background:rgba(74,222,128,.15);color:#4ADE80">On track</span></div>
+      <div class="fbar"><span class="ft ft-a">All</span><span class="ft">Done</span><span class="ft">Pending</span></div>
+      <div class="scroll">
+        <div class="stc stc-dn">
+          <div class="stc-top"><span class="stc-p">Baan Siri</span><span class="stc-pill stp-dn">Done · 08:45</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Anchali</span></div><span>Early check-in · guest satisfied</span></div>
+        </div>
+        <div class="stc stc-dn">
+          <div class="stc-top"><span class="stc-p">Jasmine House</span><span class="stc-pill stp-dn">Done · 10:30</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Somchai</span></div><span>On time · standard check-in</span></div>
+        </div>
+        <div class="stc stc-dn">
+          <div class="stc-top"><span class="stc-p">Emuna Villa</span><span class="stc-pill stp-dn">Done · 11:00</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Anchali</span></div><span>On time</span></div>
+        </div>
+        <div class="stc">
+          <div class="stc-top"><span class="stc-p">KPG Residence</span><span class="stc-pill stp-b">Pending · 14:00</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-a"></div><span class="wcn">Somchai</span></div><span>Depends on check-out chain</span></div>
+        </div>
+        <div class="depcard">
+          <div class="dep-t">KPG Residence — Dependency Note</div>
+          <div class="dep-b">This check-in depends on the overdue KPG check-out being resolved. A reassignment is in progress. Check-in 14:00 is currently still achievable.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S17 — ALERTS TAB FULL LIST
+         ════════════════════════════════ -->
+    <div class="screen" id="s17">
+      <div class="sb sb-d"><span class="sb-t">9:41</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="aph"><div><div class="aph-t">Alerts</div><div class="aph-s">2 active · Thu 2 Apr</div></div><span style="font-family:'Manrope',sans-serif;font-size:10px;font-weight:800;background:#EF4444;color:#fff;padding:3px 9px;border-radius:6px">2</span></div>
+      <div class="fbar"><span class="ft ft-a">All</span><span class="ft">Urgent</span><span class="ft">SLA Risk</span><span class="ft">Info</span></div>
+      <div class="scroll">
+        <div class="sec" style="margin-top:2px"><span class="sec-t" style="color:#DC2626">Urgent</span><span class="sec-c sec-c-r">1</span></div>
+        <div class="ac ac-r" onclick="go('s03')">
+          <div class="ac-top"><span class="ac-badge acb-r">OVERDUE</span><span class="ac-time act-r">+23 MIN</span></div>
+          <div class="ac-prop">KPG Residence — Check-Out</div>
+          <div class="ac-sub">Maria Gonzalez · guest still in property · chain at risk</div>
+          <button class="ac-cta ac-cta-r">View Alert →</button>
+        </div>
+        <div class="sec" style="margin-top:2px"><span class="sec-t" style="color:#92400E">SLA Risk</span><span class="sec-c" style="background:#FEF3C7;color:#92400E">1</span></div>
+        <div class="ac ac-a" onclick="go('s06')">
+          <div class="ac-top"><span class="ac-badge acb-a">SLA RISK</span><span class="ac-time act-a">CHECK-IN 14:00</span></div>
+          <div class="ac-prop">Emuna Villa — AC Repair</div>
+          <div class="ac-sub">Aroon Suphan · not started · guest arrives in 4h</div>
+          <button class="ac-cta ac-cta-a">View Alert →</button>
+        </div>
+        <div class="sec" style="margin-top:2px"><span class="sec-t">Info</span><span class="sec-c">1</span></div>
+        <div class="stc" style="cursor:default">
+          <div class="stc-top"><span class="stc-p">Sunset Condo — Late Arrival</span><span class="stc-pill stp-b">Info</span></div>
+          <div class="stc-meta"><div class="wchip"><div class="wcd wcd-g"></div><span class="wcn">Clean ✓</span></div><span>Pierre M. · confirmed 21:00</span></div>
+        </div>
+        <div style="padding:10px 0;text-align:center;flex-shrink:0">
+          <span style="font-family:'Manrope',sans-serif;font-size:9px;font-weight:700;color:#D1D5DB">All other operations on track</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S18 — TEAM: LIVE STAFFING
+         ════════════════════════════════ -->
+    <div class="screen" id="s18">
+      <div class="sb sb-d"><span class="sb-t">9:41</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="aph"><div><div class="aph-t">Live Staffing</div><div class="aph-s">Thu 2 Apr · 09:41</div></div></div>
+      <div class="kpi-strip">
+        <div class="kpi"><div class="kv">5</div><div class="kl">On shift</div></div>
+        <div class="kpi"><div class="kv kv-g">2</div><div class="kl">On track</div></div>
+        <div class="kpi"><div class="kv kv-a">2</div><div class="kl">At capacity</div></div>
+        <div class="kpi"><div class="kv kv-r">1</div><div class="kl">Overloaded</div></div>
+      </div>
+      <div class="scroll">
+        <div class="sgh"><span class="sgh-l" style="color:#DC2626">Needs Attention</span><span class="sgh-c" style="background:#FEE2E2;color:#DC2626">1</span></div>
+        <div class="tcard tc-al" onclick="go('s19')">
+          <div class="tc-av" style="background:#EF4444"><div class="tc-ring ring-r"></div>MG</div>
+          <div class="tc-inf">
+            <div class="tc-nm">Maria Gonzalez</div>
+            <div class="tc-rl">Check-Out Worker</div>
+            <div class="tc-cu">Currently: Emuna Villa Check-Out</div>
+            <div class="tc-chips"><span class="tchip tch-bl">Call</span><span class="tchip tch-r">Redistribute</span></div>
+          </div>
+          <div class="tc-rt"><div class="tc-ld">4</div><div class="tc-ll">tasks</div><span class="tc-tag tct-r">1 overdue</span></div>
+        </div>
+        <div class="sgh" style="margin-top:4px"><span class="sgh-l" style="color:#92400E">At Capacity</span><span class="sgh-c" style="background:#FEF3C7;color:#92400E">2</span></div>
+        <div class="tcard tc-wn" onclick="go('s21')">
+          <div class="tc-av" style="background:#F59E0B"><div class="tc-ring ring-a"></div>NC</div>
+          <div class="tc-inf">
+            <div class="tc-nm">Noi Chantra</div>
+            <div class="tc-rl">Cleaner</div>
+            <div class="tc-cu">Currently: Emuna Villa · Room 2/4</div>
+            <div class="tc-chips"><span class="tchip tch-bl">Call</span><span class="tchip tch-n">Support</span></div>
+          </div>
+          <div class="tc-rt"><div class="tc-ld">4</div><div class="tc-ll">cleans</div><span class="tc-tag tct-a">1 at risk</span></div>
+        </div>
+        <div class="tcard tc-wn">
+          <div class="tc-av" style="background:#D97706"><div class="tc-ring ring-a"></div>AS</div>
+          <div class="tc-inf">
+            <div class="tc-nm">Aroon Suphan</div>
+            <div class="tc-rl">Maintenance Technician</div>
+            <div class="tc-cu">Currently: KPG Residence · pool pump</div>
+            <div class="tc-chips"><span class="tchip tch-bl">Call</span><span class="tchip tch-n">View jobs</span></div>
+          </div>
+          <div class="tc-rt"><div class="tc-ld">3</div><div class="tc-ll">jobs</div><span class="tc-tag tct-a">1 critical</span></div>
+        </div>
+        <div class="sgh" style="margin-top:4px"><span class="sgh-l" style="color:#15803D">Active</span><span class="sgh-c" style="background:#DCFCE7;color:#166534">2</span></div>
+        <div class="tcard tc-ok">
+          <div class="tc-av" style="background:#4F46E5"><div class="tc-ring ring-g"></div>SK</div>
+          <div class="tc-inf">
+            <div class="tc-nm">Somchai K.</div>
+            <div class="tc-rl">Check-Out Worker</div>
+            <div class="tc-cu">Done: Jasmine House · available now</div>
+            <div class="tc-chips"><span class="tchip tch-bl">Call</span><span class="tchip tch-n">Assign</span></div>
+          </div>
+          <div class="tc-rt"><div class="tc-ld">1</div><div class="tc-ll">task</div><span class="tc-tag tct-g">Free</span></div>
+        </div>
+        <div class="tcard tc-ok">
+          <div class="tc-av" style="background:#7C3AED"><div class="tc-ring ring-g"></div>AR</div>
+          <div class="tc-inf">
+            <div class="tc-nm">Anchali R.</div>
+            <div class="tc-rl">Check-In Worker</div>
+            <div class="tc-cu">Done: Baan Siri · available now</div>
+            <div class="tc-chips"><span class="tchip tch-bl">Call</span><span class="tchip tch-n">Assign</span></div>
+          </div>
+          <div class="tc-rt"><div class="tc-ld">1</div><div class="tc-ll">task</div><span class="tc-tag tct-g">Free</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S19 — WORKER DETAIL: MARIA (OVERLOADED)
+         ════════════════════════════════ -->
+    <div class="screen" id="s19">
+      <div class="sb sb-d"><span class="sb-t">9:42</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-d" onclick="go('s18')"><div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Live Staffing</div><div class="bkh-title">Worker Detail</div></div>
+      <div class="wdh">
+        <div class="wdh-av" style="background:#EF4444;border-color:#EF4444">MG</div>
+        <div class="wdh-inf"><div class="wdh-nm">Maria Gonzalez</div><div class="wdh-sub">Check-Out Worker · on shift 08:00</div></div>
+        <span class="wdh-bdg wdb-r">Overloaded</span>
+      </div>
+      <div class="lb-wrap">
+        <div class="lb-row"><span class="lb-lbl">Daily load</span><span class="lb-val">4 tasks · capacity 3</span></div>
+        <div class="lb"><div class="lb-fill lbf-r" style="width:100%"></div></div>
+      </div>
+      <div class="scroll" style="gap:6px">
+        <div class="db">
+          <div class="db-hd">Current Status</div>
+          <div class="db-r"><span class="db-k">Stream</span><span class="db-v">Check-Out</span></div>
+          <div class="db-r"><span class="db-k">Current task</span><span class="db-v">Emuna Villa Check-Out</span></div>
+          <div class="db-r"><span class="db-k">Location</span><span class="db-v">Emuna Villa</span></div>
+          <div class="db-r"><span class="db-k">On shift since</span><span class="db-v">08:00</span></div>
+        </div>
+        <div class="sec"><span class="sec-t">Today's Tasks</span></div>
+        <div class="stc stc-r" onclick="go('s03')">
+          <div class="stc-top"><span class="stc-p">KPG Residence</span><span class="stc-pill stp-r">Overdue +23m</span></div>
+          <div class="stc-meta"><span>Check-Out · not started · assigned to Maria</span></div>
+        </div>
+        <div class="stc stc-a">
+          <div class="stc-top"><span class="stc-p">Emuna Villa</span><span class="stc-pill stp-a">In progress</span></div>
+          <div class="stc-meta"><span>Check-Out · currently active</span></div>
+        </div>
+        <div class="stc">
+          <div class="stc-top"><span class="stc-p">Jasmine House</span><span class="stc-pill stp-n">Pending 13:00</span></div>
+          <div class="stc-meta"><span>Check-Out · upcoming</span></div>
+        </div>
+        <div class="stc">
+          <div class="stc-top"><span class="stc-p">Sunset Condo</span><span class="stc-pill stp-n">Pending 15:00</span></div>
+          <div class="stc-meta"><span>Check-Out · upcoming</span></div>
+        </div>
+        <div class="rec">
+          <div class="rec-t">Load Warning</div>
+          <div class="rec-b">Maria has 4 tasks against a capacity of 3. 1 task is already overdue. Redistribute 1–2 tasks to Somchai or Anchali to restore balance.</div>
+          <button class="rec-btn" onclick="go('s20')">Redistribute Work →</button>
+        </div>
+        <div class="int-list">
+          <button class="io io-bl">Call Maria Gonzalez</button>
+          <button class="io io-gh">Send message</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S20 — REDISTRIBUTE WORK
+         ════════════════════════════════ -->
+    <div class="screen" id="s20">
+      <div class="sb sb-d"><span class="sb-t">9:43</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-d" onclick="go('s19')"><div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Maria G.</div><div class="bkh-title">Redistribute Work</div></div>
+      <div class="sub-hdr"><div class="sh-title">Move tasks from Maria</div><div class="sh-sub">Select tasks to redistribute · tap to select</div></div>
+      <div class="scroll" style="gap:6px">
+        <div class="sec"><span class="sec-t">Select Tasks to Move</span></div>
+        <div class="tsel sel-act" onclick="this.classList.toggle('sel-act')">
+          <div class="tsel-chk"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="tsel-inf"><div class="tsel-prop">KPG Residence Check-Out</div><div class="tsel-det">Overdue +23m · urgent</div></div>
+          <span class="tsel-pill stp-r">Overdue</span>
+        </div>
+        <div class="tsel" onclick="this.classList.toggle('sel-act')">
+          <div class="tsel-chk"></div>
+          <div class="tsel-inf"><div class="tsel-prop">Jasmine House Check-Out</div><div class="tsel-det">Pending 13:00 · moveable</div></div>
+          <span class="tsel-pill stp-n">Pending</span>
+        </div>
+        <div class="tsel" style="opacity:.5;cursor:default">
+          <div class="tsel-chk" style="background:#F3F4F6;border-color:#F3F4F6"></div>
+          <div class="tsel-inf"><div class="tsel-prop" style="color:#9CA3AF">Emuna Villa Check-Out</div><div class="tsel-det">In progress — cannot move</div></div>
+          <span class="tsel-pill stp-n">Locked</span>
+        </div>
+        <div class="sec" style="margin-top:4px"><span class="sec-t" style="color:#15803D">Assign To</span></div>
+        <div class="wpc" onclick="go('s05')">
+          <div class="wpc-av" style="background:#4F46E5">SK</div>
+          <div class="wpc-inf"><div class="wpc-nm">Somchai K.</div><div class="wpc-dt">Available · 1 done · ETA 10 min</div></div>
+          <div class="wpc-rt"><span class="wptag wpt-av">Available</span></div>
+        </div>
+        <div class="wpc" onclick="go('s05')">
+          <div class="wpc-av" style="background:#7C3AED">AR</div>
+          <div class="wpc-inf"><div class="wpc-nm">Anchali R.</div><div class="wpc-dt">Available · 0 active · ETA 15 min</div></div>
+          <div class="wpc-rt"><span class="wptag wpt-av">Available</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;margin-top:4px">
+          <button class="io io-dk" onclick="go('s05')">Confirm Redistribution</button>
+          <button class="io io-gh" onclick="go('s19')">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S21 — WORKER DETAIL: NOI (AT CAPACITY)
+         ════════════════════════════════ -->
+    <div class="screen" id="s21">
+      <div class="sb sb-d"><span class="sb-t">10:05</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-d" onclick="go('s18')"><div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Live Staffing</div><div class="bkh-title">Worker Detail</div></div>
+      <div class="wdh">
+        <div class="wdh-av" style="background:#F59E0B;border-color:#F59E0B">NC</div>
+        <div class="wdh-inf"><div class="wdh-nm">Noi Chantra</div><div class="wdh-sub">Cleaner · on shift 08:30</div></div>
+        <span class="wdh-bdg wdb-a">At capacity</span>
+      </div>
+      <div class="lb-wrap">
+        <div class="lb-row"><span class="lb-lbl">Daily load</span><span class="lb-val">4 cleans · at limit</span></div>
+        <div class="lb"><div class="lb-fill lbf-a" style="width:88%"></div></div>
+      </div>
+      <div class="scroll" style="gap:6px">
+        <div class="db">
+          <div class="db-hd">Current Status</div>
+          <div class="db-r"><span class="db-k">Stream</span><span class="db-v">Cleaner</span></div>
+          <div class="db-r"><span class="db-k">Current task</span><span class="db-v dv-a">Emuna Villa · Room 2/4</span></div>
+          <div class="db-r"><span class="db-k">Window remaining</span><span class="db-v dv-a">1h 20m</span></div>
+          <div class="db-r"><span class="db-k">Photos pending</span><span class="db-v">8 items</span></div>
+        </div>
+        <div class="sec"><span class="sec-t">Today's Cleans</span></div>
+        <div class="stc stc-dn">
+          <div class="stc-top"><span class="stc-p">KPG Residence</span><span class="stc-pill stp-dn">Done · 09:44</span></div>
+          <div class="stc-meta"><span>On time · 3 rooms</span></div>
+        </div>
+        <div class="stc stc-a" onclick="go('s12')">
+          <div class="stc-top"><span class="stc-p">Emuna Villa</span><span class="stc-pill stp-a">Window 1h 20m</span></div>
+          <div class="stc-meta"><span>Room 2/4 · active · tap for detail</span></div>
+        </div>
+        <div class="stc"><div class="stc-top"><span class="stc-p">Jasmine House</span><span class="stc-pill stp-n">Pending 12:00</span></div></div>
+        <div class="stc"><div class="stc-top"><span class="stc-p">Sunset Condo</span><span class="stc-pill stp-n">Pending 13:30</span></div></div>
+        <div class="int-list">
+          <button class="io io-dk" onclick="go('s13')">Assign support cleaner · Emuna</button>
+          <button class="io io-bl">Call Noi Chantra</button>
+          <button class="io io-gh">Monitor · no action yet</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S22 — BOOKINGS: ACTIVE STAYS
+         ════════════════════════════════ -->
+    <div class="screen" id="s22">
+      <div class="sb sb-d"><span class="sb-t">9:41</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="aph"><div><div class="aph-t">Active Stays & Arrivals</div><div class="aph-s">Thu 2 Apr · 5 bookings</div></div></div>
+      <div class="fbar"><span class="ft ft-a">Today</span><span class="ft">Active</span><span class="ft">Arriving</span><span class="ft">Departing</span></div>
+      <div class="scroll">
+        <div class="bkc bkc-ex" onclick="go('s23')">
+          <div class="bk-top"><span class="bk-pr">KPG Residence</span><span class="bk-bdg bkb-ex">CHECK-OUT OVERDUE</span></div>
+          <div class="bk-body">
+            <div class="bk-rw"><span class="bk-k">Current guest</span><span class="bk-v">Mr. & Mrs. Chen</span></div>
+            <div class="bk-rw"><span class="bk-k">Departure</span><span class="bk-v bkv-r">11:00 · +23 min overdue</span></div>
+            <div class="bk-rw"><span class="bk-k">Next check-in</span><span class="bk-v bkv-a">Tomás Reyes · 14:00</span></div>
+          </div>
+          <div class="bk-ft"><span class="bk-lk">View booking →</span><span class="bk-ac" style="color:#DC2626">Intervene</span></div>
+        </div>
+        <div class="bkc bkc-rk" onclick="go('s24')">
+          <div class="bk-top"><span class="bk-pr">Emuna Villa</span><span class="bk-bdg bkb-rk">EARLY CHECK-OUT</span></div>
+          <div class="bk-body">
+            <div class="bk-rw"><span class="bk-k">Current guest</span><span class="bk-v">Khun Suparat</span></div>
+            <div class="bk-rw"><span class="bk-k">Original departure</span><span class="bk-v">Sat 5 Apr</span></div>
+            <div class="bk-rw"><span class="bk-k">Requested early out</span><span class="bk-v bkv-a">Today · needs confirmation</span></div>
+          </div>
+          <div class="bk-ft"><span class="bk-lk">View exception →</span><span class="bk-ac">Coordinate</span></div>
+        </div>
+        <div class="bkc bkc-ok" onclick="go('s25')">
+          <div class="bk-top"><span class="bk-pr">Sunset Condo</span><span class="bk-bdg bkb-lt">LATE ARRIVAL</span></div>
+          <div class="bk-body">
+            <div class="bk-rw"><span class="bk-k">Guest</span><span class="bk-v">Pierre Martin</span></div>
+            <div class="bk-rw"><span class="bk-k">Expected arrival</span><span class="bk-v bkv-b">21:00 · confirmed late</span></div>
+            <div class="bk-rw"><span class="bk-k">Clean status</span><span class="bk-v bkv-g">Done ✓</span></div>
+          </div>
+          <div class="bk-ft"><span class="bk-lk">View coordination →</span></div>
+        </div>
+        <div class="bkc bkc-ok">
+          <div class="bk-top"><span class="bk-pr">Baan Siri</span><span class="bk-bdg bkb-ar">ARRIVING</span></div>
+          <div class="bk-body">
+            <div class="bk-rw"><span class="bk-k">Guest</span><span class="bk-v">Sophia L.</span></div>
+            <div class="bk-rw"><span class="bk-k">Arrival time</span><span class="bk-v">16:00</span></div>
+            <div class="bk-rw"><span class="bk-k">Readiness</span><span class="bk-v bkv-g">All clear ✓</span></div>
+          </div>
+          <div class="bk-ft"><span class="bk-lk">All on track</span></div>
+        </div>
+        <div class="bkc bkc-ok">
+          <div class="bk-top"><span class="bk-pr">Jasmine House</span><span class="bk-bdg bkb-act">ACTIVE STAY</span></div>
+          <div class="bk-body">
+            <div class="bk-rw"><span class="bk-k">Guest</span><span class="bk-v">The Wilson Family</span></div>
+            <div class="bk-rw"><span class="bk-k">Departs</span><span class="bk-v">Fri 3 Apr</span></div>
+            <div class="bk-rw"><span class="bk-k">Status</span><span class="bk-v bkv-g">No issues</span></div>
+          </div>
+          <div class="bk-ft"><span class="bk-lk">View booking</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S23 — BOOKING DETAIL: KPG (ACTIVE STAY)
+         ════════════════════════════════ -->
+    <div class="screen" id="s23">
+      <div class="sb sb-r"><span class="sb-t">9:43</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-r" onclick="go('s22')"><div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Active Stays</div><div class="bkh-title">KPG Residence</div></div>
+      <div class="scroll" style="gap:7px">
+        <div style="background:#FEE2E2;border-radius:9px;padding:8px 12px;flex-shrink:0">
+          <div style="font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:800;color:#DC2626">Check-Out Overdue — +23 minutes</div>
+          <div style="font-size:9px;color:#6B7280;margin-top:2px">Guest still in property. Turnover chain at risk.</div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Departing Guest</div>
+          <div class="db-r"><span class="db-k">Guest</span><span class="db-v">Mr. & Mrs. Chen</span></div>
+          <div class="db-r"><span class="db-k">Booking ref</span><span class="db-v" style="color:#9CA3AF">KPG-2048</span></div>
+          <div class="db-r"><span class="db-k">Scheduled out</span><span class="db-v dv-r">11:00 · overdue</span></div>
+          <div class="db-r"><span class="db-k">Check-out worker</span><span class="db-v dv-a">Maria G. (not yet arrived)</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Arriving Guest</div>
+          <div class="db-r"><span class="db-k">Guest</span><span class="db-v">Tomás Reyes</span></div>
+          <div class="db-r"><span class="db-k">Arrival</span><span class="db-v dv-r">14:00 · confirmed</span></div>
+          <div class="db-r"><span class="db-k">Chain status</span><span class="db-v dv-r">At risk</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Turnover Chain</div>
+          <div style="padding:9px 10px">
+            <div class="chain">
+              <div class="cstep"><div class="csi csi-bk"><div class="cs-lbl">Check-Out</div><div class="cs-tm">11:00</div><div class="cs-st cst-bk">Blocked</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Clean</div><div class="cs-tm">11:30</div><div class="cs-st cst-pd">Pending</div></div></div>
+              <div class="carr">›</div>
+              <div class="cstep"><div class="csi csi-pd"><div class="cs-lbl">Check-In</div><div class="cs-tm">14:00</div><div class="cs-st cst-pd">At risk</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="int-list">
+          <button class="io io-dk" onclick="go('s03')">View check-out alert →</button>
+          <button class="io io-bl">Contact departing guest</button>
+          <button class="io io-gh">Notify arriving guest of potential delay</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S24 — BOOKING: EARLY CHECK-OUT
+         ════════════════════════════════ -->
+    <div class="screen" id="s24">
+      <div class="sb sb-am"><span class="sb-t">10:08</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-am" onclick="go('s22')"><div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Active Stays</div><div class="bkh-title">Emuna Villa</div></div>
+      <div class="scroll" style="gap:7px">
+        <div style="background:#FEF3C7;border-radius:9px;padding:8px 12px;flex-shrink:0">
+          <div style="font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:800;color:#92400E">Early Check-Out Request</div>
+          <div style="font-size:9px;color:#6B7280;margin-top:2px">Guest Khun Suparat requested departure today · originally Sat 5 Apr</div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Guest</div>
+          <div class="db-r"><span class="db-k">Name</span><span class="db-v">Khun Suparat</span></div>
+          <div class="db-r"><span class="db-k">Original departure</span><span class="db-v">Sat 5 Apr (3 nights remaining)</span></div>
+          <div class="db-r"><span class="db-k">Requested early out</span><span class="db-v dv-a">Today Thu 2 Apr · ~12:00</span></div>
+          <div class="db-r"><span class="db-k">Reason given</span><span class="db-v">Personal change of plans</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Operational Impact</div>
+          <div class="db-r"><span class="db-k">Clean team</span><span class="db-v dv-g">Noi assigned · already active</span></div>
+          <div class="db-r"><span class="db-k">AC repair</span><span class="db-v dv-a">Aroon · ETA 11:30</span></div>
+          <div class="db-r"><span class="db-k">Next booking at Emuna</span><span class="db-v">Not for 48h — window available</span></div>
+          <div class="db-r"><span class="db-k">Refund policy</span><span class="db-v">Owner to confirm</span></div>
+        </div>
+        <div class="ncard">
+          <div class="nc-t">Positive impact</div>
+          <div class="nc-b">Early departure frees Emuna for AC repair without time pressure. Reduces risk to any future booking.</div>
+        </div>
+        <div class="int-list">
+          <button class="io io-gn">Confirm early check-out</button>
+          <button class="io io-dk" onclick="go('s07')">Notify property owner</button>
+          <button class="io io-am">Adjust clean schedule</button>
+          <button class="io io-gh" onclick="go('s22')">Back to bookings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         S25 — LATE ARRIVAL COORDINATION
+         ════════════════════════════════ -->
+    <div class="screen" id="s25">
+      <div class="sb sb-d"><span class="sb-t">10:10</span><div class="sb-i"><svg width="14" height="9" viewBox="0 0 14 9" fill="none"><rect x="0" y="3" width="2" height="6" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="3" y="2" width="2" height="7" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="6" y="1" width="2" height="8" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="9" y="0" width="2" height="9" fill="rgba(255,255,255,.7)" rx=".4"/><rect x="12" y="0" width="2" height="9" fill="rgba(255,255,255,.2)" rx=".4"/></svg><svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0" y="1" width="17" height="8" rx="2" stroke="rgba(255,255,255,.7)" stroke-width="1"/><rect x="17.5" y="3.5" width="2" height="3" rx=".8" fill="rgba(255,255,255,.7)"/><rect x="1" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,.7)"/></svg></div></div>
+      <div class="bk-hdr bkh-d" onclick="go('s22')"><div class="bkh-back"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Active Stays</div><div class="bkh-title">Sunset Condo</div></div>
+      <div class="scroll" style="gap:7px">
+        <div style="background:#EFF6FF;border-radius:9px;padding:8px 12px;flex-shrink:0">
+          <div style="font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:800;color:#1D4ED8">Late Arrival Confirmed — 21:00</div>
+          <div style="font-size:9px;color:#6B7280;margin-top:2px">Pierre Martin · originally 15:00 · confirmed delay · property ready</div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Guest</div>
+          <div class="db-r"><span class="db-k">Name</span><span class="db-v">Pierre Martin</span></div>
+          <div class="db-r"><span class="db-k">Original arrival</span><span class="db-v">15:00</span></div>
+          <div class="db-r"><span class="db-k">Confirmed arrival</span><span class="db-v dv-b">21:00 (confirmed by guest)</span></div>
+          <div class="db-r"><span class="db-k">Stay duration</span><span class="db-v">3 nights</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Property Readiness</div>
+          <div class="db-r"><span class="db-k">Clean status</span><span class="db-v dv-g">Done · Noi · completed 12:30 ✓</span></div>
+          <div class="db-r"><span class="db-k">Check-in pack</span><span class="db-v dv-g">Ready ✓</span></div>
+          <div class="db-r"><span class="db-k">Property secure</span><span class="db-v dv-g">Locked · access ready ✓</span></div>
+          <div class="db-r"><span class="db-k">AC / utilities</span><span class="db-v dv-g">All on ✓</span></div>
+        </div>
+        <div class="db">
+          <div class="db-hd">Check-In Cover</div>
+          <div class="db-r"><span class="db-k">Late shift cover</span><span class="db-v dv-a">Not yet assigned</span></div>
+          <div class="db-r"><span class="db-k">Standard shift ends</span><span class="db-v">20:00</span></div>
+          <div class="db-r"><span class="db-k">Action needed</span><span class="db-v dv-a">Assign 21:00 check-in cover</span></div>
+        </div>
+        <div class="int-list">
+          <button class="io io-dk">Assign late check-in cover</button>
+          <button class="io io-bl">Call Pierre Martin — confirm ETA</button>
+          <button class="io io-gh">Send pre-arrival info to guest</button>
+          <button class="io io-gh" onclick="go('s22')">Back to bookings</button>
+        </div>
+      </div>
+    </div>
+
+  <!-- SHARED BOTTOM NAV (outside screens) -->
+  </div><!-- /phone-chrome screens end; nav below -->
+
+  <!-- nav injected via JS -->
+
+</div><!-- /phone-chrome -->
+</div><!-- /proto-center -->
+
+<!-- ═══ DESIGN NOTES ═══ -->
+<div class="design-notes" id="notesPanel">
+  <div class="dn-id" id="dn-id">S01 · Hub</div>
+  <div class="dn-title" id="dn-title">Operational Hub</div>
+  <div id="dn-content"></div>
+</div>
+
+</div><!-- /main-layout -->
+
+<!-- PRINCIPLE STRIP -->
+<div class="pstrip">
+  <div><div class="ps-l">Role Philosophy</div><div class="ps-v"><strong>Oversight, not execution.</strong> The UI gives the manager a live picture — not a task queue to clear.</div></div>
+  <div><div class="ps-l">Alert-First Design</div><div class="ps-v"><strong>Exceptions come first.</strong> Calm operations stay quiet. Urgency is communicated through color and animation — not volume.</div></div>
+  <div><div class="ps-l">Stream-First Thinking</div><div class="ps-v">The manager thinks in <strong>Check-In · Check-Out · Cleaner · Maintenance</strong> — four live operational flows, not one flat task list.</div></div>
+  <div><div class="ps-l">Intervene, Not Execute</div><div class="ps-v">Manager verbs: <strong>Reassign · Escalate · Call · Coordinate · Monitor.</strong> Not: Start / Complete / Mark Done.</div></div>
+  <div><div class="ps-l">Booking-Linked Reality</div><div class="ps-v">Operations are <strong>chained to real bookings</strong> — departures, arrivals, exceptions. The chain is always visible.</div></div>
+</div>
+
+</div><!-- /page-wrap -->
+
+<script>
+// =============================================
+// Screen metadata
+// =============================================
+const screenData = {
+  's01':{ id:'S01 · Hub', title:'Operational Hub', nav:'hub', bc:'Hub · Default State',
+    purpose:'The daily command center. Answers the core question: "Is everything on track, and what needs my attention right now?" Exceptions surface first. Healthy streams stay compact.',
+    taps:[
+      {el:'Morning Briefing card',to:'S02 — Morning Briefing Cockpit'},
+      {el:'KPG Overdue alert → Intervene',to:'S03 — Alert Detail: KPG'},
+      {el:'Emuna SLA Risk → Review',to:'S06 — Alert Detail: Emuna AC'},
+      {el:'Check-Out stream card',to:'S09 — Check-Out Stream Runway'},
+      {el:'Cleaner stream card',to:'S11 — Cleaner Stream Runway'},
+      {el:'Maintenance stream card',to:'S14 — Maintenance Stream Runway'},
+      {el:'Check-In stream card',to:'S16 — Check-In Stream (calm)'}
+    ]},
+  's02':{ id:'S02 · Hub', title:'Morning Briefing', nav:'hub', bc:'Hub · Morning Briefing Cockpit',
+    purpose:'The full operational picture for the day. Dark control room aesthetic. Manager starts every shift here to load the day\'s state: KPIs, active alerts, stream health, staffing, bookings.',
+    taps:[
+      {el:'KPG alert row',to:'S03 — Alert Detail: KPG'},
+      {el:'Emuna alert row',to:'S06 — Alert Detail: Emuna AC'},
+      {el:'Any stream row',to:'Respective stream runway'},
+      {el:'Worker row',to:'Respective worker detail'},
+      {el:'Back: ← Hub',to:'S01 — Hub'}
+    ]},
+  's03':{ id:'S03 · Alert', title:'Alert Detail: KPG Check-Out', nav:'alerts', bc:'Alert · KPG Residence Overdue',
+    purpose:'Situation room for the urgent check-out overdue event. Manager sees the full situation, worker status, turnover chain impact, and has 4 clear intervention options.',
+    taps:[
+      {el:'Reassign to available worker',to:'S04 — Pick Worker'},
+      {el:'Call Maria Gonzalez',to:'(call action)'},
+      {el:'Escalate to property owner',to:'S07 — Escalate'},
+      {el:'Back ← Hub',to:'S01 — Hub'}
+    ]},
+  's04':{ id:'S04 · Alert', title:'Reassign: Pick Worker', nav:'alerts', bc:'Alert · Reassign: Pick Worker',
+    purpose:'Worker selection screen for reassignment. Available workers shown with load, ETA, and status. Unavailable workers shown dimmed with reason. Tap any available worker to confirm.',
+    taps:[
+      {el:'Somchai K. (available)',to:'S05 — Reassign Confirmed'},
+      {el:'Anchali R. (available)',to:'S05 — Reassign Confirmed'},
+      {el:'Cancel',to:'S03 — Back to Alert'}
+    ]},
+  's05':{ id:'S05 · Alert', title:'Reassign: Confirmed', nav:'alerts', bc:'Alert · Reassignment Confirmed',
+    purpose:'Success state. Manager sees what changed: new worker, ETA, updated chain status. Turnover chain shows recovery. Notifications sent. Two clear exit paths.',
+    taps:[
+      {el:'Return to Hub',to:'S01 — Hub'},
+      {el:'View Check-Out Stream',to:'S09 — Check-Out Stream'}
+    ]},
+  's06':{ id:'S06 · Alert', title:'Alert Detail: Emuna AC', nav:'alerts', bc:'Alert · Emuna Villa AC SLA Risk',
+    purpose:'SLA risk alert for AC repair blocking guest check-in at 14:00. Amber framing — serious but not yet overdue. Shows full booking impact and 4 intervention options.',
+    taps:[
+      {el:'Assign support technician',to:'S13 — Assign Support'},
+      {el:'Call Aroon',to:'(call action)'},
+      {el:'View booking',to:'S24 — Early Check-Out'},
+      {el:'Escalate to owner',to:'S07 — Escalate'}
+    ]},
+  's07':{ id:'S07 · Alert', title:'Escalate to Owner', nav:'alerts', bc:'Alert · Escalate to Owner',
+    purpose:'Escalation flow. Pre-filled with situation context. Manager selects send method (WhatsApp / SMS / Call) and sees a message preview before sending. Clean and authoritative.',
+    taps:[
+      {el:'Send Escalation',to:'(sends and returns to alert)'},
+      {el:'Cancel',to:'S06 — Back to Alert'}
+    ]},
+  's08':{ id:'S08 · Stream', title:'Stream Tab Overview', nav:'stream', bc:'Stream · All Streams Overview',
+    purpose:'The Stream tab entry point. Shows all 4 streams with health status. Stream selector tabs allow fast switching. Acts as the overview before drilling into a specific stream.',
+    taps:[
+      {el:'Check-In tab or card',to:'S16 — Check-In Stream'},
+      {el:'Check-Out tab or card',to:'S09 — Check-Out Stream'},
+      {el:'Cleaner tab or card',to:'S11 — Cleaner Stream'},
+      {el:'Maintenance tab or card',to:'S14 — Maintenance Stream'}
+    ]},
+  's09':{ id:'S09 · Stream', title:'Check-Out Runway', nav:'stream', bc:'Stream · Check-Out Runway',
+    purpose:'The full live runway for the Check-Out stream. Three task cards showing real status. Manager Recommendation card surfaces the right intervention. No worker-style "start/complete" buttons.',
+    taps:[
+      {el:'KPG Residence card (overdue)',to:'S10 — Check-Out Item Detail'},
+      {el:'Reassign KPG button',to:'S04 — Pick Worker'}
+    ]},
+  's10':{ id:'S10 · Stream', title:'Check-Out Item Detail', nav:'stream', bc:'Stream · KPG Check-Out Item',
+    purpose:'Full detail for one stream item. Shows the turnover chain prominently. Booking context (departing and arriving guests). Manager can act from here without going back to the stream.',
+    taps:[
+      {el:'Reassign Check-Out',to:'S04 — Pick Worker'},
+      {el:'View booking details',to:'S23 — Booking Detail'}
+    ]},
+  's11':{ id:'S11 · Stream', title:'Cleaner Stream Runway', nav:'stream', bc:'Stream · Cleaner Runway',
+    purpose:'Four-property clean runway with timing pressure visible. Emuna Villa at risk with 1h 20m remaining highlighted. Manager Recommendation card suggests the right action.',
+    taps:[
+      {el:'Emuna Villa card (at risk)',to:'S12 — Cleaner Item Detail'},
+      {el:'Assign Support Cleaner button',to:'S13 — Assign Support'}
+    ]},
+  's12':{ id:'S12 · Stream', title:'Cleaner Item Detail', nav:'stream', bc:'Stream · Emuna Villa Cleaning',
+    purpose:'Full clean progress detail for Emuna Villa. Shows room progress, timing pressure, full turnover chain. Manager actions are assign support, call worker, or monitor.',
+    taps:[
+      {el:'Assign support cleaner',to:'S13 — Assign Support'},
+      {el:'Call Noi',to:'(call action)'}
+    ]},
+  's13':{ id:'S13 · Stream', title:'Assign Support', nav:'stream', bc:'Stream · Assign Support Cleaner',
+    purpose:'Support assignment flow for cleaning. Shows available cleaners with ETA. Same pattern as worker reassignment but scoped to the clean context. Tap any worker to confirm.',
+    taps:[
+      {el:'Pim Saengdao',to:'S05 — Confirmed (success)'},
+      {el:'Kanya T.',to:'S05 — Confirmed (success)'},
+      {el:'Cancel',to:'S12 — Back to Item'}
+    ]},
+  's14':{ id:'S14 · Stream', title:'Maintenance Runway', nav:'stream', bc:'Stream · Maintenance Runway',
+    purpose:'Full maintenance runway. Critical job (Emuna AC) is immediately visible at top. Manager Recommendation card surfaces the SLA risk and links directly to the detail view.',
+    taps:[
+      {el:'Emuna Villa card (critical)',to:'S15 — Maintenance Item Detail'},
+      {el:'View Emuna AC Detail button',to:'S15 — Maintenance Item Detail'}
+    ]},
+  's15':{ id:'S15 · Stream', title:'Maintenance Item Detail', nav:'stream', bc:'Stream · Emuna AC Maintenance',
+    purpose:'Full job detail for the AC repair. Shows the gap between Aroon\'s ETA and the check-in deadline. Booking impact is visible. Four intervention options including escalation.',
+    taps:[
+      {el:'Assign support technician',to:'S13 — Assign Support'},
+      {el:'View booking context',to:'S24 — Early Check-Out Booking'},
+      {el:'Escalate to owner',to:'S07 — Escalate'}
+    ]},
+  's16':{ id:'S16 · Stream', title:'Check-In Stream (calm)', nav:'stream', bc:'Stream · Check-In Stream',
+    purpose:'Shows how a calm stream should look: 3 done, 1 pending with a clear dependency note. The pending KPG check-in shows the dependency on the blocked check-out — the chain is always visible.',
+    taps:[
+      {el:'KPG Residence card',to:'(dependency note visible — no action needed)'}
+    ]},
+  's17':{ id:'S17 · Alerts', title:'Alerts Tab — Full List', nav:'alerts', bc:'Alerts · Full List',
+    purpose:'The complete alerts list. Grouped by severity: Urgent, SLA Risk, Info. A quiet Info item shows how non-urgent items are visually demoted. The calm state shows "All other operations on track".',
+    taps:[
+      {el:'KPG Overdue alert',to:'S03 — Alert Detail: KPG'},
+      {el:'Emuna SLA Risk',to:'S06 — Alert Detail: Emuna'}
+    ]},
+  's18':{ id:'S18 · Team', title:'Team — Live Staffing', nav:'team', bc:'Team · Live Staffing Overview',
+    purpose:'Operational staffing view grouped by status: Needs Attention, At Capacity, Active. Not a staff directory. Shows load, current task, and quick action chips for each worker.',
+    taps:[
+      {el:'Maria G. (overloaded)',to:'S19 — Worker Detail: Maria'},
+      {el:'Noi C. (at capacity)',to:'S21 — Worker Detail: Noi'}
+    ]},
+  's19':{ id:'S19 · Team', title:'Worker Detail: Maria', nav:'team', bc:'Team · Maria Gonzalez (Overloaded)',
+    purpose:'Full worker context for an overloaded worker. Load bar visible. All 4 tasks listed with status. Manager Recommendation suggests redistribution. Actions: redistribute, call, message.',
+    taps:[
+      {el:'KPG Residence task (overdue)',to:'S03 — Alert Detail: KPG'},
+      {el:'Redistribute Work button',to:'S20 — Redistribute Work'}
+    ]},
+  's20':{ id:'S20 · Team', title:'Redistribute Work', nav:'team', bc:'Team · Redistribute Work',
+    purpose:'Task selection for redistribution. Manager selects which tasks to move. In-progress tasks are locked. Available workers shown below. Confirm sends the redistribution.',
+    taps:[
+      {el:'Select task (tap to toggle)',to:'(toggles selection)'},
+      {el:'Somchai K. or Anchali R.',to:'S05 — Confirmed (success)'},
+      {el:'Cancel',to:'S19 — Back to Maria'}
+    ]},
+  's21':{ id:'S21 · Team', title:'Worker Detail: Noi', nav:'team', bc:'Team · Noi Chantra (At Capacity)',
+    purpose:'Worker detail for Noi at capacity. Shows the timing risk on Emuna Villa. Amber ring matches the at-capacity state. Manager can assign support or call.',
+    taps:[
+      {el:'Emuna Villa task (at risk)',to:'S12 — Cleaner Item Detail'},
+      {el:'Assign support cleaner',to:'S13 — Assign Support'}
+    ]},
+  's22':{ id:'S22 · Bookings', title:'Bookings — Active Stays', nav:'bookings', bc:'Bookings · Active Stays & Arrivals',
+    purpose:'Booking-linked operational view. Shows active stays, exceptions, arrivals. Framed for the manager: departure chains, exceptions, and operational readiness — not a reservations system.',
+    taps:[
+      {el:'KPG Residence (overdue)',to:'S23 — Booking Detail: KPG'},
+      {el:'Emuna Villa (early check-out)',to:'S24 — Early Check-Out'},
+      {el:'Sunset Condo (late arrival)',to:'S25 — Late Arrival Coordination'}
+    ]},
+  's23':{ id:'S23 · Bookings', title:'Booking: KPG Active Stay', nav:'bookings', bc:'Bookings · KPG Residence',
+    purpose:'Booking-linked view of a departure in trouble. Shows both departing and arriving guests, the turnover chain, and operational actions. The chain connects the booking reality to the ops consequence.',
+    taps:[
+      {el:'View check-out alert',to:'S03 — Alert Detail: KPG'},
+      {el:'Contact departing guest',to:'(call action)'}
+    ]},
+  's24':{ id:'S24 · Bookings', title:'Booking: Early Check-Out', nav:'bookings', bc:'Bookings · Emuna Villa Early Check-Out',
+    purpose:'Exception handling for an early departure. Manager sees the guest request, operational impact (actually positive here — frees AC repair window), and can confirm or escalate to owner.',
+    taps:[
+      {el:'Confirm early check-out',to:'(confirmation state)'},
+      {el:'Notify property owner',to:'S07 — Escalate'}
+    ]},
+  's25':{ id:'S25 · Bookings', title:'Late Arrival Coordination', nav:'bookings', bc:'Bookings · Sunset Condo Late Arrival',
+    purpose:'Late arrival flow. Property is ready (clean done). The gap is late check-in cover: standard shift ends at 20:00, guest arrives at 21:00. Manager needs to assign cover before end of day.',
+    taps:[
+      {el:'Assign late check-in cover',to:'(worker assignment flow)'},
+      {el:'Call Pierre Martin',to:'(call action)'}
+    ]}
+};
+
+// =============================================
+// Phone chrome: inject nav
+// =============================================
+const phoneChrome = document.querySelector('.phone-chrome');
+const nav = document.createElement('div');
+nav.className = 'bnav';
+nav.id = 'mainNav';
+nav.innerHTML = `
+  <div class="bni bn-act" data-tab="hub" onclick="go('s01')">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    <span class="bni-l">Hub</span>
+  </div>
+  <div class="bni" data-tab="stream" onclick="go('s08')">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span class="bni-l">Stream</span>
+  </div>
+  <div class="bni bn-bdg" data-tab="alerts" onclick="go('s17')">
+    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="bni-l">Alerts</span>
+  </div>
+  <div class="bni" data-tab="team" onclick="go('s18')">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span class="bni-l">Team</span>
+  </div>
+  <div class="bni" data-tab="bookings" onclick="go('s22')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span class="bni-l">Bookings</span>
+  </div>`;
+phoneChrome.appendChild(nav);
+
+// =============================================
+// Navigation
+// =============================================
+function go(id) {
+  // hide all screens
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('s-act'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('s-act');
+
+  const d = screenData[id];
+  if (!d) return;
+
+  // update breadcrumb
+  document.getElementById('bctext').textContent = d.bc;
+
+  // update nav
+  document.querySelectorAll('.bni').forEach(b => b.classList.remove('bn-act'));
+  const activeNav = document.querySelector(`.bni[data-tab="${d.nav}"]`);
+  if (activeNav) activeNav.classList.add('bn-act');
+
+  // update screen map
+  document.querySelectorAll('.sm-item').forEach(i => i.classList.remove('sm-active'));
+  const mapItem = document.getElementById('map-' + id);
+  if (mapItem) {
+    mapItem.classList.add('sm-active');
+    mapItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // update design notes
+  document.getElementById('dn-id').textContent = d.id;
+  document.getElementById('dn-title').textContent = d.title;
+  let html = `<div class="dn-card"><div class="dn-cl">Purpose</div><div class="dn-cb">${d.purpose}</div></div>`;
+  if (d.taps && d.taps.length) {
+    html += `<div class="dn-card"><div class="dn-cl">Clickable elements → leads to</div>`;
+    d.taps.forEach(t => {
+      html += `<div class="dn-flow"><span class="dn-fa">→</span><div class="dn-ft"><strong>${t.el}</strong><br>${t.to}</div></div>`;
+    });
+    html += `</div>`;
+  }
+  document.getElementById('dn-content').innerHTML = html;
+}
+
+// Init
+go('s01');
+</script>
+</body>
+</html>

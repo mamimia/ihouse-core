@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Portal UI v3.1 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 2200px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* ========== SCREEN 1: WELCOME & YOUR STAY ========== */
+
+        .welcome-hero {
+            width: 100%;
+            min-height: 140px;
+            background: linear-gradient(135deg, #F5EFE6 0%, #2D5A3D 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 12px;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .welcome-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hero-property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            color: #FFFFFF;
+            text-align: center;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+
+        .hero-greeting {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .greeting-icon {
+            font-size: 16px;
+        }
+
+        .stay-card {
+            background: #FFFFFF;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(45, 90, 61, 0.12);
+            padding: 16px;
+            margin: 16px 13px;
+            flex-shrink: 0;
+        }
+
+        .stay-card-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 12px;
+        }
+
+        .stay-dates {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .stay-date-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stay-date-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .stay-date-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+            line-height: 1.2;
+        }
+
+        .stay-duration {
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #2D5A3D;
+            background: linear-gradient(135deg, #F5EFE6 0%, #EDE6DA 100%);
+            padding: 6px 10px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .stay-timeline {
+            width: 100%;
+            height: 4px;
+            background: #E8DDD0;
+            border-radius: 2px;
+            margin-bottom: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stay-timeline::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 65%;
+            background: linear-gradient(90deg, #2D5A3D 0%, #45764a 100%);
+            border-radius: 2px;
+        }
+
+        .quick-access {
+            padding: 12px 13px;
+        }
+
+        .quick-access-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .quick-tiles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .quick-tile {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 14px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 76px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(45, 90, 61, 0.06);
+        }
+
+        .quick-tile:active {
+            background: #F5EFE6;
+            border-color: #2D5A3D;
+            box-shadow: 0 4px 12px rgba(45, 90, 61, 0.15);
+        }
+
+        .tile-icon {
+            font-size: 28px;
+        }
+
+        .tile-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+            line-height: 1.2;
+        }
+
+        .lang-selector {
+            position: absolute;
+            top: 34px;
+            right: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #2D5A3D;
+            display: flex;
+            gap: 4px;
+            z-index: 10;
+        }
+
+        .lang-selector span {
+            cursor: pointer;
+            padding: 2px 4px;
+        }
+
+        .lang-selector span.active {
+            text-decoration: underline;
+        }
+
+        /* ========== SCREEN 2: WI-FI & CONNECT ========== */
+
+        .app-header {
+            height: 52px;
+            background: linear-gradient(135deg, #FFFFFF 0%, #F9F7F4 100%);
+            border-bottom: 1px solid #E8DDD0;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            flex-shrink: 0;
+            gap: 12px;
+        }
+
+        .header-back-btn {
+            width: 32px;
+            height: 32px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2D5A3D;
+            font-size: 18px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #2D5A3D;
+            flex: 1;
+        }
+
+        .scroll-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .scroll-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-content::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        .content-card {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 14px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(45, 90, 61, 0.06);
+        }
+
+        .card-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 10px;
+        }
+
+        .card-subtitle {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        /* Wi-Fi specific */
+        .wifi-field {
+            background: #F9F7F4;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .wifi-field-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 4px;
+        }
+
+        .wifi-field-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .wifi-field-value {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: #171A1F;
+            flex: 1;
+            word-break: break-all;
+            letter-spacing: 0.5px;
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #2D5A3D;
+            font-size: 16px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:active {
+            transform: scale(1.1);
+        }
+
+        .copy-feedback {
+            font-size: 8px;
+            color: #16A34A;
+            font-weight: 700;
+            margin-left: 4px;
+            opacity: 0;
+            animation: fadeInOut 1.5s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .qr-section {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .qr-placeholder {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto;
+            border: 2px solid #D1D6DC;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #F9F7F4 0%, #F5EFE6 100%);
+            font-size: 56px;
+            margin-bottom: 10px;
+        }
+
+        .qr-instruction {
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        .expandable-section {
+            border-top: 1px solid #E8DDD0;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+
+        .expandable-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 6px 0;
+        }
+
+        .expandable-header-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .expand-icon {
+            font-size: 12px;
+            color: #9CA3AF;
+            transition: transform 0.2s;
+        }
+
+        .expandable-content {
+            display: none;
+            margin-top: 8px;
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.4;
+            background: #F9F7F4;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .expandable-content.open {
+            display: block;
+        }
+
+        .expand-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .help-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .help-step {
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        .step-number {
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        /* ========== SCREEN 3: HOUSE GUIDE & ESSENTIALS ========== */
+
+        .guide-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .guide-header-banner {
+            background: linear-gradient(135deg, #2D5A3D 0%, #1f3d28 100%);
+            color: #FFFFFF;
+            padding: 12px 14px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .guide-banner-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 3px;
+        }
+
+        .guide-banner-subtitle {
+            font-size: 9px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .rule-card {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(45, 90, 61, 0.06);
+        }
+
+        .rule-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: #F5EFE6;
+            border-radius: 8px;
+        }
+
+        .rule-content {
+            flex: 1;
+        }
+
+        .rule-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .rule-text {
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.3;
+        }
+
+        .accordion-item {
+            border-top: 1px solid #E8DDD0;
+            padding: 10px 0;
+        }
+
+        .accordion-item:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 8px 0;
+            gap: 8px;
+        }
+
+        .accordion-header-left {
+            display: flex;
+            gap: 8px;
+            flex: 1;
+            align-items: flex-start;
+        }
+
+        .accordion-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .accordion-title-area {
+            flex: 1;
+        }
+
+        .accordion-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .accordion-preview {
+            font-size: 8px;
+            color: #9CA3AF;
+            margin-top: 3px;
+            line-height: 1.3;
+        }
+
+        .accordion-chevron {
+            font-size: 12px;
+            color: #9CA3AF;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .accordion-chevron.open {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            display: none;
+            margin-top: 8px;
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.4;
+            background: #F9F7F4;
+            padding: 10px;
+            border-radius: 8px;
+            margin-left: 26px;
+        }
+
+        .accordion-content.open {
+            display: block;
+        }
+
+        /* ========== SCREEN 4: SELF CHECK-IN FORM ========== */
+
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .form-header {
+            background: linear-gradient(135deg, #2D5A3D 0%, #1f3d28 100%);
+            color: #FFFFFF;
+            padding: 16px 14px;
+            text-align: center;
+        }
+
+        .form-header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 4px;
+        }
+
+        .form-header-subtitle {
+            font-size: 9px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .step-indicator {
+            background: #FFFFFF;
+            border-bottom: 1px solid #E8DDD0;
+            padding: 10px 14px;
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .step-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #D1D6DC;
+            transition: all 0.2s;
+        }
+
+        .step-dot.active {
+            background: #2D5A3D;
+            width: 18px;
+            border-radius: 3px;
+        }
+
+        .form-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .form-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .form-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .form-scroll::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-label {
+            display: block;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #E8DDD0;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+            background: #F9F7F4;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #2D5A3D;
+            background: #FFFFFF;
+            box-shadow: 0 0 0 3px rgba(45, 90, 61, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .form-note {
+            font-size: 8px;
+            color: #9CA3AF;
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+
+        .photo-upload-box {
+            background: #F9F7F4;
+            border: 2px dashed #D1D6DC;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .photo-upload-box:active {
+            border-color: #2D5A3D;
+            background: #F5EFE6;
+        }
+
+        .photo-icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+
+        .photo-text {
+            font-size: 9px;
+            color: #6B7280;
+            line-height: 1.3;
+        }
+
+        .photo-subtext {
+            font-size: 8px;
+            color: #9CA3AF;
+            margin-top: 4px;
+        }
+
+        .security-badge {
+            background: #F0FDF4;
+            border: 1px solid #DCFCE7;
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: 10px;
+            font-size: 8px;
+            color: #166534;
+            line-height: 1.3;
+            display: flex;
+            gap: 6px;
+            align-items: flex-start;
+        }
+
+        .badge-icon {
+            font-size: 12px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .form-button {
+            width: 100%;
+            padding: 12px;
+            background: #2D5A3D;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 6px;
+        }
+
+        .form-button:active {
+            background: #1f3d28;
+            transform: scale(0.98);
+        }
+
+        /* ========== SCREEN 5: HOST MESSAGING ========== */
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F9F7F4 100%);
+            border-bottom: 1px solid #E8DDD0;
+            padding: 12px 14px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-header-back {
+            width: 28px;
+            height: 28px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #2D5A3D;
+            font-size: 16px;
+        }
+
+        .host-avatar-area {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+
+        .host-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .host-status {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .host-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #2D5A3D 0%, #45764a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #F9F7F4;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        .message {
+            display: flex;
+            gap: 8px;
+        }
+
+        .message.guest {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            padding: 10px 12px;
+            border-radius: 14px;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+
+        .message.host .message-bubble {
+            background: #FFFFFF;
+            color: #171A1F;
+            border: 1px solid #E8DDD0;
+            box-shadow: 0 2px 6px rgba(45, 90, 61, 0.08);
+        }
+
+        .message.guest .message-bubble {
+            background: #2D5A3D;
+            color: #FFFFFF;
+        }
+
+        .response-indicator {
+            font-size: 8px;
+            color: #9CA3AF;
+            margin-top: 2px;
+            text-align: left;
+        }
+
+        .message.guest .response-indicator {
+            text-align: right;
+        }
+
+        .chat-input-area {
+            background: #FFFFFF;
+            border-top: 1px solid #E8DDD0;
+            padding: 10px 14px;
+            flex-shrink: 0;
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 9px 11px;
+            border: 1px solid #E8DDD0;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            color: #171A1F;
+            background: #F9F7F4;
+            resize: none;
+            max-height: 80px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #2D5A3D;
+            background: #FFFFFF;
+        }
+
+        .chat-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .send-btn {
+            width: 28px;
+            height: 28px;
+            background: #2D5A3D;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .send-btn:active {
+            background: #1f3d28;
+        }
+
+        /* ========== SCREEN 6: LOCATION & GETTING AROUND ========== */
+
+        .location-hero {
+            background: linear-gradient(135deg, #2D5A3D 0%, #1f3d28 100%);
+            color: #FFFFFF;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .location-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 2px;
+        }
+
+        .location-subtitle {
+            font-size: 9px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .address-card {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin: 12px 14px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            box-shadow: 0 2px 8px rgba(45, 90, 61, 0.06);
+        }
+
+        .address-icon {
+            font-size: 18px;
+            color: #2D5A3D;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .address-content {
+            flex: 1;
+        }
+
+        .address-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 800;
+            color: #2D5A3D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .address-text {
+            font-size: 10px;
+            color: #171A1F;
+            line-height: 1.3;
+            margin-bottom: 6px;
+        }
+
+        .address-copy-btn {
+            font-size: 9px;
+            color: #2D5A3D;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            font-weight: 700;
+        }
+
+        .location-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .location-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .location-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .location-scroll::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        .landmark-section {
+            border-top: 1px solid #E8DDD0;
+            padding: 12px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .landmark-section:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .landmark-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .landmark-item {
+            background: #FFFFFF;
+            border: 1px solid #E8DDD0;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            gap: 8px;
+            font-size: 9px;
+            box-shadow: 0 2px 6px rgba(45, 90, 61, 0.04);
+        }
+
+        .landmark-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            opacity: 0.8;
+        }
+
+        .landmark-info {
+            flex: 1;
+        }
+
+        .landmark-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .landmark-detail {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .location-footer {
+            padding: 12px 14px;
+            border-top: 1px solid #E8DDD0;
+        }
+
+        .footer-note {
+            font-size: 8px;
+            color: #6B7280;
+            line-height: 1.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="page-header">
+            <h1>Guest Portal UI v3.1</h1>
+            <p>Refined hospitality experience – stronger stay hero, elevated premium touches</p>
+        </div>
+
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">Purpose</div>
+                <div class="note-text">Mobile-first guest onboarding & arrival experience. 6 core screens: welcome, Wi-Fi, house guide, check-in, host chat, location.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Role Accent</div>
+                <div class="note-text">#2D5A3D warm forest green. Hospitality-focused headers, premium card treatments, large touch targets 48px+.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Key Refinements</div>
+                <div class="note-text">Welcome hero now feels like luxury arrival with gradient + subtle pattern. Stay dates dominate the card. Wi-Fi field is premium keycard-style. Form feels confident. Chat is warmer. Concierge location guide.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">V3.1 Tightened</div>
+                <div class="note-text">Elevated hospitality quality. Stronger stay-dates hero. Premium card treatments. Warmer copy tone. Canonical page structure aligned. Zero friction, trust-first, guest-centric design.</div>
+            </div>
+        </div>
+
+        <div class="phones-container">
+            <!-- SCREEN 1: Welcome & Your Stay -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="scroll-area">
+                        <div class="welcome-hero">
+                            <div class="hero-content">
+                                <div class="hero-property-name">Villa Cielo</div>
+                                <div class="hero-greeting">
+                                    <span class="greeting-icon">👋</span>
+                                    <span>Welcome to your retreat</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stay-card">
+                            <div class="stay-card-title">Your Stay</div>
+                            <div class="stay-dates">
+                                <div class="stay-date-item">
+                                    <div class="stay-date-label">Check In</div>
+                                    <div class="stay-date-value">Apr 5</div>
+                                </div>
+                                <div class="stay-date-item">
+                                    <div class="stay-date-label">Check Out</div>
+                                    <div class="stay-date-value">Apr 12</div>
+                                </div>
+                            </div>
+                            <div class="stay-duration">7 nights • April 5–12</div>
+                            <div class="stay-timeline"></div>
+                        </div>
+
+                        <div class="quick-access">
+                            <div class="quick-access-title">Quick Access</div>
+                            <div class="quick-tiles">
+                                <div class="quick-tile">
+                                    <div class="tile-icon">🛜</div>
+                                    <div class="tile-label">Wi-Fi & Connect</div>
+                                </div>
+                                <div class="quick-tile">
+                                    <div class="tile-icon">📖</div>
+                                    <div class="tile-label">House Guide</div>
+                                </div>
+                                <div class="quick-tile">
+                                    <div class="tile-icon">✓</div>
+                                    <div class="tile-label">Check In</div>
+                                </div>
+                                <div class="quick-tile">
+                                    <div class="tile-icon">💬</div>
+                                    <div class="tile-label">Message Host</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">1. Welcome & Your Stay</div>
+            </div>
+
+            <!-- SCREEN 2: Wi-Fi & Connect -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="app-header">
+                        <button class="header-back-btn">←</button>
+                        <div class="header-title">Wi-Fi & Connect</div>
+                    </div>
+                    <div class="scroll-content">
+                        <div class="content-card">
+                            <div class="card-label">Network Access</div>
+                            <div class="card-subtitle">Connect in seconds</div>
+                            <div class="wifi-field">
+                                <div class="wifi-field-label">Network Name</div>
+                                <div class="wifi-field-row">
+                                    <div class="wifi-field-value">CieloGuest_5GHz</div>
+                                    <button class="copy-btn" onclick="alert('Copied!')">📋</button>
+                                </div>
+                            </div>
+                            <div class="wifi-field">
+                                <div class="wifi-field-label">Password</div>
+                                <div class="wifi-field-row">
+                                    <div class="wifi-field-value">Coastal2024!Breeze</div>
+                                    <button class="copy-btn" onclick="alert('Copied!')">📋</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="card-label">Quick Connect</div>
+                            <div class="card-subtitle">Scan to join instantly</div>
+                            <div class="qr-section">
+                                <div class="qr-placeholder">⬜</div>
+                                <div class="qr-instruction">Point your camera at the QR code to connect instantly to the network.</div>
+                            </div>
+                        </div>
+
+                        <div class="content-card">
+                            <div class="expandable-section">
+                                <div class="expandable-header">
+                                    <div class="expandable-header-label">Having trouble connecting?</div>
+                                    <div class="expand-icon">⋯</div>
+                                </div>
+                                <div class="expandable-content">
+                                    <div class="help-steps">
+                                        <div class="help-step"><span class="step-number">1.</span> Forget the network from your Wi-Fi settings</div>
+                                        <div class="help-step"><span class="step-number">2.</span> Restart your device</div>
+                                        <div class="help-step"><span class="step-number">3.</span> Reconnect using the credentials above</div>
+                                        <div class="help-step"><span class="step-number">4.</span> If issues persist, message your host</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">2. Wi-Fi & Connect</div>
+            </div>
+
+            <!-- SCREEN 3: House Guide & Essentials -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="app-header">
+                        <button class="header-back-btn">←</button>
+                        <div class="header-title">House Guide</div>
+                    </div>
+                    <div class="scroll-content">
+                        <div class="guide-header-banner">
+                            <div class="guide-banner-title">Key Information</div>
+                            <div class="guide-banner-subtitle">Everything you need to know</div>
+                        </div>
+
+                        <div style="padding: 0 0; margin-bottom: 8px;">
+                            <div style="padding: 12px 14px;">
+                                <div style="margin-bottom: 10px;">
+                                    <div class="rule-card">
+                                        <div class="rule-icon">🔑</div>
+                                        <div class="rule-content">
+                                            <div class="rule-title">Check In • 3:00 PM</div>
+                                            <div class="rule-text">Key is in the lockbox by front entrance. Code: 2407</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="rule-card">
+                                    <div class="rule-icon">🚪</div>
+                                    <div class="rule-content">
+                                        <div class="rule-title">Check Out • 11:00 AM</div>
+                                        <div class="rule-text">Please lock all doors. Return key to the lockbox.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="padding: 12px 14px;">
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    <div class="accordion-header-left">
+                                        <div class="accordion-icon">🏠</div>
+                                        <div class="accordion-title-area">
+                                            <div class="accordion-title">House Rules</div>
+                                            <div class="accordion-preview">Quiet hours, smoking policy, guests</div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-chevron">›</div>
+                                </div>
+                                <div class="accordion-content">
+                                    <div style="font-weight: 700; margin-bottom: 4px;">Quiet Hours:</div> 10 PM – 8 AM. Please keep noise levels low during these times.<br><br><div style="font-weight: 700; margin-bottom: 4px;">No Smoking:</div> Smoking is not permitted anywhere in the property.<br><br><div style="font-weight: 700; margin-bottom: 4px;">Guests:</div> Maximum 6 guests. No parties or events without prior approval.
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    <div class="accordion-header-left">
+                                        <div class="accordion-icon">☕</div>
+                                        <div class="accordion-title-area">
+                                            <div class="accordion-title">Kitchen Appliances</div>
+                                            <div class="accordion-preview">Coffee maker, oven, dishwasher</div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-chevron">›</div>
+                                </div>
+                                <div class="accordion-content">
+                                    <div style="font-weight: 700; margin-bottom: 4px;">Coffee Maker:</div> Fill water, add grounds, press brew. Auto shuts off after 30 min.<br><br><div style="font-weight: 700; margin-bottom: 4px;">Oven:</div> Preheat to desired temp. Use oven mitts. Turn off when done.<br><br><div style="font-weight: 700; margin-bottom: 4px;">Dishwasher:</div> Load, add tablets, select normal cycle.
+                                </div>
+                            </div>
+
+                            <div class="accordion-item">
+                                <div class="accordion-header">
+                                    <div class="accordion-header-left">
+                                        <div class="accordion-icon">🧖</div>
+                                        <div class="accordion-title-area">
+                                            <div class="accordion-title">Comfort & Amenities</div>
+                                            <div class="accordion-preview">Pool, sauna, heating controls</div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-chevron">›</div>
+                                </div>
+                                <div class="accordion-content">
+                                    <div style="font-weight: 700; margin-bottom: 4px;">Pool:</div> Open 8 AM – sunset. No diving in shallow end.<br><br><div style="font-weight: 700; margin-bottom: 4px;">Sauna:</div> Heating panel in master bath. Set to 80°C. Check thermometer inside before entering.<br><br><div style="font-weight: 700; margin-bottom: 4px;">Thermostat:</div> Located on main level wall. Adjust as needed for comfort.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">3. House Guide & Essentials</div>
+            </div>
+
+            <!-- SCREEN 4: Self Check-In Form -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="form-header">
+                        <div class="form-header-title">Digital Check-In</div>
+                        <div class="form-header-subtitle">Quick and simple. Takes less than 2 minutes</div>
+                    </div>
+                    <div class="step-indicator">
+                        <div class="step-dot active"></div>
+                        <div class="step-dot"></div>
+                        <div class="step-dot"></div>
+                    </div>
+                    <div class="form-scroll">
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-input" placeholder="Enter your full name" value="Sarah Mitchell">
+                            <div class="form-note">As it appears on your ID</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" placeholder="your@email.com" value="sarah.mitchell@email.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" class="form-input" placeholder="+1 (555) 000-0000" value="+1 (415) 555-2847">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Photo of ID</label>
+                            <div class="photo-upload-box">
+                                <div class="photo-icon">📷</div>
+                                <div class="photo-text">Tap to take a photo</div>
+                                <div class="photo-subtext">Front side of ID card</div>
+                            </div>
+                            <div class="security-badge">
+                                <div class="badge-icon">🔒</div>
+                                <div>Stored securely and deleted after checkout</div>
+                            </div>
+                        </div>
+
+                        <button class="form-button">Continue to Next Step</button>
+                    </div>
+                </div>
+                <div class="screen-label">4. Self Check-In Form</div>
+            </div>
+
+            <!-- SCREEN 5: Host Messaging -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="chat-header">
+                        <button class="chat-header-back">←</button>
+                        <div class="host-avatar">👤</div>
+                        <div class="host-avatar-area">
+                            <div class="host-name">Marcus L.</div>
+                            <div class="host-status">Usually replies within 30 min</div>
+                        </div>
+                    </div>
+                    <div class="chat-messages">
+                        <div class="message host">
+                            <div class="message-bubble">Hi Sarah! Welcome to Villa Cielo 🌊 I'm so excited for you to experience the property. Feel free to reach out with any questions!</div>
+                            <div class="response-indicator">9:15 AM</div>
+                        </div>
+                        <div class="message guest">
+                            <div class="message-bubble">Hi Marcus! Thank you, I'm looking forward to it. Quick question about the Wi-Fi setup?</div>
+                            <div class="response-indicator">9:28 AM</div>
+                        </div>
+                        <div class="message host">
+                            <div class="message-bubble">Absolutely! The network name is CieloGuest_5GHz and you'll find the password in your welcome packet on the kitchen counter.</div>
+                            <div class="response-indicator">9:32 AM</div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" class="chat-input" placeholder="Type a message...">
+                        <button class="send-btn">→</button>
+                    </div>
+                </div>
+                <div class="screen-label">5. Host Messaging</div>
+            </div>
+
+            <!-- SCREEN 6: Location & Getting Around -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="location-hero">
+                        <div class="location-title">Location & Getting Around</div>
+                        <div class="location-subtitle">Your address & local favorites</div>
+                    </div>
+                    <div class="address-card">
+                        <div class="address-icon">📍</div>
+                        <div class="address-content">
+                            <div class="address-label">Property Address</div>
+                            <div class="address-text">1247 Coastal Cliff Lane, Big Sur, CA 93920</div>
+                            <button class="address-copy-btn">Copy address</button>
+                        </div>
+                    </div>
+                    <div class="location-scroll">
+                        <div class="landmark-section">
+                            <div class="landmark-title">Dining & Drinks</div>
+                            <div class="landmark-item">
+                                <div class="landmark-icon">🍽️</div>
+                                <div class="landmark-info">
+                                    <div class="landmark-name">Skyline Bistro</div>
+                                    <div class="landmark-detail">French cuisine • 0.8 km away</div>
+                                </div>
+                            </div>
+                            <div class="landmark-item">
+                                <div class="landmark-icon">☕</div>
+                                <div class="landmark-info">
+                                    <div class="landmark-name">Morning Brew Café</div>
+                                    <div class="landmark-detail">Coffee & pastries • 1.2 km away</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="landmark-section">
+                            <div class="landmark-title">Exploring</div>
+                            <div class="landmark-item">
+                                <div class="landmark-icon">🏖️</div>
+                                <div class="landmark-info">
+                                    <div class="landmark-name">Crescent Beach</div>
+                                    <div class="landmark-detail">Public beach • 2.1 km away</div>
+                                </div>
+                            </div>
+                            <div class="landmark-item">
+                                <div class="landmark-icon">🥾</div>
+                                <div class="landmark-info">
+                                    <div class="landmark-name">Ridgeline Trails</div>
+                                    <div class="landmark-detail">Hiking trails • 3.5 km away</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="location-footer">
+                        <div class="footer-note">Tap any landmark to get directions. Need a recommendation? Ask your host!</div>
+                    </div>
+                </div>
+                <div class="screen-label">6. Location & Getting Around</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

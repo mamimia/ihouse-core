@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ops Manager UI v2 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #334036;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            text-align: center;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Phone App Header (DARK for Ops Manager) */
+        .app-header {
+            height: 50px;
+            background: #171A1F;
+            border-bottom: 1px solid #0D0E11;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .header-titles {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .header-subtitle {
+            font-size: 9.5px;
+            color: #B56E45;
+        }
+
+        .header-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #334036;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .header-action {
+            width: 24px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #E5E7EB;
+        }
+
+        /* KPI Strip (Dark, at top of scroll area) */
+        .kpi-strip {
+            background: #171A1F;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 10px;
+            flex-shrink: 0;
+            gap: 0;
+        }
+
+        .kpi-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            color: #FFFFFF;
+            flex: 1;
+            text-align: center;
+        }
+
+        .kpi-val {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 13px;
+        }
+
+        .kpi-lbl {
+            font-size: 8px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #9CA3AF;
+        }
+
+        .kpi-divider {
+            width: 1px;
+            height: 16px;
+            background: rgba(255,255,255,0.08);
+            margin: 0 6px;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* Section Header */
+        .section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9CA3AF;
+            padding: 8px 10px 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .section-badge {
+            background: rgba(181, 110, 69, 0.1);
+            color: #B56E45;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+        }
+
+        /* Card Base */
+        .card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            border-left-width: 3px;
+            padding: 9px 10px 9px 13px;
+            flex-shrink: 0;
+        }
+
+        /* Urgency States */
+        .card.safe {
+            border-left-color: #D1D5DB;
+            background: #FFFFFF;
+        }
+
+        .card.approaching {
+            border-left-color: #F59E0B;
+            background: #FFFCF0;
+        }
+
+        .card.imminent {
+            border-left-color: #B56E45;
+            background: #FBF1EC;
+            animation: pulse-card 2s infinite;
+        }
+
+        .card.overdue {
+            border-left-color: #DC2626;
+            background: #FFF4F4;
+            animation: pulse-card 1.5s infinite;
+        }
+
+        /* Morning Briefing Card (Dark) */
+        .briefing-card {
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            color: #FFFFFF;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .briefing-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .briefing-live-dot {
+            width: 6px;
+            height: 6px;
+            background: #DC2626;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        .briefing-meta {
+            font-size: 10px;
+            color: #9CA3AF;
+            margin-bottom: 8px;
+        }
+
+        .briefing-bar {
+            background: rgba(255,255,255,0.1);
+            height: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .briefing-bar-fill {
+            background: linear-gradient(90deg, #10B981 0%, #F59E0B 60%, #DC2626 100%);
+            height: 100%;
+            width: 62%;
+        }
+
+        .briefing-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            font-size: 10px;
+        }
+
+        .briefing-stat {
+            background: rgba(255,255,255,0.08);
+            padding: 6px;
+            border-radius: 6px;
+        }
+
+        .briefing-stat-label {
+            color: #9CA3AF;
+            font-size: 8px;
+        }
+
+        .briefing-stat-val {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            color: #FFFFFF;
+        }
+
+        /* Card Header Row */
+        .card-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .card-icon {
+            width: 14px;
+            height: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 10px;
+        }
+
+        .card-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .card-badge.active {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .card-badge.pending {
+            background: #FEF3E2;
+            color: #92400E;
+        }
+
+        .card-badge.alert {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .card-badge.live {
+            background: #FEE2E2;
+            color: #DC2626;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .live-dot {
+            width: 4px;
+            height: 4px;
+            background: #DC2626;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        .card-property {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .card-meta {
+            font-size: 9px;
+            color: #6B7280;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .worker-chip {
+            background: #E6EEE7;
+            color: #334036;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .worker-avatar {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #334036;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 6px;
+            font-weight: 700;
+        }
+
+        .status-pills {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-pill.active {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .status-pill.pending {
+            background: #FEF3E2;
+            color: #92400E;
+        }
+
+        .status-pill.done {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .card-cta {
+            width: 100%;
+            height: 27px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+
+        .card-cta:active {
+            transform: scale(0.96);
+        }
+
+        .card-cta.safe, .card-cta.approaching {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .card-cta.safe:hover, .card-cta.approaching:hover {
+            background: #D4E4D7;
+        }
+
+        .card-cta.imminent {
+            background: #B56E45;
+            color: #FFFFFF;
+        }
+
+        .card-cta.imminent:hover {
+            background: #9D5C38;
+        }
+
+        .card-cta.overdue {
+            background: #DC2626;
+            color: #FFFFFF;
+        }
+
+        .card-cta.overdue:hover {
+            background: #B91C1C;
+        }
+
+        /* Intervention Buttons (Alert Detail) */
+        .intervention-group {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin-top: 8px;
+        }
+
+        .btn-dark {
+            width: 100%;
+            height: 30px;
+            background: #171A1F;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-dark:hover {
+            background: #2D2E33;
+        }
+
+        .btn-primary {
+            width: 100%;
+            height: 30px;
+            background: #3B82F6;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #2563EB;
+        }
+
+        .btn-success {
+            width: 100%;
+            height: 30px;
+            background: #10B981;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger-outline {
+            width: 100%;
+            height: 30px;
+            background: transparent;
+            color: #DC2626;
+            border: 1.5px solid #DC2626;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger-outline:hover {
+            background: rgba(220,38,38,0.05);
+        }
+
+        /* Team Overview Cards */
+        .team-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 10px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .team-card.alert {
+            border-left-color: #DC2626;
+            border-left-width: 3px;
+            background: #FFF4F4;
+        }
+
+        .team-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-ring {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #10B981;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .status-ring.active {
+            border-color: #10B981;
+        }
+
+        .status-ring.warning {
+            border-color: #F59E0B;
+        }
+
+        .status-ring.alert {
+            border-color: #DC2626;
+        }
+
+        .team-info {
+            flex: 1;
+        }
+
+        .team-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .team-role {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .current-task {
+            font-size: 9px;
+            color: #6B7280;
+            margin-top: 4px;
+            padding: 4px 6px;
+            background: #F9F7F4;
+            border-radius: 4px;
+        }
+
+        .load-indicator {
+            font-size: 9px;
+            color: #6B7280;
+            padding: 4px 6px;
+            background: #F3F4F6;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .team-actions {
+            display: flex;
+            gap: 4px;
+            font-size: 8px;
+        }
+
+        .action-chip {
+            background: #E6EEE7;
+            color: #334036;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .action-chip:hover {
+            background: #D4E4D7;
+        }
+
+        /* Cockpit Screen */
+        .cockpit-header {
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            color: #FFFFFF;
+            padding: 12px;
+            border-radius: 0;
+            flex-shrink: 0;
+        }
+
+        .cockpit-eyebrow {
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .cockpit-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .cockpit-progress-bar {
+            background: rgba(255,255,255,0.1);
+            height: 3px;
+            border-radius: 1.5px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .cockpit-progress-fill {
+            background: linear-gradient(90deg, #10B981 0%, #F59E0B 50%, #DC2626 100%);
+            height: 100%;
+            width: 58%;
+        }
+
+        .cockpit-date {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-top: 4px;
+        }
+
+        /* Dark scroll area for cockpit */
+        .cockpit-scroll {
+            background: #111827;
+            color: #FFFFFF;
+        }
+
+        .cockpit-section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9CA3AF;
+            padding: 8px 10px 4px;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+            padding: 0 11px;
+            margin-bottom: 4px;
+        }
+
+        .kpi-card {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        .kpi-card-label {
+            font-size: 8px;
+            color: #9CA3AF;
+            margin-bottom: 2px;
+        }
+
+        .kpi-card-val {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 12px;
+            color: #FFFFFF;
+        }
+
+        .stream-row {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin: 0 11px 7px;
+            flex-shrink: 0;
+        }
+
+        .stream-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #FFFFFF;
+            margin-bottom: 4px;
+        }
+
+        .stream-counts {
+            display: flex;
+            gap: 6px;
+            font-size: 8px;
+        }
+
+        .stream-count {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #9CA3AF;
+        }
+
+        .stream-count.active {
+            background: #B56E45;
+            color: #FFFFFF;
+        }
+
+        .alert-row {
+            background: linear-gradient(90deg, rgba(220,38,38,0.1) 0%, transparent 100%);
+            border: 1px solid rgba(220,38,38,0.2);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin: 0 11px 7px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-live {
+            width: 6px;
+            height: 6px;
+            background: #DC2626;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+            flex-shrink: 0;
+        }
+
+        .alert-text {
+            font-size: 10px;
+            color: #FCA5A5;
+            font-weight: 600;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            height: 50px;
+            background: #FFFFFF;
+            border-top: 1px solid #F0EEE9;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9CA3AF;
+            transition: color 0.2s;
+            flex: 1;
+            padding: 0;
+        }
+
+        .nav-item.active {
+            color: #334036;
+        }
+
+        .nav-icon {
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .nav-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Detail Block (Alert Detail Screen) */
+        .detail-block {
+            background: #F9F7F4;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 9px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #9CA3AF;
+            font-weight: 600;
+        }
+
+        .detail-val {
+            color: #171A1F;
+            font-weight: 600;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+
+        @keyframes pulse-card {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(181, 110, 69, 0);
+            }
+            50% {
+                box-shadow: 0 0 0 4px rgba(181, 110, 69, 0.1);
+            }
+        }
+
+        /* Legend */
+        .legend {
+            background: #FFFFFF;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 20px 24px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #171A1F;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+        }
+
+        .legend-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .legend-text {
+            font-size: 10px;
+            color: #6B7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Ops Manager — V2 Visual Direction</h1>
+            <p>Domaniqo Property Management · Command & Coordination Surface</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">Role Personality</div>
+                <div class="note-text">Command center. Oversight. The Ops Manager sees everything happening across the operation — they coordinate, intervene, and dispatch. Not a worker; a LEADER.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Design Anchor</div>
+                <div class="note-text">This IS the anchor. All other surfaces derive visual direction from Ops Manager. It sets the tone for urgency coding, intervention patterns, and command-line aesthetics.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Key Patterns</div>
+                <div class="note-text">KPI strips (dark). Stream cards. Alert urgency coding. Intervention buttons. Cockpit analytics. Information-dense but never overwhelming. Always showing what needs attention NOW.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Shaped By</div>
+                <div class="note-text">Larry (cross-domain coordination). Talia (interaction architecture). Hana (staff operations). A military-grade dashboard compressed into a phone.</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+            <!-- SCREEN 1: HUB (HOME) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- Dark App Header -->
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Domaniqo</div>
+                                <div class="header-subtitle">Ops Manager</div>
+                            </div>
+                        </div>
+                        <button class="header-action">⚙️</button>
+                    </div>
+
+                    <!-- KPI Strip -->
+                    <div class="kpi-strip">
+                        <div class="kpi-item">
+                            <div class="kpi-val">24</div>
+                            <div class="kpi-lbl">TOTAL</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">18</div>
+                            <div class="kpi-lbl">DONE</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">4</div>
+                            <div class="kpi-lbl">AT RISK</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">2</div>
+                            <div class="kpi-lbl">OVERDUE</div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Morning Briefing Card -->
+                        <div class="briefing-card">
+                            <div class="briefing-title">
+                                <span>Morning Briefing</span>
+                                <div class="briefing-live-dot"></div>
+                            </div>
+                            <div class="briefing-meta">Thursday, Mar 14 · 9:44 AM</div>
+                            <div class="briefing-bar">
+                                <div class="briefing-bar-fill"></div>
+                            </div>
+                            <div class="briefing-stats">
+                                <div class="briefing-stat">
+                                    <div class="briefing-stat-label">Day Progress</div>
+                                    <div class="briefing-stat-val">62%</div>
+                                </div>
+                                <div class="briefing-stat">
+                                    <div class="briefing-stat-label">Alerts</div>
+                                    <div class="briefing-stat-val" style="display: flex; align-items: center; gap: 4px;">
+                                        <span>2</span>
+                                        <div style="width: 4px; height: 4px; background: #DC2626; border-radius: 50%; animation: blink 1s infinite;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Alerts Section -->
+                        <div class="section-header">
+                            Active Alerts
+                            <span class="section-badge">2 Urgent</span>
+                        </div>
+
+                        <!-- Overdue Alert Card -->
+                        <div class="card overdue">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">🚨</div>
+                                    <div class="card-badge live">
+                                        <div class="live-dot"></div>
+                                        LIVE
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-property">Riverside Tower 302</div>
+                            <div class="card-meta">
+                                <span>Guest: Morrison</span>
+                                <span>•</span>
+                                <span>30m overdue</span>
+                            </div>
+                            <button class="card-cta overdue">Intervene Now</button>
+                        </div>
+
+                        <!-- Approaching Alert Card -->
+                        <div class="card approaching">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">⏱️</div>
+                                    <div class="card-badge alert">AT RISK</div>
+                                </div>
+                            </div>
+                            <div class="card-property">Harbor View 518</div>
+                            <div class="card-meta">
+                                <span>Guest: Chen</span>
+                                <span>•</span>
+                                <span>15m until SLA breach</span>
+                            </div>
+                            <button class="card-cta approaching">Monitor</button>
+                        </div>
+
+                        <!-- Operations Stream Section -->
+                        <div class="section-header">Operations Stream</div>
+
+                        <!-- Cleaning Stream Card -->
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">🧹</div>
+                                    <div class="card-property">Cleaning</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <span class="worker-chip">
+                                    <span class="worker-avatar">MC</span>
+                                    Maria C.
+                                </span>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill active">5 done</span>
+                                <span class="status-pill pending">2 pending</span>
+                            </div>
+                            <button class="card-cta safe">Assign More</button>
+                        </div>
+
+                        <!-- Check-In Stream Card -->
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">📋</div>
+                                    <div class="card-property">Check-In</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <span class="worker-chip">
+                                    <span class="worker-avatar">SK</span>
+                                    Somchai K.
+                                </span>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill active">8 done</span>
+                                <span class="status-pill pending">3 pending</span>
+                            </div>
+                            <button class="card-cta safe">View Tasks</button>
+                        </div>
+
+                        <!-- Maintenance Stream Card -->
+                        <div class="card approaching">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">🔧</div>
+                                    <div class="card-property">Maintenance</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <span class="worker-chip">
+                                    <span class="worker-avatar">RJ</span>
+                                    Raj J.
+                                </span>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill done">3 done</span>
+                                <span class="status-pill pending">1 pending</span>
+                            </div>
+                            <button class="card-cta approaching">Reassign</button>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <button class="nav-item active">
+                            <div class="nav-icon">🏢</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📡</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 1: Hub (Home)</div>
+            </div>
+
+            <!-- SCREEN 2: ALERT DETAIL -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- Red Alert Header -->
+                    <div style="background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%); padding: 12px; display: flex; align-items: center; justify-content: space-between; color: #FFFFFF; flex-shrink: 0;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 6px; height: 6px; background: #FFFFFF; border-radius: 50%; animation: blink 1s infinite;"></div>
+                            <span style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;">LIVE</span>
+                        </div>
+                        <span style="font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700;">SLA BREACH</span>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Back Button -->
+                        <div style="padding: 8px 0; display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 14px;">←</span>
+                            <span style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #6B7280; text-transform: uppercase;">Back</span>
+                        </div>
+
+                        <!-- Property & Guest Info -->
+                        <div style="margin-bottom: 12px;">
+                            <div class="card-property" style="margin-bottom: 8px;">Riverside Tower 302</div>
+                            <div style="font-size: 10px; color: #6B7280; margin-bottom: 4px;">Guest: Morrison Perry</div>
+                            <div style="font-size: 10px; color: #DC2626; font-weight: 600;">Check-in was 30 minutes ago — escalate immediately</div>
+                        </div>
+
+                        <!-- Detail Block -->
+                        <div class="detail-block">
+                            <div class="detail-row">
+                                <span class="detail-label">Scheduled Check-In</span>
+                                <span class="detail-val">2:15 PM</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Expected Arrival</span>
+                                <span class="detail-val">2:30 PM</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Current Status</span>
+                                <span class="detail-val" style="color: #DC2626;">No-show</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Assigned Staff</span>
+                                <span class="detail-val">Somchai K.</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">SLA Breach Time</span>
+                                <span class="detail-val" style="color: #DC2626;">30m 15s</span>
+                            </div>
+                        </div>
+
+                        <!-- Intervention Buttons -->
+                        <div class="intervention-group">
+                            <button class="btn-dark">Reassign Worker</button>
+                            <button class="btn-primary">Contact Worker</button>
+                            <button class="btn-danger-outline">Escalate to Admin</button>
+                            <button class="btn-success">Mark Resolved</button>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏢</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📡</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 2: Alert Detail</div>
+            </div>
+
+            <!-- SCREEN 3: TEAM OVERVIEW -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- Dark App Header -->
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Your Team</div>
+                                <div class="header-subtitle">5 Members Active</div>
+                            </div>
+                        </div>
+                        <button class="header-action">⚙️</button>
+                    </div>
+
+                    <!-- Status Strip -->
+                    <div class="kpi-strip">
+                        <div class="kpi-item" style="cursor: pointer;">
+                            <div class="kpi-val">5</div>
+                            <div class="kpi-lbl">ALL</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item" style="cursor: pointer;">
+                            <div class="kpi-val">3</div>
+                            <div class="kpi-lbl">ON TASK</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item" style="cursor: pointer;">
+                            <div class="kpi-val">1</div>
+                            <div class="kpi-lbl">AVAILABLE</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item" style="cursor: pointer;">
+                            <div class="kpi-val">1</div>
+                            <div class="kpi-lbl">ALERT</div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Team Card 1: On Task -->
+                        <div class="team-card">
+                            <div class="team-header">
+                                <div class="status-ring active">
+                                    <span style="font-size: 10px;">✓</span>
+                                </div>
+                                <div class="team-info">
+                                    <div class="team-name">Maria C.</div>
+                                    <div class="team-role">Cleaning Lead</div>
+                                </div>
+                            </div>
+                            <div class="current-task">Currently: Harbor View 401 (Turnover)</div>
+                            <div class="load-indicator">4/6 Tasks</div>
+                            <div class="team-actions">
+                                <span class="action-chip">Message</span>
+                                <span class="action-chip">Reassign</span>
+                            </div>
+                        </div>
+
+                        <!-- Team Card 2: On Task -->
+                        <div class="team-card">
+                            <div class="team-header">
+                                <div class="status-ring active">
+                                    <span style="font-size: 10px;">✓</span>
+                                </div>
+                                <div class="team-info">
+                                    <div class="team-name">Somchai K.</div>
+                                    <div class="team-role">Check-In Staff</div>
+                                </div>
+                            </div>
+                            <div class="current-task">Currently: Guest check-ins (3 remaining)</div>
+                            <div class="load-indicator">8/10 Tasks</div>
+                            <div class="team-actions">
+                                <span class="action-chip">Message</span>
+                                <span class="action-chip">Reassign</span>
+                            </div>
+                        </div>
+
+                        <!-- Team Card 3: Available -->
+                        <div class="team-card">
+                            <div class="team-header">
+                                <div class="status-ring active">
+                                    <span style="font-size: 10px;">✓</span>
+                                </div>
+                                <div class="team-info">
+                                    <div class="team-name">Raj J.</div>
+                                    <div class="team-role">Maintenance</div>
+                                </div>
+                            </div>
+                            <div class="current-task">Available for dispatch</div>
+                            <div class="load-indicator">2/5 Tasks</div>
+                            <div class="team-actions">
+                                <span class="action-chip">Assign</span>
+                                <span class="action-chip">Contact</span>
+                            </div>
+                        </div>
+
+                        <!-- Team Card 4: Warning -->
+                        <div class="team-card">
+                            <div class="team-header">
+                                <div class="status-ring warning">
+                                    <span style="font-size: 10px; color: #F59E0B;">!</span>
+                                </div>
+                                <div class="team-info">
+                                    <div class="team-name">Niran P.</div>
+                                    <div class="team-role">Check-Out Lead</div>
+                                </div>
+                            </div>
+                            <div class="current-task">Running 10m behind schedule</div>
+                            <div class="load-indicator">5/4 Tasks</div>
+                            <div class="team-actions">
+                                <span class="action-chip">Message</span>
+                                <span class="action-chip">Support</span>
+                            </div>
+                        </div>
+
+                        <!-- Team Card 5: Alert -->
+                        <div class="team-card alert">
+                            <div class="team-header">
+                                <div class="status-ring alert">
+                                    <span style="font-size: 10px; color: #DC2626;">!</span>
+                                </div>
+                                <div class="team-info">
+                                    <div class="team-name">Priya G.</div>
+                                    <div class="team-role">Concierge</div>
+                                </div>
+                            </div>
+                            <div class="current-task" style="color: #DC2626; background: rgba(220,38,38,0.1);">OFFLINE — Last seen 12m ago</div>
+                            <div class="load-indicator">3/5 Tasks</div>
+                            <div class="team-actions">
+                                <span class="action-chip" style="background: #FEE2E2; color: #DC2626;">Try Call</span>
+                                <span class="action-chip" style="background: #FEE2E2; color: #DC2626;">Reassign</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏢</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📡</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 3: Team Overview</div>
+            </div>
+
+            <!-- SCREEN 4: COCKPIT -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar" style="background: #111827; color: #FFFFFF; border-bottom: 1px solid #0D0E11;">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- Cockpit Header (Dark Gradient) -->
+                    <div class="cockpit-header">
+                        <div class="cockpit-eyebrow">Operations</div>
+                        <div class="cockpit-title">Cockpit</div>
+                        <div class="cockpit-progress-bar">
+                            <div class="cockpit-progress-fill"></div>
+                        </div>
+                        <div class="cockpit-date">Thursday, Mar 14 • 58% through day</div>
+                    </div>
+
+                    <!-- Dark Scroll Area -->
+                    <div class="scroll-area cockpit-scroll">
+                        <!-- KPI Grid -->
+                        <div class="cockpit-section-header">Key Performance</div>
+                        <div class="kpi-grid">
+                            <div class="kpi-card">
+                                <div class="kpi-card-label">Occupancy Rate</div>
+                                <div class="kpi-card-val">94%</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-card-label">Revenue (Today)</div>
+                                <div class="kpi-card-val">$8,470</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-card-label">SLA Compliance</div>
+                                <div class="kpi-card-val">87%</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-card-label">Guest Satisfaction</div>
+                                <div class="kpi-card-val">4.8★</div>
+                            </div>
+                        </div>
+
+                        <!-- Stream Status -->
+                        <div class="cockpit-section-header" style="margin-top: 12px;">Stream Status</div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">Cleaning</div>
+                            <div class="stream-counts">
+                                <span class="stream-count">3 done</span>
+                                <span class="stream-count active">1 active</span>
+                                <span class="stream-count">1 pending</span>
+                            </div>
+                        </div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">Check-In</div>
+                            <div class="stream-counts">
+                                <span class="stream-count">8 done</span>
+                                <span class="stream-count active">2 active</span>
+                                <span class="stream-count">3 pending</span>
+                            </div>
+                        </div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">Check-Out</div>
+                            <div class="stream-counts">
+                                <span class="stream-count">5 done</span>
+                                <span class="stream-count active">1 active</span>
+                                <span class="stream-count">4 pending</span>
+                            </div>
+                        </div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">Maintenance</div>
+                            <div class="stream-counts">
+                                <span class="stream-count">3 done</span>
+                                <span class="stream-count">0 active</span>
+                                <span class="stream-count">1 pending</span>
+                            </div>
+                        </div>
+
+                        <!-- Active Alerts -->
+                        <div class="cockpit-section-header" style="margin-top: 12px;">Active Incidents</div>
+
+                        <div class="alert-row">
+                            <div class="alert-live"></div>
+                            <div class="alert-text">SLA Breach: Riverside Tower 302 (30m)</div>
+                        </div>
+
+                        <div class="alert-row">
+                            <div class="alert-live"></div>
+                            <div class="alert-text">Approaching: Harbor View 518 (15m)</div>
+                        </div>
+
+                        <!-- Worker Utilization -->
+                        <div class="cockpit-section-header" style="margin-top: 12px;">Team Utilization</div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">Maria C. (Cleaning)</div>
+                            <div class="stream-counts">
+                                <span class="stream-count">4/6</span>
+                            </div>
+                        </div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">Somchai K. (Check-In)</div>
+                            <div class="stream-counts">
+                                <span class="stream-count">8/10</span>
+                            </div>
+                        </div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">Raj J. (Maintenance)</div>
+                            <div class="stream-counts">
+                                <span class="stream-count">2/5</span>
+                            </div>
+                        </div>
+
+                        <div class="stream-row" style="background: rgba(220,38,38,0.1); border-color: rgba(220,38,38,0.2);">
+                            <div class="stream-label" style="color: #FCA5A5;">Priya G. (Offline)</div>
+                            <div class="stream-counts">
+                                <span class="stream-count" style="background: rgba(220,38,38,0.2); color: #FCA5A5;">⚠ Offline</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav" style="background: #1F2937; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏢</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">📡</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 4: Cockpit</div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-title">Urgency States</div>
+                <div class="legend-items">
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #FFFFFF; border: 1.5px solid #D1D5DB; border-left-width: 3px;"></div>
+                        <span class="legend-text">Safe: ≥2hr buffer</span>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #FFFCF0; border: 1.5px solid #F59E0B; border-left-width: 3px;"></div>
+                        <span class="legend-text">Approaching: 30m–2hr</span>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #FBF1EC; border: 1.5px solid #B56E45; border-left-width: 3px;"></div>
+                        <span class="legend-text">Imminent: &lt;30m (pulsing)</span>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #FFF4F4; border: 1.5px solid #DC2626; border-left-width: 3px;"></div>
+                        <span class="legend-text">Overdue: past SLA</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-title">Ops Manager Accent</div>
+                <div class="legend-items">
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #334036;"></div>
+                        <span class="legend-text">Deep Moss: #334036</span>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #B56E45;"></div>
+                        <span class="legend-text">Signal Copper: #B56E45</span>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #171A1F;"></div>
+                        <span class="legend-text">Command Black: #171A1F</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-title">Key Patterns</div>
+                <div class="legend-items">
+                    <div class="legend-row">
+                        <span style="color: #171A1F; font-weight: 600;">Dark Headers</span>
+                    </div>
+                    <div class="legend-row">
+                        <span class="legend-text">Command-line aesthetic</span>
+                    </div>
+                    <div class="legend-row">
+                        <span style="color: #171A1F; font-weight: 600; margin-top: 4px;">KPI Strips</span>
+                    </div>
+                    <div class="legend-row">
+                        <span class="legend-text">High-level metrics overview</span>
+                    </div>
+                    <div class="legend-row">
+                        <span style="color: #171A1F; font-weight: 600; margin-top: 4px;">Intervention CTAs</span>
+                    </div>
+                    <div class="legend-row">
+                        <span class="legend-text">Status-matched buttons</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-title">Fonts & Typography</div>
+                <div class="legend-items">
+                    <div class="legend-row">
+                        <span style="color: #171A1F; font-weight: 600;">Manrope</span>
+                    </div>
+                    <div class="legend-row">
+                        <span class="legend-text">Headings: 700–800</span>
+                    </div>
+                    <div class="legend-row">
+                        <span style="color: #171A1F; font-weight: 600; margin-top: 4px;">Inter</span>
+                    </div>
+                    <div class="legend-row">
+                        <span class="legend-text">Body: 400–600</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

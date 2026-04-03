@@ -25,11 +25,14 @@ from typing import Any, Optional
 
 import uuid
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 
 from api.auth import jwt_auth
 from api.error_models import ErrorCode, make_error_response
+
+# Roles allowed to use force_complete=True to bypass the supply gate.
+_FORCE_COMPLETE_ALLOWED_ROLES: frozenset = frozenset({"admin", "manager", "ops"})
 
 logger = logging.getLogger(__name__)
 
@@ -758,6 +761,7 @@ async def update_supply_check(
 )
 async def complete_cleaning(
     task_id: str,
+    request: Request,
     body: dict | None = None,
     tenant_id: str = Depends(jwt_auth),
     client: Optional[Any] = None,
@@ -771,6 +775,30 @@ async def complete_cleaning(
     Returns 409 with details of what's missing if any condition fails.
     """
     force = (body or {}).get("force_complete", False)
+
+    # Phase 973 audit fix (Claudia/10): Role gate on force_complete.
+    # force_complete=True bypasses the supply-check pre-condition. Only admin,
+    # manager, and ops roles are allowed to do this — cleaners cannot self-override.
+    if force:
+        try:
+            import jwt as _jwt
+            _auth_header = request.headers.get("Authorization", "")
+            _raw_tok = _auth_header.removeprefix("Bearer ").strip()
+            _payload = _jwt.decode(_raw_tok, options={"verify_signature": False})
+            _caller_role = _payload.get("role", "") or ""
+        except Exception:
+            _caller_role = ""
+        if _caller_role not in _FORCE_COMPLETE_ALLOWED_ROLES:
+            return make_error_response(
+                status_code=403,
+                code=ErrorCode.CAPABILITY_DENIED,
+                extra={
+                    "detail": (
+                        "force_complete requires admin, manager, or ops role. "
+                        f"Caller role '{_caller_role}' is not permitted to override supply checks."
+                    )
+                },
+            )
 
     try:
         db = client or _get_supabase_client()
@@ -876,7 +904,12 @@ async def complete_cleaning(
                     except Exception:
                         pass  # best-effort audit
         except Exception as prop_exc:
-            logger.warning("complete_cleaning: property state update failed: %s", prop_exc)
+            logger.error(
+                "complete_cleaning: property state update FAILED for task=%s property=%s: %s. "
+                "Task is COMPLETED but property operational_status was NOT updated. "
+                "Manual admin correction required.",
+                task_id, property_id, prop_exc,
+            )
 
         return JSONResponse(status_code=200, content={
             "completed": True,

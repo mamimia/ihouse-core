@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-In Staff UI v3.1 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #334036;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            color: #6B7280;
+            max-width: 300px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow: 0 0 0 2px #D1D6DC, 0 2px 0 3px #B8BEC6, 0 12px 48px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Header Variations */
+        .phone-header {
+            padding: 12px 20px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 44px;
+            position: relative;
+        }
+
+        .phone-header.dark {
+            background: #171A1F;
+            color: white;
+        }
+
+        .phone-header.light {
+            background: #F9F7F4;
+            color: #171A1F;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .phone-header.success {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+        }
+
+        .header-back {
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .header-title {
+            flex: 1;
+            text-align: center;
+        }
+
+        .header-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: right;
+        }
+
+        /* Phone Content */
+        .phone-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .phone-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .phone-content::-webkit-scrollbar-thumb {
+            background: #D1D6DC;
+            border-radius: 2px;
+        }
+
+        /* Phone Footer - Bottom Nav */
+        .phone-footer {
+            border-top: 1px solid #E5E7EB;
+            padding: 8px 0;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+            flex-shrink: 0;
+            background: #F9F7F4;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 8px 4px;
+            font-size: 10px;
+            color: #9CA3AF;
+            font-weight: 500;
+            border-top: 3px solid transparent;
+        }
+
+        .nav-item.active {
+            color: #334036;
+            border-top-color: #334036;
+        }
+
+        .nav-icon {
+            font-size: 18px;
+        }
+
+        /* Day Health Strip - REFINED */
+        .day-health {
+            background: #171A1F;
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .health-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .health-label {
+            font-size: 8px;
+            color: #9CA3AF;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .health-count {
+            font-family: 'Manrope', sans-serif;
+            font-size: 15px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .health-item.done .health-count {
+            color: #10B981;
+        }
+
+        .health-item.in-progress .health-count {
+            color: #F59E0B;
+        }
+
+        .health-item.acknowledged .health-count {
+            color: #334036;
+        }
+
+        /* Progress Indicator Bar */
+        .progress-bar {
+            background: #E5E7EB;
+            height: 3px;
+            border-radius: 2px;
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #10B981, #334036);
+            height: 100%;
+            width: 62.5%;
+            border-radius: 2px;
+        }
+
+        .progress-label {
+            font-size: 10px;
+            color: #6B7280;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 12px;
+        }
+
+        /* Arrival Cards - REFINED */
+        .arrivals-summary {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .arrivals-summary-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 2px;
+            letter-spacing: 0.2px;
+        }
+
+        .arrivals-summary-subtitle {
+            font-size: 10px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        .arrival-card {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            border-left: 3px solid #D1D5DB;
+            position: relative;
+        }
+
+        .arrival-card.pending {
+            border-left-color: #D1D5DB;
+        }
+
+        .arrival-card.acknowledged {
+            border-left-color: #334036;
+        }
+
+        .arrival-card.in-progress {
+            border-left-color: #F59E0B;
+        }
+
+        .arrival-card.overdue {
+            border-left-color: #DC2626;
+        }
+
+        .arrival-card.approaching {
+            border-left-color: #F59E0B;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+            gap: 8px;
+        }
+
+        .card-property {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+            flex: 1;
+            letter-spacing: 0.2px;
+        }
+
+        .card-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .status-pending {
+            background: #E5E7EB;
+            color: #6B7280;
+        }
+
+        .status-acknowledged {
+            background: #D4E4D9;
+            color: #334036;
+        }
+
+        .status-in-progress {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .status-overdue {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .card-details {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin-bottom: 8px;
+        }
+
+        .card-detail-line {
+            font-size: 10px;
+            color: #6B7280;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+
+        .card-guest {
+            color: #171A1F;
+            font-weight: 700;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-time {
+            font-size: 10px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        .card-countdown {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #334036;
+            text-align: right;
+        }
+
+        .card-action {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .action-primary {
+            background: #334036;
+            color: white;
+        }
+
+        .action-primary:active {
+            transform: scale(0.98);
+        }
+
+        .action-disabled {
+            background: #E5E7EB;
+            color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        .timing-gate {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        /* Step Indicator */
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+
+        .step-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        .step-dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .step-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 2.5px;
+            background: #D1D6DC;
+        }
+
+        .step-dot.active {
+            background: #334036;
+            width: 6px;
+        }
+
+        .step-dot.completed {
+            background: #10B981;
+        }
+
+        /* Property Card */
+        .property-card {
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+
+        .property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        .property-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        .badge-ready {
+            background: #D1F5E1;
+            color: #065F46;
+        }
+
+        .badge-cleaning {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        /* Booking Block */
+        .booking-block {
+            background: #F9F7F4;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #6B7280;
+        }
+
+        .booking-line {
+            margin-bottom: 6px;
+        }
+
+        .booking-label {
+            color: #9CA3AF;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        .booking-value {
+            color: #171A1F;
+            font-weight: 600;
+        }
+
+        /* Settlement Policy Banner - REFINED */
+        .settlement-banner {
+            background: #FEF3C7;
+            border: 1px solid #FCD34D;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .settlement-banner-title {
+            font-size: 9px;
+            font-weight: 800;
+            color: #92400E;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .settlement-item {
+            font-size: 11px;
+            color: #78350F;
+            font-weight: 500;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .settlement-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Conditional Step Banner */
+        .conditional-banner {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            font-size: 10px;
+            color: #1E40AF;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        /* Photo Capture - REFINED */
+        .photo-capture {
+            background: linear-gradient(135deg, #F9F7F4 0%, #F0F0F0 100%);
+            border: 2px dashed #D1D6DC;
+            border-radius: 8px;
+            padding: 28px 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            min-height: 110px;
+        }
+
+        .photo-icon {
+            font-size: 28px;
+        }
+
+        .photo-text {
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            text-align: center;
+            letter-spacing: 0.2px;
+        }
+
+        .photo-subtext {
+            font-size: 9px;
+            color: #9CA3AF;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* OCR Confidence - REFINED */
+        .ocr-result {
+            margin-bottom: 14px;
+        }
+
+        .ocr-display {
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            padding: 14px;
+            margin-bottom: 8px;
+        }
+
+        .ocr-label {
+            font-size: 9px;
+            color: #9CA3AF;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .ocr-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        .confidence-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        .confidence-high {
+            background: #D1F5E1;
+            color: #065F46;
+        }
+
+        .confidence-medium {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .confidence-low {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .ocr-timer {
+            font-size: 9px;
+            color: #9CA3AF;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+
+        /* Manual Entry */
+        .manual-entry {
+            margin-bottom: 14px;
+        }
+
+        .manual-toggle {
+            font-size: 10px;
+            color: #334036;
+            font-weight: 700;
+            text-decoration: underline;
+            cursor: pointer;
+            display: block;
+            margin-bottom: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #D1D6DC;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #334036;
+            box-shadow: 0 0 0 2px rgba(51, 64, 54, 0.1);
+        }
+
+        /* Document Type Tabs */
+        .doc-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .doc-tab {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #D1D6DC;
+            background: white;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6B7280;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        .doc-tab.active {
+            background: #334036;
+            color: white;
+            border-color: #334036;
+        }
+
+        /* Form Fields */
+        .form-field {
+            margin-bottom: 12px;
+        }
+
+        .field-label {
+            font-size: 9px;
+            font-weight: 800;
+            color: #6B7280;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: block;
+            letter-spacing: 0.3px;
+        }
+
+        .field-note {
+            font-size: 10px;
+            color: #1E40AF;
+            font-weight: 500;
+            margin-top: 8px;
+            padding: 10px;
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 4px;
+            line-height: 1.4;
+        }
+
+        /* Validation Checks */
+        .validation-check {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            color: #065F46;
+            font-weight: 700;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        .check-icon {
+            font-size: 12px;
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 14px;
+        }
+
+        .summary-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 0;
+            font-size: 11px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-icon {
+            font-size: 14px;
+            color: #10B981;
+            flex-shrink: 0;
+        }
+
+        .summary-label {
+            color: #9CA3AF;
+            font-weight: 600;
+            font-size: 10px;
+            min-width: 70px;
+        }
+
+        .summary-value {
+            color: #171A1F;
+            font-weight: 700;
+            text-align: right;
+            flex: 1;
+        }
+
+        /* CTA Buttons */
+        .cta-button {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 8px;
+            border: none;
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .cta-primary {
+            background: #334036;
+            color: white;
+        }
+
+        .cta-primary:active {
+            transform: scale(0.98);
+        }
+
+        .cta-secondary {
+            background: white;
+            color: #334036;
+            border: 1px solid #D1D6DC;
+        }
+
+        .cta-secondary:active {
+            background: #F9F7F4;
+        }
+
+        /* Success Content */
+        .success-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .success-icon {
+            font-size: 44px;
+            margin-bottom: 12px;
+        }
+
+        .success-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 15px;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .success-summary {
+            background: white;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 14px;
+            text-align: left;
+            width: 100%;
+        }
+
+        .summary-item {
+            font-size: 11px;
+            color: #171A1F;
+            margin-bottom: 6px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .summary-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .qr-frame {
+            background: white;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 18px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1;
+            width: 130px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .qr-placeholder {
+            font-size: 56px;
+        }
+
+        .send-section {
+            width: 100%;
+        }
+
+        .send-title {
+            font-size: 9px;
+            font-weight: 800;
+            color: white;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .send-button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        .send-sms {
+            background: white;
+            color: #334036;
+        }
+
+        .send-email {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid white;
+        }
+
+        .send-note {
+            font-size: 9px;
+            color: rgba(255,255,255,0.9);
+            margin-top: 8px;
+            line-height: 1.4;
+            font-weight: 500;
+        }
+
+        /* Helper Classes */
+        .flex-spacer {
+            flex: 1;
+        }
+
+        .text-muted {
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        .text-bold {
+            font-weight: 800;
+            color: #171A1F;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Check-In Staff Surface v3.1 (Refined)</h1>
+            <p>Arrival-guided worker experience with strengthened clarity, confidence, and operational polish.</p>
+        </div>
+
+        <!-- Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">V3.1 Refinements</div>
+                <div class="note-text">Day health now shows progress bar + "5 of 8" counter. Arrival cards: property name dominant, guest secondary, cleaner status badges (3px accent). Tighter spacing (16px padding, 10-12px gaps). All labels uppercase + letter-spacing. OCR confidence integrated into display (no float). Photo capture more guided. Settlement policy & identity steps feel more informational/guest-facing.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Operational Confidence</div>
+                <div class="note-text">Step indicator refined for clarity. Reduced visual noise — no colored pills, more subtle badges. Summary rows more compact. Field-worker never confused about which arrival they're in, what step they're on, or what to do next. Wizard progression always visible. Timing gates clear. Deposit/settlement expectations surfaced early.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Design Tightening</div>
+                <div class="note-text">Spacing: 16px content padding, 10px gaps between cards, 3px left accents (not 4px). Manrope for all display labels (12px, 800 weight). Inter body text (11px, 500). Badges more integrated (smaller, sharper). Confidence badge inline with OCR result. Field-worker tool feel — removed "board" aesthetic, strengthened field-ops presentation.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Real Product Behavior</div>
+                <div class="note-text">Conditional wizard preserved (meter, deposit, identity). OCR with confidence scoring. Timing gate on acknowledge. Settlement policy preview at top of wizard. QR delivery with SMS/email dispatch. Multi-step document capture (passport/ID/license tabs). All behaviors from V3 retained; visual refinement only.</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+            <!-- Screen 1: My Arrivals - REFINED -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-header dark">
+                        <div class="header-title">Domaniqo · Check-In</div>
+                    </div>
+                    <div class="phone-content">
+                        <div class="day-health">
+                            <div class="health-item">
+                                <div class="health-label">Pending</div>
+                                <div class="health-count">2</div>
+                            </div>
+                            <div class="health-item acknowledged">
+                                <div class="health-label">Acknowledged</div>
+                                <div class="health-count">3</div>
+                            </div>
+                            <div class="health-item in-progress">
+                                <div class="health-label">In Progress</div>
+                                <div class="health-count">2</div>
+                            </div>
+                            <div class="health-item done">
+                                <div class="health-label">Done</div>
+                                <div class="health-count">1</div>
+                            </div>
+                        </div>
+
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+
+                        <div class="progress-label">5 of 8 completed</div>
+
+                        <div class="arrivals-summary">
+                            <div class="arrivals-summary-title">Today's Arrivals</div>
+                            <div class="arrivals-summary-subtitle">Next: 2h 15m</div>
+                        </div>
+
+                        <div class="arrival-card pending">
+                            <div class="card-header">
+                                <div class="card-property">Sunset Bungalow</div>
+                                <div class="card-status status-pending">Pending</div>
+                            </div>
+                            <div class="card-details">
+                                <div class="card-detail-line"><span class="card-guest">M. Johnson</span> • 2 guests</div>
+                                <div class="card-detail-line">Check-in: 15:30</div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="card-countdown">2h 45m</div>
+                            </div>
+                        </div>
+
+                        <div class="arrival-card acknowledged">
+                            <div class="card-header">
+                                <div class="card-property">Villa Orchid</div>
+                                <div class="card-status status-acknowledged">Acknowledged</div>
+                            </div>
+                            <div class="card-details">
+                                <div class="card-detail-line"><span class="card-guest">S. Chen</span> • 1 guest</div>
+                                <div class="card-detail-line">Check-in: 14:00</div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="card-action action-primary">Start →</button>
+                            </div>
+                        </div>
+
+                        <div class="arrival-card in-progress">
+                            <div class="card-header">
+                                <div class="card-property">Beachside Manor</div>
+                                <div class="card-status status-in-progress">In Progress</div>
+                            </div>
+                            <div class="card-details">
+                                <div class="card-detail-line"><span class="card-guest">K. Martinez</span> • 4 guests</div>
+                                <div class="card-detail-line">Check-in: 13:45</div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="card-countdown">Step 4 of 7</div>
+                            </div>
+                        </div>
+
+                        <div class="arrival-card pending">
+                            <div class="card-header">
+                                <div class="card-property">Mountain Retreat</div>
+                                <div class="card-status status-pending">Pending</div>
+                            </div>
+                            <div class="card-details">
+                                <div class="card-detail-line"><span class="card-guest">A. Patel</span> • 3 guests</div>
+                                <div class="card-detail-line">Opens: 1h 30m</div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="card-action action-disabled">Unlock</button>
+                            </div>
+                            <div class="timing-gate">⏱ Opens at 12:30 local</div>
+                        </div>
+                    </div>
+                    <div class="phone-footer">
+                        <div class="nav-item active">
+                            <div class="nav-icon">🏠</div>
+                            <div>Home</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">📋</div>
+                            <div>Work</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">✓</div>
+                            <div>Tasks</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙</div>
+                            <div>Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">Home: My Arrivals<br><span class="text-muted">Progress bar, time gates, status clarity</span></div>
+            </div>
+
+            <!-- Screen 2: Wizard Step 1 - Arrival Confirmation -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-header light">
+                        <div class="header-back">←</div>
+                        <div class="header-title">Confirm Arrival</div>
+                    </div>
+                    <div class="phone-content">
+                        <div class="step-indicator">
+                            <div class="step-label">Step 1 of 7</div>
+                            <div class="step-dots">
+                                <div class="step-dot active"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                            </div>
+                        </div>
+
+                        <div class="property-card">
+                            <div class="property-name">Villa Orchid Residence</div>
+                            <div class="property-badge badge-ready">✓ Ready</div>
+                        </div>
+
+                        <div class="booking-block">
+                            <div class="booking-line"><span class="booking-label">Guest:</span> <span class="booking-value">Sarah Chen</span></div>
+                            <div class="booking-line"><span class="booking-label">Dates:</span> <span class="booking-value">Apr 3 – Apr 10, 2026</span></div>
+                            <div class="booking-line"><span class="booking-label">Nights:</span> <span class="booking-value">7</span></div>
+                            <div class="booking-line"><span class="booking-label">Guests:</span> <span class="booking-value">1 + 1 infant</span></div>
+                        </div>
+
+                        <div class="settlement-banner">
+                            <div class="settlement-banner-title">Settlement Expected</div>
+                            <div class="settlement-item">Deposit: ฿10,000 Cash</div>
+                            <div class="settlement-item">Electricity: Metered</div>
+                        </div>
+
+                        <div class="flex-spacer"></div>
+
+                        <button class="cta-button cta-primary">✓ Guest Has Arrived</button>
+                    </div>
+                    <div class="phone-footer">
+                        <div class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div>Home</div>
+                        </div>
+                        <div class="nav-item active">
+                            <div class="nav-icon">📋</div>
+                            <div>Work</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">✓</div>
+                            <div>Tasks</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙</div>
+                            <div>Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">Step 1 of 7: Confirm Arrival<br><span class="text-muted">Settlement policy upfront, property ready signal</span></div>
+            </div>
+
+            <!-- Screen 3: Wizard Step 3 - Electricity Meter -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-header light">
+                        <div class="header-back">←</div>
+                        <div class="header-title">Meter Reading</div>
+                    </div>
+                    <div class="phone-content">
+                        <div class="step-indicator">
+                            <div class="step-label">Step 3 of 7</div>
+                            <div class="step-dots">
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                            </div>
+                        </div>
+
+                        <div class="conditional-banner">
+                            ℹ This property tracks electricity. Capture reading at arrival.
+                        </div>
+
+                        <div class="photo-capture">
+                            <div class="photo-icon">📷</div>
+                            <div class="photo-text">Point at meter display</div>
+                            <div class="photo-subtext">Hold steady for 6 seconds</div>
+                        </div>
+
+                        <div class="ocr-result">
+                            <div class="ocr-display">
+                                <div class="ocr-label">Reading Captured</div>
+                                <div class="ocr-value">14,523 kWh</div>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <div class="confidence-badge confidence-high">✓ High • 94%</div>
+                                    <div class="ocr-timer">Auto-captured</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="manual-entry">
+                            <a class="manual-toggle">or enter manually</a>
+                            <input type="text" class="input-field" placeholder="Enter kWh reading" value="">
+                        </div>
+
+                        <div class="flex-spacer"></div>
+
+                        <button class="cta-button cta-primary">Continue →</button>
+                    </div>
+                    <div class="phone-footer">
+                        <div class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div>Home</div>
+                        </div>
+                        <div class="nav-item active">
+                            <div class="nav-icon">📋</div>
+                            <div>Work</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">✓</div>
+                            <div>Tasks</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙</div>
+                            <div>Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">Step 3 of 7: Meter Reading<br><span class="text-muted">Integrated confidence badge, guided capture</span></div>
+            </div>
+
+            <!-- Screen 4: Wizard Step 6 - Guest Identity -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-header light">
+                        <div class="header-back">←</div>
+                        <div class="header-title">Guest Identity</div>
+                    </div>
+                    <div class="phone-content">
+                        <div class="step-indicator">
+                            <div class="step-label">Step 6 of 7</div>
+                            <div class="step-dots">
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot"></div>
+                            </div>
+                        </div>
+
+                        <div class="doc-tabs">
+                            <div class="doc-tab active">Passport</div>
+                            <div class="doc-tab">ID</div>
+                            <div class="doc-tab">License</div>
+                        </div>
+
+                        <div class="photo-capture">
+                            <div class="photo-icon">📷</div>
+                            <div class="photo-text">Capture document</div>
+                            <div class="photo-subtext">Page or main side</div>
+                        </div>
+
+                        <div class="field-note">📝 Photo temporarily unavailable. Enter details below to proceed.</div>
+
+                        <div class="form-field">
+                            <label class="field-label">Full Name</label>
+                            <input type="text" class="input-field" value="Sarah Chen">
+                            <div class="validation-check"><span class="check-icon">✓</span> Captured</div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label">Document Number</label>
+                            <input type="text" class="input-field" value="K1234567890" placeholder="Passport number">
+                            <div class="validation-check"><span class="check-icon">✓</span> Captured</div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="field-label">Nationality</label>
+                            <input type="text" class="input-field" value="Singapore">
+                        </div>
+
+                        <div class="flex-spacer"></div>
+
+                        <button class="cta-button cta-primary">Continue →</button>
+                    </div>
+                    <div class="phone-footer">
+                        <div class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div>Home</div>
+                        </div>
+                        <div class="nav-item active">
+                            <div class="nav-icon">📋</div>
+                            <div>Work</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">✓</div>
+                            <div>Tasks</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙</div>
+                            <div>Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">Step 6 of 7: Guest Identity<br><span class="text-muted">Document tabs, warm honesty note, validation checks</span></div>
+            </div>
+
+            <!-- Screen 5: Wizard Step 7 - Complete -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-header light">
+                        <div class="header-back">←</div>
+                        <div class="header-title">Review & Complete</div>
+                    </div>
+                    <div class="phone-content">
+                        <div class="step-indicator">
+                            <div class="step-label">Step 7 of 7</div>
+                            <div class="step-dots">
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot completed"></div>
+                                <div class="step-dot active"></div>
+                            </div>
+                        </div>
+
+                        <div class="summary-card">
+                            <div class="summary-row">
+                                <div class="summary-icon">✓</div>
+                                <div class="summary-label">Property</div>
+                                <div class="summary-value">Villa Orchid</div>
+                            </div>
+                            <div class="summary-row">
+                                <div class="summary-icon">✓</div>
+                                <div class="summary-label">Guest</div>
+                                <div class="summary-value">Sarah Chen</div>
+                            </div>
+                            <div class="summary-row">
+                                <div class="summary-icon">✓</div>
+                                <div class="summary-label">Walk-Through</div>
+                                <div class="summary-value">4 of 5 rooms</div>
+                            </div>
+                            <div class="summary-row">
+                                <div class="summary-icon">✓</div>
+                                <div class="summary-label">Electricity</div>
+                                <div class="summary-value">14,523 kWh</div>
+                            </div>
+                            <div class="summary-row">
+                                <div class="summary-icon">✓</div>
+                                <div class="summary-label">Deposit</div>
+                                <div class="summary-value">฿10,000</div>
+                            </div>
+                            <div class="summary-row">
+                                <div class="summary-icon">✓</div>
+                                <div class="summary-label">Identity</div>
+                                <div class="summary-value">Verified</div>
+                            </div>
+                        </div>
+
+                        <div class="flex-spacer"></div>
+
+                        <button class="cta-button cta-primary">✅ Complete</button>
+                        <div style="font-size: 9px; color: #6B7280; text-align: center; line-height: 1.4; letter-spacing: 0.2px; font-weight: 600;">Updates booking status and sends guest portal.</div>
+                    </div>
+                    <div class="phone-footer">
+                        <div class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div>Home</div>
+                        </div>
+                        <div class="nav-item active">
+                            <div class="nav-icon">📋</div>
+                            <div>Work</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">✓</div>
+                            <div>Tasks</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙</div>
+                            <div>Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">Step 7 of 7: Review & Complete<br><span class="text-muted">Compact summary, all data verified</span></div>
+            </div>
+
+            <!-- Screen 6: Success + QR Delivery -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-header success">
+                        <div class="header-title">✓ Complete</div>
+                    </div>
+                    <div class="phone-content">
+                        <div class="success-content">
+                            <div class="success-icon">✅</div>
+                            <div class="success-title">Check-In Complete</div>
+
+                            <div class="success-summary">
+                                <div class="summary-item">Villa Orchid Residence</div>
+                                <div class="summary-item">Sarah Chen</div>
+                                <div class="summary-item">Apr 3–10, 2026</div>
+                            </div>
+
+                            <div class="qr-frame">
+                                <div class="qr-placeholder">⬜</div>
+                            </div>
+
+                            <div class="send-section">
+                                <div class="send-title">Send to Guest</div>
+                                <button class="send-button send-sms">📱 SMS (+65 8234 5678)</button>
+                                <button class="send-button send-email">✉ Email (s.chen@email.com)</button>
+                                <div class="send-note">Guest gets: Wi-Fi, house rules, check-out info, and support messaging.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="phone-footer">
+                        <div class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div>Home</div>
+                        </div>
+                        <div class="nav-item active">
+                            <div class="nav-icon">📋</div>
+                            <div>Work</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">✓</div>
+                            <div>Tasks</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">⚙</div>
+                            <div>Settings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">Success & QR Delivery<br><span class="text-muted">Satisfying completion, clear QR, dispatch options</span></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

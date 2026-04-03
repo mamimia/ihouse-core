@@ -1,0 +1,2468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ops Manager UI v3 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 2200px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #334036;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            text-align: center;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Phone App Header (DARK for Ops Manager) */
+        .app-header {
+            height: 50px;
+            background: #171A1F;
+            border-bottom: 1px solid #0D0E11;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .header-titles {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .header-subtitle {
+            font-size: 9.5px;
+            color: #B56E45;
+        }
+
+        .header-back {
+            width: 24px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #E5E7EB;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-action {
+            width: 24px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #E5E7EB;
+            font-size: 14px;
+        }
+
+        /* Header with Alert State */
+        .app-header.alert-state {
+            background: #DC2626;
+        }
+
+        .alert-header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .live-badge {
+            background: #FEE2E2;
+            color: #DC2626;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .live-dot {
+            width: 4px;
+            height: 4px;
+            background: #DC2626;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        /* KPI Strip (Dark, at top of scroll area) */
+        .kpi-strip {
+            background: #171A1F;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 10px;
+            flex-shrink: 0;
+            gap: 0;
+        }
+
+        .kpi-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            color: #FFFFFF;
+            flex: 1;
+            text-align: center;
+        }
+
+        .kpi-val {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 13px;
+        }
+
+        .kpi-lbl {
+            font-size: 8px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #9CA3AF;
+        }
+
+        .kpi-divider {
+            width: 1px;
+            height: 16px;
+            background: rgba(255,255,255,0.08);
+            margin: 0 6px;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* Cockpit Scroll (dark) */
+        .scroll-area.cockpit-scroll {
+            background: #111827;
+        }
+
+        /* Section Header */
+        .section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9CA3AF;
+            padding: 8px 10px 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .section-header.dark {
+            color: #9CA3AF;
+        }
+
+        .section-badge {
+            background: rgba(181, 110, 69, 0.1);
+            color: #B56E45;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+        }
+
+        /* Morning Briefing Card (Dark) */
+        .briefing-card {
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            color: #FFFFFF;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .briefing-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .briefing-live-dot {
+            width: 6px;
+            height: 6px;
+            background: #DC2626;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        .briefing-meta {
+            font-size: 10px;
+            color: #9CA3AF;
+            margin-bottom: 8px;
+        }
+
+        .briefing-bar {
+            background: rgba(255,255,255,0.1);
+            height: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .briefing-bar-fill {
+            background: linear-gradient(90deg, #10B981 0%, #F59E0B 60%, #DC2626 100%);
+            height: 100%;
+            width: 62%;
+        }
+
+        .briefing-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            font-size: 10px;
+        }
+
+        .briefing-stat {
+            background: rgba(255,255,255,0.08);
+            padding: 6px;
+            border-radius: 6px;
+        }
+
+        .briefing-stat-label {
+            color: #9CA3AF;
+            font-size: 8px;
+        }
+
+        .briefing-stat-val {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            color: #FFFFFF;
+        }
+
+        /* Card Base */
+        .card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            border-left-width: 3px;
+            padding: 9px 10px 9px 13px;
+            flex-shrink: 0;
+        }
+
+        /* Urgency States */
+        .card.safe {
+            border-left-color: #D1D5DB;
+            background: #FFFFFF;
+        }
+
+        .card.approaching {
+            border-left-color: #F59E0B;
+            background: #FFFCF0;
+        }
+
+        .card.imminent {
+            border-left-color: #B56E45;
+            background: #FBF1EC;
+            animation: pulse-card 2s infinite;
+        }
+
+        .card.overdue {
+            border-left-color: #DC2626;
+            background: #FFF4F4;
+            animation: pulse-r 1.5s infinite;
+        }
+
+        /* Card Header Row */
+        .card-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .card-icon {
+            width: 14px;
+            height: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 10px;
+        }
+
+        .card-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .card-badge.active {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .card-badge.pending {
+            background: #FEF3E2;
+            color: #92400E;
+        }
+
+        .card-badge.alert {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .card-badge.live {
+            background: #FEE2E2;
+            color: #DC2626;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-badge.done {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .card-property {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .card-meta {
+            font-size: 9px;
+            color: #6B7280;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .worker-chip {
+            background: #E6EEE7;
+            color: #334036;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .worker-chip.offline {
+            background: #F3F4F6;
+            color: #9CA3AF;
+        }
+
+        .worker-avatar {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #334036;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 6px;
+            font-weight: 700;
+        }
+
+        .status-pills {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-pill.active {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .status-pill.pending {
+            background: #FEF3E2;
+            color: #92400E;
+        }
+
+        .status-pill.done {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .status-pill.blocked {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        /* Intervention Buttons */
+        .intervention-group {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin-top: 8px;
+        }
+
+        .btn-dark {
+            width: 100%;
+            height: 30px;
+            background: #171A1F;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-dark:hover {
+            background: #2D2E33;
+        }
+
+        .btn-primary {
+            width: 100%;
+            height: 30px;
+            background: #3B82F6;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #2563EB;
+        }
+
+        .btn-success {
+            width: 100%;
+            height: 30px;
+            background: #10B981;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger-outline {
+            width: 100%;
+            height: 30px;
+            background: transparent;
+            color: #DC2626;
+            border: 1.5px solid #DC2626;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger-outline:hover {
+            background: rgba(220,38,38,0.05);
+        }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 0 11px;
+            margin-bottom: 7px;
+            flex-shrink: 0;
+            overflow-x: auto;
+        }
+
+        .filter-tab {
+            background: #F3F4F6;
+            color: #6B7280;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .filter-tab.active {
+            background: #334036;
+            color: #FFFFFF;
+        }
+
+        /* Detail Block */
+        .detail-block {
+            background: #F9F7F4;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 9px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #9CA3AF;
+            font-weight: 600;
+        }
+
+        .detail-val {
+            color: #171A1F;
+            font-weight: 600;
+        }
+
+        /* Property Header Card */
+        .property-header-card {
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            color: #FFFFFF;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .property-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .property-type-badge {
+            background: #B56E45;
+            color: #FFFFFF;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+            display: inline-block;
+            width: fit-content;
+        }
+
+        /* Timeline Card */
+        .timeline-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+
+        .timeline-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .timeline-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 9px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .timeline-row:last-child {
+            border-bottom: none;
+        }
+
+        .timeline-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #D1D5DB;
+        }
+
+        .timeline-dot.done {
+            background: #10B981;
+        }
+
+        .timeline-dot.active {
+            background: #F59E0B;
+        }
+
+        .timeline-dot.pending {
+            background: #9CA3AF;
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-time {
+            color: #9CA3AF;
+            font-size: 8px;
+        }
+
+        .timeline-status-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .timeline-status-badge.completed {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .timeline-status-badge.active {
+            background: #FEF3E2;
+            color: #92400E;
+        }
+
+        .timeline-status-badge.upcoming {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        /* Turnover Chain Visual */
+        .turnover-chain {
+            background: #F9F7F4;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .chain-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .chain-steps {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 8px;
+        }
+
+        .chain-step {
+            flex: 1;
+            text-align: center;
+            padding: 4px;
+        }
+
+        .chain-step-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            border: 2px solid #D1D5DB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            margin: 0 auto 4px;
+            color: #9CA3AF;
+        }
+
+        .chain-step-circle.done {
+            background: #10B981;
+            border-color: #10B981;
+            color: #FFFFFF;
+        }
+
+        .chain-step-circle.active {
+            background: #F59E0B;
+            border-color: #F59E0B;
+            color: #FFFFFF;
+        }
+
+        .chain-step-label {
+            color: #6B7280;
+            font-weight: 600;
+        }
+
+        .chain-arrow {
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 0;
+            border-top: 3px solid #D1D5DB;
+            border-bottom: 3px solid #D1D5DB;
+            flex: 0.5;
+        }
+
+        /* Team Cards */
+        .team-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 10px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .team-card.alert {
+            border-left-color: #DC2626;
+            border-left-width: 3px;
+            background: #FFF4F4;
+            animation: pulse-r 2s infinite;
+        }
+
+        .team-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-ring {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #10B981;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .status-ring.active {
+            border-color: #10B981;
+        }
+
+        .status-ring.break {
+            border-color: #F59E0B;
+        }
+
+        .status-ring.alert {
+            border-color: #DC2626;
+        }
+
+        .status-ring.offline {
+            border-color: #9CA3AF;
+        }
+
+        .team-info {
+            flex: 1;
+        }
+
+        .team-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .team-role {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .role-badge {
+            background: #E6EEE7;
+            color: #334036;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .role-badge.blue {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .role-badge.amber {
+            background: #FEF3E2;
+            color: #92400E;
+        }
+
+        .current-task {
+            font-size: 9px;
+            color: #6B7280;
+            padding: 4px 6px;
+            background: #F9F7F4;
+            border-radius: 4px;
+        }
+
+        .load-indicator {
+            font-size: 9px;
+            color: #6B7280;
+            padding: 4px 6px;
+            background: #F3F4F6;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .sla-compliance {
+            font-size: 9px;
+            color: #10B981;
+            font-weight: 700;
+            padding: 4px 6px;
+            background: #E6F9F0;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .team-actions {
+            display: flex;
+            gap: 4px;
+            font-size: 8px;
+        }
+
+        .action-chip {
+            background: #E6EEE7;
+            color: #334036;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .action-chip:hover {
+            background: #D4E4D7;
+        }
+
+        /* Cockpit Styles */
+        .cockpit-header {
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            color: #FFFFFF;
+            padding: 12px;
+            border-radius: 0;
+            flex-shrink: 0;
+        }
+
+        .cockpit-eyebrow {
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .cockpit-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .cockpit-progress-bar {
+            background: rgba(255,255,255,0.1);
+            height: 3px;
+            border-radius: 1.5px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .cockpit-progress-fill {
+            background: linear-gradient(90deg, #10B981 0%, #F59E0B 50%, #DC2626 100%);
+            height: 100%;
+            width: 58%;
+        }
+
+        .cockpit-date {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-top: 4px;
+        }
+
+        .cockpit-section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #9CA3AF;
+            padding: 8px 10px 4px;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+            padding: 0 11px;
+            margin-bottom: 4px;
+        }
+
+        .kpi-card {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        .kpi-card-label {
+            font-size: 8px;
+            color: #9CA3AF;
+            margin-bottom: 2px;
+        }
+
+        .kpi-card-val {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 12px;
+            color: #FFFFFF;
+        }
+
+        .stream-row {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin: 0 11px 7px;
+            flex-shrink: 0;
+        }
+
+        .stream-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #FFFFFF;
+            margin-bottom: 4px;
+        }
+
+        .stream-counts {
+            display: flex;
+            gap: 6px;
+            font-size: 8px;
+        }
+
+        .stream-count {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #9CA3AF;
+        }
+
+        .stream-count.active {
+            background: #B56E45;
+            color: #FFFFFF;
+        }
+
+        .alert-row {
+            background: linear-gradient(90deg, rgba(220,38,38,0.1) 0%, transparent 100%);
+            border: 1px solid rgba(220,38,38,0.2);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin: 0 11px 7px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-live {
+            width: 6px;
+            height: 6px;
+            background: #DC2626;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+            flex-shrink: 0;
+        }
+
+        .alert-text {
+            font-size: 10px;
+            color: #FCA5A5;
+            font-weight: 600;
+        }
+
+        /* Property Details Card */
+        .property-details-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: 1.5px solid #E5E7EB;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+
+        .details-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .details-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 9px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .details-row:last-child {
+            border-bottom: none;
+        }
+
+        .details-label {
+            color: #9CA3AF;
+            font-weight: 600;
+        }
+
+        .details-val {
+            color: #171A1F;
+            font-weight: 700;
+        }
+
+        /* Issues Card */
+        .issues-card {
+            background: #FFF4F4;
+            border: 1.5px solid #FCA5A5;
+            border-radius: 10px;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+
+        .issues-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #DC2626;
+            margin-bottom: 6px;
+        }
+
+        .issue-item {
+            font-size: 9px;
+            color: #6B7280;
+            padding: 4px 0;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            height: 50px;
+            background: #FFFFFF;
+            border-top: 1px solid #F0EEE9;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9CA3AF;
+            transition: color 0.2s;
+            flex: 1;
+            padding: 0;
+        }
+
+        .nav-item.active {
+            color: #334036;
+        }
+
+        .nav-icon {
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .nav-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Resolution Note Input */
+        .resolution-note {
+            background: #F9F7F4;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            padding: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 9px;
+            width: 100%;
+            margin-bottom: 8px;
+            color: #171A1F;
+        }
+
+        .resolution-note::placeholder {
+            color: #9CA3AF;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+
+        @keyframes pulse-card {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(181, 110, 69, 0);
+            }
+            50% {
+                box-shadow: 0 0 0 4px rgba(181, 110, 69, 0.1);
+            }
+        }
+
+        @keyframes pulse-r {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+            }
+            50% {
+                box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+            }
+        }
+
+        /* Legend */
+        .legend {
+            background: #FFFFFF;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 20px 24px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .legend-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #171A1F;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+        }
+
+        .legend-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .legend-text {
+            font-size: 10px;
+            color: #6B7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Ops Manager — V3 Enhanced Operational Depth</h1>
+            <p>Domaniqo Property Management · Command & Coordination Surface</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">Role Personality</div>
+                <div class="note-text">Command center. Field supervision. The Ops Manager coordinates, intervenes, and maintains oversight across property operations. LEADERSHIP—not task execution. Sees everything, commands strategically.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">V3 Changes from V2</div>
+                <div class="note-text">Expanded to 6 screens (Hub, Alert Detail, Stream Drill-Down, Property Context, Team Status, Cockpit). Deeper stream navigation. Property timeline visualization. Intervention chains with sequential CTAs. SLA compliance on team metrics. Turnover chain visualization.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Key Patterns</div>
+                <div class="note-text">Morning briefing. Alert drill-down with 3-step intervention chain. Stream filtering & drill-down. Property timeline with turnover visualization. Team status with performance signals (SLA compliance %). Cockpit analytics with KPI grid & stream status rows.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Shaped By</div>
+                <div class="note-text">Larry (cross-domain coherence, role separation). Sonia (ops vs admin vs worker clarity, no infrastructure). Talia (state transitions, empty states). Marco (mobile field, dark headers, 44pt targets). Hana (team performance signals, SLA acknowledgment time).</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+            <!-- SCREEN 1: HUB (HOME) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Domaniqo</div>
+                                <div class="header-subtitle">Ops Manager</div>
+                            </div>
+                        </div>
+                        <button class="header-action">⚙️</button>
+                    </div>
+
+                    <div class="kpi-strip">
+                        <div class="kpi-item">
+                            <div class="kpi-val">24</div>
+                            <div class="kpi-lbl">TOTAL</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">18</div>
+                            <div class="kpi-lbl">DONE</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">4</div>
+                            <div class="kpi-lbl">AT RISK</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">2</div>
+                            <div class="kpi-lbl">OVERDUE</div>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="briefing-card">
+                            <div class="briefing-title">
+                                <span>Morning Briefing</span>
+                                <div class="briefing-live-dot"></div>
+                            </div>
+                            <div class="briefing-meta">Thursday, Mar 14 · 9:44 AM</div>
+                            <div class="briefing-bar">
+                                <div class="briefing-bar-fill"></div>
+                            </div>
+                            <div class="briefing-stats">
+                                <div class="briefing-stat">
+                                    <div class="briefing-stat-label">Day Progress</div>
+                                    <div class="briefing-stat-val">62%</div>
+                                </div>
+                                <div class="briefing-stat">
+                                    <div class="briefing-stat-label">Alerts</div>
+                                    <div class="briefing-stat-val" style="display: flex; align-items: center; gap: 4px;">
+                                        <span>2</span>
+                                        <div style="width: 4px; height: 4px; background: #DC2626; border-radius: 50%; animation: blink 1s infinite;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-header">
+                            Active Alerts
+                            <span class="section-badge">2 Urgent</span>
+                        </div>
+
+                        <div class="card overdue">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">🚨</div>
+                                    <div class="card-badge live">
+                                        <div class="live-dot"></div>
+                                        <span>LIVE</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-property">Villa Orchid Residence</div>
+                            <div class="card-meta">
+                                <span>Guest arriving in 45 min</span>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill blocked">Cleaning Not Started</span>
+                            </div>
+                        </div>
+
+                        <div class="card approaching">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">⚠️</div>
+                                    <div class="card-badge alert">APPROACHING</div>
+                                </div>
+                            </div>
+                            <div class="card-property">Beachfront Bungalow</div>
+                            <div class="card-meta">
+                                <span>Check-in in 2 hours</span>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill pending">Inspection Pending</span>
+                            </div>
+                        </div>
+
+                        <div class="section-header">
+                            Operations Stream
+                        </div>
+
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">🧹</div>
+                                    <div class="card-badge active">Cleaning</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <div class="worker-chip">
+                                    <div class="worker-avatar">MJ</div>
+                                    <span>Maria J.</span>
+                                </div>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill active">IN PROGRESS</span>
+                                <span class="status-pill done">3/5 Rooms</span>
+                            </div>
+                        </div>
+
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">📋</div>
+                                    <div class="card-badge active">Check-In</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <div class="worker-chip">
+                                    <div class="worker-avatar">RS</div>
+                                    <span>Ramon S.</span>
+                                </div>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill pending">PENDING</span>
+                                <span class="status-pill done">3 Upcoming</span>
+                            </div>
+                        </div>
+
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-icon">🔧</div>
+                                    <div class="card-badge active">Maintenance</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <div class="worker-chip">
+                                    <div class="worker-avatar">NK</div>
+                                    <span>Niran K.</span>
+                                </div>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill active">IN PROGRESS</span>
+                                <span class="status-pill done">2 Tasks</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item active">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">1. Hub (Home)</div>
+            </div>
+
+            <!-- SCREEN 2: ALERT DETAIL (DRILL-DOWN) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header alert-state">
+                        <button class="header-back">←</button>
+                        <div class="header-titles">
+                            <div class="alert-header-title">Alert Detail</div>
+                        </div>
+                        <div class="live-badge">
+                            <div class="live-dot"></div>
+                            <span>LIVE</span>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="card overdue" style="border: none; background: #DC2626; color: white; margin-bottom: 8px;">
+                            <div class="card-header-row">
+                                <div style="font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 12px; color: white;">
+                                    Guest Arrival Blocked
+                                </div>
+                            </div>
+                            <div style="font-size: 10px; color: rgba(255,255,255,0.9); margin-top: 4px;">
+                                SLA Breach in 45 minutes
+                            </div>
+                        </div>
+
+                        <div class="detail-block" style="margin-bottom: 12px;">
+                            <div style="font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; color: #171A1F; margin-bottom: 8px;">Property</div>
+                            <div class="detail-row">
+                                <span class="detail-label">Property Name</span>
+                                <span class="detail-val">Villa Orchid Residence</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Address</span>
+                                <span class="detail-val" style="font-size: 8px;">Beachfront, District 1</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Property Type</span>
+                                <span class="detail-val">Villa</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-block" style="margin-bottom: 12px;">
+                            <div style="font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; color: #171A1F; margin-bottom: 8px;">Guest Impact</div>
+                            <div class="detail-row">
+                                <span class="detail-label">Guest Name</span>
+                                <span class="detail-val">Charles Thompson</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Scheduled Check-In</span>
+                                <span class="detail-val">10:30 AM</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Current Time</span>
+                                <span class="detail-val">9:44 AM</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">SLA Breach In</span>
+                                <span style="color: #DC2626; font-weight: 700;">45 minutes</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-block" style="margin-bottom: 12px;">
+                            <div style="font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; color: #171A1F; margin-bottom: 8px;">Assigned Cleaner</div>
+                            <div class="detail-row">
+                                <span class="detail-label">Worker</span>
+                                <span class="detail-val">Maria J.</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Status</span>
+                                <span style="color: #9CA3AF; font-weight: 700;">Offline since 10:42</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Last Ping</span>
+                                <span class="detail-val" style="font-size: 8px;">47 minutes ago</span>
+                            </div>
+                        </div>
+
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; color: #171A1F; padding: 0 11px; margin-bottom: 8px;">
+                            Intervention Chain
+                        </div>
+
+                        <div class="intervention-group" style="padding: 0 11px;">
+                            <div style="background: #F9F7F4; padding: 8px; border-radius: 6px; font-size: 9px; color: #6B7280; margin-bottom: 8px; font-weight: 600;">
+                                ① Reassign to Available Cleaner
+                            </div>
+                            <button class="btn-dark">Reassign Now</button>
+
+                            <div style="background: #F9F7F4; padding: 8px; border-radius: 6px; font-size: 9px; color: #6B7280; margin-top: 8px; margin-bottom: 8px; font-weight: 600;">
+                                ② Notify Guest of Delay
+                            </div>
+                            <button class="btn-primary">Send Notification</button>
+
+                            <div style="background: #F9F7F4; padding: 8px; border-radius: 6px; font-size: 9px; color: #6B7280; margin-top: 8px; margin-bottom: 8px; font-weight: 600;">
+                                ③ Escalate to Admin (if needed)
+                            </div>
+                            <button class="btn-danger-outline">Escalate</button>
+
+                            <textarea class="resolution-note" style="margin-top: 12px;" placeholder="Add resolution note..."></textarea>
+
+                            <button class="btn-success">Mark Resolved</button>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">2. Alert Detail (3-Step Intervention)</div>
+            </div>
+
+            <!-- SCREEN 3: STREAM DRILL-DOWN (CLEANING) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <button class="header-back">←</button>
+                        <div class="header-titles">
+                            <div class="header-title">Cleaning Stream</div>
+                        </div>
+                    </div>
+
+                    <div style="background: #171A1F; padding: 8px 11px; display: flex; gap: 4px; flex-shrink: 0;">
+                        <div class="filter-tab active" style="background: #334036; color: #FFFFFF;">All</div>
+                        <div class="filter-tab">Pending</div>
+                        <div class="filter-tab">Active</div>
+                        <div class="filter-tab">Done</div>
+                        <div class="filter-tab">Blocked</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-property">Beachfront Bungalow</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <div class="worker-chip">
+                                    <div class="worker-avatar">MJ</div>
+                                    <span>Maria J.</span>
+                                </div>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill active">IN PROGRESS</span>
+                                <span class="status-pill done">3/5 Rooms</span>
+                            </div>
+                            <div style="font-size: 8px; color: #6B7280; margin-top: 6px;">SLA in 1h 20m</div>
+                        </div>
+
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-property">Oceanview Apartment</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <div class="worker-chip">
+                                    <div class="worker-avatar">RK</div>
+                                    <span>Ravi K.</span>
+                                </div>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill active">IN PROGRESS</span>
+                                <span class="status-pill done">2/3 Rooms</span>
+                            </div>
+                            <div style="font-size: 8px; color: #6B7280; margin-top: 6px;">SLA in 2h 45m</div>
+                        </div>
+
+                        <div class="card overdue">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-property">Villa Orchid Residence</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <div class="worker-chip offline">
+                                    <div class="worker-avatar">MJ</div>
+                                    <span>Maria J.</span>
+                                </div>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill blocked">BLOCKED</span>
+                            </div>
+                            <div style="font-size: 8px; color: #DC2626; margin-top: 6px; font-weight: 600;">⚠️ Waiting for checkout confirmation</div>
+                        </div>
+
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-property">Harbor Townhouse</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <div class="worker-chip">
+                                    <div class="worker-avatar">SK</div>
+                                    <span>Somchai K.</span>
+                                </div>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill done">DONE</span>
+                            </div>
+                            <div style="font-size: 8px; color: #10B981; margin-top: 6px; font-weight: 600;">✓ Completed 9:32 AM</div>
+                        </div>
+
+                        <div class="card safe">
+                            <div class="card-header-row">
+                                <div class="card-header-left">
+                                    <div class="card-property">Palm Grove Villa</div>
+                                </div>
+                            </div>
+                            <div class="card-meta">
+                                <div class="worker-chip">
+                                    <div class="worker-avatar">TH</div>
+                                    <span>Thuy H.</span>
+                                </div>
+                            </div>
+                            <div class="status-pills">
+                                <span class="status-pill pending">PENDING</span>
+                            </div>
+                            <div style="font-size: 8px; color: #6B7280; margin-top: 6px;">Starts after checkout</div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">3. Stream Drill-Down (Cleaning)</div>
+            </div>
+
+            <!-- SCREEN 4: PROPERTY CONTEXT VIEW -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <button class="header-back">←</button>
+                        <div class="header-titles">
+                            <div class="header-title">Property</div>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="property-header-card">
+                            <div class="property-info">
+                                <div class="property-name">Villa Orchid Residence</div>
+                                <div class="property-type-badge">VILLA</div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-card">
+                            <div class="timeline-header">Today's Schedule</div>
+                            <div class="timeline-row">
+                                <div class="timeline-dot done">✓</div>
+                                <div class="timeline-content">
+                                    <div style="font-weight: 700; font-size: 9px; color: #171A1F;">Check-Out</div>
+                                    <div class="timeline-time">11:00 AM • James Mitchell</div>
+                                </div>
+                                <div class="timeline-status-badge completed">DONE</div>
+                            </div>
+                            <div class="timeline-row">
+                                <div class="timeline-dot active"></div>
+                                <div class="timeline-content">
+                                    <div style="font-weight: 700; font-size: 9px; color: #171A1F;">Cleaning</div>
+                                    <div class="timeline-time">11:30 AM • Maria J.</div>
+                                </div>
+                                <div class="timeline-status-badge active">IN PROGRESS</div>
+                            </div>
+                            <div class="timeline-row">
+                                <div class="timeline-dot pending"></div>
+                                <div class="timeline-content">
+                                    <div style="font-weight: 700; font-size: 9px; color: #171A1F;">Inspection</div>
+                                    <div class="timeline-time">14:00 PM • Ops Team</div>
+                                </div>
+                                <div class="timeline-status-badge upcoming">UPCOMING</div>
+                            </div>
+                            <div class="timeline-row">
+                                <div class="timeline-dot pending"></div>
+                                <div class="timeline-content">
+                                    <div style="font-weight: 700; font-size: 9px; color: #171A1F;">Ready for Guest</div>
+                                    <div class="timeline-time">14:30 PM</div>
+                                </div>
+                                <div class="timeline-status-badge upcoming">UPCOMING</div>
+                            </div>
+                            <div class="timeline-row">
+                                <div class="timeline-dot pending"></div>
+                                <div class="timeline-content">
+                                    <div style="font-weight: 700; font-size: 9px; color: #171A1F;">Check-In</div>
+                                    <div class="timeline-time">15:00 PM • Charles Thompson</div>
+                                </div>
+                                <div class="timeline-status-badge upcoming">UPCOMING</div>
+                            </div>
+                        </div>
+
+                        <div class="turnover-chain">
+                            <div class="chain-title">Turnover Chain</div>
+                            <div class="chain-steps">
+                                <div class="chain-step">
+                                    <div class="chain-step-circle done">✓</div>
+                                    <div class="chain-step-label">Check-Out</div>
+                                </div>
+                                <div class="chain-arrow"></div>
+                                <div class="chain-step">
+                                    <div class="chain-step-circle active"></div>
+                                    <div class="chain-step-label">Clean</div>
+                                </div>
+                                <div class="chain-arrow"></div>
+                                <div class="chain-step">
+                                    <div class="chain-step-circle"></div>
+                                    <div class="chain-step-label">Inspect</div>
+                                </div>
+                                <div class="chain-arrow"></div>
+                                <div class="chain-step">
+                                    <div class="chain-step-circle"></div>
+                                    <div class="chain-step-label">Ready</div>
+                                </div>
+                                <div class="chain-arrow"></div>
+                                <div class="chain-step">
+                                    <div class="chain-step-circle"></div>
+                                    <div class="chain-step-label">Check-In</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="property-details-card">
+                            <div class="details-title">Property Details</div>
+                            <div class="details-row">
+                                <span class="details-label">Rooms</span>
+                                <span class="details-val">4</span>
+                            </div>
+                            <div class="details-row">
+                                <span class="details-label">Bathrooms</span>
+                                <span class="details-val">2</span>
+                            </div>
+                            <div class="details-row">
+                                <span class="details-label">Max Guests</span>
+                                <span class="details-val">8</span>
+                            </div>
+                            <div class="details-row">
+                                <span class="details-label">Amenities</span>
+                                <span class="details-val" style="font-size: 8px;">Pool, Kitchen, WiFi</span>
+                            </div>
+                        </div>
+
+                        <div class="issues-card">
+                            <div class="issues-title">🚩 Active Issues</div>
+                            <div class="issue-item">AC unit in master bedroom — maintenance assigned • Niran K.</div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">4. Property Context (Timeline & Turnover)</div>
+            </div>
+
+            <!-- SCREEN 5: TEAM STATUS -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Team Overview</div>
+                                <div class="header-subtitle">12 Active</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #171A1F; padding: 8px 11px; display: flex; gap: 4px; flex-shrink: 0; overflow-x: auto;">
+                        <div class="filter-tab active" style="background: #334036; color: #FFFFFF;">All</div>
+                        <div class="filter-tab">On Task</div>
+                        <div class="filter-tab">Available</div>
+                        <div class="filter-tab">Alert</div>
+                        <div class="filter-tab">Offline</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <div class="team-card">
+                            <div class="team-header">
+                                <div class="status-ring active"></div>
+                                <div class="team-info">
+                                    <div class="team-name">Maria J.</div>
+                                    <div class="team-role">
+                                        <span class="role-badge">CLEANER</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="current-task">Beachfront Bungalow • 3/5 rooms</div>
+                            <div class="load-indicator">4/5 Tasks</div>
+                            <div class="sla-compliance">SLA: 98%</div>
+                            <div class="team-actions">
+                                <span class="action-chip">Message</span>
+                                <span class="action-chip">Reassign</span>
+                            </div>
+                        </div>
+
+                        <div class="team-card">
+                            <div class="team-header">
+                                <div class="status-ring active"></div>
+                                <div class="team-info">
+                                    <div class="team-name">Ravi K.</div>
+                                    <div class="team-role">
+                                        <span class="role-badge">CLEANER</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="current-task">Oceanview Apartment • 2/3 rooms</div>
+                            <div class="load-indicator">3/5 Tasks</div>
+                            <div class="sla-compliance">SLA: 96%</div>
+                            <div class="team-actions">
+                                <span class="action-chip">Message</span>
+                                <span class="action-chip">Reassign</span>
+                            </div>
+                        </div>
+
+                        <div class="team-card">
+                            <div class="team-header">
+                                <div class="status-ring break"></div>
+                                <div class="team-info">
+                                    <div class="team-name">Ramon S.</div>
+                                    <div class="team-role">
+                                        <span class="role-badge blue">CHECK-IN</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="current-task">On lunch break</div>
+                            <div class="load-indicator">2/3 Tasks</div>
+                            <div class="sla-compliance">SLA: 99%</div>
+                            <div class="team-actions">
+                                <span class="action-chip">Message</span>
+                                <span class="action-chip">Reassign</span>
+                            </div>
+                        </div>
+
+                        <div class="team-card">
+                            <div class="team-header">
+                                <div class="status-ring active"></div>
+                                <div class="team-info">
+                                    <div class="team-name">Niran K.</div>
+                                    <div class="team-role">
+                                        <span class="role-badge amber">MAINTENANCE</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="current-task">Villa Orchid • AC repair</div>
+                            <div class="load-indicator">2/2 Tasks</div>
+                            <div class="sla-compliance">SLA: 100%</div>
+                            <div class="team-actions">
+                                <span class="action-chip">Message</span>
+                                <span class="action-chip">Reassign</span>
+                            </div>
+                        </div>
+
+                        <div class="team-card alert">
+                            <div class="team-header">
+                                <div class="status-ring offline"></div>
+                                <div class="team-info">
+                                    <div class="team-name">Somchai K.</div>
+                                    <div class="team-role">
+                                        <span class="role-badge">CLEANER</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="current-task" style="color: #DC2626; font-weight: 600;">Offline • 2 tasks need reassignment</div>
+                            <div class="load-indicator" style="background: #FEE2E2; color: #DC2626;">2/2 Unassigned</div>
+                            <div class="sla-compliance" style="background: #FEE2E2; color: #DC2626;">⚠️ SLA Risk</div>
+                            <div class="team-actions">
+                                <span class="action-chip" style="background: #FEE2E2; color: #DC2626;">Alert</span>
+                                <span class="action-chip">Reassign All</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">5. Team Status (Performance & SLA)</div>
+            </div>
+
+            <!-- SCREEN 6: COCKPIT (ANALYTICS) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="cockpit-header">
+                        <div class="cockpit-eyebrow">Operations Dashboard</div>
+                        <div class="cockpit-title">Cockpit</div>
+                        <div class="cockpit-date">Thursday, Mar 14 · 9:44 AM</div>
+                        <div class="cockpit-progress-bar">
+                            <div class="cockpit-progress-fill"></div>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area cockpit-scroll">
+                        <div class="cockpit-section-header">Key Performance Indicators</div>
+                        <div class="kpi-grid">
+                            <div class="kpi-card">
+                                <div class="kpi-card-label">Occupancy Rate</div>
+                                <div class="kpi-card-val">87%</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-card-label">SLA Compliance</div>
+                                <div class="kpi-card-val">94%</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-card-label">Active Turnovers</div>
+                                <div class="kpi-card-val">4</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-card-label">Mean Turnover Time</div>
+                                <div class="kpi-card-val">2.1h</div>
+                            </div>
+                        </div>
+
+                        <div class="cockpit-section-header" style="margin-top: 12px;">Stream Status</div>
+                        <div class="stream-row">
+                            <div class="stream-label">🧹 Cleaning</div>
+                            <div class="stream-counts">
+                                <div class="stream-count active">8 Done</div>
+                                <div class="stream-count">2 Active</div>
+                                <div class="stream-count">1 Blocked</div>
+                            </div>
+                        </div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">📋 Check-In</div>
+                            <div class="stream-counts">
+                                <div class="stream-count active">5 Done</div>
+                                <div class="stream-count">3 Upcoming</div>
+                            </div>
+                        </div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">👉 Check-Out</div>
+                            <div class="stream-counts">
+                                <div class="stream-count active">6 Done</div>
+                                <div class="stream-count">0 Pending</div>
+                            </div>
+                        </div>
+
+                        <div class="stream-row">
+                            <div class="stream-label">🔧 Maintenance</div>
+                            <div class="stream-counts">
+                                <div class="stream-count active">2 Active</div>
+                                <div class="stream-count">1 Urgent</div>
+                            </div>
+                        </div>
+
+                        <div class="cockpit-section-header" style="margin-top: 12px;">Active Incidents</div>
+                        <div class="alert-row">
+                            <div class="alert-live"></div>
+                            <div class="alert-text">Villa Orchid — Cleaning Delayed (45m SLA)</div>
+                        </div>
+
+                        <div class="alert-row">
+                            <div class="alert-live"></div>
+                            <div class="alert-text">Somchai K. Offline — 2 Tasks at Risk</div>
+                        </div>
+
+                        <div class="cockpit-section-header" style="margin-top: 12px;">Worker Utilization</div>
+                        <div style="padding: 0 11px;">
+                            <div style="font-size: 9px; color: #E5E7EB; margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span>High Load (4-5 tasks)</span>
+                                    <span>2 workers</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px;"></div>
+                            </div>
+                            <div style="font-size: 9px; color: #E5E7EB; margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span>Medium Load (2-3 tasks)</span>
+                                    <span>6 workers</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px;"></div>
+                            </div>
+                            <div style="font-size: 9px; color: #E5E7EB;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span>Low Load or Break</span>
+                                    <span>4 workers</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">6. Cockpit (Analytics & KPIs)</div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-title">Urgency Codes</div>
+                <div class="legend-items">
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #D1D5DB;"></div>
+                        <div class="legend-text">Safe — No action needed</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #F59E0B;"></div>
+                        <div class="legend-text">Approaching — Monitor closely</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #B56E45;"></div>
+                        <div class="legend-text">Imminent — Intervention advised</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #DC2626;"></div>
+                        <div class="legend-text">Overdue — SLA breach, action NOW</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-title">Status Pills</div>
+                <div class="legend-items">
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #E6EEE7;"></div>
+                        <div class="legend-text">Active — Task in progress</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #FEF3E2;"></div>
+                        <div class="legend-text">Pending — Awaiting start</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #DBEAFE;"></div>
+                        <div class="legend-text">Done — Completed</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="background: #FEE2E2;"></div>
+                        <div class="legend-text">Blocked — Cannot proceed</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-title">Team Status Rings</div>
+                <div class="legend-items">
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="border: 2px solid #10B981; background: transparent;"></div>
+                        <div class="legend-text">Active — On task</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="border: 2px solid #F59E0B; background: transparent;"></div>
+                        <div class="legend-text">Break — Scheduled break</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="border: 2px solid #DC2626; background: transparent;"></div>
+                        <div class="legend-text">Alert — Needs attention</div>
+                    </div>
+                    <div class="legend-row">
+                        <div class="legend-swatch" style="border: 2px solid #9CA3AF; background: transparent;"></div>
+                        <div class="legend-text">Offline — Not connected</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-title">Core Features</div>
+                <div class="legend-items">
+                    <div class="legend-row">
+                        <span style="font-weight: 700; color: #171A1F; font-size: 10px;">Morning Briefing</span>
+                    </div>
+                    <div class="legend-row" style="font-size: 9px; color: #6B7280;">
+                        Live day progress, SLA summary, alert count with blink indicator
+                    </div>
+                    <div class="legend-row">
+                        <span style="font-weight: 700; color: #171A1F; font-size: 10px; margin-top: 8px;">3-Step Intervention</span>
+                    </div>
+                    <div class="legend-row" style="font-size: 9px; color: #6B7280;">
+                        Reassign → Notify → Escalate with explicit sequential actions
+                    </div>
+                    <div class="legend-row">
+                        <span style="font-weight: 700; color: #171A1F; font-size: 10px; margin-top: 8px;">SLA on Team Cards</span>
+                    </div>
+                    <div class="legend-row" style="font-size: 9px; color: #6B7280;">
+                        Shows compliance percentage (98%, 96%, etc.) for performance visibility
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

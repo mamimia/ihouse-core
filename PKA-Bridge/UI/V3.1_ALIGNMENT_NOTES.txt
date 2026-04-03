@@ -1,0 +1,229 @@
+=== PUBLIC V3.1 & SUBMITTER V3.1: CONNECTED SYSTEM ALIGNMENT ===
+
+CREATED:
+- /UI/PUBLIC/UI_Version_3.1/public_v3.1.html (1,122 lines)
+- /UI/SUBMITTER/UI_Version_3.1/submitter_v3.1.html (1,148 lines)
+
+SYSTEM PHILOSOPHY:
+These two surfaces form a CONNECTED ENTRY FUNNEL, not separate products.
+- PUBLIC: Guest discovery entry point → browsing, property detail, availability check
+- SUBMITTER: Booking request submission → guest details, verification, review & confirm
+- Both converge at "My Bookings/My Properties" (shared destination)
+
+═══════════════════════════════════════════════════════════════════
+
+VISUAL ALIGNMENT (V3.1):
+
+Typography Stack (Both):
+  Display/Headers: Manrope 800 (bold, authoritative)
+  UI Labels: Manrope 700 11px (uppercase, letter-spacing 0.5px)
+  Body Text: Inter 400-500 (warm, readable)
+
+Screen Label Style (Both):
+  Font: Manrope 11px, weight 700
+  Text Transform: uppercase
+  Letter Spacing: 0.5px
+  Color: #6B7280 (gray)
+  Position: Center below phone mockup
+
+Phone Mockup (Both):
+  Dimensions: 300x622px
+  Border Radius: 36px
+  Status Bar: 26px height, white background
+  Shadow: Refined 3-layer shadow (subtle, grounded)
+
+Color Palette (Shared):
+  Deep Moss: #334036 (primary action, trust)
+  Signal Copper: #B56E45 (copper accent, warmth)
+  Midnight: #171A1F (text, depth)
+  Background: #F2EFEB (warm cream)
+  White: #FFFFFF (cards, content)
+  Gray Scale: #E5E7EB, #D1D6DC, #9CA3AF, #6B7280
+
+Notes Bar (Both):
+  Background: #171A1F (dark)
+  Grid: 4 columns
+  Label Color: #334036 (moss accent for identity)
+  Text Color: #E5E7EB (light gray)
+
+═══════════════════════════════════════════════════════════════════
+
+PUBLIC V3.1 SPECIFICS:
+
+Role: Guest-facing discovery surface
+Personality: Warm, inviting, property-focused
+Visual Warmth: Gradient hero with copper accent (closer to guest portal)
+
+5 Screens:
+1. Hero Landing (gradient background #F5EFE6→#334036, copper CTA)
+2. Browse Properties (listings with property image priority)
+3. Property Detail (specs grid, amenities, full context)
+4. Availability & Pricing (calendar-style dates, pricing breakdown)
+5. Booking Request Form (lead capture, simple contact fields)
+
+Key Patterns:
+- Property cards: Image prominent (120px height)
+- Property name dominates hierarchy (13px Manrope 800)
+- Location secondary (11px)
+- Availability clear (emphasis on date ranges)
+- Color accent: Copper (#B56E45) for CTAs (warm, inviting)
+- No bottom nav (browse/discovery model)
+
+Hierarchy:
+Property Image → Property Name → Location → Details → Availability
+
+═══════════════════════════════════════════════════════════════════
+
+SUBMITTER V3.1 SPECIFICS:
+
+Role: Booking request submission flow
+Personality: Guided, trustworthy, progressive disclosure
+Visual Confidence: Structured form with clear progress, moss/copper balance
+
+5 Screens:
+1. Booking Details (STEP 1 of 3) - Guest name, email, phone, requests
+2. Email Verification (STEP 2 of 3) - 6-digit code verification
+3. Review & Submit (STEP 3 of 3) - Full review card, checkbox, submit
+4. Confirmation Success - Success state with booking confirmation
+5. My Bookings (Shared Destination) - Booking status & next steps
+
+Key Patterns:
+- Property Context Bar: Top of every form screen (thumbnail + brief info)
+  Shows guest is booking THIS property, not generic form
+- Progress Bar: Visible, fills as user advances
+- Form Labels: Uppercase 11px Manrope 700 (consistent with screen labels)
+- Stepper Controls: For dates & guest counts (accessible, clear)
+- Review Card: Full booking summary before submit (builds confidence)
+- Checkpoint: Email verification ensures deliverable lead
+- Success State: Clear confirmation + next steps messaging
+
+Hierarchy:
+Property Context → Form Title & Progress → Form Fields → Review → Submit
+
+═══════════════════════════════════════════════════════════════════
+
+CONNECTED SYSTEM TREATMENT:
+
+1. COLOR CONSISTENCY:
+   Both use #B56E45 (copper) for primary CTAs and accents
+   Both use #334036 (moss) for secondary/trusted actions
+   Creates visual continuity: PUBLIC copper invite → SUBMITTER copper submit
+
+2. TYPOGRAPHY CONSISTENCY:
+   Both use Manrope 800 for headers (dominance, authority)
+   Both use Manrope 700 11px uppercase for labels (system identity)
+   Both use Inter 400 for body (warmth, readability)
+
+3. SPACING & RHYTHM:
+   Both use 12px/16px/20px spacing grid
+   Both use 8px gap increments for components
+   Both use 12px border radius for cards (rounded, friendly)
+
+4. BUTTON PROGRESSION:
+   PUBLIC: Copper button = "Explore" / "Check Dates"
+   SUBMITTER: Copper button = "Continue" / "Submit Booking"
+   The color creates visual momentum from discovery → request
+
+5. SHARED DESTINATION:
+   Both surfaces lead to "My Bookings/My Properties" destination
+   Same header style, same card layout, same status pills
+   Proves they're part of same system, not separate products
+
+6. PROPERTY CONTEXT:
+   PUBLIC shows property in cards across listing
+   SUBMITTER shows property in context bar at top of every form
+   This creates narrative continuity: "I'm booking THIS property"
+
+═══════════════════════════════════════════════════════════════════
+
+FLOW NARRATIVE:
+
+User Journey (Complete):
+1. Land on PUBLIC hero (Domaniqo discovery)
+2. Browse properties (PUBLIC screen 2)
+3. Tap property → see detail (PUBLIC screen 3)
+4. Check dates → availability & pricing (PUBLIC screen 4)
+5. "Request Booking" → SUBMITTER screen 1 (guest details)
+6. Enter email, verify code (SUBMITTER screen 2)
+7. Review & submit (SUBMITTER screen 3)
+8. Confirmation → My Bookings (shared destination)
+
+Visual Transition (PUBLIC → SUBMITTER):
+- Color warmth: Hero gradient copper stays as CTA color in submission
+- Typography: Same header weights, same label style
+- Cards: Same radius, same shadow, same layout patterns
+- Spacing: Consistent grid means form fields feel native to system
+- Result: Feels like natural deepening, not context switch
+
+═══════════════════════════════════════════════════════════════════
+
+V3.1 IMPROVEMENTS OVER V3:
+
+1. Screen Labels:
+   OLD: 12px, varied weight, inconsistent styling
+   NEW: 11px Manrope 700, uppercase, letter-spacing 0.5px (unified)
+
+2. Form Labels:
+   OLD: 12px Manrope 600, varied
+   NEW: 11px Manrope 700, uppercase, letter-spacing 0.5px (consistency)
+
+3. Header Weights:
+   OLD: 16-28px with varying 700-800 weights
+   NEW: Consistent 800 weight for all section headers (authority)
+
+4. Spacing:
+   OLD: Looser, variable spacing
+   NEW: Tightened by 1-2px where appropriate (refined)
+
+5. Property Context (SUBMITTER ONLY):
+   NEW: Property bar at top of every form (shows booking context)
+
+6. Card Shadows:
+   OLD: Varied
+   NEW: Unified subtle shadow: 0 4px 12px rgba(color, 0.12) (grounded)
+
+7. Progress Bar:
+   OLD: Generic
+   NEW: Prominent, fills with motion, shows clear progress (reassurance)
+
+8. Notes Bar (Both):
+   Label Color: Changed to #334036 (moss) for visual identity tie-in
+
+═══════════════════════════════════════════════════════════════════
+
+TESTING CONSIDERATIONS:
+
+Visual Continuity:
+- Open PUBLIC screen 1 and SUBMITTER screen 1 side by side
+- Color palette should feel harmonious (copper + moss)
+- Typography should feel like same system
+- Spacing should create consistent rhythm
+
+Cross-Surface Recognition:
+- When user moves from PUBLIC to SUBMITTER, they should recognize
+  they're in same product (same colors, same typography, same feel)
+- Property context bar should immediately orient them to booking
+
+Emotional Journey:
+- PUBLIC: Warm, inviting (discover beautiful properties)
+- SUBMITTER: Trustworthy, clear (submit booking with confidence)
+- Both: Connected, seamless (one system, two entry paths)
+
+═══════════════════════════════════════════════════════════════════
+
+FILES:
+public_v3.1.html   - Complete, self-contained, 1,122 lines
+submitter_v3.1.html - Complete, self-contained, 1,148 lines
+
+Both files include:
+✓ Inline CSS (no external stylesheets)
+✓ Full HTML structure (DOCTYPE, meta, fonts)
+✓ Notes bar (4-column, dark background)
+✓ Phone mockups (300x622px, proper shadow, 26px status bar)
+✓ Screen labels (11px Manrope 700, uppercase, 0.5px letter-spacing)
+✓ Multiple screens showing different states
+✓ Proper scrolling behavior & visual hierarchy
+✓ Color consistency & typography alignment
+✓ No truncation or placeholder content
+
+Ready for design review and development handoff.

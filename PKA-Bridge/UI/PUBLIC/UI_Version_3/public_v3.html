@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Surface — V3 Visual Direction</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #334036;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            text-align: center;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Phone Content Area */
+        .phone-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .phone-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .phone-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .phone-content::-webkit-scrollbar-thumb {
+            background: #D1D6DC;
+            border-radius: 2px;
+        }
+
+        /* ============ SCREEN 1: HERO ============ */
+        .hero {
+            background: linear-gradient(180deg, #171A1F 0%, #1A2030 100%);
+            color: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .hero-nav {
+            height: 52px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hero-logo {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .hero-hamburger {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .hero-hamburger span {
+            width: 100%;
+            height: 2px;
+            background: white;
+            border-radius: 1px;
+        }
+
+        .hero-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 32px 20px;
+            text-align: center;
+            gap: 12px;
+        }
+
+        .hero-headline {
+            font-family: 'Manrope', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.2;
+            color: white;
+        }
+
+        .hero-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .cta-button {
+            background: #334036;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            max-width: 240px;
+            transition: background 0.2s ease;
+        }
+
+        .cta-button:hover {
+            background: #2A3430;
+        }
+
+        .cta-button.copper {
+            background: #B56E45;
+        }
+
+        .cta-button.copper:hover {
+            background: #A05A35;
+        }
+
+        .cta-button.outline {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .cta-button.outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .hero-trust {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px 16px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .trust-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .trust-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .trust-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.3;
+        }
+
+        .scroll-indicator {
+            text-align: center;
+            padding: 8px 0 0 0;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(3px); }
+        }
+
+        /* ============ SCREEN 2: FEATURES ============ */
+        .features {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .features-header {
+            text-align: center;
+            padding: 32px 20px 24px;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .features-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .features-subtitle {
+            font-size: 11px;
+            color: #9CA3AF;
+        }
+
+        .features-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            padding: 0;
+            overflow-y: auto;
+        }
+
+        .feature-card {
+            padding: 20px 16px;
+            border-bottom: 1px solid #F0EEE9;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .feature-card:last-child {
+            border-bottom: none;
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: #F3F4F6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .feature-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .feature-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .feature-description {
+            font-size: 11px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        /* ============ SCREEN 3: HOW IT WORKS ============ */
+        .howitworks {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hiw-header {
+            text-align: center;
+            padding: 32px 20px 24px;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .hiw-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .hiw-body {
+            flex: 1;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            overflow-y: auto;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 56px;
+            width: 2px;
+            height: 20px;
+            background: #E5E7EB;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: #334036;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding-top: 2px;
+        }
+
+        .step-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .step-description {
+            font-size: 11px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        /* ============ SCREEN 3B: AUTH DIVIDER ============ */
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 16px 0;
+            font-size: 11px;
+            color: #9CA3AF;
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #E5E7EB;
+        }
+
+        .auth-link {
+            font-size: 11px;
+            color: #B56E45;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .auth-link:hover {
+            text-decoration: underline;
+        }
+
+        /* ============ SCREEN 4: SIGN IN ============ */
+        .signin {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .signin-header {
+            padding: 32px 20px 24px;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .signin-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .signin-subtitle {
+            font-size: 11px;
+            color: #9CA3AF;
+            text-align: center;
+        }
+
+        .signin-body {
+            flex: 1;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .form-input {
+            padding: 10px 12px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+            background: #FFFFFF;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #334036;
+        }
+
+        .form-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .signin-button {
+            background: #334036;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            margin-top: 4px;
+        }
+
+        .signin-button:hover {
+            background: #2A3430;
+        }
+
+        .google-button {
+            background: white;
+            color: #171A1F;
+            border: 1px solid #E5E7EB;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .google-button:hover {
+            background: #F9F7F4;
+            border-color: #D1D6DC;
+        }
+
+        .signin-footer {
+            text-align: center;
+            font-size: 11px;
+            color: #6B7280;
+            margin-top: 8px;
+        }
+
+        /* ============ SCREEN 5: MY PROPERTIES (SHARED DESTINATION) ============ */
+        .myproperties {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mp-header {
+            height: 50px;
+            background: white;
+            border-bottom: 1px solid #F0EEE9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            flex-shrink: 0;
+        }
+
+        .mp-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .mp-avatar {
+            width: 32px;
+            height: 32px;
+            background: #334036;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .mp-body {
+            flex: 1;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .property-card {
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .property-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .property-type-badge {
+            background: #F3F4F6;
+            color: #6B7280;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .property-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-pill {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .status-draft {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .status-submitted {
+            background: #DBEAFE;
+            color: #0C4A6E;
+        }
+
+        .status-review {
+            background: #E0E7FF;
+            color: #312E81;
+        }
+
+        .status-approved {
+            background: #DCFCE7;
+            color: #166534;
+        }
+
+        .status-needs-info {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .property-date {
+            font-size: 10px;
+            color: #9CA3AF;
+        }
+
+        .property-action {
+            font-size: 11px;
+            color: #B56E45;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .property-action:hover {
+            text-decoration: underline;
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            gap: 12px;
+        }
+
+        .empty-icon {
+            font-size: 40px;
+            opacity: 0.3;
+        }
+
+        .empty-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .empty-text {
+            font-size: 11px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        /* ============ SCREEN 6: PROPERTY STATUS DETAIL ============ */
+        .property-detail {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-header {
+            padding: 16px;
+            border-bottom: 1px solid #F0EEE9;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-button {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: white;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .back-button:hover {
+            background: #F9F7F4;
+            border-color: #D1D6DC;
+        }
+
+        .detail-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #171A1F;
+            flex: 1;
+        }
+
+        .detail-body {
+            flex: 1;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .detail-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .section-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #9CA3AF;
+            letter-spacing: 0.05em;
+        }
+
+        .section-content {
+            padding: 12px;
+            background: #F9F7F4;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #171A1F;
+            line-height: 1.5;
+        }
+
+        .status-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            font-size: 11px;
+        }
+
+        .timeline-dot {
+            width: 8px;
+            height: 8px;
+            background: #334036;
+            border-radius: 50%;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        .timeline-text {
+            flex: 1;
+            color: #6B7280;
+        }
+
+        /* ============ SCREEN 7: PROFILE + SETTINGS ============ */
+        .profile {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-header {
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .profile-avatar {
+            width: 56px;
+            height: 56px;
+            background: #334036;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Manrope', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .profile-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+            color: #171A1F;
+            text-align: center;
+        }
+
+        .profile-email {
+            font-size: 11px;
+            color: #9CA3AF;
+            text-align: center;
+        }
+
+        .profile-member {
+            font-size: 10px;
+            color: #9CA3AF;
+            text-align: center;
+        }
+
+        .profile-body {
+            flex: 1;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .settings-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .settings-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            text-transform: uppercase;
+        }
+
+        .settings-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: #F9F7F4;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+
+        .settings-item-label {
+            color: #171A1F;
+            font-weight: 500;
+        }
+
+        .settings-toggle {
+            width: 24px;
+            height: 14px;
+            background: #D1D6DC;
+            border-radius: 7px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .settings-toggle.on {
+            background: #334036;
+        }
+
+        .settings-toggle::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            top: 1px;
+            left: 1px;
+            transition: left 0.2s ease;
+        }
+
+        .settings-toggle.on::after {
+            left: 11px;
+        }
+
+        .signout-button {
+            background: white;
+            color: #DC2626;
+            border: 1px solid #FEE2E2;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .signout-button:hover {
+            background: #FEE2E2;
+            border-color: #DC2626;
+        }
+
+        .back-link {
+            font-size: 11px;
+            color: #B56E45;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Public Surface — V3 Visual Direction</h1>
+            <p>Domaniqo Property Management · Marketing Entry + Authenticated Destination</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">Role Personality</div>
+                <div class="note-text">Marketing entry + authenticated product destination. Owner trust journey, first impression to authenticated dashboard.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">V3 Changes</div>
+                <div class="note-text">Zero "listing" language (add property, not list property). Added auth screens. Added shared My Properties destination. Expanded to 6 screens. Connected system.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Key Patterns</div>
+                <div class="note-text">Hero marketing, features, how-it-works, auth flow, property status cards with lifecycle, profile management, sign out visible.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Shaped By</div>
+                <div class="note-text">Miriam (owner trust journey), Talia (capability-gated interaction), Sonia (surface differentiation). Converges at shared destination.</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+
+            <!-- SCREEN 1: HERO MARKETING LANDING -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="phone-content hero">
+                        <div class="hero-nav">
+                            <div class="hero-logo">Domaniqo</div>
+                            <div class="hero-hamburger">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                        <div class="hero-body">
+                            <div class="hero-headline">Property Operations, Automated</div>
+                            <div class="hero-subtitle">Operational automation for short-term rental properties. We operate the system behind the stay.</div>
+                            <button class="cta-button copper">Get Started</button>
+                            <div class="scroll-indicator">↓ Scroll</div>
+                        </div>
+                        <div class="hero-trust">
+                            <div class="trust-item">
+                                <div class="trust-value">500+</div>
+                                <div class="trust-label">Properties</div>
+                            </div>
+                            <div class="trust-item">
+                                <div class="trust-value">฿50M+</div>
+                                <div class="trust-label">Managed</div>
+                            </div>
+                            <div class="trust-item">
+                                <div class="trust-value">98%</div>
+                                <div class="trust-label">Satisfaction</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 1: Hero Landing</div>
+            </div>
+
+            <!-- SCREEN 2: FEATURES + HOW IT WORKS -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="phone-content features">
+                        <div class="features-header">
+                            <div class="features-title">Why Domaniqo?</div>
+                            <div class="features-subtitle">Operations, transparency, coordination</div>
+                        </div>
+                        <div class="features-list">
+                            <div class="feature-card">
+                                <div class="feature-icon">⚙️</div>
+                                <div class="feature-content">
+                                    <div class="feature-title">Automated Operations</div>
+                                    <div class="feature-description">Task automation, scheduling, check-in/out flows — reduce manual work by 80%.</div>
+                                </div>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">💰</div>
+                                <div class="feature-content">
+                                    <div class="feature-title">Financial Transparency</div>
+                                    <div class="feature-description">Real-time revenue tracking, owner statements, complete financial clarity.</div>
+                                </div>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">👥</div>
+                                <div class="feature-content">
+                                    <div class="feature-title">Smart Team Coordination</div>
+                                    <div class="feature-description">Role-based access, mobile coordination, SLA tracking for accountability.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 2: Features</div>
+            </div>
+
+            <!-- SCREEN 3: HOW IT WORKS -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="phone-content howitworks">
+                        <div class="hiw-header">
+                            <div class="hiw-title">How It Works</div>
+                        </div>
+                        <div class="hiw-body">
+                            <div class="step">
+                                <div class="step-header">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <div class="step-title">Add Your Property</div>
+                                        <div class="step-description">Submit property details through our guided setup wizard.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-header">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <div class="step-title">We Configure Operations</div>
+                                        <div class="step-description">Our operations team sets up your infrastructure and trains staff.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-header">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <div class="step-title">Your Property Runs</div>
+                                        <div class="step-description">Automated daily operations begin. Monitor in real-time from your dashboard.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 3: How It Works</div>
+            </div>
+
+            <!-- SCREEN 4: SIGN IN -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="phone-content signin">
+                        <div class="signin-header">
+                            <div class="signin-title">Welcome to Domaniqo</div>
+                        </div>
+                        <div class="signin-body">
+                            <div class="form-group">
+                                <div class="form-label">Email</div>
+                                <input type="email" class="form-input" placeholder="you@example.com">
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label">Password</div>
+                                <input type="password" class="form-input" placeholder="••••••••">
+                            </div>
+                            <button class="signin-button">Sign In</button>
+                            <div class="auth-divider">or</div>
+                            <button class="google-button">🔵 Continue with Google</button>
+                            <div class="signin-footer">
+                                New here? <a class="auth-link" href="#">Create an account</a>
+                            </div>
+                            <div style="border-top: 1px solid #F0EEE9; margin-top: 12px; padding-top: 12px;">
+                                <div class="signin-footer" style="text-align: left; margin: 0;">
+                                    <a class="auth-link" href="#" style="display: block;">Get Started with property onboarding →</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 4: Sign In</div>
+            </div>
+
+            <!-- SCREEN 5: MY PROPERTIES (SHARED DESTINATION) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="phone-content myproperties">
+                        <div class="mp-header">
+                            <div class="mp-title">My Properties</div>
+                            <div class="mp-avatar">J</div>
+                        </div>
+                        <div class="mp-body">
+                            <div class="property-card">
+                                <div class="property-header">
+                                    <div>
+                                        <div class="property-name">Villa Orchid</div>
+                                        <div class="property-type-badge">VILLA</div>
+                                    </div>
+                                    <div class="status-pill status-review">Review</div>
+                                </div>
+                                <div class="property-date">Submitted Mar 15</div>
+                                <a class="property-action">Continue Setup →</a>
+                            </div>
+                            <div class="property-card">
+                                <div class="property-header">
+                                    <div>
+                                        <div class="property-name">Harbor House</div>
+                                        <div class="property-type-badge">CONDO</div>
+                                    </div>
+                                    <div class="status-pill status-approved">Approved</div>
+                                </div>
+                                <div class="property-date">Approved Feb 20</div>
+                                <a class="property-action">Go to Property →</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 5: My Properties (Shared Destination)</div>
+            </div>
+
+            <!-- SCREEN 6: PROPERTY STATUS DETAIL -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="phone-content property-detail">
+                        <div class="detail-header">
+                            <button class="back-button">←</button>
+                            <div class="detail-title">Villa Orchid</div>
+                        </div>
+                        <div class="detail-body">
+                            <div class="detail-section">
+                                <div class="section-label">Status</div>
+                                <div class="section-content" style="display: flex; gap: 8px; align-items: center;">
+                                    <span class="status-pill status-review">UNDER REVIEW</span>
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <div class="section-label">Timeline</div>
+                                <div class="status-timeline">
+                                    <div class="timeline-item">
+                                        <div class="timeline-dot"></div>
+                                        <div class="timeline-text">Submitted Mar 15</div>
+                                    </div>
+                                    <div class="timeline-item">
+                                        <div class="timeline-dot"></div>
+                                        <div class="timeline-text">Under Review Mar 16</div>
+                                    </div>
+                                    <div class="timeline-item">
+                                        <div class="timeline-dot" style="background: #D1D6DC;"></div>
+                                        <div class="timeline-text">Pending: Approved</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <div class="section-label">Property Summary</div>
+                                <div class="section-content">
+                                    <strong>Type:</strong> Villa<br>
+                                    <strong>Bedrooms:</strong> 4<br>
+                                    <strong>Location:</strong> Phuket, Thailand
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <div class="section-label">Review Notes</div>
+                                <div class="section-content">Photos received. Awaiting property verification visit.</div>
+                            </div>
+                            <button class="cta-button" style="margin-top: 8px; background: #334036;">Update Property</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 6: Property Status Detail</div>
+            </div>
+
+            <!-- SCREEN 7: PROFILE + SETTINGS -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="phone-content profile">
+                        <div class="profile-header">
+                            <div class="profile-avatar">J</div>
+                            <div class="profile-name">James Wong</div>
+                            <div class="profile-email">james@villas-phuket.com</div>
+                            <div class="profile-member">Member since January 2024</div>
+                        </div>
+                        <div class="profile-body">
+                            <div class="settings-section">
+                                <div class="settings-title">Your Account</div>
+                                <div class="settings-item">
+                                    <span class="settings-item-label">Email Notifications</span>
+                                    <div class="settings-toggle on"></div>
+                                </div>
+                                <div class="settings-item">
+                                    <span class="settings-item-label">Language</span>
+                                    <span style="color: #9CA3AF; font-size: 10px;">English</span>
+                                </div>
+                            </div>
+                            <button class="signout-button">Sign Out</button>
+                            <a class="back-link">Back to My Properties</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 7: Profile + Settings</div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

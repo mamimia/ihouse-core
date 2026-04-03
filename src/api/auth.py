@@ -368,6 +368,62 @@ def _make_bearer_dependency():
 jwt_auth = _make_bearer_dependency()
 
 
+def _make_admin_only_dependency():
+    """
+    Phase 973 audit fix (Sonia/06 — backend closure):
+    Returns a Depends-injectable that enforces admin-only access at the backend level.
+
+    Wraps jwt_identity_simple and raises HTTP 403 CAPABILITY_DENIED if the caller's
+    role is not 'admin'. Used on admin-namespace endpoints (DLQ replay, admin reporting,
+    bulk operations, etc.) where only admin operators should be able to act.
+
+    Managers (and all other roles) are rejected with a clear error message.
+
+    Usage:
+        from api.auth import admin_only_auth
+
+        @router.post("/admin/dlq/{id}/replay")
+        async def my_route(
+            ...,
+            identity: dict = Depends(admin_only_auth),
+        ):
+            tenant_id = identity["tenant_id"]
+            ...
+    """
+    from fastapi import Depends, HTTPException
+
+    async def _dep(
+        credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    ) -> dict:
+        identity = get_identity(credentials)
+        role = (identity.get("role") or "").lower()
+        # Dev mode grants admin identity — allow through.
+        # In production, only explicit role=admin is permitted.
+        if role != "admin" and not _is_dev_mode():
+            logger.warning(
+                "admin_only_auth: REJECTED role=%s user_id=%s — admin role required.",
+                role,
+                identity.get("user_id", "unknown"),
+            )
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "CAPABILITY_DENIED",
+                    "message": "This endpoint requires admin role.",
+                    "required_role": "admin",
+                    "caller_role": role,
+                },
+            )
+        return identity
+
+    return _dep
+
+
+# Depends-injectable that requires role=admin — use on admin-namespace endpoints
+admin_only_auth = _make_admin_only_dependency()
+
+
+
 # ---------------------------------------------------------------------------
 # Phase 165 — JWT scope enrichment helper
 # ---------------------------------------------------------------------------

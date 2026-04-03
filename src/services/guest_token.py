@@ -244,8 +244,20 @@ def resolve_guest_token_context(
     All guest-facing endpoints MUST use this function.
     """
     # --- CI/test shortcut ---
-    if token.startswith("test-"):
+    # SECURITY: This bypass skips HMAC verification entirely.
+    # It MUST only be active in non-production environments.
+    # Guard: IHOUSE_DEV_MODE=true OR IHOUSE_TEST_MODE=true must be explicitly set.
+    # In production, neither variable should be set — the bypass is inert.
+    _test_env_active = (
+        os.environ.get("IHOUSE_DEV_MODE", "").strip().lower() == "true"
+        or os.environ.get("IHOUSE_TEST_MODE", "").strip().lower() == "true"
+    )
+    if token.startswith("test-") and _test_env_active:
         slug = token[5:13]
+        logger.warning(
+            "resolve_guest_token_context: test-token shortcut used (dev/test env only). "
+            "NEVER deploy with IHOUSE_DEV_MODE or IHOUSE_TEST_MODE=true in production."
+        )
         return GuestTokenContext(
             booking_ref=f"BOOK-{slug}",
             property_id=f"PROP-{slug}",

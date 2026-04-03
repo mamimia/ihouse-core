@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Domaniqo — Check-In & Check-Out · Operational UI</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --stone:    #EAE5DE;
+  --moss:     #334036;
+  --copper:   #B56E45;
+  --midnight: #171A1F;
+  --gray:     #6B7280;
+  --border:   #E5E7EB;
+  --white:    #FFFFFF;
+
+  /* Urgency palette */
+  --u-safe-border:     #D1D5DB;
+  --u-safe-bg:         #FFFFFF;
+  --u-safe-time:       #6B7280;
+
+  --u-approach-border: #F59E0B;
+  --u-approach-bg:     #FFFBF0;
+  --u-approach-time:   #92400E;
+
+  --u-imminent-border: #B56E45;
+  --u-imminent-bg:     #FBF1EC;
+  --u-imminent-time:   #7C3214;
+
+  --u-overdue-border:  #DC2626;
+  --u-overdue-bg:      #FFF5F5;
+  --u-overdue-time:    #991B1B;
+}
+
+body {
+  background: #0F0F0F;
+  font-family: 'Inter', sans-serif;
+  padding: 52px 36px 80px;
+  min-height: 100vh;
+}
+
+/* ── PAGE HEADER ── */
+.page-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.page-header h1 {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800; font-size: 19px;
+  color: #fff; letter-spacing: -0.3px; margin-bottom: 6px;
+}
+.page-header p { font-size: 12px; color: #555; }
+
+/* ── DESIGN NOTES BAR ── */
+.notes-bar {
+  max-width: 1360px;
+  margin: 0 auto 44px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.note {
+  background: #1A1A1A;
+  border: 1px solid #2A2A2A;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.note .n-label {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700; font-size: 9px;
+  color: #B56E45;
+  text-transform: uppercase; letter-spacing: 0.8px;
+  margin-bottom: 7px;
+}
+.note .n-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; color: #888; line-height: 1.6;
+}
+.note .n-body strong { color: #ccc; font-weight: 600; }
+
+/* ── SCREENS ROW ── */
+.row {
+  display: flex;
+  gap: 28px;
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 1360px;
+  margin: 0 auto;
+}
+
+.phone-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+}
+.screen-tag {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700; font-size: 10px;
+  color: #555; text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* ── PHONE SHELL ── */
+.phone {
+  width: 308px; height: 640px;
+  background: var(--stone);
+  border-radius: 40px; overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow:
+    0 0 0 8px #1E1E1E,
+    0 0 0 10px #2A2A2A,
+    0 30px 80px rgba(0,0,0,0.75);
+  position: relative;
+}
+
+/* ── STATUS BAR ── */
+.sbar {
+  background: var(--white); height: 34px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sbar .t { font-family:'Manrope',sans-serif; font-weight:700; font-size:11px; color:var(--midnight); }
+.sbar .icons { display:flex; gap:4px; align-items:center; }
+
+/* ── APP HEADER ── */
+.aheader {
+  background: var(--white);
+  padding: 13px 18px 11px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.aheader .brand {
+  font-family: 'Manrope', sans-serif; font-weight: 800;
+  font-size: 10px; color: var(--moss);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px;
+}
+.aheader .name { font-family:'Manrope',sans-serif; font-weight:700; font-size:14px; color:var(--midnight); }
+.aheader .role { font-family:'Inter',sans-serif; font-size:10px; color:var(--gray); margin-top:1px; }
+
+/* ── DAY HEALTH STRIP ── */
+.day-health {
+  background: var(--midnight);
+  padding: 7px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.dh-left {
+  display: flex; gap: 14px; align-items: center;
+}
+.dh-item {
+  display: flex; flex-direction: column; align-items: center;
+}
+.dh-num {
+  font-family: 'Manrope', sans-serif; font-weight: 800;
+  font-size: 14px; color: #fff; line-height: 1;
+}
+.dh-lbl {
+  font-family: 'Manrope', sans-serif; font-weight: 500;
+  font-size: 8px; color: #6B7280; text-transform: uppercase;
+  letter-spacing: 0.4px; margin-top: 1px;
+}
+.dh-sep { width: 1px; height: 22px; background: #2A2A2A; }
+.dh-alert {
+  display: flex; align-items: center; gap: 5px;
+  font-family: 'Manrope', sans-serif; font-weight: 700;
+  font-size: 9px; color: #DC2626; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.dh-dot-red {
+  width: 6px; height: 6px; border-radius: 50%; background: #DC2626;
+  animation: blink 1.2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── PAGE TITLE (Tasks / History / Profile) ── */
+.page-title {
+  background: var(--white); padding: 14px 18px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.page-title h2 { font-family:'Manrope',sans-serif; font-weight:700; font-size:16px; color:var(--midnight); }
+.page-title .sub { font-family:'Inter',sans-serif; font-size:11px; color:var(--gray); margin-top:2px; }
+
+/* ── SCROLL BODY ── */
+.body {
+  flex: 1; overflow-y: auto;
+  padding: 11px 12px;
+  display: flex; flex-direction: column; gap: 7px;
+  scrollbar-width: none;
+  background: var(--stone);
+}
+.body::-webkit-scrollbar { display: none; }
+
+/* ── BOTTOM NAV ── */
+.bnav {
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  display: flex; padding: 7px 0 10px; flex-shrink: 0;
+}
+.ni { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.ni svg { width:17px; height:17px; stroke-width:1.6; }
+.ni span { font-family:'Manrope',sans-serif; font-size:8.5px; font-weight:500; }
+.ni.on svg { stroke:var(--moss); }
+.ni.on span { color:var(--moss); font-weight:700; }
+.ni.off svg { stroke:#B0B7C0; }
+.ni.off span { color:#B0B7C0; }
+
+/* ════════════════════════════════════
+   TASK CARD SYSTEM — 4 urgency states
+   ════════════════════════════════════ */
+
+.task-card {
+  background: var(--white);
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Left accent bar */
+.task-card .la {
+  position: absolute; left:0; top:0; bottom:0;
+  width: 4px; border-radius: 11px 0 0 11px;
+}
+
+/* ── STATE: SAFE (far from due) ── */
+.card-safe { background: var(--u-safe-bg); border-color: var(--border); }
+.card-safe .la { background: var(--u-safe-border); }
+
+/* ── STATE: APPROACHING (30–90 min) ── */
+.card-approach { background: var(--u-approach-bg); border-color: #FCD34D; }
+.card-approach .la { background: var(--u-approach-border); }
+
+/* ── STATE: IMMINENT (< 30 min) ── */
+.card-imminent {
+  background: var(--u-imminent-bg);
+  border-color: var(--copper);
+  animation: imminent-pulse 2.5s ease-in-out infinite;
+}
+.card-imminent .la { background: var(--u-imminent-border); }
+@keyframes imminent-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(181,110,69,0); }
+  50%      { box-shadow: 0 0 0 3px rgba(181,110,69,0.15); }
+}
+
+/* ── STATE: OVERDUE ── */
+.card-overdue {
+  background: var(--u-overdue-bg);
+  border-color: #DC2626;
+}
+.card-overdue .la { background: var(--u-overdue-border); }
+
+/* ── Card inner layout ── */
+.card-inner {
+  padding: 11px 11px 9px 16px;
+}
+
+/* Row 1: property + type badge + nav icon */
+.card-row1 {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.card-prop {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700; font-size: 13px;
+  color: var(--midnight);
+  flex: 1;
+}
+
+/* Type badge */
+.type-badge {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700; font-size: 8.5px;
+  padding: 2px 6px; border-radius: 20px;
+  white-space: nowrap; margin-left: 7px;
+}
+.tb-in  { background: var(--moss); color: #fff; }
+.tb-out { background: var(--copper); color: #fff; }
+
+/* Nav micro-icon */
+.nav-icon {
+  width: 24px; height: 24px; border-radius: 6px;
+  background: #F3F4F6;
+  display: flex; align-items: center; justify-content: center;
+  margin-left: 6px; flex-shrink: 0; cursor: pointer;
+  transition: background 0.15s;
+}
+.nav-icon:hover { background: #E5E7EB; }
+.nav-icon svg { width: 12px; height: 12px; stroke: var(--gray); stroke-width: 2; fill: none; }
+
+/* Card-imminent nav icon gets colored */
+.card-imminent .nav-icon { background: #F5E6DC; }
+.card-imminent .nav-icon svg { stroke: var(--copper); }
+.card-overdue .nav-icon { background: #FEE2E2; }
+.card-overdue .nav-icon svg { stroke: #DC2626; }
+
+/* Row 2: guest name */
+.card-guest {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; color: var(--gray);
+  margin-bottom: 6px;
+}
+
+/* Row 3: timing row */
+.card-timing {
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+.timing-left {
+  display: flex; align-items: center; gap: 5px;
+}
+.timing-clock {
+  flex-shrink: 0;
+}
+.timing-clock svg { width: 11px; height: 11px; stroke-width: 2; fill: none; }
+.timing-due {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 500;
+}
+.timing-sep { font-family:'Inter',sans-serif; font-size:11px; color:#D1D5DB; }
+
+/* Countdown pill */
+.countdown {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700; font-size: 10px;
+  padding: 2px 7px; border-radius: 20px;
+  white-space: nowrap;
+}
+.cd-safe { background: #F3F4F6; color: var(--gray); }
+.cd-approach { background: #FEF3C7; color: #92400E; }
+.cd-imminent { background: #FDEAD9; color: var(--copper); animation: cd-pulse 1.5s ease-in-out infinite; }
+.cd-overdue  { background: #FEE2E2; color: #991B1B; }
+
+@keyframes cd-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+/* CTA button */
+.card-cta {
+  display: block;
+  margin: 8px 11px 10px 16px;
+  padding: 8px 13px;
+  border-radius: 7px;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 600; font-size: 11px;
+  text-align: center; cursor: pointer; border: none;
+}
+.cta-moss    { background: var(--moss); color: #fff; }
+.cta-copper  { background: var(--copper); color: #fff; }
+.cta-ghost-m { background: transparent; border: 1.5px solid var(--moss); color: var(--moss); }
+.cta-ghost-c { background: transparent; border: 1.5px solid var(--copper); color: var(--copper); }
+.cta-red     { background: #DC2626; color: #fff; }
+
+/* ── COLOR CODING on timing elements ── */
+.timing-safe     { color: var(--gray); }
+.timing-approach { color: #92400E; }
+.timing-imminent { color: var(--copper); font-weight: 700; }
+.timing-overdue  { color: #991B1B; font-weight: 700; }
+
+/* ── MINI CARD (compact list item) ── */
+.mcard {
+  background: var(--white);
+  border-radius: 10px; border: 1px solid var(--border);
+  padding: 9px 11px 9px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  position: relative; overflow: hidden;
+}
+.mcard .la { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:10px 0 0 10px; }
+.mcard .ml { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.mcard .mp { font-family:'Manrope',sans-serif; font-weight:600; font-size:11px; color:var(--midnight); }
+.mcard .mt { font-family:'Inter',sans-serif; font-size:10px; color:var(--gray); display:flex; align-items:center; gap:4px; }
+.mcard .mr { display:flex; align-items:center; gap:6px; }
+
+/* ── FILTERS ── */
+.filters {
+  display: flex; gap: 6px;
+  padding: 10px 13px 4px;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.fpill {
+  font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 10px;
+  padding: 4px 10px; border-radius: 20px; cursor: pointer; border: none;
+}
+.fp-on  { background: var(--midnight); color: #fff; }
+.fp-off { background: #F3F4F6; color: var(--gray); }
+
+/* ── SECTION LABEL ── */
+.sec { font-family:'Manrope',sans-serif; font-weight:700; font-size:9px; color:var(--gray); text-transform:uppercase; letter-spacing:0.8px; padding:3px 2px 0; }
+
+/* ── DATE BAR ── */
+.date-bar {
+  background: var(--white); border-radius: 10px; border: 1px solid var(--border);
+  padding: 9px 13px; display: flex; justify-content: space-between; align-items: center;
+}
+.date-bar .dl { font-family:'Manrope',sans-serif; font-weight:600; font-size:11px; color:var(--midnight); }
+.date-bar .dc { font-family:'Manrope',sans-serif; font-weight:700; font-size:10px; background:var(--midnight); color:#fff; padding:2px 7px; border-radius:20px; }
+
+/* ── SAME-DAY TURN BANNER ── */
+.turn-banner {
+  background: #FBF1EC; border-radius: 10px;
+  border: 1px solid #E8C9B8; border-left: 3px solid var(--copper);
+  padding: 9px 12px;
+}
+.turn-banner .tt { font-family:'Manrope',sans-serif; font-weight:700; font-size:9px; color:var(--copper); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:3px; }
+.turn-banner .ti { font-family:'Inter',sans-serif; font-size:11px; color:var(--midnight); font-weight:500; }
+.turn-banner .ts { font-family:'Inter',sans-serif; font-size:10px; color:var(--gray); margin-top:2px; }
+
+/* Upcoming ghost */
+.up-card {
+  background: rgba(255,255,255,0.5); border-radius: 10px; border: 1px solid var(--border);
+  padding: 9px 12px; display: flex; justify-content: space-between; align-items: center;
+}
+.up-card .upl { font-family:'Manrope',sans-serif; font-weight:600; font-size:11px; color:var(--gray); }
+.up-card .upt { font-family:'Inter',sans-serif; font-size:10px; color:#9CA3AF; }
+.chev { color: #C0C7D0; font-size: 13px; }
+
+/* ── BADGES ── */
+.badge { font-family:'Manrope',sans-serif; font-weight:700; font-size:8.5px; padding:2px 6px; border-radius:20px; white-space:nowrap; }
+.bm   { background:var(--moss); color:#fff; }
+.bc   { background:var(--copper); color:#fff; }
+.bg   { background:#F3F4F6; color:var(--gray); }
+.bam  { background:#FEF3C7; color:#92400E; }
+.bred { background:#FEE2E2; color:#991B1B; }
+
+/* ── ACCESS PILL ── */
+.access-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #EBF0EB; border-radius: 6px;
+  padding: 4px 8px; margin-top: 5px;
+}
+.access-pill .al { font-family:'Manrope',sans-serif; font-size:8px; font-weight:700; color:var(--moss); text-transform:uppercase; letter-spacing:0.5px; }
+.access-pill .ac { font-family:'Manrope',sans-serif; font-size:13px; font-weight:800; color:var(--moss); letter-spacing:3px; }
+
+/* ── HISTORY CARDS ── */
+.hist-card {
+  background: var(--white); border-radius: 10px; border: 1px solid var(--border);
+  padding: 9px 12px 9px 15px;
+  display: flex; justify-content: space-between; align-items: center;
+  position: relative; overflow: hidden; opacity: 0.85;
+}
+.hist-card .hla { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:10px 0 0 10px; }
+.hist-card .hl { display:flex; flex-direction:column; gap:2px; }
+.hist-card .hp { font-family:'Manrope',sans-serif; font-weight:600; font-size:11px; color:var(--midnight); }
+.hist-card .hg { font-family:'Inter',sans-serif; font-size:10px; color:var(--gray); }
+.hist-card .hr { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.hist-card .ht { font-family:'Inter',sans-serif; font-size:10px; color:var(--gray); }
+.cc { width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; }
+.cc-m { background:#DCFCE7; color:#166534; }
+.cc-c { background:#FEF3C7; color:#92400E; }
+.ontime-badge { font-family:'Manrope',sans-serif; font-weight:700; font-size:8px; padding:1px 5px; border-radius:4px; }
+.ot-on  { background:#DCFCE7; color:#166534; }
+.ot-lt  { background:#FEE2E2; color:#991B1B; }
+
+/* Stats strip */
+.stats-strip { background:var(--white); border-radius:10px; border:1px solid var(--border); padding:10px 14px; display:flex; }
+.stat-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.stat-item + .stat-item { border-left:1px solid var(--border); }
+.stat-num  { font-family:'Manrope',sans-serif; font-weight:800; font-size:18px; color:var(--midnight); }
+.stat-lbl  { font-family:'Inter',sans-serif; font-size:9px; color:var(--gray); text-transform:uppercase; letter-spacing:0.4px; }
+.stat-d    { font-family:'Inter',sans-serif; font-size:9px; color:var(--moss); font-weight:600; }
+
+/* ── PROFILE ── */
+.avatar-block { background:var(--white); border-radius:12px; border:1px solid var(--border); padding:16px; display:flex; align-items:center; gap:14px; }
+.avatar { width:46px; height:46px; border-radius:50%; background:var(--moss); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:17px; flex-shrink:0; }
+.a-name { font-family:'Manrope',sans-serif; font-weight:700; font-size:14px; color:var(--midnight); }
+.a-role { font-family:'Inter',sans-serif; font-size:10px; color:var(--gray); margin-top:1px; }
+.a-status { display:flex; align-items:center; gap:5px; margin-top:5px; }
+.dot-on { width:7px; height:7px; border-radius:50%; background:#22C55E; }
+.dot-txt { font-family:'Inter',sans-serif; font-size:10px; color:var(--gray); }
+
+.psec { font-family:'Manrope',sans-serif; font-weight:700; font-size:9px; color:var(--gray); text-transform:uppercase; letter-spacing:0.8px; padding:8px 2px 3px; }
+.pgroup { background:var(--white); border-radius:10px; border:1px solid var(--border); overflow:hidden; }
+.prow { padding:11px 13px; display:flex; justify-content:space-between; align-items:center; }
+.prow + .prow { border-top:1px solid var(--border); }
+.pl { font-family:'Inter',sans-serif; font-size:12px; color:var(--midnight); display:flex; align-items:center; gap:9px; }
+.pl svg { width:14px; height:14px; stroke:var(--gray); stroke-width:1.5; fill:none; flex-shrink:0; }
+.pv { font-family:'Inter',sans-serif; font-size:11px; color:var(--gray); display:flex; align-items:center; gap:5px; }
+.pv svg { width:12px; height:12px; stroke:#C0C7D0; stroke-width:1.5; fill:none; }
+.toggle { width:32px; height:18px; border-radius:9px; position:relative; cursor:pointer; }
+.t-on { background:var(--moss); } .t-off { background:#D1D5DB; }
+.t-knob { position:absolute; top:2px; width:14px; height:14px; border-radius:50%; background:#fff; }
+.t-on .t-knob { left:16px; } .t-off .t-knob { left:2px; }
+.logout { background:transparent; border:1.5px solid #E5E7EB; border-radius:10px; padding:11px 14px; width:100%; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:#EF4444; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; margin-top:4px; }
+.lang-b { font-family:'Manrope',sans-serif; font-weight:700; font-size:9px; padding:2px 6px; border-radius:4px; background:#F3F4F6; color:var(--gray); }
+
+/* ── LEGEND (bottom) ── */
+.legend {
+  max-width: 1360px; margin: 44px auto 0;
+  background: #1A1A1A; border:1px solid #2A2A2A;
+  border-radius: 12px; padding: 24px 28px;
+}
+.legend h3 { font-family:'Manrope',sans-serif; font-weight:700; font-size:13px; color:#fff; margin-bottom:16px; letter-spacing:-0.2px; }
+.legend-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.legend-item { display: flex; flex-direction: column; gap: 8px; }
+.legend-card-demo {
+  border-radius: 8px; border: 1px solid; padding: 8px 10px 8px 14px;
+  position: relative; overflow: hidden;
+}
+.legend-card-demo .demo-la {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 8px 0 0 8px;
+}
+.demo-prop { font-family:'Manrope',sans-serif; font-weight:700; font-size:11px; margin-bottom:3px; }
+.demo-cd { font-family:'Manrope',sans-serif; font-weight:700; font-size:10px; padding:2px 7px; border-radius:20px; display:inline-block; }
+.legend-text { font-family:'Inter',sans-serif; font-size:11px; color:#666; line-height:1.6; }
+.legend-text strong { color:#999; }
+
+/* safe legend */
+.ld-safe { background:#fff; border-color: #E5E7EB; }
+.ld-safe .demo-la { background: #D1D5DB; }
+.ld-safe .demo-prop { color: #171A1F; }
+.ld-safe .demo-cd { background: #F3F4F6; color: #6B7280; }
+
+/* approach legend */
+.ld-approach { background:#FFFBF0; border-color: #FCD34D; }
+.ld-approach .demo-la { background: #F59E0B; }
+.ld-approach .demo-prop { color: #171A1F; }
+.ld-approach .demo-cd { background: #FEF3C7; color: #92400E; }
+
+/* imminent legend */
+.ld-imminent { background:#FBF1EC; border-color: #B56E45; }
+.ld-imminent .demo-la { background: #B56E45; }
+.ld-imminent .demo-prop { color: #171A1F; }
+.ld-imminent .demo-cd { background: #FDEAD9; color: #B56E45; }
+
+/* overdue legend */
+.ld-overdue { background:#FFF5F5; border-color: #DC2626; }
+.ld-overdue .demo-la { background: #DC2626; }
+.ld-overdue .demo-prop { color: #171A1F; }
+.ld-overdue .demo-cd { background: #FEE2E2; color: #991B1B; }
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     DESIGN NOTES
+     ══════════════════════════════════ -->
+<div class="page-header">
+  <h1>CHECK-IN & CHECK-OUT — Operational UI Direction</h1>
+  <p>Clean foundation · Urgency layer added · 4 screens</p>
+</div>
+
+<div class="notes-bar">
+  <div class="note">
+    <div class="n-label">A · What was added</div>
+    <div class="n-body">
+      <strong>Day Health strip</strong> — live count of task types + overdue alert. Always visible, compact.<br><br>
+      <strong>Navigation micro-icon</strong> — quiet 24×24 tap target on every card. No label. Tap → route to property.<br><br>
+      <strong>4-state urgency system</strong> — Safe / Approaching / Imminent / Overdue. Each state changes border, background tint, countdown color, and CTA weight.
+    </div>
+  </div>
+  <div class="note">
+    <div class="n-label">B · How urgency was added</div>
+    <div class="n-body">
+      Urgency is expressed through <strong>countdown pills</strong>, not clutter. One number — "in 9 min" — communicates more than three labels.<br><br>
+      Background tint is <strong>very subtle</strong> (2–4% off-white), enough to read state at a glance without making cards feel heavy.<br><br>
+      <strong>Imminent cards pulse gently</strong> — a soft box-shadow animation. The countdown blinks at 50% opacity. The nav icon shifts to copper.
+    </div>
+  </div>
+  <div class="note">
+    <div class="n-label">C · Card scan order</div>
+    <div class="n-body">
+      A worker's eye moves: <strong>left border color</strong> (urgency) → <strong>property name</strong> → <strong>countdown pill</strong> (how long) → <strong>type badge</strong> (what to do) → <strong>CTA</strong> (do it) → <strong>nav icon</strong> (find it).<br><br>
+      Six pieces of operational information. One glance. No search required.
+    </div>
+  </div>
+  <div class="note">
+    <div class="n-label">D · What stayed calm</div>
+    <div class="n-body">
+      Background is still Stone Mist. White cards. Clean spacing.<br><br>
+      <strong>Only items that deserve attention break through</strong> — overdue and imminent cards pierce the calm. Safe and approaching cards stay quiet.<br><br>
+      History and Profile screens are unchanged — urgency signals only appear where operational pressure exists.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREENS
+     ══════════════════════════════════ -->
+<div class="row">
+
+  <!-- ══════ SCREEN 1 — HOME ══════ -->
+  <div class="phone-wrap">
+    <div class="screen-tag">1 · Home</div>
+    <div class="phone">
+      <div class="sbar">
+        <span class="t">10:51</span>
+        <div class="icons">
+          <svg width="13" height="9" viewBox="0 0 13 9" fill="none"><rect x="0" y="2" width="3" height="7" rx="1" fill="#171A1F"/><rect x="4" y="1" width="3" height="8" rx="1" fill="#171A1F"/><rect x="8" y="0" width="3" height="9" rx="1" fill="#171A1F"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="#171A1F" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="17" height="8" rx="2.5" fill="#171A1F"/><path d="M21 3.5V7.5C21.8 7.2 22 6.6 22 5.5C22 4.4 21.8 3.8 21 3.5Z" fill="#171A1F" fill-opacity="0.4"/></svg>
+        </div>
+      </div>
+
+      <div class="aheader">
+        <div class="brand">DOMANIQO</div>
+        <div class="name">Hello, Maria</div>
+        <div class="role">Check-In / Check-Out</div>
+      </div>
+
+      <!-- Day Health strip -->
+      <div class="day-health">
+        <div class="dh-left">
+          <div class="dh-item">
+            <div class="dh-num">2</div>
+            <div class="dh-lbl">Check-Out</div>
+          </div>
+          <div class="dh-sep"></div>
+          <div class="dh-item">
+            <div class="dh-num">3</div>
+            <div class="dh-lbl">Check-In</div>
+          </div>
+          <div class="dh-sep"></div>
+          <div class="dh-item">
+            <div class="dh-num">5</div>
+            <div class="dh-lbl">Total</div>
+          </div>
+        </div>
+        <div class="dh-alert">
+          <div class="dh-dot-red"></div>
+          1 OVERDUE
+        </div>
+      </div>
+
+      <div class="body">
+
+        <!-- OVERDUE card -->
+        <div class="task-card card-overdue">
+          <div class="la"></div>
+          <div class="card-inner">
+            <div class="card-row1">
+              <span class="card-prop">KPG Residence</span>
+              <span class="type-badge tb-out">Check-Out</span>
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+              </div>
+            </div>
+            <div class="card-guest">Ana Reyes · Mar 20 → Mar 25</div>
+            <div class="card-timing">
+              <div class="timing-left">
+                <div class="timing-clock"><svg viewBox="0 0 24 24" class="timing-overdue"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <span class="timing-due timing-overdue">Due 10:00</span>
+                <span class="timing-sep">·</span>
+                <span class="countdown cd-overdue">OVERDUE 51 MIN</span>
+              </div>
+              <span class="badge bred">LATE</span>
+            </div>
+          </div>
+          <button class="card-cta cta-red">Resolve Now →</button>
+        </div>
+
+        <!-- IMMINENT card -->
+        <div class="task-card card-imminent">
+          <div class="la"></div>
+          <div class="card-inner">
+            <div class="card-row1">
+              <span class="card-prop">Emuna Villa</span>
+              <span class="type-badge tb-out">Check-Out</span>
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+              </div>
+            </div>
+            <div class="card-guest">Sarah Chen · Mar 22 → Mar 25</div>
+            <div class="card-timing">
+              <div class="timing-left">
+                <div class="timing-clock"><svg viewBox="0 0 24 24" class="timing-imminent"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <span class="timing-due timing-imminent">Due 11:00</span>
+                <span class="timing-sep">·</span>
+                <span class="countdown cd-imminent">IN 9 MIN</span>
+              </div>
+              <div class="access-pill" style="margin-top:0; padding: 3px 6px;">
+                <span class="al" style="font-size:7px;">Door</span>
+                <span class="ac" style="font-size:11px; letter-spacing:2px;">3423</span>
+              </div>
+            </div>
+          </div>
+          <button class="card-cta cta-copper">Start Check-Out →</button>
+        </div>
+
+        <!-- APPROACHING card -->
+        <div class="task-card card-approach">
+          <div class="la"></div>
+          <div class="card-inner">
+            <div class="card-row1">
+              <span class="card-prop">Casa Norte</span>
+              <span class="type-badge tb-out">Check-Out</span>
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+              </div>
+            </div>
+            <div class="card-guest">Yuki Mori · Mar 23 → Mar 25</div>
+            <div class="card-timing">
+              <div class="timing-left">
+                <div class="timing-clock"><svg viewBox="0 0 24 24" class="timing-approach"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <span class="timing-due timing-approach">Due 12:00</span>
+                <span class="timing-sep">·</span>
+                <span class="countdown cd-approach">IN 1H 09M</span>
+              </div>
+            </div>
+          </div>
+          <button class="card-cta cta-ghost-c" style="padding-top:6px; padding-bottom:6px; font-size:10px;">Start Check-Out</button>
+        </div>
+
+        <!-- Same-day turn banner -->
+        <div class="turn-banner">
+          <div class="tt">⚑  Same-Day Turn</div>
+          <div class="ti">Emuna Villa — 11:00 out → 15:00 in</div>
+          <div class="ts">Window: 4h · Cleaner: แพรวา T. · Pending</div>
+        </div>
+
+        <!-- SAFE cards -->
+        <div class="sec">Later Today</div>
+
+        <div class="mcard">
+          <div class="la" style="background:#B7C4B8;"></div>
+          <div class="ml">
+            <div class="mp">Emuna Villa</div>
+            <div class="mt">
+              <span class="badge bm" style="font-size:8px;padding:1px 5px;">In</span>
+              <span>Jon Cica · Due 15:00</span>
+              <span class="countdown cd-safe" style="font-size:9px; padding:1px 5px;">in 4h 09m</span>
+            </div>
+          </div>
+          <div class="mr">
+            <div class="nav-icon">
+              <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            </div>
+            <span class="chev">›</span>
+          </div>
+        </div>
+
+        <div class="mcard">
+          <div class="la" style="background:#B7C4B8;"></div>
+          <div class="ml">
+            <div class="mp">Zen Pool Villa</div>
+            <div class="mt">
+              <span class="badge bm" style="font-size:8px;padding:1px 5px;">In</span>
+              <span>Lena Watt · Due 16:30</span>
+              <span class="countdown cd-safe" style="font-size:9px; padding:1px 5px;">in 5h 39m</span>
+            </div>
+          </div>
+          <div class="mr">
+            <div class="nav-icon">
+              <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            </div>
+            <span class="chev">›</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="bnav">
+        <div class="ni on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Tasks</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>History</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ SCREEN 2 — TASKS ══════ -->
+  <div class="phone-wrap">
+    <div class="screen-tag">2 · Tasks</div>
+    <div class="phone">
+      <div class="sbar">
+        <span class="t">10:51</span>
+        <div class="icons">
+          <svg width="13" height="9" viewBox="0 0 13 9" fill="none"><rect x="0" y="2" width="3" height="7" rx="1" fill="#171A1F"/><rect x="4" y="1" width="3" height="8" rx="1" fill="#171A1F"/><rect x="8" y="0" width="3" height="9" rx="1" fill="#171A1F"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="#171A1F" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="15" height="8" rx="2.5" fill="#171A1F"/></svg>
+        </div>
+      </div>
+
+      <div class="page-title">
+        <h2>Tasks</h2>
+        <div class="sub">All assigned · Today & upcoming</div>
+      </div>
+
+      <div class="filters">
+        <button class="fpill fp-on">All (5)</button>
+        <button class="fpill fp-off">Check-In (3)</button>
+        <button class="fpill fp-off">Check-Out (2)</button>
+      </div>
+
+      <div class="body" style="padding-top:10px;">
+
+        <!-- OVERDUE -->
+        <div class="task-card card-overdue">
+          <div class="la"></div>
+          <div class="card-inner">
+            <div class="card-row1">
+              <span class="card-prop">KPG Residence</span>
+              <span class="type-badge tb-out">Check-Out</span>
+              <div class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
+            </div>
+            <div class="card-guest">Ana Reyes</div>
+            <div class="card-timing">
+              <div class="timing-left">
+                <span class="timing-due timing-overdue">Due 10:00</span>
+                <span class="timing-sep">·</span>
+                <span class="countdown cd-overdue">OVERDUE 51M</span>
+              </div>
+              <span class="badge bred">LATE</span>
+            </div>
+          </div>
+          <button class="card-cta cta-red">Resolve Now →</button>
+        </div>
+
+        <!-- IMMINENT -->
+        <div class="task-card card-imminent">
+          <div class="la"></div>
+          <div class="card-inner">
+            <div class="card-row1">
+              <span class="card-prop">Emuna Villa</span>
+              <span class="type-badge tb-out">Check-Out</span>
+              <div class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
+            </div>
+            <div class="card-guest">Sarah Chen</div>
+            <div class="card-timing">
+              <div class="timing-left">
+                <span class="timing-due timing-imminent">Due 11:00</span>
+                <span class="timing-sep">·</span>
+                <span class="countdown cd-imminent">IN 9 MIN</span>
+              </div>
+              <span class="badge bc">Now</span>
+            </div>
+          </div>
+          <button class="card-cta cta-copper">Start Check-Out →</button>
+        </div>
+
+        <!-- APPROACHING -->
+        <div class="task-card card-approach">
+          <div class="la"></div>
+          <div class="card-inner">
+            <div class="card-row1">
+              <span class="card-prop">Casa Norte</span>
+              <span class="type-badge tb-out">Check-Out</span>
+              <div class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
+            </div>
+            <div class="card-guest">Yuki Mori</div>
+            <div class="card-timing">
+              <div class="timing-left">
+                <span class="timing-due timing-approach">Due 12:00</span>
+                <span class="timing-sep">·</span>
+                <span class="countdown cd-approach">IN 1H 09M</span>
+              </div>
+            </div>
+          </div>
+          <button class="card-cta cta-ghost-c" style="padding-top:6px; padding-bottom:6px; font-size:10px;">Start Check-Out</button>
+        </div>
+
+        <!-- SAFE — Check-In -->
+        <div class="task-card card-safe">
+          <div class="la"></div>
+          <div class="card-inner">
+            <div class="card-row1">
+              <span class="card-prop">Emuna Villa</span>
+              <span class="type-badge tb-in">Check-In</span>
+              <div class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
+            </div>
+            <div class="card-guest">Jon Cica</div>
+            <div class="card-timing">
+              <div class="timing-left">
+                <span class="timing-due timing-safe">Arriving 15:00</span>
+                <span class="timing-sep">·</span>
+                <span class="countdown cd-safe">in 4h 09m</span>
+              </div>
+            </div>
+          </div>
+          <button class="card-cta cta-ghost-m" style="padding-top:6px; padding-bottom:6px; font-size:10px;">Start Check-In</button>
+        </div>
+
+        <!-- SAFE — Check-In -->
+        <div class="task-card card-safe">
+          <div class="la"></div>
+          <div class="card-inner">
+            <div class="card-row1">
+              <span class="card-prop">Zen Pool Villa</span>
+              <span class="type-badge tb-in">Check-In</span>
+              <div class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
+            </div>
+            <div class="card-guest">Lena Watt</div>
+            <div class="card-timing">
+              <div class="timing-left">
+                <span class="timing-due timing-safe">Arriving 16:30</span>
+                <span class="timing-sep">·</span>
+                <span class="countdown cd-safe">in 5h 39m</span>
+              </div>
+            </div>
+          </div>
+          <button class="card-cta cta-ghost-m" style="padding-top:6px; padding-bottom:6px; font-size:10px;">Start Check-In</button>
+        </div>
+
+      </div>
+
+      <div class="bnav">
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></div>
+        <div class="ni on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Tasks</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>History</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ SCREEN 3 — HISTORY ══════ -->
+  <div class="phone-wrap">
+    <div class="screen-tag">3 · History</div>
+    <div class="phone">
+      <div class="sbar">
+        <span class="t">10:51</span>
+        <div class="icons">
+          <svg width="13" height="9" viewBox="0 0 13 9" fill="none"><rect x="0" y="2" width="3" height="7" rx="1" fill="#171A1F"/><rect x="4" y="1" width="3" height="8" rx="1" fill="#171A1F"/><rect x="8" y="0" width="3" height="9" rx="1" fill="#171A1F"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="#171A1F" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="12" height="8" rx="2.5" fill="#171A1F"/></svg>
+        </div>
+      </div>
+      <div class="page-title">
+        <h2>History</h2>
+        <div class="sub">Completed tasks · This month</div>
+      </div>
+      <div class="body">
+
+        <div class="stats-strip">
+          <div class="stat-item">
+            <div class="stat-num">17</div>
+            <div class="stat-lbl">Total</div>
+            <div class="stat-d">This month</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">15</div>
+            <div class="stat-lbl">On Time</div>
+            <div class="stat-d">88%</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">2</div>
+            <div class="stat-lbl">Late</div>
+            <div class="stat-d" style="color:#DC2626;">12%</div>
+          </div>
+        </div>
+
+        <div class="sec">Today · Wed 25 Mar</div>
+        <div style="background:rgba(255,255,255,0.5); border-radius:10px; border:1px solid var(--border); padding:14px; text-align:center;">
+          <div style="font-family:'Inter',sans-serif; font-size:11px; color:var(--gray); line-height:1.6;">No completions yet today.<br><span style="color:#9CA3AF; font-size:10px;">1 task overdue ↑</span></div>
+        </div>
+
+        <div class="sec">Yesterday · Tue 24 Mar</div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--moss);"></div>
+          <div class="hl">
+            <div class="hp">Emuna Villa</div>
+            <div class="hg">Jon Cica — Check-In</div>
+          </div>
+          <div class="hr">
+            <div style="display:flex; gap:5px; align-items:center;">
+              <span class="ontime-badge ot-on">On time</span>
+              <div class="cc cc-m">✓</div>
+            </div>
+            <div class="ht">14:03</div>
+          </div>
+        </div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--copper);"></div>
+          <div class="hl">
+            <div class="hp">Zen Pool Villa</div>
+            <div class="hg">Marcus A. — Check-Out</div>
+          </div>
+          <div class="hr">
+            <div style="display:flex; gap:5px; align-items:center;">
+              <span class="ontime-badge ot-lt">+18 min</span>
+              <div class="cc cc-c">✓</div>
+            </div>
+            <div class="ht">11:48</div>
+          </div>
+        </div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--moss);"></div>
+          <div class="hl">
+            <div class="hp">Casa Norte</div>
+            <div class="hg">Priya K. — Check-In</div>
+          </div>
+          <div class="hr">
+            <div style="display:flex; gap:5px; align-items:center;">
+              <span class="ontime-badge ot-on">On time</span>
+              <div class="cc cc-m">✓</div>
+            </div>
+            <div class="ht">15:45</div>
+          </div>
+        </div>
+
+        <div class="sec">Mon 23 Mar</div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--copper);"></div>
+          <div class="hl">
+            <div class="hp">KPG Residence</div>
+            <div class="hg">Anna S. — Check-Out</div>
+          </div>
+          <div class="hr">
+            <div style="display:flex; gap:5px; align-items:center;">
+              <span class="ontime-badge ot-on">On time</span>
+              <div class="cc cc-c">✓</div>
+            </div>
+            <div class="ht">10:58</div>
+          </div>
+        </div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--moss);"></div>
+          <div class="hl">
+            <div class="hp">KPG Residence</div>
+            <div class="hg">Tom L. — Check-In</div>
+          </div>
+          <div class="hr">
+            <div style="display:flex; gap:5px; align-items:center;">
+              <span class="ontime-badge ot-on">On time</span>
+              <div class="cc cc-m">✓</div>
+            </div>
+            <div class="ht">15:12</div>
+          </div>
+        </div>
+
+        <div style="text-align:center; padding:10px 0 4px;">
+          <span style="font-family:'Inter',sans-serif; font-size:10px; color:var(--moss); text-decoration:underline; cursor:pointer;">Load more →</span>
+        </div>
+
+      </div>
+      <div class="bnav">
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Tasks</span></div>
+        <div class="ni on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>History</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ SCREEN 4 — PROFILE ══════ -->
+  <div class="phone-wrap">
+    <div class="screen-tag">4 · Profile</div>
+    <div class="phone">
+      <div class="sbar">
+        <span class="t">10:51</span>
+        <div class="icons">
+          <svg width="13" height="9" viewBox="0 0 13 9" fill="none"><rect x="0" y="2" width="3" height="7" rx="1" fill="#171A1F"/><rect x="4" y="1" width="3" height="8" rx="1" fill="#171A1F"/><rect x="8" y="0" width="3" height="9" rx="1" fill="#171A1F"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="#171A1F" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="9" height="8" rx="2.5" fill="#171A1F"/></svg>
+        </div>
+      </div>
+      <div class="page-title"><h2>Profile</h2></div>
+      <div class="body">
+
+        <div class="avatar-block">
+          <div class="avatar">M</div>
+          <div>
+            <div class="a-name">Maria Gonzalez</div>
+            <div class="a-role">Check-In / Check-Out Staff</div>
+            <div class="a-status">
+              <div class="dot-on"></div>
+              <span class="dot-txt">Active · 1 task overdue</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live task summary — operational signal on profile -->
+        <div style="background:var(--u-overdue-bg); border-radius:10px; border:1px solid #FCA5A5; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-family:'Manrope',sans-serif; font-weight:700; font-size:10px; color:#991B1B; margin-bottom:2px;">TASK OVERDUE</div>
+            <div style="font-family:'Inter',sans-serif; font-size:11px; color:var(--midnight);">KPG Residence · Check-Out</div>
+          </div>
+          <button style="font-family:'Manrope',sans-serif; font-weight:700; font-size:10px; background:#DC2626; color:#fff; border:none; border-radius:6px; padding:5px 10px; cursor:pointer;">Go →</button>
+        </div>
+
+        <div class="psec">Account</div>
+        <div class="pgroup">
+          <div class="prow">
+            <div class="pl"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Full name</div>
+            <div class="pv">Maria Gonzalez <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+          <div class="prow">
+            <div class="pl"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email</div>
+            <div class="pv">maria@dom… <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+        </div>
+
+        <div class="psec">Preferences</div>
+        <div class="pgroup">
+          <div class="prow">
+            <div class="pl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Language</div>
+            <div class="pv"><span class="lang-b">EN</span><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+          <div class="prow">
+            <div class="pl"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Push Notifications</div>
+            <div class="toggle t-on"><div class="t-knob"></div></div>
+          </div>
+          <div class="prow">
+            <div class="pl"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Late Arrival Alerts</div>
+            <div class="toggle t-on"><div class="t-knob"></div></div>
+          </div>
+        </div>
+
+        <div class="psec">This Month</div>
+        <div class="pgroup">
+          <div class="prow">
+            <div class="pl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Completed</div>
+            <div class="pv">17 tasks <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+          <div class="prow">
+            <div class="pl"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>On-Time Rate</div>
+            <div class="pv" style="color:var(--moss); font-weight:600;">88%</div>
+          </div>
+          <div class="prow">
+            <div class="pl"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Properties</div>
+            <div class="pv">4 assigned <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+        </div>
+
+        <button class="logout">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Log Out
+        </button>
+
+      </div>
+      <div class="bnav">
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Tasks</span></div>
+        <div class="ni off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>History</span></div>
+        <div class="ni on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════
+     URGENCY STATE LEGEND
+     ══════════════════════════════════ -->
+<div class="legend">
+  <h3>4-State Urgency System · Card Reference</h3>
+  <div class="legend-grid">
+
+    <div class="legend-item">
+      <div class="legend-card-demo ld-safe">
+        <div class="demo-la"></div>
+        <div class="demo-prop">Zen Pool Villa</div>
+        <span class="demo-cd" style="background:#F3F4F6; color:#6B7280;">in 5h 39m</span>
+      </div>
+      <div class="legend-text">
+        <strong>Safe · &gt; 90 min</strong><br>
+        Neutral border. Gray countdown. Ghost CTA. No background tint. No animation. Worker can see it — doesn't need to act.
+      </div>
+    </div>
+
+    <div class="legend-item">
+      <div class="legend-card-demo ld-approach">
+        <div class="demo-la"></div>
+        <div class="demo-prop">Casa Norte</div>
+        <span class="demo-cd" style="background:#FEF3C7; color:#92400E;">in 1h 09m</span>
+      </div>
+      <div class="legend-text">
+        <strong>Approaching · 30–90 min</strong><br>
+        Amber border. Warm yellow countdown. Slight warm background. Worker starts mentally preparing. Ghost CTA visible.
+      </div>
+    </div>
+
+    <div class="legend-item">
+      <div class="legend-card-demo ld-imminent" style="animation: imminent-pulse 2.5s ease-in-out infinite;">
+        <div class="demo-la"></div>
+        <div class="demo-prop">Emuna Villa</div>
+        <span class="demo-cd" style="background:#FDEAD9; color:#B56E45; animation: cd-pulse 1.5s ease-in-out infinite;">IN 9 MIN</span>
+      </div>
+      <div class="legend-text">
+        <strong>Imminent · &lt; 30 min</strong><br>
+        Copper border. Pulsing countdown. Card gently breathes. Nav icon shifts to copper. Filled CTA — act now.
+      </div>
+    </div>
+
+    <div class="legend-item">
+      <div class="legend-card-demo ld-overdue">
+        <div class="demo-la"></div>
+        <div class="demo-prop">KPG Residence</div>
+        <span class="demo-cd" style="background:#FEE2E2; color:#991B1B;">OVERDUE 51M</span>
+      </div>
+      <div class="legend-text">
+        <strong>Overdue · past due time</strong><br>
+        Red border. Countdown switches to "OVERDUE Xm". Red fill CTA — highest urgency. Blinking dot in Day Health strip.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="text-align:center; margin-top:44px; padding-bottom:52px;">
+  <div style="font-family:'Manrope',sans-serif; font-size:10px; color:#333; letter-spacing:0.5px;">
+    Domaniqo · Check-In & Check-Out · Operational UI Direction · March 2026
+  </div>
+</div>
+
+</body>
+</html>

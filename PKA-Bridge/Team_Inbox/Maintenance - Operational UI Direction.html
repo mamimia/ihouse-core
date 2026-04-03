@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Maintenance — Operational UI Direction</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#F2EFEB;font-family:'Inter',sans-serif;padding:28px 32px 56px;color:#171A1F}
+.wrap{max-width:1400px;margin:0 auto}
+.page-hdr{margin-bottom:20px}
+.page-title{font-family:'Manrope',sans-serif;font-size:20px;font-weight:800;color:#171A1F;letter-spacing:-.02em}
+.page-meta{font-size:11px;color:#9CA3AF;margin-top:3px}
+
+.notes{display:grid;grid-template-columns:repeat(4,1fr);background:#171A1F;border-radius:12px;padding:18px 24px;margin-bottom:28px}
+.note-col{padding:0 16px;border-right:1px solid rgba(255,255,255,.07)}
+.note-col:first-child{padding-left:0}
+.note-col:last-child{border-right:none}
+.nt{font-family:'Manrope',sans-serif;font-size:9px;font-weight:800;letter-spacing:.1em;color:#B56E45;text-transform:uppercase;margin-bottom:7px}
+.nb{font-size:10.5px;color:rgba(255,255,255,.65);line-height:1.65}
+.nb strong{color:rgba(255,255,255,.9);font-weight:600}
+
+.phones{display:flex;gap:20px;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:9px}
+.screen-lbl{font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;letter-spacing:.07em;color:#9CA3AF;text-transform:uppercase;text-align:center}
+
+.phone{width:300px;height:622px;border-radius:36px;background:#F9F7F4;box-shadow:0 0 0 2px #D1D6DC,0 2px 0 3px #B8BEC6,0 12px 48px rgba(0,0,0,.2),inset 0 0 0 1px rgba(255,255,255,.55);overflow:hidden;display:flex;flex-direction:column;flex-shrink:0}
+.sbar{height:26px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0}
+.sbar-time{font-family:'Manrope',sans-serif;font-size:11.5px;font-weight:800;color:#171A1F}
+.sbar-right{display:flex;align-items:center;gap:3px}
+.aph{height:50px;background:#fff;border-bottom:1px solid #F0EDE8;display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0}
+.aph-title{font-family:'Manrope',sans-serif;font-size:12.5px;font-weight:800;color:#171A1F}
+.aph-sub{font-size:9.5px;color:#9CA3AF;margin-top:1px}
+.avatar{width:28px;height:28px;border-radius:50%;background:#B56E45;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+
+/* Maintenance day health — priority-driven, not time-driven */
+.dhs{height:34px;background:#171A1F;display:flex;align-items:center;justify-content:center;gap:14px;padding:0 14px;flex-shrink:0}
+.dhi{font-family:'Manrope',sans-serif;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.dhi-val{color:#fff}
+.dhi-lbl{color:rgba(255,255,255,.4);margin-left:2px}
+.dhi-sep{width:1px;height:12px;background:rgba(255,255,255,.12);flex-shrink:0}
+.dhi-crit{font-family:'Manrope',sans-serif;font-size:9.5px;font-weight:800;color:#EF4444;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:4px;animation:blink 1.1s ease-in-out infinite}
+.dhi-dot{width:5px;height:5px;border-radius:50%;background:#EF4444;flex-shrink:0;animation:blink 1.1s ease-in-out infinite}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes pulse-card{0%,100%{box-shadow:0 0 0 0 rgba(181,110,69,0)}50%{box-shadow:0 0 0 4px rgba(181,110,69,.1)}}
+
+.scroll{flex:1;overflow-y:auto;padding:11px 11px 6px;display:flex;flex-direction:column;gap:7px}
+.scroll::-webkit-scrollbar{width:0}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:2px 1px 4px}
+.sec-title{font-family:'Manrope',sans-serif;font-size:9px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em}
+.sec-cnt{font-family:'Manrope',sans-serif;font-size:9px;font-weight:600;color:#C4C9D4;background:#F3F4F6;padding:1px 6px;border-radius:6px}
+
+/* Job cards — priority-first, not time-first */
+.job{background:#fff;border-radius:10px;border:1.5px solid #E5E7EB;padding:9px 10px 9px 13px;border-left-width:3px}
+.j-critical{border-left-color:#DC2626;background:#FFF4F4}
+.j-high{border-left-color:#F59E0B;background:#FFFCF0;animation:pulse-card .95s ease-in-out infinite}
+.j-normal{border-left-color:#D1D5DB}
+
+.job-r1{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.pri-badge{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;letter-spacing:.07em;padding:2px 6px;border-radius:3px;text-transform:uppercase}
+.pb-crit{background:#FEE2E2;color:#DC2626}
+.pb-high{background:#FEF3C7;color:#92400E}
+.pb-norm{background:#F3F4F6;color:#6B7280}
+.issue-type{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:700;padding:2px 6px;border-radius:3px;background:#F5EAE3;color:#B56E45;letter-spacing:.04em}
+.job-r1-right{display:flex;align-items:center;gap:5px;margin-left:auto}
+.sla-pill{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;padding:2px 7px;border-radius:9px;white-space:nowrap}
+.sla-breach{background:#DC2626;color:#fff}
+.sla-warn{background:#FEF3C7;color:#92400E}
+.sla-ok{background:#F3F4F6;color:#9CA3AF}
+.nav-micro{width:22px;height:22px;border-radius:5px;border:1px solid #E5E7EB;background:#FAFAFA;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.nm-svg{width:11px;height:11px;stroke:#6B7280;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.job-prop{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#171A1F;margin-bottom:2px}
+.job-issue{font-size:10.5px;color:#374151;margin-bottom:4px;line-height:1.3}
+.job-meta{font-size:9px;color:#9CA3AF;display:flex;gap:8px;margin-bottom:7px;align-items:center}
+.access-tag{display:inline-flex;align-items:center;gap:3px;background:#171A1F;color:#fff;font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.04em}
+.access-tag svg{width:9px;height:9px;stroke:#fff;fill:none;stroke-width:2;flex-shrink:0}
+.job-cta{width:100%;height:27px;border:none;border-radius:6px;font-family:'Manrope',sans-serif;font-size:9.5px;font-weight:700;cursor:pointer}
+.cta-red{background:#DC2626;color:#fff}
+.cta-copper{background:#B56E45;color:#fff}
+.cta-moss{background:#334036;color:#fff}
+.cta-ghost{background:transparent;border:1.5px solid #E5E7EB;color:#9CA3AF}
+
+.mini{background:#fff;border-radius:8px;border:1px solid #EEEFF2;padding:7px 10px 7px 12px;display:flex;align-items:center;justify-content:space-between;border-left:2px solid #D1D5DB}
+.mini-l .mp{font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;color:#374151}
+.mini-l .mt{font-size:9px;color:#9CA3AF;margin-top:1px}
+.mini-r{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+
+.bnav{height:56px;background:#fff;border-top:1px solid #F0EDE8;display:flex;align-items:center;flex-shrink:0}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 0}
+.bni svg{width:18px;height:18px;stroke:#C0C6D0;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.bni.act svg{stroke:#B56E45}
+.bni-lbl{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:600;color:#C0C6D0}
+.bni.act .bni-lbl{color:#B56E45}
+
+/* Job detail screen */
+.job-detail-hdr{background:#fff;border-bottom:1px solid #F0EDE8;padding:10px 14px;flex-shrink:0}
+.jdh-issue{font-family:'Manrope',sans-serif;font-size:13px;font-weight:800;color:#171A1F;margin-bottom:3px}
+.jdh-prop{font-size:10.5px;color:#9CA3AF;display:flex;align-items:center;gap:6px}
+
+.detail-section{background:#fff;border-radius:10px;border:1px solid #EEEFF2;overflow:hidden}
+.ds-hdr{padding:7px 13px;border-bottom:1px solid #F5F5F5;font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.09em;background:#FAFAFA}
+.ds-row{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;border-bottom:1px solid #F7F8F9}
+.ds-row:last-child{border-bottom:none}
+.ds-k{font-size:10px;color:#6B7280}
+.ds-v{font-size:10.5px;color:#171A1F;font-weight:600;font-family:'Manrope',sans-serif;display:flex;align-items:center;gap:4px}
+.ds-v.copper{color:#B56E45}
+.ds-v.red{color:#DC2626}
+
+.access-block{background:#171A1F;border-radius:9px;padding:10px 13px;display:flex;align-items:center;justify-content:space-between}
+.ab-label{font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.ab-code{font-family:'Manrope',sans-serif;font-size:22px;font-weight:800;color:#fff;letter-spacing:.15em}
+.ab-copy{width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ab-copy svg{width:13px;height:13px;stroke:rgba(255,255,255,.7);fill:none;stroke-width:1.8;stroke-linecap:round}
+
+.before-photo{height:72px;border-radius:9px;border:1.5px dashed #D1D5DB;background:#FAFAFA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.before-photo svg{width:18px;height:18px;stroke:#9CA3AF;fill:none;stroke-width:1.7;stroke-linecap:round}
+.before-photo span{font-size:9.5px;color:#9CA3AF}
+.before-photo .sub{font-size:8px;color:#C4C9D4}
+
+.detail-ctas{display:flex;gap:7px;padding:0;flex-shrink:0}
+.dc-start{flex:2;height:34px;background:#B56E45;border:none;border-radius:8px;font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:#fff;cursor:pointer}
+.dc-cant{flex:1;height:34px;background:transparent;border:1.5px solid #E5E7EB;border-radius:8px;font-family:'Manrope',sans-serif;font-size:9.5px;font-weight:700;color:#9CA3AF;cursor:pointer}
+
+/* Job active / execution screen */
+.exec-bar{background:#B56E45;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.eb-label{font-family:'Manrope',sans-serif;font-size:11px;font-weight:800;color:#fff}
+.eb-timer{font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:rgba(255,255,255,.7);background:rgba(0,0,0,.2);padding:2px 8px;border-radius:4px}
+
+.exec-step{display:flex;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid #F5F5F5}
+.es-num{width:20px;height:20px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:9px;font-weight:800;color:#9CA3AF;flex-shrink:0;margin-top:1px}
+.es-num.done{background:#334036;color:#fff}
+.es-num.active{background:#B56E45;color:#fff}
+.es-body{flex:1}
+.es-title{font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;color:#374151}
+.es-title.active{color:#B56E45}
+.es-sub{font-size:9.5px;color:#9CA3AF;margin-top:1px}
+
+.photo-pair{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 14px 0;flex-shrink:0}
+.pp-slot{height:54px;border-radius:7px;border:1.5px dashed #D1D5DB;background:#FAFAFA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
+.pp-slot.taken{background:#E6EEE7;border:1.5px solid #90B092}
+.pp-slot svg{width:14px;height:14px;fill:none;stroke-width:1.8;stroke-linecap:round}
+.pp-slot.taken svg{stroke:#334036}
+.pp-slot:not(.taken) svg{stroke:#9CA3AF}
+.pp-label{font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:700}
+.pp-slot.taken .pp-label{color:#334036}
+.pp-slot:not(.taken) .pp-label{color:#9CA3AF}
+
+.cant-complete-link{text-align:center;padding:8px 14px 4px;font-size:9.5px;color:#9CA3AF;cursor:pointer}
+.cant-complete-link span{text-decoration:underline;color:#B56E45}
+
+.exec-submit{margin:0 14px;height:34px;background:#334036;border:none;border-radius:8px;font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;color:#fff;cursor:pointer;width:calc(100% - 28px);flex-shrink:0}
+
+/* Profile */
+.prof-hero{background:linear-gradient(140deg,#6B3A23,#B56E45);padding:14px 14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.ph-av{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
+.ph-name{font-family:'Manrope',sans-serif;font-size:14px;font-weight:800;color:#fff}
+.ph-role{font-size:9.5px;color:rgba(255,255,255,.55);margin-top:2px}
+.ph-badge{display:inline-flex;background:rgba(255,255,255,.12);border-radius:4px;padding:2px 7px;font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;color:rgba(255,255,255,.75);margin-top:5px;letter-spacing:.04em;text-transform:uppercase}
+.psec{background:#fff;border-radius:10px;border:1px solid #EEEFF2;overflow:hidden;flex-shrink:0}
+.psec-hdr{padding:9px 13px;border-bottom:1px solid #F5F5F5;font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.09em;background:#FAFAFA}
+.pr{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-bottom:1px solid #F7F8F9}
+.pr:last-child{border-bottom:none}
+.pr-k{font-size:11px;color:#374151}
+.pr-v{font-size:10.5px;color:#9CA3AF}
+.skill-tag{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:#F5EAE3;color:#B56E45}
+.skill-tag-add{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;color:#B56E45;cursor:pointer;text-decoration:underline}
+.tag-connected{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;background:#E6EEE7;color:#334036;padding:2px 6px;border-radius:3px}
+.tag-add{font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;color:#B56E45;cursor:pointer;text-decoration:underline}
+.toggle-on{width:28px;height:16px;background:#334036;border-radius:8px;position:relative;flex-shrink:0}
+.toggle-on::after{content:'';position:absolute;right:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+.signout-btn{width:100%;height:34px;background:transparent;border:1.5px solid #FCA5A5;border-radius:7px;color:#DC2626;font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;cursor:pointer;margin-top:8px;flex-shrink:0}
+
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.leg-item{background:#fff;border-radius:9px;border:1px solid #E5E7EB;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.leg-t .ln{font-family:'Manrope',sans-serif;font-size:10.5px;font-weight:700;color:#171A1F}
+.leg-t .ld{font-size:9px;color:#9CA3AF;margin-top:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="page-hdr">
+  <div class="page-title">Maintenance — Operational UI Direction</div>
+  <div class="page-meta">Domaniqo · March 2026 · 4 screens: Home · Job Detail · Job Execution · Profile</div>
+</div>
+
+<div class="notes">
+  <div class="note-col">
+    <div class="nt">Role personality</div>
+    <div class="nb"><strong>Priority-first, issue-driven.</strong> Maintenance work is not time-scheduled — it is severity-ranked. Cards sort by CRITICAL → HIGH → NORMAL, not by arrival time. The SLA pill shows response deadline (not checkout time). Vocabulary: <strong>Job</strong>, <strong>Issue</strong>, <strong>Work Order</strong> — never "Task" or "Clean".</div>
+  </div>
+  <div class="note-col">
+    <div class="nt">Access code always visible</div>
+    <div class="nb">Every job card and job detail screen shows the <strong>property access code</strong> prominently. Maintenance workers arrive at locked properties — the access code is the most critical operational data they need. It appears in a dark pill on the card and as a full-width block in job detail.</div>
+  </div>
+  <div class="note-col">
+    <div class="nt">Distinct from Cleaner</div>
+    <div class="nb">Maintenance uses <strong>issue type tags</strong> (Plumbing, Electrical, Pool, AC…) not room lists. Progress is <strong>step-based</strong> (Assess → Document → Fix → Test → Confirm), not room-by-room. <strong>Before/after photo pair</strong> required. <strong>Can't Complete</strong> path always visible — maintenance can hit blockers that cleaners don't.</div>
+  </div>
+  <div class="note-col">
+    <div class="nt">Future specialty support</div>
+    <div class="nb">The issue type tag system is designed to support <strong>future sub-specialties</strong> (Electrical, Plumbing, Pool, Gardening). Each specialty gets its own issue types and skill tags on Profile. The generalist worker sees all jobs. Specialists see only their category. Same UI, filtered scope.</div>
+  </div>
+</div>
+
+<div class="phones">
+
+  <!-- SCREEN 1: HOME — Job Queue -->
+  <div class="col">
+    <div class="phone">
+      <div class="sbar">
+        <span class="sbar-time">8:55</span>
+        <div class="sbar-right">
+          <svg width="15" height="10" fill="none" viewBox="0 0 15 10"><rect x="0" y="4" width="2" height="6" fill="#171A1F" rx="0.5"/><rect x="3" y="3" width="2" height="7" fill="#171A1F" rx="0.5"/><rect x="6" y="1.5" width="2" height="8.5" fill="#171A1F" rx="0.5"/><rect x="9" y="0" width="2" height="10" fill="#171A1F" rx="0.5"/><rect x="12" y="0" width="2" height="10" fill="#E5E7EB" rx="0.5"/></svg>
+          <svg width="14" height="10" fill="none" viewBox="0 0 14 10"><path d="M7 2C9.5 2 11.7 3 13.3 4.7L14 4A9.9 9.9 0 0 0 7 1 9.9 9.9 0 0 0 0 4l.7.7C2.3 3 4.5 2 7 2Z" fill="#171A1F"/><path d="M7 4.5C8.7 4.5 10.2 5.2 11.3 6.3l.7-.7A7.4 7.4 0 0 0 7 3.5a7.4 7.4 0 0 0-5 1.9l.7.7A5.4 5.4 0 0 1 7 4.5Z" fill="#171A1F"/><circle cx="7" cy="8.5" r="1.5" fill="#171A1F"/></svg>
+          <svg width="22" height="10" fill="none" viewBox="0 0 22 10"><rect x="0" y="1" width="18" height="8" rx="2" stroke="#171A1F" stroke-width="1"/><rect x="18.5" y="3" width="2" height="4" rx="1" fill="#171A1F"/><rect x="1" y="2" width="14" height="6" rx="1.2" fill="#171A1F"/></svg>
+        </div>
+      </div>
+      <div class="aph">
+        <div>
+          <div class="aph-title">Job Queue</div>
+          <div class="aph-sub">Aroon Suphan · Friday 27 Mar</div>
+        </div>
+        <div class="avatar">AS</div>
+      </div>
+      <!-- Day health — priority driven -->
+      <div class="dhs">
+        <div class="dhi-crit"><div class="dhi-dot"></div>1 CRITICAL</div>
+        <div class="dhi-sep"></div>
+        <div class="dhi"><span class="dhi-val">2</span><span class="dhi-lbl">HIGH</span></div>
+        <div class="dhi-sep"></div>
+        <div class="dhi"><span class="dhi-val">3</span><span class="dhi-lbl">NORMAL</span></div>
+        <div class="dhi-sep"></div>
+        <div class="dhi"><span class="dhi-val">6</span><span class="dhi-lbl">TOTAL</span></div>
+      </div>
+      <div class="scroll">
+        <!-- Critical -->
+        <div class="sec-hdr"><span class="sec-title">Critical</span><span class="sec-cnt">1</span></div>
+        <div class="job j-critical">
+          <div class="job-r1">
+            <span class="pri-badge pb-crit">CRITICAL</span>
+            <span class="issue-type">Plumbing</span>
+            <div class="job-r1-right">
+              <span class="sla-pill sla-breach">SLA BREACH</span>
+              <button class="nav-micro"><svg class="nm-svg" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></button>
+            </div>
+          </div>
+          <div class="job-prop">KPG Residence</div>
+          <div class="job-issue">Water leak under kitchen sink — reported by guest</div>
+          <div class="job-meta">
+            <span class="access-tag"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>4821</span>
+            <span>Reported 22:30 yesterday</span>
+          </div>
+          <button class="job-cta cta-red">Respond Now →</button>
+        </div>
+
+        <!-- High -->
+        <div class="sec-hdr"><span class="sec-title">High Priority</span><span class="sec-cnt">2</span></div>
+        <div class="job j-high">
+          <div class="job-r1">
+            <span class="pri-badge pb-high">HIGH</span>
+            <span class="issue-type">Electrical</span>
+            <div class="job-r1-right">
+              <span class="sla-pill sla-warn">SLA 2H 30M</span>
+              <button class="nav-micro"><svg class="nm-svg" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></button>
+            </div>
+          </div>
+          <div class="job-prop">Emuna Villa</div>
+          <div class="job-issue">Bedroom AC not working — guest check-in at 14:00</div>
+          <div class="job-meta">
+            <span class="access-tag"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>7734</span>
+            <span>Reported 07:45</span>
+          </div>
+          <button class="job-cta cta-copper">Start Job →</button>
+        </div>
+
+        <div class="job j-normal" style="margin-top:-2px">
+          <div class="job-r1">
+            <span class="pri-badge pb-high">HIGH</span>
+            <span class="issue-type">Pool</span>
+            <div class="job-r1-right">
+              <span class="sla-pill sla-warn">SLA 4H</span>
+              <button class="nav-micro"><svg class="nm-svg" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></button>
+            </div>
+          </div>
+          <div class="job-prop">Zen Pool Villa</div>
+          <div class="job-issue">Pool pump noise — abnormal vibration</div>
+          <div class="job-meta">
+            <span class="access-tag"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>2209</span>
+            <span>Reported 08:10</span>
+          </div>
+          <button class="job-cta cta-ghost">View Job</button>
+        </div>
+
+        <!-- Normal -->
+        <div class="sec-hdr"><span class="sec-title">Normal</span><span class="sec-cnt">3</span></div>
+        <div class="mini">
+          <div class="mini-l"><div class="mp">Casa Norte</div><div class="mt">Gardening · Gate hinge broken</div></div>
+          <div class="mini-r"><div style="font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;background:#F3F4F6;color:#6B7280;padding:2px 6px;border-radius:3px">NORMAL</div></div>
+        </div>
+        <div class="mini">
+          <div class="mini-l"><div class="mp">Baan Siri 6</div><div class="mt">General · Replace blown bulb</div></div>
+          <div class="mini-r"><div style="font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;background:#F3F4F6;color:#6B7280;padding:2px 6px;border-radius:3px">NORMAL</div></div>
+        </div>
+      </div>
+      <div class="bnav">
+        <div class="bni act"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><div class="bni-lbl">Jobs</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div class="bni-lbl">Issues</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div class="bni-lbl">History</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><div class="bni-lbl">Profile</div></div>
+      </div>
+    </div>
+    <div class="screen-lbl">Home — Job Queue</div>
+  </div>
+
+  <!-- SCREEN 2: JOB DETAIL -->
+  <div class="col">
+    <div class="phone">
+      <div class="sbar">
+        <span class="sbar-time">8:58</span>
+        <div class="sbar-right">
+          <svg width="15" height="10" fill="none" viewBox="0 0 15 10"><rect x="0" y="4" width="2" height="6" fill="#171A1F" rx="0.5"/><rect x="3" y="3" width="2" height="7" fill="#171A1F" rx="0.5"/><rect x="6" y="1.5" width="2" height="8.5" fill="#171A1F" rx="0.5"/><rect x="9" y="0" width="2" height="10" fill="#171A1F" rx="0.5"/><rect x="12" y="0" width="2" height="10" fill="#E5E7EB" rx="0.5"/></svg>
+          <svg width="14" height="10" fill="none" viewBox="0 0 14 10"><path d="M7 2C9.5 2 11.7 3 13.3 4.7L14 4A9.9 9.9 0 0 0 7 1 9.9 9.9 0 0 0 0 4l.7.7C2.3 3 4.5 2 7 2Z" fill="#171A1F"/><path d="M7 4.5C8.7 4.5 10.2 5.2 11.3 6.3l.7-.7A7.4 7.4 0 0 0 7 3.5a7.4 7.4 0 0 0-5 1.9l.7.7A5.4 5.4 0 0 1 7 4.5Z" fill="#171A1F"/><circle cx="7" cy="8.5" r="1.5" fill="#171A1F"/></svg>
+          <svg width="22" height="10" fill="none" viewBox="0 0 22 10"><rect x="0" y="1" width="18" height="8" rx="2" stroke="#171A1F" stroke-width="1"/><rect x="18.5" y="3" width="2" height="4" rx="1" fill="#171A1F"/><rect x="1" y="2" width="10" height="6" rx="1.2" fill="#171A1F"/></svg>
+        </div>
+      </div>
+      <div class="aph">
+        <div style="display:flex;align-items:center;gap:7px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <div>
+            <div class="aph-title">Emuna Villa</div>
+            <div class="aph-sub">Bedroom AC · High Priority</div>
+          </div>
+        </div>
+        <span class="pri-badge pb-high">HIGH</span>
+      </div>
+      <div class="scroll" style="gap:8px">
+        <!-- Access code block -->
+        <div class="access-block">
+          <div>
+            <div class="ab-label">Property Access Code</div>
+            <div class="ab-code">7734</div>
+          </div>
+          <button class="ab-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        </div>
+
+        <!-- Job info -->
+        <div class="detail-section">
+          <div class="ds-hdr">Job Details</div>
+          <div class="ds-row">
+            <span class="ds-k">Issue</span>
+            <span class="ds-v copper">Bedroom AC not working</span>
+          </div>
+          <div class="ds-row">
+            <span class="ds-k">Type</span>
+            <span class="ds-v">Electrical / HVAC</span>
+          </div>
+          <div class="ds-row">
+            <span class="ds-k">Location</span>
+            <span class="ds-v">Master bedroom, unit 1</span>
+          </div>
+          <div class="ds-row">
+            <span class="ds-k">Reported by</span>
+            <span class="ds-v">Ops Manager · 07:45</span>
+          </div>
+          <div class="ds-row">
+            <span class="ds-k">Guest check-in</span>
+            <span class="ds-v red">Today 14:00 — 5h away</span>
+          </div>
+          <div class="ds-row" style="border-bottom:none">
+            <span class="ds-k">SLA deadline</span>
+            <span class="ds-v copper">13:30 (4h 32m)</span>
+          </div>
+        </div>
+
+        <!-- Before photo -->
+        <div>
+          <div style="font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px">Before Photo (required)</div>
+          <div class="before-photo">
+            <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Take before photo to begin</span>
+            <span class="sub">Documents condition before work starts</span>
+          </div>
+        </div>
+
+        <!-- CTAs -->
+        <div class="detail-ctas">
+          <button class="dc-start">Start Job →</button>
+          <button class="dc-cant">Can't Complete</button>
+        </div>
+      </div>
+      <div class="bnav">
+        <div class="bni act"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><div class="bni-lbl">Jobs</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div class="bni-lbl">Issues</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div class="bni-lbl">History</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><div class="bni-lbl">Profile</div></div>
+      </div>
+    </div>
+    <div class="screen-lbl">Job Detail</div>
+  </div>
+
+  <!-- SCREEN 3: JOB EXECUTION -->
+  <div class="col">
+    <div class="phone">
+      <div class="sbar">
+        <span class="sbar-time">9:34</span>
+        <div class="sbar-right">
+          <svg width="15" height="10" fill="none" viewBox="0 0 15 10"><rect x="0" y="4" width="2" height="6" fill="#171A1F" rx="0.5"/><rect x="3" y="3" width="2" height="7" fill="#171A1F" rx="0.5"/><rect x="6" y="1.5" width="2" height="8.5" fill="#171A1F" rx="0.5"/><rect x="9" y="0" width="2" height="10" fill="#171A1F" rx="0.5"/><rect x="12" y="0" width="2" height="10" fill="#E5E7EB" rx="0.5"/></svg>
+          <svg width="14" height="10" fill="none" viewBox="0 0 14 10"><path d="M7 2C9.5 2 11.7 3 13.3 4.7L14 4A9.9 9.9 0 0 0 7 1 9.9 9.9 0 0 0 0 4l.7.7C2.3 3 4.5 2 7 2Z" fill="#171A1F"/><path d="M7 4.5C8.7 4.5 10.2 5.2 11.3 6.3l.7-.7A7.4 7.4 0 0 0 7 3.5a7.4 7.4 0 0 0-5 1.9l.7.7A5.4 5.4 0 0 1 7 4.5Z" fill="#171A1F"/><circle cx="7" cy="8.5" r="1.5" fill="#171A1F"/></svg>
+          <svg width="22" height="10" fill="none" viewBox="0 0 22 10"><rect x="0" y="1" width="18" height="8" rx="2" stroke="#171A1F" stroke-width="1"/><rect x="18.5" y="3" width="2" height="4" rx="1" fill="#171A1F"/><rect x="1" y="2" width="12" height="6" rx="1.2" fill="#171A1F"/></svg>
+        </div>
+      </div>
+      <div class="aph">
+        <div style="display:flex;align-items:center;gap:7px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <div>
+            <div class="aph-title">In Progress</div>
+            <div class="aph-sub">Emuna Villa · AC Repair</div>
+          </div>
+        </div>
+        <span style="font-family:'Manrope',sans-serif;font-size:8px;font-weight:700;background:#F5EAE3;color:#B56E45;padding:2px 7px;border-radius:4px">ACTIVE</span>
+      </div>
+      <!-- Execution bar with timer -->
+      <div class="exec-bar">
+        <div class="eb-label">Job Timer</div>
+        <div class="eb-timer">00:36:17</div>
+      </div>
+      <div class="scroll" style="gap:0;padding:0 0 4px">
+        <div class="exec-step">
+          <div class="es-num done"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="es-body">
+            <div class="es-title">Assess the issue</div>
+            <div class="es-sub">Documented + before photo taken</div>
+          </div>
+        </div>
+        <div class="exec-step">
+          <div class="es-num done"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="es-body">
+            <div class="es-title">Locate and prepare</div>
+            <div class="es-sub">Tools and parts confirmed</div>
+          </div>
+        </div>
+        <div class="exec-step" style="background:#FBF9F7">
+          <div class="es-num active">3</div>
+          <div class="es-body">
+            <div class="es-title active">Fix the issue</div>
+            <div class="es-sub">Currently working on AC unit</div>
+          </div>
+        </div>
+        <div class="exec-step">
+          <div class="es-num">4</div>
+          <div class="es-body">
+            <div class="es-title" style="color:#9CA3AF">Test the repair</div>
+            <div class="es-sub">Confirm fix works correctly</div>
+          </div>
+        </div>
+        <div class="exec-step" style="border-bottom:none">
+          <div class="es-num">5</div>
+          <div class="es-body">
+            <div class="es-title" style="color:#9CA3AF">Document and close</div>
+            <div class="es-sub">After photo + completion note</div>
+          </div>
+        </div>
+
+        <!-- Photo pair -->
+        <div style="padding:8px 14px 4px;border-top:1px solid #F0EDE8">
+          <div style="font-family:'Manrope',sans-serif;font-size:8.5px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.09em;margin-bottom:7px">Before / After Photos</div>
+          <div class="photo-pair">
+            <div class="pp-slot taken">
+              <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <div class="pp-label">Before ✓</div>
+            </div>
+            <div class="pp-slot">
+              <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <div class="pp-label">After (required)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cant-complete-link">Having a problem? <span>Can't Complete this job</span></div>
+      </div>
+      <button class="exec-submit" style="margin:8px 14px 0;cursor:not-allowed;background:#9CA3AF">Complete after photo required</button>
+      <div class="bnav">
+        <div class="bni act"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><div class="bni-lbl">Jobs</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div class="bni-lbl">Issues</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div class="bni-lbl">History</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><div class="bni-lbl">Profile</div></div>
+      </div>
+    </div>
+    <div class="screen-lbl">Job Execution</div>
+  </div>
+
+  <!-- SCREEN 4: PROFILE -->
+  <div class="col">
+    <div class="phone">
+      <div class="sbar">
+        <span class="sbar-time">14:22</span>
+        <div class="sbar-right">
+          <svg width="15" height="10" fill="none" viewBox="0 0 15 10"><rect x="0" y="4" width="2" height="6" fill="#171A1F" rx="0.5"/><rect x="3" y="3" width="2" height="7" fill="#171A1F" rx="0.5"/><rect x="6" y="1.5" width="2" height="8.5" fill="#171A1F" rx="0.5"/><rect x="9" y="0" width="2" height="10" fill="#171A1F" rx="0.5"/><rect x="12" y="0" width="2" height="10" fill="#171A1F" rx="0.5"/></svg>
+          <svg width="14" height="10" fill="none" viewBox="0 0 14 10"><path d="M7 2C9.5 2 11.7 3 13.3 4.7L14 4A9.9 9.9 0 0 0 7 1 9.9 9.9 0 0 0 0 4l.7.7C2.3 3 4.5 2 7 2Z" fill="#171A1F"/><path d="M7 4.5C8.7 4.5 10.2 5.2 11.3 6.3l.7-.7A7.4 7.4 0 0 0 7 3.5a7.4 7.4 0 0 0-5 1.9l.7.7A5.4 5.4 0 0 1 7 4.5Z" fill="#171A1F"/><circle cx="7" cy="8.5" r="1.5" fill="#171A1F"/></svg>
+          <svg width="22" height="10" fill="none" viewBox="0 0 22 10"><rect x="0" y="1" width="18" height="8" rx="2" stroke="#171A1F" stroke-width="1"/><rect x="18.5" y="3" width="2" height="4" rx="1" fill="#171A1F"/><rect x="1" y="2" width="16" height="6" rx="1.2" fill="#171A1F"/></svg>
+        </div>
+      </div>
+      <div class="prof-hero">
+        <div class="ph-av">AS</div>
+        <div>
+          <div class="ph-name">Aroon Suphan</div>
+          <div class="ph-role">Maintenance Technician · Active</div>
+          <div class="ph-badge">GENERAL MAINTENANCE</div>
+        </div>
+      </div>
+      <div class="scroll">
+        <!-- Stats -->
+        <div style="display:flex;gap:6px">
+          <div style="flex:1;background:#fff;border-radius:9px;border:1px solid #EEEFF2;padding:9px 10px;text-align:center">
+            <div style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:#B56E45">3</div>
+            <div style="font-size:8.5px;color:#9CA3AF;margin-top:2px">Open</div>
+          </div>
+          <div style="flex:1;background:#fff;border-radius:9px;border:1px solid #EEEFF2;padding:9px 10px;text-align:center">
+            <div style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:#171A1F">91%</div>
+            <div style="font-size:8.5px;color:#9CA3AF;margin-top:2px">SLA Met</div>
+          </div>
+          <div style="flex:1;background:#fff;border-radius:9px;border:1px solid #EEEFF2;padding:9px 10px;text-align:center">
+            <div style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;color:#171A1F">18</div>
+            <div style="font-size:8.5px;color:#9CA3AF;margin-top:2px">Week</div>
+          </div>
+        </div>
+
+        <!-- Skills / specialties — unique to Maintenance -->
+        <div class="psec">
+          <div class="psec-hdr">Skills & Specialties</div>
+          <div class="pr">
+            <div class="pr-k">Active specialties</div>
+            <div class="pr-v" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:160px">
+              <span class="skill-tag">Electrical</span>
+              <span class="skill-tag">Plumbing</span>
+              <span class="skill-tag">Pool</span>
+              <span class="skill-tag">HVAC</span>
+            </div>
+          </div>
+          <div class="pr">
+            <div class="pr-k" style="color:#9CA3AF">Add specialty</div>
+            <span class="skill-tag-add">Request access →</span>
+          </div>
+        </div>
+
+        <!-- Account -->
+        <div class="psec">
+          <div class="psec-hdr">Login & Account</div>
+          <div class="pr">
+            <div class="pr-k" style="display:flex;align-items:center;gap:7px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Google
+            </div>
+            <div class="pr-v"><span class="tag-connected">Connected</span></div>
+          </div>
+          <div class="pr">
+            <div class="pr-k" style="display:flex;align-items:center;gap:7px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              Email / Password
+            </div>
+            <div class="pr-v"><span class="tag-add">Add →</span></div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="psec">
+          <div class="psec-hdr">Notifications</div>
+          <div class="pr"><div class="pr-k">Critical job alerts</div><div class="toggle-on"></div></div>
+          <div class="pr"><div class="pr-k">SLA warnings</div><div class="toggle-on"></div></div>
+          <div class="pr"><div class="pr-k" style="color:#9CA3AF">New job assigned</div><div style="width:28px;height:16px;background:#E5E7EB;border-radius:8px;position:relative;flex-shrink:0"><div style="position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff"></div></div></div>
+        </div>
+
+        <button class="signout-btn">Sign out</button>
+      </div>
+      <div class="bnav">
+        <div class="bni"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><div class="bni-lbl">Jobs</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div class="bni-lbl">Issues</div></div>
+        <div class="bni"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div class="bni-lbl">History</div></div>
+        <div class="bni act"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><div class="bni-lbl">Profile</div></div>
+      </div>
+    </div>
+    <div class="screen-lbl">Profile + Skills</div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <div class="leg-item">
+    <div style="width:34px;height:34px;border-radius:7px;background:#FEE2E2;border-left:3px solid #DC2626;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;color:#DC2626">CRIT</span></div>
+    <div class="leg-t"><div class="ln">Priority-first card order</div><div class="ld">CRITICAL → HIGH → NORMAL. Not sorted by time.</div></div>
+  </div>
+  <div class="leg-item">
+    <div style="width:34px;height:34px;border-radius:7px;background:#171A1F;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-family:'Manrope',sans-serif;font-size:11px;font-weight:800;color:#fff;letter-spacing:.1em">4821</span></div>
+    <div class="leg-t"><div class="ln">Access code always visible</div><div class="ld">On card AND job detail. Worker arrives ready.</div></div>
+  </div>
+  <div class="leg-item">
+    <div style="width:34px;height:34px;border-radius:7px;background:#F5EAE3;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-family:'Manrope',sans-serif;font-size:7.5px;font-weight:800;color:#B56E45">SLA</span></div>
+    <div class="leg-t"><div class="ln">SLA deadline (not checkout time)</div><div class="ld">Maintenance has response SLAs, not guest windows</div></div>
+  </div>
+  <div class="leg-item">
+    <div style="width:34px;height:34px;border-radius:7px;background:#E6EEE7;border:1.5px solid #90B092;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-family:'Manrope',sans-serif;font-size:7px;font-weight:800;color:#334036;text-align:center;line-height:1.2">B/A<br>PHOTO</span></div>
+    <div class="leg-t"><div class="ln">Before / after photo pair</div><div class="ld">Required on every job. Completion blocked until after photo added.</div></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

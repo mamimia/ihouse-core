@@ -132,6 +132,28 @@ function resolveWorkerRole(): WorkerRoleKey | 'admin' | 'checkin_checkout' | nul
     } catch { return null; }
 }
 
+/**
+ * Phase 973 audit fix (Marco/08 — multi-role closure):
+ * Returns all recognized secondary roles from the JWT that are NOT the primary role.
+ * Used to render additional surface links on the worker home page for multi-role workers.
+ * Middleware allows 'worker' role to reach all /ops/* paths, so these links are valid.
+ */
+function resolveSecondaryRoles(primaryRole: WorkerRoleKey | null): WorkerRoleConfig[] {
+    if (typeof window === 'undefined') return [];
+    const token = getTabToken();
+    if (!token) return [];
+    try {
+        const p = JSON.parse(atob(token.split('.')[1]));
+        const outerRole = (p.role as string || '').toLowerCase();
+        if (outerRole !== 'worker') return [];
+        const workerRolesArr: string[] = (p.worker_roles as string[] | undefined) ?? [];
+        return workerRolesArr
+            .map(r => r.toLowerCase())
+            .filter(r => r !== (primaryRole || '') && !!ROLE_CONFIGS[r as WorkerRoleKey])
+            .map(r => ROLE_CONFIGS[r as WorkerRoleKey]);
+    } catch { return []; }
+}
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -491,6 +513,7 @@ export default function WorkerPage() {
     const [toast, setToast] = useState<string | null>(null);
     const [userName, setUserName] = useState('');
     const [roleConfig, setRoleConfig] = useState<WorkerRoleConfig | null>(null);
+    const [secondaryRoles, setSecondaryRoles] = useState<WorkerRoleConfig[]>([]);
     // Phase 948g: Explicit flag — true ONLY for workers whose stored role is 'checkin_checkout'.
     const [isCombinedRole, setIsCombinedRole] = useState(false);
     // Phase 1030: Promotion notice — shown when this worker was promoted from Backup to Primary
@@ -550,6 +573,8 @@ export default function WorkerPage() {
 
         const config = resolved ? ROLE_CONFIGS[resolved as WorkerRoleKey] ?? null : null;
         setRoleConfig(config);
+        // Phase 973 audit fix (Marco/08): Surface secondary roles for multi-role workers.
+        setSecondaryRoles(resolveSecondaryRoles(resolved as WorkerRoleKey | null));
 
         setLoading(true);
         load(config?.taskRole);
@@ -773,6 +798,37 @@ export default function WorkerPage() {
                                             <span style={{ fontSize: 20, color: 'var(--color-text-faint)' }}>›</span>
                                         </div>
                                     </a>
+                                </div>
+                            )}
+
+                            {/* Phase 973 audit fix (Marco/08): Secondary-role quick links for multi-role workers.
+                              * Renders an 'Also available' section linking to other assigned surfaces.
+                              * Middleware allows 'worker' role to reach all /ops/* paths, so these links are valid.
+                              * A worker with ['cleaner', 'maintenance'] sees /ops/cleaner as primary and
+                              * /ops/maintenance as a clearly navigable secondary — no URL knowledge required. */}
+                            {secondaryRoles.length > 0 && roleConfig && (
+                                <div style={{ marginBottom: 24 }}>
+                                    <div style={{ fontSize: 12, color: 'var(--color-sage)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Also available to you</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {secondaryRoles.map(sec => (
+                                            <a key={sec.key} href={sec.workHref} style={{ textDecoration: 'none' }}>
+                                                <div style={{
+                                                    background: 'var(--color-surface-2)', borderRadius: 14, padding: '14px 18px',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                    border: '1px solid var(--color-border)', opacity: 0.85,
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                        <span style={{ fontSize: 24 }}>{sec.workIcon}</span>
+                                                        <div>
+                                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{sec.displayName}</div>
+                                                            <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2 }}>{sec.workLabel}</div>
+                                                        </div>
+                                                    </div>
+                                                    <span style={{ fontSize: 16, color: 'var(--color-text-faint)' }}>›</span>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 

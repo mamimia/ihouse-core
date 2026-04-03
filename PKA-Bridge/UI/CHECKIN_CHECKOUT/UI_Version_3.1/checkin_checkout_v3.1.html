@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-In & Check-Out — Dual-Role Worker Surface v3.1</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+            padding: 28px 32px 56px;
+        }
+
+        .wrap {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar - 4-Column Grid */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #334036;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Screens Container */
+        .screens-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            max-width: 1400px;
+            margin: 0 auto 60px;
+        }
+
+        /* Phone Chrome */
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow: 0 0 0 2px #D1D6DC, 0 2px 0 3px #B8BEC6, 0 12px 48px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Screen Label - V3.1 Refined */
+        .screen-label {
+            position: absolute;
+            top: -28px;
+            left: 0;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* App Header - Dark Background */
+        .app-header {
+            padding: 14px 16px;
+            background: #171A1F;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .avatar.moss {
+            background: #334036;
+        }
+
+        .avatar.copper {
+            background: #B56E45;
+        }
+
+        .avatar.dual {
+            background: linear-gradient(135deg, #334036 50%, #B56E45 50%);
+        }
+
+        .app-header-content {
+            flex: 1;
+        }
+
+        .app-header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: white;
+            line-height: 1.2;
+        }
+
+        .app-header-subtitle {
+            font-size: 11px;
+            color: #9CA3AF;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .dual-role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 3px 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.1);
+            color: #E5E7EB;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* Day Health Strip - 4-Column Grid */
+        .day-health {
+            background: #171A1F;
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+            margin: 12px 16px 12px 16px;
+        }
+
+        .health-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .health-label {
+            font-size: 8px;
+            color: #9CA3AF;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .health-count {
+            font-family: 'Manrope', sans-serif;
+            font-size: 15px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .health-item.done .health-count {
+            color: #10B981;
+        }
+
+        .health-item.in-progress .health-count {
+            color: #F59E0B;
+        }
+
+        .health-item.acknowledged .health-count {
+            color: #334036;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: #D1D6DC;
+            border-radius: 2px;
+        }
+
+        /* Badge System - V3.1 Tightened */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.arrival {
+            background: #D4E4D9;
+            color: #334036;
+        }
+
+        .badge.departure {
+            background: #F5EAE3;
+            color: #B56E45;
+        }
+
+        /* Urgency Pills - Refined */
+        .urgency-pill {
+            display: inline-flex;
+            align-items: center;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pill-safe {
+            background: white;
+            color: #6B7280;
+            border: 1px solid #D1D5DB;
+        }
+
+        .pill-approaching {
+            background: #FFFCF0;
+            color: #D97706;
+            border: 1px solid #F59E0B;
+        }
+
+        .pill-imminent {
+            background: #FBF1EC;
+            color: #B56E45;
+            border: 1px solid #B56E45;
+            animation: pulse-card 2s infinite;
+        }
+
+        .pill-overdue {
+            background: #FFF4F4;
+            color: #DC2626;
+            border: 1px solid #DC2626;
+            animation: blink 1s infinite;
+        }
+
+        /* Operational Blocks (Hub) - 3px Left Border */
+        .ops-block {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 12px 14px;
+            border-left: 3px solid;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .ops-block.arrivals {
+            border-left-color: #334036;
+        }
+
+        .ops-block.departures {
+            border-left-color: #B56E45;
+        }
+
+        .ops-block-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ops-block-count {
+            font-family: 'Manrope', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .ops-block-countdown {
+            font-size: 10px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        .ops-block-countdown.warning {
+            color: #D97706;
+            font-weight: 600;
+        }
+
+        .ops-block-overdue {
+            font-size: 10px;
+            color: #DC2626;
+            font-weight: 800;
+        }
+
+        .ops-block-cta {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: white;
+            transition: all 0.2s ease;
+        }
+
+        .ops-block-cta.moss {
+            background: #334036;
+        }
+
+        .ops-block-cta.moss:hover {
+            background: #2a3430;
+        }
+
+        .ops-block-cta.copper {
+            background: #B56E45;
+        }
+
+        .ops-block-cta.copper:hover {
+            background: #9d5a38;
+        }
+
+        /* Same-Day Turnarounds Section */
+        .sameday-section {
+            background: #FFFCF0;
+            border: 1px solid #F59E0B;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 2px;
+        }
+
+        .sameday-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #B45309;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .sameday-chain {
+            background: white;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 10px;
+            color: #171A1F;
+            line-height: 1.4;
+        }
+
+        .sameday-property {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 11px;
+            color: #171A1F;
+        }
+
+        .sameday-flow {
+            font-size: 9px;
+            color: #6B7280;
+            margin-top: 3px;
+        }
+
+        /* Task Cards - 3px Left Border */
+        .task-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 11px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: all 0.2s ease;
+            border-left: 3px solid;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .task-card.arrival {
+            border-left-color: #334036;
+        }
+
+        .task-card.departure {
+            border-left-color: #B56E45;
+        }
+
+        .task-card:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .task-badges {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .task-property {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+            letter-spacing: 0.2px;
+        }
+
+        .task-guest {
+            font-size: 11px;
+            color: #6B7280;
+            line-height: 1.3;
+            font-weight: 500;
+        }
+
+        .task-cta {
+            font-size: 10px;
+            font-weight: 800;
+            color: #334036;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 3px;
+        }
+
+        .task-cta.copper {
+            color: #B56E45;
+        }
+
+        .task-cta.red {
+            color: #DC2626;
+        }
+
+        /* Filter Strip */
+        .filter-strip {
+            display: flex;
+            gap: 6px;
+            padding: 0;
+            margin-bottom: 8px;
+            overflow-x: auto;
+        }
+
+        .filter-pill {
+            display: inline-block;
+            background: white;
+            color: #6B7280;
+            padding: 6px 12px;
+            border-radius: 16px;
+            border: 1px solid #D1D5DB;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .filter-pill.active {
+            background: #334036;
+            color: white;
+            border-color: #334036;
+        }
+
+        /* Mini Cards */
+        .mini-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 10px;
+            color: #6B7280;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mini-card-left {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .mini-card-property {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            color: #171A1F;
+            font-size: 11px;
+        }
+
+        /* Section Header */
+        .section-header {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 6px 0 3px 0;
+        }
+
+        /* Bottom Navigation - 56px Height */
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 8px 0;
+            border-top: 1px solid #E5E7EB;
+            background: #F9F7F4;
+            margin-top: auto;
+            height: 56px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+            flex: 1;
+        }
+
+        .nav-item.active {
+            opacity: 1;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-item.active .nav-label {
+            color: #334036;
+        }
+
+        /* Flow Header */
+        .flow-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: #171A1F;
+            color: white;
+        }
+
+        .flow-back {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            margin-bottom: 3px;
+            cursor: pointer;
+        }
+
+        .flow-back-icon {
+            font-size: 16px;
+            color: #9CA3AF;
+        }
+
+        .flow-back-content {
+            flex: 1;
+        }
+
+        .flow-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .flow-property {
+            font-size: 11px;
+            color: #9CA3AF;
+            margin-top: 3px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        /* Step Tracker */
+        .step-tracker {
+            padding: 10px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            background: #F9F7F4;
+        }
+
+        .step-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #D1D5DB;
+            transition: all 0.2s ease;
+        }
+
+        .step-dot.done {
+            background: #334036;
+        }
+
+        .step-dot.current {
+            background: #B56E45;
+            width: 6px;
+            height: 6px;
+        }
+
+        .step-dot.future {
+            background: #D1D5DB;
+        }
+
+        .step-line {
+            width: 8px;
+            height: 2px;
+            background: #D1D5DB;
+            transition: all 0.2s ease;
+        }
+
+        .step-line.done {
+            background: #334036;
+        }
+
+        .step-label {
+            font-size: 8px;
+            font-weight: 800;
+            color: #B56E45;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 4px;
+        }
+
+        /* Property Bar */
+        .property-bar {
+            padding: 12px 16px;
+            background: #F9F7F4;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .property-bar-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .property-bar-subtitle {
+            font-size: 10px;
+            color: #6B7280;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        /* Buttons */
+        .btn {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 9px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #334036;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2a3430;
+        }
+
+        .btn-primary.copper {
+            background: #B56E45;
+        }
+
+        .btn-primary.copper:hover {
+            background: #9d5a38;
+        }
+
+        .btn-primary.moss {
+            background: #334036;
+        }
+
+        .btn-primary.moss:hover {
+            background: #2a3430;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #171A1F;
+            border: 1px solid #D1D5DB;
+        }
+
+        .btn-secondary:hover {
+            background: #F9F7F4;
+        }
+
+        .flow-buttons {
+            padding: 10px 16px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: #334036;
+            border: 1px solid #D1D5DB;
+        }
+
+        .btn-ghost:hover {
+            background: white;
+        }
+
+        /* History */
+        .history-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: #171A1F;
+            color: white;
+        }
+
+        .history-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .history-subtitle {
+            font-size: 11px;
+            color: #9CA3AF;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .history-summary {
+            font-size: 10px;
+            color: white;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .history-performance {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-top: 3px;
+        }
+
+        .date-divider {
+            padding: 8px 16px;
+            font-size: 10px;
+            font-weight: 800;
+            color: #9CA3AF;
+            background: #F9F7F4;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .history-item {
+            padding: 10px 16px;
+            border-bottom: 1px solid #E5E7EB;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border-left: 3px solid;
+            padding-left: 13px;
+        }
+
+        .history-item.arrival {
+            border-left-color: #334036;
+        }
+
+        .history-item.departure {
+            border-left-color: #B56E45;
+        }
+
+        .history-property {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #171A1F;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .history-guest {
+            font-size: 10px;
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .history-time {
+            font-size: 9px;
+            color: #9CA3AF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .status-ontime {
+            background: #D1F5E1;
+            color: #065F46;
+        }
+
+        .status-late {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        /* Profile */
+        .profile-hero {
+            background: linear-gradient(140deg, #334036, #B56E45);
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+        }
+
+        .profile-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .profile-role {
+            font-size: 10px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .capability-chips {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .capability-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .profile-section {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            margin: 10px 16px;
+            padding: 11px 12px;
+        }
+
+        .profile-section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .profile-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 11px;
+        }
+
+        .profile-item-label {
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .profile-item-value {
+            color: #171A1F;
+            font-weight: 800;
+        }
+
+        .btn-signout {
+            background: white;
+            color: #DC2626;
+            border: 1px solid #DC2626;
+            padding: 9px 12px;
+            margin: 10px 16px;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: calc(100% - 32px);
+        }
+
+        .btn-signout:hover {
+            background: #FFF4F4;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 49%, 100% { opacity: 1; }
+            50%, 99% { opacity: 0.5; }
+        }
+
+        @keyframes pulse-card {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(181, 110, 69, 0.2); }
+            50% { box-shadow: 0 0 0 2px rgba(181, 110, 69, 0.2); }
+        }
+
+        /* Tab System */
+        .tab-header {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid #E5E7EB;
+            background: #F9F7F4;
+            padding: 0 16px;
+        }
+
+        .tab-item {
+            flex: 1;
+            padding: 10px 12px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6B7280;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-item.active {
+            color: #334036;
+            border-bottom-color: #334036;
+        }
+
+        /* Property Card (for flows) */
+        .property-card {
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 11px 12px;
+            margin-bottom: 8px;
+        }
+
+        .property-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .property-card-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .property-card-status {
+            display: inline-block;
+            background: #D1F5E1;
+            color: #065F46;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .property-card-detail {
+            font-size: 10px;
+            color: #6B7280;
+            margin: 3px 0;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>Check-In & Check-Out — V3.1</h1>
+        <p>Dual-Role Worker Surface · Refined typography, tightened spacing, unified shell · JWT: role=worker, worker_role=checkin_checkout</p>
+    </div>
+
+    <!-- Design Notes Bar - 4-Column Grid -->
+    <div class="notes-bar">
+        <div class="note-column">
+            <div class="note-label">V3.1 Alignment</div>
+            <div class="note-text">Screen labels: 11px Manrope 700 #6B7280 with 0.5px letter-spacing. Notes bar on dark #171A1F background in 4-column grid. Font weights increased to 800 in headers, badges, key titles. Spacing tightened by 1-2px throughout. Dark header borders softened to rgba(255,255,255,0.08).</div>
+        </div>
+        <div class="note-column">
+            <div class="note-label">Mixed-Role Coherence</div>
+            <div class="note-text">This surface combines check-in AND check-out into one coherent tool for workers handling both. Home screen shows both arrivals and departures in unified queue, clearly distinguished but not segregated. Check-in flows align with CHECK_IN_STAFF V3.1. Check-out flows parallel CHECK_OUT_STAFF patterns. One shell, two capabilities.</div>
+        </div>
+        <div class="note-column">
+            <div class="note-label">Visual Refinements</div>
+            <div class="note-text">Card shadows refined (subtle, grounded: 0 1px 2px). Left-accent 3px borders for all urgent/typed elements. Phone: 300x300x622px, border-radius 36px. Status bar: white background. Bottom nav: 56px height. Task type (arrival/departure) as clear first indicator, property dominant, guest and time follow hierarchy.</div>
+        </div>
+        <div class="note-column">
+            <div class="note-label">Typography & Colors</div>
+            <div class="note-text">Display/labels: Manrope 800. Body: Inter 400-500. Colors: deep-moss #334036, signal-copper #B56E45, midnight #171A1F. Badge badge-ready #D4E4D9/#334036 (moss), #F5EAE3/#B56E45 (copper). No new behavior invented — only visual/product alignment from V3.</div>
+        </div>
+    </div>
+
+    <!-- Screens Container -->
+    <div class="screens-container">
+
+        <!-- SCREEN 1: OPERATIONS HUB (Home) -->
+        <div style="position: relative;">
+            <div class="screen-label">SCREEN 1: HUB HOME</div>
+            <div class="phone">
+                <!-- App Header - Dark -->
+                <div class="app-header">
+                    <div class="avatar dual">👥</div>
+                    <div class="app-header-content">
+                        <div class="app-header-title">Domaniqo</div>
+                        <div class="app-header-subtitle">Check-In & Check-Out</div>
+                        <div class="dual-role-badge">Dual Role</div>
+                    </div>
+                </div>
+
+                <!-- Day Health Strip - 4 Column -->
+                <div class="day-health">
+                    <div class="health-item">
+                        <div class="health-label">Arrivals</div>
+                        <div class="health-count">10</div>
+                    </div>
+                    <div class="health-item in-progress">
+                        <div class="health-label">Departures</div>
+                        <div class="health-count">8</div>
+                    </div>
+                    <div class="health-item acknowledged">
+                        <div class="health-label">Completed</div>
+                        <div class="health-count">9</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-label">Overdue</div>
+                        <div class="health-count">2</div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="content">
+                    <!-- Arrivals Block -->
+                    <div class="ops-block arrivals">
+                        <div class="ops-block-title">Arrivals · Next 7 Days</div>
+                        <div class="ops-block-count">10</div>
+                        <div class="ops-block-countdown">Next in 2h 15m</div>
+                        <button class="ops-block-cta moss">Start Check-Ins →</button>
+                    </div>
+
+                    <!-- Departures Block -->
+                    <div class="ops-block departures">
+                        <div class="ops-block-title">Departures</div>
+                        <div class="ops-block-count">8</div>
+                        <div class="ops-block-overdue">2 Overdue</div>
+                        <button class="ops-block-cta copper">Process Check-Outs →</button>
+                    </div>
+
+                    <!-- Same-Day Turnarounds -->
+                    <div class="sameday-section">
+                        <div class="sameday-title">Same-Day Turnarounds</div>
+                        <div class="sameday-chain">
+                            <div class="sameday-property">Villa Orchid</div>
+                            <div class="sameday-flow">OUT 11:00 → CLEAN → IN 15:00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Navigation -->
+                <div class="bottom-nav">
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="#334036" stroke-width="2">
+                            <circle cx="12" cy="12" r="1"></circle>
+                        </svg>
+                        <div class="nav-label">Today</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Arrivals</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                        </svg>
+                        <div class="nav-label">Departures</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: COMBINED QUEUE (Tasks with Filtering) -->
+        <div style="position: relative;">
+            <div class="screen-label">SCREEN 2: COMBINED QUEUE</div>
+            <div class="phone">
+                <!-- App Header - Dark -->
+                <div class="app-header">
+                    <div class="avatar dual">👥</div>
+                    <div class="app-header-content">
+                        <div class="app-header-title">Tasks</div>
+                        <div class="app-header-subtitle">All · 12 Pending</div>
+                    </div>
+                </div>
+
+                <!-- Filter Strip -->
+                <div style="padding: 10px 16px; background: #F9F7F4; border-bottom: 1px solid #E5E7EB;">
+                    <div class="filter-strip">
+                        <div class="filter-pill active">All</div>
+                        <div class="filter-pill">Arrivals</div>
+                        <div class="filter-pill">Departures</div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="content">
+                    <!-- OVERDUE Departure (Red Border) -->
+                    <div class="task-card departure">
+                        <div class="task-header">
+                            <div class="task-badges">
+                                <span class="badge departure">DEPARTURE</span>
+                                <span class="urgency-pill pill-overdue">OVERDUE 23M</span>
+                            </div>
+                        </div>
+                        <div class="task-property">KPG Residence</div>
+                        <div class="task-guest">Krit Pongsak · Checkout 11:00</div>
+                        <div class="task-cta red">Resolve Now →</div>
+                    </div>
+
+                    <!-- IMMINENT Departure -->
+                    <div class="task-card departure">
+                        <div class="task-header">
+                            <div class="task-badges">
+                                <span class="badge departure">DEPARTURE</span>
+                                <span class="urgency-pill pill-imminent">IN 8 MIN</span>
+                            </div>
+                        </div>
+                        <div class="task-property">Emuna Villa</div>
+                        <div class="task-guest">Sara Levi · Checkout 10:15</div>
+                        <div class="task-cta copper">Start Check-Out →</div>
+                    </div>
+
+                    <!-- APPROACHING Arrival (Amber Border) -->
+                    <div class="task-card arrival">
+                        <div class="task-header">
+                            <div class="task-badges">
+                                <span class="badge arrival">ARRIVAL</span>
+                                <span class="urgency-pill pill-approaching">IN 1H 14M</span>
+                            </div>
+                        </div>
+                        <div class="task-property">Casa Norte</div>
+                        <div class="task-guest">Anna Müller · Check-in 11:30</div>
+                        <div class="task-cta">Prepare Check-In →</div>
+                    </div>
+
+                    <!-- Later Today Section -->
+                    <div class="section-header">Later Today</div>
+                    <div class="mini-card">
+                        <div class="mini-card-left">
+                            <div class="mini-card-property">Baan Siri 6</div>
+                            <span class="badge arrival" style="width: fit-content;">ARRIVAL</span>
+                        </div>
+                        <div style="font-size: 9px; color: #9CA3AF;">3:45 PM</div>
+                    </div>
+                    <div class="mini-card">
+                        <div class="mini-card-left">
+                            <div class="mini-card-property">The Shore</div>
+                            <span class="badge departure" style="width: fit-content;">DEPARTURE</span>
+                        </div>
+                        <div style="font-size: 9px; color: #9CA3AF;">4:30 PM</div>
+                    </div>
+                </div>
+
+                <!-- Bottom Navigation -->
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="1"></circle>
+                        </svg>
+                        <div class="nav-label">Today</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Arrivals</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                        </svg>
+                        <div class="nav-label">Departures</div>
+                    </div>
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="#334036" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: ACTIVE CHECK-OUT FLOW (Step 3/5) -->
+        <div style="position: relative;">
+            <div class="screen-label">SCREEN 3: ACTIVE CHECKOUT</div>
+            <div class="phone">
+                <!-- Flow Header - Dark -->
+                <div class="flow-header">
+                    <div class="flow-back">
+                        <span class="flow-back-icon">←</span>
+                        <div class="flow-back-content">
+                            <div class="flow-title">Check-Out Flow</div>
+                            <div class="flow-property">
+                                <span class="badge departure">DEPARTURE</span>
+                                <span>KPG Residence</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Tracker -->
+                <div class="step-tracker">
+                    <div class="step-dot done"></div>
+                    <div class="step-line done"></div>
+                    <div class="step-dot done"></div>
+                    <div class="step-line done"></div>
+                    <div class="step-dot current"></div>
+                    <div class="step-line"></div>
+                    <div class="step-dot"></div>
+                    <div class="step-label">STEP 3/5</div>
+                </div>
+
+                <!-- Property Bar -->
+                <div class="property-bar">
+                    <div class="property-bar-title">Report Issues</div>
+                    <div class="property-bar-subtitle">Flag damage or concerns</div>
+                </div>
+
+                <!-- Content -->
+                <div class="content" style="gap: 8px;">
+                    <div style="font-size: 10px; color: #6B7280; margin-bottom: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Category</div>
+                    <select style="width: 100%; padding: 8px; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 11px; margin-bottom: 8px;">
+                        <option>Select issue category...</option>
+                        <option>Damage</option>
+                        <option>Cleanliness</option>
+                        <option>Maintenance</option>
+                    </select>
+
+                    <div style="font-size: 10px; color: #6B7280; margin-bottom: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Severity</div>
+                    <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                        <button style="flex: 1; padding: 6px; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 10px; cursor: pointer; background: white;">Minor</button>
+                        <button style="flex: 1; padding: 6px; border: 1px solid #D97706; background: #FFFCF0; border-radius: 4px; font-size: 10px; cursor: pointer; color: #D97706; font-weight: 700;">Major</button>
+                        <button style="flex: 1; padding: 6px; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 10px; cursor: pointer; background: white;">Critical</button>
+                    </div>
+
+                    <div style="font-size: 10px; color: #6B7280; margin-bottom: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Description</div>
+                    <textarea style="width: 100%; padding: 8px; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 10px; height: 60px; resize: none; font-family: 'Inter', sans-serif;">Stain on left bedside table...</textarea>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flow-buttons">
+                    <button class="btn btn-ghost">← Back</button>
+                    <button class="btn btn-primary copper">Continue →</button>
+                </div>
+
+                <!-- Bottom Navigation (PERSISTS) -->
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="1"></circle>
+                        </svg>
+                        <div class="nav-label">Today</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Arrivals</div>
+                    </div>
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="#B56E45" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                        </svg>
+                        <div class="nav-label">Departures</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 4: ACTIVE CHECK-IN FLOW (Step 1/7) -->
+        <div style="position: relative;">
+            <div class="screen-label">SCREEN 4: ACTIVE CHECKIN</div>
+            <div class="phone">
+                <!-- Flow Header - Dark -->
+                <div class="flow-header">
+                    <div class="flow-back">
+                        <span class="flow-back-icon">←</span>
+                        <div class="flow-back-content">
+                            <div class="flow-title">Check-In Flow</div>
+                            <div class="flow-property">
+                                <span class="badge arrival">ARRIVAL</span>
+                                <span>Casa Norte</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Tracker -->
+                <div class="step-tracker">
+                    <div class="step-dot current"></div>
+                    <div class="step-line"></div>
+                    <div class="step-dot"></div>
+                    <div class="step-line"></div>
+                    <div class="step-dot"></div>
+                    <div class="step-line"></div>
+                    <div class="step-dot"></div>
+                    <div class="step-label">STEP 1/7</div>
+                </div>
+
+                <!-- Property Bar -->
+                <div class="property-bar">
+                    <div class="property-bar-title">Arrival Confirmation</div>
+                    <div class="property-bar-subtitle">Verify guest details and booking</div>
+                </div>
+
+                <!-- Content -->
+                <div class="content">
+                    <div class="property-card">
+                        <div class="property-card-header">
+                            <div class="property-card-name">Casa Norte</div>
+                            <div class="property-card-status">READY</div>
+                        </div>
+                        <div class="property-card-detail">Guest: Anna Müller</div>
+                        <div class="property-card-detail">Booking: 25 Mar - 28 Mar (3 nights)</div>
+                        <div class="property-card-detail" style="margin-top: 6px; font-weight: 700; font-size: 9px; color: #171A1F;">Settlement: 50% paid, 50% due at checkout</div>
+                    </div>
+
+                    <button class="btn btn-primary moss" style="width: 100%; margin-top: 8px;">Guest Has Arrived ✓</button>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flow-buttons">
+                    <button class="btn btn-ghost">← Back</button>
+                    <button class="btn btn-primary moss">Continue →</button>
+                </div>
+
+                <!-- Bottom Navigation (PERSISTS) -->
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="1"></circle>
+                        </svg>
+                        <div class="nav-label">Today</div>
+                    </div>
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="#334036" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Arrivals</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                        </svg>
+                        <div class="nav-label">Departures</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 5: HISTORY (Completed) -->
+        <div style="position: relative;">
+            <div class="screen-label">SCREEN 5: HISTORY</div>
+            <div class="phone">
+                <!-- History Header - Dark -->
+                <div class="history-header">
+                    <div class="history-title">History</div>
+                    <div class="history-subtitle">Today · 9 Completed</div>
+                    <div class="history-summary">5 check-ins · 4 check-outs completed</div>
+                    <div class="history-performance">Average turnaround: 22 min</div>
+                </div>
+
+                <!-- Tab Header -->
+                <div class="tab-header">
+                    <div class="tab-item active">Completed</div>
+                </div>
+
+                <!-- Content -->
+                <div class="content" style="gap: 0; padding: 0;">
+                    <div class="date-divider">TODAY — 27 MAR</div>
+
+                    <!-- History: Departure 1 -->
+                    <div class="history-item departure">
+                        <div class="history-property">
+                            <span class="badge departure">DEPARTURE</span>
+                            KPG Residence
+                        </div>
+                        <div class="history-guest">Krit Pongsak</div>
+                        <div class="history-time">
+                            <span>completed 11:23</span>
+                            <span class="status-badge status-late">+23 MIN LATE</span>
+                        </div>
+                    </div>
+
+                    <!-- History: Departure 2 -->
+                    <div class="history-item departure">
+                        <div class="history-property">
+                            <span class="badge departure">DEPARTURE</span>
+                            Emuna Villa
+                        </div>
+                        <div class="history-guest">Sara Levi</div>
+                        <div class="history-time">
+                            <span>completed 10:11</span>
+                            <span class="status-badge status-ontime">ON TIME</span>
+                        </div>
+                    </div>
+
+                    <!-- History: Arrival 1 -->
+                    <div class="history-item arrival">
+                        <div class="history-property">
+                            <span class="badge arrival">ARRIVAL</span>
+                            Casa Norte
+                        </div>
+                        <div class="history-guest">Anna Müller</div>
+                        <div class="history-time">
+                            <span>completed 11:38</span>
+                            <span class="status-badge status-ontime">ON TIME</span>
+                        </div>
+                    </div>
+
+                    <!-- History: Arrival 2 -->
+                    <div class="history-item arrival">
+                        <div class="history-property">
+                            <span class="badge arrival">ARRIVAL</span>
+                            Baan Siri 6
+                        </div>
+                        <div class="history-guest">Thomas Webb</div>
+                        <div class="history-time">
+                            <span>completed 13:07</span>
+                            <span class="status-badge status-late">+7 MIN LATE</span>
+                        </div>
+                    </div>
+
+                    <!-- History: Departure 3 -->
+                    <div class="history-item departure">
+                        <div class="history-property">
+                            <span class="badge departure">DEPARTURE</span>
+                            The Shore
+                        </div>
+                        <div class="history-guest">James Patterson</div>
+                        <div class="history-time">
+                            <span>completed 10:45</span>
+                            <span class="status-badge status-ontime">ON TIME</span>
+                        </div>
+                    </div>
+
+                    <!-- History: Arrival 3 -->
+                    <div class="history-item arrival">
+                        <div class="history-property">
+                            <span class="badge arrival">ARRIVAL</span>
+                            Orchid Gardens
+                        </div>
+                        <div class="history-guest">Yuki Tanaka</div>
+                        <div class="history-time">
+                            <span>completed 14:22</span>
+                            <span class="status-badge status-ontime">ON TIME</span>
+                        </div>
+                    </div>
+
+                    <!-- History: Departure 4 -->
+                    <div class="history-item departure">
+                        <div class="history-property">
+                            <span class="badge departure">DEPARTURE</span>
+                            Bougainvillea House
+                        </div>
+                        <div class="history-guest">Maria Sofia</div>
+                        <div class="history-time">
+                            <span>completed 09:30</span>
+                            <span class="status-badge status-ontime">ON TIME</span>
+                        </div>
+                    </div>
+
+                    <!-- History: Arrival 4 -->
+                    <div class="history-item arrival">
+                        <div class="history-property">
+                            <span class="badge arrival">ARRIVAL</span>
+                            Jade Sanctuary
+                        </div>
+                        <div class="history-guest">Marcus Chen</div>
+                        <div class="history-time">
+                            <span>completed 12:45</span>
+                            <span class="status-badge status-ontime">ON TIME</span>
+                        </div>
+                    </div>
+
+                    <!-- History: Arrival 5 -->
+                    <div class="history-item arrival">
+                        <div class="history-property">
+                            <span class="badge arrival">ARRIVAL</span>
+                            Sunset Pavilion
+                        </div>
+                        <div class="history-guest">Sophie Laurent</div>
+                        <div class="history-time">
+                            <span>completed 15:18</span>
+                            <span class="status-badge status-late">+18 MIN LATE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Navigation -->
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="1"></circle>
+                        </svg>
+                        <div class="nav-label">Today</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Arrivals</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                        </svg>
+                        <div class="nav-label">Departures</div>
+                    </div>
+                    <div class="nav-item active">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="#334036" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 6: PROFILE -->
+        <div style="position: relative;">
+            <div class="screen-label">SCREEN 6: PROFILE</div>
+            <div class="phone">
+                <!-- Profile Hero -->
+                <div class="profile-hero">
+                    <div class="profile-avatar">MG</div>
+                    <div class="profile-name">Maria Gonzalez</div>
+                    <div class="profile-role">Check-In & Check-Out Staff</div>
+                    <div class="capability-chips">
+                        <div class="capability-chip">Arrivals</div>
+                        <div class="capability-chip">Departures</div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="content" style="gap: 0;">
+                    <!-- Today's Stats -->
+                    <div class="profile-section">
+                        <div class="profile-section-title">Today's Performance</div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Check-Ins Completed</div>
+                            <div class="profile-item-value">5</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Check-Outs Completed</div>
+                            <div class="profile-item-value">4</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Average Time</div>
+                            <div class="profile-item-value">22 min</div>
+                        </div>
+                    </div>
+
+                    <!-- Assigned Properties -->
+                    <div class="profile-section">
+                        <div class="profile-section-title">Assigned Properties (5)</div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Casa Norte</div>
+                            <div style="font-size: 8px; color: #059669; font-weight: 800;">✓ ACTIVE</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Villa Orchid</div>
+                            <div style="font-size: 8px; color: #059669; font-weight: 800;">✓ ACTIVE</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">KPG Residence</div>
+                            <div style="font-size: 8px; color: #059669; font-weight: 800;">✓ ACTIVE</div>
+                        </div>
+                    </div>
+
+                    <!-- Preferences -->
+                    <div class="profile-section">
+                        <div class="profile-section-title">Preferences</div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Push notifications</div>
+                            <div style="width: 30px; height: 16px; background: #334036; border-radius: 8px; position: relative;">
+                                <div style="width: 14px; height: 14px; background: white; border-radius: 6px; position: absolute; top: 1px; right: 1px;"></div>
+                            </div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="profile-item-label">Sound alerts</div>
+                            <div style="width: 30px; height: 16px; background: #D1D5DB; border-radius: 8px; position: relative;">
+                                <div style="width: 14px; height: 14px; background: white; border-radius: 6px; position: absolute; top: 1px; left: 1px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sign Out Button -->
+                <button class="btn-signout">Sign Out</button>
+
+                <!-- Bottom Navigation -->
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="1"></circle>
+                        </svg>
+                        <div class="nav-label">Today</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Arrivals</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M3 21v-5h5"></path>
+                        </svg>
+                        <div class="nav-label">Departures</div>
+                    </div>
+                    <div class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                        <div class="nav-label">Tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

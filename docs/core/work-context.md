@@ -1,10 +1,10 @@
 ## Current Active Phase
 
-Phase 1053 — Guest Portal Thread View. Phases 841–1052 closed.
+Phase 1059 — Next (TBD). Phases 841–1058 closed.
 
 ## Last Closed Phase
 
-Phase 1052 — Host Reply Path (PROVEN 2026-04-03).
+Phase 1058 — Operational Audit Closure: PKA-Bridge Group B + Group C + Backend Authorization Hardening (CLOSED 2026-04-04).
 
 ## Current Objective
 
@@ -214,6 +214,7 @@ Phase 1050 — Guest Dossier Chat Tab                                           
 Phase 1051 — Operational Guest Inbox UI                                        ← SURFACED (2026-04-03)
 Phase 1052 — Host Reply Path                                                   ← PROVEN (2026-04-03)
 Phase 1053 — Guest Portal Thread View                                          ← BUILT + SURFACED (proof pending)
+Phase 1058 — PKA-Bridge Audit Closure + Backend Authorization Hardening         ← CLOSED (2026-04-04)
 ```
 
 ### Staging Deployment Truth (Proven 855A)
@@ -505,6 +506,6 @@ Phase 1053 — Guest Portal Thread View                                         
 
 ## Tests
 
-**8,144 passed, 18 failed (pre-existing mock stubs), 22 skipped. TypeScript 0 errors. Phases 981–1036 closed. Active: Phase 1037.**
+**8,138 passed, 52 failed (pre-existing mock stubs), 22 skipped. TypeScript 0 errors. Phases 981–1058 closed. Active: Phase 1059.**
 
-> The 18 failures are pre-existing mock mismatches in `test_wave7_manual_booking_takeover.py`, `test_guest_owner_auth.py`, `test_task_system_e2e.py`, `test_task_writer_contract.py`. None introduced by Phase 1037.
+> The 52 failures are pre-existing mock mismatches in wave7/wave5/wave3/task model/router/system/guest portal/reconciliation suites. None introduced by Phase 1058. Test contract files updated: `test_dlq_e2e.py`, `test_admin_audit_log_contract.py`, `test_admin_properties_e2e.py`.

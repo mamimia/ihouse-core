@@ -116,19 +116,19 @@ class TestGroupATenantSummary:
 
     def test_a1_returns_200(self):
         db = self._admin_db()
-        r = _run(get_tenant_summary(tenant_id=TENANT, client=db))
+        r = _run(get_tenant_summary(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200, f"Got {r.status_code}: {r.body}"
 
     def test_a2_summary_key_or_tenant_id_present(self):
         import json
         db = self._admin_db()
-        r = _run(get_tenant_summary(tenant_id=TENANT, client=db))
+        r = _run(get_tenant_summary(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         body = json.loads(r.body)
         assert "tenant_id" in body or "summary" in body or "total" in body or "active_bookings" in body
 
     def test_a3_empty_db_returns_200(self):
         db = self._admin_db([])
-        r = _run(get_tenant_summary(tenant_id=TENANT, client=db))
+        r = _run(get_tenant_summary(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200
 
 
@@ -140,18 +140,18 @@ class TestGroupBAdminMetrics:
 
     def test_b1_returns_200(self):
         db = _db()
-        r = _run(get_admin_metrics(tenant_id=TENANT, client=db))
+        r = _run(get_admin_metrics(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200
 
     def test_b2_response_is_dict(self):
         import json
         db = _db()
-        r = _run(get_admin_metrics(tenant_id=TENANT, client=db))
+        r = _run(get_admin_metrics(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert isinstance(json.loads(r.body), dict)
 
     def test_b3_empty_db_returns_200(self):
         db = _db([])
-        r = _run(get_admin_metrics(tenant_id=TENANT, client=db))
+        r = _run(get_admin_metrics(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200
 
 
@@ -163,19 +163,19 @@ class TestGroupCAdminDlq:
 
     def test_c1_returns_200(self):
         db = _db()
-        r = _run(get_admin_dlq(tenant_id=TENANT, client=db))
+        r = _run(get_admin_dlq(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200
 
     def test_c2_has_dlq_related_key(self):
         import json
         db = _db()
-        r = _run(get_admin_dlq(tenant_id=TENANT, client=db))
+        r = _run(get_admin_dlq(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         body = json.loads(r.body)
         assert isinstance(body, dict)
 
     def test_c3_empty_db_returns_200(self):
         db = _db([])
-        r = _run(get_admin_dlq(tenant_id=TENANT, client=db))
+        r = _run(get_admin_dlq(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200
 
 
@@ -187,18 +187,18 @@ class TestGroupDProviderHealth:
 
     def test_d1_returns_200(self):
         db = _db()
-        r = _run(get_provider_health(tenant_id=TENANT, client=db))
+        r = _run(get_provider_health(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200
 
     def test_d2_response_is_dict(self):
         import json
         db = _db()
-        r = _run(get_provider_health(tenant_id=TENANT, client=db))
+        r = _run(get_provider_health(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert isinstance(json.loads(r.body), dict)
 
     def test_d3_empty_db_returns_200(self):
         db = _db([])
-        r = _run(get_provider_health(tenant_id=TENANT, client=db))
+        r = _run(get_provider_health(identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200
 
 
@@ -210,17 +210,17 @@ class TestGroupEBookingTimeline:
 
     def test_e1_returns_200_or_404_for_unknown_booking(self):
         db = _db([])
-        r = _run(get_booking_timeline(booking_id=BOOKING_ID, tenant_id=TENANT, client=db))
+        r = _run(get_booking_timeline(booking_id=BOOKING_ID, identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code in (200, 404)
 
     def test_e2_valid_booking_returns_200(self):
         db = _db([{"booking_id": BOOKING_ID, "event_kind": "BOOKING_CREATED"}])
-        r = _run(get_booking_timeline(booking_id=BOOKING_ID, tenant_id=TENANT, client=db))
+        r = _run(get_booking_timeline(booking_id=BOOKING_ID, identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code == 200
 
     def test_e3_empty_booking_returns_200_or_404(self):
         db = _db([])
-        r = _run(get_booking_timeline(booking_id="ghost-id", tenant_id=TENANT, client=db))
+        r = _run(get_booking_timeline(booking_id="ghost-id", identity={"tenant_id": TENANT, "role": "admin"}, client=db))
         assert r.status_code in (200, 404)
 
 

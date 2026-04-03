@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Surface UI v3.1 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 2200px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #334036;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* ============ SCREEN 1: HERO & LANDING ============ */
+        .hero {
+            background: linear-gradient(135deg, #F5EFE6 0%, #334036 100%);
+            color: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .hero-nav {
+            height: 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hero-logo {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -0.3px;
+        }
+
+        .hero-hamburger {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .hero-hamburger span {
+            width: 100%;
+            height: 2px;
+            background: white;
+            border-radius: 1px;
+        }
+
+        .hero-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 32px 20px;
+            text-align: center;
+            gap: 16px;
+        }
+
+        .hero-headline {
+            font-family: 'Manrope', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.2;
+            color: white;
+            letter-spacing: -0.3px;
+        }
+
+        .hero-subtitle {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            background: #B56E45;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            width: 100%;
+            max-width: 240px;
+            transition: background 0.2s ease;
+        }
+
+        .cta-button:hover {
+            background: #A05A35;
+        }
+
+        .cta-button.outline {
+            background: transparent;
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .cta-button.outline:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .hero-trust {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px 16px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .trust-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .trust-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .trust-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.3;
+        }
+
+        .scroll-indicator {
+            text-align: center;
+            padding: 8px 0 0 0;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(3px); }
+        }
+
+        /* ============ SCREEN 2: HOW IT WORKS ============ */
+        .how-it-works-screen {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .how-header {
+            padding: 16px;
+            border-bottom: 1px solid #F0EEE9;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .how-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .how-body {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .step-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            background: #F9F7F4;
+            border-radius: 8px;
+            border-left: 3px solid #B56E45;
+        }
+
+        .step-number {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #B56E45;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .step-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .step-description {
+            font-size: 11px;
+            color: #6B7280;
+            line-height: 1.5;
+        }
+
+        /* ============ SCREEN 3: WHAT WE MANAGE ============ */
+        .services-screen {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .services-header {
+            padding: 16px;
+            border-bottom: 1px solid #F0EEE9;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .services-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .services-body {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .service-card {
+            padding: 12px;
+            background: #F9F7F4;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .service-icon {
+            font-size: 16px;
+        }
+
+        .service-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .service-description {
+            font-size: 11px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        /* ============ SCREEN 4: SUBMIT YOUR PROPERTY ============ */
+        .submit-screen {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .submit-header {
+            padding: 16px;
+            border-bottom: 1px solid #F0EEE9;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .submit-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .submit-body {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input {
+            padding: 10px 12px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+            background: #FFFFFF;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #334036;
+        }
+
+        .form-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .form-select {
+            padding: 10px 12px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+            background: #FFFFFF;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #334036;
+        }
+
+        /* ============ SCREEN 5: CONTACT FORM ============ */
+        .contact-screen {
+            background: white;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .contact-header {
+            padding: 16px;
+            border-bottom: 1px solid #F0EEE9;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .contact-body {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .contact-subtitle {
+            font-size: 12px;
+            color: #6B7280;
+            line-height: 1.5;
+            margin-bottom: 4px;
+        }
+
+        .footer-bar {
+            padding: 16px;
+            border-top: 1px solid #F0EEE9;
+            background: #FAFAF9;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: #B56E45;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: #A05A35;
+        }
+
+        .btn-secondary {
+            width: 100%;
+            background: white;
+            color: #171A1F;
+            border: 1px solid #E5E7EB;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #F9F7F4;
+            border-color: #D1D6DC;
+        }
+
+        .info-text {
+            font-size: 10px;
+            color: #9CA3AF;
+            line-height: 1.4;
+            text-align: center;
+        }
+
+        .section-content {
+            padding: 12px;
+            background: #F9F7F4;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #171A1F;
+            line-height: 1.5;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Public Surface — V3.1 Visual Direction</h1>
+            <p>Domaniqo Property Operations Management · Property Owner Entry Point (Learn → Submit → Manage)</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">V3.1 Product Truth Correction</div>
+                <div class="note-text">Reframed from guest marketplace to property management service for owners/operators. Focus: operational value, professional onboarding, property submission pathway.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Target Audience</div>
+                <div class="note-text">Property owners and operators seeking operational management help. Not a guest booking marketplace. NOT a listing platform. Domaniqo manages properties operationally AFTER bookings exist.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Key Messaging</div>
+                <div class="note-text">Professional operations management, 24/7 coordination, selective onboarding (we review properties), operational services (check-in, check-out, cleaning, maintenance), owner portal results.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Connected System</div>
+                <div class="note-text">PUBLIC → owner discovery & property submission entry. SUBMITTER → detailed property intake. Shared color palette (copper #B56E45, moss #334036), consistent typography (Manrope 800 headers, Inter 400 body).</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+
+            <!-- SCREEN 1: HERO LANDING -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="scroll-area hero">
+                        <div class="hero-nav">
+                            <div class="hero-logo">Domaniqo</div>
+                            <div class="hero-hamburger">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                        <div class="hero-body">
+                            <div class="hero-headline">Professional Property Operations Management</div>
+                            <div class="hero-subtitle">We handle check-in, check-out, cleaning, maintenance, and daily coordination. You manage your business.</div>
+                            <button class="cta-button">Submit Your Property</button>
+                            <div class="scroll-indicator">↓ Scroll</div>
+                        </div>
+                        <div class="hero-trust">
+                            <div class="trust-item">
+                                <div class="trust-value">850+</div>
+                                <div class="trust-label">Properties Managed</div>
+                            </div>
+                            <div class="trust-item">
+                                <div class="trust-value">99%</div>
+                                <div class="trust-label">Uptime</div>
+                            </div>
+                            <div class="trust-item">
+                                <div class="trust-value">24/7</div>
+                                <div class="trust-label">Coverage</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 1: Hero Landing</div>
+            </div>
+
+            <!-- SCREEN 2: HOW IT WORKS -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="scroll-area how-it-works-screen">
+                        <div class="how-header">
+                            <div class="how-title">How It Works</div>
+                        </div>
+                        <div class="how-body">
+                            <div class="step-item">
+                                <div class="step-number">Step 1</div>
+                                <div class="step-title">Submit Your Property</div>
+                                <div class="step-description">Tell us about your property, location, and management needs.</div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">Step 2</div>
+                                <div class="step-title">We Review & Assess</div>
+                                <div class="step-description">Our team evaluates fit and capability to manage effectively.</div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">Step 3</div>
+                                <div class="step-title">Onboarded & Managed</div>
+                                <div class="step-description">If accepted, we take over day-to-day operations and coordination.</div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">Step 4</div>
+                                <div class="step-title">Monitor & Optimize</div>
+                                <div class="step-description">Track performance in your owner portal. We continuously improve operations.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 2: How It Works</div>
+            </div>
+
+            <!-- SCREEN 3: WHAT WE MANAGE -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="scroll-area services-screen">
+                        <div class="services-header">
+                            <div class="services-title">Our Services</div>
+                        </div>
+                        <div class="services-body">
+                            <div class="service-card">
+                                <div class="service-icon">🔑</div>
+                                <div class="service-name">Check-In Coordination</div>
+                                <div class="service-description">Guest arrivals, key handoff, welcome orientation.</div>
+                            </div>
+                            <div class="service-card">
+                                <div class="service-icon">🧹</div>
+                                <div class="service-name">Cleaning & Setup</div>
+                                <div class="service-description">Post-checkout cleaning, inspection, turnover preparation.</div>
+                            </div>
+                            <div class="service-card">
+                                <div class="service-icon">🔧</div>
+                                <div class="service-name">Maintenance & Repairs</div>
+                                <div class="service-description">Emergency response, preventive maintenance, vendor coordination.</div>
+                            </div>
+                            <div class="service-card">
+                                <div class="service-icon">💬</div>
+                                <div class="service-name">Guest Communication</div>
+                                <div class="service-description">Support inquiries, issue resolution, satisfaction management.</div>
+                            </div>
+                            <div class="service-card">
+                                <div class="service-icon">📋</div>
+                                <div class="service-name">Daily Operations</div>
+                                <div class="service-description">Coordination, scheduling, reporting, performance tracking.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 3: What We Manage</div>
+            </div>
+
+            <!-- SCREEN 4: SUBMIT YOUR PROPERTY -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="scroll-area submit-screen">
+                        <div class="submit-header">
+                            <div class="submit-title">Submit Your Property</div>
+                        </div>
+                        <div class="submit-body">
+                            <div class="section-content" style="background: #FFFAED; border-left: 3px solid #B56E45; margin-bottom: 4px;">
+                                <div style="font-size: 11px; font-weight: 600; color: #92400e; margin-bottom: 3px;">Selective Onboarding</div>
+                                <div style="font-size: 10px; color: #92400e; line-height: 1.3;">We review all submissions. Not all properties are accepted, but those we manage receive premium service.</div>
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label">Property Type</div>
+                                <select class="form-select">
+                                    <option>Select property type</option>
+                                    <option>Villa</option>
+                                    <option>Apartment</option>
+                                    <option>House</option>
+                                    <option>Bungalow</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label">Location</div>
+                                <input type="text" class="form-input" placeholder="City, region, or area">
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label">Bedrooms</div>
+                                <input type="number" class="form-input" placeholder="Number of bedrooms" min="1">
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label">Brief Description</div>
+                                <input type="text" class="form-input" placeholder="Key features and amenities" style="height: 60px; padding: 10px 12px; vertical-align: top;">
+                            </div>
+                        </div>
+                        <div class="footer-bar">
+                            <button class="btn-primary">Continue to Full Submission</button>
+                            <div class="info-text">This leads to our detailed intake process.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 4: Submit Property</div>
+            </div>
+
+            <!-- SCREEN 5: CONTACT FORM -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+                    <div class="scroll-area contact-screen">
+                        <div class="contact-header">
+                            <div class="submit-title">Let's Talk First</div>
+                        </div>
+                        <div class="contact-body">
+                            <div class="contact-subtitle">Have questions before submitting? Our team is here to discuss your property management needs.</div>
+                            <div class="form-group">
+                                <div class="form-label">Full Name</div>
+                                <input type="text" class="form-input" placeholder="Your full name">
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label">Email Address</div>
+                                <input type="email" class="form-input" placeholder="you@example.com">
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label">Phone Number</div>
+                                <input type="tel" class="form-input" placeholder="+66 8 xxxx xxxx">
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label">Your Message</div>
+                                <input type="text" class="form-input" placeholder="Tell us about your property and concerns" style="height: 60px; padding: 10px 12px; vertical-align: top;">
+                            </div>
+                            <div class="section-content" style="background: #F0FDF4; border-left: 3px solid #16A34A;">
+                                <div style="font-size: 11px; font-weight: 600; color: #166534; margin-bottom: 4px;">What happens next?</div>
+                                <div style="font-size: 10px; color: #166534; line-height: 1.4;">We'll respond within 24 hours with information about our services and next steps.</div>
+                            </div>
+                        </div>
+                        <div class="footer-bar">
+                            <button class="btn-primary">Send Message</button>
+                            <div class="info-text">By contacting us, you agree to our Privacy Policy.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Screen 5: Contact / Learn More</div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

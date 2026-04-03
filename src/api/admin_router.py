@@ -33,7 +33,9 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth
+# Phase 973 audit fix (Sonia/06 — backend closure): admin_only_auth replaces jwt_auth.
+# All admin-namespace endpoints now enforce role=admin at the backend layer.
+from api.auth import admin_only_auth
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -200,9 +202,10 @@ def _get_booking_timeline(db: Any, tenant_id: str, booking_id: str) -> list:
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
 async def get_tenant_summary(
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     """
     Returns a real-time operational summary for the authenticated tenant.
 
@@ -260,9 +263,10 @@ async def get_tenant_summary(
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
 async def get_admin_metrics(
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     """
     Returns idempotency health metrics from DLQ and ordering buffer.
 
@@ -309,9 +313,10 @@ async def get_admin_metrics(
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
 async def get_admin_dlq(
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     """
     Returns DLQ pending count, replayed count, and rejection breakdown.
 
@@ -364,9 +369,10 @@ async def get_admin_dlq(
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
 async def get_provider_health(
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     """
     Returns the last successful ingest timestamp per OTA provider for this tenant.
 
@@ -417,9 +423,10 @@ async def get_provider_health(
 )
 async def get_booking_timeline(
     booking_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     """
     Returns the full ordered event history for a booking from event_log.
 
@@ -471,9 +478,10 @@ async def get_booking_timeline(
 )
 async def get_reconciliation(
     include_findings: bool = False,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     """
     Run the offline reconciliation detector and return a summary report.
 
@@ -644,9 +652,10 @@ async def get_audit_log(
     target_type: Optional[str] = None,
     target_id: Optional[str] = None,
     limit: int = 100,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     """
     GET /admin/audit-log
 
@@ -737,9 +746,10 @@ async def get_audit_log(
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
 async def get_tenant_integrations(
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     try:
         db = client if client is not None else _get_supabase_client()
         result = (
@@ -774,9 +784,10 @@ class IntegrationUpdateBody(BaseModel):
 async def update_tenant_integration(
     provider: str,
     payload: IntegrationUpdateBody,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
     client: Optional[Any] = None,
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]
     # Phase 951b: extended to include email sender identities
     _VALID_PROVIDERS = {
         # Messaging channels (Phase 842)
@@ -841,8 +852,9 @@ class IntegrationTestBody(BaseModel):
 async def test_tenant_integration(
     provider: str,
     payload: IntegrationTestBody,
-    tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(admin_only_auth),
 ) -> JSONResponse:
+    tenant_id = identity["tenant_id"]  # noqa: F841 — available for future audit use
     import httpx
     
     creds = payload.credentials

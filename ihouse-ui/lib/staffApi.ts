@@ -1,6 +1,7 @@
 /**
  * Phase 864 — Shared Staff API Utilities
  * Phase 865 — Tab-aware token reads via tokenStore (sessionStorage-first)
+ * Phase 973 audit fix (Talia/07) — 401 auto-logout added.
  *
  * Single source of truth for API helpers used by worker-facing ops surfaces:
  *   /ops/cleaner, /ops/maintenance, /ops/checkin, /ops/checkout
@@ -34,6 +35,18 @@ function getToken(): string | null {
     return getTabToken();
 }
 
+/**
+ * Phase 973 audit fix (Talia/07): Clear the tab-scoped token and redirect to login.
+ * Mirrors performClientLogout() in lib/api.ts, but targets sessionStorage (not localStorage)
+ * because worker sessions are tab-scoped. Admin localStorage is left untouched.
+ */
+function performStaffLogout(reason?: string): void {
+    if (typeof window === 'undefined') return;
+    try { sessionStorage.removeItem('ihouse_token'); } catch { /* ignore */ }
+    const url = '/login' + (reason ? `?reason=${encodeURIComponent(reason)}` : '');
+    window.location.href = url;
+}
+
 /** Authenticated fetch wrapper for staff API calls. */
 export async function apiFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
     const token = getToken();
@@ -55,6 +68,17 @@ export async function apiFetch<T = any>(path: string, init?: RequestInit): Promi
         ...init,
         headers,
     });
+
+    // Phase 973 audit fix (Talia/07): 401 = session expired or invalid token.
+    // Auto-logout the worker tab and redirect to /login with a reason parameter.
+    // 403 is intentionally NOT caught here — it means the worker IS authenticated
+    // but lacks access to a specific resource. 403 must surface as a UI error in
+    // the calling component, not destroy the session.
+    if (res.status === 401 && token) {
+        performStaffLogout(`staffapi_401_${path.replace(/\//g, '_')}`);
+        throw new Error('401');
+    }
+
     if (!res.ok) throw new Error(`${res.status}`);
     return res.json();
 }
@@ -62,4 +86,3 @@ export async function apiFetch<T = any>(path: string, init?: RequestInit): Promi
 /** Base URL for direct fetch calls (e.g. FormData uploads that skip apiFetch). */
 export { BASE as API_BASE };
 export { getToken };
-

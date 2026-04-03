@@ -212,6 +212,37 @@ async def create_problem_report(
         if priority == "urgent":
             _emit_urgent_sse_alert(tenant_id, report_id, property_id, category, description)
 
+        # Phase 973 audit fix (Claudia/10): Post-creation property status downgrade.
+        # If a property is currently 'ready', filing a new problem report should
+        # immediately downgrade it to 'ready_with_issues'. This prevents the property
+        # from showing as fully available when an active unresolved issue exists.
+        # Non-blocking: report creation succeeds even if this update fails.
+        try:
+            prop_res = (
+                db.table("properties")
+                .select("operational_status")
+                .eq("property_id", property_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+            current_status = (prop_res.data or [{}])[0].get("operational_status", "")
+            if current_status == "ready":
+                db.table("properties").update({
+                    "operational_status": "ready_with_issues",
+                }).eq("property_id", property_id).eq("tenant_id", tenant_id).execute()
+                report["_property_status_downgraded"] = True
+                logger.info(
+                    "create_problem_report: property %s downgraded ready→ready_with_issues "
+                    "(new open report %s)",
+                    property_id, report_id,
+                )
+        except Exception as _prop_exc:
+            logger.warning(
+                "create_problem_report: property status downgrade failed for %s: %s",
+                property_id, _prop_exc,
+            )
+
         return JSONResponse(status_code=201, content=report)
     except Exception as exc:
         logger.exception("create problem report error: %s", exc)

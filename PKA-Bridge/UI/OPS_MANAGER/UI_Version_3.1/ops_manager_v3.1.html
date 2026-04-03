@@ -1,0 +1,2062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ops Manager UI v3.1 – Refined Operational Depth</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 2200px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #334036;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Phone App Header */
+        .app-header {
+            height: 50px;
+            background: #171A1F;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .header-titles {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .header-subtitle {
+            font-size: 9.5px;
+            color: rgba(255,255,255,0.38);
+        }
+
+        .header-back {
+            width: 24px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #E5E7EB;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-action {
+            width: 24px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #E5E7EB;
+            font-size: 14px;
+        }
+
+        .app-header.alert-state {
+            background: #DC2626;
+        }
+
+        .alert-header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .live-badge {
+            background: #FEE2E2;
+            color: #DC2626;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .live-dot {
+            width: 4px;
+            height: 4px;
+            background: #DC2626;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        /* KPI Strip */
+        .kpi-strip {
+            background: #0F1115;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 10px;
+            flex-shrink: 0;
+            gap: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .kpi-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            color: #FFFFFF;
+            flex: 1;
+            text-align: center;
+        }
+
+        .kpi-val {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 13px;
+        }
+
+        .kpi-lbl {
+            font-size: 8px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #9CA3AF;
+        }
+
+        .kpi-divider {
+            width: 1px;
+            height: 16px;
+            background: rgba(255,255,255,0.08);
+            margin: 0 6px;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            height: 48px;
+            background: #171A1F;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: stretch;
+            justify-content: space-around;
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9CA3AF;
+            font-family: 'Manrope', sans-serif;
+            transition: color 0.2s;
+        }
+
+        .nav-item.active {
+            color: #FFFFFF;
+        }
+
+        .nav-icon {
+            font-size: 16px;
+        }
+
+        .nav-label {
+            font-size: 8px;
+            font-weight: 700;
+        }
+
+        /* Morning Briefing Card */
+        .bc {
+            background: linear-gradient(135deg, #0F1115, #1A2030);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.07);
+            padding: 10px 12px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .bc-date {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .bc-hr {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .bc-bar {
+            flex: 1;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .bc-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ADE80, #34D399);
+            border-radius: 2px;
+        }
+
+        .bc-pct {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #4ADE80;
+            flex-shrink: 0;
+        }
+
+        .bc-sum {
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 5px;
+        }
+
+        .bc-sum strong {
+            color: rgba(255,255,255,0.8);
+            font-weight: 600;
+        }
+
+        .bc-al {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 7px;
+        }
+
+        .bc-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #EF4444;
+            flex-shrink: 0;
+            animation: blink 0.8s ease-in-out infinite;
+        }
+
+        .bc-txt {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #FCA5A5;
+        }
+
+        /* Alert Cards */
+        .ac {
+            border-radius: 10px;
+            border: 1.5px solid;
+            border-left-width: 3px;
+            padding: 8px 10px 8px 11px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .ac-r {
+            background: #FFF4F4;
+            border-color: #FCA5A5;
+            border-left-color: #DC2626;
+            animation: pulse-r 1.2s ease-in-out infinite;
+        }
+
+        .ac-a {
+            background: #FFFCF0;
+            border-color: #FDE68A;
+            border-left-color: #F59E0B;
+        }
+
+        .ac-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .ac-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .acb-r {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .acb-a {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .ac-time {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8.5px;
+            font-weight: 700;
+        }
+
+        .act-r {
+            color: #DC2626;
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        .act-a {
+            color: #92400E;
+        }
+
+        .ac-prop {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 1px;
+        }
+
+        .ac-sub {
+            font-size: 9px;
+            color: #6B7280;
+            margin-bottom: 6px;
+        }
+
+        .ac-cta {
+            width: 100%;
+            height: 26px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .ac-cta-r {
+            background: #DC2626;
+        }
+
+        .ac-cta-a {
+            background: #F59E0B;
+            color: #fff;
+        }
+
+        /* Section Headers */
+        .sec {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 1px 4px;
+            flex-shrink: 0;
+        }
+
+        .sec-t {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8.5px;
+            font-weight: 800;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .sec-c {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 5px;
+            background: #F3F4F6;
+            color: #9CA3AF;
+        }
+
+        .sec-c-r {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        /* Detail Blocks */
+        .db {
+            background: #fff;
+            border-radius: 9px;
+            border: 1px solid #EEEFF2;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .db-hd {
+            padding: 6px 12px;
+            background: #FAFAFA;
+            border-bottom: 1px solid #F3F4F5;
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            font-weight: 800;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .db-r {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            border-bottom: 1px solid #F7F8F9;
+        }
+
+        .db-r:last-child {
+            border-bottom: none;
+        }
+
+        .db-k {
+            font-size: 9.5px;
+            color: #6B7280;
+        }
+
+        .db-v {
+            font-size: 10px;
+            font-weight: 600;
+            color: #374151;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .dv-r {
+            color: #DC2626;
+        }
+
+        .dv-a {
+            color: #92400E;
+        }
+
+        /* Stream Task Cards */
+        .stc {
+            background: #fff;
+            border-radius: 9px;
+            border: 1px solid #EEEFF2;
+            padding: 8px 10px 8px 12px;
+            border-left: 2.5px solid #D1D5DB;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .stc-r {
+            border-left-color: #DC2626;
+            background: #FFF4F4;
+        }
+
+        .stc-a {
+            border-left-color: #F59E0B;
+            background: #FFFCF0;
+        }
+
+        .stc-dn {
+            border-left-color: #334036;
+            background: #F9FBF9;
+        }
+
+        .stc-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .stc-p {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .stc-pill {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .stp-r {
+            background: #DC2626;
+            color: #fff;
+        }
+
+        .stp-a {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .stp-n {
+            background: #F3F4F6;
+            color: #9CA3AF;
+        }
+
+        .stp-dn {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .stp-b {
+            background: #EFF6FF;
+            color: #1D4ED8;
+        }
+
+        .stc-meta {
+            font-size: 9px;
+            color: #9CA3AF;
+            display: flex;
+            gap: 7px;
+            align-items: center;
+            margin-top: 2px;
+        }
+
+        .wchip {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            background: #F3F4F6;
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+
+        .wchip-on {
+            background: #E6EEE7;
+        }
+
+        .wcd {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .wcd-g {
+            background: #4ADE80;
+        }
+
+        .wcd-a {
+            background: #F59E0B;
+        }
+
+        .wcd-r {
+            background: #EF4444;
+        }
+
+        .wcd-n {
+            background: #D1D5DB;
+        }
+
+        .wcn {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 600;
+            color: #6B7280;
+        }
+
+        /* Intervention Buttons */
+        .int-lbl {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            font-weight: 800;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 2px 1px 5px;
+            flex-shrink: 0;
+        }
+
+        .int-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .io {
+            height: 35px;
+            border-radius: 8px;
+            border: none;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+
+        .io-dk {
+            background: #171A1F;
+            color: #fff;
+        }
+
+        .io-bl {
+            background: #1D4ED8;
+            color: #fff;
+        }
+
+        .io-am {
+            background: #F59E0B;
+            color: #fff;
+        }
+
+        .io-gn {
+            background: #16A34A;
+            color: #fff;
+        }
+
+        .io-gh {
+            background: transparent;
+            border: 1.5px solid #E5E7EB;
+            color: #374151;
+        }
+
+        .io-dn {
+            background: transparent;
+            border: 1.5px solid #FCA5A5;
+            color: #DC2626;
+        }
+
+        /* Turnover Chain */
+        .chain {
+            background: #F9F7F4;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .chain-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .cstep {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #E5E7EB;
+            font-size: 8px;
+        }
+
+        .cstep:last-child {
+            border-bottom: none;
+        }
+
+        .csi-num {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #E6EEE7;
+            color: #334036;
+            flex-shrink: 0;
+        }
+
+        .csi-num.done {
+            background: #DBEAFE;
+            color: #1D4ED8;
+        }
+
+        .csi-info {
+            flex: 1;
+        }
+
+        .csi-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .csi-time {
+            font-size: 8px;
+            color: #9CA3AF;
+        }
+
+        .csi-stat {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .csi-stat-dn {
+            background: #E6EEE7;
+            color: #334036;
+        }
+
+        .csi-stat-act {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .csi-stat-pnd {
+            background: #E5E7EB;
+            color: #6B7280;
+        }
+
+        /* Team Cards */
+        .tcard {
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #EEEFF2;
+            padding: 8px 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .tc-al {
+            background: #FFF8F8;
+            border-color: #FCA5A5;
+            border-left: 3px solid #DC2626;
+        }
+
+        .tc-wn {
+            background: #FFFDF5;
+            border-color: #FDE68A;
+            border-left: 3px solid #F59E0B;
+        }
+
+        .tc-ok {
+            border-left: 3px solid transparent;
+        }
+
+        .tc-av {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            color: #fff;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .tc-ring {
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+        }
+
+        .ring-g {
+            border-color: #4ADE80;
+        }
+
+        .ring-a {
+            border-color: #F59E0B;
+        }
+
+        .ring-r {
+            border-color: #EF4444;
+        }
+
+        .tc-inf {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tc-nm {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .tc-rl {
+            font-size: 8.5px;
+            color: #9CA3AF;
+            margin-top: 1px;
+        }
+
+        .tc-cu {
+            font-size: 9px;
+            color: #6B7280;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tc-rt {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .tc-ld {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #171A1F;
+            line-height: 1;
+        }
+
+        .tc-ll {
+            font-size: 7.5px;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* Load Bar */
+        .lb-wrap {
+            background: #0F1115;
+            padding: 7px 13px;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .lb-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .lb-lbl {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.35);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .lb-val {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.55);
+        }
+
+        .lb {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .lb-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .lbf-r {
+            background: #EF4444;
+        }
+
+        .lbf-a {
+            background: #F59E0B;
+        }
+
+        .lbf-g {
+            background: #4ADE80;
+        }
+
+        /* Cockpit KPI Grid */
+        .ck-kpi {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .ck-kv {
+            font-family: 'Manrope', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.1;
+        }
+
+        .ck-kl {
+            font-size: 7.5px;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 2px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+        }
+
+        /* Cockpit Stream Rows */
+        .ck-sr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .ck-sr:last-child {
+            border-bottom: none;
+        }
+
+        .ck-sr-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #E5E7EB;
+        }
+
+        .ck-pills {
+            display: flex;
+            gap: 4px;
+        }
+
+        .ck-pill {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .ckp-g {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ADE80;
+        }
+
+        .ckp-a {
+            background: rgba(245, 158, 11, 0.15);
+            color: #F59E0B;
+        }
+
+        .ckp-r {
+            background: rgba(239, 68, 68, 0.15);
+            color: #EF4444;
+        }
+
+        .ckp-n {
+            background: rgba(255, 255, 255, 0.07);
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Cockpit Scroll */
+        .scroll-area.ck-scroll {
+            background: #111827;
+        }
+
+        .ck-hdr {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8.5px;
+            font-weight: 800;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 8px 10px 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .ck-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            padding: 0 10px 8px;
+            flex-shrink: 0;
+        }
+
+        .ck-ar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
+            margin-bottom: 4px;
+            flex-shrink: 0;
+        }
+
+        .ck-ar-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #EF4444;
+            flex-shrink: 0;
+            animation: blink 0.8s ease-in-out infinite;
+        }
+
+        .ck-ar-txt {
+            font-size: 9px;
+            color: #E5E7EB;
+            flex: 1;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+
+        @keyframes pulse-r {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+            50% { box-shadow: 0 0 0 4px rgba(220,38,38,0.12); }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Ops Manager — V3.1 Refined Operational Depth</h1>
+            <p>Domaniqo Property Management · Tightened System Design</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">Role Personality</div>
+                <div class="note-text">Command center. Field supervision. Strategic coordination, not task execution. Sees everything, commands strategically. V3.1: Tighter visual language, reduced board feeling, more system-like intervention chains.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">V3.1 Refinements</div>
+                <div class="note-text">Tighter CSS density matching reference prototype. Sequential numbering in intervention chains. More data-dense cards with tighter padding. Stream tasks show SLA countdown. Team cards show load bar and status ring. Cockpit more analytics-focused with KPI grid.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Key Patterns</div>
+                <div class="note-text">bc: morning briefing. ac/ac-r/ac-a: alert cards. sc: stream cards. stc/stc-r/stc-a/stc-dn: stream task cards. db/db-hd/db-r: detail blocks. chain/cstep/csi: turnover chain. tcard/tc-al/tc-wn: team cards. ck-/ck-kpi/ck-kv/ck-kl/ck-sr/ck-pills: cockpit.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">V3.1 Tightened</div>
+                <div class="note-text">Closer to reference prototype CSS density, tighter card patterns, more system-like drill-down, reduced board feeling, canonical page structure aligned. Touch targets 44pt. Dark theme where appropriate. Phone-first. Cross-domain coherence maintained.</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+            <!-- SCREEN 1: HUB (HOME) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Domaniqo</div>
+                                <div class="header-subtitle">Ops Manager</div>
+                            </div>
+                        </div>
+                        <button class="header-action">⚙️</button>
+                    </div>
+
+                    <div class="kpi-strip">
+                        <div class="kpi-item">
+                            <div class="kpi-val">24</div>
+                            <div class="kpi-lbl">TOTAL</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">18</div>
+                            <div class="kpi-lbl">DONE</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">4</div>
+                            <div class="kpi-lbl">AT RISK</div>
+                        </div>
+                        <div class="kpi-divider"></div>
+                        <div class="kpi-item">
+                            <div class="kpi-val">2</div>
+                            <div class="kpi-lbl">OVERDUE</div>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <!-- Morning Briefing (bc pattern) -->
+                        <div class="bc">
+                            <div class="bc-date">Thursday, Mar 14</div>
+                            <div class="bc-hr">
+                                <div class="bc-bar"><div class="bc-fill" style="width: 62%;"></div></div>
+                                <div class="bc-pct">62%</div>
+                            </div>
+                            <div class="bc-sum">Day Progress: <strong>18 / 24 completed</strong></div>
+                            <div class="bc-al">
+                                <div class="bc-dot"></div>
+                                <div class="bc-txt">2 Active Alerts</div>
+                            </div>
+                        </div>
+
+                        <!-- Section Header -->
+                        <div class="sec">
+                            <div class="sec-t">Active Alerts</div>
+                            <div class="sec-c sec-c-r">2 Urgent</div>
+                        </div>
+
+                        <!-- Alert Cards (ac pattern) -->
+                        <div class="ac ac-r">
+                            <div class="ac-top">
+                                <div class="ac-badge acb-r">LIVE</div>
+                                <span class="act-r" style="font-weight: 700;">●</span>
+                            </div>
+                            <div class="ac-prop">Villa Orchid Residence</div>
+                            <div class="ac-sub">Guest arriving in 45 min</div>
+                            <div class="ac-cta ac-cta-r">View Intervention</div>
+                        </div>
+
+                        <div class="ac ac-a">
+                            <div class="ac-top">
+                                <div class="ac-badge acb-a">APPROACHING</div>
+                            </div>
+                            <div class="ac-prop">Beachfront Bungalow</div>
+                            <div class="ac-sub">Check-in in 2 hours</div>
+                            <div class="ac-cta ac-cta-a">View Details</div>
+                        </div>
+
+                        <!-- Section Header -->
+                        <div class="sec" style="margin-top: 8px;">
+                            <div class="sec-t">Operations Stream</div>
+                        </div>
+
+                        <!-- Stream Task Cards (stc pattern) -->
+                        <div class="stc stc-dn">
+                            <div class="stc-top">
+                                <div class="stc-p">Cleaning</div>
+                                <div class="stc-pill stp-dn">ACTIVE</div>
+                            </div>
+                            <div class="stc-meta">
+                                <div class="wchip wchip-on">
+                                    <span style="width: 4px; height: 4px; border-radius: 50%; background: #4ADE80;"></span>
+                                    <span class="wcn">Maria J.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stc stc-a">
+                            <div class="stc-top">
+                                <div class="stc-p">Check-In</div>
+                                <div class="stc-pill stp-a">PENDING</div>
+                            </div>
+                            <div class="stc-meta">
+                                <div class="wchip">
+                                    <span style="width: 4px; height: 4px; border-radius: 50%; background: #D1D5DB;"></span>
+                                    <span class="wcn">Ramon S.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stc stc-dn">
+                            <div class="stc-top">
+                                <div class="stc-p">Maintenance</div>
+                                <div class="stc-pill stp-dn">ACTIVE</div>
+                            </div>
+                            <div class="stc-meta">
+                                <div class="wchip wchip-on">
+                                    <span style="width: 4px; height: 4px; border-radius: 50%; background: #4ADE80;"></span>
+                                    <span class="wcn">Niran K.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item active">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">1. Hub (Home)</div>
+            </div>
+
+            <!-- SCREEN 2: ALERT DETAIL (INTERVENTION CHAIN) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header alert-state">
+                        <button class="header-back">←</button>
+                        <div class="header-titles">
+                            <div class="alert-header-title">Alert Detail</div>
+                        </div>
+                        <div class="live-badge">
+                            <div class="live-dot"></div>
+                            <span>LIVE</span>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <!-- Alert Header -->
+                        <div style="background: #DC2626; color: white; padding: 10px; border-radius: 10px; margin-bottom: 8px; flex-shrink: 0;">
+                            <div style="font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 12px; margin-bottom: 2px;">Guest Arrival Blocked</div>
+                            <div style="font-size: 10px; color: rgba(255,255,255,0.9);">SLA Breach in 45 minutes</div>
+                        </div>
+
+                        <!-- Detail Blocks -->
+                        <div class="db" style="margin-bottom: 8px;">
+                            <div class="db-hd">Property</div>
+                            <div class="db-r">
+                                <span class="db-k">Property</span>
+                                <span class="db-v">Villa Orchid Residence</span>
+                            </div>
+                            <div class="db-r">
+                                <span class="db-k">Address</span>
+                                <span class="db-v">Beachfront, District 1</span>
+                            </div>
+                            <div class="db-r">
+                                <span class="db-k">Type</span>
+                                <span class="db-v">Villa</span>
+                            </div>
+                        </div>
+
+                        <div class="db" style="margin-bottom: 8px;">
+                            <div class="db-hd">Guest Impact</div>
+                            <div class="db-r">
+                                <span class="db-k">Guest</span>
+                                <span class="db-v">Charles Thompson</span>
+                            </div>
+                            <div class="db-r">
+                                <span class="db-k">Check-In</span>
+                                <span class="db-v">10:30 AM</span>
+                            </div>
+                            <div class="db-r">
+                                <span class="db-k">Current Time</span>
+                                <span class="db-v">9:44 AM</span>
+                            </div>
+                            <div class="db-r">
+                                <span class="db-k">SLA Breach In</span>
+                                <span class="db-v dv-r">45 minutes</span>
+                            </div>
+                        </div>
+
+                        <!-- Intervention Chain (numbered) -->
+                        <div class="int-lbl" style="padding: 0 0 6px;">Intervention Chain</div>
+
+                        <div style="background: rgba(255,255,255,0.08); padding: 8px; border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 800; background: #334036; color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">1</div>
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #E5E7EB;">Reassign to Available Cleaner</div>
+                            </div>
+                            <button class="io io-dk" style="width: 100%;">Reassign Now</button>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.08); padding: 8px; border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 800; background: #1D4ED8; color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">2</div>
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #E5E7EB;">Notify Guest of Delay</div>
+                            </div>
+                            <button class="io io-bl" style="width: 100%;">Send Notification</button>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.08); padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 800; background: #DC2626; color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">3</div>
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #E5E7EB;">Escalate to Admin</div>
+                            </div>
+                            <button class="io io-dn" style="width: 100%;">Escalate Now</button>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">2. Alert Detail (Sequential Intervention)</div>
+            </div>
+
+            <!-- SCREEN 3: STREAM DRILL-DOWN (CLEANING) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <button class="header-back">←</button>
+                        <div class="header-titles">
+                            <div class="header-title">Cleaning Stream</div>
+                        </div>
+                    </div>
+
+                    <div style="background: #0F1115; padding: 8px 10px; display: flex; gap: 4px; flex-shrink: 0; overflow-x: auto;">
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 8px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: #334036; color: #FFFFFF; cursor: pointer;">All</div>
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 8px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.08); color: #9CA3AF; cursor: pointer;">Pending</div>
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 8px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.08); color: #9CA3AF; cursor: pointer;">Active</div>
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 8px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.08); color: #9CA3AF; cursor: pointer;">Done</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <!-- Stream Task Cards with SLA (stc pattern) -->
+                        <div class="stc stc-dn">
+                            <div class="stc-top">
+                                <div class="stc-p">Beachfront Bungalow</div>
+                                <div class="stc-pill stp-dn">ACTIVE</div>
+                            </div>
+                            <div class="stc-meta">
+                                <div class="wchip wchip-on">
+                                    <span class="wcd wcd-g"></span>
+                                    <span class="wcn">Maria J.</span>
+                                </div>
+                                <span style="font-size: 8px; color: #9CA3AF;">SLA in 1h 20m</span>
+                            </div>
+                        </div>
+
+                        <div class="stc stc-dn">
+                            <div class="stc-top">
+                                <div class="stc-p">Oceanview Apartment</div>
+                                <div class="stc-pill stp-dn">ACTIVE</div>
+                            </div>
+                            <div class="stc-meta">
+                                <div class="wchip wchip-on">
+                                    <span class="wcd wcd-g"></span>
+                                    <span class="wcn">Ravi K.</span>
+                                </div>
+                                <span style="font-size: 8px; color: #9CA3AF;">SLA in 2h 45m</span>
+                            </div>
+                        </div>
+
+                        <div class="stc stc-r">
+                            <div class="stc-top">
+                                <div class="stc-p">Villa Orchid Residence</div>
+                                <div class="stc-pill stp-r">BLOCKED</div>
+                            </div>
+                            <div class="stc-meta">
+                                <div class="wchip">
+                                    <span class="wcd wcd-n"></span>
+                                    <span class="wcn">Maria J.</span>
+                                </div>
+                                <span style="font-size: 8px; color: #DC2626; font-weight: 600;">⚠ Waiting checkout</span>
+                            </div>
+                        </div>
+
+                        <div class="stc stc-dn">
+                            <div class="stc-top">
+                                <div class="stc-p">Harbor Townhouse</div>
+                                <div class="stc-pill stp-b">DONE</div>
+                            </div>
+                            <div class="stc-meta">
+                                <div class="wchip wchip-on">
+                                    <span class="wcd wcd-g"></span>
+                                    <span class="wcn">Somchai K.</span>
+                                </div>
+                                <span style="font-size: 8px; color: #10B981; font-weight: 600;">✓ 9:32 AM</span>
+                            </div>
+                        </div>
+
+                        <div class="stc stc-dn">
+                            <div class="stc-top">
+                                <div class="stc-p">Palm Grove Villa</div>
+                                <div class="stc-pill stp-a">PENDING</div>
+                            </div>
+                            <div class="stc-meta">
+                                <div class="wchip">
+                                    <span class="wcd wcd-n"></span>
+                                    <span class="wcn">Thuy H.</span>
+                                </div>
+                                <span style="font-size: 8px; color: #9CA3AF;">Starts after checkout</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">3. Stream Drill-Down (SLA Countdown)</div>
+            </div>
+
+            <!-- SCREEN 4: PROPERTY CONTEXT (TURNOVER CHAIN) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <button class="header-back">←</button>
+                        <div class="header-titles">
+                            <div class="header-title">Property</div>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <!-- Property Header -->
+                        <div style="background: linear-gradient(135deg, #0F1115, #1A2030); border-radius: 10px; border: 1px solid rgba(255,255,255,0.07); padding: 10px 12px; margin-bottom: 8px; flex-shrink: 0;">
+                            <div style="font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 4px;">Villa Orchid Residence</div>
+                            <div style="font-family: 'Manrope', sans-serif; font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: #B56E45; color: #fff; display: inline-block; text-transform: uppercase;">Villa</div>
+                        </div>
+
+                        <!-- Timeline -->
+                        <div class="db" style="margin-bottom: 8px;">
+                            <div class="db-hd">Today's Timeline</div>
+                            <div style="padding: 8px 0;">
+                                <div class="cstep">
+                                    <div class="csi-num done">✓</div>
+                                    <div class="csi-info">
+                                        <div class="csi-name">Check-Out</div>
+                                        <div class="csi-time">11:00 AM • James Mitchell</div>
+                                    </div>
+                                    <div class="csi-stat csi-stat-dn">DONE</div>
+                                </div>
+                                <div class="cstep">
+                                    <div class="csi-num csi-stat-act"></div>
+                                    <div class="csi-info">
+                                        <div class="csi-name">Cleaning</div>
+                                        <div class="csi-time">11:30 AM • Maria J.</div>
+                                    </div>
+                                    <div class="csi-stat csi-stat-act">ACTIVE</div>
+                                </div>
+                                <div class="cstep">
+                                    <div class="csi-num csi-stat-pnd"></div>
+                                    <div class="csi-info">
+                                        <div class="csi-name">Inspection</div>
+                                        <div class="csi-time">14:00 PM • Ops Team</div>
+                                    </div>
+                                    <div class="csi-stat csi-stat-pnd">PENDING</div>
+                                </div>
+                                <div class="cstep">
+                                    <div class="csi-num csi-stat-pnd"></div>
+                                    <div class="csi-info">
+                                        <div class="csi-name">Ready for Guest</div>
+                                        <div class="csi-time">14:30 PM</div>
+                                    </div>
+                                    <div class="csi-stat csi-stat-pnd">PENDING</div>
+                                </div>
+                                <div class="cstep" style="border-bottom: none;">
+                                    <div class="csi-num csi-stat-pnd"></div>
+                                    <div class="csi-info">
+                                        <div class="csi-name">Check-In</div>
+                                        <div class="csi-time">15:00 PM • Charles Thompson</div>
+                                    </div>
+                                    <div class="csi-stat csi-stat-pnd">PENDING</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Turnover Chain -->
+                        <div class="chain">
+                            <div class="chain-title">Turnover Chain (5 Steps)</div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 2px; font-size: 7px;">
+                                <div style="flex: 1; text-align: center;">
+                                    <div style="width: 16px; height: 16px; border-radius: 50%; background: #4ADE80; margin: 0 auto 2px; display: flex; align-items: center; justify-content: center; font-size: 10px;">✓</div>
+                                    <div style="color: #9CA3AF; font-family: 'Manrope', sans-serif; font-weight: 600;">Out</div>
+                                </div>
+                                <div style="flex: 0 0 12px; height: 1px; background: #E5E7EB;"></div>
+                                <div style="flex: 1; text-align: center;">
+                                    <div style="width: 16px; height: 16px; border-radius: 50%; background: #F59E0B; margin: 0 auto 2px;"></div>
+                                    <div style="color: #9CA3AF; font-family: 'Manrope', sans-serif; font-weight: 600;">Clean</div>
+                                </div>
+                                <div style="flex: 0 0 12px; height: 1px; background: #E5E7EB;"></div>
+                                <div style="flex: 1; text-align: center;">
+                                    <div style="width: 16px; height: 16px; border-radius: 50%; background: #E5E7EB; margin: 0 auto 2px;"></div>
+                                    <div style="color: #9CA3AF; font-family: 'Manrope', sans-serif; font-weight: 600;">Inspect</div>
+                                </div>
+                                <div style="flex: 0 0 12px; height: 1px; background: #E5E7EB;"></div>
+                                <div style="flex: 1; text-align: center;">
+                                    <div style="width: 16px; height: 16px; border-radius: 50%; background: #E5E7EB; margin: 0 auto 2px;"></div>
+                                    <div style="color: #9CA3AF; font-family: 'Manrope', sans-serif; font-weight: 600;">Ready</div>
+                                </div>
+                                <div style="flex: 0 0 12px; height: 1px; background: #E5E7EB;"></div>
+                                <div style="flex: 1; text-align: center;">
+                                    <div style="width: 16px; height: 16px; border-radius: 50%; background: #E5E7EB; margin: 0 auto 2px;"></div>
+                                    <div style="color: #9CA3AF; font-family: 'Manrope', sans-serif; font-weight: 600;">In</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Property Details -->
+                        <div class="db">
+                            <div class="db-hd">Property Details</div>
+                            <div class="db-r">
+                                <span class="db-k">Rooms</span>
+                                <span class="db-v">4</span>
+                            </div>
+                            <div class="db-r">
+                                <span class="db-k">Bathrooms</span>
+                                <span class="db-v">2</span>
+                            </div>
+                            <div class="db-r">
+                                <span class="db-k">Max Guests</span>
+                                <span class="db-v">8</span>
+                            </div>
+                            <div class="db-r">
+                                <span class="db-k">Issues</span>
+                                <span class="db-v">1 Active</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">4. Property Context (Turnover Chain)</div>
+            </div>
+
+            <!-- SCREEN 5: TEAM STATUS (LOAD BARS) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Team Overview</div>
+                                <div class="header-subtitle">12 Active</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #0F1115; padding: 8px 10px; display: flex; gap: 4px; flex-shrink: 0; overflow-x: auto;">
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 8px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: #334036; color: #FFFFFF; cursor: pointer;">All</div>
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 8px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.08); color: #9CA3AF; cursor: pointer;">Active</div>
+                        <div style="font-family: 'Manrope', sans-serif; font-size: 8px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.08); color: #9CA3AF; cursor: pointer;">Alert</div>
+                    </div>
+
+                    <div class="scroll-area">
+                        <!-- Team Cards (tcard pattern) -->
+                        <div class="tcard tc-ok">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #E6EEE7; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 800; color: #334036; flex-shrink: 0; border: 2px solid #4ADE80;">MJ</div>
+                            <div class="tc-inf">
+                                <div class="tc-nm">Maria J.</div>
+                                <div class="tc-rl">Cleaner</div>
+                                <div class="tc-cu">Beachfront • 3/5 rooms</div>
+                            </div>
+                            <div class="tc-rt">
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #171A1F;">4/5</div>
+                                <div style="font-size: 7.5px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.04em;">Load</div>
+                            </div>
+                        </div>
+
+                        <div class="tcard tc-ok">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #E6EEE7; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 800; color: #334036; flex-shrink: 0; border: 2px solid #4ADE80;">RK</div>
+                            <div class="tc-inf">
+                                <div class="tc-nm">Ravi K.</div>
+                                <div class="tc-rl">Cleaner</div>
+                                <div class="tc-cu">Oceanview • 2/3 rooms</div>
+                            </div>
+                            <div class="tc-rt">
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #171A1F;">3/5</div>
+                                <div style="font-size: 7.5px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.04em;">Load</div>
+                            </div>
+                        </div>
+
+                        <div class="tcard tc-ok">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #EFF6FF; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 800; color: #1D4ED8; flex-shrink: 0; border: 2px solid #F59E0B;">RS</div>
+                            <div class="tc-inf">
+                                <div class="tc-nm">Ramon S.</div>
+                                <div class="tc-rl">Check-In</div>
+                                <div class="tc-cu">On lunch break</div>
+                            </div>
+                            <div class="tc-rt">
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #171A1F;">2/3</div>
+                                <div style="font-size: 7.5px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.04em;">Load</div>
+                            </div>
+                        </div>
+
+                        <div class="tcard tc-ok">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #FEFEF9; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 800; color: #92400E; flex-shrink: 0; border: 2px solid #4ADE80;">NK</div>
+                            <div class="tc-inf">
+                                <div class="tc-nm">Niran K.</div>
+                                <div class="tc-rl">Maintenance</div>
+                                <div class="tc-cu">Villa Orchid • AC repair</div>
+                            </div>
+                            <div class="tc-rt">
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #171A1F;">2/2</div>
+                                <div style="font-size: 7.5px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.04em;">Load</div>
+                            </div>
+                        </div>
+
+                        <div class="tcard tc-al">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #F3F4F6; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 800; color: #6B7280; flex-shrink: 0; border: 2px solid #EF4444;">SK</div>
+                            <div class="tc-inf">
+                                <div class="tc-nm">Somchai K.</div>
+                                <div class="tc-rl">Cleaner</div>
+                                <div class="tc-cu" style="color: #DC2626; font-weight: 600;">Offline • 2 tasks at risk</div>
+                            </div>
+                            <div class="tc-rt">
+                                <div style="font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; color: #DC2626;">Alert</div>
+                                <div style="font-size: 7.5px; color: #DC2626; text-transform: uppercase; letter-spacing: 0.04em;">SLA Risk</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">5. Team Status (Load & SLA Indicators)</div>
+            </div>
+
+            <!-- SCREEN 6: COCKPIT (ANALYTICS) -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="status-bar">
+                        <span>9:44</span>
+                        <div class="status-right">
+                            <span>📶</span>
+                            <span>📡</span>
+                            <span>🔋</span>
+                        </div>
+                    </div>
+
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-titles">
+                                <div class="header-title">Cockpit</div>
+                                <div class="header-subtitle">Operations Dashboard</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="scroll-area ck-scroll">
+                        <!-- KPI Grid (ck pattern) -->
+                        <div class="ck-hdr">Key Performance Indicators</div>
+                        <div class="ck-grid">
+                            <div class="ck-kpi">
+                                <div class="ck-kv">87%</div>
+                                <div class="ck-kl">Occupancy</div>
+                            </div>
+                            <div class="ck-kpi">
+                                <div class="ck-kv">94%</div>
+                                <div class="ck-kl">SLA Compliance</div>
+                            </div>
+                            <div class="ck-kpi">
+                                <div class="ck-kv">4</div>
+                                <div class="ck-kl">Active Turnovers</div>
+                            </div>
+                            <div class="ck-kpi">
+                                <div class="ck-kv">2.1h</div>
+                                <div class="ck-kl">Mean Time</div>
+                            </div>
+                        </div>
+
+                        <!-- Stream Status (ck-sr pattern) -->
+                        <div class="ck-hdr" style="margin-top: 12px;">Stream Status</div>
+                        <div style="padding: 0 10px 8px;">
+                            <div class="ck-sr">
+                                <div class="ck-sr-label">🧹 Cleaning</div>
+                                <div class="ck-pills">
+                                    <div class="ck-pill ckp-g">8 Done</div>
+                                    <div class="ck-pill ckp-n">2 Active</div>
+                                    <div class="ck-pill ckp-r">1 Blocked</div>
+                                </div>
+                            </div>
+                            <div class="ck-sr">
+                                <div class="ck-sr-label">📋 Check-In</div>
+                                <div class="ck-pills">
+                                    <div class="ck-pill ckp-g">5 Done</div>
+                                    <div class="ck-pill ckp-n">3 Upcoming</div>
+                                </div>
+                            </div>
+                            <div class="ck-sr">
+                                <div class="ck-sr-label">👉 Check-Out</div>
+                                <div class="ck-pills">
+                                    <div class="ck-pill ckp-g">6 Done</div>
+                                    <div class="ck-pill ckp-n">0 Pending</div>
+                                </div>
+                            </div>
+                            <div class="ck-sr">
+                                <div class="ck-sr-label">🔧 Maintenance</div>
+                                <div class="ck-pills">
+                                    <div class="ck-pill ckp-n">2 Active</div>
+                                    <div class="ck-pill ckp-r">1 Urgent</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Incidents -->
+                        <div class="ck-hdr" style="margin-top: 12px;">Active Incidents</div>
+                        <div style="padding: 0 10px;">
+                            <div class="ck-ar">
+                                <div class="ck-ar-dot"></div>
+                                <div class="ck-ar-txt">Villa Orchid — Cleaning (45m SLA)</div>
+                            </div>
+                            <div class="ck-ar">
+                                <div class="ck-ar-dot"></div>
+                                <div class="ck-ar-txt">Somchai K. Offline — 2 Tasks</div>
+                            </div>
+                        </div>
+
+                        <!-- Worker Utilization -->
+                        <div class="lb-wrap" style="margin-top: 12px;">
+                            <div class="lb-row">
+                                <div class="lb-lbl">High Load (4-5)</div>
+                                <div class="lb-val">2 workers</div>
+                            </div>
+                            <div style="height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-bottom: 8px;">
+                                <div style="height: 100%; background: #EF4444; width: 18%;"></div>
+                            </div>
+                            <div class="lb-row">
+                                <div class="lb-lbl">Medium Load (2-3)</div>
+                                <div class="lb-val">6 workers</div>
+                            </div>
+                            <div style="height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-bottom: 8px;">
+                                <div style="height: 100%; background: #F59E0B; width: 55%;"></div>
+                            </div>
+                            <div class="lb-row">
+                                <div class="lb-lbl">Low Load / Break</div>
+                                <div class="lb-val">4 workers</div>
+                            </div>
+                            <div style="height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
+                                <div style="height: 100%; background: #9CA3AF; width: 36%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-nav">
+                        <button class="nav-item">
+                            <div class="nav-icon">🏠</div>
+                            <div class="nav-label">Hub</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">🚨</div>
+                            <div class="nav-label">Alerts</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">📊</div>
+                            <div class="nav-label">Stream</div>
+                        </button>
+                        <button class="nav-item">
+                            <div class="nav-icon">👥</div>
+                            <div class="nav-label">Team</div>
+                        </button>
+                        <button class="nav-item active">
+                            <div class="nav-icon">📈</div>
+                            <div class="nav-label">Cockpit</div>
+                        </button>
+                    </div>
+                </div>
+                <div class="screen-label">6. Cockpit (Data-Dense Analytics)</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

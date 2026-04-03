@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Domaniqo — เช็คอิน & เช็คเอาท์ — ภาษาไทย</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --stone: #EAE5DE;
+  --moss: #334036;
+  --copper: #B56E45;
+  --midnight: #171A1F;
+  --gray: #6B7280;
+  --border: #E5E7EB;
+  --white: #FFFFFF;
+  --moss-light: #EBF0EB;
+  --copper-light: #FBF1EC;
+}
+
+body {
+  background: #111;
+  font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+  padding: 52px 40px 64px;
+  min-height: 100vh;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 52px;
+}
+.page-header h1 {
+  font-family: 'Noto Sans Thai', 'Manrope', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+.page-header p { font-size: 12px; color: #666; }
+
+.row {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.phone-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.screen-tag {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.phone {
+  width: 300px;
+  height: 620px;
+  background: var(--stone);
+  border-radius: 40px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 0 0 8px #222,
+    0 0 0 10px #2e2e2e,
+    0 28px 72px rgba(0,0,0,0.7);
+}
+
+.sbar {
+  background: var(--white);
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sbar .t { font-family:'Manrope',sans-serif; font-weight:700; font-size:11px; color:var(--midnight); }
+.sbar .icons { display:flex; gap:4px; align-items:center; }
+
+.aheader {
+  background: var(--white);
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.aheader .brand {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--moss);
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.aheader .name {
+  font-family: 'Noto Sans Thai', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--midnight);
+  line-height: 1.4;
+}
+.aheader .role {
+  font-family: 'Noto Sans Thai', sans-serif;
+  font-size: 10px;
+  color: var(--gray);
+  margin-top: 1px;
+}
+
+.page-title {
+  background: var(--white);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.page-title h2 {
+  font-family: 'Noto Sans Thai', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--midnight);
+  line-height: 1.4;
+}
+.page-title .sub {
+  font-family: 'Noto Sans Thai', sans-serif;
+  font-size: 11px;
+  color: var(--gray);
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  scrollbar-width: none;
+  background: var(--stone);
+}
+.body::-webkit-scrollbar { display: none; }
+
+.bnav {
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 7px 0 10px;
+  flex-shrink: 0;
+}
+.ni {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.ni svg { width:17px; height:17px; stroke-width:1.6; }
+.ni span {
+  font-family: 'Noto Sans Thai', sans-serif;
+  font-size: 8px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.ni.on svg { stroke: var(--moss); }
+.ni.on span { color: var(--moss); font-weight: 700; }
+.ni.off svg { stroke: #B0B7C0; }
+.ni.off span { color: #B0B7C0; }
+
+/* ── Components ── */
+
+.date-bar {
+  background: var(--white);
+  border-radius: 10px;
+  padding: 9px 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--border);
+}
+.date-bar .dl {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:600; font-size:11px;
+  color:var(--midnight);
+  line-height:1.4;
+}
+.date-bar .dc {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:700; font-size:10px;
+  background:var(--midnight); color:#fff;
+  padding:2px 7px; border-radius:20px;
+  line-height:1.5;
+}
+
+.section-lbl {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:700; font-size:9px;
+  color:var(--gray);
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  padding: 3px 2px 0;
+  line-height:1.5;
+}
+
+.turn-banner {
+  background: var(--copper-light);
+  border-radius: 10px;
+  border: 1px solid #E8C9B8;
+  border-left: 3px solid var(--copper);
+  padding: 9px 12px;
+}
+.turn-banner .tt {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:700; font-size:9px;
+  color:var(--copper); letter-spacing:0.3px;
+  margin-bottom:3px; line-height:1.5;
+}
+.turn-banner .ti {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:11px; color:var(--midnight);
+  font-weight:500; line-height:1.5;
+}
+.turn-banner .ts {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:10px; color:var(--gray);
+  margin-top:2px; line-height:1.5;
+}
+
+.card {
+  background: var(--white);
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+.card .la {
+  position:absolute; left:0; top:0; bottom:0;
+  width:4px; border-radius:11px 0 0 11px;
+}
+.card .ci { padding: 11px 11px 10px 16px; }
+.card .ctop { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:3px; }
+.card .pname {
+  font-family:'Manrope',sans-serif;
+  font-weight:600; font-size:13px; color:var(--midnight);
+}
+.card .gname {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:11px; color:var(--gray);
+  margin-bottom:3px; line-height:1.5;
+}
+.card .ttime {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:600; font-size:11px;
+  color:var(--midnight); line-height:1.5;
+}
+
+.badge {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:700; font-size:8.5px;
+  padding:2px 6px; border-radius:20px;
+  white-space:nowrap; line-height:1.5;
+}
+.bm { background:var(--moss); color:#fff; }
+.bc { background:var(--copper); color:#fff; }
+.bg { background:#F3F4F6; color:var(--gray); }
+.bam { background:#FEF3C7; color:#92400E; }
+
+.cta {
+  display:block;
+  margin: 6px 11px 10px 16px;
+  padding:8px 13px;
+  border-radius:7px;
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:600; font-size:11px;
+  text-align:center; cursor:pointer; border:none;
+  line-height:1.5;
+}
+.cta-m { background:var(--moss); color:#fff; }
+.cta-c { background:var(--copper); color:#fff; }
+.cta-ghost { background:transparent; border:1.5px solid var(--moss); color:var(--moss); }
+
+.mcard {
+  background:var(--white);
+  border-radius:10px;
+  border:1px solid var(--border);
+  padding:9px 11px 9px 16px;
+  display:flex; justify-content:space-between; align-items:center;
+  position:relative; overflow:hidden;
+}
+.mcard .mla { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:10px 0 0 10px; }
+.mcard .mp {
+  font-family:'Manrope',sans-serif;
+  font-weight:600; font-size:11px; color:var(--midnight);
+}
+.mcard .mt {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:10px; color:var(--gray);
+  line-height:1.5;
+}
+.mcard .mr { display:flex; align-items:center; gap:5px; }
+
+.filters {
+  display:flex; gap:6px;
+  padding: 10px 13px 4px;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  flex-shrink:0;
+}
+.fpill {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:600; font-size:10px;
+  padding:4px 10px; border-radius:20px;
+  cursor:pointer; border:none; line-height:1.5;
+}
+.fp-on { background:var(--midnight); color:#fff; }
+.fp-off { background:#F3F4F6; color:var(--gray); }
+
+.hist-card {
+  background:var(--white);
+  border-radius:10px;
+  border:1px solid var(--border);
+  padding:10px 12px 10px 15px;
+  display:flex; justify-content:space-between; align-items:center;
+  position:relative; overflow:hidden;
+  opacity:0.85;
+}
+.hist-card .hla { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:10px 0 0 10px; }
+.hist-card .hl { display:flex; flex-direction:column; gap:2px; }
+.hist-card .hp {
+  font-family:'Manrope',sans-serif;
+  font-weight:600; font-size:11px; color:var(--midnight);
+}
+.hist-card .hg {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:10px; color:var(--gray); line-height:1.5;
+}
+.hist-card .hr { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.hist-card .htime {
+  font-family:'Inter',sans-serif;
+  font-size:10px; color:var(--gray);
+}
+.check-circle {
+  width:18px; height:18px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700;
+}
+.cc-m { background:#DCFCE7; color:#166534; }
+.cc-c { background:#FEF3C7; color:#92400E; }
+
+.stats-strip {
+  background:var(--white);
+  border-radius:10px;
+  border:1px solid var(--border);
+  padding:10px 14px;
+  display:flex;
+}
+.stat-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.stat-item + .stat-item { border-left:1px solid var(--border); }
+.stat-num { font-family:'Manrope',sans-serif; font-weight:800; font-size:18px; color:var(--midnight); }
+.stat-lbl {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:9px; color:var(--gray);
+  line-height:1.5; text-align:center;
+}
+.stat-delta {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:9px; font-weight:600; color:var(--moss);
+  line-height:1.5;
+}
+
+.avatar-block {
+  background:var(--white);
+  border-radius:12px;
+  border:1px solid var(--border);
+  padding:18px 16px;
+  display:flex; align-items:center; gap:14px;
+}
+.avatar {
+  width:48px; height:48px; border-radius:50%;
+  background:var(--moss); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Manrope',sans-serif; font-weight:700; font-size:18px;
+  flex-shrink:0;
+}
+.avatar-block .aname {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:700; font-size:13px; color:var(--midnight);
+  line-height:1.4;
+}
+.avatar-block .arole {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:10px; color:var(--gray); margin-top:2px; line-height:1.5;
+}
+.avatar-block .astatus { display:flex; align-items:center; gap:5px; margin-top:5px; }
+.dot-on { width:7px; height:7px; border-radius:50%; background:#22C55E; }
+.status-txt {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:10px; color:var(--gray); line-height:1.5;
+}
+
+.profile-section-lbl {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:700; font-size:9px;
+  color:var(--gray);
+  letter-spacing:0.3px;
+  padding:8px 2px 3px;
+  line-height:1.5;
+}
+
+.prow-group { background:var(--white); border-radius:10px; border:1px solid var(--border); overflow:hidden; }
+.prow-g { padding:11px 13px; display:flex; justify-content:space-between; align-items:center; }
+.prow-g + .prow-g { border-top:1px solid var(--border); }
+
+.pl {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:12px; color:var(--midnight);
+  display:flex; align-items:center; gap:9px;
+  line-height:1.5;
+}
+.pl svg { width:14px; height:14px; stroke:var(--gray); stroke-width:1.5; fill:none; flex-shrink:0; }
+.pv {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:11px; color:var(--gray);
+  display:flex; align-items:center; gap:5px;
+  line-height:1.5;
+}
+.pv svg { width:12px; height:12px; stroke:#B0B7C0; stroke-width:1.5; fill:none; }
+
+.toggle { width:32px; height:18px; border-radius:9px; position:relative; cursor:pointer; }
+.toggle-on { background:var(--moss); }
+.toggle-off { background:#D1D5DB; }
+.toggle-knob { position:absolute; top:2px; width:14px; height:14px; border-radius:50%; background:#fff; }
+.toggle-on .toggle-knob { left:16px; }
+.toggle-off .toggle-knob { left:2px; }
+
+.logout-btn {
+  background:transparent;
+  border:1.5px solid #E5E7EB;
+  border-radius:10px;
+  padding:11px 14px;
+  width:100%;
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:600; font-size:12px;
+  color:#EF4444; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  margin-top:4px; line-height:1.5;
+}
+
+.up-card {
+  background:rgba(255,255,255,0.5);
+  border-radius:10px;
+  border:1px solid var(--border);
+  padding:9px 12px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.up-card .upl {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-weight:600; font-size:11px; color:var(--gray);
+  line-height:1.4;
+}
+.up-card .upt {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:10px; color:#9CA3AF; line-height:1.5;
+}
+
+.access-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--moss-light);
+  border-radius:6px;
+  padding:4px 8px;
+  margin-top:5px;
+}
+.access-pill .al {
+  font-family:'Noto Sans Thai',sans-serif;
+  font-size:9px; font-weight:700;
+  color:var(--moss); text-transform:uppercase;
+}
+.access-pill .ac {
+  font-family:'Manrope',sans-serif;
+  font-size:14px; font-weight:800;
+  color:var(--moss); letter-spacing:3px;
+}
+
+.chev { color:#C0C7D0; font-size:13px; }
+.lang-badge {
+  font-family:'Manrope',sans-serif;
+  font-weight:700; font-size:9px;
+  padding:2px 6px; border-radius:4px;
+  background:#F3F4F6; color:var(--gray);
+}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>DOMANIQO — เช็คอิน & เช็คเอาท์ · ภาษาไทย · 4 หน้าจอ</h1>
+  <p>หน้าหลัก · งาน · ประวัติ · โปรไฟล์ · มาริอา · พุธ 25 มี.ค. 2569</p>
+</div>
+
+<div class="row">
+
+  <!-- ══════════════════════════════════
+       หน้าจอ 1 — หน้าหลัก
+       ══════════════════════════════════ -->
+  <div class="phone-wrap">
+    <div class="screen-tag">1 · หน้าหลัก</div>
+    <div class="phone">
+      <div class="sbar">
+        <span class="t">10:51</span>
+        <div class="icons">
+          <svg width="13" height="9" viewBox="0 0 13 9" fill="none"><rect x="0" y="2" width="3" height="7" rx="1" fill="#171A1F"/><rect x="4" y="1" width="3" height="8" rx="1" fill="#171A1F"/><rect x="8" y="0" width="3" height="9" rx="1" fill="#171A1F"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="#171A1F" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="17" height="8" rx="2.5" fill="#171A1F"/><path d="M21 3.5V7.5C21.8 7.2 22 6.6 22 5.5C22 4.4 21.8 3.8 21 3.5Z" fill="#171A1F" fill-opacity="0.4"/></svg>
+        </div>
+      </div>
+
+      <div class="aheader">
+        <div class="brand">DOMANIQO</div>
+        <div class="name">สวัสดี, มาริอา</div>
+        <div class="role">พนักงานเช็คอิน / เช็คเอาท์</div>
+      </div>
+
+      <div class="body">
+
+        <div class="date-bar">
+          <span class="dl">วันนี้ · พุธ 25 มี.ค.</span>
+          <span class="dc">5 งาน</span>
+        </div>
+
+        <div class="turn-banner">
+          <div class="tt">⚑  สลับผู้เข้าพักวันเดียวกัน</div>
+          <div class="ti">เอมูน่า วิลล่า — เช็คเอาท์ 11:00 → เช็คอิน 15:00</div>
+          <div class="ts">ช่วงทำความสะอาด: 4 ชม. · แม่บ้าน: แพรวา ท.</div>
+        </div>
+
+        <div class="section-lbl">ถัดไป</div>
+
+        <div class="card">
+          <div class="la" style="background:var(--copper);"></div>
+          <div class="ci">
+            <div class="ctop">
+              <span class="pname">Emuna Villa</span>
+              <span class="badge bc">เช็คเอาท์</span>
+            </div>
+            <div class="gname">ซาร่าห์ เฉิน · 22 มี.ค. → 25 มี.ค.</div>
+            <div class="ttime">ต้องออกภายใน: วันนี้ 11:00</div>
+            <div class="access-pill">
+              <span class="al">รหัสประตู</span>
+              <span class="ac">3423</span>
+            </div>
+          </div>
+          <button class="cta cta-c">เริ่มเช็คเอาท์ →</button>
+        </div>
+
+        <div class="section-lbl">ช่วงบ่ายวันนี้</div>
+
+        <div class="mcard">
+          <div class="mla" style="background:#E8C9B8;"></div>
+          <div>
+            <div class="mp">Casa Norte</div>
+            <div class="mt" style="display:flex;gap:4px;align-items:center;">
+              <span class="badge bc" style="font-size:8px;padding:1px 5px;">ออก</span>
+              12:00 · ยูกิ ม.
+            </div>
+          </div>
+          <div class="mr"><span class="badge bg">ช่วงหลัง</span><span class="chev">›</span></div>
+        </div>
+
+        <div class="mcard">
+          <div class="mla" style="background:#B7C4B8;"></div>
+          <div>
+            <div class="mp">Emuna Villa</div>
+            <div class="mt" style="display:flex;gap:4px;align-items:center;">
+              <span class="badge bm" style="font-size:8px;padding:1px 5px;">เข้า</span>
+              15:00 · จอน ซิก้า
+            </div>
+          </div>
+          <div class="mr"><span class="badge bg">ช่วงหลัง</span><span class="chev">›</span></div>
+        </div>
+
+        <div class="mcard">
+          <div class="mla" style="background:#B7C4B8;"></div>
+          <div>
+            <div class="mp">Zen Pool Villa</div>
+            <div class="mt" style="display:flex;gap:4px;align-items:center;">
+              <span class="badge bm" style="font-size:8px;padding:1px 5px;">เข้า</span>
+              16:30 · เลน่า ว.
+            </div>
+          </div>
+          <div class="mr"><span class="badge bg">ช่วงหลัง</span><span class="chev">›</span></div>
+        </div>
+
+        <div class="section-lbl">กำลังจะมาถึง</div>
+        <div class="up-card">
+          <div>
+            <div class="upl">พรุ่งนี้</div>
+            <div class="upt">1 เช็คอิน · 2 เช็คเอาท์</div>
+          </div>
+          <span class="chev">›</span>
+        </div>
+
+      </div>
+
+      <div class="bnav">
+        <div class="ni on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>หน้าหลัก</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>งาน</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>ประวัติ</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>โปรไฟล์</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       หน้าจอ 2 — งาน
+       ══════════════════════════════════ -->
+  <div class="phone-wrap">
+    <div class="screen-tag">2 · งาน</div>
+    <div class="phone">
+      <div class="sbar">
+        <span class="t">10:51</span>
+        <div class="icons">
+          <svg width="13" height="9" viewBox="0 0 13 9" fill="none"><rect x="0" y="2" width="3" height="7" rx="1" fill="#171A1F"/><rect x="4" y="1" width="3" height="8" rx="1" fill="#171A1F"/><rect x="8" y="0" width="3" height="9" rx="1" fill="#171A1F"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="#171A1F" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="17" height="8" rx="2.5" fill="#171A1F"/></svg>
+        </div>
+      </div>
+
+      <div class="page-title">
+        <h2>งานทั้งหมด</h2>
+        <div class="sub">งานที่ได้รับมอบหมาย · วันนี้และที่กำลังจะมา</div>
+      </div>
+
+      <div class="filters">
+        <button class="fpill fp-on">ทั้งหมด (5)</button>
+        <button class="fpill fp-off">เช็คอิน (3)</button>
+        <button class="fpill fp-off">เช็คเอาท์ (2)</button>
+      </div>
+
+      <div class="body" style="padding-top:10px;">
+
+        <div class="section-lbl" style="padding-top:0;">วันนี้ · พุธ 25 มี.ค.</div>
+
+        <div class="card">
+          <div class="la" style="background:var(--copper);"></div>
+          <div class="ci">
+            <div class="ctop">
+              <span class="pname">Emuna Villa</span>
+              <span class="badge bc">เช็คเอาท์</span>
+            </div>
+            <div class="gname">ซาร่าห์ เฉิน</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div class="ttime">กำหนด: 11:00</div>
+              <span class="badge bam">กำลังดำเนินการ</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="la" style="background:var(--copper);"></div>
+          <div class="ci">
+            <div class="ctop">
+              <span class="pname">Casa Norte</span>
+              <span class="badge bc">เช็คเอาท์</span>
+            </div>
+            <div class="gname">ยูกิ โมริ</div>
+            <div class="ttime">กำหนด: 12:00</div>
+          </div>
+          <button class="cta cta-ghost" style="border-color:var(--copper);color:var(--copper);font-size:10px;padding:6px;">เริ่มเช็คเอาท์</button>
+        </div>
+
+        <div class="card">
+          <div class="la" style="background:var(--moss);"></div>
+          <div class="ci">
+            <div class="ctop">
+              <span class="pname">Emuna Villa</span>
+              <span class="badge bm">เช็คอิน</span>
+            </div>
+            <div class="gname">จอน ซิก้า</div>
+            <div class="ttime">เดินทางมาถึง: 15:00</div>
+          </div>
+          <button class="cta cta-ghost" style="font-size:10px;padding:6px;">เริ่มเช็คอิน</button>
+        </div>
+
+        <div class="card">
+          <div class="la" style="background:var(--moss);"></div>
+          <div class="ci">
+            <div class="ctop">
+              <span class="pname">Zen Pool Villa</span>
+              <span class="badge bm">เช็คอิน</span>
+            </div>
+            <div class="gname">เลน่า วัตต์</div>
+            <div class="ttime">เดินทางมาถึง: 16:30</div>
+          </div>
+          <button class="cta cta-ghost" style="font-size:10px;padding:6px;">เริ่มเช็คอิน</button>
+        </div>
+
+        <div class="section-lbl">พรุ่งนี้ · พฤหัส 26 มี.ค.</div>
+
+        <div class="mcard">
+          <div class="mla" style="background:#B7C4B8;"></div>
+          <div>
+            <div class="mp">KPG Residence</div>
+            <div class="mt" style="display:flex;gap:4px;align-items:center;">
+              <span class="badge bm" style="font-size:8px;padding:1px 5px;">เข้า</span>
+              14:00 · มิคาเอล บ.
+            </div>
+          </div>
+          <div class="mr"><span class="badge bg">พรุ่งนี้</span><span class="chev">›</span></div>
+        </div>
+
+        <div class="mcard">
+          <div class="mla" style="background:#E8C9B8;"></div>
+          <div>
+            <div class="mp">Zen Pool Villa</div>
+            <div class="mt" style="display:flex;gap:4px;align-items:center;">
+              <span class="badge bc" style="font-size:8px;padding:1px 5px;">ออก</span>
+              11:00 · เลน่า ว.
+            </div>
+          </div>
+          <div class="mr"><span class="badge bg">พรุ่งนี้</span><span class="chev">›</span></div>
+        </div>
+
+      </div>
+
+      <div class="bnav">
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>หน้าหลัก</span>
+        </div>
+        <div class="ni on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>งาน</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>ประวัติ</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>โปรไฟล์</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       หน้าจอ 3 — ประวัติ
+       ══════════════════════════════════ -->
+  <div class="phone-wrap">
+    <div class="screen-tag">3 · ประวัติ</div>
+    <div class="phone">
+      <div class="sbar">
+        <span class="t">10:51</span>
+        <div class="icons">
+          <svg width="13" height="9" viewBox="0 0 13 9" fill="none"><rect x="0" y="2" width="3" height="7" rx="1" fill="#171A1F"/><rect x="4" y="1" width="3" height="8" rx="1" fill="#171A1F"/><rect x="8" y="0" width="3" height="9" rx="1" fill="#171A1F"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="#171A1F" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="13" height="8" rx="2.5" fill="#171A1F"/></svg>
+        </div>
+      </div>
+
+      <div class="page-title">
+        <h2>ประวัติงาน</h2>
+        <div class="sub">งานที่เสร็จสิ้น · เดือนนี้</div>
+      </div>
+
+      <div class="body">
+
+        <div class="stats-strip">
+          <div class="stat-item">
+            <div class="stat-num">18</div>
+            <div class="stat-lbl">ทั้งหมด</div>
+            <div class="stat-delta">เดือนนี้</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">9</div>
+            <div class="stat-lbl">เช็คอิน</div>
+            <div class="stat-delta">↑ 2 จากเดือนก่อน</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">9</div>
+            <div class="stat-lbl">เช็คเอาท์</div>
+            <div class="stat-delta">↑ 1 จากเดือนก่อน</div>
+          </div>
+        </div>
+
+        <div class="section-lbl">วันนี้ · พุธ 25 มี.ค.</div>
+
+        <div style="background:rgba(255,255,255,0.5); border-radius:10px; border:1px solid var(--border); padding:14px; text-align:center;">
+          <div style="font-family:'Noto Sans Thai',sans-serif; font-size:11px; color:var(--gray); line-height:1.7;">
+            ยังไม่มีงานเสร็จสิ้นวันนี้<br>
+            <span style="color:#9CA3AF; font-size:10px;">งานที่กำลังดำเนินการ →</span>
+          </div>
+        </div>
+
+        <div class="section-lbl">เมื่อวาน · อังคาร 24 มี.ค.</div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--moss);"></div>
+          <div class="hl">
+            <div class="hp">Emuna Villa</div>
+            <div class="hg">จอน ซิก้า — เช็คอิน</div>
+          </div>
+          <div class="hr">
+            <div class="htime">14:03</div>
+            <div class="check-circle cc-m">✓</div>
+          </div>
+        </div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--copper);"></div>
+          <div class="hl">
+            <div class="hp">Zen Pool Villa</div>
+            <div class="hg">มาร์คัส เอ. — เช็คเอาท์</div>
+          </div>
+          <div class="hr">
+            <div class="htime">11:21</div>
+            <div class="check-circle cc-c">✓</div>
+          </div>
+        </div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--moss);"></div>
+          <div class="hl">
+            <div class="hp">Casa Norte</div>
+            <div class="hg">ปริยา เค. — เช็คอิน</div>
+          </div>
+          <div class="hr">
+            <div class="htime">15:45</div>
+            <div class="check-circle cc-m">✓</div>
+          </div>
+        </div>
+
+        <div class="section-lbl">จันทร์ 23 มี.ค.</div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--copper);"></div>
+          <div class="hl">
+            <div class="hp">KPG Residence</div>
+            <div class="hg">แอนนา เอส. — เช็คเอาท์</div>
+          </div>
+          <div class="hr">
+            <div class="htime">10:58</div>
+            <div class="check-circle cc-c">✓</div>
+          </div>
+        </div>
+
+        <div class="hist-card">
+          <div class="hla" style="background:var(--moss);"></div>
+          <div class="hl">
+            <div class="hp">KPG Residence</div>
+            <div class="hg">ทอม แอล. — เช็คอิน</div>
+          </div>
+          <div class="hr">
+            <div class="htime">15:12</div>
+            <div class="check-circle cc-m">✓</div>
+          </div>
+        </div>
+
+        <div style="text-align:center; padding:10px 0 4px;">
+          <span style="font-family:'Noto Sans Thai',sans-serif; font-size:10px; color:var(--moss); text-decoration:underline; cursor:pointer;">โหลดเพิ่มเติม →</span>
+        </div>
+
+      </div>
+
+      <div class="bnav">
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>หน้าหลัก</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>งาน</span>
+        </div>
+        <div class="ni on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>ประวัติ</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>โปรไฟล์</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       หน้าจอ 4 — โปรไฟล์
+       ══════════════════════════════════ -->
+  <div class="phone-wrap">
+    <div class="screen-tag">4 · โปรไฟล์</div>
+    <div class="phone">
+      <div class="sbar">
+        <span class="t">10:51</span>
+        <div class="icons">
+          <svg width="13" height="9" viewBox="0 0 13 9" fill="none"><rect x="0" y="2" width="3" height="7" rx="1" fill="#171A1F"/><rect x="4" y="1" width="3" height="8" rx="1" fill="#171A1F"/><rect x="8" y="0" width="3" height="9" rx="1" fill="#171A1F"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="19" height="10" rx="3" stroke="#171A1F" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="10" height="8" rx="2.5" fill="#171A1F"/></svg>
+        </div>
+      </div>
+
+      <div class="page-title">
+        <h2>โปรไฟล์</h2>
+      </div>
+
+      <div class="body">
+
+        <div class="avatar-block">
+          <div class="avatar">M</div>
+          <div>
+            <div class="aname">มาริอา กอนซาเลซ</div>
+            <div class="arole">พนักงานเช็คอิน / เช็คเอาท์</div>
+            <div class="astatus">
+              <div class="dot-on"></div>
+              <span class="status-txt">ทำงานวันนี้</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section-lbl">บัญชีผู้ใช้</div>
+        <div class="prow-group">
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              ชื่อ-นามสกุล
+            </div>
+            <div class="pv">มาริอา กอนซาเลซ <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              อีเมล
+            </div>
+            <div class="pv">maria@dom… <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 5.49 5.49l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              เบอร์โทรศัพท์
+            </div>
+            <div class="pv">+66 091… <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+        </div>
+
+        <div class="profile-section-lbl">การตั้งค่า</div>
+        <div class="prow-group">
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              ภาษา
+            </div>
+            <div class="pv"><span class="lang-badge">TH</span><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              การแจ้งเตือน
+            </div>
+            <div class="toggle toggle-on"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              แจ้งเตือนผู้เข้าพักล่าช้า
+            </div>
+            <div class="toggle toggle-on"><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+
+        <div class="profile-section-lbl">ข้อมูลการทำงาน</div>
+        <div class="prow-group">
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+              ตำแหน่ง
+            </div>
+            <div class="pv">เช็คอิน / เช็คเอาท์</div>
+          </div>
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              ที่พักที่ดูแล
+            </div>
+            <div class="pv">4 แห่ง <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+          <div class="prow-g">
+            <div class="pl">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              เดือนนี้
+            </div>
+            <div class="pv">เสร็จแล้ว 18 งาน <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+        </div>
+
+        <button class="logout-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          ออกจากระบบ
+        </button>
+
+      </div>
+
+      <div class="bnav">
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>หน้าหลัก</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>งาน</span>
+        </div>
+        <div class="ni off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>ประวัติ</span>
+        </div>
+        <div class="ni on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>โปรไฟล์</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center; margin-top:52px; padding-bottom:52px;">
+  <div style="font-family:'Noto Sans Thai',sans-serif; font-size:10px; color:#444; letter-spacing:0.3px;">
+    Domaniqo · เช็คอิน & เช็คเอาท์ · ภาษาไทย · มีนาคม 2569
+  </div>
+</div>
+
+</body>
+</html>

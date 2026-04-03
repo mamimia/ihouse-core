@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Submitter UI v2 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #334036;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #171A1F;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            text-align: center;
+        }
+
+        /* Phone Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+            border-bottom: 1px solid #F0EEE9;
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Phone App Header */
+        .app-header {
+            height: 50px;
+            background: #FFFFFF;
+            border-bottom: 1px solid #F0EEE9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .header-titles {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .header-subtitle {
+            font-size: 9.5px;
+            color: #9CA3AF;
+        }
+
+        .header-logo {
+            width: 24px;
+            height: 24px;
+            background: #334036;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 800;
+            color: #FFFFFF;
+            flex-shrink: 0;
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 12px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            background: #F9F7F4;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 2px;
+        }
+
+        /* Progress Bar */
+        .progress-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+
+        .progress-text {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: #E5E7EB;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: #334036;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-bar-fill.step1 { width: 14%; }
+        .progress-bar-fill.step2 { width: 28%; }
+        .progress-bar-fill.step3 { width: 43%; }
+        .progress-bar-fill.step4 { width: 57%; }
+        .progress-bar-fill.step5 { width: 71%; }
+        .progress-bar-fill.step6 { width: 86%; }
+        .progress-bar-fill.step7 { width: 100%; }
+
+        /* Step Labels */
+        .step-dots {
+            display: flex;
+            gap: 4px;
+            justify-content: flex-start;
+        }
+
+        .step-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #D1D5DB;
+        }
+
+        .step-dot.active {
+            background: #334036;
+        }
+
+        /* Screen Content */
+        .screen-content {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Welcome Section */
+        .welcome-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .welcome-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+            color: #171A1F;
+        }
+
+        .welcome-subtitle {
+            font-size: 11px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        /* Option Cards */
+        .option-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .option-card {
+            background: #FFFFFF;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .option-card:hover {
+            border-color: #D1D5DB;
+        }
+
+        .option-card.selected {
+            background: #F0F4F2;
+            border-color: #334036;
+            border-width: 2px;
+            padding: 11px;
+        }
+
+        .option-icon {
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        .option-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .option-description {
+            font-size: 8.5px;
+            color: #9CA3AF;
+        }
+
+        /* Save & Continue Later Link */
+        .save-later-link {
+            font-size: 10px;
+            color: #9CA3AF;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .save-later-link:hover {
+            color: #6B7280;
+        }
+
+        /* Form Fields */
+        .form-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .form-section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6B7280;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            color: #171A1F;
+            background: #FFFFFF;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #334036;
+        }
+
+        /* Import URL Section */
+        .import-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .import-input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+
+        .import-input {
+            flex: 1;
+        }
+
+        .import-button {
+            width: 48px;
+            padding: 0;
+            background: #B56E45;
+            border: none;
+            border-radius: 8px;
+            color: #FFFFFF;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .import-button:hover {
+            opacity: 0.9;
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+        }
+
+        .or-divider-line {
+            flex: 1;
+            height: 1px;
+            background: #E5E7EB;
+        }
+
+        .or-divider-text {
+            font-size: 9px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        .manual-option {
+            font-size: 10px;
+            color: #9CA3AF;
+            text-align: center;
+        }
+
+        .manual-link {
+            color: #334036;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        /* Preview Card */
+        .preview-card {
+            background: #FFFFFF;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .preview-badge {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: #E6EEE7;
+            color: #334036;
+            padding: 3px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        .preview-thumbnail {
+            width: 100%;
+            height: 80px;
+            background: #F0EEE9;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9CA3AF;
+            font-size: 9px;
+        }
+
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-label {
+            font-size: 9px;
+            color: #9CA3AF;
+            flex: 1;
+        }
+
+        .preview-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .preview-edit-btn {
+            width: 18px;
+            height: 18px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9CA3AF;
+            font-size: 12px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Stepper */
+        .stepper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 32px;
+        }
+
+        .stepper-button {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #E5E7EB;
+            background: #FFFFFF;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .stepper-button:hover {
+            border-color: #D1D5DB;
+            background: #F9F7F4;
+        }
+
+        .stepper-button:active {
+            background: #F0EEE9;
+        }
+
+        .stepper-display {
+            flex: 1;
+            text-align: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        /* Amenities Grid */
+        .amenities-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .amenity-chip {
+            background: #FFFFFF;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 8px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 10px;
+            font-weight: 600;
+            color: #171A1F;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .amenity-chip:hover {
+            border-color: #D1D5DB;
+        }
+
+        .amenity-chip.selected {
+            background: #F0F4F2;
+            border-color: #334036;
+            border-width: 2px;
+            padding: 7px 10px;
+        }
+
+        .amenity-icon {
+            font-size: 18px;
+        }
+
+        /* Review Summary Card */
+        .review-summary {
+            background: #FFFFFF;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .review-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .review-section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6B7280;
+        }
+
+        .review-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .review-label {
+            font-size: 10px;
+            color: #9CA3AF;
+        }
+
+        .review-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .review-edit-btn {
+            width: 16px;
+            height: 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9CA3AF;
+            font-size: 11px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto;
+        }
+
+        .amenities-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 10px;
+            color: #171A1F;
+        }
+
+        .amenity-tag {
+            background: #F0F4F2;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 9px;
+            color: #334036;
+        }
+
+        /* Verification Section */
+        .verification-section {
+            background: #FFFFFF;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .verification-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6B7280;
+        }
+
+        .verification-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .verification-check {
+            width: 18px;
+            height: 18px;
+            background: #E6EEE7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #334036;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .verification-label {
+            font-size: 11px;
+            color: #171A1F;
+            flex: 1;
+        }
+
+        .verification-badge {
+            font-size: 8px;
+            color: #334036;
+            font-weight: 600;
+        }
+
+        /* Info Card */
+        .info-card {
+            background: #F0F4F2;
+            border: 1px solid #D9E5DC;
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .info-card-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            color: #334036;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .info-card-text {
+            font-size: 10px;
+            color: #6B7280;
+            line-height: 1.4;
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .checkbox-input {
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid #E5E7EB;
+            border-radius: 4px;
+            background: #FFFFFF;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-top: 2px;
+            accent-color: #334036;
+        }
+
+        .checkbox-label {
+            font-size: 10px;
+            color: #171A1F;
+            line-height: 1.4;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 0;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #B56E45;
+            color: #FFFFFF;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary:active {
+            opacity: 0.85;
+        }
+
+        .btn-primary.moss {
+            background: #334036;
+        }
+
+        .btn-secondary {
+            background: #FFFFFF;
+            color: #171A1F;
+            border: 1.5px solid #E5E7EB;
+        }
+
+        .btn-secondary:hover {
+            border-color: #D1D5DB;
+            background: #F9F7F4;
+        }
+
+        .btn-secondary:active {
+            background: #F0EEE9;
+        }
+
+        .btn-secondary-link {
+            background: none;
+            border: none;
+            color: #9CA3AF;
+            font-size: 10px;
+            padding: 4px 0;
+        }
+
+        .btn-secondary-link:hover {
+            color: #6B7280;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.6; }
+        }
+
+        @keyframes pulse-card {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(181, 110, 69, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(181, 110, 69, 0); }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Property Submitter — V2 Visual Direction</h1>
+            <p>Domaniqo Property Management · Property Onboarding Wizard (7-Step)</p>
+        </div>
+
+        <!-- Design Notes Bar -->
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">ROLE PERSONALITY</div>
+                <div class="note-text">Guided onboarding, trust-building, progressive disclosure</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">DESIGN ANCHOR</div>
+                <div class="note-text">Wizard flow, progress tracking, import-friendly interface</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">KEY PATTERNS</div>
+                <div class="note-text">Step progress bar, selectable cards, import/extract, form sections, review summary</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">SHAPED BY</div>
+                <div class="note-text">Miriam (owner trust), Talia (multi-step), Claudia (property baseline)</div>
+            </div>
+        </div>
+
+        <!-- Phones Container -->
+        <div class="phones-container">
+            <!-- SCREEN 1: Welcome & Portfolio Size -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header -->
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-logo">D</div>
+                            <div class="header-titles">
+                                <div class="header-title">List Your Property</div>
+                                <div class="header-subtitle">Step 1 of 7</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Progress Bar -->
+                        <div class="progress-section">
+                            <div class="progress-text">Progress</div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill step1"></div>
+                            </div>
+                            <div class="step-dots">
+                                <div class="step-dot active"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="screen-content">
+                            <div class="welcome-header">
+                                <div class="welcome-title">Let's get started!</div>
+                                <div class="welcome-subtitle">Let's get your property set up on Domaniqo. This takes about 10 minutes.</div>
+                            </div>
+
+                            <div style="margin-bottom: 8px;">
+                                <div class="form-label" style="margin-bottom: 10px;">How many properties are you listing?</div>
+                                <div class="option-cards">
+                                    <div class="option-card selected">
+                                        <div class="option-icon">🏠</div>
+                                        <div class="option-label">Just 1</div>
+                                        <div class="option-description">Single property</div>
+                                    </div>
+                                    <div class="option-card">
+                                        <div class="option-icon">🏢</div>
+                                        <div class="option-label">2-5 Properties</div>
+                                        <div class="option-description">Small portfolio</div>
+                                    </div>
+                                    <div class="option-card">
+                                        <div class="option-icon">🏛️</div>
+                                        <div class="option-label">6+ Properties</div>
+                                        <div class="option-description">Large portfolio</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="button-group">
+                                <button class="btn btn-primary">Continue</button>
+                                <button class="btn btn-secondary-link">Save & continue later</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Step 1: Welcome & Portfolio Size</div>
+            </div>
+
+            <!-- SCREEN 2: Import Listing -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header -->
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-logo">D</div>
+                            <div class="header-titles">
+                                <div class="header-title">Import Listing</div>
+                                <div class="header-subtitle">Step 3 of 7</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Progress Bar -->
+                        <div class="progress-section">
+                            <div class="progress-text">Progress</div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill step3"></div>
+                            </div>
+                            <div class="step-dots">
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="screen-content">
+                            <div class="form-section-title">Import from Airbnb</div>
+
+                            <div class="import-section">
+                                <div class="import-input-wrapper">
+                                    <input type="text" class="form-input import-input" placeholder="Paste your Airbnb listing URL">
+                                    <button class="import-button">Import</button>
+                                </div>
+                            </div>
+
+                            <div class="or-divider">
+                                <div class="or-divider-line"></div>
+                                <div class="or-divider-text">OR</div>
+                                <div class="or-divider-line"></div>
+                            </div>
+
+                            <div class="manual-option">
+                                <span>Enter details <a href="#" class="manual-link">manually</a></span>
+                            </div>
+
+                            <!-- Preview Card (shown after import) -->
+                            <div class="preview-card">
+                                <div class="preview-header">
+                                    <div>
+                                        <div class="form-label">Coastal Escape Villa</div>
+                                    </div>
+                                    <div class="preview-badge">✓ Extracted</div>
+                                </div>
+
+                                <div class="preview-thumbnail">
+                                    📷 Property image
+                                </div>
+
+                                <div class="preview-item">
+                                    <div class="preview-label">Location</div>
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        <div class="preview-value">Bali, Indonesia</div>
+                                        <button class="preview-edit-btn">✎</button>
+                                    </div>
+                                </div>
+
+                                <div class="preview-item">
+                                    <div class="preview-label">Bedrooms</div>
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        <div class="preview-value">4</div>
+                                        <button class="preview-edit-btn">✎</button>
+                                    </div>
+                                </div>
+
+                                <div class="preview-item">
+                                    <div class="preview-label">Bathrooms</div>
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        <div class="preview-value">2.5</div>
+                                        <button class="preview-edit-btn">✎</button>
+                                    </div>
+                                </div>
+
+                                <div class="preview-item">
+                                    <div class="preview-label">Max Guests</div>
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        <div class="preview-value">8</div>
+                                        <button class="preview-edit-btn">✎</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="button-group">
+                                <button class="btn btn-primary">Continue</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Step 3: Import Listing</div>
+            </div>
+
+            <!-- SCREEN 3: Property Details -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header -->
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-logo">D</div>
+                            <div class="header-titles">
+                                <div class="header-title">Property Details</div>
+                                <div class="header-subtitle">Step 5 of 7</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Progress Bar -->
+                        <div class="progress-section">
+                            <div class="progress-text">Progress</div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill step5"></div>
+                            </div>
+                            <div class="step-dots">
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot"></div>
+                                <div class="step-dot"></div>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="screen-content">
+                            <!-- Basic Info Section -->
+                            <div class="form-section">
+                                <div class="form-section-title">Basic Info</div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Property Name</label>
+                                    <input type="text" class="form-input" value="Coastal Escape Villa">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Property Type</label>
+                                    <select class="form-select">
+                                        <option>Villa</option>
+                                        <option>Condo</option>
+                                        <option>Apartment</option>
+                                        <option>House</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Bedrooms</label>
+                                    <div class="stepper">
+                                        <button class="stepper-button">−</button>
+                                        <div class="stepper-display">4</div>
+                                        <button class="stepper-button">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Bathrooms</label>
+                                    <div class="stepper">
+                                        <button class="stepper-button">−</button>
+                                        <div class="stepper-display">2.5</div>
+                                        <button class="stepper-button">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Max Guests</label>
+                                    <div class="stepper">
+                                        <button class="stepper-button">−</button>
+                                        <div class="stepper-display">8</div>
+                                        <button class="stepper-button">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Location Section -->
+                            <div class="form-section">
+                                <div class="form-section-title">Location</div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Street Address</label>
+                                    <input type="text" class="form-input" placeholder="Enter address">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Area / District</label>
+                                    <select class="form-select">
+                                        <option>Seminyak</option>
+                                        <option>Kuta</option>
+                                        <option>Ubud</option>
+                                        <option>Canggu</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Amenities Section -->
+                            <div class="form-section">
+                                <div class="form-section-title">Amenities</div>
+
+                                <div class="amenities-grid">
+                                    <div class="amenity-chip selected">
+                                        <span class="amenity-icon">🏊</span>
+                                        <span>Pool</span>
+                                    </div>
+                                    <div class="amenity-chip selected">
+                                        <span class="amenity-icon">🅿️</span>
+                                        <span>Parking</span>
+                                    </div>
+                                    <div class="amenity-chip">
+                                        <span class="amenity-icon">📡</span>
+                                        <span>WiFi</span>
+                                    </div>
+                                    <div class="amenity-chip">
+                                        <span class="amenity-icon">👨‍🍳</span>
+                                        <span>Kitchen</span>
+                                    </div>
+                                    <div class="amenity-chip">
+                                        <span class="amenity-icon">🧺</span>
+                                        <span>Laundry</span>
+                                    </div>
+                                    <div class="amenity-chip">
+                                        <span class="amenity-icon">💪</span>
+                                        <span>Gym</span>
+                                    </div>
+                                    <div class="amenity-chip">
+                                        <span class="amenity-icon">🌿</span>
+                                        <span>Garden</span>
+                                    </div>
+                                    <div class="amenity-chip">
+                                        <span class="amenity-icon">🔒</span>
+                                        <span>Security</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="button-group">
+                                <button class="btn btn-primary">Continue</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Step 5: Property Details</div>
+            </div>
+
+            <!-- SCREEN 4: Review & Submit -->
+            <div class="phone-column">
+                <div class="phone">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-left">
+                            <span style="font-size: 10px;">9:41</span>
+                        </div>
+                        <div class="status-right">
+                            <span class="status-icon">📶</span>
+                            <span class="status-icon">📡</span>
+                            <span class="status-icon">🔋</span>
+                        </div>
+                    </div>
+
+                    <!-- App Header -->
+                    <div class="app-header">
+                        <div class="header-left">
+                            <div class="header-logo">D</div>
+                            <div class="header-titles">
+                                <div class="header-title">Review Submission</div>
+                                <div class="header-subtitle">Step 7 of 7</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scroll Area -->
+                    <div class="scroll-area">
+                        <!-- Progress Bar -->
+                        <div class="progress-section">
+                            <div class="progress-text">Progress</div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill step7"></div>
+                            </div>
+                            <div class="step-dots">
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                                <div class="step-dot active"></div>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="screen-content">
+                            <div style="margin-bottom: 4px;">
+                                <div class="welcome-title">Review Your Submission</div>
+                            </div>
+
+                            <!-- Summary Card -->
+                            <div class="review-summary">
+                                <div class="review-section">
+                                    <div class="review-section-title">Property Details</div>
+                                    <div class="review-item">
+                                        <div class="review-label">Name</div>
+                                        <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                                            <div class="review-value">Coastal Escape Villa</div>
+                                            <button class="review-edit-btn">✎</button>
+                                        </div>
+                                    </div>
+                                    <div class="review-item">
+                                        <div class="review-label">Type</div>
+                                        <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                                            <div class="review-value">Villa</div>
+                                            <button class="review-edit-btn">✎</button>
+                                        </div>
+                                    </div>
+                                    <div class="review-item">
+                                        <div class="review-label">Location</div>
+                                        <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                                            <div class="review-value">Bali, Seminyak</div>
+                                            <button class="review-edit-btn">✎</button>
+                                        </div>
+                                    </div>
+                                    <div class="review-item">
+                                        <div class="review-label">Beds / Baths</div>
+                                        <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                                            <div class="review-value">4 / 2.5</div>
+                                            <button class="review-edit-btn">✎</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="review-section">
+                                    <div class="review-section-title">Amenities</div>
+                                    <div class="amenities-list">
+                                        <span class="amenity-tag">Pool</span>
+                                        <span class="amenity-tag">Parking</span>
+                                        <span class="amenity-tag">WiFi</span>
+                                        <span class="amenity-tag">Kitchen</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Verification Section -->
+                            <div class="verification-section">
+                                <div class="verification-title">Verification Status</div>
+
+                                <div class="verification-item">
+                                    <div class="verification-check">✓</div>
+                                    <div class="verification-label">Email verified</div>
+                                </div>
+
+                                <div class="verification-item">
+                                    <div class="verification-check">✓</div>
+                                    <div class="verification-label">Phone verified</div>
+                                </div>
+
+                                <div class="verification-item">
+                                    <div class="verification-check">✓</div>
+                                    <div class="verification-label">ID uploaded</div>
+                                </div>
+                            </div>
+
+                            <!-- Terms Checkbox -->
+                            <div class="checkbox-group">
+                                <input type="checkbox" class="checkbox-input" id="terms" checked>
+                                <label for="terms" class="checkbox-label">I agree to Domaniqo's property management terms and service policies.</label>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="button-group">
+                                <button class="btn btn-primary moss">Submit for Review</button>
+                            </div>
+
+                            <!-- Info Card -->
+                            <div class="info-card">
+                                <div class="info-card-title">What happens next?</div>
+                                <div class="info-card-text">Our team will review your submission within 48 hours. You'll receive an email with next steps.</div>
+                            </div>
+
+                            <div style="height: 8px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="screen-label">Step 7: Review & Submit</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

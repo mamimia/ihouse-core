@@ -9070,3 +9070,127 @@ Guest-facing thread view added to the portal:
 **Root bug fixed:** `GET /{token}/messages` was querying `.eq("booking_ref", ...)` since Phase 670 — wrong column name. Correct: `.eq("booking_id", ...)`. Had returned 0 rows on every call since the endpoint existed.
 
 **Identity rule explicitly documented** in endpoint docstring: `sender_id = user_id (NOT tenant_id)`.
+
+---
+
+## Phase 1054 — Documentation Reconciliation Pass (PLANNED)
+
+**Date:** 2026-04-03
+**Status:** PLANNED (audit verdict; execution pending)
+**Audit source:** `docs/audits/phase-1054-1057-audit-hardening.md`
+
+Problem confirmed: `live-system.md` is 20 phases behind the live codebase (last updated: Phase 1033, current: Phase 1053). The Settlement Engine, Self Check-in system, Guest Messaging, Host Identity Block, and five core DB tables are entirely absent from the system map.
+
+Scope: Update `docs/core/live-system.md` to include Settlement Engine routers (checkin-settlement, checkout-settlement, deposit-settlement), Self Check-in Admin system (Phase 1012), Guest Messaging system (Phases 1048–1053), Host Identity Block (Phase 1047B), and new tables: `electricity_meter_readings`, `property_charge_rules`, `cash_deposits`, `deposit_deductions`, `booking_settlement_records`.
+
+No code changes. Docs only. Risk: Medium.
+
+---
+
+## Phase 1055 — Task Cancellation Scope Hardening (PLANNED)
+
+**Date:** 2026-04-03
+**Status:** PLANNED (audit verdict; execution pending)
+**Audit source:** `docs/audits/phase-1054-1057-audit-hardening.md`
+
+Problem confirmed: `cancel_tasks_for_booking_canceled` in `task_writer.py` queries only PENDING tasks. ACKNOWLEDGED tasks silently survive booking cancellation with no worker signal. When a booking cancels via OTA and a worker has pre-acknowledged a task, the task remains active and operational with no system-driven cancellation.
+
+Fix:
+- Expand DB query to include ACKNOWLEDGED status
+- Cancel ACKNOWLEDGED tasks with reason: "Booking canceled (acknowledged task)"
+- For IN_PROGRESS tasks: emit BOOKING_CANCELED_TASK_ACTIVE warning log; do NOT auto-cancel; ops handles manually
+
+Risk: Medium. IN_PROGRESS exclusion is intentional — auto-canceling mid-execution creates an operational hazard.
+
+---
+
+## Phase 1056 — Write-Gate Alignment: Check-in/Check-out (PLANNED)
+
+**Date:** 2026-04-03
+**Status:** PLANNED (audit verdict; highest-effort phase)
+**Audit source:** `docs/audits/phase-1054-1057-audit-hardening.md`
+
+Problem confirmed: `booking_checkin_router.py` writes directly to `booking_state` and `event_log` without going through `apply_envelope`. This violates the canonical write-gate invariant. The router's role guards are correct — the issue is write-path architecture only.
+
+Fix options:
+1. Full migration — introduce BOOKING_CHECKED_IN and BOOKING_CHECKED_OUT event kinds; route through CoreExecutor and apply_envelope. Canonical.
+2. Formal exception — document the bypass explicitly in BOOT.md with rationale and a mitigation plan.
+
+Option 1 is architecturally correct. Option 2 is honest documentation of a known exception. Silent bypass is not acceptable either way.
+
+Risk: High (architectural consistency). Not a data loss risk today.
+
+---
+
+## Phase 1057 — Settlement Finalize Atomicity Hardening (PLANNED)
+
+**Date:** 2026-04-03
+**Status:** PLANNED (audit verdict; execution pending)
+**Audit source:** `docs/audits/phase-1054-1057-audit-hardening.md`
+
+Problem confirmed: The `finalize` endpoint in `checkout_settlement_router.py` performs a cross-table write to both `booking_settlement_records` and `cash_deposits`. If the first write succeeds and the second fails, the system is in a split state — settlement says finalized, deposit says collected — with no automatic detection or recovery.
+
+Mitigating factors confirmed: void endpoint exists (admin-only, pre-finalization), calculate is idempotent. The failure is a tail-case but has no guardrails.
+
+Fix scope:
+- Wrap cross-table write in try/except with explicit revert: if `cash_deposits` update fails, set settlement status back to calculated
+- Surface SETTLEMENT_FINALIZE_PARTIAL error code to caller
+- Add recovery endpoint: POST /admin/bookings/{id}/settlement/repair-deposit-status for ops to re-trigger the deposit sync without re-running the full settlement
+
+Risk: Medium. Targeted compensation, not a full saga.
+
+---
+
+## Phase 1058 — Operational Audit Closure: PKA-Bridge Group B + Group C + Backend Authorization Hardening (Closed)
+
+**Date:** 2026-04-04
+**Status:** CLOSED
+
+### What was done
+
+PKA-Bridge audit closure pass for Group B (Operational Product Surfaces) and Group C (Stakeholder-Facing Product).
+Final depth-check fixes applied. All audit result files reconciled to match real final state.
+
+**Primary systemic fix — Backend Authorization Hardening (INV-1058-ADMIN-AUTH):**
+
+New `admin_only_auth` FastAPI dependency in `src/api/auth.py`. Reads the JWT `role` claim via `get_identity()`.
+Any caller without `role=admin` receives HTTP 403 `CAPABILITY_DENIED` with `required_role=admin` and
+`caller_role=<their actual role>`. Dev mode bypasses with admin identity.
+
+Applied to:
+- `src/api/dlq_router.py` — all 3 DLQ endpoints: LIST, GET, POST /replay (highest-risk triage surface)
+- `src/api/admin_router.py` — all 11 admin-namespace endpoints: summary, metrics, dlq-summary, health/providers,
+  booking timeline, reconciliation, audit-log, integrations GET, integrations PUT, integrations test POST
+
+**Test contract corrections:**
+- `tests/test_dlq_e2e.py` — 18 calls updated: `tenant_id=TENANT` → `identity={"tenant_id": TENANT, "role": "admin"}`
+- `tests/test_admin_audit_log_contract.py` — endpoint calls updated to `identity=`; direct `write_audit_event()` utility calls retain `tenant_id=` (not an endpoint)
+- `tests/test_admin_properties_e2e.py` — admin router calls (Groups A–E) updated to `identity=`; properties_router calls (Group F) retained `tenant_id=` (jwt_auth, not admin_only_auth)
+
+**Audit result file corrections:**
+- `06_sonia_result.md` — Closure table updated: "Fully closed — frontend layout guard + admin_only_auth both applied". "What Remains" section replaced with canonical implementation summary.
+- `08_marco_result.md` — Reclassified from "Safe enough now" to "Real residual risk, partially mitigated". Sentinel URL preserves DB record; photo bytes can be permanently lost. Not safe to label as fully closed where photo evidence matters operationally.
+
+### Group B Final Closure State
+
+| Item | Final State |
+|------|-------------|
+| 06 Sonia — Manager FULL_ACCESS / admin surface | ✅ Fully closed — both layers (frontend guard + backend auth) |
+| 07 Victor — Cash deposit UNIQUE constraint | ✅ Fully closed (prior pass) |
+| 08 Marco — Offline photo upload failure | ⚠️ Real residual risk, partially mitigated |
+| 09 Hana — Deactivation auto-cleanup | ✅ Fully closed (prior pass) |
+| 10 Marco — Multi-role worker navigation | ✅ Fully closed (prior pass) |
+
+### Group C Final Closure State
+
+| Item | Final State |
+|------|-------------|
+| 11 Oren — Storage bucket RLS | ✅ Fully closed |
+| 12 Victor — DB UNIQUE constraints | ✅ Fully closed |
+| 13 Sonia — Session invalidation on deactivation | 🔵 Intentional future gap (auth-layer redesign required) |
+| 14 Hana — Receipt/statement accuracy | ✅ Verified correct |
+
+### Test Result
+
+8,138 passed, 52 failed (all pre-existing), 22 skipped. No new failures introduced by Phase 1058.
+

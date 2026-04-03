@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concierge UI v1 – Domaniqo Property Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            padding: 28px 32px 56px;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+        }
+
+        .wrap {
+            max-width: 2200px;
+            margin: 0 auto;
+        }
+
+        /* Concept Watermark Banner */
+        .concept-banner {
+            background: linear-gradient(135deg, #1E3A5F 0%, #2a4a6f 100%);
+            color: #FFF8F3;
+            padding: 12px 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .concept-banner::before {
+            content: "⚠";
+            font-size: 14px;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar */
+        .notes-bar {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .note-column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: #C4956A;
+            text-transform: uppercase;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .note-text {
+            font-size: 11px;
+            color: #E5E7EB;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .phone-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), inset 0 0 0 8px #E8E4DC;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .phone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 24px;
+            background: #1A1A1A;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .phone-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #FBF9F6;
+            margin-top: 8px;
+        }
+
+        .phone-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #171A1F;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* Screen Styles */
+        .screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .screen.hidden {
+            display: none;
+        }
+
+        /* Header */
+        .screen-header {
+            background: linear-gradient(135deg, #1E3A5F 0%, #2a4a6f 100%);
+            color: #FBF9F6;
+            padding: 16px 16px 12px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(30, 58, 95, 0.1);
+        }
+
+        .screen-header-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .screen-header-subtitle {
+            font-size: 11px;
+            color: #B8C5D4;
+            font-weight: 400;
+        }
+
+        /* Content Area */
+        .screen-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .screen-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .screen-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .screen-content::-webkit-scrollbar-thumb {
+            background: #D4CCC0;
+            border-radius: 4px;
+        }
+
+        /* Greeting */
+        .greeting {
+            font-family: 'Manrope', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .greeting-subtitle {
+            font-size: 12px;
+            color: #9CA3AF;
+            margin-bottom: 12px;
+        }
+
+        /* Summary Stats */
+        .summary-stat {
+            background: linear-gradient(135deg, #1E3A5F 0%, #2a4a6f 100%);
+            color: #FBF9F6;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        /* Guest Card */
+        .guest-card {
+            background: #FFF;
+            border: 1px solid #E8E4DC;
+            border-left: 4px solid #C4956A;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+        }
+
+        .guest-card.urgent {
+            border-left-color: #D97706;
+            background: #FFFBF0;
+        }
+
+        .guest-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .guest-card-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .guest-card-property {
+            font-size: 11px;
+            color: #6B7280;
+        }
+
+        .guest-card-dates {
+            font-size: 10px;
+            color: #9CA3AF;
+        }
+
+        .guest-card-message {
+            font-size: 11px;
+            color: #4B5563;
+            background: #F3F1ED;
+            padding: 8px;
+            border-radius: 6px;
+            line-height: 1.3;
+        }
+
+        .unread-badge {
+            background: #D97706;
+            color: #FFF;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .urgent-dot {
+            width: 8px;
+            height: 8px;
+            background: #D97706;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* Chat Screen */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .chat-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-area::-webkit-scrollbar-thumb {
+            background: #D4CCC0;
+            border-radius: 4px;
+        }
+
+        .chat-message {
+            display: flex;
+            flex-direction: column;
+            max-width: 85%;
+            gap: 2px;
+        }
+
+        .chat-message.guest {
+            align-self: flex-end;
+        }
+
+        .chat-message.concierge {
+            align-self: flex-start;
+        }
+
+        .message-bubble {
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message-bubble.guest {
+            background: #FBF5EB;
+            color: #171A1F;
+            border: 1px solid #E8E0D0;
+        }
+
+        .message-bubble.concierge {
+            background: #FFF;
+            color: #171A1F;
+            border: 2px solid #1E3A5F;
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: #9CA3AF;
+            padding: 0 12px;
+        }
+
+        /* Quick Action Chips */
+        .quick-actions {
+            display: flex;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #F9F7F4;
+            flex-wrap: wrap;
+        }
+
+        .action-chip {
+            background: #1E3A5F;
+            color: #FBF9F6;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 16px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .action-chip:hover {
+            background: #2a4a6f;
+        }
+
+        /* Input Bar */
+        .message-input-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #F9F7F4;
+            border-top: 1px solid #E8E4DC;
+            flex-shrink: 0;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #D4CCC0;
+            border-radius: 20px;
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            background: #FFF;
+            color: #171A1F;
+        }
+
+        .message-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .send-button {
+            background: #1E3A5F;
+            color: #FBF9F6;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .send-button:hover {
+            background: #2a4a6f;
+        }
+
+        /* Local Guide */
+        .guide-section {
+            margin-bottom: 16px;
+        }
+
+        .guide-section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .guide-item {
+            background: #FFF;
+            border: 1px solid #E8E4DC;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .guide-item-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #171A1F;
+        }
+
+        .guide-item-meta {
+            font-size: 10px;
+            color: #6B7280;
+            display: flex;
+            gap: 8px;
+        }
+
+        .guide-item-action {
+            background: #1E3A5F;
+            color: #FBF9F6;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* Request Tracker */
+        .request-card {
+            background: #FFF;
+            border: 1px solid #E8E4DC;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .request-guest {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .request-type-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .request-type-badge.transfer {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .request-type-badge.restaurant {
+            background: #D1FAE5;
+            color: #059669;
+        }
+
+        .request-type-badge.activity {
+            background: #DBEAFE;
+            color: #0284C7;
+        }
+
+        .request-type-badge.general {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+
+        .request-summary {
+            font-size: 11px;
+            color: #4B5563;
+        }
+
+        .request-status {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .request-status.pending {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .request-status.arranged {
+            background: #D1FAE5;
+            color: #059669;
+        }
+
+        .request-status.confirmed {
+            background: #DBEAFE;
+            color: #0284C7;
+        }
+
+        .request-status.completed {
+            background: #E5E7EB;
+            color: #6B7280;
+        }
+
+        /* Escalation View */
+        .escalation-card {
+            background: linear-gradient(135deg, #FFFBF0 0%, #FFF8F3 100%);
+            border: 2px solid #D97706;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .escalation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .escalation-guest {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .escalation-type {
+            background: #D97706;
+            color: #FFF;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .escalation-property {
+            font-size: 11px;
+            color: #6B7280;
+        }
+
+        .escalation-issue {
+            background: #FFF;
+            border: 1px solid #E8D9C3;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 11px;
+            color: #4B5563;
+            line-height: 1.4;
+        }
+
+        .escalation-severity {
+            font-size: 11px;
+            color: #D97706;
+            font-weight: 600;
+        }
+
+        .escalation-action {
+            background: #D97706;
+            color: #FFF;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .escalation-note {
+            background: #1E3A5F;
+            color: #FBF9F6;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        /* Profile Screen */
+        .profile-section {
+            background: #FFF;
+            border: 1px solid #E8E4DC;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #1E3A5F 0%, #2a4a6f 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FBF9F6;
+            font-size: 20px;
+            margin: 0 auto 8px;
+        }
+
+        .profile-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 2px;
+        }
+
+        .profile-role {
+            font-size: 11px;
+            color: #6B7280;
+            margin-bottom: 12px;
+        }
+
+        .profile-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #F3F1ED;
+            font-size: 11px;
+        }
+
+        .profile-stat:last-child {
+            border-bottom: none;
+        }
+
+        .profile-stat-label {
+            color: #6B7280;
+        }
+
+        .profile-stat-value {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .profile-text {
+            font-size: 11px;
+            color: #4B5563;
+            line-height: 1.4;
+        }
+
+        .profile-text strong {
+            font-weight: 600;
+        }
+
+        /* Bottom Nav */
+        .screen-nav {
+            display: flex;
+            gap: 0;
+            padding: 8px;
+            background: #F9F7F4;
+            border-top: 1px solid #E8E4DC;
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px 4px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #6B7280;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .nav-item.active {
+            background: #1E3A5F;
+            color: #FBF9F6;
+        }
+
+        /* Buttons */
+        .primary-button {
+            background: #1E3A5F;
+            color: #FBF9F6;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .primary-button:hover {
+            background: #2a4a6f;
+        }
+
+        .secondary-button {
+            background: transparent;
+            border: 1px solid #1E3A5F;
+            color: #1E3A5F;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .filter-tab {
+            background: transparent;
+            border: 1px solid #D4CCC0;
+            color: #6B7280;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-tab.active {
+            background: #1E3A5F;
+            color: #FBF9F6;
+            border-color: #1E3A5F;
+        }
+
+        /* Sign Out Button */
+        .signout-button {
+            background: #F3F1ED;
+            color: #171A1F;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .signout-button:hover {
+            background: #E8E4DC;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="concept-banner">
+            CONCEPT — NOT YET IN PRODUCT · Exploratory Surface Under Development
+        </div>
+
+        <div class="page-header">
+            <h1>Concierge — V1 Concept Surface</h1>
+            <p>Domaniqo Property Management · FUTURE CONCEPT — Guest Service & Hospitality Support</p>
+        </div>
+
+        <div class="notes-bar">
+            <div class="note-column">
+                <div class="note-label">Concept Status</div>
+                <div class="note-text">Future exploratory surface, not yet a canonical role. Speculative design for guest-facing hospitality. May become real product.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Role Purpose</div>
+                <div class="note-text">Human guest service. Conversation-first interaction. Premium hospitality. Local knowledge coordination. Proactive assistance & arrangements.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Boundaries</div>
+                <div class="note-text">NOT worker tasks. NOT admin. NOT guest self-service. NOT ops dashboard. SERVICE-FIRST with escalation to operations when issue becomes operational.</div>
+            </div>
+            <div class="note-column">
+                <div class="note-label">Screen Map</div>
+                <div class="note-text">Conversations · Local Guide · Service Requests · Escalation · Profile. Warm navy #1E3A5F. Gold accent #C4956A. Conversation-first.</div>
+            </div>
+        </div>
+
+        <div class="phones-container">
+            <!-- Screen 1: Concierge Dashboard -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="screen">
+                            <div class="screen-header">
+                                <div class="screen-header-title">Domaniqo · Concierge</div>
+                                <div class="screen-header-subtitle">Guest Support</div>
+                            </div>
+
+                            <div class="screen-content">
+                                <div class="greeting">Good morning</div>
+                                <div class="greeting-subtitle">Thursday, Apr 3rd</div>
+
+                                <div class="summary-stat">
+                                    4 active guests · 2 new messages
+                                </div>
+
+                                <!-- Guest Card 1 -->
+                                <div class="guest-card urgent">
+                                    <div class="guest-card-header">
+                                        <div>
+                                            <div class="guest-card-name">James Patterson</div>
+                                            <div class="guest-card-property">Villa Orchid</div>
+                                            <div class="guest-card-dates">Mar 15-18 · Day 2 of 3</div>
+                                        </div>
+                                        <div class="unread-badge">1</div>
+                                    </div>
+                                    <div class="guest-card-message">"Can you arrange a taxi to the airport tomorrow?"</div>
+                                </div>
+
+                                <!-- Guest Card 2 -->
+                                <div class="guest-card">
+                                    <div class="guest-card-header">
+                                        <div>
+                                            <div class="guest-card-name">Sarah Chen</div>
+                                            <div class="guest-card-property">Sunset Condo</div>
+                                            <div class="guest-card-dates">Apr 1-5 · Day 3 of 5</div>
+                                        </div>
+                                        <div class="unread-badge">0</div>
+                                    </div>
+                                    <div class="guest-card-message">"Restaurant rec for tonight?"</div>
+                                </div>
+
+                                <!-- Guest Card 3 -->
+                                <div class="guest-card">
+                                    <div class="guest-card-header">
+                                        <div>
+                                            <div class="guest-card-name">Marco & Lisa</div>
+                                            <div class="guest-card-property">Kata Beach House</div>
+                                            <div class="guest-card-dates">Apr 2-6 · Day 2 of 5</div>
+                                        </div>
+                                        <div class="unread-badge">0</div>
+                                    </div>
+                                    <div class="guest-card-message">"Thanks for the activity tips!"</div>
+                                </div>
+
+                                <!-- Guest Card 4 -->
+                                <div class="guest-card">
+                                    <div class="guest-card-header">
+                                        <div>
+                                            <div class="guest-card-name">David Wong</div>
+                                            <div class="guest-card-property">Villa Orchid</div>
+                                            <div class="guest-card-dates">Apr 3-7 · Day 1 of 5</div>
+                                        </div>
+                                        <div class="unread-badge">0</div>
+                                    </div>
+                                    <div class="guest-card-message">"Settling in, all good!"</div>
+                                </div>
+                            </div>
+
+                            <div class="screen-nav">
+                                <div class="nav-item active">💬 Conversations</div>
+                                <div class="nav-item">📍 Local Guide</div>
+                                <div class="nav-item">📋 Requests</div>
+                                <div class="nav-item">👤 Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">1. Concierge Dashboard (Home)</div>
+            </div>
+
+            <!-- Screen 2: Guest Conversation -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="screen">
+                            <div class="screen-header">
+                                <div class="screen-header-title">James Patterson</div>
+                                <div class="screen-header-subtitle">Villa Orchid · Mar 15-18 · Day 2 of 3</div>
+                            </div>
+
+                            <div class="chat-area">
+                                <div class="chat-message guest">
+                                    <div class="message-bubble guest">Hi, can you arrange a taxi to the airport tomorrow? Our flight is at 14:00.</div>
+                                    <div class="message-time">10:32 AM</div>
+                                </div>
+
+                                <div class="chat-message concierge">
+                                    <div class="message-bubble concierge">Of course, James! I'd recommend leaving by 11:00 to allow plenty of time. Shall I book a private transfer or regular taxi? Private transfer is ฿1,200, regular taxi approximately ฿600-800.</div>
+                                    <div class="message-time">10:35 AM</div>
+                                </div>
+
+                                <div class="chat-message guest">
+                                    <div class="message-bubble guest">Private transfer sounds great.</div>
+                                    <div class="message-time">10:36 AM</div>
+                                </div>
+
+                                <div class="chat-message concierge">
+                                    <div class="message-bubble concierge">Perfect! I've arranged a private transfer for tomorrow at 11:00. Driver will meet you at the villa entrance. I'll send the driver's contact details shortly. 🚗</div>
+                                    <div class="message-time">10:38 AM</div>
+                                </div>
+                            </div>
+
+                            <div class="quick-actions">
+                                <div class="action-chip">📍 Recommend</div>
+                                <div class="action-chip">🚗 Arrange</div>
+                                <div class="action-chip">📞 Escalate</div>
+                            </div>
+
+                            <div class="message-input-bar">
+                                <input type="text" class="message-input" placeholder="Type a message...">
+                                <button class="send-button">→</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">2. Guest Conversation</div>
+            </div>
+
+            <!-- Screen 3: Local Guide -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="screen">
+                            <div class="screen-header">
+                                <div class="screen-header-title">Local Guide</div>
+                                <div class="screen-header-subtitle">Recommendations & Resources</div>
+                            </div>
+
+                            <div class="screen-content">
+                                <div class="guide-section">
+                                    <div class="guide-section-title">🍽 Restaurants</div>
+                                    <div class="guide-item">
+                                        <div class="guide-item-name">Baan Rim Pa</div>
+                                        <div class="guide-item-meta">
+                                            <span>Thai Seafood</span>
+                                            <span>2.1 km</span>
+                                            <span>$$$$</span>
+                                        </div>
+                                        <button class="guide-item-action">Share with Guest</button>
+                                    </div>
+                                    <div class="guide-item">
+                                        <div class="guide-item-name">La Gritta</div>
+                                        <div class="guide-item-meta">
+                                            <span>Italian</span>
+                                            <span>1.8 km</span>
+                                            <span>$$$</span>
+                                        </div>
+                                        <button class="guide-item-action">Share with Guest</button>
+                                    </div>
+                                    <div class="guide-item">
+                                        <div class="guide-item-name">Kata Rocks</div>
+                                        <div class="guide-item-meta">
+                                            <span>Fine Dining</span>
+                                            <span>2.5 km</span>
+                                            <span>$$$$</span>
+                                        </div>
+                                        <button class="guide-item-action">Share with Guest</button>
+                                    </div>
+                                </div>
+
+                                <div class="guide-section">
+                                    <div class="guide-section-title">🏖 Activities</div>
+                                    <div class="guide-item">
+                                        <div class="guide-item-name">Phi Phi Island Tour</div>
+                                        <div class="guide-item-meta">
+                                            <span>Full Day</span>
+                                            <span>฿1,500</span>
+                                        </div>
+                                        <button class="guide-item-action">Arrange</button>
+                                    </div>
+                                    <div class="guide-item">
+                                        <div class="guide-item-name">Thai Cooking Class</div>
+                                        <div class="guide-item-meta">
+                                            <span>3 hours</span>
+                                            <span>฿600</span>
+                                        </div>
+                                        <button class="guide-item-action">Arrange</button>
+                                    </div>
+                                </div>
+
+                                <div class="guide-section">
+                                    <div class="guide-section-title">🚗 Transport</div>
+                                    <div class="guide-item">
+                                        <div class="guide-item-name">Airport Transfer</div>
+                                        <div class="guide-item-meta">
+                                            <span>Private</span>
+                                            <span>฿1,200</span>
+                                        </div>
+                                        <button class="guide-item-action">Arrange</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="screen-nav">
+                                <div class="nav-item">💬 Conversations</div>
+                                <div class="nav-item active">📍 Local Guide</div>
+                                <div class="nav-item">📋 Requests</div>
+                                <div class="nav-item">👤 Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">3. Local Guide (Knowledge Base)</div>
+            </div>
+
+            <!-- Screen 4: Service Request Tracker -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="screen">
+                            <div class="screen-header">
+                                <div class="screen-header-title">Service Requests</div>
+                                <div class="screen-header-subtitle">Active & Completed</div>
+                            </div>
+
+                            <div class="screen-content">
+                                <div class="filter-tabs">
+                                    <div class="filter-tab active">All</div>
+                                    <div class="filter-tab">Active</div>
+                                    <div class="filter-tab">Completed</div>
+                                </div>
+
+                                <button class="primary-button">+ New Request</button>
+
+                                <!-- Request Card 1 -->
+                                <div class="request-card">
+                                    <div class="request-header">
+                                        <div class="request-guest">James Patterson</div>
+                                        <div class="request-type-badge transfer">TRANSFER</div>
+                                    </div>
+                                    <div class="request-summary">Airport Transfer Tomorrow 11:00</div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="request-status arranged">ARRANGED</div>
+                                        <div style="font-size: 10px; color: #9CA3AF;">10:38 AM</div>
+                                    </div>
+                                </div>
+
+                                <!-- Request Card 2 -->
+                                <div class="request-card">
+                                    <div class="request-header">
+                                        <div class="request-guest">Sarah Chen</div>
+                                        <div class="request-type-badge restaurant">RESTAURANT</div>
+                                    </div>
+                                    <div class="request-summary">Reservation Tonight 19:00</div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="request-status pending">PENDING</div>
+                                        <div style="font-size: 10px; color: #9CA3AF;">11:15 AM</div>
+                                    </div>
+                                </div>
+
+                                <!-- Request Card 3 -->
+                                <div class="request-card">
+                                    <div class="request-header">
+                                        <div class="request-guest">Marco & Lisa</div>
+                                        <div class="request-type-badge activity">ACTIVITY</div>
+                                    </div>
+                                    <div class="request-summary">Phi Phi Island Tour Tomorrow</div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="request-status confirmed">CONFIRMED</div>
+                                        <div style="font-size: 10px; color: #9CA3AF;">9:45 AM</div>
+                                    </div>
+                                </div>
+
+                                <!-- Request Card 4 -->
+                                <div class="request-card">
+                                    <div class="request-header">
+                                        <div class="request-guest">David Wong</div>
+                                        <div class="request-type-badge general">GENERAL</div>
+                                    </div>
+                                    <div class="request-summary">WiFi Setup Assistance</div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="request-status completed">COMPLETED</div>
+                                        <div style="font-size: 10px; color: #9CA3AF;">Yesterday</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="screen-nav">
+                                <div class="nav-item">💬 Conversations</div>
+                                <div class="nav-item">📍 Local Guide</div>
+                                <div class="nav-item active">📋 Requests</div>
+                                <div class="nav-item">👤 Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">4. Service Request Tracker</div>
+            </div>
+
+            <!-- Screen 5: Escalation View -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="screen">
+                            <div class="screen-header">
+                                <div class="screen-header-title">Alert</div>
+                                <div class="screen-header-subtitle">Escalation Required</div>
+                            </div>
+
+                            <div class="screen-content">
+                                <div class="escalation-card">
+                                    <div class="escalation-header">
+                                        <div>
+                                            <div class="escalation-guest">Sarah Chen</div>
+                                            <div class="escalation-property">Sunset Condo</div>
+                                        </div>
+                                        <div class="escalation-type">MAINTENANCE</div>
+                                    </div>
+
+                                    <div>
+                                        <div style="font-size: 11px; color: #6B7280; margin-bottom: 6px;">Guest Message (14:22)</div>
+                                        <div class="escalation-issue">"Hi, the AC in the bedroom isn't working properly. It's getting hot in there. Can you send someone to check?"</div>
+                                    </div>
+
+                                    <div>
+                                        <div style="font-size: 11px; font-weight: 600; color: #171A1F; margin-bottom: 4px;">Escalation Assessment</div>
+                                        <div class="escalation-severity">⚠ Guest comfort affected — HIGH PRIORITY</div>
+                                    </div>
+
+                                    <button class="escalation-action">Escalate to Operations</button>
+
+                                    <div class="escalation-note">ℹ Escalation routes to maintenance team. You'll be notified when resolved. Remain guest contact point until issue closes.</div>
+                                </div>
+
+                                <div class="profile-section" style="margin-top: 16px;">
+                                    <div style="font-size: 11px; color: #6B7280; margin-bottom: 4px;">Concierge Actions</div>
+                                    <button class="secondary-button" style="width: 100%; margin-bottom: 6px;">Message Guest</button>
+                                    <button class="secondary-button" style="width: 100%;">View History</button>
+                                </div>
+                            </div>
+
+                            <div class="screen-nav">
+                                <div class="nav-item">💬 Conversations</div>
+                                <div class="nav-item">📍 Local Guide</div>
+                                <div class="nav-item">📋 Requests</div>
+                                <div class="nav-item">👤 Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">5. Escalation View (Operational Boundary)</div>
+            </div>
+
+            <!-- Screen 6: Concierge Profile -->
+            <div class="phone-column">
+                <div class="phone">
+                    <div class="phone-screen">
+                        <div class="screen">
+                            <div class="screen-header">
+                                <div class="screen-header-title">Profile</div>
+                                <div class="screen-header-subtitle">Your Concierge Account</div>
+                            </div>
+
+                            <div class="screen-content">
+                                <div class="profile-header">
+                                    <div class="profile-avatar">👤</div>
+                                    <div class="profile-name">Khun Noi</div>
+                                    <div class="profile-role">Property Concierge</div>
+                                </div>
+
+                                <div class="profile-section">
+                                    <div style="font-size: 11px; color: #6B7280; margin-bottom: 8px; font-weight: 600;">Assigned Properties</div>
+                                    <div class="profile-text">
+                                        • Villa Orchid<br>
+                                        • Sunset Condo<br>
+                                        • Kata Beach House
+                                    </div>
+                                </div>
+
+                                <div class="profile-section">
+                                    <div style="font-size: 11px; color: #6B7280; margin-bottom: 8px; font-weight: 600;">Today's Activity</div>
+                                    <div class="profile-stat">
+                                        <span class="profile-stat-label">Active Conversations</span>
+                                        <span class="profile-stat-value">4</span>
+                                    </div>
+                                    <div class="profile-stat">
+                                        <span class="profile-stat-label">Requests Arranged</span>
+                                        <span class="profile-stat-value">6</span>
+                                    </div>
+                                    <div class="profile-stat">
+                                        <span class="profile-stat-label">Avg. Response Time</span>
+                                        <span class="profile-stat-value">8 min</span>
+                                    </div>
+                                </div>
+
+                                <div class="profile-section">
+                                    <div style="font-size: 11px; color: #6B7280; margin-bottom: 8px; font-weight: 600;">Service Details</div>
+                                    <div class="profile-stat">
+                                        <span class="profile-stat-label">Available Hours</span>
+                                        <span class="profile-stat-value">8:00–22:00</span>
+                                    </div>
+                                    <div class="profile-stat">
+                                        <span class="profile-stat-label">Languages</span>
+                                        <span class="profile-stat-value">Thai, English, 中文</span>
+                                    </div>
+                                    <div class="profile-stat">
+                                        <span class="profile-stat-label">Escalations (Week)</span>
+                                        <span class="profile-stat-value">3 (2M, 1B)</span>
+                                    </div>
+                                </div>
+
+                                <button class="signout-button">Sign Out</button>
+                            </div>
+
+                            <div class="screen-nav">
+                                <div class="nav-item">💬 Conversations</div>
+                                <div class="nav-item">📍 Local Guide</div>
+                                <div class="nav-item">📋 Requests</div>
+                                <div class="nav-item active">👤 Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="phone-label">6. Concierge Profile</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px; padding: 24px; background: #171A1F; border-radius: 12px; color: #E5E7EB; font-size: 12px; line-height: 1.6;">
+            <div style="font-family: 'Manrope', sans-serif; font-weight: 700; color: #C4956A; margin-bottom: 12px; font-size: 13px;">CONCIERGE CONCEPT — Design Thinking</div>
+            <p style="margin-bottom: 12px;"><strong style="color: #FBF9F6;">Service-First Philosophy:</strong> Concierge is fundamentally different from operations. The concierge is the <em>human face</em> of hospitality — answering messages, making recommendations, arranging services, proactively assisting guests. Operations handles systems, maintenance, supply chains.</p>
+            <p style="margin-bottom: 12px;"><strong style="color: #FBF9F6;">Conversation-First UI:</strong> The primary interface is chat. Every screen connects back to guest conversations. Recommendations, arrangements, and escalations flow from understanding what guests need. Local Guide is the knowledge base that informs recommendations.</p>
+            <p style="margin-bottom: 12px;"><strong style="color: #FBF9F6;">Escalation Boundary:</strong> When a guest request becomes operational (AC breaks, supplies needed, schedule changes), concierge escalates to ops. Concierge remains the guest contact; ops solves the problem. This boundary is critical.</p>
+            <p style="margin-bottom: 12px;"><strong style="color: #FBF9F6;">Visual Distinction:</strong> Warm navy (#1E3A5F) + gold (#C4956A) creates a completely distinct visual identity from operational surfaces. The tone is calm, premium, warm — not operational urgency.</p>
+            <p><strong style="color: #FBF9F6;">Concierge Vocabulary:</strong> Arrange, Recommend, Assist, Coordinate, Serve. Not "assign," "schedule," "manage." The language reinforces hospitality, not operations.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-Out Staff — Operational UI Direction v3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #F2EFEB;
+            font-family: 'Inter', sans-serif;
+            color: #171A1F;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #171A1F;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 13px;
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        /* Design Notes Bar — 4-column expanded */
+        .design-notes {
+            background: #171A1F;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .design-note {
+            color: #F3F4F6;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        .design-note-label {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            color: #B56E45;
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: block;
+            letter-spacing: 0.5px;
+        }
+
+        /* Phones Container */
+        .phones-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .phone-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .screen-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            text-transform: uppercase;
+            margin-top: 12px;
+            text-align: center;
+            letter-spacing: 0.5px;
+            max-width: 300px;
+        }
+
+        /* Phone Chrome */
+        .phone {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            background: #F9F7F4;
+            box-shadow:
+                0 0 0 2px #D1D6DC,
+                0 2px 0 3px #B8BEC6,
+                0 12px 48px rgba(0, 0, 0, 0.2),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 26px;
+            background: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 12px;
+            border-bottom: 0.5px solid #E0E0E0;
+            gap: 4px;
+        }
+
+        .status-time {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        /* App Header — Dark for dark theme */
+        .app-header {
+            height: 50px;
+            background: #171A1F;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            padding: 0 13px;
+            gap: 10px;
+        }
+
+        .app-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #B56E45;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .app-header-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #FFFFFF;
+            line-height: 1;
+        }
+
+        .app-subtitle {
+            font-size: 9.5px;
+            color: #9CA3AF;
+            margin-top: 2px;
+            line-height: 1;
+        }
+
+        /* Day Health Strip */
+        .day-health {
+            background: #171A1F;
+            padding: 8px 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+        }
+
+        .dhi-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #FFFFFF;
+            font-size: 9.5px;
+            font-weight: 600;
+            padding: 0 8px;
+        }
+
+        .dhi-item:not(:last-child)::after {
+            content: '';
+            width: 1px;
+            height: 14px;
+            background: rgba(255, 255, 255, 0.12);
+            margin-left: 8px;
+            margin-right: -8px;
+        }
+
+        .dhi-val {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .dhi-lbl {
+            font-weight: 600;
+            color: #E5E7EB;
+        }
+
+        .dhi-overdue {
+            color: #EF4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Scroll Area */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .scroll-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #D1D6DC;
+            border-radius: 2px;
+        }
+
+        /* Departure Card */
+        .departure-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            padding: 11px;
+            border-left: 4px solid #E5E7EB;
+            border: 1px solid #E5E7EB;
+            border-left: 4px solid #E5E7EB;
+        }
+
+        .departure-card.overdue {
+            border-left-color: #EF4444;
+            animation: pulse-card 1.5s infinite;
+        }
+
+        @keyframes pulse-card {
+            0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0.1); }
+            50% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.15); }
+        }
+
+        .departure-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 7px;
+        }
+
+        .departure-property {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .departure-status {
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 3px 7px;
+            border-radius: 4px;
+            background: #E5E7EB;
+            color: #6B7280;
+        }
+
+        .departure-status.pending {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .departure-status.in-progress {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .departure-status.overdue {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .departure-guest {
+            font-size: 11px;
+            color: #6B7280;
+            margin-bottom: 7px;
+        }
+
+        .departure-timer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .departure-checkout {
+            font-size: 11px;
+            color: #9CA3AF;
+        }
+
+        .departure-countdown {
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .departure-countdown.overdue {
+            color: #EF4444;
+        }
+
+        /* Early Departure Banner */
+        .early-departure-banner {
+            background: #FCD34D;
+            color: #78350F;
+            padding: 8px 11px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-bottom: 7px;
+            border-left: 3px solid #F59E0B;
+        }
+
+        /* Summary Section */
+        .summary-section {
+            background: #F9F7F4;
+            padding: 11px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #6B7280;
+            margin-top: 7px;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            height: 50px;
+            background: #F9F7F4;
+            border-top: 1px solid #E5E7EB;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 13px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+            color: #9CA3AF;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        .nav-item.active {
+            color: #B56E45;
+        }
+
+        .nav-icon {
+            font-size: 16px;
+        }
+
+        /* Wizard Screens */
+        .wizard-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .step-header {
+            background: #F9F7F4;
+            padding: 10px 13px;
+            border-bottom: 1px solid #E5E7EB;
+            font-size: 9px;
+            color: #6B7280;
+            font-weight: 600;
+        }
+
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .step-counter {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+        }
+
+        .step-dots {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .step-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #E5E7EB;
+        }
+
+        .step-dot.done {
+            background: #334036;
+        }
+
+        .step-dot.active {
+            background: #B56E45;
+            width: 8px;
+            height: 8px;
+        }
+
+        /* Wizard Content */
+        .wizard-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+        }
+
+        .wizard-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .wizard-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .wizard-content::-webkit-scrollbar-thumb {
+            background: #D1D6DC;
+            border-radius: 2px;
+        }
+
+        /* Photo Comparison Tabs */
+        .photo-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 11px;
+        }
+
+        .photo-tab {
+            flex: 1;
+            padding: 6px;
+            background: #F9F7F4;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 600;
+            color: #9CA3AF;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .photo-tab.active {
+            background: #B56E45;
+            color: #FFFFFF;
+            border-color: #B56E45;
+        }
+
+        /* Photo Display Area */
+        .photo-area {
+            background: #E5E7EB;
+            border-radius: 8px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9CA3AF;
+            font-size: 11px;
+            font-weight: 500;
+            margin-bottom: 11px;
+        }
+
+        .photo-area.placeholder {
+            border: 2px dashed #D1D6DC;
+            background: #F9F7F4;
+        }
+
+        /* Room Selector */
+        .room-selector {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 11px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .room-selector::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .room-selector::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .room-selector::-webkit-scrollbar-thumb {
+            background: #D1D6DC;
+            border-radius: 2px;
+        }
+
+        .room-btn {
+            padding: 6px 10px;
+            background: #F9F7F4;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #9CA3AF;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .room-btn.active {
+            background: #334036;
+            color: #FFFFFF;
+            border-color: #334036;
+        }
+
+        /* Text Input Areas */
+        .input-textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            color: #171A1F;
+            resize: none;
+            background: #FFFFFF;
+        }
+
+        .input-textarea::placeholder {
+            color: #D1D6DC;
+        }
+
+        /* Toggle Switch */
+        .toggle-group {
+            display: flex;
+            gap: 8px;
+            margin: 11px 0;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            background: #FFFFFF;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #9CA3AF;
+        }
+
+        .toggle-btn.selected {
+            border-color: #B56E45;
+            background: #FFF5F0;
+            color: #171A1F;
+        }
+
+        .toggle-btn.good {
+            border-color: #10B981;
+            background: #F0FDF4;
+            color: #065F46;
+        }
+
+        .toggle-btn.good.selected {
+            border-color: #10B981;
+            background: #DCFCE7;
+            color: #065F46;
+        }
+
+        .toggle-btn.issues {
+            border-color: #F59E0B;
+            background: #FFFBEB;
+            color: #92400E;
+        }
+
+        .toggle-btn.issues.selected {
+            border-color: #F59E0B;
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        /* Card Styles */
+        .settlement-card {
+            background: #FFFFFF;
+            border-radius: 8px;
+            padding: 11px;
+            border-left: 4px solid #E5E7EB;
+            margin-bottom: 11px;
+        }
+
+        .settlement-card.gold {
+            border-left-color: #D97706;
+            background: #FFFBEB;
+        }
+
+        .settlement-card.blue {
+            border-left-color: #3B82F6;
+            background: #EFF6FF;
+        }
+
+        .settlement-card.red {
+            border-left-color: #EF4444;
+            background: #FEF2F2;
+        }
+
+        .card-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: #6B7280;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .card-amount {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #171A1F;
+            margin-bottom: 4px;
+        }
+
+        .card-detail {
+            font-size: 9px;
+            color: #9CA3AF;
+        }
+
+        /* OCR Camera Area */
+        .ocr-camera {
+            border: 2px dashed #D1D6DC;
+            border-radius: 8px;
+            background: #F9F7F4;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 11px;
+        }
+
+        .ocr-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .ocr-label {
+            font-size: 10px;
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+
+        /* Delta Preview */
+        .delta-preview {
+            background: #171A1F;
+            color: #FFFFFF;
+            border-radius: 8px;
+            padding: 11px;
+            font-size: 10px;
+            margin-bottom: 11px;
+        }
+
+        .delta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .delta-label {
+            color: #E5E7EB;
+            font-weight: 600;
+        }
+
+        .delta-value {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+        }
+
+        .delta-charge {
+            color: #FBBF24;
+            font-size: 12px;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            background: #10B981;
+            color: #FFFFFF;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        /* Category Dropdown */
+        .form-group {
+            margin-bottom: 11px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 9px;
+            font-weight: 600;
+            color: #6B7280;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .form-select,
+        .form-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            color: #171A1F;
+            background: #FFFFFF;
+        }
+
+        .form-select:focus,
+        .form-input:focus {
+            outline: none;
+            border-color: #B56E45;
+            box-shadow: 0 0 0 3px rgba(181, 110, 69, 0.1);
+        }
+
+        /* Severity Pills */
+        .severity-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .severity-pill {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            background: #FFFFFF;
+            font-size: 9px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            color: #9CA3AF;
+        }
+
+        .severity-pill.low {
+            border-color: #10B981;
+            color: #065F46;
+        }
+
+        .severity-pill.low.selected {
+            background: #DCFCE7;
+            border-color: #10B981;
+        }
+
+        .severity-pill.medium {
+            border-color: #F59E0B;
+            color: #92400E;
+        }
+
+        .severity-pill.medium.selected {
+            background: #FEF3C7;
+            border-color: #F59E0B;
+        }
+
+        .severity-pill.high {
+            border-color: #EF4444;
+            color: #991B1B;
+        }
+
+        .severity-pill.high.selected {
+            background: #FEE2E2;
+            border-color: #EF4444;
+        }
+
+        .severity-pill.critical {
+            border-color: #DC2626;
+            color: #7F1D1D;
+        }
+
+        .severity-pill.critical.selected {
+            background: #FEE2E2;
+            border-color: #DC2626;
+        }
+
+        /* Radio Options */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 11px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 2px solid #E5E7EB;
+            border-radius: 6px;
+            background: #FFFFFF;
+            cursor: pointer;
+        }
+
+        .radio-option.selected {
+            border-color: #B56E45;
+            background: #FFF5F0;
+        }
+
+        .radio-circle {
+            width: 12px;
+            height: 12px;
+            border: 2px solid #D1D6DC;
+            border-radius: 50%;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .radio-option.selected .radio-circle {
+            border-color: #B56E45;
+            background: #B56E45;
+        }
+
+        .radio-label {
+            font-size: 10px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .radio-amount {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 10px;
+            color: #171A1F;
+        }
+
+        /* Expandable Section */
+        .expandable {
+            display: none;
+        }
+
+        .expandable.expanded {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 11px;
+            margin-bottom: 11px;
+        }
+
+        .summary-card-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            margin-bottom: 7px;
+        }
+
+        .summary-card-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .summary-label {
+            color: #6B7280;
+            font-weight: 600;
+        }
+
+        .summary-value {
+            color: #171A1F;
+            font-weight: 700;
+            font-family: 'Manrope', sans-serif;
+        }
+
+        /* Settlement Breakdown */
+        .settlement-breakdown {
+            background: #FFFFFF;
+            border-radius: 8px;
+            padding: 11px;
+            margin-bottom: 11px;
+        }
+
+        .breakdown-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-bottom: 7px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .breakdown-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .breakdown-label {
+            color: #6B7280;
+        }
+
+        .breakdown-value {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .breakdown-value.deduction {
+            color: #EF4444;
+        }
+
+        .breakdown-value.net {
+            color: #B56E45;
+            font-size: 12px;
+        }
+
+        .settlement-status {
+            background: #F0FDF4;
+            border: 1px solid #DCFCE7;
+            color: #065F46;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 11px;
+        }
+
+        /* Buttons */
+        .button {
+            padding: 10px 13px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .button.primary {
+            background: #B56E45;
+            color: #FFFFFF;
+        }
+
+        .button.primary:hover {
+            background: #9D5738;
+        }
+
+        .button.secondary {
+            background: #F9F7F4;
+            color: #171A1F;
+            border: 1px solid #E5E7EB;
+        }
+
+        .button.secondary:hover {
+            background: #F3F0EB;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 11px;
+            border-top: 1px solid #E5E7EB;
+        }
+
+        /* Success Screen */
+        .success-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            text-align: center;
+            background: linear-gradient(135deg, #FFF5F0 0%, #FFFFFF 100%);
+        }
+
+        .success-header {
+            background: #B56E45;
+            color: #FFFFFF;
+            padding: 20px 13px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .success-icon {
+            font-size: 32px;
+        }
+
+        .success-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .success-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+        }
+
+        .success-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .success-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .success-content::-webkit-scrollbar-thumb {
+            background: #D1D6DC;
+            border-radius: 2px;
+        }
+
+        .guest-property-info {
+            background: #FFFFFF;
+            border-radius: 8px;
+            padding: 11px;
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 9px;
+            color: #9CA3AF;
+            margin-bottom: 3px;
+        }
+
+        .info-value {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #171A1F;
+        }
+
+        .settlement-result {
+            background: #DCFCE7;
+            border: 2px solid #10B981;
+            border-radius: 8px;
+            padding: 11px;
+            text-align: center;
+        }
+
+        .settlement-result-label {
+            font-size: 9px;
+            color: #065F46;
+            margin-bottom: 3px;
+            font-weight: 600;
+        }
+
+        .settlement-result-amount {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #065F46;
+        }
+
+        /* Turnover Chain */
+        .turnover-chain {
+            background: #FFFFFF;
+            border-radius: 8px;
+            padding: 11px;
+        }
+
+        .chain-title {
+            font-size: 9px;
+            font-weight: 600;
+            color: #6B7280;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .chain-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .chain-step {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            padding: 6px 8px;
+            background: #F9F7F4;
+            border-radius: 6px;
+        }
+
+        .chain-step.done {
+            background: #DCFCE7;
+            color: #065F46;
+        }
+
+        .chain-step.in-progress {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .chain-step.pending {
+            background: #F3F4F6;
+            color: #9CA3AF;
+        }
+
+        .chain-step-icon {
+            font-weight: 700;
+            min-width: 20px;
+        }
+
+        .chain-step-text {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .turnover-note {
+            background: #F0FDF4;
+            border: 1px solid #DCFCE7;
+            color: #065F46;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 9px;
+            margin-top: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .back-link {
+            text-decoration: none;
+            color: #B56E45;
+            font-weight: 600;
+            font-size: 10px;
+            margin-top: 11px;
+            padding: 8px;
+            border: 1px solid #D1D6DC;
+            border-radius: 6px;
+            text-align: center;
+            background: #FFF5F0;
+        }
+
+        /* Irreversibility Warning */
+        .warning-note {
+            background: #FEE2E2;
+            border: 1px solid #FECACA;
+            color: #991B1B;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 9px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 11px;
+        }
+
+        /* Utility Classes */
+        .center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <h1 class="page-title">Check-Out Staff</h1>
+        <p class="page-subtitle">Operational UI Direction — Version 3</p>
+    </div>
+
+    <div class="design-notes">
+        <div class="design-note">
+            <span class="design-note-label">Role Personality</span>
+            Closure-driven, verification authority, settlement engine operator. Staff verifies departures, inspects property condition, resolves meter readings, and finalizes guest refunds. Departure-only scope: sees only this booking's data, no cross-property or worker visibility.
+        </div>
+        <div class="design-note">
+            <span class="design-note-label">V3 Changes from V2</span>
+            Expanded from 3-screen overview to 6-screen prototype showing full 5-step wizard architecture. Added Meter OCR with live delta preview (opening + usage + estimated charge). Added Settlement calculation with deposit/electricity/damage cards. Added irreversibility warning on final submit. Added turnover chain visualization showing CHECK-OUT → CLEANING → INSPECTION → READY → CHECK-IN sequence. Aligned to settlement engine phases 959–961 and task state machine PENDING → ACKNOWLEDGED → IN_PROGRESS → COMPLETED.
+        </div>
+        <div class="design-note">
+            <span class="design-note-label">Key Patterns</span>
+            Screen 1: Departure queue with overdue pulse animation, day health strip, status pills. Screen 2: 3-tab photo comparison (Reference | Check-in | Checkout) with room selector and inspection notes toggle. Screen 3: OCR meter capture with live delta preview. Screen 4: Settlement cards (deposit, electricity, issues) with deposit resolution radio options. Screen 5: Final summary with settlement breakdown and irreversibility warning. Screen 6: Success with turnover chain and auto-created cleaning task.
+        </div>
+        <div class="design-note">
+            <span class="design-note-label">Shaped By</span>
+            Claudia (property inspection standards, room-by-room comparison, damage classification). Marco (dark theme, touch-friendly photo tabs, field conditions). Sonia (departure-only scope, no cross-worker or financial aggregate visibility). Talia (settlement clarity, deposit resolution options, All Good vs Issues Found prominence). Hana (turnover chain awareness, cleaning auto-trigger).
+        </div>
+    </div>
+
+    <div class="phones-container">
+
+        <!-- Screen 1: Departure Queue (Home) -->
+        <div class="phone-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <span class="status-time">9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div class="app-avatar">D</div>
+                    <div class="app-header-text">
+                        <div class="app-title">Domaniqo · Check-Out</div>
+                        <div class="app-subtitle">Property Operations</div>
+                    </div>
+                </div>
+
+                <div class="day-health">
+                    <div class="dhi-item">
+                        <span class="dhi-val">6</span>
+                        <span class="dhi-lbl">PENDING</span>
+                    </div>
+                    <div class="dhi-item">
+                        <span class="dhi-val">2</span>
+                        <span class="dhi-lbl">IN PROGRESS</span>
+                    </div>
+                    <div class="dhi-item">
+                        <span class="dhi-val">1</span>
+                        <span class="dhi-lbl">DONE</span>
+                    </div>
+                    <div class="dhi-item">
+                        <span class="dhi-val dhi-overdue">2</span>
+                        <span class="dhi-lbl">OVERDUE</span>
+                    </div>
+                </div>
+
+                <div class="scroll-area">
+                    <div class="summary-section">
+                        <strong>8 departures today</strong> • 2 overdue (+45min)
+                    </div>
+
+                    <div class="departure-card overdue">
+                        <div class="departure-header">
+                            <div class="departure-property">Villa Orchid</div>
+                            <div class="departure-status overdue">OVERDUE</div>
+                        </div>
+                        <div class="departure-guest">Guest: J. Smith</div>
+                        <div class="departure-timer">
+                            <div class="departure-checkout">Scheduled: 11:00</div>
+                            <div class="departure-countdown overdue">+45 min</div>
+                        </div>
+                    </div>
+
+                    <div class="departure-card">
+                        <div class="departure-header">
+                            <div class="departure-property">Sunset Pavilion</div>
+                            <div class="departure-status pending">PENDING</div>
+                        </div>
+                        <div class="departure-guest">Guest: M. Chen</div>
+                        <div class="early-departure-banner">
+                            ⏱️ EARLY DEPARTURE — Guest requested checkout at 10:30
+                        </div>
+                        <div class="departure-timer">
+                            <div class="departure-checkout">Scheduled: 11:00</div>
+                            <div class="departure-countdown">−30 min</div>
+                        </div>
+                    </div>
+
+                    <div class="departure-card">
+                        <div class="departure-header">
+                            <div class="departure-property">Bamboo Estate</div>
+                            <div class="departure-status in-progress">IN PROGRESS</div>
+                        </div>
+                        <div class="departure-guest">Guest: K. Rodriguez</div>
+                        <div class="departure-timer">
+                            <div class="departure-checkout">Scheduled: 11:00</div>
+                            <div class="departure-countdown">+15 min</div>
+                        </div>
+                    </div>
+
+                    <div class="departure-card">
+                        <div class="departure-header">
+                            <div class="departure-property">Marina House</div>
+                            <div class="departure-status pending">PENDING</div>
+                        </div>
+                        <div class="departure-guest">Guest: L. Johnson</div>
+                        <div class="departure-timer">
+                            <div class="departure-checkout">Scheduled: 11:00</div>
+                            <div class="departure-countdown">+2 hrs 20 min</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item active">
+                        <div class="nav-icon">🏠</div>
+                        <div>Home</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">🚪</div>
+                        <div>Check-Out</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">✓</div>
+                        <div>Tasks</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">⚙</div>
+                        <div>Settings</div>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">Screen 1: Departure Queue</div>
+        </div>
+
+        <!-- Screen 2: Property Inspection (Wizard Step 1 of 5) -->
+        <div class="phone-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <span class="status-time">9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div class="app-avatar">D</div>
+                    <div class="app-header-text">
+                        <div class="app-title">Domaniqo · Check-Out</div>
+                        <div class="app-subtitle">Property Inspection</div>
+                    </div>
+                </div>
+
+                <div class="step-header">
+                    <div class="step-indicator">
+                        <span class="step-counter">Step 1 of 5</span>
+                        <div class="step-dots">
+                            <div class="step-dot active"></div>
+                            <div class="step-dot"></div>
+                            <div class="step-dot"></div>
+                            <div class="step-dot"></div>
+                            <div class="step-dot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wizard-screen">
+                    <div class="wizard-content">
+                        <div>
+                            <label class="form-label">Room to Inspect</label>
+                            <div class="room-selector">
+                                <button class="room-btn active">Living</button>
+                                <button class="room-btn">Bedroom</button>
+                                <button class="room-btn">Bathroom</button>
+                                <button class="room-btn">Kitchen</button>
+                                <button class="room-btn">Balcony</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Photo Comparison: Living Room</label>
+                            <div class="photo-tabs">
+                                <button class="photo-tab active">Reference</button>
+                                <button class="photo-tab">Check-in</button>
+                                <button class="photo-tab">Checkout</button>
+                            </div>
+                            <div class="photo-area placeholder">
+                                📸 Reference photo from setup
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Inspection Notes</label>
+                            <textarea class="input-textarea" placeholder="Document any observations..." rows="4"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Condition Assessment</label>
+                            <div class="toggle-group">
+                                <button class="toggle-btn good selected">✓ All Good</button>
+                                <button class="toggle-btn issues">⚠ Issues Found</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="button primary">Continue → Meter</button>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <div class="nav-icon">🏠</div>
+                        <div>Home</div>
+                    </div>
+                    <div class="nav-item active">
+                        <div class="nav-icon">🚪</div>
+                        <div>Check-Out</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">✓</div>
+                        <div>Tasks</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">⚙</div>
+                        <div>Settings</div>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">Screen 2: Property Inspection — 3-Tab Photo Comparison, Room Selector</div>
+        </div>
+
+        <!-- Screen 3: Closing Meter (Wizard Step 2 of 5) -->
+        <div class="phone-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <span class="status-time">9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div class="app-avatar">D</div>
+                    <div class="app-header-text">
+                        <div class="app-title">Domaniqo · Check-Out</div>
+                        <div class="app-subtitle">Meter Reading</div>
+                    </div>
+                </div>
+
+                <div class="step-header">
+                    <div class="step-indicator">
+                        <span class="step-counter">Step 2 of 5</span>
+                        <div class="step-dots">
+                            <div class="step-dot done"></div>
+                            <div class="step-dot active"></div>
+                            <div class="step-dot"></div>
+                            <div class="step-dot"></div>
+                            <div class="step-dot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wizard-screen">
+                    <div class="wizard-content">
+                        <div>
+                            <label class="form-label">Capture Closing Reading</label>
+                            <div class="ocr-camera">
+                                <div class="ocr-icon">📷</div>
+                                <div class="ocr-label">Point camera at meter display</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Electricity Usage Calculation</label>
+                            <div class="delta-preview">
+                                <div class="delta-row">
+                                    <span class="delta-label">Opening:</span>
+                                    <span class="delta-value">14,523 kWh</span>
+                                </div>
+                                <div class="delta-row">
+                                    <span class="delta-label">Closing:</span>
+                                    <span class="delta-value">14,687 kWh</span>
+                                </div>
+                                <div class="delta-row">
+                                    <span class="delta-label">Usage:</span>
+                                    <span class="delta-value">164 kWh</span>
+                                </div>
+                                <div class="delta-row">
+                                    <span class="delta-label">Rate:</span>
+                                    <span class="delta-value">฿7 / kWh</span>
+                                </div>
+                                <div class="delta-row">
+                                    <span class="delta-label">Est. Charge:</span>
+                                    <span class="delta-value delta-charge">฿1,148</span>
+                                </div>
+                                <div class="confidence-badge">95% Confidence</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Manual Entry (Optional)</label>
+                            <input type="number" class="form-input" placeholder="Enter closing reading..." value="14687">
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="button primary">Continue → Resolution</button>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <div class="nav-icon">🏠</div>
+                        <div>Home</div>
+                    </div>
+                    <div class="nav-item active">
+                        <div class="nav-icon">🚪</div>
+                        <div>Check-Out</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">✓</div>
+                        <div>Tasks</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">⚙</div>
+                        <div>Settings</div>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">Screen 3: Meter Reading — OCR Capture, Live Delta Preview</div>
+        </div>
+
+        <!-- Screen 4: Deposit Resolution (Wizard Step 4 of 5) -->
+        <div class="phone-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <span class="status-time">9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div class="app-avatar">D</div>
+                    <div class="app-header-text">
+                        <div class="app-title">Domaniqo · Check-Out</div>
+                        <div class="app-subtitle">Deposit Resolution</div>
+                    </div>
+                </div>
+
+                <div class="step-header">
+                    <div class="step-indicator">
+                        <span class="step-counter">Step 4 of 5</span>
+                        <div class="step-dots">
+                            <div class="step-dot done"></div>
+                            <div class="step-dot done"></div>
+                            <div class="step-dot done"></div>
+                            <div class="step-dot active"></div>
+                            <div class="step-dot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wizard-screen">
+                    <div class="wizard-content">
+                        <div class="settlement-card gold">
+                            <div class="card-label">💳 Deposit Held</div>
+                            <div class="card-amount">฿10,000</div>
+                            <div class="card-detail">Cash on arrival</div>
+                        </div>
+
+                        <div class="settlement-card blue">
+                            <div class="card-label">⚡ Electricity Usage</div>
+                            <div class="card-amount">−฿1,148</div>
+                            <div class="card-detail">164 kWh @ ฿7/kWh (auto-deducted)</div>
+                        </div>
+
+                        <div class="settlement-card red">
+                            <div class="card-label">⚠ Issues Found</div>
+                            <div class="card-detail">1 issue: Bathroom tile crack (MEDIUM)</div>
+                        </div>
+
+                        <div style="background: #FFF5F0; padding: 11px; border-radius: 8px; margin: 11px 0;">
+                            <div style="font-size: 9px; color: #6B7280; font-weight: 600; margin-bottom: 8px;">Net Calculation Preview</div>
+                            <div style="font-family: Manrope, sans-serif; font-size: 14px; font-weight: 700; color: #B56E45;">
+                                ฿10,000 − ฿1,148 − ฿0 = ฿8,852
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Settlement Decision</label>
+                            <div class="radio-group">
+                                <div class="radio-option selected">
+                                    <div class="radio-circle"></div>
+                                    <div class="radio-label">Full Return</div>
+                                    <div class="radio-amount">฿8,852</div>
+                                </div>
+                                <div class="radio-option">
+                                    <div class="radio-circle"></div>
+                                    <div class="radio-label">Damage Deduction</div>
+                                    <div class="radio-amount">expand...</div>
+                                </div>
+                            </div>
+                            <div class="expandable">
+                                <input type="number" class="form-input" placeholder="Damage amount (max ฿8,852)">
+                                <textarea class="input-textarea" placeholder="Reason for deduction..." rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="button primary">Continue → Summary</button>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <div class="nav-icon">🏠</div>
+                        <div>Home</div>
+                    </div>
+                    <div class="nav-item active">
+                        <div class="nav-icon">🚪</div>
+                        <div>Check-Out</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">✓</div>
+                        <div>Tasks</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">⚙</div>
+                        <div>Settings</div>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">Screen 4: Deposit Resolution — Settlement Cards, Radio Options, Net Calculation</div>
+        </div>
+
+        <!-- Screen 5: Checkout Summary (Wizard Step 5 of 5) -->
+        <div class="phone-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <span class="status-time">9:41</span>
+                </div>
+
+                <div class="app-header">
+                    <div class="app-avatar">D</div>
+                    <div class="app-header-text">
+                        <div class="app-title">Domaniqo · Check-Out</div>
+                        <div class="app-subtitle">Final Summary</div>
+                    </div>
+                </div>
+
+                <div class="step-header">
+                    <div class="step-indicator">
+                        <span class="step-counter">Step 5 of 5</span>
+                        <div class="step-dots">
+                            <div class="step-dot done"></div>
+                            <div class="step-dot done"></div>
+                            <div class="step-dot done"></div>
+                            <div class="step-dot done"></div>
+                            <div class="step-dot active"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wizard-screen">
+                    <div class="wizard-content">
+                        <div class="summary-card">
+                            <div class="summary-card-row">
+                                <span class="summary-label">Guest</span>
+                                <span class="summary-value">J. Smith</span>
+                            </div>
+                            <div class="summary-card-row">
+                                <span class="summary-label">Property</span>
+                                <span class="summary-value">Villa Orchid</span>
+                            </div>
+                            <div class="summary-card-row">
+                                <span class="summary-label">Stay Duration</span>
+                                <span class="summary-value">3 nights</span>
+                            </div>
+                            <div class="summary-card-row">
+                                <span class="summary-label">Checkout Time</span>
+                                <span class="summary-value">11:00</span>
+                            </div>
+                        </div>
+
+                        <div class="settlement-status">
+                            ✓ CALCULATED — Ready to finalize
+                        </div>
+
+                        <div class="settlement-breakdown">
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Deposit Held</span>
+                                <span class="breakdown-value">฿10,000</span>
+                            </div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Electricity Deduction</span>
+                                <span class="breakdown-value deduction">−฿1,148</span>
+                            </div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Damage Deduction</span>
+                                <span class="breakdown-value deduction">−฿0</span>
+                            </div>
+                            <div class="breakdown-row">
+                                <span class="breakdown-label">Net Return to Guest</span>
+                                <span class="breakdown-value net">฿8,852</span>
+                            </div>
+                        </div>
+
+                        <div class="warning-note">
+                            ⚠️ This action is final and cannot be reversed.
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="button primary">✅ Complete Checkout</button>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <div class="nav-icon">🏠</div>
+                        <div>Home</div>
+                    </div>
+                    <div class="nav-item active">
+                        <div class="nav-icon">🚪</div>
+                        <div>Check-Out</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">✓</div>
+                        <div>Tasks</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">⚙</div>
+                        <div>Settings</div>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">Screen 5: Checkout Summary — Final Review, Settlement Breakdown, Irreversibility Warning</div>
+        </div>
+
+        <!-- Screen 6: Success + Turnover Chain -->
+        <div class="phone-wrapper">
+            <div class="phone">
+                <div class="status-bar">
+                    <span class="status-time">9:41</span>
+                </div>
+
+                <div class="success-screen">
+                    <div class="success-header">
+                        <div class="success-icon">✅</div>
+                        <div class="success-title">Checkout Complete!</div>
+                    </div>
+
+                    <div class="success-content">
+                        <div class="guest-property-info">
+                            <div class="info-label">Guest</div>
+                            <div class="info-value">J. Smith</div>
+                            <div class="info-label" style="margin-top: 8px;">Property</div>
+                            <div class="info-value">Villa Orchid</div>
+                        </div>
+
+                        <div class="settlement-result">
+                            <div class="settlement-result-label">Refund Processed</div>
+                            <div class="settlement-result-amount">฿8,852</div>
+                            <div class="settlement-result-label" style="margin-top: 4px;">to guest account</div>
+                        </div>
+
+                        <div class="turnover-chain">
+                            <div class="chain-title">Property Turnover Chain</div>
+                            <div class="chain-steps">
+                                <div class="chain-step done">
+                                    <div class="chain-step-icon">✓</div>
+                                    <div class="chain-step-text">Check-Out (Completed)</div>
+                                </div>
+                                <div class="chain-step in-progress">
+                                    <div class="chain-step-icon">→</div>
+                                    <div class="chain-step-text">Cleaning (Auto-created)</div>
+                                </div>
+                                <div class="chain-step pending">
+                                    <div class="chain-step-icon">○</div>
+                                    <div class="chain-step-text">Inspection</div>
+                                </div>
+                                <div class="chain-step pending">
+                                    <div class="chain-step-icon">○</div>
+                                    <div class="chain-step-text">Ready for Next Guest</div>
+                                </div>
+                                <div class="chain-step pending">
+                                    <div class="chain-step-icon">○</div>
+                                    <div class="chain-step-text">Check-In (15:00)</div>
+                                </div>
+                            </div>
+                            <div class="turnover-note">
+                                🧹 Cleaning task automatically created for this property.
+                            </div>
+                        </div>
+
+                        <a href="#" class="back-link">← Back to Departures</a>
+                    </div>
+                </div>
+
+                <div class="bottom-nav">
+                    <div class="nav-item">
+                        <div class="nav-icon">🏠</div>
+                        <div>Home</div>
+                    </div>
+                    <div class="nav-item active">
+                        <div class="nav-icon">🚪</div>
+                        <div>Check-Out</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">✓</div>
+                        <div>Tasks</div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-icon">⚙</div>
+                        <div>Settings</div>
+                    </div>
+                </div>
+            </div>
+            <div class="screen-label">Screen 6: Success — Settlement Result, Turnover Chain, Auto-Created Cleaning Task</div>
+        </div>
+
+    </div>
+
+</body>
+</html>
