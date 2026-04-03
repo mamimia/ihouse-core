@@ -12,8 +12,9 @@ Endpoints:
 Auth: jwt_identity (same pattern as all OM endpoints — supports Act As / Preview As sessions).
 
 Ownership model (Phase 1048 scaffold):
-    Queries are scoped by `assigned_om_id = caller's tenant_id`.
-    This field is a temporary routing scaffold — see guest_messaging.py for the full note.
+    Queries are scoped by `assigned_om_id = caller's user_id`.
+    This field stores user_id (not tenant_id) — all staff share one tenant_id.
+    See guest_messaging.py for the full ownership model note.
     Long-term canonical ownership will be guest_conversation_assignments (Phase 1054).
 
 Thread model:
@@ -101,8 +102,10 @@ async def get_guest_inbox(
 
     This is an operational triage surface, not a history viewer.
     """
-    caller_tenant_id = str(identity.get("tenant_id", "")).strip()
-    if not caller_tenant_id:
+    # assigned_om_id stores user_id (not tenant_id) — see resolve_conversation_owner
+    caller_user_id = str(identity.get("user_id", "")).strip()
+    caller_role = str(identity.get("role", "")).strip()
+    if not caller_user_id:
         return JSONResponse(status_code=401, content={"error": "CALLER_NOT_IDENTIFIED"})
 
     try:
@@ -112,7 +115,7 @@ async def get_guest_inbox(
         msg_res = (
             db.table("guest_chat_messages")
             .select("id,booking_id,property_id,sender_type,sender_id,message,read_at,created_at,assigned_om_id")
-            .eq("assigned_om_id", caller_tenant_id)
+            .eq("assigned_om_id", caller_user_id)
             .order("created_at", desc=False)
             .execute()
         )
@@ -160,7 +163,7 @@ async def get_guest_inbox(
             name_res = (
                 db.table("tenant_permissions")
                 .select("display_name")
-                .eq("tenant_id", caller_tenant_id)
+                .eq("user_id", caller_user_id)
                 .limit(1)
                 .execute()
             )
@@ -188,7 +191,7 @@ async def get_guest_inbox(
                 "last_message": summary["last_message"],
                 "last_message_at": summary["last_message_at"],
                 "last_sender_type": summary["last_sender_type"],
-                "assigned_to": caller_tenant_id,
+                "assigned_to": caller_user_id,
                 "assigned_to_name": caller_name,
             })
 
@@ -238,9 +241,10 @@ async def get_guest_thread(
 
     Scoped: caller must be the assigned_om_id or have role=admin.
     """
-    caller_tenant_id = str(identity.get("tenant_id", "")).strip()
+    # assigned_om_id stores user_id (not tenant_id) — see resolve_conversation_owner
+    caller_user_id = str(identity.get("user_id", "")).strip()
     caller_role = str(identity.get("role", "")).strip()
-    if not caller_tenant_id:
+    if not caller_user_id:
         return JSONResponse(status_code=401, content={"error": "CALLER_NOT_IDENTIFIED"})
 
     try:
@@ -256,8 +260,8 @@ async def get_guest_thread(
         )
         messages = msg_res.data or []
 
-        # Scope guard: caller must own or be admin
-        owned = any(m.get("assigned_om_id") == caller_tenant_id for m in messages)
+        # Scope guard: caller must own (their user_id) or be admin
+        owned = any(m.get("assigned_om_id") == caller_user_id for m in messages)
         if not owned and caller_role not in ("admin",):
             return JSONResponse(status_code=403, content={"error": "NOT_ASSIGNED"})
 
@@ -337,9 +341,10 @@ async def mark_thread_read(
     Only messages with sender_type='guest' and read_at IS NULL are updated.
     Caller must be the assigned owner or admin.
     """
-    caller_tenant_id = str(identity.get("tenant_id", "")).strip()
+    # assigned_om_id stores user_id (not tenant_id) — see resolve_conversation_owner
+    caller_user_id = str(identity.get("user_id", "")).strip()
     caller_role = str(identity.get("role", "")).strip()
-    if not caller_tenant_id:
+    if not caller_user_id:
         return JSONResponse(status_code=401, content={"error": "CALLER_NOT_IDENTIFIED"})
 
     try:
@@ -358,7 +363,7 @@ async def mark_thread_read(
         if not rows:
             return JSONResponse(status_code=404, content={"error": "THREAD_NOT_FOUND"})
 
-        owned = any(r.get("assigned_om_id") == caller_tenant_id for r in rows)
+        owned = any(r.get("assigned_om_id") == caller_user_id for r in rows)
         if not owned and caller_role not in ("admin",):
             return JSONResponse(status_code=403, content={"error": "NOT_ASSIGNED"})
 

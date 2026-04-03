@@ -51,62 +51,66 @@ def resolve_conversation_owner(
     tenant_id: str,
 ) -> str:
     """
-    Resolve the primary OM responsible for a property's guest conversations.
+    Resolve the primary OM's user_id for a property's guest conversations.
 
     This is the canonical routing function for Phase 1048.
     Called at message insert time — result stored as assigned_om_id.
 
+    IMPORTANT: we store user_id (not tenant_id) in assigned_om_id.
+    In this system all staff members share the same tenant_id.
+    user_id is the per-person identifier that distinguishes individuals.
+
     Resolution order:
-        1. Staff assigned to property with role='manager', lowest priority first (primary OM)
-        2. Any tenant with role='admin' (admin fallback)
-        3. tenant_id from token context (last resort)
+        1. staff_property_assignments WHERE property_id = X
+           JOIN tenant_permissions ON user_id = user_id WHERE role='manager'
+           ORDER BY priority ASC LIMIT 1 (lowest priority = primary OM)
+        2. tenant_permissions WHERE role='admin' LIMIT 1 (admin fallback)
+        3. tenant_id from token context (absolute last resort)
 
     Args:
         db:          Supabase client (service role).
         property_id: The property to resolve the OM for.
-        tenant_id:   The operator's tenant_id (last-resort fallback).
+        tenant_id:   The operator's tenant_id (last-resort fallback value only).
 
     Returns:
-        tenant_id of the resolved owner — never empty string, never None.
+        user_id of the resolved owner — never empty string, never None.
     """
-    # --- 1. Primary: OM assigned to this specific property ---
+    # --- 1. Primary: OM with lowest priority assigned to this property ---
     try:
-        # Join staff_property_assignments with tenant_permissions to filter by role.
-        # Use the assignment's tenant_id to look up the role in tenant_permissions.
+        # Fetch all assignments for this property, ordered by priority
         assignments = (
             db.table("staff_property_assignments")
-            .select("tenant_id")
+            .select("user_id, priority")
             .eq("property_id", property_id)
+            .order("priority", desc=False)
             .execute()
         )
         if assignments.data:
-            # Filter for manager role via a second lookup (PostgREST join limitations)
-            om_candidates = []
             for row in assignments.data:
+                uid = row.get("user_id")
+                if not uid:
+                    continue
+                # Verify this user has role='manager' in tenant_permissions
                 try:
                     perm = (
                         db.table("tenant_permissions")
-                        .select("tenant_id, role")
-                        .eq("tenant_id", row["tenant_id"])
+                        .select("user_id, role")
+                        .eq("user_id", uid)
                         .eq("role", "manager")
                         .limit(1)
                         .execute()
                     )
                     if perm.data:
-                        om_candidates.append(row["tenant_id"])
+                        logger.info(
+                            "resolve_conversation_owner: primary OM user_id=%r (priority=%d) "
+                            "for property %r",
+                            uid,
+                            row.get("priority", 999),
+                            property_id,
+                        )
+                        return uid
                 except Exception:
                     continue
-
-            if om_candidates:
-                # Return first candidate — staff_property_assignments ordering is by priority
-                # (lowest priority = primary, as established in Phase 1031)
-                resolved = om_candidates[0]
-                logger.info(
-                    "resolve_conversation_owner: primary OM %r for property %r",
-                    resolved,
-                    property_id,
-                )
-                return resolved
     except Exception as exc:
         logger.warning(
             "resolve_conversation_owner: OM lookup failed for property %r: %s",
@@ -114,33 +118,40 @@ def resolve_conversation_owner(
             exc,
         )
 
-    # --- 2. Fallback: any admin in this tenant ---
+    # --- 2. Fallback: any user with role='admin' in this tenant ---
     try:
         admin_res = (
             db.table("tenant_permissions")
-            .select("tenant_id")
+            .select("user_id, display_name")
+            .eq("tenant_id", tenant_id)
             .eq("role", "admin")
             .limit(1)
             .execute()
         )
         if admin_res.data:
-            resolved = admin_res.data[0]["tenant_id"]
-            logger.warning(
-                "resolve_conversation_owner: no OM for property %r — using admin %r",
-                property_id,
-                resolved,
-            )
-            return resolved
+            uid = admin_res.data[0].get("user_id", "")
+            display = admin_res.data[0].get("display_name", "admin")
+            if uid:
+                logger.warning(
+                    "resolve_conversation_owner: no OM for property %r — "
+                    "using admin user_id=%r (%s)",
+                    property_id,
+                    uid,
+                    display,
+                )
+                return uid
     except Exception as exc:
         logger.warning(
             "resolve_conversation_owner: admin fallback failed: %s", exc
         )
 
-    # --- 3. Last resort: token's tenant_id ---
+    # --- 3. Last resort: return tenant_id as a string marker ---
+    # This is a degraded state — inbox scoping will not work correctly.
     logger.warning(
         "resolve_conversation_owner: all lookups failed for property %r — "
-        "using token tenant_id %r as owner",
+        "using tenant_id %r as last-resort owner marker",
         property_id,
         tenant_id,
     )
     return tenant_id
+
