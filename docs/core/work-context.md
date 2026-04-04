@@ -1,14 +1,10 @@
 ## Current Active Phase
 
-Phase 1059 — Operational Resilience Hardening (ACTIVE 2026-04-04). Phases 841–1058 closed.
-
-**Delivered in 1059 (partial — not full closure of both items):**
-- Item 1 (photo upload failure chain): substantially hardened. Storage failure now returns 502 instead of silent broken DB record. `upload_status` column added. Failed upload UI persistent + retry gated. Residual risk remains: `/worker/documents/upload` failure contract unchanged, no offline queuing.
-- Item 5 (saga/compensation model): NOT closed. Partially mitigated for check-in browser-refresh recovery only (sessionStorage + `GET /checkin-resume` endpoint). Broader saga/compensation gap — checkout wizard, cross-step rollback, backend wizard_draft, multi-device resume — remains open.
+Phase 1068 — Next (TBD). Phases 841–1067 closed.
 
 ## Last Closed Phase
 
-Phase 1058 — Operational Audit Closure: PKA-Bridge Group B + Group C + Backend Authorization Hardening (CLOSED 2026-04-04).
+Phase 1067 — Guest Checkout Wizard: Completion Fix + Property Name + Copy Polish (CLOSED 2026-04-04).
 
 ## Current Objective
 
@@ -219,6 +215,14 @@ Phase 1051 — Operational Guest Inbox UI                                       
 Phase 1052 — Host Reply Path                                                   ← PROVEN (2026-04-03)
 Phase 1053 — Guest Portal Thread View                                          ← BUILT + SURFACED (proof pending)
 Phase 1058 — PKA-Bridge Audit Closure + Backend Authorization Hardening         ← CLOSED (2026-04-04)
+Phase 1059 — Operational Resilience Hardening (partial)                         ← CLOSED (2026-04-04)
+Phase 1063 — Conditional Checkout Flow                                           ← CLOSED (2026-04-04)
+Phase 1064 — Guest Portal Empty States                                           ← CLOSED (2026-04-04)
+Phase 1065 — Guest Portal: Early Check-Out Request + Self Check-Out              ← CLOSED (2026-04-04)
+Phase 1066 — Guest Self-Checkout Resolution Fix                                  ← CLOSED (2026-04-04)
+Phase 1067 — Guest Checkout Wizard: Completion Fix + Property Name + Copy       ← CLOSED (2026-04-04)
+Item 9  — Guest Pre-Arrival Form                                                 ← DEFERRED (documented 2026-04-04)
+Item 10 — Data Retention Policy                                                  ← DEFERRED (audit complete 2026-04-04)
 ```
 
 ### Staging Deployment Truth (Proven 855A)

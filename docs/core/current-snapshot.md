@@ -1,8 +1,8 @@
 ## Current Phase
-Phase 1059 — Next (TBD)
+Phase 1068 — Next (TBD)
 
 ## Last Closed Phase
-Phase 1058 — Operational Audit Closure: PKA-Bridge Group B + Group C + Backend Authorization Hardening (CLOSED — 2026-04-04)
+Phase 1067 — Guest Checkout Wizard: Completion Fix + Property Name + Copy Polish (CLOSED — 2026-04-04)
 
 ## System Status
 
@@ -55,6 +55,20 @@ Implementation landed across multiple workstreams. Documentation closure was inc
 - **Product Decision Locked:** OM task model. Worker layer = Acknowledge/Start/Complete. Manager layer = Monitor/Takeover/Reassign/Note. `ManagerTaskCard` as drill-down intervention layer only. Phase 1034 (OM-1) spec approved — not yet built.
 - **INV-1033-TIMING:** `ack_allowed_at` = `effective_due_at` − 24h; `start_allowed_at` = `effective_due_at` − 2h. CRITICAL bypasses all gates. Frontend timing state is derived exclusively from server-provided fields — no local computation.
 - Commits: `305a083` → `e79adb2` (OM surface + Act As + staff onboarding), `cd8a04a`, `1480f03` (timing model). Branch: `checkpoint/supabase-single-write-20260305-1747`.
+
+**Phase 1059 — Operational Resilience Hardening (Partial/Closed — 2026-04-04):** Photo upload failure chain hardened (502 on storage fail, `upload_status` field, retry-gated UI). Check-in browser-refresh recovery via sessionStorage + `GET /checkin-resume`. Broader saga/compensation model deferred (checkout wizard cross-step rollback, `wizard_draft`, multi-device resume). Phase closed to unblock guest checkout stream.
+
+**Phase 1063 — Conditional Checkout Flow (Closed — 2026-04-04):** Worker checkout wizard now derives step sequence dynamically from baseline data via `computeStepFlow(baseline)`. Closing meter step conditional on `electricity_enabled && has_opening_meter`. Deposit step conditional on `deposit_enabled || deposit.amount > 0`. Issues step transparent when inspection clean. `goNext()`/`goBack()` helpers, step counter + progress bar reflect real flow. No backend changes. Commit `8673e12`.
+
+**Phase 1064 — Guest Portal Empty States (Closed — 2026-04-04):** Home Essentials section no longer renders floating header when all sub-content (wifi, times, emergency, welcome, rules) is null. Need Help section improved for no-contact-configured state. Around You / Your Stay / Conversation Thread: intentional-hide when empty confirmed correct. Commit `fbb37d3`.
+
+**Phase 1065 — Guest Portal: Early Check-Out Request + Self Check-Out (Closed — 2026-04-04):** Two new guest-facing portal flows. `GET /guest/{token}/checkout-status` endpoint returns effective checkout date, early checkout state, self-checkout eligibility (24h window). Early Check-Out request CTA (formal guest-initiated request). Self Check-Out CTA links to `/guest-checkout/{token}` wizard. Token URL construction fixed using `useParams()` (Next.js 15+). Commit `1af5316`.
+
+**Phase 1066 — Guest Self-Checkout Resolution Fix (Closed — 2026-04-04):** Three-bug fix for "Link unavailable / Booking not found" on wizard entry. (1) `useParams()` to unwrap token (Next.js 15+ breaking change). (2) DB migration `add_checkout_portal_missing_columns` — `deposit_status`, `opening_meter`, `property_id` added to `guest_checkout` table. (3) Booking lookup key corrected. Proven on real Amuna Villa case (ICAL-36ff7d9905e0, early checkout Apr 5). Commits `1868de0`, `d2c802a`.
+
+**Phase 1067 — Guest Checkout Wizard: Completion Fix + Property Name + Copy Polish (Closed — 2026-04-04):** Primary fix: `ready` step was excluded from API calls → `confirm_departure` never POSTed → backend always returned `STEPS_INCOMPLETE`. Fix: map `ready` → `confirm_departure` backend key. Property name fix: `name` column does not exist in DB (only `display_name`) — silent exception → fallback to property code. Fixed in 4 locations in `guest_checkout_router.py`. Final `SummaryScreen` added: UTC timestamp, confirmed checklist, follow-up contact, pending review block, guest feedback, farewell message. 7 copy label cleanups. Skip + Confirm buttons disabled during submission (race-condition guard). TypeScript 0 errors. Commit `3c4d9df`.
+
+**Items 9 & 10 — Deferred Documentation (2026-04-04):** Item 9 (Guest Pre-Arrival Form): Deferred — iCal-first model has no reliable pre-arrival guest identity/contact path. Full spec: `docs/future/guest-pre-arrival-form.md`. Item 10 (Data Retention Policy): Full 100-table audit completed. 11 gaps documented. Policy enforcement deferred pending Thailand PDPA + TM.30 + data controller classification review. Full audit: `docs/future/data-retention-policy-audit.md`.
 
 ## Deferred Items — Managed Open Items Registry
 

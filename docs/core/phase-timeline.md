@@ -9194,3 +9194,89 @@ Applied to:
 
 8,138 passed, 52 failed (all pre-existing), 22 skipped. No new failures introduced by Phase 1058.
 
+
+---
+
+## Phase 1059 — Operational Resilience Hardening (Partial/Closed)
+
+**Date:** 2026-04-04
+**Status:** CLOSED (partial delivery)
+
+Item 1 (photo upload failure chain): substantially hardened — 502 on storage failure, `upload_status` written, retry-gated UI. Residual risk remains (worker document upload unchanged, no offline queue).
+Item 5 (saga/compensation model): partially mitigated for check-in browser-refresh recovery only (sessionStorage + `GET /checkin-resume`). Full saga model deferred.
+
+---
+
+## Phase 1063 — Conditional Checkout Flow (Closed)
+
+**Date:** 2026-04-04
+**Status:** CLOSED
+**Commit:** `8673e12`
+
+Replaced hardcoded 5-step checkout wizard with `computeStepFlow(baseline)` — derives minimal applicable step sequence from real baseline data (`charge_rules.electricity_enabled`, `opening_meter`, `deposit_enabled/amount`). 3–5 step flows depending on property config. `goNext()`/`goBack()` step helpers replace hardcoded step references. Backend: no changes (fields already existed since Phase 993).
+
+---
+
+## Phase 1064 — Guest Portal Empty States (Closed)
+
+**Date:** 2026-04-04
+**Status:** CLOSED
+**Commit:** `fbb37d3`
+
+Audited and fixed all guest portal sections for empty/under-configured behavior. Key fix: Home Essentials section header no longer renders when all sub-sections (wifi, times, emergency, welcome, rules) are null — was visually broken (floating header over empty space). Around You, Your Stay, Conversation Thread: intentional hide when empty — correct, left as-is.
+
+---
+
+## Phase 1065 — Guest Portal: Early Check-Out Request + Self Check-Out (Closed)
+
+**Date:** 2026-04-04
+**Status:** CLOSED
+**Commit:** `1af5316`
+
+Two new guest-facing flows added to the main portal:
+1. **Early Check-Out Request** — guest can formally request a shortened stay. `POST /guest/{token}/request-early-checkout`. Shows only when active stay + admin-approved early request exists. Backend validates token + booking state.
+2. **Self Check-Out CTA** — surfaces the `/guest-checkout/{token}` wizard link when guest is within the final 24h window of their effective checkout date. `GET /guest/{token}/checkout-status` endpoint. CTA drives to guest checkout wizard with correctly constructed token URL.
+
+---
+
+## Phase 1066 — Guest Self-Checkout Resolution Fix (Closed)
+
+**Date:** 2026-04-04
+**Status:** CLOSED
+**Commits:** `1868de0`, `d2c802a`
+**DB Migration:** `add_checkout_portal_missing_columns`
+
+End-to-end fix for "Link unavailable / Booking not found" in the guest self-checkout flow. Three stacked bugs:
+1. Frontend: `params.token` was a Promise in Next.js 15+ — replaced with `useParams()` hook
+2. Backend: `guest_checkout` table missing columns `deposit_status`, `opening_meter`, `property_id` — DB migration added
+3. Backend: booking lookup was joining on wrong key — fixed to `booking_id`
+Proven on real Amuna Villa case: ICAL-36ff7d9905e0, approved early checkout Apr 5.
+
+---
+
+## Phase 1067 — Guest Checkout Wizard: Completion Fix + Property Name + Copy Polish (Closed)
+
+**Date:** 2026-04-04
+**Status:** CLOSED
+**Commit:** `3c4d9df`
+
+Fixed final-step completion blocker: `ready` step was excluded from API calls — `confirm_departure` was never POSTed → `/complete` always returned `STEPS_INCOMPLETE`. Fix: map `ready` → `confirm_departure` backend key. Fixed property name showing `KPG-500`: `_get_property_for_portal` was SELECTing non-existent `name` column (only `display_name` exists) → exception → fallback to `property_id`. Fixed in 4 locations. Final `SummaryScreen` component added (timestamp, confirmed checklist, follow-up contact, feedback, farewell). Copy polish across 7 labels. TypeScript 0 errors, Railway + Vercel deployed.
+
+---
+
+## Item 9 — Guest Pre-Arrival Form (Deferred, Documented)
+
+**Date:** 2026-04-04
+**Status:** INTENTIONALLY DEFERRED — documented, not a current bug
+
+iCal-first model lacks verified guest identity/contact path pre-arrival. Deferred until OTA API/messaging integration or verified direct-booking identity available. Full spec: `docs/future/guest-pre-arrival-form.md`.
+
+---
+
+## Item 10 — Data Retention Policy Audit (Deferred, Documented)
+
+**Date:** 2026-04-04
+**Status:** INTENTIONALLY DEFERRED — audit complete, policy and enforcement pending
+
+100-table inventory completed. 11 retention gaps documented. Highest risk: passport/ID scans + OCR raw_response (no expiry), `user_sessions.ip_address` (no anonymization), no guest deletion path. Deferred until Thailand PDPA, TM.30 immigration obligations, and data controller classification are confirmed. Full audit: `docs/future/data-retention-policy-audit.md`. Future improvements entry: `docs/archive/improvements/future-improvements.md`.
+

@@ -5534,3 +5534,62 @@ Thread view in guest portal deployed. `ConversationThread` component inside "Nee
 Key files: `src/api/guest_portal_router.py`, `ihouse-ui/app/(public)/guest/[token]/page.tsx`.
 Commit: `c2d2f55`.
 Spec: `docs/archive/phases/phase-1053-spec.md`
+
+---
+
+## Phase 1059 Closure — Operational Resilience Hardening (Partial)
+
+**Date:** 2026-04-04
+
+Photo upload failure chain hardened (502 on storage fail, `upload_status`, retry-gated UI). Check-in browser-refresh recovery added via sessionStorage + `GET /checkin-resume`. Broader saga/compensation model deferred to dedicated future phase. Phase closed to unblock guest checkout stream.
+
+---
+
+## Phase 1063 Closure — Conditional Checkout Flow
+
+**Date:** 2026-04-04
+
+Replaced hardcoded 5-step worker checkout wizard with dynamic `computeStepFlow(baseline)`. Closing meter step: included only if `electricity_enabled && has_opening_meter`. Deposit step: included if `deposit_enabled || deposit.amount > 0`. Issues step: always in flow for back-nav, only reached if inspection failed. `goNext()`/`goBack()` helpers drive flow. Step counter and progress bar reflect real sequence. Commit `8673e12`.
+
+---
+
+## Phase 1064 Closure — Guest Portal Empty States
+
+**Date:** 2026-04-04
+
+Home Essentials section now computes `hasEssentials` before rendering header — no more floating section label over blank content. Need Help section improved for no-contact-configured state. Around You / Your Stay / Conversation Thread intentional-hide behavior confirmed correct. Commit `fbb37d3`.
+
+---
+
+## Phase 1065 Closure — Guest Portal: Early Check-Out Request + Self Check-Out
+
+**Date:** 2026-04-04
+
+Two new guest portal flows. `GET /guest/{token}/checkout-status` — new backend endpoint returning effective_checkout_date, early_checkout_request state, and self_checkout_eligible flag (24h window). Guest portal: conditionally renders Early Check-Out request button and Self Check-Out CTA. CTA URL construction fixed to use `useParams()` token (not `params.token` — Next.js 15+ Promise). Commit `1af5316`.
+
+---
+
+## Phase 1066 Closure — Guest Self-Checkout Resolution Fix
+
+**Date:** 2026-04-04
+
+Three-bug resolution for "Link unavailable / Booking not found" on guest self-checkout entry. (1) `useParams()` fix in page.tsx for Next.js 15+ token unwrapping. (2) DB migration `add_checkout_portal_missing_columns` — three missing columns on `guest_checkout` table. (3) Backend booking lookup key corrected. Proven on real Amuna Villa case. Commits `1868de0`, `d2c802a`.
+
+---
+
+## Phase 1067 Closure — Guest Checkout Wizard: Completion Fix + Property Name + Copy
+
+**Date:** 2026-04-04
+
+Completion blocker: `ready` step was excluded from API call → `confirm_departure` never POSTed → STEPS_INCOMPLETE. Fixed with step key mapping. Property name fix: `name` column does not exist in DB (only `display_name`); silent exception → fallback to property_id code. Fixed in 4 locations in `guest_checkout_router.py`. SummaryScreen added: timestamp, checklist, contact info, pending review block, feedback, farewell. 7 copy label fixes. Commit `3c4d9df`.
+
+---
+
+## Items 9 & 10 — Deferred Track Documentation
+
+**Date:** 2026-04-04
+
+Item 9 (Guest Pre-Arrival Form): Formally documented as deferred. iCal-first constraint means no reliable pre-arrival guest identity/contact path. Spec in `docs/future/guest-pre-arrival-form.md`. Entry added to `future-improvements.md`.
+
+Item 10 (Data Retention Policy): Full database audit completed — 100 tables, 11 gaps identified. Highest risk: document scans, OCR raw_response, IP addresses, no guest deletion path. Policy and enforcement deferred pending Thailand PDPA + TM.30 + data controller classification review. Audit in `docs/future/data-retention-policy-audit.md`. Entry added to `future-improvements.md`.
+
