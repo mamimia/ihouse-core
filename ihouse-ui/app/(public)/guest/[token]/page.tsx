@@ -909,7 +909,13 @@ function GuestCheckoutActions({ token, apiBase }: { token: string; apiBase: stri
                     </div>
 
                     <a
-                        href={`/guest-checkout/${token}`}
+                        // Phase 1065B fix: use the backend-issued GUEST_CHECKOUT token URL.
+                        // The main portal runs on a GUEST_PORTAL token which is a different
+                        // token type — /guest-checkout/ rejects it ("Booking not found").
+                        // The backend generates the correct token in checkout-status and
+                        // returns it as checkout_portal_url when the window is open.
+                        // Fall back to the old path only if backend omitted the URL (e.g., old deploy).
+                        href={status.checkout_portal_url ?? `/guest-checkout/${token}`}
                         style={{
                             display: 'block', background: PRIMARY, border: 'none',
                             borderRadius: 12, padding: '13px 0', textAlign: 'center',
