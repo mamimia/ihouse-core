@@ -248,6 +248,84 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+// ── Gregorian Date Input ─────────────────────────────────────────────────────
+// Uses three controlled selects (Day / Month / Year) — completely locale-
+// independent. Native <input type="date"> inherits the OS/browser locale and
+// renders Buddhist Era (2569 BE) on Thai-locale machines. This component is
+// always Gregorian regardless of OS or UI language.
+const MONTHS_EN = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+];
+
+function GregorianDateInput({
+  value, onChange, style,
+}: {
+  value: string;        // ISO YYYY-MM-DD or empty string
+  onChange: (v: string) => void;
+  style?: React.CSSProperties;
+}) {
+  // Parse current value
+  const parts = (value || '').split('-');
+  const curYear  = parts[0] || '';
+  const curMonth = parts[1] || '';
+  const curDay   = parts[2] || '';
+
+  const update = (y: string, m: string, d: string) => {
+    if (y && m && d) onChange(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+    else onChange('');
+  };
+
+  // Days in current month
+  const daysInMonth = curYear && curMonth
+    ? new Date(parseInt(curYear), parseInt(curMonth), 0).getDate()
+    : 31;
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  // Year range: 1940 – current year
+  const thisYear = new Date().getFullYear();
+  const years = Array.from({ length: thisYear - 1940 + 1 }, (_, i) => thisYear - i);
+
+  const sel: React.CSSProperties = {
+    ...style,
+    flex: 1, cursor: 'pointer', appearance: 'auto' as any,
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <select
+        style={{ ...sel, flex: '0 0 70px' }}
+        value={curDay}
+        onChange={e => update(curYear, curMonth, e.target.value)}
+        aria-label="Day"
+      >
+        <option value="">Day</option>
+        {days.map(d => <option key={d} value={String(d).padStart(2,'0')}>{d}</option>)}
+      </select>
+      <select
+        style={{ ...sel, flex: '0 0 110px' }}
+        value={curMonth}
+        onChange={e => update(curYear, e.target.value, curDay)}
+        aria-label="Month"
+      >
+        <option value="">Month</option>
+        {MONTHS_EN.map((m, i) => (
+          <option key={i+1} value={String(i+1).padStart(2,'0')}>{m}</option>
+        ))}
+      </select>
+      <select
+        style={{ ...sel, flex: '0 0 80px' }}
+        value={curYear}
+        onChange={e => update(e.target.value, curMonth, curDay)}
+        aria-label="Year"
+      >
+        <option value="">Year</option>
+        {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function CheckGroup({ options, selected, onChange }: {
   options: { value: string; label: string }[];
   selected: string[];
@@ -1000,16 +1078,7 @@ export default function EditStaffPage() {
                 <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="worker@example.com" />
               </Field>
               <Field label="Date of Birth">
-                {/* type=text avoids OS-locale Buddhist-year rendering in native date pickers */}
-                <input
-                  type="text"
-                  style={inputStyle}
-                  value={dateOfBirth}
-                  onChange={e => setDateOfBirth(e.target.value)}
-                  placeholder="YYYY-MM-DD"
-                  pattern="\d{4}-\d{2}-\d{2}"
-                  maxLength={10}
-                />
+                <GregorianDateInput value={dateOfBirth} onChange={setDateOfBirth} style={inputStyle} />
               </Field>
             </div>
 
@@ -1072,15 +1141,7 @@ export default function EditStaffPage() {
             <div style={sectionHeadStyle}>Employment</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Field label="Start Date / Hired Date">
-                <input
-                  type="text"
-                  style={inputStyle}
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  placeholder="YYYY-MM-DD"
-                  pattern="\d{4}-\d{2}-\d{2}"
-                  maxLength={10}
-                />
+                <GregorianDateInput value={startDate} onChange={setStartDate} style={inputStyle} />
               </Field>
               <div />
             </div>
@@ -1091,18 +1152,6 @@ export default function EditStaffPage() {
                 <select style={{ ...inputStyle, cursor: 'pointer' }} value={language} onChange={e => setLanguage(e.target.value)}>
                   {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
-              </Field>
-              <Field label="Status">
-                {/* Read-only badge — use Danger Zone below to deactivate/reactivate */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: isActive ? '#3fb950' : '#8b949e', flexShrink: 0 }} />
-                  <span style={{ fontSize: 'var(--text-sm)', color: isActive ? '#3fb950' : 'var(--color-text-faint)', fontWeight: 600 }}>
-                    {isActive ? 'Active' : 'Inactive'}
-                  </span>
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
-                    — use Danger Zone to change
-                  </span>
-                </div>
               </Field>
             </div>
 
@@ -2258,7 +2307,11 @@ export default function EditStaffPage() {
                   </Field>
                   <Field label="Expiry Date">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <input type="text" style={{ ...inputStyle, flex: 1 }} value={idDocExpiry} onChange={e => setIdDocExpiry(e.target.value)} placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" maxLength={10} />
+                      <GregorianDateInput
+                        value={idDocExpiry}
+                        onChange={setIdDocExpiry}
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
                       {(() => { const w = expiryWarning(idDocExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
                     </div>
                   </Field>
@@ -2311,7 +2364,11 @@ export default function EditStaffPage() {
                   </Field>
                   <Field label="Expiry Date">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <input type="text" style={{ ...inputStyle, flex: 1 }} value={workPermitExpiry} onChange={e => setWorkPermitExpiry(e.target.value)} placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" maxLength={10} />
+                      <GregorianDateInput
+                        value={workPermitExpiry}
+                        onChange={setWorkPermitExpiry}
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
                       {(() => { const w = expiryWarning(workPermitExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
                     </div>
                   </Field>
