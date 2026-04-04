@@ -306,28 +306,53 @@ def _verify_guest_checkout_token(
         return claims, None
 
     # --- Path 2: GUEST_PORTAL token fallback (Phase 1065B) ---
-    # Diagnostic mode: each exit returns a unique prefix so the next error screen
-    # reveals exactly which step is failing.
+    # Inline verification with one unique diagnostic code per sub-step.
+    # Bypasses resolve_guest_token_context() to identify the exact failure point.
+    import time as _time_mod, hmac as _hmac_mod, base64 as _b64_mod, hashlib as _hl_mod
     try:
-        from services.guest_token import resolve_guest_token_context
-        ctx = resolve_guest_token_context(token, db=db)
-        if ctx is None:
-            logger.warning("_verify_guest_checkout_token: path2 ctx=None")
-            return None, "[diag-P2A] Portal token HMAC or expiry check failed."
-        if not ctx.booking_ref:
-            logger.warning("_verify_guest_checkout_token: path2 booking_ref empty")
-            return None, "[diag-P2B] Portal token resolved but booking_ref is empty."
-        logger.info("_verify_guest_checkout_token: path2 success booking_ref=%s", ctx.booking_ref)
-        return {
-            "token_type": "guest_checkout",
-            "entity_id":  ctx.booking_ref,
-            "email":      ctx.guest_email or "",
-            "exp":        0,
-            "_via_portal_token": True,
-        }, None
-    except Exception as exc:
-        logger.exception("_verify_guest_checkout_token: path2 exception: %s", exc)
-        return None, f"[diag-P2C] {type(exc).__name__}: {exc}"
+        from services.guest_token import _get_secret, _decode_token, _sign, is_guest_token_revoked
+    except ImportError as _ie:
+        return None, f"[diag-P2-IMPORT] {_ie}"
+
+    try:
+        _secret = _get_secret()
+    except RuntimeError as _re:
+        return None, f"[diag-P2-SECRET] IHOUSE_GUEST_TOKEN_SECRET not set: {_re}"
+
+    _decoded = _decode_token(token)
+    if _decoded is None:
+        return None, f"[diag-P2-DECODE] no dot separator or bad base64. token[:30]={token[:30]!r}"
+
+    _message, _provided_sig = _decoded
+    _expected_sig = _sign(_message, _secret)
+    if not _hmac_mod.compare_digest(_provided_sig, _expected_sig):
+        return None, f"[diag-P2-HMAC] HMAC mismatch. provided[:8]={_provided_sig[:8]!r} expected[:8]={_expected_sig[:8]!r}"
+
+    _parts = _message.split(":", 2)
+    if len(_parts) != 3:
+        return None, f"[diag-P2-FORMAT] message has {len(_parts)} parts, expected 3. msg={_message[:40]!r}"
+
+    _booking_ref, _guest_email, _exp_str = _parts
+    try:
+        _exp = int(_exp_str)
+    except ValueError:
+        return None, f"[diag-P2-EXP-VAL] exp_str not an int: {_exp_str!r}"
+
+    _now = int(_time_mod.time())
+    if _exp < _now:
+        return None, f"[diag-P2-EXPIRED] token expired {_now - _exp}s ago (exp={_exp}, now={_now})"
+
+    if not _booking_ref:
+        return None, f"[diag-P2-NOREF] booking_ref is empty in token message"
+
+    logger.info("_verify_guest_checkout_token: path2 success booking_ref=%s", _booking_ref)
+    return {
+        "token_type": "guest_checkout",
+        "entity_id":  _booking_ref,
+        "email":      _guest_email or "",
+        "exp":        _exp,
+        "_via_portal_token": True,
+    }, None
 
 
 
