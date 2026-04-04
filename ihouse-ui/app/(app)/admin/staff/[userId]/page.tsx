@@ -432,7 +432,7 @@ function GregorianDateInput({
         {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
       </select>
 
-      {/* Calendar shortcut — minimal helper affordance */}
+      {/* Calendar shortcut — quiet inline affordance */}
       <button
         type="button"
         onClick={() => setCalOpen(o => !o)}
@@ -440,21 +440,22 @@ function GregorianDateInput({
         title="Pick from calendar"
         style={{
           border: 'none', background: 'transparent',
-          cursor: 'pointer', padding: '0 2px',
-          color: calOpen ? 'var(--color-primary)' : 'var(--color-text-dim)',
-          opacity: calOpen ? 1 : 0.45,
+          cursor: 'pointer', padding: '2px 4px',
+          color: calOpen ? 'var(--color-primary)' : 'var(--color-text-faint)',
+          opacity: calOpen ? 1 : 0.65,
           flexShrink: 0, lineHeight: 1, display: 'flex', alignItems: 'center',
           transition: 'opacity 0.15s, color 0.15s',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = calOpen ? '1' : '0.45'; }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = calOpen ? '1' : '0.65'; }}
       >
-        {/* 4-dot grid — no outer box, reads as "calendar" without looking like a button */}
-        <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-          <rect x="0" y="0" width="4.5" height="4.5" rx="0.8" />
-          <rect x="7.5" y="0" width="4.5" height="4.5" rx="0.8" />
-          <rect x="0" y="7.5" width="4.5" height="4.5" rx="0.8" />
-          <rect x="7.5" y="7.5" width="4.5" height="4.5" rx="0.8" />
+        {/* Stroked SVG calendar icon */}
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"
+          stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="2.5" width="14" height="12" rx="1.5" />
+          <line x1="1" y1="6.5" x2="15" y2="6.5" />
+          <line x1="5" y1="1" x2="5" y2="4" />
+          <line x1="11" y1="1" x2="11" y2="4" />
         </svg>
       </button>
 
@@ -2455,17 +2456,19 @@ export default function EditStaffPage() {
                   <Field label="Document Number">
                     <input style={inputStyle} value={idDocNumber} onChange={e => setIdDocNumber(e.target.value)} placeholder="Passport / ID number" />
                   </Field>
-                  <Field label="Expiry Date">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <GregorianDateInput
-                        value={idDocExpiry}
-                        onChange={setIdDocExpiry}
-                        style={{ ...inputStyle, flex: 1 }}
-                        mode="expiry"
-                      />
+                  {/* Expiry Date — warning badge on the label line, not in the picker row */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 4 }}>
+                      <label style={labelStyle}>Expiry Date</label>
                       {(() => { const w = expiryWarning(idDocExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
                     </div>
-                  </Field>
+                    <GregorianDateInput
+                      value={idDocExpiry}
+                      onChange={setIdDocExpiry}
+                      style={{ ...inputStyle, flex: 1 }}
+                      mode="expiry"
+                    />
+                  </div>
                 </div>
 
                 <Field label="Status">
@@ -2513,17 +2516,19 @@ export default function EditStaffPage() {
                   <Field label="Permit Number">
                     <input style={inputStyle} value={workPermitNumber} onChange={e => setWorkPermitNumber(e.target.value)} placeholder="Work permit number" />
                   </Field>
-                  <Field label="Expiry Date">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <GregorianDateInput
-                        value={workPermitExpiry}
-                        onChange={setWorkPermitExpiry}
-                        style={{ ...inputStyle, flex: 1 }}
-                        mode="expiry"
-                      />
+                  {/* Expiry Date — warning badge on the label line, not in the picker row */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 4 }}>
+                      <label style={labelStyle}>Expiry Date</label>
                       {(() => { const w = expiryWarning(workPermitExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
                     </div>
-                  </Field>
+                    <GregorianDateInput
+                      value={workPermitExpiry}
+                      onChange={setWorkPermitExpiry}
+                      style={{ ...inputStyle, flex: 1 }}
+                      mode="expiry"
+                    />
+                  </div>
                 </div>
 
                 <Field label="Status">
