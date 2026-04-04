@@ -432,20 +432,31 @@ function GregorianDateInput({
         {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
       </select>
 
-      {/* Calendar shortcut icon */}
+      {/* Calendar shortcut — quiet inline affordance */}
       <button
         type="button"
         onClick={() => setCalOpen(o => !o)}
         aria-label="Open calendar"
         title="Pick from calendar"
         style={{
-          border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
-          background: calOpen ? 'var(--color-surface-2)' : 'var(--color-surface)',
-          cursor: 'pointer', padding: '5px 7px', fontSize: 14, lineHeight: 1,
-          color: 'var(--color-text-dim)', flexShrink: 0,
+          border: 'none', background: 'transparent',
+          cursor: 'pointer', padding: '2px 4px',
+          color: calOpen ? 'var(--color-primary)' : 'var(--color-text-faint)',
+          opacity: calOpen ? 1 : 0.65,
+          flexShrink: 0, lineHeight: 1, display: 'flex', alignItems: 'center',
+          transition: 'opacity 0.15s, color 0.15s',
         }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = calOpen ? '1' : '0.65'; }}
       >
-        📅
+        {/* Small SVG calendar icon — no emoji, no outline box */}
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"
+          stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="2.5" width="14" height="12" rx="1.5" />
+          <line x1="1" y1="6.5" x2="15" y2="6.5" />
+          <line x1="5" y1="1" x2="5" y2="4" />
+          <line x1="11" y1="1" x2="11" y2="4" />
+        </svg>
       </button>
 
       {/* Gregorian calendar popup */}
