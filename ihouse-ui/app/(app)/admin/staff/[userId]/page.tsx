@@ -432,7 +432,7 @@ function GregorianDateInput({
         {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
       </select>
 
-      {/* Calendar shortcut — quiet inline affordance */}
+      {/* Calendar shortcut — lightweight glyph, no bounding box */}
       <button
         type="button"
         onClick={() => setCalOpen(o => !o)}
@@ -440,22 +440,34 @@ function GregorianDateInput({
         title="Pick from calendar"
         style={{
           border: 'none', background: 'transparent',
-          cursor: 'pointer', padding: '2px 4px',
-          color: calOpen ? 'var(--color-primary)' : 'var(--color-text-faint)',
-          opacity: calOpen ? 1 : 0.65,
+          cursor: 'pointer', padding: '1px 3px',
+          color: calOpen ? 'var(--color-primary)' : 'var(--color-text-dim)',
+          opacity: calOpen ? 1 : 0.42,
           flexShrink: 0, lineHeight: 1, display: 'flex', alignItems: 'center',
           transition: 'opacity 0.15s, color 0.15s',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = calOpen ? '1' : '0.65'; }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = calOpen ? '1' : '0.42'; }}
       >
-        {/* Stroked SVG calendar icon */}
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"
-          stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="1" y="2.5" width="14" height="12" rx="1.5" />
-          <line x1="1" y1="6.5" x2="15" y2="6.5" />
-          <line x1="5" y1="1" x2="5" y2="4" />
-          <line x1="11" y1="1" x2="11" y2="4" />
+        {/*
+          No outer rect — avoids the "outlined box" feel.
+          Two binding posts + cap bar + 2×3 date-dot grid = reads as calendar,
+          weighs nothing visually.
+        */}
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"
+          fill="currentColor" stroke="currentColor" strokeLinecap="round">
+          {/* Binding posts */}
+          <line x1="3.5" y1="0" x2="3.5" y2="2.8" strokeWidth="1.2" />
+          <line x1="8.5" y1="0" x2="8.5" y2="2.8" strokeWidth="1.2" />
+          {/* Header cap bar */}
+          <line x1="0.5" y1="2.8" x2="11.5" y2="2.8" strokeWidth="1.0" />
+          {/* Date dots — 2 rows × 3 cols */}
+          <circle cx="2.2" cy="5.8" r="0.9" stroke="none" />
+          <circle cx="6.0" cy="5.8" r="0.9" stroke="none" />
+          <circle cx="9.8" cy="5.8" r="0.9" stroke="none" />
+          <circle cx="2.2" cy="9.2" r="0.9" stroke="none" />
+          <circle cx="6.0" cy="9.2" r="0.9" stroke="none" />
+          <circle cx="9.8" cy="9.2" r="0.9" stroke="none" />
         </svg>
       </button>
 
