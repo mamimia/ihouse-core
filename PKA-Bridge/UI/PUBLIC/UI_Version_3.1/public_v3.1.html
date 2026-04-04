@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Public Surface UI v3.1 – Domaniqo Property Management</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>Domaniqo PUBLIC Surface V3.1 — Real Staging Product</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -13,885 +13,890 @@
         }
 
         body {
-            background: #F2EFEB;
-            padding: 28px 32px 56px;
+            background: #0F1117;
+            color: #E5E7EB;
             font-family: 'Inter', sans-serif;
-            color: #171A1F;
+            padding: 60px 20px;
         }
 
-        .wrap {
-            max-width: 2200px;
-            margin: 0 auto;
-        }
-
-        /* Page Header */
         .page-header {
-            margin-bottom: 32px;
+            text-align: center;
+            margin-bottom: 60px;
         }
 
         .page-header h1 {
             font-family: 'Manrope', sans-serif;
             font-size: 28px;
-            font-weight: 800;
-            color: #171A1F;
-            margin-bottom: 4px;
+            font-weight: 700;
+            color: #F3F4F6;
+            margin-bottom: 8px;
         }
 
         .page-header p {
-            font-size: 13px;
+            font-size: 14px;
             color: #9CA3AF;
-            font-weight: 500;
+            margin-bottom: 24px;
         }
 
-        /* Design Notes Bar */
-        .notes-bar {
-            background: #171A1F;
-            border-radius: 12px;
-            padding: 20px 24px;
-            margin-bottom: 40px;
+        .mockups-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 80px;
+            max-width: 1600px;
+            margin: 0 auto;
         }
 
-        .note-column {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .note-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            color: #334036;
-            text-transform: uppercase;
-            font-family: 'Manrope', sans-serif;
-        }
-
-        .note-text {
-            font-size: 11px;
-            color: #E5E7EB;
-            line-height: 1.4;
-            font-weight: 400;
-        }
-
-        /* Phones Container */
-        .phones-container {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 40px;
-        }
-
-        .phone-column {
+        .mockup-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
-        }
-
-        .phone {
-            width: 300px;
-            height: 622px;
-            border-radius: 36px;
-            background: #F9F7F4;
-            box-shadow:
-                0 0 0 2px #D1D6DC,
-                0 2px 0 3px #B8BEC6,
-                0 12px 48px rgba(0,0,0,0.2),
-                inset 0 0 0 1px rgba(255,255,255,0.55);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            color: #171A1F;
         }
 
         .screen-label {
             font-family: 'Manrope', sans-serif;
             font-size: 11px;
-            font-weight: 700;
-            color: #6B7280;
-            text-transform: uppercase;
-            text-align: center;
+            font-weight: 600;
             letter-spacing: 0.5px;
+            color: #6B7280;
+            margin-bottom: 16px;
+            text-transform: uppercase;
         }
 
-        /* Phone Status Bar */
+        .phone-mockup {
+            width: 300px;
+            height: 622px;
+            background: #171A1F;
+            border-radius: 36px;
+            border: 8px solid #0F1117;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
         .status-bar {
-            height: 26px;
-            background: #FFFFFF;
+            height: 44px;
+            background: #0F1117;
+            border-bottom: 1px solid #2D3139;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            padding: 0 12px;
-            font-family: 'Manrope', sans-serif;
-            font-size: 11.5px;
-            font-weight: 700;
-            color: #171A1F;
-            border-bottom: 1px solid #F0EEE9;
-        }
-
-        .status-left, .status-right {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .status-icon {
-            width: 12px;
-            height: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Scroll Area */
-        .scroll-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            background: #F9F7F4;
-        }
-
-        .scroll-area::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .scroll-area::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .scroll-area::-webkit-scrollbar-thumb {
-            background: #D1D5DB;
-            border-radius: 2px;
-        }
-
-        /* ============ SCREEN 1: HERO & LANDING ============ */
-        .hero {
-            background: linear-gradient(135deg, #F5EFE6 0%, #334036 100%);
-            color: white;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
-        .hero-nav {
-            height: 48px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             padding: 0 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .hero-logo {
-            font-family: 'Manrope', sans-serif;
-            font-size: 14px;
-            font-weight: 800;
-            color: white;
-            letter-spacing: -0.3px;
-        }
-
-        .hero-hamburger {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 4px;
-            cursor: pointer;
-        }
-
-        .hero-hamburger span {
-            width: 100%;
-            height: 2px;
-            background: white;
-            border-radius: 1px;
-        }
-
-        .hero-body {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 32px 20px;
-            text-align: center;
-            gap: 16px;
-        }
-
-        .hero-headline {
-            font-family: 'Manrope', sans-serif;
-            font-size: 22px;
-            font-weight: 800;
-            line-height: 1.2;
-            color: white;
-            letter-spacing: -0.3px;
-        }
-
-        .hero-subtitle {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.8);
-            line-height: 1.5;
-        }
-
-        .cta-button {
-            background: #B56E45;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-family: 'Manrope', sans-serif;
-            font-size: 13px;
-            font-weight: 800;
-            cursor: pointer;
-            width: 100%;
-            max-width: 240px;
-            transition: background 0.2s ease;
-        }
-
-        .cta-button:hover {
-            background: #A05A35;
-        }
-
-        .cta-button.outline {
-            background: transparent;
-            border: 1.5px solid rgba(255, 255, 255, 0.3);
-            color: white;
-        }
-
-        .cta-button.outline:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .hero-trust {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 20px 16px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .trust-item {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .trust-value {
-            font-family: 'Manrope', sans-serif;
-            font-size: 13px;
-            font-weight: 800;
-            color: white;
-        }
-
-        .trust-label {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.6);
-            line-height: 1.3;
-        }
-
-        .scroll-indicator {
-            text-align: center;
-            padding: 8px 0 0 0;
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.4);
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(3px); }
-        }
-
-        /* ============ SCREEN 2: HOW IT WORKS ============ */
-        .how-it-works-screen {
-            background: white;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .how-header {
-            padding: 16px;
-            border-bottom: 1px solid #F0EEE9;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .how-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 14px;
-            font-weight: 800;
-            color: #171A1F;
-        }
-
-        .how-body {
-            flex: 1;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            overflow-y: auto;
-        }
-
-        .step-item {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding: 12px;
-            background: #F9F7F4;
-            border-radius: 8px;
-            border-left: 3px solid #B56E45;
-        }
-
-        .step-number {
-            font-family: 'Manrope', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            color: #B56E45;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .step-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 13px;
-            font-weight: 800;
-            color: #171A1F;
-        }
-
-        .step-description {
-            font-size: 11px;
-            color: #6B7280;
-            line-height: 1.5;
-        }
-
-        /* ============ SCREEN 3: WHAT WE MANAGE ============ */
-        .services-screen {
-            background: white;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .services-header {
-            padding: 16px;
-            border-bottom: 1px solid #F0EEE9;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .services-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 14px;
-            font-weight: 800;
-            color: #171A1F;
-        }
-
-        .services-body {
-            flex: 1;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            overflow-y: auto;
-        }
-
-        .service-card {
-            padding: 12px;
-            background: #F9F7F4;
-            border-radius: 8px;
-            border: 1px solid #E5E7EB;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .service-icon {
-            font-size: 16px;
-        }
-
-        .service-name {
-            font-family: 'Manrope', sans-serif;
             font-size: 12px;
-            font-weight: 800;
-            color: #171A1F;
-        }
-
-        .service-description {
-            font-size: 11px;
-            color: #6B7280;
-            line-height: 1.4;
-        }
-
-        /* ============ SCREEN 4: SUBMIT YOUR PROPERTY ============ */
-        .submit-screen {
-            background: white;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .submit-header {
-            padding: 16px;
-            border-bottom: 1px solid #F0EEE9;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .submit-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 14px;
-            font-weight: 800;
-            color: #171A1F;
-        }
-
-        .submit-body {
-            flex: 1;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            overflow-y: auto;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .form-label {
-            font-family: 'Manrope', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            color: #171A1F;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-input {
-            padding: 10px 12px;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            color: #171A1F;
-            background: #FFFFFF;
-            transition: border-color 0.2s ease;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #334036;
-        }
-
-        .form-input::placeholder {
             color: #9CA3AF;
         }
 
-        .form-select {
-            padding: 10px 12px;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            color: #171A1F;
-            background: #FFFFFF;
-            cursor: pointer;
-            transition: border-color 0.2s ease;
+        .status-bar-time {
+            font-weight: 500;
         }
 
-        .form-select:focus {
-            outline: none;
-            border-color: #334036;
-        }
-
-        /* ============ SCREEN 5: CONTACT FORM ============ */
-        .contact-screen {
-            background: white;
-            padding: 0;
+        .phone-content {
+            flex: 1;
+            overflow-y: auto;
+            background: #0F1117;
             display: flex;
             flex-direction: column;
         }
 
-        .contact-header {
-            padding: 16px;
-            border-bottom: 1px solid #F0EEE9;
+        /* Nav bar styling */
+        .nav-bar {
+            background: #0F1117;
+            border-bottom: 1px solid #2D3139;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .nav-logo {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            color: #F3F4F6;
+        }
+
+        .nav-center {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: #9CA3AF;
+        }
+
+        .nav-center a {
+            color: #9CA3AF;
+            text-decoration: none;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 11px;
+        }
+
+        .nav-signout {
+            color: #9CA3AF;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-get-started {
+            background: #92400E;
+            color: #FEF3C7;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-signout-text {
+            color: #9CA3AF;
+            font-size: 12px;
+        }
+
+        /* Landing Screen */
+        .landing-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .landing-logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #92400E, #B45309);
+            border-radius: 12px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+            font-weight: 700;
+            font-size: 28px;
+            color: #FEF3C7;
         }
 
-        .contact-body {
-            flex: 1;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            overflow-y: auto;
+        .landing-headline {
+            font-family: 'Manrope', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #F3F4F6;
+            margin-bottom: 12px;
+            line-height: 1.2;
         }
 
-        .contact-subtitle {
+        .landing-subtitle {
             font-size: 12px;
-            color: #6B7280;
-            line-height: 1.5;
-            margin-bottom: 4px;
+            color: #D1D5DB;
+            margin-bottom: 32px;
+            line-height: 1.4;
         }
 
-        .footer-bar {
-            padding: 16px;
-            border-top: 1px solid #F0EEE9;
-            background: #FAFAF9;
+        .landing-ctas {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
+            width: 100%;
         }
 
         .btn-primary {
-            width: 100%;
-            background: #B56E45;
-            color: white;
+            background: #047857;
+            color: #ECFDF5;
             border: none;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-family: 'Manrope', sans-serif;
-            font-size: 13px;
-            font-weight: 800;
+            border-radius: 4px;
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .btn-primary:hover {
-            background: #A05A35;
         }
 
         .btn-secondary {
-            width: 100%;
-            background: white;
-            color: #171A1F;
-            border: 1px solid #E5E7EB;
-            padding: 12px 16px;
+            background: transparent;
+            color: #9CA3AF;
+            border: 1px solid #4B5563;
+            border-radius: 4px;
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Post-Auth Home */
+        .home-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .home-welcome {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .home-dlogo {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #92400E, #B45309);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-weight: 700;
+            font-size: 22px;
+            color: #FEF3C7;
+        }
+
+        .welcome-heading {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #F3F4F6;
+            margin-bottom: 4px;
+        }
+
+        .welcome-email {
+            font-size: 12px;
+            color: #9CA3AF;
+            margin-bottom: 24px;
+        }
+
+        .dashboard-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #1F2937;
+            border: 1px solid #374151;
             border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: #4B5563;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(147, 197, 253, 0.1);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .card-title {
             font-family: 'Manrope', sans-serif;
             font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            font-weight: 600;
+            color: #F3F4F6;
+            margin-bottom: 4px;
         }
 
-        .btn-secondary:hover {
-            background: #F9F7F4;
-            border-color: #D1D6DC;
-        }
-
-        .info-text {
-            font-size: 10px;
+        .card-description {
+            font-size: 11px;
             color: #9CA3AF;
             line-height: 1.4;
+        }
+
+        .cta-card {
+            background: linear-gradient(135deg, #047857, #059669);
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .cta-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .cta-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ECFDF5;
+            margin-bottom: 4px;
+        }
+
+        .cta-description {
+            font-size: 12px;
+            color: #D1FAE5;
+        }
+
+        /* My Properties */
+        .breadcrumb {
+            font-size: 12px;
+            color: #9CA3AF;
+            padding: 12px 16px;
+            border-bottom: 1px solid #2D3139;
+        }
+
+        .breadcrumb a {
+            color: #9CA3AF;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .properties-content {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .properties-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #F3F4F6;
+            margin-bottom: 4px;
+        }
+
+        .properties-welcome {
+            font-size: 12px;
+            color: #9CA3AF;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #D1D5DB;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .property-card {
+            background: #1F2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .property-image {
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(135deg, #374151, #4B5563);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #6B7280;
+        }
+
+        .property-info {
+            padding: 12px;
+        }
+
+        .property-name {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: #F3F4F6;
+            margin-bottom: 2px;
+        }
+
+        .property-location {
+            font-size: 11px;
+            color: #9CA3AF;
+            margin-bottom: 8px;
+        }
+
+        .property-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-draft {
+            background: #1F2937;
+            color: #9CA3AF;
+            border: 1px solid #374151;
+        }
+
+        .badge-pending {
+            background: rgba(217, 119, 6, 0.2);
+            color: #FCD34D;
+        }
+
+        .property-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-small {
+            background: transparent;
+            color: #9CA3AF;
+            border: 1px solid #374151;
+            border-radius: 3px;
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
             text-align: center;
         }
 
-        .section-content {
-            padding: 12px;
-            background: #F9F7F4;
-            border-radius: 8px;
+        .btn-submit {
+            background: transparent;
+            color: #92400E;
+            border: 1px solid #92400E;
+        }
+
+        .btn-add-property {
+            background: #1F2937;
+            color: #F3F4F6;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Profile & Settings */
+        .profile-content {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .profile-section {
+            margin-bottom: 24px;
+        }
+
+        .profile-label {
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #D1D5DB;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-label {
             font-size: 11px;
-            color: #171A1F;
+            color: #9CA3AF;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            background: #1F2937;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            padding: 8px 10px;
+            color: #F3F4F6;
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-input::placeholder {
+            color: #6B7280;
+        }
+
+        .btn-edit {
+            background: #92400E;
+            color: #FEF3C7;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .login-method {
+            background: #1F2937;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .login-method-info {
+            font-size: 12px;
+            color: #F3F4F6;
+        }
+
+        .login-method-type {
+            font-size: 11px;
+            color: #9CA3AF;
+        }
+
+        .btn-link {
+            background: transparent;
+            color: #92400E;
+            border: 1px solid #92400E;
+            border-radius: 3px;
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .account-status {
+            background: rgba(217, 119, 6, 0.1);
+            border: 1px solid rgba(217, 119, 6, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #FCD34D;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .status-text {
+            font-size: 12px;
+            color: #FCD34D;
+        }
+
+        .user-id {
+            font-size: 11px;
+            color: #6B7280;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #2D3139;
+        }
+
+        /* Notes bar */
+        .notes-section {
+            margin-top: 80px;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .notes-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: #9CA3AF;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            background: #171A1F;
+            border: 1px solid #2D3139;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .note-item {
+            font-size: 12px;
+            color: #D1D5DB;
             line-height: 1.5;
+        }
+
+        .note-label {
+            font-weight: 600;
+            color: #9CA3AF;
+            margin-bottom: 4px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
         }
 
     </style>
 </head>
 <body>
-    <div class="wrap">
-        <!-- Page Header -->
-        <div class="page-header">
-            <h1>Public Surface — V3.1 Visual Direction</h1>
-            <p>Domaniqo Property Operations Management · Property Owner Entry Point (Learn → Submit → Manage)</p>
+    <div class="page-header">
+        <h1>Domaniqo PUBLIC Surface — V3.1</h1>
+        <p>Complete entry surface based on real staging product</p>
+    </div>
+
+    <div class="mockups-grid">
+        <!-- SCREEN 1: LANDING (PRE-AUTH) -->
+        <div class="mockup-container">
+            <div class="screen-label">Screen 1 — Public Landing</div>
+            <div class="phone-mockup">
+                <div class="status-bar">
+                    <span class="status-bar-time">9:41</span>
+                    <span>●●●●●</span>
+                </div>
+                <div class="nav-bar">
+                    <div class="nav-logo">Domaniqo</div>
+                    <div class="nav-center">
+                        <a href="#">Platform</a>
+                        <a href="#">Channels</a>
+                        <a href="#">Pricing</a>
+                        <a href="#">About</a>
+                    </div>
+                    <div class="nav-right">
+                        <a class="nav-signout" href="#">Sign in</a>
+                        <button class="btn-get-started">Get Started</button>
+                    </div>
+                </div>
+                <div class="phone-content scrollbar-hide">
+                    <div class="landing-content">
+                        <div class="landing-logo">D</div>
+                        <div class="landing-headline">See every stay.</div>
+                        <div class="landing-subtitle">The deep operations platform for modern hospitality. Calm command across operations, teams, finance, and guest experience.</div>
+                        <div class="landing-ctas">
+                            <button class="btn-primary">Onboard Your Property</button>
+                            <button class="btn-secondary">Sign in →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Design Notes Bar -->
-        <div class="notes-bar">
-            <div class="note-column">
-                <div class="note-label">V3.1 Product Truth Correction</div>
-                <div class="note-text">Reframed from guest marketplace to property management service for owners/operators. Focus: operational value, professional onboarding, property submission pathway.</div>
-            </div>
-            <div class="note-column">
-                <div class="note-label">Target Audience</div>
-                <div class="note-text">Property owners and operators seeking operational management help. Not a guest booking marketplace. NOT a listing platform. Domaniqo manages properties operationally AFTER bookings exist.</div>
-            </div>
-            <div class="note-column">
-                <div class="note-label">Key Messaging</div>
-                <div class="note-text">Professional operations management, 24/7 coordination, selective onboarding (we review properties), operational services (check-in, check-out, cleaning, maintenance), owner portal results.</div>
-            </div>
-            <div class="note-column">
-                <div class="note-label">Connected System</div>
-                <div class="note-text">PUBLIC → owner discovery & property submission entry. SUBMITTER → detailed property intake. Shared color palette (copper #B56E45, moss #334036), consistent typography (Manrope 800 headers, Inter 400 body).</div>
+        <!-- SCREEN 2: POST-AUTH HOME -->
+        <div class="mockup-container">
+            <div class="screen-label">Screen 2 — Post-Auth Home</div>
+            <div class="phone-mockup">
+                <div class="status-bar">
+                    <span class="status-bar-time">9:41</span>
+                    <span>●●●●●</span>
+                </div>
+                <div class="nav-bar">
+                    <div class="nav-logo">Domaniqo</div>
+                    <div style="flex: 1;"></div>
+                    <a class="btn-signout-text" href="#">Sign out</a>
+                </div>
+                <div class="phone-content scrollbar-hide">
+                    <div class="home-content">
+                        <div class="home-welcome">
+                            <div class="home-dlogo">D</div>
+                            <div class="welcome-heading">Welcome, Sarah</div>
+                            <div class="welcome-email">sarah@example.com</div>
+                        </div>
+
+                        <div class="dashboard-cards">
+                            <div class="card">
+                                <div class="card-icon">👤</div>
+                                <div class="card-title">Profile & Settings</div>
+                                <div class="card-description">Name, email, connected accounts, language</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-icon">💎</div>
+                                <div class="card-title">My Pocket</div>
+                                <div class="card-description">Saved stays, places, services, and details</div>
+                                <div style="font-size: 9px; color: #9CA3AF; margin-top: 8px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px;">Coming soon</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-icon">🏠</div>
+                                <div class="card-title">My Properties</div>
+                                <div class="card-description">View submitted properties or draft submissions</div>
+                            </div>
+                        </div>
+
+                        <div class="cta-card">
+                            <div class="cta-icon">🚀</div>
+                            <div class="cta-title">Get Started</div>
+                            <div style="font-size: 11px; font-weight: 600; color: #ECFDF5; margin-bottom: 4px;">Onboard a Property</div>
+                            <div class="cta-description">Set up your first property on Domaniqo</div>
+                        </div>
+
+                        <div style="text-align: center; font-size: 11px; color: #6B7280; padding: 16px 0; border-top: 1px solid #2D3139;">
+                            Domaniqo — Hospitality Operations
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Phones Container -->
-        <div class="phones-container">
+        <!-- SCREEN 3: MY PROPERTIES -->
+        <div class="mockup-container">
+            <div class="screen-label">Screen 3 — My Properties</div>
+            <div class="phone-mockup">
+                <div class="status-bar">
+                    <span class="status-bar-time">9:41</span>
+                    <span>●●●●●</span>
+                </div>
+                <div class="nav-bar">
+                    <div class="nav-logo">Domaniqo</div>
+                    <div style="flex: 1;"></div>
+                    <a class="btn-signout-text" href="#">Sign out</a>
+                </div>
+                <div class="breadcrumb">← Home</div>
+                <div class="phone-content scrollbar-hide">
+                    <div class="properties-content">
+                        <div class="properties-title">My Properties</div>
+                        <div class="properties-welcome">Welcome back, Sarah.</div>
 
-            <!-- SCREEN 1: HERO LANDING -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
+                        <div class="section-title">Drafts (1)</div>
+                        <div class="property-card">
+                            <div class="property-image">🏘️</div>
+                            <div class="property-info">
+                                <div class="property-name">Coastal Retreat Villa</div>
+                                <div class="property-location">Malibu, California</div>
+                                <div class="property-footer">
+                                    <span class="badge badge-draft">Draft</span>
+                                    <div class="property-buttons">
+                                        <button class="btn-small">Edit ✎</button>
+                                        <button class="btn-small btn-submit">Submit →</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
+
+                        <div class="section-title">Submitted (1)</div>
+                        <div class="property-card">
+                            <div class="property-image">🏨</div>
+                            <div class="property-info">
+                                <div class="property-name">Downtown Boutique Hotel</div>
+                                <div class="property-location">San Francisco, California</div>
+                                <div class="property-footer">
+                                    <span class="badge badge-pending">Pending Review</span>
+                                </div>
+                            </div>
                         </div>
+
+                        <button class="btn-add-property">+ Add Another Property</button>
                     </div>
-                    <div class="scroll-area hero">
-                        <div class="hero-nav">
-                            <div class="hero-logo">Domaniqo</div>
-                            <div class="hero-hamburger">
-                                <span></span>
-                                <span></span>
-                                <span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 4: PROFILE & SETTINGS -->
+        <div class="mockup-container">
+            <div class="screen-label">Screen 4 — Profile & Settings</div>
+            <div class="phone-mockup">
+                <div class="status-bar">
+                    <span class="status-bar-time">9:41</span>
+                    <span>●●●●●</span>
+                </div>
+                <div class="nav-bar">
+                    <div class="nav-logo">Domaniqo</div>
+                    <div style="flex: 1;"></div>
+                    <a class="btn-signout-text" href="#">Sign out</a>
+                </div>
+                <div class="breadcrumb">← Home</div>
+                <div class="phone-content scrollbar-hide">
+                    <div class="profile-content">
+                        <div class="profile-section">
+                            <div class="profile-label">Profile Information</div>
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-input" value="sarah@example.com" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-input" value="Sarah Chen" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" class="form-input" value="+1 (555) 123-4567" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Language</label>
+                                <input type="text" class="form-input" value="English" readonly>
+                            </div>
+                            <button class="btn-edit">Edit Profile</button>
+                        </div>
+
+                        <div class="profile-section">
+                            <div class="profile-label">Linked Login Methods</div>
+                            <div class="login-method">
+                                <div>
+                                    <div class="login-method-info">sarah@example.com</div>
+                                    <div class="login-method-type">Email / Password</div>
+                                </div>
+                            </div>
+                            <button class="btn-link">Link Google Account</button>
+                        </div>
+
+                        <div class="profile-section">
+                            <div class="profile-label">Account Status</div>
+                            <div class="account-status">
+                                <div class="status-dot"></div>
+                                <div class="status-text">Identity only — no organization assigned</div>
                             </div>
                         </div>
-                        <div class="hero-body">
-                            <div class="hero-headline">Professional Property Operations Management</div>
-                            <div class="hero-subtitle">We handle check-in, check-out, cleaning, maintenance, and daily coordination. You manage your business.</div>
-                            <button class="cta-button">Submit Your Property</button>
-                            <div class="scroll-indicator">↓ Scroll</div>
-                        </div>
-                        <div class="hero-trust">
-                            <div class="trust-item">
-                                <div class="trust-value">850+</div>
-                                <div class="trust-label">Properties Managed</div>
-                            </div>
-                            <div class="trust-item">
-                                <div class="trust-value">99%</div>
-                                <div class="trust-label">Uptime</div>
-                            </div>
-                            <div class="trust-item">
-                                <div class="trust-value">24/7</div>
-                                <div class="trust-label">Coverage</div>
-                            </div>
+
+                        <div class="user-id">
+                            <strong>User ID:</strong><br>
+                            <code style="font-size: 10px; color: #6B7280;">user_7f3e9c2b4a1d</code>
                         </div>
                     </div>
                 </div>
-                <div class="screen-label">Screen 1: Hero Landing</div>
             </div>
+        </div>
+    </div>
 
-            <!-- SCREEN 2: HOW IT WORKS -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area how-it-works-screen">
-                        <div class="how-header">
-                            <div class="how-title">How It Works</div>
-                        </div>
-                        <div class="how-body">
-                            <div class="step-item">
-                                <div class="step-number">Step 1</div>
-                                <div class="step-title">Submit Your Property</div>
-                                <div class="step-description">Tell us about your property, location, and management needs.</div>
-                            </div>
-                            <div class="step-item">
-                                <div class="step-number">Step 2</div>
-                                <div class="step-title">We Review & Assess</div>
-                                <div class="step-description">Our team evaluates fit and capability to manage effectively.</div>
-                            </div>
-                            <div class="step-item">
-                                <div class="step-number">Step 3</div>
-                                <div class="step-title">Onboarded & Managed</div>
-                                <div class="step-description">If accepted, we take over day-to-day operations and coordination.</div>
-                            </div>
-                            <div class="step-item">
-                                <div class="step-number">Step 4</div>
-                                <div class="step-title">Monitor & Optimize</div>
-                                <div class="step-description">Track performance in your owner portal. We continuously improve operations.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 2: How It Works</div>
+    <div class="notes-section">
+        <div class="notes-title">Implementation Notes</div>
+        <div class="notes-grid">
+            <div class="note-item">
+                <div class="note-label">Grounding</div>
+                Real staging product screens from domaniqo-staging.vercel.app. All text, layout, card structure, and CTAs follow the actual system.
             </div>
-
-            <!-- SCREEN 3: WHAT WE MANAGE -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area services-screen">
-                        <div class="services-header">
-                            <div class="services-title">Our Services</div>
-                        </div>
-                        <div class="services-body">
-                            <div class="service-card">
-                                <div class="service-icon">🔑</div>
-                                <div class="service-name">Check-In Coordination</div>
-                                <div class="service-description">Guest arrivals, key handoff, welcome orientation.</div>
-                            </div>
-                            <div class="service-card">
-                                <div class="service-icon">🧹</div>
-                                <div class="service-name">Cleaning & Setup</div>
-                                <div class="service-description">Post-checkout cleaning, inspection, turnover preparation.</div>
-                            </div>
-                            <div class="service-card">
-                                <div class="service-icon">🔧</div>
-                                <div class="service-name">Maintenance & Repairs</div>
-                                <div class="service-description">Emergency response, preventive maintenance, vendor coordination.</div>
-                            </div>
-                            <div class="service-card">
-                                <div class="service-icon">💬</div>
-                                <div class="service-name">Guest Communication</div>
-                                <div class="service-description">Support inquiries, issue resolution, satisfaction management.</div>
-                            </div>
-                            <div class="service-card">
-                                <div class="service-icon">📋</div>
-                                <div class="service-name">Daily Operations</div>
-                                <div class="service-description">Coordination, scheduling, reporting, performance tracking.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 3: What We Manage</div>
+            <div class="note-item">
+                <div class="note-label">Design System</div>
+                Dark theme (background #0F1117) with copper accents (#92400E, #FCD34D) and green CTAs (#047857). Typography: Manrope (headlines) and Inter (body).
             </div>
-
-            <!-- SCREEN 4: SUBMIT YOUR PROPERTY -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area submit-screen">
-                        <div class="submit-header">
-                            <div class="submit-title">Submit Your Property</div>
-                        </div>
-                        <div class="submit-body">
-                            <div class="section-content" style="background: #FFFAED; border-left: 3px solid #B56E45; margin-bottom: 4px;">
-                                <div style="font-size: 11px; font-weight: 600; color: #92400e; margin-bottom: 3px;">Selective Onboarding</div>
-                                <div style="font-size: 10px; color: #92400e; line-height: 1.3;">We review all submissions. Not all properties are accepted, but those we manage receive premium service.</div>
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Property Type</div>
-                                <select class="form-select">
-                                    <option>Select property type</option>
-                                    <option>Villa</option>
-                                    <option>Apartment</option>
-                                    <option>House</option>
-                                    <option>Bungalow</option>
-                                    <option>Other</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Location</div>
-                                <input type="text" class="form-input" placeholder="City, region, or area">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Bedrooms</div>
-                                <input type="number" class="form-input" placeholder="Number of bedrooms" min="1">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Brief Description</div>
-                                <input type="text" class="form-input" placeholder="Key features and amenities" style="height: 60px; padding: 10px 12px; vertical-align: top;">
-                            </div>
-                        </div>
-                        <div class="footer-bar">
-                            <button class="btn-primary">Continue to Full Submission</button>
-                            <div class="info-text">This leads to our detailed intake process.</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 4: Submit Property</div>
+            <div class="note-item">
+                <div class="note-label">Flow</div>
+                Landing → Post-Auth Home → My Properties | Profile. "Get Started — Onboard a Property" connects to SUBMITTER surface (separate system).
             </div>
-
-            <!-- SCREEN 5: CONTACT FORM -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area contact-screen">
-                        <div class="contact-header">
-                            <div class="submit-title">Let's Talk First</div>
-                        </div>
-                        <div class="contact-body">
-                            <div class="contact-subtitle">Have questions before submitting? Our team is here to discuss your property management needs.</div>
-                            <div class="form-group">
-                                <div class="form-label">Full Name</div>
-                                <input type="text" class="form-input" placeholder="Your full name">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Email Address</div>
-                                <input type="email" class="form-input" placeholder="you@example.com">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Phone Number</div>
-                                <input type="tel" class="form-input" placeholder="+66 8 xxxx xxxx">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Your Message</div>
-                                <input type="text" class="form-input" placeholder="Tell us about your property and concerns" style="height: 60px; padding: 10px 12px; vertical-align: top;">
-                            </div>
-                            <div class="section-content" style="background: #F0FDF4; border-left: 3px solid #16A34A;">
-                                <div style="font-size: 11px; font-weight: 600; color: #166534; margin-bottom: 4px;">What happens next?</div>
-                                <div style="font-size: 10px; color: #166534; line-height: 1.4;">We'll respond within 24 hours with information about our services and next steps.</div>
-                            </div>
-                        </div>
-                        <div class="footer-bar">
-                            <button class="btn-primary">Send Message</button>
-                            <div class="info-text">By contacting us, you agree to our Privacy Policy.</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 5: Contact / Learn More</div>
+            <div class="note-item">
+                <div class="note-label">Scope</div>
+                Public surface entry only (4 screens). Clean, minimal, fast-loading. Post-auth screens show identity-only state, no organization context yet.
             </div>
-
         </div>
     </div>
 </body>

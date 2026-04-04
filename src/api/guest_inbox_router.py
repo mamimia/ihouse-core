@@ -91,6 +91,90 @@ def _build_thread_summary(booking_id: str, messages: List[Dict]) -> Dict:
 
 
 # ---------------------------------------------------------------------------
+# GET /manager/guest-messages/unread-count — lightweight poll for nav badge
+# ---------------------------------------------------------------------------
+
+@router.get("/unread-count", summary="Lightweight unread count for nav badge + popup detection (Phase 1068)")
+async def get_unread_count(
+    identity: dict = Depends(jwt_identity),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Returns total unread count + the newest unread message preview for popup alerts.
+    Designed to be polled every 15 seconds. Very lightweight — single SELECT.
+
+    Response:
+        {
+            "total_unread": int,
+            "newest_unread": {
+                "booking_id":   str,
+                "guest_name":   str,
+                "preview":      str,     # first 80 chars of message
+                "created_at":   str,
+                "sender_type":  str,     # "guest" | "system"
+            } | null
+        }
+    """
+    caller_user_id = str(identity.get("user_id", "")).strip()
+    if not caller_user_id:
+        return JSONResponse(status_code=401, content={"error": "CALLER_NOT_IDENTIFIED"})
+
+    try:
+        db = client if client is not None else _get_db()
+
+        # Fetch only unread guest + system messages assigned to this OM
+        res = (
+            db.table("guest_chat_messages")
+            .select("id,booking_id,sender_type,message,created_at")
+            .eq("assigned_om_id", caller_user_id)
+            .in_("sender_type", ["guest", "system"])
+            .is_("read_at", "null")
+            .eq("is_deleted", False)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        messages = res.data or []
+        total_unread = len(messages)
+
+        newest_unread = None
+        if messages:
+            m = messages[0]
+            # Try to get guest name for the preview
+            guest_name = "Guest"
+            try:
+                bk_res = (
+                    db.table("booking_state")
+                    .select("guest_name")
+                    .eq("booking_id", m["booking_id"])
+                    .limit(1)
+                    .execute()
+                )
+                if bk_res.data:
+                    raw = (bk_res.data[0].get("guest_name") or "").strip()
+                    if raw and raw.lower() not in {"guest", "airbnb guest", "booking.com guest", "unknown", "n/a"}:
+                        guest_name = raw
+            except Exception:
+                pass
+
+            newest_unread = {
+                "booking_id":  m["booking_id"],
+                "guest_name":  guest_name,
+                "preview":     (m.get("message") or "")[:80],
+                "created_at":  m.get("created_at"),
+                "sender_type": m.get("sender_type"),
+            }
+
+        return JSONResponse(status_code=200, content={
+            "total_unread": total_unread,
+            "newest_unread": newest_unread,
+        })
+
+    except Exception as exc:
+        logger.exception("get_unread_count error: %s", exc)
+        return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
+
+
+# ---------------------------------------------------------------------------
 # GET /manager/guest-messages — operational inbox
 # ---------------------------------------------------------------------------
 
@@ -301,15 +385,19 @@ async def get_guest_thread(
         except Exception:
             pass
 
-        # Strip PII from messages before returning
+        # Strip PII from messages before returning.
+        # Phase 1068: expose is_deleted so OM renders "[Message deleted by guest]" tombstone.
         safe_messages = []
         for m in messages:
+            is_deleted = bool(m.get("is_deleted"))
             safe_messages.append({
-                "id": m["id"],
+                "id":          m["id"],
                 "sender_type": m["sender_type"],
-                "message": m["message"],
-                "read_at": m.get("read_at"),
-                "created_at": m.get("created_at"),
+                # OM sees tombstone text instead of original content when deleted
+                "message":     "[Message deleted by guest]" if is_deleted else m["message"],
+                "read_at":     m.get("read_at"),
+                "created_at":  m.get("created_at"),
+                "is_deleted":  is_deleted,
             })
 
         return JSONResponse(status_code=200, content={

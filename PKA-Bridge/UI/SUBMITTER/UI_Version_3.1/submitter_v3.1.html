@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submitter Surface UI v3.1 – Domaniqo Property Management</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>SUBMITTER V3.1 — Domaniqo iHouse Core</title>
     <style>
         * {
             margin: 0;
@@ -13,949 +12,1138 @@
         }
 
         body {
-            background: #F2EFEB;
-            padding: 28px 32px 56px;
-            font-family: 'Inter', sans-serif;
-            color: #171A1F;
+            font-family: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #ffffff;
+            padding: 40px 20px;
+            min-height: 100vh;
         }
 
-        .wrap {
-            max-width: 2200px;
+        .container {
+            max-width: 1400px;
             margin: 0 auto;
         }
 
-        /* Page Header */
         .page-header {
-            margin-bottom: 32px;
+            text-align: center;
+            margin-bottom: 50px;
         }
 
         .page-header h1 {
-            font-family: 'Manrope', sans-serif;
-            font-size: 28px;
-            font-weight: 800;
-            color: #171A1F;
-            margin-bottom: 4px;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
         }
 
         .page-header p {
-            font-size: 13px;
-            color: #9CA3AF;
+            font-size: 14px;
+            color: #a0a0a0;
             font-weight: 500;
         }
 
-        /* Design Notes Bar */
-        .notes-bar {
-            background: #171A1F;
-            border-radius: 12px;
-            padding: 20px 24px;
-            margin-bottom: 40px;
+        .mockups-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+            gap: 40px;
+            margin-bottom: 50px;
         }
 
-        .note-column {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .note-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            color: #334036;
-            text-transform: uppercase;
-            font-family: 'Manrope', sans-serif;
-        }
-
-        .note-text {
-            font-size: 11px;
-            color: #E5E7EB;
-            line-height: 1.4;
-            font-weight: 400;
-        }
-
-        /* Phones Container */
-        .phones-container {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 40px;
-        }
-
-        .phone-column {
+        .mockup-wrapper {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
-        }
-
-        .phone {
-            width: 300px;
-            height: 622px;
-            border-radius: 36px;
-            background: #F9F7F4;
-            box-shadow:
-                0 0 0 2px #D1D6DC,
-                0 2px 0 3px #B8BEC6,
-                0 12px 48px rgba(0,0,0,0.2),
-                inset 0 0 0 1px rgba(255,255,255,0.55);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            color: #171A1F;
         }
 
         .screen-label {
             font-family: 'Manrope', sans-serif;
             font-size: 11px;
             font-weight: 700;
-            color: #6B7280;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
+            color: #808080;
+            margin-bottom: 12px;
             text-align: center;
-            letter-spacing: 0.5px;
         }
 
-        /* Phone Status Bar */
-        .status-bar {
-            height: 26px;
-            background: #FFFFFF;
+        .phone-mockup {
+            width: 300px;
+            height: 622px;
+            border-radius: 36px;
+            border: 12px solid #222;
+            background: #0a0a0a;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            overflow: hidden;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 12px;
-            font-family: 'Manrope', sans-serif;
-            font-size: 11.5px;
-            font-weight: 700;
-            color: #171A1F;
-            border-bottom: 1px solid #F0EEE9;
+            flex-direction: column;
+            position: relative;
         }
 
-        .status-left, .status-right {
-            display: flex;
-            align-items: center;
-            gap: 4px;
+        .phone-mockup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 28px;
+            background: #111;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
         }
 
-        .status-icon {
-            width: 12px;
-            height: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Scroll Area */
-        .scroll-area {
+        .screen-content {
             flex: 1;
             overflow-y: auto;
-            padding: 0;
+            padding: 40px 24px;
             display: flex;
             flex-direction: column;
-            background: white;
+            background: linear-gradient(180deg, #0a0a0a 0%, #121212 100%);
+            padding-top: 50px;
+            scrollbar-width: none;
         }
 
-        .scroll-area::-webkit-scrollbar {
-            width: 4px;
+        .screen-content::-webkit-scrollbar {
+            display: none;
         }
 
-        .scroll-area::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .scroll-area::-webkit-scrollbar-thumb {
-            background: #D1D5DB;
-            border-radius: 2px;
-        }
-
-        /* ============ WIZARD SCREEN LAYOUT ============ */
-        .wizard-header {
-            padding: 16px;
-            border-bottom: 1px solid #F0EEE9;
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #d4af37 0%, #90ee90 100%);
+            border-radius: 8px;
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            color: #0a0a0a;
         }
 
-        .wizard-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 16px;
-            font-weight: 800;
-            color: #171A1F;
+        .step-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            text-align: center;
+            letter-spacing: -0.5px;
         }
 
         .progress-container {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+            margin-bottom: 30px;
         }
 
         .progress-label {
-            font-size: 10px;
-            color: #6B7280;
-            font-weight: 500;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+            text-align: center;
+            font-weight: 600;
         }
 
         .progress-bar {
             width: 100%;
-            height: 4px;
-            background: #E5E7EB;
-            border-radius: 2px;
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
             overflow: hidden;
         }
 
         .progress-fill {
             height: 100%;
-            background: #334036;
-            border-radius: 2px;
+            background: linear-gradient(90deg, #d4af37 0%, #90ee90 100%);
+            border-radius: 3px;
             transition: width 0.3s ease;
         }
 
-        .wizard-body {
-            flex: 1;
-            padding: 20px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            overflow-y: auto;
+        .section {
+            margin-bottom: 24px;
         }
 
-        .wizard-footer {
+        .question-text {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .radio-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .radio-card {
+            border: 2px solid #333;
+            border-radius: 12px;
             padding: 16px;
-            border-top: 1px solid #F0EEE9;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: #FAFAF9;
-            flex-shrink: 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            background: #0f0f0f;
         }
 
-        /* ============ FORM ELEMENTS ============ */
-        .form-group {
+        .radio-card.selected {
+            border-color: #d4af37;
+            background: rgba(212, 175, 55, 0.08);
+        }
+
+        .radio-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .radio-card-subtitle {
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+
+        .checkbox-list {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 14px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #0f0f0f;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-item.checked {
+            border-color: #90ee90;
+            background: rgba(144, 238, 144, 0.08);
+        }
+
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #555;
+            border-radius: 4px;
+            margin-right: 12px;
+            margin-top: 2px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .checkbox-item.checked .checkbox {
+            border-color: #90ee90;
+            background: #90ee90;
+            color: #0a0a0a;
+        }
+
+        .checkbox-label {
+            flex: 1;
+        }
+
+        .checkbox-label-main {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .checkbox-label-sub {
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+
+        .badge-coming {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: #444;
+            color: #999;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 6px;
+        }
+
+        .icon-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .icon-card {
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            background: #0f0f0f;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .icon-card.selected {
+            border-color: #d4af37;
+            background: rgba(212, 175, 55, 0.08);
+        }
+
+        .icon-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .icon-card-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .icon-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .icon-card-subtitle {
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+
+        .form-field {
+            margin-bottom: 16px;
         }
 
         .form-label {
-            font-family: 'Manrope', sans-serif;
             font-size: 11px;
             font-weight: 700;
-            color: #171A1F;
+            letter-spacing: 0.8px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: #a0a0a0;
+            margin-bottom: 8px;
+            display: block;
         }
 
         .form-input {
-            padding: 10px 12px;
-            border: 1px solid #E5E7EB;
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #333;
             border-radius: 8px;
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            color: #171A1F;
-            background: #FFFFFF;
+            background: #0f0f0f;
+            color: #fff;
+            font-size: 14px;
+            font-family: 'Manrope', 'Inter', sans-serif;
             transition: border-color 0.2s ease;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: #334036;
+            border-color: #90ee90;
         }
 
         .form-input::placeholder {
-            color: #9CA3AF;
+            color: #666;
         }
 
-        /* ============ BUTTONS ============ */
-        .btn {
-            padding: 12px 16px;
-            border: none;
+        select.form-input {
+            cursor: pointer;
+        }
+
+        .url-input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .url-input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+        }
+
+        .url-input-group .form-input {
+            padding-left: 40px;
+        }
+
+        .example-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 6px;
+        }
+
+        .success-banner {
+            background: rgba(144, 238, 144, 0.15);
+            border: 1px solid #90ee90;
             border-radius: 8px;
-            font-family: 'Manrope', sans-serif;
+            padding: 12px;
+            margin-bottom: 20px;
             font-size: 13px;
-            font-weight: 800;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            color: #90ee90;
             text-align: center;
-            width: 100%;
+            font-weight: 600;
         }
 
-        .btn-primary {
-            background: #334036;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #2A3430;
-        }
-
-        .btn-copper {
-            background: #B56E45;
-            color: white;
-        }
-
-        .btn-copper:hover {
-            background: #A05A35;
-        }
-
-        .link-button {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            color: #9CA3AF;
-            font-family: 'Inter', sans-serif;
-            font-size: 12px;
-            font-weight: 500;
-            text-decoration: none;
-            padding: 0;
-            transition: color 0.2s ease;
-        }
-
-        .link-button:hover {
-            color: #6B7280;
-        }
-
-        /* ============ OPTION CARDS ============ */
-        .option-card {
-            border: 1px solid #E5E7EB;
-            border-radius: 12px;
-            padding: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: white;
-        }
-
-        .option-card:hover {
-            border-color: #334036;
-            background: #F9F7F4;
-        }
-
-        .option-card.selected {
-            border-color: #334036;
-            background: #F0F0ED;
-        }
-
-        .option-card-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 12px;
-            font-weight: 700;
-            color: #171A1F;
-            margin-bottom: 4px;
-        }
-
-        .option-card-subtitle {
-            font-size: 10px;
-            color: #9CA3AF;
-        }
-
-        /* ============ REVIEW CARD ============ */
-        .review-card {
-            border: 1px solid #E5E7EB;
-            border-radius: 12px;
-            padding: 12px;
-            background: #F9F7F4;
-        }
-
-        .review-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #E5E7EB;
-        }
-
-        .review-item:last-child {
-            border-bottom: none;
-        }
-
-        .review-label {
-            font-size: 10px;
-            color: #6B7280;
-            font-weight: 500;
-        }
-
-        .review-value {
-            font-family: 'Manrope', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            color: #171A1F;
-            text-align: right;
-        }
-
-        /* ============ CHECKBOX ============ */
-        .checkbox-group {
-            display: flex;
-            align-items: flex-start;
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
+            margin-bottom: 20px;
         }
 
-        .checkbox-input {
-            width: 16px;
-            height: 16px;
-            margin-top: 2px;
-            cursor: pointer;
-            accent-color: #334036;
-        }
-
-        .checkbox-label {
-            font-size: 11px;
-            color: #6B7280;
-            line-height: 1.4;
-        }
-
-        /* ============ NEXT STEP CARD ============ */
-        .next-step-card {
-            background: #F0FDF4;
-            border: 1px solid #DCFCE7;
-            border-radius: 12px;
-            padding: 12px;
-        }
-
-        .next-step-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            color: #166534;
-            margin-bottom: 4px;
-        }
-
-        .next-step-text {
-            font-size: 11px;
-            color: #166534;
-            line-height: 1.4;
-        }
-
-        /* ============ MY PROPERTIES ============ */
-        .myproperties {
+        .photo-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            position: relative;
             display: flex;
-            flex-direction: column;
-            background: white;
-        }
-
-        .mp-header {
-            padding: 12px 16px;
-            border-bottom: 1px solid #F0EEE9;
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            flex-shrink: 0;
+            justify-content: center;
+            font-size: 24px;
         }
 
-        .mp-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 16px;
-            font-weight: 800;
-            color: #171A1F;
-        }
-
-        .mp-avatar {
-            width: 32px;
-            height: 32px;
-            background: #334036;
-            color: white;
+        .photo-item::after {
+            content: '✓';
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            background: #90ee90;
+            color: #0a0a0a;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Manrope', sans-serif;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .mp-body {
-            padding: 16px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        /* ============ PROPERTY CARD ============ */
-        .property-card {
-            border: 1px solid #E5E7EB;
-            border-radius: 12px;
-            padding: 12px;
-            background: white;
-        }
-
-        .property-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 8px;
-        }
-
-        .property-name {
-            font-family: 'Manrope', sans-serif;
-            font-size: 13px;
-            font-weight: 700;
-            color: #171A1F;
-        }
-
-        .property-type-badge {
-            font-size: 9px;
-            font-weight: 700;
-            color: #6B7280;
-            background: #F3F4F6;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-top: 4px;
-            display: inline-block;
-        }
-
-        .property-location {
-            font-size: 11px;
-            color: #6B7280;
-            margin-bottom: 6px;
-        }
-
-        .property-bedrooms {
-            font-size: 10px;
-            color: #9CA3AF;
-            margin-bottom: 8px;
-        }
-
-        .property-action {
-            font-size: 10px;
-            color: #B56E45;
-            text-decoration: none;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .property-action:hover {
-            text-decoration: underline;
-        }
-
-        .status-pill {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .status-submitted {
-            background: #FEF3C7;
-            color: #92400E;
-        }
-
-        .status-approved {
-            background: #DCFCE7;
-            color: #166534;
-        }
-
-        .status-pending {
-            background: #DBEAFE;
-            color: #0C4A6E;
-        }
-
-        .add-property-button {
-            padding: 12px 16px;
-            border: 1px solid #B56E45;
-            border-radius: 8px;
-            font-family: 'Manrope', sans-serif;
-            font-size: 13px;
-            font-weight: 800;
-            cursor: pointer;
-            background: white;
-            color: #B56E45;
-            transition: all 0.2s ease;
-            width: 100%;
-        }
-
-        .add-property-button:hover {
-            background: #A05A35;
-        }
-
-        .signout-link {
-            font-size: 11px;
-            color: #B56E45;
-            text-decoration: none;
-            cursor: pointer;
-            font-weight: 700;
-            text-align: center;
-        }
-
-        .signout-link:hover {
-            text-decoration: underline;
-        }
-
-        .intro-text {
             font-size: 12px;
-            color: #6B7280;
-            line-height: 1.5;
+            font-weight: 700;
         }
 
-        .divider {
+        .section-header {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #d4af37;
+            margin-bottom: 16px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin: 12px 0;
-            font-size: 11px;
-            color: #9CA3AF;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #E5E7EB;
-        }
-
-        /* ============ CHIPS & SELECTIONS ============ */
-        .chip-group {
-            display: flex;
-            flex-wrap: wrap;
             gap: 6px;
         }
 
-        .chip {
-            padding: 6px 10px;
-            border: 1px solid #E5E7EB;
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-grid-1 {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #333;
             border-radius: 8px;
-            font-size: 11px;
-            background: white;
+            background: #0f0f0f;
+            color: #fff;
+            font-size: 13px;
+            font-family: 'Manrope', 'Inter', sans-serif;
+            min-height: 80px;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-textarea:focus {
+            outline: none;
+            border-color: #90ee90;
+        }
+
+        .code-input-group {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .code-digit {
+            width: 38px;
+            height: 48px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #0f0f0f;
+            color: #fff;
+            font-size: 18px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .status-badge {
+            background: rgba(144, 238, 144, 0.15);
+            border: 1px solid #90ee90;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #90ee90;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .role-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .role-card {
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+            background: #0f0f0f;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
-        .chip:hover {
-            border-color: #334036;
+        .role-card.selected {
+            border-color: #d4af37;
+            background: rgba(212, 175, 55, 0.08);
         }
 
-        .chip.selected {
-            background: #334036;
-            color: white;
-            border-color: #334036;
+        .role-card-icon {
+            font-size: 24px;
+            margin-bottom: 6px;
         }
 
+        .role-card-title {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .password-requirements {
+            font-size: 12px;
+            color: #a0a0a0;
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .requirement.met {
+            color: #90ee90;
+        }
+
+        .requirement-check {
+            font-size: 10px;
+        }
+
+        .password-match {
+            font-size: 12px;
+            color: #90ee90;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: auto;
+            padding-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Manrope', sans-serif;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: #2d5016;
+            color: #fff;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #3a6b1f;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #90ee90;
+            border: 1px solid #90ee90;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(144, 238, 144, 0.1);
+        }
+
+        .btn-back {
+            flex: 0.8;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .text-link {
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .text-link a {
+            color: #90ee90;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .text-link a:hover {
+            text-decoration: underline;
+        }
+
+        .divider-text {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin: 12px 0;
+        }
+
+        .btn-google {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background: #0f0f0f;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Manrope', sans-serif;
+            margin-bottom: 12px;
+        }
+
+        .btn-google:hover {
+            border-color: #666;
+        }
+
+        .notes-bar {
+            margin-top: 50px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+
+        .note-item h3 {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #808080;
+            margin-bottom: 8px;
+        }
+
+        .note-item p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #a0a0a0;
+        }
+
+        .note-item code {
+            background: #0a0a0a;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 16px;
+            line-height: 1.4;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <div class="wrap">
-        <!-- Page Header -->
+    <div class="container">
         <div class="page-header">
-            <h1>Submitter Surface — V3.1 Visual Direction</h1>
-            <p>Domaniqo Property Submission · Guided Onboarding Flow (Property Details → Confirmation)</p>
+            <h1>SUBMITTER V3.1</h1>
+            <p>Domaniqo iHouse Core — 7-Step Property Onboarding Wizard</p>
         </div>
 
-        <!-- Design Notes Bar -->
+        <div class="mockups-grid">
+
+            <!-- STEP 1 OF 7: GET STARTED -->
+            <div class="mockup-wrapper">
+                <div class="screen-label">Step 1 of 7 — Get Started</div>
+                <div class="phone-mockup">
+                    <div class="screen-content">
+                        <div class="logo-icon">D</div>
+                        <h2 class="step-title">Get Started</h2>
+
+                        <div class="progress-container">
+                            <div class="progress-label">Step 1 of 7</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 14.3%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <p class="question-text">How many properties do you manage?</p>
+
+                            <div class="radio-options">
+                                <div class="radio-card selected">
+                                    <div class="radio-card-title">1–5 properties</div>
+                                    <div class="radio-card-subtitle">Getting started</div>
+                                </div>
+                                <div class="radio-card">
+                                    <div class="radio-card-title">5–20 properties</div>
+                                    <div class="radio-card-subtitle">Growing portfolio</div>
+                                </div>
+                                <div class="radio-card">
+                                    <div class="radio-card-title">20+ properties</div>
+                                    <div class="radio-card-subtitle">Established manager</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-primary">Continue →</button>
+                        </div>
+                        <div class="text-link">
+                            <a href="#">Already a user? Log in</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2 OF 7: WHERE ARE PROPERTIES LISTED -->
+            <div class="mockup-wrapper">
+                <div class="screen-label">Step 2 of 7 — Listing Platforms</div>
+                <div class="phone-mockup">
+                    <div class="screen-content">
+                        <div class="logo-icon">D</div>
+                        <h2 class="step-title">Where are your properties currently listed?</h2>
+
+                        <div class="progress-container">
+                            <div class="progress-label">Step 2 of 7</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 28.6%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="checkbox-list">
+                                <div class="checkbox-item checked">
+                                    <div class="checkbox">✓</div>
+                                    <div class="checkbox-label">
+                                        <div class="checkbox-label-main">🏠 Airbnb</div>
+                                    </div>
+                                </div>
+                                <div class="checkbox-item">
+                                    <div class="checkbox"></div>
+                                    <div class="checkbox-label">
+                                        <div class="checkbox-label-main">🔵 Booking.com</div>
+                                    </div>
+                                </div>
+                                <div class="checkbox-item">
+                                    <div class="checkbox"></div>
+                                    <div class="checkbox-label">
+                                        <div class="checkbox-label-main">📍 Vrbo BETA</div>
+                                        <div class="checkbox-label-sub">Vrbo.com, Abritel, Fewo-Direkt, Stayz</div>
+                                    </div>
+                                </div>
+                                <div class="checkbox-item">
+                                    <div class="checkbox"></div>
+                                    <div class="checkbox-label">
+                                        <div class="checkbox-label-main">✈️ Expedia <span class="badge-coming">Coming Soon</span></div>
+                                        <div class="checkbox-label-sub">Hotels.com, Orbitz, Trivago</div>
+                                    </div>
+                                </div>
+                                <div class="checkbox-item">
+                                    <div class="checkbox"></div>
+                                    <div class="checkbox-label">
+                                        <div class="checkbox-label-main">🏯 Agoda <span class="badge-coming">Coming Soon</span></div>
+                                    </div>
+                                </div>
+                                <div class="checkbox-item">
+                                    <div class="checkbox"></div>
+                                    <div class="checkbox-label">
+                                        <div class="checkbox-label-main">➕ Other</div>
+                                    </div>
+                                </div>
+                                <div class="checkbox-item">
+                                    <div class="checkbox"></div>
+                                    <div class="checkbox-label">
+                                        <div class="checkbox-label-main">❌ Not listed anywhere yet</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-secondary btn-back">← Back</button>
+                            <button class="btn btn-primary">Continue →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3 OF 7: HOW TO ADD PROPERTY -->
+            <div class="mockup-wrapper">
+                <div class="screen-label">Step 3 of 7 — Add Method</div>
+                <div class="phone-mockup">
+                    <div class="screen-content">
+                        <div class="logo-icon">D</div>
+                        <h2 class="step-title">How would you like to add your property?</h2>
+
+                        <div class="progress-container">
+                            <div class="progress-label">Step 3 of 7</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 42.9%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="icon-cards">
+                                <div class="icon-card selected">
+                                    <div class="icon-card-icon">🔗</div>
+                                    <div class="icon-card-title">Import from existing listing</div>
+                                    <div class="icon-card-subtitle">We'll pull details from your existing listing</div>
+                                </div>
+                                <div class="icon-card">
+                                    <div class="icon-card-icon">✏️</div>
+                                    <div class="icon-card-title">Set up manually</div>
+                                    <div class="icon-card-subtitle">Enter your property details yourself</div>
+                                </div>
+                                <div class="icon-card disabled">
+                                    <div class="icon-card-icon">🔌</div>
+                                    <div class="icon-card-title">Connect account</div>
+                                    <div class="icon-card-subtitle">Direct account connections are coming soon</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-secondary btn-back">← Back</button>
+                            <button class="btn btn-primary">Continue →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 4 OF 7: LISTING URL IMPORT -->
+            <div class="mockup-wrapper">
+                <div class="screen-label">Step 4 of 7 — Import URL</div>
+                <div class="phone-mockup">
+                    <div class="screen-content">
+                        <div class="logo-icon">D</div>
+                        <h2 class="step-title">Import your listing</h2>
+
+                        <div class="progress-container">
+                            <div class="progress-label">Step 4 of 7</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 57.1%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <p class="help-text">How it works: Paste the URL of your existing listing. We'll pull publicly available details to speed up your setup.</p>
+
+                            <div class="form-field">
+                                <label class="form-label">AIRBNB LISTING URL</label>
+                                <div class="url-input-group">
+                                    <div class="url-input-icon">🏠</div>
+                                    <input type="text" class="form-input" placeholder="https://www.airbnb.com/rooms/12345678">
+                                </div>
+                                <div class="example-text">Example: https://www.airbnb.com/rooms/12345678</div>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-secondary btn-back">← Back</button>
+                            <button class="btn btn-primary">Skip — Set Up Manually →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 5 OF 7: PROPERTY DETAILS -->
+            <div class="mockup-wrapper">
+                <div class="screen-label">Step 5 of 7 — Property Details</div>
+                <div class="phone-mockup">
+                    <div class="screen-content">
+                        <div class="logo-icon">D</div>
+                        <h2 class="step-title">Property Details</h2>
+
+                        <div class="progress-container">
+                            <div class="progress-label">Step 5 of 7</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 71.4%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="success-banner">✅ 7 details imported from your listing</div>
+                        <p class="question-text" style="margin-bottom: 16px;">Review and edit anything below before continuing</p>
+
+                        <div class="section-header">🏠 Property Details</div>
+
+                        <div class="photo-grid">
+                            <div class="photo-item">🏡</div>
+                            <div class="photo-item">🏖️</div>
+                            <div class="photo-item">🌅</div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="form-label">PROPERTY NAME *</label>
+                            <input type="text" class="form-input" value="Heated Pool Villa with Sunset & Lagoon View">
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label class="form-label">PROPERTY TYPE</label>
+                                <select class="form-input">
+                                    <option>Select</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">MAX GUESTS</label>
+                                <input type="number" class="form-input" value="6">
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label class="form-label">BEDROOMS</label>
+                                <input type="number" class="form-input" value="4">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">BEDS</label>
+                                <input type="number" class="form-input" value="5">
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="form-label">BATHS</label>
+                            <input type="number" class="form-input" value="3.5">
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label class="form-label">CITY</label>
+                                <input type="text" class="form-input" value="Hurghada">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">COUNTRY</label>
+                                <input type="text" class="form-input" value="Thailand">
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="form-label">FULL ADDRESS</label>
+                            <input type="text" class="form-input" placeholder="Street address">
+                        </div>
+
+                        <div class="form-field">
+                            <label class="form-label">DESCRIPTION</label>
+                            <textarea class="form-textarea" placeholder="Enter property description..."></textarea>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-secondary btn-back">← Back</button>
+                            <button class="btn btn-primary">Save & Continue →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 6 OF 7: ACCOUNT CREATION / EMAIL VERIFICATION -->
+            <div class="mockup-wrapper">
+                <div class="screen-label">Step 6 of 7 — Account Setup</div>
+                <div class="phone-mockup">
+                    <div class="screen-content">
+                        <div class="logo-icon">D</div>
+                        <h2 class="step-title">Save Your Property</h2>
+
+                        <div class="progress-container">
+                            <div class="progress-label">Step 6 of 7</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 85.7%;"></div>
+                            </div>
+                        </div>
+
+                        <p class="question-text">Create an account to save your property and track its review status.</p>
+
+                        <div class="form-field">
+                            <label class="form-label">EMAIL ADDRESS</label>
+                            <input type="email" class="form-input" placeholder="your@email.com">
+                        </div>
+
+                        <button class="btn btn-primary btn-full">Continue with Email →</button>
+
+                        <div class="divider-text">or</div>
+
+                        <button class="btn-google">🔵 Continue with Google</button>
+
+                        <div class="text-link">
+                            <a href="#">Already have an account? Log in</a>
+                        </div>
+
+                        <div style="height: 40px;"></div>
+
+                        <div style="border-top: 1px solid #333; padding-top: 16px;">
+                            <p class="question-text" style="margin-bottom: 12px;">We sent a verification code to your@email.com</p>
+
+                            <div class="form-field">
+                                <label class="form-label">8-DIGIT VERIFICATION CODE</label>
+                                <div class="code-input-group">
+                                    <input type="text" class="code-digit" maxlength="1" placeholder="">
+                                    <input type="text" class="code-digit" maxlength="1" placeholder="">
+                                    <input type="text" class="code-digit" maxlength="1" placeholder="">
+                                    <input type="text" class="code-digit" maxlength="1" placeholder="">
+                                    <input type="text" class="code-digit" maxlength="1" placeholder="">
+                                    <input type="text" class="code-digit" maxlength="1" placeholder="">
+                                    <input type="text" class="code-digit" maxlength="1" placeholder="">
+                                    <input type="text" class="code-digit" maxlength="1" placeholder="">
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary btn-full">Verify & Continue →</button>
+
+                            <div class="text-link">
+                                <a href="#">Use a different email</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 7 OF 7: COMPLETE ACCOUNT -->
+            <div class="mockup-wrapper">
+                <div class="screen-label">Step 7 of 7 — Complete Account</div>
+                <div class="phone-mockup">
+                    <div class="screen-content">
+                        <div class="logo-icon">D</div>
+                        <h2 class="step-title">Complete Your Account</h2>
+
+                        <div class="progress-container">
+                            <div class="progress-label">Step 7 of 7</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 100%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="status-badge">✅ Signed in as your@email.com</div>
+
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label class="form-label">FIRST NAME *</label>
+                                <input type="text" class="form-input" placeholder="">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">LAST NAME *</label>
+                                <input type="text" class="form-input" placeholder="">
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="form-label">PHONE</label>
+                            <input type="tel" class="form-input" value="+66 " placeholder="">
+                        </div>
+
+                        <div class="form-field">
+                            <label class="form-label">I AM A *</label>
+                            <div class="role-cards">
+                                <div class="role-card selected">
+                                    <div class="role-card-icon">🏠</div>
+                                    <div class="role-card-title">Property Owner</div>
+                                </div>
+                                <div class="role-card">
+                                    <div class="role-card-icon">🏢</div>
+                                    <div class="role-card-title">Property Manager</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p style="font-size: 12px; color: #a0a0a0; margin-bottom: 12px; font-weight: 600;">Secure your account</p>
+
+                        <div class="form-field">
+                            <label class="form-label">PASSWORD *</label>
+                            <input type="password" class="form-input" placeholder="">
+                            <div class="password-requirements">
+                                <div class="requirement met"><span class="requirement-check">✓</span> 8+ characters</div>
+                                <div class="requirement met"><span class="requirement-check">✓</span> 1 uppercase letter</div>
+                                <div class="requirement met"><span class="requirement-check">✓</span> 1 number</div>
+                                <div class="requirement met"><span class="requirement-check">✓</span> 1 special character</div>
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="form-label">CONFIRM PASSWORD *</label>
+                            <input type="password" class="form-input" placeholder="">
+                            <div class="password-match">
+                                <span>✓</span> Passwords match
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-primary btn-full">Create Account & Save Property →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- NOTES BAR -->
         <div class="notes-bar">
-            <div class="note-column">
-                <div class="note-label">Product Truth</div>
-                <div class="note-text">V3.1 product truth correction: reframed from booking request to property submission/onboarding. Property owners submit their properties for Domaniqo management review and approval.</div>
+            <div class="note-item">
+                <h3>Grounding</h3>
+                <p>Grounded in real 7-step wizard from <code>domaniqo-staging.vercel.app</code>. Follows actual step sequence, field labels, and option text.</p>
             </div>
-            <div class="note-column">
-                <div class="note-label">Role & Flow</div>
-                <div class="note-text">Property owner onboarding. Guided submission flow collects property details, setup context, and contact info. Leads to review period. Upon approval, management relationship begins. Destination: My Properties dashboard.</div>
+            <div class="note-item">
+                <h3>Design System</h3>
+                <p>V3.1 visual language: Manrope/Inter typography, phone mockups (300x622px, 36px border-radius), dark gradient background.</p>
             </div>
-            <div class="note-column">
-                <div class="note-label">Key Patterns</div>
-                <div class="note-text">4-step wizard with progress bar, property-focused forms, review & authorization step, status-driven My Properties dashboard showing "Under Review", "Approved", "Needs More Info". Option cards for selection UI.</div>
+            <div class="note-item">
+                <h3>Field Validation</h3>
+                <p>Password requirements, email verification codes, green success banners, role selection, and full form field states shown.</p>
             </div>
-            <div class="note-column">
-                <div class="note-label">V3.1 Preserved</div>
-                <div class="note-text">All CSS patterns, phone mockups, typography (Manrope/Inter), colors (moss #334036, copper #B56E45), form styles, wizard stepper. Reused for property submission context.</div>
+            <div class="note-item">
+                <h3>Navigation</h3>
+                <p>Back/Continue buttons on each step. Progress bar shows "Step X of 7" with copper-to-green gradient fill reflecting real UI.</p>
             </div>
-        </div>
-
-        <!-- Phones Container -->
-        <div class="phones-container">
-
-            <!-- SCREEN 1: PROPERTY DETAILS (STEP 1 OF 4) -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area">
-                        <div class="wizard-header">
-                            <div class="wizard-title">Property Details</div>
-                            <div class="progress-container">
-                                <div class="progress-label">Step 1 of 4</div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 25%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="wizard-body">
-                            <div class="form-group">
-                                <div class="form-label">Property Name</div>
-                                <input type="text" class="form-input" placeholder="e.g., Seaside Villa">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Property Type</div>
-                                <div class="chip-group">
-                                    <div class="chip selected">Villa</div>
-                                    <div class="chip">Condo</div>
-                                    <div class="chip">Apartment</div>
-                                    <div class="chip">House</div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Location / Address</div>
-                                <input type="text" class="form-input" placeholder="Street address, city, country">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Bedrooms</div>
-                                <input type="number" class="form-input" placeholder="e.g., 3">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Bathrooms</div>
-                                <input type="number" class="form-input" placeholder="e.g., 2">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Property Size (sqm)</div>
-                                <input type="number" class="form-input" placeholder="e.g., 250">
-                            </div>
-                        </div>
-                        <div class="wizard-footer">
-                            <button class="btn btn-copper">Continue</button>
-                            <button class="link-button">Save & continue later</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 1: Property Details</div>
-            </div>
-
-            <!-- SCREEN 2: PROPERTY SETUP (STEP 2 OF 4) -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area">
-                        <div class="wizard-header">
-                            <div class="wizard-title">Property Setup</div>
-                            <div class="progress-container">
-                                <div class="progress-label">Step 2 of 4</div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 50%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="wizard-body">
-                            <div class="form-group">
-                                <div class="form-label">Current Management Status</div>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <div class="option-card selected">
-                                        <div class="option-card-title">Self-Managed</div>
-                                        <div class="option-card-subtitle">I manage the property myself</div>
-                                    </div>
-                                    <div class="option-card">
-                                        <div class="option-card-title">Other Manager</div>
-                                        <div class="option-card-subtitle">Managed by another company/person</div>
-                                    </div>
-                                    <div class="option-card">
-                                        <div class="option-card-title">New Property</div>
-                                        <div class="option-card-subtitle">Not yet available for rental</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Booking Channels</div>
-                                <div class="chip-group">
-                                    <div class="chip selected">Airbnb</div>
-                                    <div class="chip selected">Booking.com</div>
-                                    <div class="chip">Direct Bookings</div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Est. Monthly Bookings</div>
-                                <input type="number" class="form-input" placeholder="e.g., 8">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Operational Challenges (Optional)</div>
-                                <input type="text" class="form-input" placeholder="e.g., Cleaning logistics, pricing management">
-                            </div>
-                        </div>
-                        <div class="wizard-footer">
-                            <button class="btn btn-copper">Continue</button>
-                            <button class="link-button">Back</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 2: Property Setup</div>
-            </div>
-
-            <!-- SCREEN 3: CONTACT & REVIEW (STEP 3 OF 4) -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area">
-                        <div class="wizard-header">
-                            <div class="wizard-title">Review & Submit</div>
-                            <div class="progress-container">
-                                <div class="progress-label">Step 3 of 4 — Final</div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 75%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="wizard-body">
-                            <div style="font-family: Manrope; font-size: 11px; font-weight: 700; color: #171A1F; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Property Summary</div>
-                            <div class="review-card">
-                                <div class="review-item">
-                                    <div class="review-label">Property Name</div>
-                                    <div class="review-value">Seaside Villa</div>
-                                </div>
-                                <div class="review-item">
-                                    <div class="review-label">Type</div>
-                                    <div class="review-value">Villa</div>
-                                </div>
-                                <div class="review-item">
-                                    <div class="review-label">Location</div>
-                                    <div class="review-value">Phuket, Thailand</div>
-                                </div>
-                                <div class="review-item">
-                                    <div class="review-label">Bedrooms</div>
-                                    <div class="review-value">3</div>
-                                </div>
-                                <div class="review-item">
-                                    <div class="review-label">Bathrooms</div>
-                                    <div class="review-value">2</div>
-                                </div>
-                                <div class="review-item">
-                                    <div class="review-label">Property Size</div>
-                                    <div class="review-value">250 sqm</div>
-                                </div>
-                            </div>
-                            <div style="font-family: Manrope; font-size: 11px; font-weight: 700; color: #171A1F; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 14px; margin-bottom: 8px;">Contact Information</div>
-                            <div class="form-group">
-                                <div class="form-label">Contact Person Name</div>
-                                <input type="text" class="form-input" value="John Smith">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Email</div>
-                                <input type="email" class="form-input" value="john@email.com">
-                            </div>
-                            <div class="form-group">
-                                <div class="form-label">Phone</div>
-                                <input type="tel" class="form-input" value="+66 8 xxxx xxxx">
-                            </div>
-                            <div class="checkbox-group" style="margin-top: 14px;">
-                                <input type="checkbox" class="checkbox-input" checked>
-                                <label class="checkbox-label">By submitting, I authorize Domaniqo to review my property for potential management.</label>
-                            </div>
-                            <div class="next-step-card" style="margin-top: 12px;">
-                                <div class="next-step-title">What Happens Next?</div>
-                                <div class="next-step-text">We'll review your property within 3-5 business days. You'll receive an email with next steps or a meeting invitation.</div>
-                            </div>
-                        </div>
-                        <div class="wizard-footer">
-                            <button class="btn btn-copper" style="margin-bottom: 4px;">Submit Property for Review</button>
-                            <div style="font-size: 9px; color: #9CA3AF; text-align: center; line-height: 1.3;">We take your property details securely and will only share with our management team.</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 3: Review & Submit</div>
-            </div>
-
-            <!-- SCREEN 4: SUBMISSION CONFIRMED -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area">
-                        <div style="flex: 1; padding: 40px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 16px;">
-                            <div style="font-size: 48px;">✓</div>
-                            <div style="font-family: Manrope; font-size: 18px; font-weight: 800; color: #171A1F;">Property Submitted</div>
-                            <div style="font-size: 12px; color: #6B7280; line-height: 1.5;">Your property submission for Seaside Villa has been received.</div>
-                            <div style="background: #F0FDF4; border: 1px solid #DCFCE7; border-radius: 12px; padding: 12px; font-size: 11px; color: #166534; line-height: 1.4; margin-top: 8px;">
-                                <div style="font-weight: 700; margin-bottom: 4px;">Confirmation sent to john@email.com</div>
-                                We'll review your property and contact you within 3-5 business days.
-                            </div>
-                        </div>
-                        <div class="wizard-footer">
-                            <button class="btn btn-primary">Go to My Properties</button>
-                            <button class="link-button">Submit Another Property</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 4: Submission Confirmed</div>
-            </div>
-
-            <!-- SCREEN 5: MY PROPERTIES (OWNER DASHBOARD) -->
-            <div class="phone-column">
-                <div class="phone">
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span style="font-size: 10px;">9:41</span>
-                        </div>
-                        <div class="status-right">
-                            <span class="status-icon">📶</span>
-                            <span class="status-icon">📡</span>
-                            <span class="status-icon">🔋</span>
-                        </div>
-                    </div>
-                    <div class="scroll-area myproperties">
-                        <div class="mp-header">
-                            <div class="mp-title">My Properties</div>
-                            <div class="mp-avatar">J</div>
-                        </div>
-                        <div class="mp-body">
-                            <div class="property-card">
-                                <div class="property-header">
-                                    <div>
-                                        <div class="property-name">Seaside Villa</div>
-                                        <div class="property-type-badge">VILLA</div>
-                                    </div>
-                                    <div class="status-pill status-submitted">Under Review</div>
-                                </div>
-                                <div class="property-location">Phuket, Thailand</div>
-                                <div class="property-bedrooms">3 bedrooms • 2 bathrooms • 250 sqm</div>
-                                <a class="property-action">View Details →</a>
-                            </div>
-                            <div style="text-align: center; margin-top: 16px;">
-                                <button class="add-property-button">Submit Another Property</button>
-                            </div>
-                            <div style="border-top: 1px solid #E5E7EB; margin-top: 16px; padding-top: 16px;">
-                                <a class="signout-link" href="#">Sign Out</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="screen-label">Screen 5: My Properties Dashboard</div>
-            </div>
-
         </div>
     </div>
 </body>

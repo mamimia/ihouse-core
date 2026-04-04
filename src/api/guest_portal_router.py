@@ -438,7 +438,7 @@ async def guest_get_messages(token: str, client: Optional[Any] = None) -> JSONRe
         # Previous version used .eq("booking_ref", ...) which always returned 0 rows.
         result = (
             db.table("guest_chat_messages")
-            .select("id,sender_type,message,created_at")
+            .select("id,sender_type,message,created_at,is_deleted")
             .eq("booking_id", booking_id)   # FIXED: was "booking_ref" (wrong column name)
             .order("created_at", desc=False)
             .execute()
@@ -460,13 +460,16 @@ async def guest_get_messages(token: str, client: Optional[Any] = None) -> JSONRe
         except Exception:
             pass
 
-        # Return only guest-safe fields — strip all internal routing fields
+        # Return guest-safe fields — strip all internal routing fields.
+        # Phase 1068: is_deleted exposed so guest portal can render tombstone / hide delete button.
         safe_messages = [
             {
                 "id":          m["id"],
                 "sender_type": m["sender_type"],
-                "message":     m["message"],
+                # Phase 1068: replace message content with tombstone on deleted messages
+                "message":     "[Message deleted]" if m.get("is_deleted") else m["message"],
                 "created_at":  m.get("created_at"),
+                "is_deleted":  bool(m.get("is_deleted")),
             }
             for m in messages
         ]
@@ -478,6 +481,105 @@ async def guest_get_messages(token: str, client: Optional[Any] = None) -> JSONRe
         })
     except Exception as exc:
         logger.exception("guest_get_messages error: %s", exc)
+        return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
+
+
+# ===========================================================================
+# Phase 1068 — Guest message soft-delete (30-second window)
+# DELETE /guest/{token}/messages/{message_id}
+# ===========================================================================
+
+@router.delete("/{token}/messages/{message_id}", summary="Guest deletes own message within 30s window (Phase 1068)")
+async def guest_delete_message(
+    token: str,
+    message_id: str,
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Soft-deletes a guest message within the 30-second window after send.
+
+    Rules:
+    - Token must resolve to same booking context.
+    - Message must belong to this booking (booking_id scope).
+    - sender_type must be 'guest' (cannot delete host/system messages).
+    - Message must have been created within WINDOW_SECONDS = 30.
+    - Message must not already be is_deleted.
+
+    Soft-delete: is_deleted=true, deleted_at=now(). Message content remains in DB for
+    audit trail. OM/admin see "[Message deleted by guest]" tombstone. Hard delete never happens.
+
+    Error codes: WINDOW_EXPIRED | NOT_YOUR_MESSAGE | ALREADY_DELETED | MESSAGE_NOT_FOUND
+    """
+    from datetime import datetime, timezone
+
+    WINDOW_SECONDS = 30
+
+    ctx = _resolve_token_ctx(token, client=client)
+    if not ctx:
+        return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
+
+    booking_id = ctx.get("booking_ref", "")
+    if not booking_id:
+        return JSONResponse(status_code=400, content={"error": "TOKEN_CONTEXT_INCOMPLETE"})
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        msg_res = (
+            db.table("guest_chat_messages")
+            .select("id,booking_id,sender_type,created_at,is_deleted")
+            .eq("id", message_id)
+            .eq("booking_id", booking_id)
+            .limit(1)
+            .execute()
+        )
+        rows = msg_res.data or []
+        if not rows:
+            return JSONResponse(status_code=404, content={"error": "MESSAGE_NOT_FOUND"})
+
+        msg = rows[0]
+
+        if msg.get("sender_type") != "guest":
+            return JSONResponse(status_code=403, content={"error": "NOT_YOUR_MESSAGE"})
+
+        if msg.get("is_deleted"):
+            return JSONResponse(status_code=409, content={"error": "ALREADY_DELETED"})
+
+        created_raw = msg.get("created_at") or ""
+        try:
+            created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return JSONResponse(status_code=400, content={"error": "CANNOT_DETERMINE_AGE"})
+
+        now_utc = datetime.now(tz=timezone.utc)
+        age_seconds = (now_utc - created_dt).total_seconds()
+
+        if age_seconds > WINDOW_SECONDS:
+            return JSONResponse(status_code=403, content={
+                "error": "WINDOW_EXPIRED",
+                "window_seconds": WINDOW_SECONDS,
+                "age_seconds": round(age_seconds, 1),
+            })
+
+        now_iso = now_utc.isoformat()
+        db.table("guest_chat_messages").update({
+            "is_deleted": True,
+            "deleted_at": now_iso,
+        }).eq("id", message_id).eq("booking_id", booking_id).execute()
+
+        logger.info(
+            "guest_delete_message: booking=%s msg_id=%s age=%.1fs",
+            booking_id, message_id, age_seconds,
+        )
+
+        return JSONResponse(status_code=200, content={
+            "deleted": True,
+            "message_id": message_id,
+            "window_seconds": WINDOW_SECONDS,
+        })
+
+    except Exception as exc:
+        logger.exception("guest_delete_message error: %s", exc)
         return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
 
 

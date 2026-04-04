@@ -15,6 +15,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTabToken } from '../lib/tokenStore';
+import { useUnread } from '../contexts/OMUnreadContext';
 
 // ---------------------------------------------------------------------------
 // Mode detection (mirrors OMSidebar)
@@ -60,6 +61,7 @@ export default function OMBottomNav() {
     const router = useRouter();
     const [sheetOpen, setSheetOpen] = useState(false);
     const [omMode, setOMMode] = useState<OMMode>('direct');
+    const { totalUnread } = useUnread();
 
     useEffect(() => { setOMMode(getOMMode()); }, []);
 
@@ -237,6 +239,8 @@ export default function OMBottomNav() {
             <nav style={navStyle} aria-label="Operational Manager navigation">
                 {PRIMARY_TABS.map(tab => {
                     const active = isActive(tab.href);
+                    const isInbox = tab.href === '/manager/inbox';
+                    const showBadge = isInbox && totalUnread > 0;
                     return (
                         <button
                             key={tab.href}
@@ -246,7 +250,23 @@ export default function OMBottomNav() {
                             aria-current={active ? 'page' : undefined}
                         >
                             {active && <div style={pipStyle} />}
-                            <span style={iconStyle(active)}>{tab.icon}</span>
+                            {/* Icon wrapper with optional badge */}
+                            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={iconStyle(active)}>{tab.icon}</span>
+                                {showBadge && (
+                                    <span style={{
+                                        position: 'absolute', top: -5, right: -8,
+                                        minWidth: 15, height: 15, borderRadius: 999,
+                                        background: '#ef4444',
+                                        color: '#fff', fontSize: 8, fontWeight: 800,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        padding: '0 3px', lineHeight: 1,
+                                        boxShadow: '0 0 0 2px var(--color-surface)',
+                                    }}>
+                                        {totalUnread > 99 ? '99+' : totalUnread}
+                                    </span>
+                                )}
+                            </span>
                             {tab.label}
                         </button>
                     );

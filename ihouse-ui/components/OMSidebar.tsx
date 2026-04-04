@@ -20,6 +20,7 @@
 import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTabToken } from '../lib/tokenStore';
+import { useUnread } from '../contexts/OMUnreadContext';
 
 // ---------------------------------------------------------------------------
 // Mode detection helpers
@@ -97,6 +98,7 @@ export default function OMSidebar({ collapsed = false, mode, onClose }: OMSideba
     const router = useRouter();
     const [omMode, setOMMode] = useState<OMMode>('direct');
     const [displayName, setDisplayName] = useState('Ops Manager');
+    const { totalUnread } = useUnread();
 
     useEffect(() => {
         setOMMode(getOMMode());
@@ -267,21 +269,55 @@ export default function OMSidebar({ collapsed = false, mode, onClose }: OMSideba
             background: 'var(--color-primary)',
         };
 
+        // Phase 1068: show unread badge on Inbox nav item
+        const isInbox = item.href === '/manager/inbox';
+        const showBadge = isInbox && totalUnread > 0;
+
         return (
             <div
                 key={item.href}
                 style={itemStyle}
                 onClick={() => handleNav(item.href)}
-                title={collapsed ? `${item.label}${!live ? ' (coming soon)' : ''}` : undefined}
+                title={collapsed ? `${item.label}${!live ? ' (coming soon)' : ''}${showBadge ? ` (${totalUnread} unread)` : ''}` : undefined}
             >
                 {active && <div style={activePip} />}
-                <span style={{ fontSize: 14, flexShrink: 0 }}>{item.icon}</span>
+                <span style={{ fontSize: 14, flexShrink: 0, position: 'relative' }}>
+                    {item.icon}
+                    {/* Collapsed badge: small dot above icon */}
+                    {showBadge && collapsed && (
+                        <span style={{
+                            position: 'absolute', top: -4, right: -5,
+                            minWidth: 14, height: 14, borderRadius: 999,
+                            background: '#ef4444',
+                            color: '#fff', fontSize: 8, fontWeight: 800,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: '0 3px', lineHeight: 1,
+                            boxShadow: '0 0 0 2px var(--color-surface)',
+                        }}>
+                            {totalUnread > 99 ? '99+' : totalUnread}
+                        </span>
+                    )}
+                </span>
                 {!collapsed && (
-                    <span style={{ flex: 1 }}>
-                        {item.label}
-                        {!live && (
-                            <span style={{ fontSize: 9, marginInlineStart: 6, color: 'var(--color-text-faint)', fontWeight: 400 }}>
-                                soon
+                    <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>
+                            {item.label}
+                            {!live && (
+                                <span style={{ fontSize: 9, marginInlineStart: 6, color: 'var(--color-text-faint)', fontWeight: 400 }}>
+                                    soon
+                                </span>
+                            )}
+                        </span>
+                        {/* Expanded badge */}
+                        {showBadge && (
+                            <span style={{
+                                minWidth: 18, height: 18, borderRadius: 999,
+                                background: '#ef4444',
+                                color: '#fff', fontSize: 10, fontWeight: 800,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: '0 5px', flexShrink: 0,
+                            }}>
+                                {totalUnread > 99 ? '99+' : totalUnread}
                             </span>
                         )}
                     </span>

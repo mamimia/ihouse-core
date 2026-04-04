@@ -2,6 +2,7 @@
 
 /**
  * Phase 1051 / 1052 — Operational Guest Inbox + Reply Path
+ * Phase 1068 — Auto-poll (15s), unread badge sync via OMUnreadContext
  * Route: /manager/inbox
  *
  * 1051: Inbox list (one row per stay-thread), sorted unread-first.
@@ -12,10 +13,13 @@
  *       New message appended optimistically. Drawer stays open.
  *       Dossier Chat tab picks up the reply on next load (shared DB table).
  *       Guest portal: NOT exposed yet (Phase 1053).
+ * 1068: Auto-polls every 15s. On open/reply, calls unread context refresh()
+ *       to sync nav badge immediately.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { apiFetch } from '@/lib/api';
+import { useUnread } from '@/contexts/OMUnreadContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,6 +47,7 @@ interface ThreadMessage {
     message: string;
     read_at: string | null;
     created_at: string;
+    is_deleted?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -267,6 +272,7 @@ function ThreadDrawer({
                     ) : (
                         messages.map((msg) => {
                             const isGuest = msg.sender_type === 'guest';
+                            const isDeleted = msg.is_deleted === true;
                             return (
                                 <div
                                     key={msg.id}
@@ -284,25 +290,39 @@ function ThreadDrawer({
                                     }}>
                                         {isGuest ? `👤 ${conversation.guest_name || 'Guest'}` : '🏢 Host'}
                                     </div>
-                                    {/* Bubble */}
-                                    <div style={{
-                                        maxWidth: '78%',
-                                        padding: '9px 14px',
-                                        borderRadius: isGuest ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
-                                        background: isGuest ? 'var(--color-surface-2)' : 'rgba(88,166,255,0.1)',
-                                        border: isGuest ? '1px solid var(--color-border)' : '1px solid rgba(88,166,255,0.2)',
-                                        fontSize: 13, color: 'var(--color-text)',
-                                        lineHeight: 1.55, wordBreak: 'break-word',
-                                    }}>
-                                        {msg.message}
-                                    </div>
+                                    {/* Bubble — Phase 1068: tombstone for deleted */}
+                                    {isDeleted ? (
+                                        <div style={{
+                                            maxWidth: '78%',
+                                            padding: '7px 14px',
+                                            borderRadius: isGuest ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
+                                            background: 'transparent',
+                                            border: '1px dashed var(--color-border)',
+                                            fontSize: 12, color: 'var(--color-muted)',
+                                            fontStyle: 'italic', lineHeight: 1.5,
+                                        }}>
+                                            🗑 Message deleted by guest
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            maxWidth: '78%',
+                                            padding: '9px 14px',
+                                            borderRadius: isGuest ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
+                                            background: isGuest ? 'var(--color-surface-2)' : 'rgba(88,166,255,0.1)',
+                                            border: isGuest ? '1px solid var(--color-border)' : '1px solid rgba(88,166,255,0.2)',
+                                            fontSize: 13, color: 'var(--color-text)',
+                                            lineHeight: 1.55, wordBreak: 'break-word',
+                                        }}>
+                                            {msg.message}
+                                        </div>
+                                    )}
                                     {/* Meta: timestamp + read indicator */}
                                     <div style={{
                                         fontSize: 10, color: 'var(--color-muted)',
                                         marginTop: 3, display: 'flex', gap: 6, alignItems: 'center',
                                     }}>
                                         <span>{fmtFull(msg.created_at)}</span>
-                                        {isGuest && (
+                                        {isGuest && !isDeleted && (
                                             <span style={{
                                                 color: msg.read_at ? '#3fb850' : 'var(--color-text-dim)',
                                                 fontWeight: 600,
@@ -517,6 +537,8 @@ export default function ManagerInboxPage() {
     const [error, setError] = useState<string | null>(null);
     const [openThread, setOpenThread] = useState<ConversationSummary | null>(null);
     const [lastFetched, setLastFetched] = useState<Date | null>(null);
+    const { refresh: refreshBadge } = useUnread();
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -534,14 +556,23 @@ export default function ManagerInboxPage() {
         }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    // Initial load + 15s auto-poll
+    useEffect(() => {
+        load();
+        pollRef.current = setInterval(load, 15_000);
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current);
+        };
+    }, [load]);
 
     // Mark as read in local state when a thread is opened
     const handleMarkedRead = useCallback((booking_id: string) => {
         setConversations(prev =>
             prev.map(c => c.booking_id === booking_id ? { ...c, unread_count: 0 } : c)
         );
-    }, []);
+        // Sync nav badge immediately
+        refreshBadge();
+    }, [refreshBadge]);
 
     // Update inbox row when a reply is sent (Phase 1052)
     const handleReplySent = useCallback((booking_id: string, message: string) => {
@@ -550,7 +581,10 @@ export default function ManagerInboxPage() {
                 ? { ...c, last_message: message, last_sender_type: 'host', last_message_at: new Date().toISOString() }
                 : c
         ));
-    }, []);
+        // Sync badge immediately
+        refreshBadge();
+    }, [refreshBadge]);
+
 
     const totalUnread = conversations.reduce((s, c) => s + c.unread_count, 0);
 
