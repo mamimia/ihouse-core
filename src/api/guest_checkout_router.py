@@ -243,7 +243,7 @@ def _get_property_for_portal(db: Any, property_id: str, tenant_id: str) -> Optio
         res = (
             db.table("properties")
             .select(
-                "property_id, display_name, name, address, city, country, "
+                "property_id, display_name, address, city, country, "
                 "checkout_time, emergency_contact, wifi_name, wifi_password"
             )
             .eq("property_id", property_id)
@@ -656,7 +656,7 @@ async def get_guest_checkout_portal(
             ),
         },
         "property": {
-            "name":              (prop or {}).get("display_name") or (prop or {}).get("name") or property_id,
+            "name":              (prop or {}).get("display_name") or property_id,
             "address":           (prop or {}).get("address"),
             "city":              (prop or {}).get("city"),
             "country":           (prop or {}).get("country"),
@@ -853,7 +853,7 @@ async def complete_guest_checkout(
     existing_confirmed_at = booking.get("guest_checkout_confirmed_at")
     if existing_confirmed_at:
         prop_info = _get_property_for_portal(db, property_id, tenant_id)
-        property_name = (prop_info or {}).get("display_name") or (prop_info or {}).get("name") or "your property"
+        property_name = (prop_info or {}).get("display_name") or "your property"
         return JSONResponse(status_code=200, content={
             "status":        "already_confirmed",
             "confirmed_at":  str(existing_confirmed_at),
@@ -939,7 +939,7 @@ async def complete_guest_checkout(
 
     # Phase 1065B: Write system chat message — OM sees full closure in stay thread
     prop_info = _get_property_for_portal(db, property_id, tenant_id)
-    property_name = (prop_info or {}).get("display_name") or (prop_info or {}).get("name") or "the property"
+    property_name = (prop_info or {}).get("display_name") or "the property"
     guest_name = booking.get("guest_name") or "Guest"
 
     checklist_lines = [

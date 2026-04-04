@@ -387,7 +387,7 @@ function StepReady({
                 <CheckCard
                     checked={confirmed}
                     onChange={setConfirmed}
-                    label="I confirm that I and all guests are ready to leave and have collected all our belongings."
+                    label="I confirm that all guests and I are ready to leave and have collected all our belongings."
                 />
             </div>
             <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 14, fontSize: 13, color: MUTED, lineHeight: 1.6 }}>
@@ -404,9 +404,9 @@ function StepACLights({ onBack, onNext, submitting }: { onBack: () => void; onNe
     const [confirmed, setConfirmed] = useState(false);
     return (
         <>
-            <StepHeader icon="💡" title="AC, lights & appliances" subtitle="A small habit that makes a big difference." />
+            <StepHeader icon="💡" title="AC, lights & appliances" subtitle="A quick check before you go." />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-                <CheckCard checked={confirmed} onChange={setConfirmed} label="I've turned off the air conditioning, all lights, fans, and any other appliances." />
+                <CheckCard checked={confirmed} onChange={setConfirmed} label="I've turned off the AC, all lights, fans, and appliances." />
             </div>
             <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 14, fontSize: 12, color: MUTED, lineHeight: 1.6, marginBottom: 4 }}>
                 💡 Don't forget: water heater, TV, and kitchen appliances (stove, rice cooker, etc.) if applicable.
@@ -421,7 +421,7 @@ function StepDoorsLocked({ onBack, onNext, submitting }: { onBack: () => void; o
     const [confirmed, setConfirmed] = useState(false);
     return (
         <>
-            <StepHeader icon="🔒" title="Doors & windows" subtitle="Just a quick check before you go." />
+            <StepHeader icon="🔒" title="Doors & windows" subtitle="All locked before you leave." />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
                 <CheckCard checked={confirmed} onChange={setConfirmed} label="I've checked that all doors and windows are closed and locked." />
             </div>
@@ -517,7 +517,7 @@ function StepFeedback({
     const [comment, setComment] = useState('');
     return (
         <>
-            <StepHeader icon="💬" title="Any final thoughts?" subtitle="This is completely optional — skip if you'd prefer." />
+            <StepHeader icon="💬" title="Any final thoughts?" subtitle="Entirely optional — skip if you'd prefer." />
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
                 {[1, 2, 3, 4, 5].map(n => (
                     <button
@@ -551,8 +551,7 @@ function StepFeedback({
                     background: SURFACE, border: `1px solid ${BORDER}`,
                     color: MUTED, fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>← Back</button>
-                <button
-                    onClick={() => onNext(null, '')}
+                <button onClick={() => onNext(null, '')} disabled={submitting}
                     style={{
                         flex: '0 0 auto', padding: '12px 16px', borderRadius: 10,
                         background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
@@ -569,7 +568,7 @@ function StepFeedback({
                         cursor: submitting ? 'not-allowed' : 'pointer',
                         boxShadow: submitting ? 'none' : '0 4px 20px rgba(99,102,241,0.35)',
                     }}
-                >{submitting ? 'Saving…' : 'Confirm checkout →'}</button>
+                >{submitting ? 'Confirming…' : 'Confirm Check-Out →'}</button>
             </div>
         </>
     );
@@ -785,8 +784,14 @@ export default function GuestCheckoutPortalPage() {
         setSubmitting(true);
         setStepError(null);
         try {
-            if (stepId !== 'ready' && stepId !== 'proof_photos') {
-                await submitStep(stepId === 'contact' ? 'contact_confirm' : stepId, data);
+            // 'ready' maps to the 'confirm_departure' backend step — required for completion.
+            // 'proof_photos' is frontend-only (no upload, no submission).
+            const backendStepId =
+                stepId === 'ready'    ? 'confirm_departure' :
+                stepId === 'contact'  ? 'contact_confirm'   :
+                stepId;
+            if (stepId !== 'proof_photos') {
+                await submitStep(backendStepId, data);
             }
             setCurrentStep(nextStep);
         } catch (err: any) {
@@ -801,7 +806,9 @@ export default function GuestCheckoutPortalPage() {
         setSubmitting(true);
         setStepError(null);
         try {
-            if (rating || comment) {
+            // Called by both Skip and Confirm on the feedback step.
+            // Only post feedback if the guest actually entered something.
+            if (rating != null || comment.trim()) {
                 await submitStep('feedback', { rating, comment });
             }
             const result = await gcFetch<CompletionResult>(`/guest-checkout/${token}/complete`, { method: 'POST' });
@@ -897,7 +904,7 @@ export default function GuestCheckoutPortalPage() {
                     <StepReady
                         booking={state.booking}
                         property={state.property}
-                        onNext={() => handleStepAction('ready', { confirmed: true }, 1)}
+                        onNext={() => handleStepAction('ready', { confirmed_by_guest: true }, 1)}
                     />
                 )}
                 {step.id === 'ac_lights' && (
