@@ -29,6 +29,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 
 // ---------------------------------------------------------------------------
 // Constants & Styles
@@ -733,8 +734,10 @@ function SummaryScreen({
 // Main page
 // ---------------------------------------------------------------------------
 
-export default function GuestCheckoutPortalPage({ params }: { params: { token: string } }) {
-    const token = params.token;
+export default function GuestCheckoutPortalPage() {
+    // Next.js 15/16: params prop is a Promise — use useParams() hook instead
+    const params = useParams();
+    const token = (params?.token as string) ?? '';
 
     const [loading, setLoading] = useState(true);
     const [state, setState] = useState<PortalState | null>(null);
