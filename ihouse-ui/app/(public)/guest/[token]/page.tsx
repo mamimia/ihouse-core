@@ -774,7 +774,314 @@ function YourStay({ data }: { data: GuestPortalData }) {
 }
 
 // ---------------------------------------------------------------------------
-// Main Component
+// Phase 1065 — Guest Checkout Actions
+// Flow A: Request Early Check-Out (during stay, before checkout window)
+// Flow B: Self Check-Out (within 24h of effective checkout)
+// ---------------------------------------------------------------------------
+
+interface CheckoutStatus {
+    booking_id: string;
+    original_checkout_date: string;
+    effective_checkout_date: string;
+    is_early_checkout_approved: boolean;
+    early_checkout_status: string;   // none | requested | approved | completed
+    already_requested_early_checkout: boolean;
+    self_checkout_eligible: boolean;
+    valid_early_request_dates: string[];
+    guest_checkout_confirmed: boolean;
+}
+
+function fmtDate(iso: string): string {
+    try {
+        const d = new Date(iso + 'T12:00:00Z');
+        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    } catch { return iso; }
+}
+
+function GuestCheckoutActions({ token, apiBase }: { token: string; apiBase: string }) {
+    const [status, setStatus] = useState<CheckoutStatus | null>(null);
+    const [loadError, setLoadError] = useState(false);
+
+    // Flow A: request state
+    const [showRequestForm, setShowRequestForm] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<string>('');
+    const [reason, setReason] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetch(`${apiBase}/guest/${encodeURIComponent(token)}/checkout-status`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) setStatus(d); else setLoadError(true); })
+            .catch(() => setLoadError(true));
+    }, [token, apiBase]);
+
+    // Don't render while loading, or if we couldn't load
+    if (!status || loadError) return null;
+
+    // Don't show anything if checkout is already fully confirmed by guest
+    if (status.guest_checkout_confirmed) return null;
+
+    // Determine what to show
+    const showSelfCheckout = status.self_checkout_eligible && !status.guest_checkout_confirmed;
+    const isEarlyApproved = status.is_early_checkout_approved;
+    const alreadyRequested = status.already_requested_early_checkout;
+    const hasValidDates = status.valid_early_request_dates.length > 0;
+    // Only show "Request Early Check-Out" if booking is in-stay and dates exist
+    // and no request is already pending/approved
+    const showRequestCTA = !alreadyRequested && hasValidDates && !showSelfCheckout;
+
+    // Nothing to show — guest is mid-stay, no special window
+    if (!showSelfCheckout && !showRequestCTA && !alreadyRequested && !isEarlyApproved) return null;
+
+    const handleSubmitRequest = async () => {
+        if (!selectedDate) {
+            setSubmitError('Please select a date.');
+            return;
+        }
+        setSubmitting(true);
+        setSubmitError(null);
+        try {
+            const resp = await fetch(`${apiBase}/guest/${encodeURIComponent(token)}/request-early-checkout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requested_date: selectedDate, reason: reason.trim() || undefined }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                setSubmitError(data.detail || 'Request failed. Please try again.');
+            } else {
+                setSubmitted(true);
+                setShowRequestForm(false);
+                // Optimistically update local status so the UI transitions immediately
+                setStatus(prev => prev ? { ...prev, already_requested_early_checkout: true, early_checkout_status: 'requested' } : prev);
+            }
+        } catch {
+            setSubmitError('Network error. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <>
+            <SectionHeader emoji="🚪" label="Checkout" />
+
+            {/* === Self Check-Out CTA (Flow B) ===
+                 Only shown when within 24h of effective checkout.
+                 Links to the existing /guest-checkout/{token} portal. */}
+            {showSelfCheckout && (
+                <div style={{
+                    background: 'linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(30,58,95,0.8) 100%)',
+                    border: '1px solid rgba(59,130,246,0.35)',
+                    borderRadius: RADIUS, padding: '20px 16px', marginBottom: 12,
+                }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: TEXT, marginBottom: 6 }}>
+                        Ready to check out?
+                    </div>
+                    <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.55, marginBottom: 16 }}>
+                        {isEarlyApproved
+                            ? `Your early checkout has been approved. Effective: ${fmtDate(status.effective_checkout_date)}.`
+                            : `Your checkout is ${fmtDate(status.effective_checkout_date)}.`
+                        }
+                        {' '}Use the button below to complete your self checkout.
+                    </div>
+
+                    {/* Financial honesty — don't pretend everything is final */}
+                    <div style={{
+                        background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)',
+                        borderRadius: 10, padding: '10px 12px', marginBottom: 16,
+                        fontSize: 12, color: '#fbbf24', lineHeight: 1.55,
+                    }}>
+                        ℹ️ After checkout, our team will complete a final review — including any deposit return or electricity settlement. We'll contact you if anything needs to be clarified.
+                    </div>
+
+                    {/* Contact continuity reminder */}
+                    <div style={{
+                        background: SURFACE, border: `1px solid ${BORDER}`,
+                        borderRadius: 10, padding: '10px 12px', marginBottom: 16,
+                        fontSize: 12, color: DIM, lineHeight: 1.55,
+                    }}>
+                        📞 Make sure your host has your correct phone or email in case they need to reach you after checkout.
+                    </div>
+
+                    <a
+                        href={`/guest-checkout/${token}`}
+                        style={{
+                            display: 'block', background: PRIMARY, border: 'none',
+                            borderRadius: 12, padding: '13px 0', textAlign: 'center',
+                            color: '#fff', fontWeight: 700, fontSize: 15,
+                            textDecoration: 'none', letterSpacing: '-0.01em',
+                        }}
+                    >
+                        Start Self Check-Out →
+                    </a>
+                </div>
+            )}
+
+            {/* === Early Checkout — approved state ===
+                 Pending self-checkout window: show approved confirmation. */}
+            {isEarlyApproved && !showSelfCheckout && (
+                <div style={{
+                    background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.2)',
+                    borderRadius: RADIUS, padding: '16px',
+                    display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12,
+                }}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }}>✅</span>
+                    <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#34d399', marginBottom: 4 }}>
+                            Early checkout approved
+                        </div>
+                        <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.55 }}>
+                            Your early checkout has been confirmed for{' '}
+                            <strong style={{ color: TEXT }}>{fmtDate(status.effective_checkout_date)}</strong>.
+                            {' '}The self-checkout option will appear once you&apos;re in the checkout window.
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* === Early Checkout — requested (pending OM review) === */}
+            {(alreadyRequested || submitted) && !isEarlyApproved && (
+                <div style={{
+                    background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)',
+                    borderRadius: RADIUS, padding: '16px',
+                    display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12,
+                }}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }}>⏳</span>
+                    <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>
+                            Early checkout request received
+                        </div>
+                        <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.55 }}>
+                            We've received your request.
+                            {selectedDate && ` Requested date: ${fmtDate(selectedDate)}.`}
+                            {' '}The team will review and confirm shortly.
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* === Request Early Check-Out CTA (Flow A) ===
+                 Shown during stay, when dates are available and no request exists yet. */}
+            {showRequestCTA && (
+                <div style={{
+                    background: SURFACE, border: `1px solid ${BORDER}`,
+                    borderRadius: RADIUS, overflow: 'hidden', marginBottom: 12,
+                }}>
+                    {/* Header row */}
+                    <div style={{
+                        padding: '14px 16px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        cursor: 'pointer',
+                    }}
+                        onClick={() => setShowRequestForm(prev => !prev)}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 20 }}>📅</span>
+                            <div>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>Request Early Check-Out</div>
+                                <div style={{ fontSize: 12, color: DIM, marginTop: 2 }}>
+                                    Scheduled: {fmtDate(status.original_checkout_date)}
+                                </div>
+                            </div>
+                        </div>
+                        <span style={{ fontSize: 18, color: DIM, transform: showRequestForm ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                            ⌄
+                        </span>
+                    </div>
+
+                    {/* Collapsible form */}
+                    {showRequestForm && (
+                        <div style={{ borderTop: `1px solid ${BORDER}`, padding: '16px' }}>
+                            <div style={{ fontSize: 13, color: DIM, marginBottom: 14, lineHeight: 1.5 }}>
+                                Select the date you'd like to check out. Your request will be reviewed by the team.
+                            </div>
+
+                            {/* Date options — radio buttons, not a free calendar */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                                {status.valid_early_request_dates.map(d => (
+                                    <label key={d} style={{
+                                        display: 'flex', alignItems: 'center', gap: 10,
+                                        background: selectedDate === d ? 'rgba(59,130,246,0.12)' : '#0f1421',
+                                        border: `1px solid ${selectedDate === d ? 'rgba(59,130,246,0.4)' : BORDER}`,
+                                        borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
+                                        transition: 'background 0.15s, border-color 0.15s',
+                                    }}>
+                                        <input
+                                            type="radio"
+                                            name="early_checkout_date"
+                                            value={d}
+                                            checked={selectedDate === d}
+                                            onChange={() => setSelectedDate(d)}
+                                            style={{ accentColor: PRIMARY, width: 16, height: 16, flexShrink: 0 }}
+                                        />
+                                        <span style={{ fontSize: 14, fontWeight: selectedDate === d ? 700 : 400, color: TEXT }}>
+                                            {fmtDate(d)}
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+
+                            {/* Optional reason */}
+                            <textarea
+                                value={reason}
+                                onChange={e => setReason(e.target.value)}
+                                placeholder="Reason (optional) — e.g. flight change, family emergency…"
+                                rows={2}
+                                maxLength={200}
+                                style={{
+                                    width: '100%', background: '#0f1421', border: `1px solid ${BORDER}`,
+                                    borderRadius: 10, padding: '10px 12px', color: TEXT,
+                                    fontSize: 13, resize: 'none', boxSizing: 'border-box',
+                                    fontFamily: 'inherit', marginBottom: 12,
+                                }}
+                            />
+
+                            {submitError && (
+                                <div style={{ fontSize: 13, color: '#f87171', marginBottom: 10 }}>
+                                    ⚠ {submitError}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button
+                                    onClick={() => setShowRequestForm(false)}
+                                    style={{
+                                        flex: 1, padding: '10px 0', borderRadius: 10,
+                                        background: 'transparent', border: `1px solid ${BORDER}`,
+                                        color: DIM, fontSize: 14, cursor: 'pointer',
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSubmitRequest}
+                                    disabled={submitting || !selectedDate}
+                                    style={{
+                                        flex: 2, padding: '10px 0', borderRadius: 10,
+                                        background: !selectedDate ? FAINT : PRIMARY,
+                                        border: 'none', color: '#fff',
+                                        fontWeight: 700, fontSize: 14,
+                                        cursor: submitting || !selectedDate ? 'not-allowed' : 'pointer',
+                                        opacity: !selectedDate ? 0.6 : 1,
+                                    }}
+                                >
+                                    {submitting ? 'Sending…' : 'Send Request'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </>
+    );
+}
+
+
+// ---------------------------------------------------------------------------
+// Section 6 — Your Stay
 // ---------------------------------------------------------------------------
 
 export default function GuestPortalPage() {
@@ -949,6 +1256,13 @@ export default function GuestPortalPage() {
                 {/* Section 6 — Your Stay
                      Phase 1064: YourStay returns null when nothing is set — intentional hide. */}
                 <YourStay data={data} />
+
+                {/* Phase 1065 — Guest Checkout Actions
+                     Flow A: Request Early Check-Out (during stay, before window)
+                     Flow B: Self Check-Out (within 24h of effective checkout)
+                     Component fetches /guest/{token}/checkout-status and self-manages visibility.
+                     Returns null while loading, if endpoint fails, or if no relevant actions apply. */}
+                <GuestCheckoutActions token={token} apiBase={API_BASE} />
 
                 {/* Footer */}
                 <div style={{ textAlign: 'center', marginTop: 32, padding: 16 }}>

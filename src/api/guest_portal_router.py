@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timezone, date as date_type
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -823,3 +824,355 @@ async def checkout_worker_view(
     except Exception as exc:
         logger.exception("checkout_worker_view error: %s", exc)
         return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
+
+
+# ===========================================================================
+# Phase 1065 — Guest Portal Early Checkout + Self Checkout Status
+# ===========================================================================
+
+def _now_iso_portal() -> str:
+    return datetime.now(tz=timezone.utc).isoformat()
+
+
+def _effective_checkout_from_state(booking_state: dict) -> str:
+    """
+    Return the effective checkout date string (YYYY-MM-DD).
+    If early_checkout_approved and early_checkout_date exist, use those.
+    Otherwise fall back to check_out from booking_state.
+    """
+    if booking_state.get("early_checkout_approved") and booking_state.get("early_checkout_date"):
+        return str(booking_state["early_checkout_date"])[:10]
+    return str(booking_state.get("check_out") or "")[:10]
+
+
+def _self_checkout_eligible(effective_checkout_date_str: str, effective_at_str: Optional[str] = None) -> bool:
+    """
+    Self-checkout becomes available within the 24-hour window before the effective checkout.
+
+    Priority:
+      1. early_checkout_effective_at (precise TIMESTAMPTZ) — 24h before that moment
+      2. effective checkout DATE assumed at 11:00 UTC — eligible from 11:00 UTC on the day before
+    """
+    now = datetime.now(tz=timezone.utc)
+
+    # Path 1: precise effective datetime available
+    if effective_at_str:
+        try:
+            eff = datetime.fromisoformat(str(effective_at_str).replace("Z", "+00:00"))
+            if eff.tzinfo is None:
+                eff = eff.replace(tzinfo=timezone.utc)
+            window_start = eff - __import__("datetime").timedelta(hours=24)
+            return now >= window_start
+        except Exception:
+            pass
+
+    # Path 2: DATE only — assume 11:00 UTC checkout time
+    if effective_checkout_date_str:
+        try:
+            co = date_type.fromisoformat(effective_checkout_date_str)
+            checkout_dt = datetime(co.year, co.month, co.day, 11, 0, 0, tzinfo=timezone.utc)
+            window_start = checkout_dt - __import__("datetime").timedelta(hours=24)
+            return now >= window_start
+        except Exception:
+            pass
+
+    return False
+
+
+@router.get(
+    "/{token}/checkout-status",
+    summary="Guest checkout status — effective date, self-checkout eligibility, early checkout state (Phase 1065)",
+)
+async def guest_checkout_status(token: str, client: Optional[Any] = None) -> JSONResponse:
+    """
+    GET /guest/{token}/checkout-status
+
+    Returns:
+      - original_checkout_date: the original booking check_out DATE
+      - effective_checkout_date: the real checkout date (early or original)
+      - is_early_checkout: whether an early checkout is approved
+      - early_checkout_status: none | requested | approved | completed
+      - early_checkout_request_pending: whether guest has already submitted a request
+      - self_checkout_eligible: true if now is within 24h of effective checkout
+      - valid_early_request_dates: list of YYYY-MM-DD dates the guest can request
+        (today up to but not including original checkout date; excludes past dates)
+      - guest_checkout_confirmed: whether the guest has already confirmed departure
+
+    Phase 1065: Used by the guest portal to decide which actions to show.
+    Does NOT require the guest to be inside the checkout window to read.
+    """
+    ctx = _resolve_token_ctx(token, client=client)
+    if not ctx:
+        return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
+
+    booking_id = ctx.get("booking_ref", "")
+    if not booking_id:
+        return JSONResponse(status_code=400, content={"error": "TOKEN_CONTEXT_INCOMPLETE"})
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # booking_state: authoritative source for early checkout flags
+        bs_res = (
+            db.table("booking_state")
+            .select(
+                "booking_id, check_in, check_out, status, "
+                "early_checkout_approved, early_checkout_date, early_checkout_effective_at, "
+                "early_checkout_status, early_checkout_requested_at, "
+                "guest_checkout_confirmed_at"
+            )
+            .eq("booking_id", booking_id)
+            .limit(1)
+            .execute()
+        )
+        rows = bs_res.data or []
+        if not rows:
+            return JSONResponse(status_code=404, content={"error": "NOT_FOUND"})
+
+        bs = rows[0]
+        original_checkout = str(bs.get("check_out") or "")[:10]
+        effective_checkout = _effective_checkout_from_state(bs)
+        effective_at = bs.get("early_checkout_effective_at")
+        ec_status = bs.get("early_checkout_status") or "none"
+        is_early_approved = bool(bs.get("early_checkout_approved"))
+        request_pending = bool(bs.get("early_checkout_requested_at") and ec_status in ("requested", "none"))
+        already_requested = ec_status in ("requested", "approved", "completed")
+        self_eligible = _self_checkout_eligible(effective_checkout, effective_at)
+        guest_confirmed = bool(bs.get("guest_checkout_confirmed_at"))
+
+        # Build the valid early request date range:
+        # today (or check_in if today < check_in) up to but NOT including original check_out
+        # Excludes the original checkout date itself — that's not an "early" departure.
+        valid_dates: list[str] = []
+        try:
+            today = date_type.today()
+            check_in_d = date_type.fromisoformat(str(bs.get("check_in") or "")[:10])
+            check_out_d = date_type.fromisoformat(original_checkout)
+            start_d = max(today, check_in_d)
+            # Walk from start to the day BEFORE original checkout
+            cur = start_d
+            while cur < check_out_d:
+                valid_dates.append(cur.isoformat())
+                cur = date_type.fromordinal(cur.toordinal() + 1)
+        except Exception:
+            pass
+
+        return JSONResponse(status_code=200, content={
+            "booking_id":                     booking_id,
+            "original_checkout_date":         original_checkout,
+            "effective_checkout_date":        effective_checkout,
+            "is_early_checkout_approved":     is_early_approved,
+            "early_checkout_status":          ec_status,
+            "already_requested_early_checkout": already_requested,
+            "self_checkout_eligible":         self_eligible,
+            "valid_early_request_dates":      valid_dates,
+            "guest_checkout_confirmed":       guest_confirmed,
+        })
+    except Exception as exc:
+        logger.exception("guest_checkout_status error booking=%s: %s", booking_id, exc)
+        return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
+
+
+@router.post(
+    "/{token}/request-early-checkout",
+    summary="Guest requests early checkout (Phase 1065)",
+)
+async def guest_request_early_checkout(
+    token: str,
+    body: Dict[str, Any],
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    POST /guest/{token}/request-early-checkout
+
+    Guest requests to leave earlier than their original checkout date.
+
+    Body:
+        requested_date: YYYY-MM-DD — the date the guest wants to leave (required)
+        reason: short free-text reason (optional, ≤200 chars)
+
+    Behavior:
+      1. Validates that requested_date is in the valid window
+         (today or later, strictly before original check_out)
+      2. Writes early_checkout_requested_at + early_checkout_status='requested'
+         + early_checkout_request_source='guest_portal' to booking_state
+      3. Posts a structured system-style chat message to guest_chat_messages
+         so the OM instantly sees the request in their inbox thread
+      4. Returns {status: 'request_received', requested_date, message_id}
+
+    Idempotent-ish: if status is already 'requested', returns 200 with
+    status='already_requested'. Does NOT re-send chat unless it's the first request.
+
+    Phase 1065: This is a guest-originated intake. The request DOES NOT auto-approve.
+    Admin / OM must still approve via the existing early_checkout_router.py path.
+    """
+    ctx = _resolve_token_ctx(token, client=client)
+    if not ctx:
+        return JSONResponse(status_code=401, content={"error": "TOKEN_INVALID"})
+
+    booking_id = ctx.get("booking_ref", "")
+    property_id = ctx.get("property_id", "")
+    tenant_id = ctx.get("tenant_id", "")
+
+    if not booking_id or not property_id:
+        return JSONResponse(status_code=500, content={"error": "CONTEXT_ERROR", "detail": "Token context incomplete."})
+
+    # Validate requested_date
+    requested_date = (body.get("requested_date") or "").strip()[:10]
+    if not requested_date or len(requested_date) != 10:
+        return JSONResponse(status_code=400, content={
+            "error": "VALIDATION_ERROR",
+            "detail": "requested_date (YYYY-MM-DD) is required.",
+        })
+
+    reason = str(body.get("reason") or "").strip()[:200] or None
+
+    try:
+        db = client if client is not None else _get_supabase_client()
+
+        # Fetch booking_state
+        bs_res = (
+            db.table("booking_state")
+            .select(
+                "booking_id, tenant_id, status, check_in, check_out, "
+                "early_checkout_status, early_checkout_requested_at"
+            )
+            .eq("booking_id", booking_id)
+            .limit(1)
+            .execute()
+        )
+        rows = bs_res.data or []
+        if not rows:
+            return JSONResponse(status_code=404, content={"error": "NOT_FOUND"})
+
+        bs = rows[0]
+        original_checkout = str(bs.get("check_out") or "")[:10]
+        check_in_str = str(bs.get("check_in") or "")[:10]
+        booking_status = (bs.get("status") or "").lower()
+        ec_status = bs.get("early_checkout_status") or "none"
+
+        # Guard: booking must be in-stay
+        if booking_status not in ("checked_in", "active"):
+            return JSONResponse(status_code=409, content={
+                "error": "INVALID_STATE",
+                "detail": f"Early checkout can only be requested during an active stay. "
+                          f"Current status: {booking_status}",
+            })
+
+        # Guard: idempotent — if already requested (or approved), don't re-record
+        if ec_status in ("requested", "approved", "completed"):
+            return JSONResponse(status_code=200, content={
+                "status": "already_requested",
+                "early_checkout_status": ec_status,
+                "booking_id": booking_id,
+                "detail": "An early checkout request is already on record for this stay.",
+            })
+
+        # Validate the requested date is in the valid window
+        try:
+            req_d = date_type.fromisoformat(requested_date)
+            today = date_type.today()
+            check_in_d = date_type.fromisoformat(check_in_str) if check_in_str else today
+            check_out_d = date_type.fromisoformat(original_checkout) if original_checkout else None
+
+            if req_d < max(today, check_in_d):
+                return JSONResponse(status_code=400, content={
+                    "error": "INVALID_DATE",
+                    "detail": f"Requested date {requested_date} is in the past. "
+                              f"Please choose today ({today.isoformat()}) or later.",
+                })
+            if check_out_d and req_d >= check_out_d:
+                return JSONResponse(status_code=400, content={
+                    "error": "INVALID_DATE",
+                    "detail": f"Requested date {requested_date} must be before your original "
+                              f"checkout date ({original_checkout}). Use your original checkout for same-day departures.",
+                })
+        except (ValueError, TypeError):
+            return JSONResponse(status_code=400, content={
+                "error": "INVALID_DATE",
+                "detail": f"Invalid date format: '{requested_date}'. Use YYYY-MM-DD.",
+            })
+
+        now = _now_iso_portal()
+
+        # 1. Record early checkout request in booking_state
+        ec_update = {
+            "early_checkout_requested_at":   now,
+            "early_checkout_request_source": "guest_portal",
+            "early_checkout_request_note":   reason,
+            "early_checkout_status":         "requested",
+            "early_checkout_date":           requested_date,   # informational — not binding until approval
+        }
+        try:
+            db.table("booking_state").update(ec_update).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
+        except Exception as exc:
+            logger.warning("guest_request_early_checkout: booking_state update failed: %s", exc)
+
+        # 2. Write a structured system-style chat message so the OM sees the request in their inbox
+        date_fmt = requested_date  # YYYY-MM-DD — already validated
+        try:
+            req_d_parsed = date_type.fromisoformat(requested_date)
+            date_fmt = req_d_parsed.strftime("%B %-d, %Y")  # e.g. "July 21, 2026"
+        except Exception:
+            pass
+
+        reason_line = f"\nReason: {reason}" if reason else ""
+        chat_content = (
+            f"[Early Checkout Request]\n"
+            f"The guest has requested to check out early.\n"
+            f"Requested date: {date_fmt}{reason_line}\n"
+            f"Please confirm or contact the guest to arrange the early departure."
+        )
+
+        # Resolve conversation owner (OM) — same pattern as guest_send_message
+        try:
+            from services.guest_messaging import resolve_conversation_owner
+            assigned_om_id = resolve_conversation_owner(db, property_id, tenant_id)
+        except Exception:
+            assigned_om_id = tenant_id
+
+        chat_row = {
+            "booking_id":     booking_id,
+            "property_id":    property_id,
+            "tenant_id":      tenant_id,
+            "sender_type":    "system",   # Distinct from 'guest' and 'host' — structured request
+            "message":        chat_content,
+            "assigned_om_id": assigned_om_id,
+        }
+        chat_result = None
+        try:
+            insert_res = db.table("guest_chat_messages").insert(chat_row).execute()
+            chat_result = (insert_res.data or [None])[0]
+        except Exception as exc:
+            logger.warning("guest_request_early_checkout: chat insert failed (non-blocking): %s", exc)
+
+        # SSE notify OM — best-effort
+        try:
+            from channels.sse_broker import broker
+            if tenant_id:
+                broker.publish_alert(
+                    tenant_id=tenant_id,
+                    event_type="GUEST_EARLY_CHECKOUT_REQUESTED",
+                    booking_ref=booking_id,
+                    assigned_om_id=assigned_om_id,
+                    content_preview=f"Early checkout requested for {date_fmt}",
+                )
+        except Exception:
+            pass
+
+        return JSONResponse(status_code=200, content={
+            "status":                "request_received",
+            "booking_id":            booking_id,
+            "requested_date":        requested_date,
+            "early_checkout_status": "requested",
+            "message_id":            chat_result.get("id") if chat_result else None,
+            "detail": (
+                f"Your request to check out on {date_fmt} has been received. "
+                "The team will review and confirm shortly. You will be contacted if we need anything."
+            ),
+        })
+
+    except Exception as exc:
+        logger.exception("guest_request_early_checkout booking=%s: %s", booking_id, exc)
+        return JSONResponse(status_code=500, content={"error": "INTERNAL_ERROR"})
+
