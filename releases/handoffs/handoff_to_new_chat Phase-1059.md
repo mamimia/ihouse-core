@@ -1,83 +1,113 @@
 # Handoff to New Chat — Phase 1059
 **Phase:** 1059 — Operational Resilience Hardening (Photo Upload + Wizard State Recovery)
-**Status:** CLOSED
+**Status:** CLOSED (see classification notes below — not all items were fully closed)
 **Date:** 2026-04-04
-**Commit:** `a6e8bdb` — Branch: `checkpoint/supabase-single-write-20260305-1747`
+**Commits:** `a6e8bdb`, `989cf78` — Branch: `checkpoint/supabase-single-write-20260305-1747`
 
 ---
 
-## What Was Done
+## Context
 
-Closed the two grouped deferred items:
+This phase attacked two grouped deferred items:
+
 1. **Offline / photo-upload failure chain**
 2. **No saga / compensation / recovery model for multi-step operational wizards**
 
-Both were treated as related: both concern operational resilience under interruption or failure.
+Both concern operational resilience under interruption or failure.
+
+> ⚠️ **Classification notice:** Both items were worked on in this phase. Neither is fully closed.
+> The work delivered is real and valuable. The labels below reflect actual delivery state honestly.
 
 ---
 
-## Changes Delivered
+## Item 1 — Photo Upload Failure Chain
 
-### 1. DB Migration — `phase_1059_upload_status_hardening`
-Applied to Supabase project `reykggmlcehswrxjviup`:
+**Classification: SUBSTANTIALLY HARDENED. Residual risk reduced. Not fully closed.**
 
-- `cleaning_photos`: added `upload_status TEXT NOT NULL DEFAULT 'confirmed' CHECK (IN ('confirmed','failed','pending'))` and `storage_path TEXT`
-- `booking_checkin_photos`: added `upload_status TEXT NOT NULL DEFAULT 'confirmed'`
-- Indexes: `idx_cleaning_photos_upload_status`, `idx_booking_checkin_photos_upload_status` (partial, WHERE != 'confirmed')
-- All existing rows default to 'confirmed' — backward compatible
+### What was fixed
 
-### 2. Backend: `src/api/cleaning_task_router.py`
-**Endpoint:** `POST /tasks/{task_id}/cleaning-photos/upload`
+**Backend: `cleaning_task_router.py`**
+- The root silent-failure bug is fixed: Storage upload failure now returns HTTP 502 `STORAGE_UPLOAD_FAILED` instead of silently writing a broken `storage-failed://…` pseudo-URL to the DB.
+- A DB photo record is only created when bytes are confirmed in Supabase Storage.
+- `upload_status='confirmed'` and `storage_path` written explicitly on success.
 
-- **BEFORE:** Storage failure → silently writes `storage-failed://...` URL to DB. DB record exists, but bytes are permanently lost.
-- **AFTER:** Storage failure → HTTP 502 `STORAGE_UPLOAD_FAILED` with structured error. No DB record created. Caller must retry.
-- Successful upload now writes `upload_status='confirmed'` and `storage_path` explicitly.
+**DB migration: `phase_1059_upload_status_hardening`**
+- `cleaning_photos`: added `upload_status` (`confirmed`/`failed`/`pending`), `storage_path`
+- `booking_checkin_photos`: added `upload_status`
+- Indexes for fast "find failed uploads" queries
+- All existing rows default to `confirmed` (backward-compatible)
 
-### 3. Backend: `src/api/checkin_photos_router.py`
-Two changes:
+**Backend: `checkin_photos_router.py`**
+- `POST /worker/bookings/{id}/checkin-photos`: now writes `upload_status='confirmed'` per row
 
-**POST /worker/bookings/{booking_id}/checkin-photos:**
-- Now writes `upload_status='confirmed'` on every row inserted into `booking_checkin_photos`
+**Frontend: `checkin/page.tsx`**
+- `failedPhotoUploads` state: per-room explicit failure tracking (not a disappearing toast)
+- Persistent red callout with exact error message and retry instructions
+- Continue button disabled while any upload failure is present
+- Photo upload handler clears failure state on retry before attempting
 
-**NEW: GET /worker/bookings/{booking_id}/checkin-resume** (Phase 1059):
-- Returns durable wizard state for a booking: `booking_status`, saved photos (total / confirmed / failed / by purpose), settlement (deposit + meter), guest identity (saved/not + name), `resume_hint` (human-readable step suggestion)
-- Each sub-query is individually try/except — endpoint degrades gracefully if any table is unavailable
-- Auth: same roles as checkin-photos (worker, checkin, ops, admin, manager)
+### What remains open (residual risk)
 
-### 4. Frontend: `ihouse-ui/app/(app)/ops/checkin/page.tsx`
-Four operational improvements:
-
-**a) Explicit failed-upload tracking (state)**
-- New: `failedPhotoUploads: Record<string, string>` — maps room_label → error message
-- On upload success: clears the error for that room
-- On upload failure: writes structured error (instead of a toast that disappears after 3 sec)
-
-**b) Persistent failed-upload UI callout**
-- When any `failedPhotoUploads` entries exist: red bordered callout with room name + truncated error message + "retake" instructions
-- Continue button is **disabled** while any failed upload is present — worker must retake before proceeding
-- Previous warning banner (optional) now only shows when no hard failures exist
-
-**c) sessionStorage wizard persistence**
-- `useEffect` on `[capturedPhotos, step, selected]`: writes `{ bookingId, capturedPhotos, step, savedAt }` to `sessionStorage.ihouse_checkin_wizard_{bookingId}`
-- When `startCheckin(b)` is called: attempts to restore `capturedPhotos` from sessionStorage if `bookingId` matches
-- Cleared on: `completeCheckin` success, `returnToList` explicit return
-- Scope: tab/session only (not cross-device)
-
-**d) 'In Progress' resume banner**
-- `BookingCardList` now reads sessionStorage per booking_id on render
-- Cards with a non-empty saved `capturedPhotos` array show an amber banner: "🔄 In Progress — tap Start to resume where you left off"
+- **`/worker/documents/upload` upstream byte loss is not addressed.** If that endpoint's internal Supabase Storage write fails, the current code returns a `storage_path` but no `upload_status` field. The checkin wizard trusts that path blindly.
+- **No Service Worker / IndexedDB offline queuing.** If the device goes fully offline mid-upload, the bytes are lost. No background retry, no offline queue.
+- **Cleaning photo path only fully hardened.** The check-in wizard upload path (`/worker/documents/upload`) does not yet return `upload_status` — it is not under the same explicit failure contract.
+- **No server-side retry / idempotent re-upload endpoint.** A worker who gets a 502 must re-capture the photo from scratch; there is no "re-submit bytes for a known failed record" flow.
 
 ---
 
-## What Is Still Deferred (Documented Residual Risks)
+## Item 5 — No Saga / Compensation / Recovery Model for Multi-Step Wizards
 
-| Risk | Status | Reason |
-|------|--------|---------|
-| Service Worker + IndexedDB offline queuing | Deferred | Requires infra change — no SW setup |
-| Multi-device wizard resume across devices | Deferred | sessionStorage is tab-scoped by design |
-| Guest token issuance failure (non-blocking) | Known gap | Intentionally best-effort |
-| Session invalidation (existing JWT after deactivation) | Known gap | Intentional deferred |
-| `booking_checkin_photos` + `cleaning_photos` missing RLS | Pre-existing | Both accessed only via service_role_key backend |
+**Classification: NOT CLOSED. Partially mitigated for one narrow failure mode (check-in browser refresh). Broader saga / compensation gap still open.**
+
+### What was actually delivered (the mitigation, not a close)
+
+**Backend: `GET /worker/bookings/{id}/checkin-resume`** (new endpoint)
+- Returns durable state for a check-in wizard session: `booking_status`, saved photos (confirmed vs failed by purpose), settlement (deposit + meter), guest identity (boolean + name), `resume_hint` (human-readable step suggestion)
+- Allows a worker to know what durable steps have been committed to the backend
+- Auth: same roles as checkin-photos
+
+**Frontend: sessionStorage wizard persistence**
+- `capturedPhotos` + current `step` saved to `sessionStorage` per `booking_id` on every change
+- On re-entering the same booking's wizard: `capturedPhotos` restores from sessionStorage
+- "🔄 In Progress — tap Start to resume where you left off" amber badge on cards with a saved checkpoint
+- sessionStorage cleared on successful completion and explicit `returnToList`
+
+### What this does NOT provide
+
+This is a narrow mitigation for one specific failure mode: **browser refresh or tab close mid-wizard**. It is not a saga or compensation model.
+
+**What a real saga / compensation model would require:**
+- A backend-owned, durable "wizard_state" or "wizard_draft" table that persists the entire wizard context (not just photos) — deposit amount, identity fields, contact info, step — independent of browser
+- Explicit step atomicity: each wizard step either fully succeeds (backend state updated) or is cleanly rolled back (no partial record leakage)
+- Compensation logic: if step N fails after step N-1 succeeded, a defined rollback or idempotent-overwrite path exists
+- Resume from the exact failed step, not from the beginning
+- Multi-device aware: worker can pick up on a different device
+
+**Specific gaps that remain open:**
+- If the backend `POST /checkin` call fails after identity was already saved, deposit saved, and photos indexed — there is no compensation. The booking state is inconsistent. Worker must manually recover.
+- The checkout wizard has none of these mitigations at all. Same underlying exposure.
+- `capturedPhotos` in sessionStorage is tab-scoped — a different browser, device, or app restart loses it.
+- The `checkin-resume` endpoint is a read-only diagnostic. It does not drive the wizard forward, does not restore step number, and does not restore non-photo fields (deposit method, identity form values, meter reading text).
+- There is no transactional wrapper across the multiple `apiFetch` calls in `completeCheckin`. Any one of them failing produces an inconsistent partial state with no rollback.
+
+---
+
+## What Was Actually Fixed in This Phase (Summary)
+
+| Item | What Changed | Honest State |
+|------|-------------|--------------|
+| Cleaning photo Storage failure | HTTP 502 instead of silent broken DB record | ✅ Fixed |
+| Cleaning photo DB record integrity | Only written when bytes confirmed | ✅ Fixed |
+| `upload_status` column on photo tables | Both tables — default 'confirmed', indexed | ✅ Added |
+| Check-in upload failure UI | Persistent callout, Continue disabled, retry clears | ✅ Fixed |
+| Check-in wizard tab-close recovery | sessionStorage per-booking, capturedPhotos restored | ✅ Mitigated (tab-scoped) |
+| Resume diagnostic endpoint | `GET /checkin-resume` — read-only status | ✅ Added |
+| `/worker/documents/upload` failure contract | No change made | 🔲 Still open |
+| Offline photo queuing | Not implemented | 🔲 Still open |
+| Checkout wizard resilience | No change made | 🔲 Still open |
+| Wizard saga / compensation model | Not implemented | 🔲 Still open |
+| Backend wizard_draft persistence | Not implemented | 🔲 Still open |
+| Cross-step rollback / compensation | Not implemented | 🔲 Still open |
 
 ---
 
@@ -92,14 +122,13 @@ Four operational improvements:
 ## System State After This Phase
 
 - **Backend on Railway:** auto-deployed via `git push` (`a6e8bdb`)
-- **Frontend:** NOT yet deployed to Vercel (no `/vercel-staging-deploy` invoked — no frontend-only visible change requiring staging review)
-- **DB migration:** applied to production Supabase project `reykggmlcehswrxjviup`
+- **Frontend:** No Vercel deploy performed (no UI-only visible change requiring staging review)
+- **DB migration:** Applied to production Supabase project `reykggmlcehswrxjviup`
 
 ---
 
 ## For the Next Chat
 
 1. Read `docs/core/BOOT.md` and `docs/core/work-context.md` as always
-2. Check `docs/core/current-snapshot.md` for system state
-3. The deferred items registry now has these two items closed: `offline_photo_upload_failure` + `wizard_no_saga`
-4. Candidate next items: wizard state recovery for checkout flow (same pattern), or next in deferred registry
+2. Phase 1059 closed with partial delivery — the honest open items above should be re-evaluated for prioritization
+3. Strongest remaining gaps from this work: saga/compensation model (item 5 still open), `/worker/documents/upload` failure contract, checkout wizard resilience
