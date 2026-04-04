@@ -129,24 +129,36 @@ export default function AuthCallbackPage() {
                 }),
             });
 
-            const body = await resp.json();
-            const result = body?.data || body;
-
-            if (!resp.ok || !result.token) {
+            let body: Record<string, unknown>;
+            try {
+                body = await resp.json();
+            } catch (_parseErr) {
                 setStatus('error');
-                setErrorMsg(result?.error || 'Failed to complete sign-in.');
+                setErrorMsg('Sign-in service is temporarily unavailable. Please try again in a moment.');
+                return;
+            }
+            // Unwrap canonical {ok,data} envelope or use body directly
+            const raw = body as Record<string, unknown>;
+            const result: Record<string, unknown> = (
+                raw?.ok === true && raw?.data ? raw.data as Record<string, unknown> : raw
+            );
+
+            if (!resp.ok || !result['token']) {
+                setStatus('error');
+                setErrorMsg((result['error'] as string) || (result['message'] as string) || 'Failed to complete sign-in.');
                 return;
             }
 
             // Store token and redirect
-            setToken(result.token);
+            const token = result['token'] as string;
+            setToken(token);
             // Phase 948h: ALWAYS set language from the authenticated worker's identity.
             // This prevents cross-user leakage on shared devices. If Worker A (th)
             // logs out and Worker B (en) logs in, we must reset to 'en', not inherit 'th'.
-            localStorage.setItem('domaniqo_lang', result.language || 'en');
+            localStorage.setItem('domaniqo_lang', (result['language'] as string) || 'en');
             const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
-            document.cookie = `ihouse_token=${result.token}; path=/; max-age=${result.expires_in || 86400}; SameSite=Lax${isHttps ? '; Secure' : ''}`;
-            window.location.href = getRoleRoute(result.token);
+            document.cookie = `ihouse_token=${token}; path=/; max-age=${(result['expires_in'] as number) || 86400}; SameSite=Lax${isHttps ? '; Secure' : ''}`;
+            window.location.href = getRoleRoute(token);
         } catch (err) {
             setStatus('error');
             setErrorMsg('An unexpected error occurred. Please try again.');

@@ -17,7 +17,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: Builder
 # ---------------------------------------------------------------------------
-FROM python:3.14-slim AS builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /build
 
@@ -35,7 +35,7 @@ RUN python -m venv /opt/venv && \
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime
 # ---------------------------------------------------------------------------
-FROM python:3.14-slim AS runtime
+FROM python:3.13-slim AS runtime
 
 # Labels
 LABEL org.opencontainers.image.title="iHouse Core"
