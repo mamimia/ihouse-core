@@ -360,6 +360,8 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
 
         // Upload to storage
         setIsUploading(true);
+        const failureKey = purpose === 'passport' ? '__passport__' : purpose === 'meter' ? '__meter__' : undefined;
+        if (failureKey) setFailedPhotoUploads(prev => { const n = {...prev}; delete n[failureKey]; return n; });
         try {
             const bookingId = selected ? getBookingId(selected) : undefined;
             const res = await apiFetch<any>('/worker/documents/upload', {
@@ -370,7 +372,9 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
                     booking_id: bookingId,
                 }),
             });
-            if (res.storage_path) {
+            // Phase 1059: check upload_status, not just presence of storage_path
+            const confirmed = res.upload_status === 'confirmed' || (res.storage_path && !res.upload_status);
+            if (res.storage_path && confirmed) {
                 if (purpose === 'passport') {
                     setDocumentStoragePath(res.storage_path);
                 } else if (purpose === 'meter') {
@@ -382,15 +386,22 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
                 }
                 showNotice('✅ Photo captured & stored');
             } else {
-                showNotice('⚠️ Upload completed but no path returned');
+                // Backend returned 200 but bytes not confirmed
+                const errMsg = 'Upload completed but bytes not confirmed — please retake';
+                if (failureKey) setFailedPhotoUploads(prev => ({ ...prev, [failureKey]: errMsg }));
+                else if (roomLabel) setFailedPhotoUploads(prev => ({ ...prev, [roomLabel]: errMsg }));
+                console.warn('[checkin] captureFrame: upload_status not confirmed', res);
             }
         } catch (err) {
-            console.warn('Upload failed', err);
-            showNotice('⚠️ Upload failed — please retry');
+            const msg = err instanceof Error ? err.message : 'Network or storage error';
+            if (failureKey) setFailedPhotoUploads(prev => ({ ...prev, [failureKey]: msg }));
+            else if (roomLabel) setFailedPhotoUploads(prev => ({ ...prev, [roomLabel]: msg }));
+            console.warn('[checkin] captureFrame upload failed:', err);
         } finally {
             setIsUploading(false);
         }
     };
+
     const [guestPortalUrl, setGuestPortalUrl] = useState<string | null>(null);
     const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
 

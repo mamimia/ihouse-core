@@ -278,6 +278,8 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
     // Phase 692: Checkout condition photos
     const [checkoutPhotos, setCheckoutPhotos] = useState<Array<{ room_label: string; photo_url: string; local?: boolean }>>([]);
     const [photoUploading, setPhotoUploading] = useState(false);
+    // Phase 1059: explicit failed upload tracking for checkout photos
+    const [failedCheckoutUploads, setFailedCheckoutUploads] = useState<Record<string, string>>({});
     // Phase 988 — OCR audit linkage for closing meter
     const [ocrClosingMeterResultId, setOcrClosingMeterResultId] = useState<string | null>(null);
     const [closingMeterValue, setClosingMeterValue] = useState('');
@@ -390,6 +392,21 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
 
     useEffect(() => { load(); }, [load]);
 
+    // Phase 1059: sessionStorage persistence key for checkout
+    const _getCheckoutKey = (bookingId: string) => `ihouse_checkout_wizard_${bookingId}`;
+
+    // Phase 1059: persist checkout photos to sessionStorage on every change
+    useEffect(() => {
+        if (!selected) return;
+        const bookingId = getBookingId(selected);
+        try {
+            sessionStorage.setItem(_getCheckoutKey(bookingId), JSON.stringify({
+                bookingId, checkoutPhotos, step, savedAt: new Date().toISOString(),
+            }));
+        } catch { /* sessionStorage unavailable */ }
+    }, [checkoutPhotos, step, selected]);
+
+
     // Phase 993: Load baseline data when checkout starts
     const loadBaseline = async (bookingId: string) => {
         setBaselineLoading(true);
@@ -431,8 +448,6 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
             guest_name: t.guest_name || 'Guest',
             guest_count: t.guest_count,
             check_in: t.check_in,
-            // Always pass the original booking check_out so settlement and dossier have it.
-            // For early checkout display in the wizard, is_early_checkout + early_checkout_* is used.
             check_out: t.check_out || t.due_date,
             nights: t.nights,
             status: 'checked_in',
@@ -448,9 +463,23 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
         setDeductionAmount('');
         setDeductionReason('');
         setSettlement(null);
-        setCheckoutPhotos([]);
+        setFailedCheckoutUploads({});
         setBaselineTab('checkout');
-        void loadBaseline(t.booking_id || t.task_id);
+
+        // Phase 1059: restore checkoutPhotos from sessionStorage if available
+        const bookingId = t.booking_id || t.task_id;
+        try {
+            const saved = sessionStorage.getItem(_getCheckoutKey(bookingId));
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.bookingId === bookingId && Array.isArray(parsed.checkoutPhotos)) {
+                    setCheckoutPhotos(parsed.checkoutPhotos.filter((p: any) => !p.local)); // drop local-only entries
+                    console.log(`[checkout] restored ${parsed.checkoutPhotos.length} photos for booking=${bookingId}`);
+                } else { setCheckoutPhotos([]); }
+            } else { setCheckoutPhotos([]); }
+        } catch { setCheckoutPhotos([]); }
+
+        void loadBaseline(bookingId);
     };
 
     const goBack = () => {
@@ -505,18 +534,18 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
 
 
     // Phase 692: Upload a checkout condition photo for a room
-    // Uses <input type="file" capture="environment"> to open device camera.
     const uploadCheckoutPhoto = async (file: File, roomLabel: string) => {
         if (!selected) return;
         const bookingId = getBookingId(selected);
         setPhotoUploading(true);
+        // Phase 1059: clear previous failure for this room
+        setFailedCheckoutUploads(prev => { const n = { ...prev }; delete n[roomLabel]; return n; });
         try {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('room_label', roomLabel);
             formData.append('taken_by', 'checkout_flow');
 
-            // Use raw fetch for FormData (apiFetch uses JSON)
             const { getTabToken } = await import('@/lib/tokenStore');
             const token = getTabToken();
             const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
@@ -533,16 +562,19 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
                 }]);
                 showNotice(`📷 ${roomLabel} photo saved`);
             } else {
-                // Fallback: record locally using object URL so the session preserves it
-                setCheckoutPhotos(prev => [...prev, {
-                    room_label: roomLabel,
-                    photo_url: URL.createObjectURL(file),
-                    local: true,
-                }]);
-                showNotice('📷 Photo saved locally (upload queued)');
+                // Phase 1059: track as explicit failure — do NOT use object URL fallback
+                // (object URLs are tab-scoped memory references, lost on page reload)
+                const errBody = await response.text().catch(() => String(response.status));
+                setFailedCheckoutUploads(prev => ({
+                    ...prev,
+                    [roomLabel]: `Upload failed (HTTP ${response.status}) — please retake`,
+                }));
+                console.warn(`[checkout] photo upload failed for room=${roomLabel}: ${response.status} ${errBody}`);
             }
-        } catch {
-            showNotice('⚠️ Photo capture failed — try again');
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Network error';
+            setFailedCheckoutUploads(prev => ({ ...prev, [roomLabel]: msg }));
+            console.warn(`[checkout] photo upload error for room=${roomLabel}:`, err);
         }
         setPhotoUploading(false);
     };
@@ -727,6 +759,10 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
             }
 
             showNotice('✅ Check-out completed');
+            // Phase 1059: clear sessionStorage checkpoint on success
+            try {
+                if (selected) sessionStorage.removeItem(_getCheckoutKey(getBookingId(selected)));
+            } catch { /* ignore */ }
             setStep('success');
         } catch {
             showNotice('⚠️ Checkout failed — please verify manually');
@@ -734,6 +770,10 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
     };
 
     const returnToList = () => {
+        // Phase 1059: clear sessionStorage checkpoint on explicit return
+        try {
+            if (selected) sessionStorage.removeItem(_getCheckoutKey(getBookingId(selected)));
+        } catch { /* ignore */ }
         setStep('list');
         setSelected(null);
         load();
@@ -1021,6 +1061,27 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
                                 )}
 
                                 {photoUploading && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-2)' }}>⏳ Uploading photo…</div>}
+
+                                {/* Phase 1059: explicit failed checkout photo callout */}
+                                {Object.keys(failedCheckoutUploads).length > 0 && (
+                                    <div style={{
+                                        marginTop: 'var(--space-2)', padding: 'var(--space-3)',
+                                        background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.4)',
+                                        borderRadius: 'var(--radius-md)',
+                                    }}>
+                                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-alert)', marginBottom: 4 }}>
+                                            ⚠️ {Object.keys(failedCheckoutUploads).length} photo upload(s) failed — bytes NOT stored
+                                        </div>
+                                        {Object.entries(failedCheckoutUploads).map(([room, errMsg]) => (
+                                            <div key={room} style={{ fontSize: '11px', color: 'var(--color-alert)', marginBottom: 2 }}>
+                                                <strong>{room}:</strong> {String(errMsg).slice(0, 100)}
+                                            </div>
+                                        ))}
+                                        <div style={{ fontSize: '11px', color: 'var(--color-text-dim)', marginTop: 4 }}>
+                                            Tap the 📷 icon to retake each failed room photo before continuing.
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1048,10 +1109,9 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
 
                     <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                         <ActionButton label={'Continue → Meter'} onClick={() => {
-                            // Persist inspection data in background (non-blocking)
                             void saveCheckoutInspection();
                             setStep('closing_meter');
-                        }} />
+                        }} disabled={Object.keys(failedCheckoutUploads).length > 0} />
                         <ActionButton label="📍 Navigate to Property" onClick={() => navigateToProperty(selected.property_id)} variant="outline" />
                     </div>
                 </div>

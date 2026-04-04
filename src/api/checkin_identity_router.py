@@ -99,9 +99,14 @@ async def upload_document_image(
         return make_error_response(400, ErrorCode.VALIDATION_ERROR,
                                    extra={"detail": "image_base64 is required"})
 
-    side = body.get("side", "front").strip().lower()
-    if side not in ("front", "back"):
-        side = "front"
+    side = (body.get("side") or "front").strip().lower()
+    # Phase 1059 fix: do NOT normalize arbitrary sides to 'front'.
+    # Walkthroughs pass side=checkin_{room_label}. Forcing them to 'front'
+    # means every walkthrough photo has the same storage path and upsert=true
+    # silently overwrites the previous one — evidence is lost.
+    # Sanitize only: remove characters that break storage paths.
+    import re as _re
+    side = _re.sub(r'[^a-z0-9_\-]', '_', side) or 'front'
 
     try:
         # Decode base64
@@ -118,19 +123,36 @@ async def upload_document_image(
             return make_error_response(400, ErrorCode.VALIDATION_ERROR,
                                        extra={"detail": "Image exceeds 10MB limit"})
 
-        # Generate unique path
+        # Generate unique path — UUID guarantees no collision regardless of side value.
+        # Phase 1059 fix: include side in path so files are identifiable, but the UUID
+        # suffix ensures two uploads for the same booking+side never overwrite each other.
         file_id = str(uuid.uuid4())[:12]
         ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
-        storage_path = f"{tenant_id}/{ts}_{file_id}_{side}.jpg"
+        booking_id_segment = (body.get("booking_id") or "nobooking").strip()[:40]
+        storage_path = f"{tenant_id}/{booking_id_segment}/{ts}_{file_id}_{side}.jpg"
 
         db = client if client is not None else _get_supabase_client()
 
         # Upload to Supabase Storage
-        db.storage.from_("guest-documents").upload(
-            path=storage_path,
-            file=image_bytes,
-            file_options={"content-type": "image/jpeg", "upsert": "true"},
-        )
+        # Phase 1059 fix: upsert=false — paths are UUID-unique so upsert is never needed.
+        # upsert=true was silently overwriting evidence when path collided.
+        try:
+            db.storage.from_("guest-documents").upload(
+                path=storage_path,
+                file=image_bytes,
+                file_options={"content-type": "image/jpeg", "upsert": "false"},
+            )
+        except Exception as storage_exc:
+            # Phase 1059: return 502, not 500, so callers can distinguish
+            # a transient storage failure from an application error.
+            logger.error(
+                "POST /worker/documents/upload Storage failure tenant=%s side=%s: %s",
+                tenant_id, side, storage_exc,
+            )
+            return make_error_response(
+                502, "STORAGE_UPLOAD_FAILED",
+                extra={"detail": f"Photo bytes could not be stored. Please retry. ({str(storage_exc)[:120]})"},
+            )
 
         # Generate signed URL (5-minute expiry for immediate preview)
         signed = db.storage.from_("guest-documents").create_signed_url(
@@ -147,6 +169,7 @@ async def upload_document_image(
             "signed_url": signed_url,
             "side": side,
             "size_bytes": len(image_bytes),
+            "upload_status": "confirmed",   # Phase 1059: explicit — bytes are in Storage
         })
 
     except Exception as exc:
