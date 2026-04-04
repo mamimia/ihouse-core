@@ -269,36 +269,62 @@ def _verify_guest_checkout_token(
     IMPORTANT: Multi-use verification. We do NOT call validate_and_consume()
     because guests may need to re-open the portal multiple times.
     Instead: HMAC + expiry (via verify_access_token) + DB not-revoked check.
+
+    Phase 1065B fallback: if the token does not validate as GUEST_CHECKOUT
+    (for example when the guest portal CTA passes the GUEST_PORTAL token),
+    try resolving it as a GUEST_PORTAL token via resolve_guest_token_context.
+    On success, synthesise a compatible claims dict so the rest of the route
+    works identically regardless of which token type was supplied.
+
     Returns (claims_dict, None) on success, or (None, error_str) on failure.
     """
     from services.access_token_service import TokenType, verify_access_token
 
+    # --- Path 1: proper GUEST_CHECKOUT token (normal flow) ---
     claims = verify_access_token(
         token=token,
         expected_type=TokenType.GUEST_CHECKOUT,
     )
-    if not claims:
-        return None, "Token is invalid, expired, or has been revoked."
+    if claims:
+        # DB revocation check (without marking used_at)
+        if db:
+            try:
+                token_hash = _hash_token(token)
+                res = (
+                    db.table("access_tokens")
+                    .select("id, revoked_at")
+                    .eq("token_hash", token_hash)
+                    .eq("token_type", TokenType.GUEST_CHECKOUT.value)
+                    .limit(1)
+                    .execute()
+                )
+                rows = res.data or []
+                if rows and rows[0].get("revoked_at"):
+                    return None, "This checkout link has been revoked. Contact your host for a new link."
+            except Exception:
+                pass  # Non-fatal: HMAC already validated
+        return claims, None
 
-    # DB revocation check (without marking used_at)
-    if db:
-        try:
-            token_hash = _hash_token(token)
-            res = (
-                db.table("access_tokens")
-                .select("id, revoked_at")
-                .eq("token_hash", token_hash)
-                .eq("token_type", TokenType.GUEST_CHECKOUT.value)
-                .limit(1)
-                .execute()
-            )
-            rows = res.data or []
-            if rows and rows[0].get("revoked_at"):
-                return None, "This checkout link has been revoked. Contact your host for a new link."
-        except Exception:
-            pass  # Non-fatal: HMAC already validated
+    # --- Path 2: GUEST_PORTAL token fallback (Phase 1065B) ---
+    # This handles the case where the main portal CTA links directly with
+    # the guest portal token instead of a dedicated GUEST_CHECKOUT token.
+    try:
+        from services.guest_token import resolve_guest_token_context
+        ctx = resolve_guest_token_context(token, db=db)
+        if ctx and ctx.get("booking_ref"):
+            # Synthesise an equivalent claims dict
+            return {
+                "token_type": "guest_checkout",
+                "entity_id":  ctx["booking_ref"],
+                "email":      ctx.get("guest_email", ""),
+                "exp":        0,  # GUEST_PORTAL tokens handle their own expiry
+                "_via_portal_token": True,
+            }, None
+    except Exception:
+        pass
 
-    return claims, None
+    return None, "Token is invalid, expired, or has been revoked."
+
 
 
 # ---------------------------------------------------------------------------

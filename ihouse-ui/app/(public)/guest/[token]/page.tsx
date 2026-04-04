@@ -909,7 +909,7 @@ function GuestCheckoutActions({ token, apiBase }: { token: string; apiBase: stri
                     </div>
 
                     <a
-                        href={status.checkout_portal_url || `/guest-checkout/${token}`}
+                        href={`/guest-checkout/${token}`}
                         style={{
                             display: 'block', background: PRIMARY, border: 'none',
                             borderRadius: 12, padding: '13px 0', textAlign: 'center',
