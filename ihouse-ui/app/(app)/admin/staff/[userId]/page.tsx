@@ -249,22 +249,37 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 // ── Gregorian Date Input ─────────────────────────────────────────────────────
-// Uses three controlled selects (Day / Month / Year) — completely locale-
-// independent. Native <input type="date"> inherits the OS/browser locale and
-// renders Buddhist Era (2569 BE) on Thai-locale machines. This component is
-// always Gregorian regardless of OS or UI language.
+// Day + Month selects (fixed small sets) + Year number input.
+// Completely locale-independent — never shows Buddhist Era.
+// mode controls the year range:
+//   'birth'      → 1940 – this year  (wide historical range for DOB)
+//   'employment' → 2000 – this year+2 (past + modest future for hire dates)
+//   'expiry'     → this year – this year+20 (future-biased for documents)
 const MONTHS_EN = [
   'January','February','March','April','May','June',
   'July','August','September','October','November','December',
 ];
 
+type DateFieldMode = 'birth' | 'employment' | 'expiry';
+
 function GregorianDateInput({
-  value, onChange, style,
+  value, onChange, style, mode = 'birth',
 }: {
   value: string;        // ISO YYYY-MM-DD or empty string
   onChange: (v: string) => void;
   style?: React.CSSProperties;
+  mode?: DateFieldMode;
 }) {
+  const thisYear = new Date().getFullYear();
+
+  // Field-specific year boundaries
+  const yearMin = mode === 'birth'      ? 1940
+                : mode === 'employment' ? 2000
+                : /* expiry */            thisYear;          // current year onwards
+  const yearMax = mode === 'birth'      ? thisYear
+                : mode === 'employment' ? thisYear + 2
+                : /* expiry */            thisYear + 20;     // 20 years forward for docs
+
   // Parse current value
   const parts = (value || '').split('-');
   const curYear  = parts[0] || '';
@@ -276,25 +291,21 @@ function GregorianDateInput({
     else onChange('');
   };
 
-  // Days in current month
+  // Days adjusts to selected month
   const daysInMonth = curYear && curMonth
     ? new Date(parseInt(curYear), parseInt(curMonth), 0).getDate()
     : 31;
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  // Year range: 1940 – current year
-  const thisYear = new Date().getFullYear();
-  const years = Array.from({ length: thisYear - 1940 + 1 }, (_, i) => thisYear - i);
-
   const sel: React.CSSProperties = {
-    ...style,
-    flex: 1, cursor: 'pointer', appearance: 'auto' as any,
+    ...style, flex: 1, cursor: 'pointer', appearance: 'auto' as any,
   };
 
   return (
     <div style={{ display: 'flex', gap: 6 }}>
+      {/* Day — select (1-31) */}
       <select
-        style={{ ...sel, flex: '0 0 70px' }}
+        style={{ ...sel, flex: '0 0 68px' }}
         value={curDay}
         onChange={e => update(curYear, curMonth, e.target.value)}
         aria-label="Day"
@@ -302,8 +313,10 @@ function GregorianDateInput({
         <option value="">Day</option>
         {days.map(d => <option key={d} value={String(d).padStart(2,'0')}>{d}</option>)}
       </select>
+
+      {/* Month — select (January-December) */}
       <select
-        style={{ ...sel, flex: '0 0 110px' }}
+        style={{ ...sel, flex: '0 0 120px' }}
         value={curMonth}
         onChange={e => update(curYear, e.target.value, curDay)}
         aria-label="Month"
@@ -313,15 +326,28 @@ function GregorianDateInput({
           <option key={i+1} value={String(i+1).padStart(2,'0')}>{m}</option>
         ))}
       </select>
-      <select
-        style={{ ...sel, flex: '0 0 80px' }}
-        value={curYear}
-        onChange={e => update(e.target.value, curMonth, curDay)}
+
+      {/* Year — number input: type directly or arrow-key, no long dropdown */}
+      <input
+        type="number"
         aria-label="Year"
-      >
-        <option value="">Year</option>
-        {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
-      </select>
+        min={yearMin}
+        max={yearMax}
+        placeholder="Year"
+        value={curYear}
+        onChange={e => {
+          const y = e.target.value;
+          // Accept partial input while typing; only commit full 4-digit year within range
+          if (!y) { update('', curMonth, curDay); return; }
+          update(y, curMonth, curDay);
+        }}
+        style={{
+          ...style,
+          flex: '0 0 82px',
+          cursor: 'text',
+          MozAppearance: 'textfield' as any,
+        }}
+      />
     </div>
   );
 }
@@ -1078,7 +1104,7 @@ export default function EditStaffPage() {
                 <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="worker@example.com" />
               </Field>
               <Field label="Date of Birth">
-                <GregorianDateInput value={dateOfBirth} onChange={setDateOfBirth} style={inputStyle} />
+                <GregorianDateInput value={dateOfBirth} onChange={setDateOfBirth} style={inputStyle} mode="birth" />
               </Field>
             </div>
 
@@ -1141,7 +1167,7 @@ export default function EditStaffPage() {
             <div style={sectionHeadStyle}>Employment</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Field label="Start Date / Hired Date">
-                <GregorianDateInput value={startDate} onChange={setStartDate} style={inputStyle} />
+                <GregorianDateInput value={startDate} onChange={setStartDate} style={inputStyle} mode="employment" />
               </Field>
               <div />
             </div>
@@ -2311,6 +2337,7 @@ export default function EditStaffPage() {
                         value={idDocExpiry}
                         onChange={setIdDocExpiry}
                         style={{ ...inputStyle, flex: 1 }}
+                        mode="expiry"
                       />
                       {(() => { const w = expiryWarning(idDocExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
                     </div>
@@ -2368,6 +2395,7 @@ export default function EditStaffPage() {
                         value={workPermitExpiry}
                         onChange={setWorkPermitExpiry}
                         style={{ ...inputStyle, flex: 1 }}
+                        mode="expiry"
                       />
                       {(() => { const w = expiryWarning(workPermitExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
                     </div>
