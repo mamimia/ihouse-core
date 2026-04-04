@@ -944,3 +944,94 @@ problem but converts manual exchanges into recorded structured intake.
 **Not to be started unless explicitly requested.**
 
 > Full detail: `docs/future/guest-pre-arrival-form.md`
+
+---
+
+## Data Retention Policy and Enforcement Track
+
+- status: deferred
+- discovered_in: Item 10, active-fix stream (2026-04-04)
+- source_context: data governance / privacy / legal compliance
+- priority: high — important, audited, open, intentionally deferred
+- full_audit: `docs/future/data-retention-policy-audit.md`
+
+### Why it matters
+
+The system stores real guest PII — including passport scan images, OCR-extracted
+document fields, government ID numbers, contact details, and session data — with
+effectively **zero retention limits, zero deletion automation, and zero guest
+deletion request capability** in the current state.
+
+This is not a bug. It is a gap in governance that needs to be addressed before
+the product scales to more properties and more live guest data.
+
+### Why it is deferred
+
+Final retention policy and enforcement require answers to legal and operational
+questions that we have not confirmed yet for our actual operating context:
+
+- **Thailand PDPA** — the governing privacy law for our primary jurisdiction. What
+  it requires vs. permits for guest data, staff data, and contact records is not yet
+  formally reviewed and locked
+- **TM.30 immigration reporting** — Thailand law requires accommodation operators to
+  register foreign guests. Whether this creates a minimum retention floor for passport
+  scans and identity documents — before they can be deleted — needs legal confirmation
+- **Hotel / accommodation operator obligations** — beyond TM.30, additional Thai
+  regulatory record-keeping requirements may constrain what we can delete and when
+- **Employment law** — staff data follows a different retention track. It must not
+  be treated like guest data or deleted on the same timeline
+- **Data controller vs. processor** — whether iHouse is the data controller or
+  data processor per tenant affects where the legal obligations sit
+- **Deletion cannot be a blind wipe** — guest deletion needs a controlled
+  review/workflow scoped to what is legally safe to delete given the above
+
+We know the gaps. We have audited them. We are not ready to lock the policy.
+
+### What major categories are affected
+
+| Category | Risk level | Key concern |
+|---|---|---|
+| Passport / ID scans + OCR raw data | 🔴 Critical | Highest-sensitivity PII; no expiry at all |
+| Guest contact data (email, phone, LINE) | 🟠 High | Stored indefinitely with no cleanup |
+| Session data (IP address, `user_sessions`) | 🟠 High | IP = personal data; stored raw, no anonymization |
+| Staff / worker personal data | 🟠 High | Different legal track — employment law applies |
+| Notification logs (`recipient` field) | 🟡 Medium | Real contact data in delivery logs, no TTL |
+| Financial and deposit records | 🟡 Medium | Need longer retention, not deletion |
+| Canonical event log / audit trail | 🟢 Low | Keep permanently — intentional and correct |
+
+### What must be decided before enforcement begins
+
+1. **Jurisdiction confirmation** — confirm PDPA Thailand is the primary governing law
+   and whether any GDPR exposure exists
+2. **TM.30 minimum retention window** — confirm legal minimum for passport document
+   retention in the hotel/accommodation context
+3. **Staff data retention standard** — separate from guest; likely employment-law standard
+4. **Data controller classification** — platform vs. per-tenant
+5. **Deletion scope and workflow** — define the exact footprint of a guest deletion request
+   (which tables, which linked storage objects, which cross-table PII)
+6. **`ocr_results.raw_response` policy** — confirm whether storing the full OCR provider
+   dump has any ongoing need, or whether it can be nullified after extraction is confirmed
+
+### What is likely safe to implement now (low-hanging fruit, no legal uncertainty)
+
+The following are technical improvements that do not depend on legal confirmation:
+
+- Extend the `token_cleanup` pattern to: `access_tokens`, `user_sessions`,
+  `acting_sessions`, `guest_qr_tokens` — all have `expires_at` columns, no cleanup job runs
+- Trim `pre_arrival_queue` rows older than N days after check_in (stale operational queue)
+- Trim `notification_log` / `notification_delivery_log` after N days (operational log)
+
+These are not currently approved for implementation. They are noted as likely-safe
+to do once the retention track is activated.
+
+### Intended future enforcement model
+
+When the policy is locked:
+- Scheduled jobs for table-level expiry (extension of `token_cleanup` pattern)
+- Storage bucket lifecycle rules for document/photo objects
+- `pii_delete_after` or equivalent expiry field per PII-bearing table
+- Guest deletion API (admin-triggered, scoped, audited workflow)
+- `user_sessions.ip_address` anonymization (hash/null after N days)
+- `ocr_results.raw_response` redaction after extraction confirmed
+
+> Full audit: `docs/future/data-retention-policy-audit.md`

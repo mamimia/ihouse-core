@@ -1,11 +1,48 @@
-# Data Retention Policy — Audit (Item 10)
+# Data Retention Policy — Audit and Deferred Track (Item 10)
 
-**Status:** Audit-only — no enforcement yet  
-**Date:** 2026-04-04  
-**Classification:** Internal product/legal planning  
-**Next step:** Policy decisions needed before enforcement work begins
+**Status:** Intentionally deferred — audit complete, enforcement and policy pending  
+**Category:** Data governance / privacy / legal compliance  
+**Date audited:** 2026-04-04  
+**Classification:** Internal product/legal planning — not a current bug or active build item
 
 ---
+
+## Why this is deferred
+
+This item is recorded here as an **honest audit of the current state**, not as an
+implementation task.
+
+Final retention policy and enforcement are deferred because they require validation
+of the legal and operational requirements for our actual operating context, which we
+have not completed yet. Specifically:
+
+- **Thailand PDPA** — the governing privacy law for our primary operating jurisdiction
+  needs to be reviewed for what it requires vs. permits for guest and staff data
+- **TM.30 immigration reporting** — Thailand law requires hotels and accommodation
+  operators to register foreign guests with authorities. The exact minimum retention
+  window for passport scans and identity documents in this context needs legal
+  confirmation before we can safely set a delete window
+- **Hotel / accommodation operator obligations** — beyond TM.30, there may be
+  additional Thai regulatory requirements for record-keeping that put a floor on
+  what we can delete and when
+- **Employment law** — staff document retention follows a different legal track
+  (not guest-style short retention) and must not be conflated with the guest data rules
+- **Data controller vs. processor classification** — whether iHouse is the data
+  controller or data processor per tenant affects which legal obligations sit with
+  the platform vs. the operator
+- **Deletion scope and workflow design** — guest deletion cannot be a blind one-click
+  wipe. It requires a controlled review/workflow that must be scoped against the
+  legal obligations above before it can be built safely
+
+**None of this means we can ignore the gaps.** It means the first step is to confirm
+the legal/operational requirements, then build the enforcement against a locked policy.
+
+> This document is the audit foundation for that future work. It is accurate and
+> should be preserved. The retention model proposals in Section 4 are a starting
+> point, not a locked policy.
+
+---
+
 
 ## 1. Data Categories and What Is Currently Stored
 
