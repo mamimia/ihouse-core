@@ -813,6 +813,11 @@ function GuestCheckoutActions({ token, apiBase }: { token: string; apiBase: stri
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     useEffect(() => {
+        // Guard: never fetch with an empty/undefined token (can happen on first render
+        // before useParams() resolves in the parent). Without this guard the fetch fires
+        // as /guest//checkout-status which returns an error and locks the component
+        // in loadError=true, preventing the CTA from ever appearing.
+        if (!token) return;
         fetch(`${apiBase}/guest/${encodeURIComponent(token)}/checkout-status`)
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) setStatus(d); else setLoadError(true); })
@@ -1094,7 +1099,10 @@ function GuestCheckoutActions({ token, apiBase }: { token: string; apiBase: stri
 
 export default function GuestPortalPage() {
     const params = useParams();
-    const token = params?.token as string;
+    // useParams() returns undefined before hydration in Next.js App Router.
+    // Cast-only (`as string`) silences TS but produces 'undefined' at runtime.
+    // Coerce to a real string so downstream components never receive undefined.
+    const token = (params?.token as string | undefined) ?? '';
     const [data, setData] = useState<GuestPortalData | null>(null);
     const [error, setError] = useState(false);
     const [loading, setLoading] = useState(true);
