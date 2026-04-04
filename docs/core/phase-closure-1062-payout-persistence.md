@@ -1,8 +1,8 @@
 # Phase 1062 — Canonical Payout Persistence
 
-**Phase:** 1062  
-**Commit:** `e785642`  
-**Status:** ✅ Closed  
+**Phase:** 1062 / 1062b  
+**Commits:** `e785642` (1062), `d5b73f7` (docs)  
+**Status:** ✅ Fully closed — live E2E verified  
 
 ---
 
