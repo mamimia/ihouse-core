@@ -1000,7 +1000,16 @@ export default function EditStaffPage() {
                 <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="worker@example.com" />
               </Field>
               <Field label="Date of Birth">
-                <input type="date" style={inputStyle} value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+                {/* type=text avoids OS-locale Buddhist-year rendering in native date pickers */}
+                <input
+                  type="text"
+                  style={inputStyle}
+                  value={dateOfBirth}
+                  onChange={e => setDateOfBirth(e.target.value)}
+                  placeholder="YYYY-MM-DD"
+                  pattern="\d{4}-\d{2}-\d{2}"
+                  maxLength={10}
+                />
               </Field>
             </div>
 
@@ -1063,29 +1072,37 @@ export default function EditStaffPage() {
             <div style={sectionHeadStyle}>Employment</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
               <Field label="Start Date / Hired Date">
-                <input type="date" style={inputStyle} value={startDate} onChange={e => setStartDate(e.target.value)} />
+                <input
+                  type="text"
+                  style={inputStyle}
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  placeholder="YYYY-MM-DD"
+                  pattern="\d{4}-\d{2}-\d{2}"
+                  maxLength={10}
+                />
               </Field>
               <div />
             </div>
 
             <div style={sectionHeadStyle}>Preferences</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-              <Field label="Language">
+              <Field label="Preferred Language">
                 <select style={{ ...inputStyle, cursor: 'pointer' }} value={language} onChange={e => setLanguage(e.target.value)}>
                   {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
               </Field>
               <Field label="Status">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, cursor: 'pointer' }}>
-                  <div onClick={() => setIsActive(!isActive)} style={{
-                    width: 44, height: 24, borderRadius: 12,
-                    background: isActive ? 'var(--color-primary)' : 'var(--color-border)',
-                    position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
-                  }}>
-                    <div style={{ position: 'absolute', top: 2, left: isActive ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-                  </div>
-                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{isActive ? 'Active' : 'Inactive'}</span>
-                </label>
+                {/* Read-only badge — use Danger Zone below to deactivate/reactivate */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: isActive ? '#3fb950' : '#8b949e', flexShrink: 0 }} />
+                  <span style={{ fontSize: 'var(--text-sm)', color: isActive ? '#3fb950' : 'var(--color-text-faint)', fontWeight: 600 }}>
+                    {isActive ? 'Active' : 'Inactive'}
+                  </span>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+                    — use Danger Zone to change
+                  </span>
+                </div>
               </Field>
             </div>
 
@@ -1096,8 +1113,8 @@ export default function EditStaffPage() {
             {/* Meta */}
             {(createdAt || updatedAt) && (
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-3)' }}>
-                {createdAt && <div>Created: {new Date(createdAt).toLocaleDateString()}</div>}
-                {updatedAt && <div>Updated: {new Date(updatedAt).toLocaleDateString()}</div>}
+                {createdAt && <div>Created: {new Date(createdAt).toLocaleDateString('en-GB')}</div>}
+                {updatedAt && <div>Updated: {new Date(updatedAt).toLocaleDateString('en-GB')}</div>}
               </div>
             )}
 
@@ -2143,7 +2160,7 @@ export default function EditStaffPage() {
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', minHeight: 16 }}>
                           {authStatus?.access_link_sent_at ? (
-                            <>{new Date(authStatus.access_link_sent_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.access_link_sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span></>
+                            <>{new Date(authStatus.access_link_sent_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.access_link_sent_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'})}</span></>
                           ) : '—'}
                         </div>
                       </div>
@@ -2158,7 +2175,7 @@ export default function EditStaffPage() {
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', minHeight: 16 }}>
                           {authStatus?.access_link_opened_at ? (
-                            <>{new Date(authStatus.access_link_opened_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.access_link_opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span></>
+                            <>{new Date(authStatus.access_link_opened_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.access_link_opened_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'})}</span></>
                           ) : '—'}
                         </div>
                       </div>
@@ -2187,7 +2204,7 @@ export default function EditStaffPage() {
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', minHeight: 16 }}>
                           {authStatus?.last_sign_in_at ? (
-                            <>{new Date(authStatus.last_sign_in_at).toLocaleDateString([], { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.last_sign_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}</span></>
+                            <>{new Date(authStatus.last_sign_in_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric'})} <span style={{ opacity: 0.8 }}>{new Date(authStatus.last_sign_in_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'})}</span></>
                           ) : '—'}
                         </div>
                       </div>
@@ -2241,7 +2258,7 @@ export default function EditStaffPage() {
                   </Field>
                   <Field label="Expiry Date">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <input type="date" style={{ ...inputStyle, flex: 1 }} value={idDocExpiry} onChange={e => setIdDocExpiry(e.target.value)} />
+                      <input type="text" style={{ ...inputStyle, flex: 1 }} value={idDocExpiry} onChange={e => setIdDocExpiry(e.target.value)} placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" maxLength={10} />
                       {(() => { const w = expiryWarning(idDocExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
                     </div>
                   </Field>
@@ -2294,7 +2311,7 @@ export default function EditStaffPage() {
                   </Field>
                   <Field label="Expiry Date">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      <input type="date" style={{ ...inputStyle, flex: 1 }} value={workPermitExpiry} onChange={e => setWorkPermitExpiry(e.target.value)} />
+                      <input type="text" style={{ ...inputStyle, flex: 1 }} value={workPermitExpiry} onChange={e => setWorkPermitExpiry(e.target.value)} placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" maxLength={10} />
                       {(() => { const w = expiryWarning(workPermitExpiry); return w ? <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: w.color, whiteSpace: 'nowrap' }}>{w.label}</span> : null; })()}
                     </div>
                   </Field>
@@ -2671,7 +2688,7 @@ export default function EditStaffPage() {
                     const rawKey = ev.payload?.capability ?? '';
                     const capLabel = ev.payload?.capability_label ?? fallbackMap[rawKey] ?? rawKey;
                     
-                    const when = ev.occurred_at ? new Date(ev.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+                    const when = ev.occurred_at ? new Date(ev.occurred_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
                     return (
                       <div key={ev.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
                         <span style={{
