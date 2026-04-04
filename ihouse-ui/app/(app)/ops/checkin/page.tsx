@@ -209,42 +209,59 @@ function BookingCardList({ bookings, onStart, onAcknowledge, showNotice }: {
             {bookings.map(b => {
                 const bookingId = b.booking_id || b.booking_ref || b.id || 'unknown';
                 const taskId = (b as any).task_id || bookingId;
+                // Phase 1059: detect in-progress wizard session in sessionStorage
+                let hasCheckpoint = false;
+                try {
+                    const raw = sessionStorage.getItem(`ihouse_checkin_wizard_${bookingId}`);
+                    if (raw) { const p = JSON.parse(raw); hasCheckpoint = Array.isArray(p.capturedPhotos) && p.capturedPhotos.length > 0; }
+                } catch { /* ignore */ }
                 return (
-                    <WorkerTaskCard
-                        key={bookingId}
-                        kind="CHECKIN_PREP"
-                        status={b.status || 'Upcoming'}
-                        propertyName={(b as any).property_name || b.property_id}
-                        propertyCode={b.property_id}
-                        date={b.check_in?.split('T')[0] || 'Unknown'}
-                        checkIn={b.check_in?.split('T')[0]}
-                        checkOut={b.check_out?.split('T')[0]}
-                        guestName={b.guest_name}
-                        guestCount={b.guest_count}
-                        onStart={() => onStart(b)}
-                        onAcknowledge={
-                            (b.status || 'PENDING').toUpperCase() === 'PENDING'
-                                ? () => onAcknowledge(taskId)
-                                : undefined
-                        }
-                        onNavigate={() => {
-                            if (b.property_latitude && b.property_longitude) {
-                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                                const url = isMobile
-                                    ? `https://waze.com/ul?ll=${b.property_latitude},${b.property_longitude}&navigate=yes`
-                                    : `https://maps.google.com/maps?daddr=${b.property_latitude},${b.property_longitude}`;
-                                window.open(url, '_blank');
-                            } else if (b.property_address) {
-                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.property_address)}`, '_blank');
-                            } else {
-                                showNotice('📍 No location data for this property');
+                    <div key={bookingId}>
+                        {/* Phase 1059: In-progress resume banner */}
+                        {hasCheckpoint && (
+                            <div style={{
+                                padding: '4px 10px', background: 'rgba(210,153,34,0.12)',
+                                border: '1px solid rgba(210,153,34,0.4)', borderRadius: 'var(--radius-sm)',
+                                fontSize: '10px', color: 'var(--color-warn)', fontWeight: 600, marginBottom: 4,
+                            }}>
+                                🔄 In Progress — tap Start to resume where you left off
+                            </div>
+                        )}
+                        <WorkerTaskCard
+                            kind="CHECKIN_PREP"
+                            status={b.status || 'Upcoming'}
+                            propertyName={(b as any).property_name || b.property_id}
+                            propertyCode={b.property_id}
+                            date={b.check_in?.split('T')[0] || 'Unknown'}
+                            checkIn={b.check_in?.split('T')[0]}
+                            checkOut={b.check_out?.split('T')[0]}
+                            guestName={b.guest_name}
+                            guestCount={b.guest_count}
+                            onStart={() => onStart(b)}
+                            onAcknowledge={
+                                (b.status || 'PENDING').toUpperCase() === 'PENDING'
+                                    ? () => onAcknowledge(taskId)
+                                    : undefined
                             }
-                        }}
-                        ackIsOpen={b.ack_is_open}
-                        ackAllowedAt={b.ack_allowed_at}
-                        startIsOpen={b.start_is_open}
-                        startAllowedAt={b.start_allowed_at}
-                    />
+                            onNavigate={() => {
+                                if (b.property_latitude && b.property_longitude) {
+                                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                    const url = isMobile
+                                        ? `https://waze.com/ul?ll=${b.property_latitude},${b.property_longitude}&navigate=yes`
+                                        : `https://maps.google.com/maps?daddr=${b.property_latitude},${b.property_longitude}`;
+                                    window.open(url, '_blank');
+                                } else if (b.property_address) {
+                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.property_address)}`, '_blank');
+                                } else {
+                                    showNotice('📍 No location data for this property');
+                                }
+                            }}
+                            ackIsOpen={b.ack_is_open}
+                            ackAllowedAt={b.ack_allowed_at}
+                            startIsOpen={b.start_is_open}
+                            startAllowedAt={b.start_allowed_at}
+                        />
+                    </div>
                 );
             })}
         </div>
@@ -294,6 +311,9 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
     const [meterStoragePath, setMeterStoragePath] = useState<string | null>(null);
     const [guestPhone, setGuestPhone] = useState('');
     const [guestEmail, setGuestEmail] = useState('');
+
+    // Phase 1059 — explicit failed upload tracking (room_label → error message)
+    const [failedPhotoUploads, setFailedPhotoUploads] = useState<Record<string, string>>({});
 
     const startCamera = async () => {
         setIsCameraActive(true);
@@ -523,6 +543,24 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
 
     useEffect(() => { load(); }, [load]);
 
+    // Phase 1059 — sessionStorage wizard persistence key
+    const _getWizardKey = (bookingId: string) => `ihouse_checkin_wizard_${bookingId}`;
+
+    // Phase 1059 — persist captured photos to sessionStorage on every change
+    useEffect(() => {
+        if (!selected) return;
+        const bookingId = getBookingId(selected);
+        try {
+            const payload = {
+                bookingId,
+                capturedPhotos,
+                step,
+                savedAt: new Date().toISOString(),
+            };
+            sessionStorage.setItem(_getWizardKey(bookingId), JSON.stringify(payload));
+        } catch { /* sessionStorage unavailable */ }
+    }, [capturedPhotos, step, selected]);
+
     // Phase 971: startCheckin now fetches charge-config + reference photos
     const startCheckin = async (b: Booking) => {
         setSelected(b);
@@ -531,11 +569,32 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
         setPassportNumber(''); setPassportName(b.guest_name || ''); setPassportExpiry('');
         setPassportPhotoUrl(null); setDocumentStoragePath(null);
         setDepositMethod('cash'); setDepositNote('');
-        setCapturedPhotos([]); setMeterReading(''); setMeterPhotoUrl(null); setMeterStoragePath(null);
+        setMeterReading(''); setMeterPhotoUrl(null); setMeterStoragePath(null);
         setGuestPhone(''); setGuestEmail('');
         setGuestPortalUrl(null); setQrImageUrl(null);
+        setFailedPhotoUploads({});
 
         const bookingId = getBookingId(b);
+
+        // Phase 1059: attempt to restore captured photos from sessionStorage
+        // (survives browser refresh mid-wizard)
+        try {
+            const saved = sessionStorage.getItem(_getWizardKey(bookingId));
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.bookingId === bookingId && Array.isArray(parsed.capturedPhotos)) {
+                    setCapturedPhotos(parsed.capturedPhotos);
+                    console.log(`[checkin] restored ${parsed.capturedPhotos.length} photos from sessionStorage for booking=${bookingId}`);
+                } else {
+                    setCapturedPhotos([]);
+                }
+            } else {
+                setCapturedPhotos([]);
+            }
+        } catch {
+            setCapturedPhotos([]);
+        }
+
         // Fetch charge config (deposit + electricity rules)
         try {
             const cc = await apiFetch<any>(`/worker/bookings/${bookingId}/charge-config`);
@@ -782,6 +841,10 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
             }
 
             setStep('success');
+            // Phase 1059: clear sessionStorage wizard state on successful completion
+            try {
+                if (selected) sessionStorage.removeItem(_getWizardKey(getBookingId(selected)));
+            } catch { /* ignore */ }
             return;
         } catch {
             showNotice('⚠️ Check-in API call failed — please verify manually');
@@ -793,6 +856,10 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
 
 
     const returnToList = () => {
+        // Phase 1059: clear sessionStorage wizard state on explicit return
+        try {
+            if (selected) sessionStorage.removeItem(_getWizardKey(getBookingId(selected)));
+        } catch { /* ignore */ }
         setStep('list');
         setSelected(null);
         load();  // always refresh on return — completed task must disappear
@@ -1095,6 +1162,8 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
                                                             reader.onload = async () => {
                                                                 const dataUrl = reader.result as string;
                                                                 setIsUploading(true);
+                                                                // Phase 1059: clear any previous failure for this room
+                                                                setFailedPhotoUploads(prev => { const n = { ...prev }; delete n[rp.room_label]; return n; });
                                                                 try {
                                                                     const bookingId = selected ? getBookingId(selected) : undefined;
                                                                     const res = await apiFetch<any>('/worker/documents/upload', {
@@ -1105,9 +1174,17 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
                                                                         setCapturedPhotos(prev => [...prev.filter(p => p.room_label !== rp.room_label), {
                                                                             room_label: rp.room_label, storage_path: res.storage_path, captured_at: new Date().toISOString(), preview_url: dataUrl,
                                                                         }]);
-                                                                        showNotice('✅ Photo captured');
+                                                                        showNotice('✅ Photo captured & stored');
+                                                                    } else {
+                                                                        // Phase 1059: backend returned no path — treat as failure
+                                                                        setFailedPhotoUploads(prev => ({ ...prev, [rp.room_label]: 'Upload succeeded but no path returned — please retake' }));
                                                                     }
-                                                                } catch { showNotice('⚠️ Upload failed'); }
+                                                                } catch (uploadErr) {
+                                                                    // Phase 1059: explicit failure state — NOT a silent toast
+                                                                    const msg = uploadErr instanceof Error ? uploadErr.message : 'Network error';
+                                                                    setFailedPhotoUploads(prev => ({ ...prev, [rp.room_label]: msg }));
+                                                                    console.warn(`[checkin] upload failed for room=${rp.room_label}:`, uploadErr);
+                                                                }
                                                                 finally { setIsUploading(false); }
                                                             };
                                                             reader.readAsDataURL(file);
@@ -1129,12 +1206,35 @@ export function CheckinWizard({ onCompleted }: { onCompleted?: () => void }) {
                             <div className="spinner" style={{ margin: '0 auto var(--space-2)' }} /> Uploading…
                         </div>
                     )}
+
+                    {/* Phase 1059: Explicit failed upload alerts — NOT silent toasts */}
+                    {Object.keys(failedPhotoUploads).length > 0 && (
+                        <div style={{
+                            marginTop: 'var(--space-3)', padding: 'var(--space-3)',
+                            background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.4)',
+                            borderRadius: 'var(--radius-md)',
+                        }}>
+                            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-alert)', marginBottom: 'var(--space-2)' }}>
+                                ⚠️ Upload failed for {Object.keys(failedPhotoUploads).length} photo(s) — bytes are NOT stored
+                            </div>
+                            {Object.entries(failedPhotoUploads).map(([room, errMsg]) => (
+                                <div key={room} style={{ fontSize: '11px', color: 'var(--color-alert)', marginBottom: 4 }}>
+                                    <strong>{room}:</strong> {String(errMsg).slice(0, 100)}
+                                </div>
+                            ))}
+                            <div style={{ fontSize: '11px', color: 'var(--color-text-dim)', marginTop: 'var(--space-2)' }}>
+                                Tap the 📷 icon for each failed room to retake and re-upload before continuing.
+                            </div>
+                        </div>
+                    )}
+
                     <div style={{ marginTop: 'var(--space-4)' }}>
                         <ActionButton
                             label={refPhotos.length === 0 || capturedPhotos.length >= refPhotos.length ? 'Continue →' : `Continue (${capturedPhotos.length}/${refPhotos.length}) →`}
                             onClick={nextStep}
+                            disabled={Object.keys(failedPhotoUploads).length > 0}
                         />
-                        {refPhotos.length > 0 && capturedPhotos.length < refPhotos.length && (
+                        {refPhotos.length > 0 && capturedPhotos.length < refPhotos.length && Object.keys(failedPhotoUploads).length === 0 && (
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warn)', textAlign: 'center', marginTop: 'var(--space-2)' }}>
                                 ⚠️ Not all reference photos matched — you may still continue
                             </div>

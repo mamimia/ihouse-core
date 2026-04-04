@@ -613,6 +613,7 @@ async def upload_cleaning_photo(
         ext = content_type.split("/")[-1].replace("jpeg", "jpg")
         file_name = f"{tenant_id}/{task_id}/{room_label}_{uuid.uuid4().hex[:8]}.{ext}"
 
+        upload_status = "confirmed"
         try:
             db.storage.from_("cleaning-photos").upload(
                 file_name,
@@ -623,15 +624,27 @@ async def upload_cleaning_photo(
             supabase_url = os.environ.get("SUPABASE_URL", "")
             photo_url = f"{supabase_url}/storage/v1/object/public/cleaning-photos/{file_name}"
         except Exception as storage_exc:
-            logger.warning("Supabase Storage upload failed, using fallback: %s", storage_exc)
-            photo_url = f"storage-failed://{task_id}/{room_label}/{uuid.uuid4().hex[:8]}"
+            # Phase 1059 hardening: do NOT silently save a broken record.
+            # Return 502 so the caller knows the bytes are NOT stored.
+            # A failed upload must never appear as a confirmed photo in the DB.
+            logger.error(
+                "Supabase Storage upload failed for task=%s room=%s: %s",
+                task_id, room_label, storage_exc,
+            )
+            return make_error_response(
+                502, "STORAGE_UPLOAD_FAILED",
+                f"Photo bytes could not be stored in Supabase Storage. "
+                f"Please retry the upload. Error: {str(storage_exc)[:120]}",
+            )
 
-        # Insert photo record in DB
+        # Insert photo record in DB — only reaches here when bytes are confirmed in Storage
         photo_row = {
             "progress_id": progress_id,
             "room_label": room_label.strip(),
             "photo_url": photo_url,
+            "storage_path": file_name,   # Phase 1059: explicit path for verifiability
             "taken_by": taken_by.strip() or None,
+            "upload_status": upload_status,   # Phase 1059: always 'confirmed' here
         }
         db.table("cleaning_photos").insert(photo_row).execute()
 

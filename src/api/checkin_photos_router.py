@@ -136,17 +136,18 @@ async def save_checkin_photos(
                 purpose = "walkthrough"
 
             rows.append({
-                "id":           str(uuid.uuid4()),
-                "tenant_id":    tenant_id,
-                "booking_id":   booking_id,
-                "property_id":  property_id,
-                "room_label":   room_label,
-                "storage_path": storage_path,
-                "purpose":      purpose,
-                "captured_at":  p.get("captured_at") or now,
-                "uploaded_by":  actor_id,
-                "notes":        p.get("notes") or None,
-                "created_at":   now,
+                "id":            str(uuid.uuid4()),
+                "tenant_id":     tenant_id,
+                "booking_id":    booking_id,
+                "property_id":   property_id,
+                "room_label":    room_label,
+                "storage_path":  storage_path,
+                "purpose":       purpose,
+                "captured_at":   p.get("captured_at") or now,
+                "uploaded_by":   actor_id,
+                "notes":         p.get("notes") or None,
+                "created_at":    now,
+                "upload_status": "confirmed",  # Phase 1059: explicit — bytes were in Storage before this call
             })
 
         if not rows:
@@ -224,3 +225,155 @@ async def get_checkin_photos(
     except Exception as exc:
         logger.exception("GET checkin-photos %s error: %s", booking_id, exc)
         return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Phase 1059 — GET /worker/bookings/{booking_id}/checkin-resume
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/worker/bookings/{booking_id}/checkin-resume",
+    summary="Get durable check-in wizard state for safe resume after interruption (Phase 1059)",
+    openapi_extra={"security": [{"BearerAuth": []}]},
+)
+async def get_checkin_resume_state(
+    booking_id: str,
+    identity: dict = Depends(jwt_identity),
+    client: Optional[Any] = None,
+) -> JSONResponse:
+    """
+    Returns the current durable state of a check-in wizard session for a booking.
+
+    Purpose: allow a worker to safely resume after browser refresh, tab close,
+    or connectivity interruption without losing evidence of what succeeded.
+
+    Returns:
+      - booking_status: current status from booking_state
+      - checkin_settlement: what was already saved (deposit, meter reading)
+      - checkin_photos: photo index rows already committed (by purpose)
+      - guest_identity: whether guest identity was saved (boolean + full_name)
+      - resume_hint: human-readable suggestion of where to resume
+    """
+    role = identity.get("role", "")
+    if role not in _READ_ROLES:
+        return make_error_response(
+            status_code=403, code="FORBIDDEN",
+            extra={"detail": f"Role '{role}' cannot read check-in resume state."},
+        )
+    tenant_id = identity["tenant_id"]
+
+    try:
+        db = client or _get_db()
+
+        # 1. Booking status
+        booking_status = None
+        try:
+            bs = (
+                db.table("booking_state")
+                .select("status, checked_in_at, property_id")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+            if bs.data:
+                booking_status = bs.data[0]
+        except Exception:
+            pass
+
+        # 2. Check-in photos already committed (the durable index)
+        photos: list = []
+        try:
+            pr = (
+                db.table("booking_checkin_photos")
+                .select("room_label, storage_path, purpose, captured_at, upload_status")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .order("captured_at", desc=False)
+                .execute()
+            )
+            photos = pr.data or []
+        except Exception:
+            pass
+
+        # 3. Check-in settlement (deposit + meter)
+        settlement = None
+        try:
+            sr = (
+                db.table("checkin_settlements")
+                .select("deposit_collected, deposit_amount, deposit_currency, deposit_method, meter_reading, meter_photo_url, created_at")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if sr.data:
+                settlement = sr.data[0]
+        except Exception:
+            pass  # table may not exist in all tenant configs
+
+        # 4. Guest identity check (boolean only — no PII returned here)
+        guest_identity_saved = False
+        guest_full_name = None
+        try:
+            ci = (
+                db.table("checkin_identity_forms")
+                .select("full_name, document_type, created_at")
+                .eq("booking_id", booking_id)
+                .eq("tenant_id", tenant_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if ci.data:
+                guest_identity_saved = True
+                guest_full_name = ci.data[0].get("full_name")
+        except Exception:
+            pass  # table name may differ
+
+        # 5. Build resume hint
+        current_status = (booking_status or {}).get("status", "")
+        if current_status == "checked_in":
+            resume_hint = "CHECK_IN_COMPLETE — booking is already checked_in. No action needed."
+        elif guest_identity_saved and len(photos) > 0:
+            resume_hint = "COMPLETE_STEP — identity and photos saved. Resume at final Complete step."
+        elif guest_identity_saved:
+            resume_hint = "PHOTOS_STEP — identity saved. Resume at walkthrough photo step."
+        elif settlement:
+            resume_hint = "PASSPORT_STEP — deposit/meter saved. Resume at identity capture step."
+        elif photos:
+            resume_hint = "SETTLEMENT_STEP — photos saved. Resume at deposit/meter step."
+        else:
+            resume_hint = "START — no durable state found. Begin from step 1."
+
+        # 6. Identify any confirmed vs failed photo entries
+        confirmed_photos = [p for p in photos if p.get("upload_status", "confirmed") == "confirmed"]
+        failed_photos = [p for p in photos if p.get("upload_status") == "failed"]
+
+        return JSONResponse(status_code=200, content={
+            "booking_id": booking_id,
+            "booking_status": current_status,
+            "checked_in_at": (booking_status or {}).get("checked_in_at"),
+            "property_id": (booking_status or {}).get("property_id"),
+            "resume_hint": resume_hint,
+            "photos": {
+                "total": len(photos),
+                "confirmed": len(confirmed_photos),
+                "failed": len(failed_photos),
+                "purposes": list({p["purpose"] for p in confirmed_photos}),
+            },
+            "settlement": {
+                "deposit_collected": (settlement or {}).get("deposit_collected", False),
+                "meter_reading": (settlement or {}).get("meter_reading"),
+            } if settlement else None,
+            "guest_identity": {
+                "saved": guest_identity_saved,
+                "full_name": guest_full_name,
+            },
+        })
+
+    except Exception as exc:
+        logger.exception("GET checkin-resume %s error: %s", booking_id, exc)
+        return make_error_response(status_code=500, code=ErrorCode.INTERNAL_ERROR)
+

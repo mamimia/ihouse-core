@@ -1,6 +1,6 @@
 ## Current Active Phase
 
-Phase 1059 — Next (TBD). Phases 841–1058 closed.
+Phase 1059 — Operational Resilience Hardening (ACTIVE 2026-04-04). Phases 841–1058 closed.
 
 ## Last Closed Phase
 
