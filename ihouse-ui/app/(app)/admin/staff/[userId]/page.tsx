@@ -249,19 +249,117 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 // ── Gregorian Date Input ─────────────────────────────────────────────────────
-// Day + Month selects (fixed small sets) + Year number input.
+// Day / Month / Year controlled selects + optional calendar popup (📅).
 // Completely locale-independent — never shows Buddhist Era.
 // mode controls the year range:
-//   'birth'      → 1940 – this year  (wide historical range for DOB)
-//   'employment' → 2000 – this year+2 (past + modest future for hire dates)
-//   'expiry'     → this year – this year+20 (future-biased for documents)
+//   'birth'      → 1940–thisYear     (DOB; wide historical)
+//   'employment' → 2000–thisYear+2   (hire dates; past + slight future)
+//   'expiry'     → thisYear–thisYear+20 (documents; future-biased)
 const MONTHS_EN = [
   'January','February','March','April','May','June',
   'July','August','September','October','November','December',
 ];
+const DAYS_SHORT = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
 type DateFieldMode = 'birth' | 'employment' | 'expiry';
 
+// ── Custom Gregorian calendar popup ──────────────────────────────────────────
+// Draws a month-grid calendar using Gregorian numbers only.
+// No native <input type="date"> — immune to OS/browser locale.
+function GregorianCalendarPopup({
+  selectYear, selectMonth, onSelect, onClose, minYear, maxYear,
+}: {
+  selectYear: number;   // 0 = no current selection
+  selectMonth: number;  // 1-12, 0 = none
+  onSelect: (y: number, m: number, d: number) => void;
+  onClose: () => void;
+  minYear: number;
+  maxYear: number;
+}) {
+  const now = new Date();
+  const [navYear,  setNavYear]  = useState(selectYear  || now.getFullYear());
+  const [navMonth, setNavMonth] = useState(selectMonth || now.getMonth() + 1);
+
+  const canPrev = navYear > minYear || (navYear === minYear && navMonth > 1);
+  const canNext = navYear < maxYear || (navYear === maxYear && navMonth < 12);
+
+  const prevMo = () => {
+    if (!canPrev) return;
+    if (navMonth === 1) { setNavYear(y => y - 1); setNavMonth(12); }
+    else setNavMonth(m => m - 1);
+  };
+  const nextMo = () => {
+    if (!canNext) return;
+    if (navMonth === 12) { setNavYear(y => y + 1); setNavMonth(1); }
+    else setNavMonth(m => m + 1);
+  };
+
+  const firstDow  = new Date(navYear, navMonth - 1, 1).getDay(); // 0=Sunday
+  const totalDays = new Date(navYear, navMonth, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const navBtnStyle: React.CSSProperties = {
+    background: 'none', border: 'none', cursor: 'pointer',
+    fontSize: 18, lineHeight: 1, padding: '0 6px',
+    color: 'var(--color-primary)',
+  };
+  const dayBtnStyle = (d: number | null): React.CSSProperties => ({
+    padding: '5px 0', border: 'none',
+    background: d
+      ? (d === selectYear && navYear === selectYear && navMonth === selectMonth ? 'var(--color-primary)' : 'transparent')
+      : 'transparent',
+    color: d ? 'var(--color-text)' : 'transparent',
+    borderRadius: 4, fontSize: 12, cursor: d ? 'pointer' : 'default',
+    textAlign: 'center',
+  });
+
+  return (
+    <>
+      {/* Backdrop — clicking outside closes the popup */}
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 998 }}
+        onClick={onClose}
+      />
+      <div style={{
+        position: 'absolute', zIndex: 999, top: 'calc(100% + 4px)', left: 0,
+        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+        borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+        padding: 12, minWidth: 232,
+      }}>
+        {/* Month / year navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <button style={{ ...navBtnStyle, opacity: canPrev ? 1 : 0.3 }} onClick={prevMo} type="button" aria-label="Previous month">‹</button>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
+            {MONTHS_EN[navMonth - 1]} {navYear}
+          </span>
+          <button style={{ ...navBtnStyle, opacity: canNext ? 1 : 0.3 }} onClick={nextMo} type="button" aria-label="Next month">›</button>
+        </div>
+        {/* Weekday header */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', fontSize: 10, color: 'var(--color-text-faint)', marginBottom: 4, userSelect: 'none' }}>
+          {DAYS_SHORT.map(d => <div key={d}>{d}</div>)}
+        </div>
+        {/* Day grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+          {cells.map((d, i) => (
+            <button
+              key={i} type="button"
+              style={dayBtnStyle(d)}
+              onClick={d ? () => { onSelect(navYear, navMonth, d); onClose(); } : undefined}
+            >
+              {d ?? ''}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── GregorianDateInput ────────────────────────────────────────────────────────
 function GregorianDateInput({
   value, onChange, style, mode = 'birth',
 }: {
@@ -275,79 +373,95 @@ function GregorianDateInput({
   // Field-specific year boundaries
   const yearMin = mode === 'birth'      ? 1940
                 : mode === 'employment' ? 2000
-                : /* expiry */            thisYear;          // current year onwards
+                : /* expiry */            thisYear;
   const yearMax = mode === 'birth'      ? thisYear
                 : mode === 'employment' ? thisYear + 2
-                : /* expiry */            thisYear + 20;     // 20 years forward for docs
+                : /* expiry */            thisYear + 20;
 
-  // Parse current value
-  const parts = (value || '').split('-');
+  // Build year list — expiry ascending (nearest first), others descending (most recent first)
+  const years = Array.from(
+    { length: yearMax - yearMin + 1 },
+    (_, i) => mode === 'expiry' ? yearMin + i : yearMax - i,
+  );
+
+  // Parse current ISO value
+  const parts    = (value || '').split('-');
   const curYear  = parts[0] || '';
   const curMonth = parts[1] || '';
   const curDay   = parts[2] || '';
+
+  const [calOpen, setCalOpen] = useState(false);
 
   const update = (y: string, m: string, d: string) => {
     if (y && m && d) onChange(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
     else onChange('');
   };
 
-  // Days adjusts to selected month
+  // Day count adjusts to selected month (accounts for leap years too)
   const daysInMonth = curYear && curMonth
     ? new Date(parseInt(curYear), parseInt(curMonth), 0).getDate()
     : 31;
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const sel: React.CSSProperties = {
-    ...style, flex: 1, cursor: 'pointer', appearance: 'auto' as any,
+    ...style, cursor: 'pointer', appearance: 'auto' as any,
   };
 
   return (
-    <div style={{ display: 'flex', gap: 6 }}>
-      {/* Day — select (1-31) */}
-      <select
-        style={{ ...sel, flex: '0 0 68px' }}
-        value={curDay}
-        onChange={e => update(curYear, curMonth, e.target.value)}
-        aria-label="Day"
-      >
+    <div style={{ position: 'relative', display: 'flex', gap: 6, alignItems: 'center' }}>
+      {/* Day */}
+      <select style={{ ...sel, flex: '0 0 66px' }} value={curDay}
+        onChange={e => update(curYear, curMonth, e.target.value)} aria-label="Day">
         <option value="">Day</option>
         {days.map(d => <option key={d} value={String(d).padStart(2,'0')}>{d}</option>)}
       </select>
 
-      {/* Month — select (January-December) */}
-      <select
-        style={{ ...sel, flex: '0 0 120px' }}
-        value={curMonth}
-        onChange={e => update(curYear, e.target.value, curDay)}
-        aria-label="Month"
-      >
+      {/* Month */}
+      <select style={{ ...sel, flex: '0 0 118px' }} value={curMonth}
+        onChange={e => update(curYear, e.target.value, curDay)} aria-label="Month">
         <option value="">Month</option>
         {MONTHS_EN.map((m, i) => (
-          <option key={i+1} value={String(i+1).padStart(2,'0')}>{m}</option>
+          <option key={i + 1} value={String(i + 1).padStart(2,'0')}>{m}</option>
         ))}
       </select>
 
-      {/* Year — number input: type directly or arrow-key, no long dropdown */}
-      <input
-        type="number"
-        aria-label="Year"
-        min={yearMin}
-        max={yearMax}
-        placeholder="Year"
-        value={curYear}
-        onChange={e => {
-          const y = e.target.value;
-          // Accept partial input while typing; only commit full 4-digit year within range
-          if (!y) { update('', curMonth, curDay); return; }
-          update(y, curMonth, curDay);
-        }}
+      {/* Year — select, bounded list, no browser constraint validation issues */}
+      <select style={{ ...sel, flex: '0 0 84px' }} value={curYear}
+        onChange={e => update(e.target.value, curMonth, curDay)} aria-label="Year">
+        <option value="">Year</option>
+        {years.map(y => <option key={y} value={String(y)}>{y}</option>)}
+      </select>
+
+      {/* Calendar shortcut icon */}
+      <button
+        type="button"
+        onClick={() => setCalOpen(o => !o)}
+        aria-label="Open calendar"
+        title="Pick from calendar"
         style={{
-          ...style,
-          flex: '0 0 82px',
-          cursor: 'text',
-          MozAppearance: 'textfield' as any,
+          border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+          background: calOpen ? 'var(--color-surface-2)' : 'var(--color-surface)',
+          cursor: 'pointer', padding: '5px 7px', fontSize: 14, lineHeight: 1,
+          color: 'var(--color-text-dim)', flexShrink: 0,
         }}
-      />
+      >
+        📅
+      </button>
+
+      {/* Gregorian calendar popup */}
+      {calOpen && (
+        <GregorianCalendarPopup
+          selectYear={parseInt(curYear) || 0}
+          selectMonth={parseInt(curMonth) || 0}
+          minYear={yearMin}
+          maxYear={yearMax}
+          onSelect={(y, m, d) => {
+            update(String(y), String(m).padStart(2,'0'), String(d).padStart(2,'0'));
+            setCalOpen(false);
+          }}
+          onClose={() => setCalOpen(false)}
+        />
+      )}
     </div>
   );
 }
