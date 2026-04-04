@@ -387,6 +387,17 @@ export default function EditStaffPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | undefined>();
   const [updatedAt, setUpdatedAt] = useState<string | undefined>();
+
+  // Phase 1061b — Deactivation modal state
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
+  // Warning data loaded when modal opens
+  const [deactivateWarning, setDeactivateWarning] = useState<{
+    assigned_properties: number;
+    pending_tasks: number;
+    active_tasks: number;
+    loaded: boolean;
+  }>({ assigned_properties: 0, pending_tasks: 0, active_tasks: 0, loaded: false });
   
   // Phase 945+947: Activation Status + Identity Chain
   const [authStatus, setAuthStatus] = useState<{ 
@@ -705,10 +716,36 @@ export default function EditStaffPage() {
         method: 'PATCH',
         body: JSON.stringify({ is_active: !isActive }),
       });
-      router.push('/admin/staff?updated=1');
-    } catch {
-      setError(`Failed to ${isActive ? 'deactivate' : 'activate'} staff member.`);
+      // Update in place — no redirect
+      setIsActive(prev => !prev);
+      setShowDeactivateModal(false);
       setConfirmToggleActive(false);
+      setSuccess(isActive ? 'Staff member deactivated. They will lose access on their next request.' : 'Staff member reactivated. They can now log in again.');
+      setTimeout(() => setSuccess(null), 5000);
+    } catch {
+      setError(`Failed to ${isActive ? 'deactivate' : 'reactivate'} staff member.`);
+      setShowDeactivateModal(false);
+      setConfirmToggleActive(false);
+    }
+  };
+
+  // Fetch warning info when deactivation modal opens
+  const openDeactivateModal = async () => {
+    setShowDeactivateModal(true);
+    setDeactivateWarning({ assigned_properties: 0, pending_tasks: 0, active_tasks: 0, loaded: false });
+    try {
+      const [assignRes, tasksRes] = await Promise.all([
+        apiFetch<any>(`/staff/assignments/${encodeURIComponent(rawUserId)}`).catch(() => ({ property_ids: [] })),
+        apiFetch<any>(`/worker/tasks?limit=100`).catch(() => ({ tasks: [] })),
+      ]);
+      const propCount = (assignRes.property_ids || []).length;
+      const allTasks: any[] = tasksRes.tasks || [];
+      const workerTasks = allTasks.filter((t: any) => t.assigned_to === rawUserId || t.worker_id === rawUserId);
+      const pendingTasks = workerTasks.filter((t: any) => ['PENDING', 'ACKNOWLEDGED'].includes(t.status)).length;
+      const activeTasks = workerTasks.filter((t: any) => t.status === 'IN_PROGRESS').length;
+      setDeactivateWarning({ assigned_properties: propCount, pending_tasks: pendingTasks, active_tasks: activeTasks, loaded: true });
+    } catch {
+      setDeactivateWarning(prev => ({ ...prev, loaded: true }));
     }
   };
 
@@ -1064,67 +1101,194 @@ export default function EditStaffPage() {
               </div>
             )}
 
-            {/* Danger zone */}
+            {/* ── Danger Zone — Phase 1061b ─────────────────────────────── */}
             <div style={{ marginTop: 'var(--space-6)', padding: 'var(--space-4)', border: '1px solid rgba(248,81,73,0.3)', borderRadius: 'var(--radius-md)', background: 'rgba(248,81,73,0.05)' }}>
               <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: '#f85149', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-3)' }}>
                 Danger Zone
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                {/* Toggle Active / Archive */}
-                <div>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 8, marginTop: 0 }}>
-                    {isActive ?
-                      'Archiving (Deactivating) disables login access while keeping historical records.' :
-                      'Activating restores login access for this worker.'}
-                  </p>
-                  {!confirmToggleActive ? (
-                    <button onClick={() => setConfirmToggleActive(true)} style={{
-                      padding: '8px 20px', background: 'transparent', border: '1px solid rgba(248,81,73,0.5)',
-                      color: '#f85149', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600,
-                    }}>
-                      {isActive ? 'Deactivate (Archive) Staff Member' : 'Activate Staff Member'}
+
+                {/* ── Primary control: Deactivate / Reactivate ── */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>
+                      {isActive ? 'Deactivate Staff Member' : 'Reactivate Staff Member'}
+                    </div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
+                      {isActive
+                        ? 'Removes login and app access immediately. Historical records, tasks, and assignments are preserved. This action is reversible.'
+                        : 'Restores full login and app access for this staff member. They will be able to sign in on their next attempt.'}
+                    </div>
+                  </div>
+                  {isActive ? (
+                    <button
+                      id="btn-deactivate-staff"
+                      onClick={openDeactivateModal}
+                      style={{
+                        flexShrink: 0, padding: '9px 20px',
+                        background: 'transparent',
+                        border: '1.5px solid #f85149',
+                        color: '#f85149',
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        transition: 'background 0.15s, color 0.15s',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(248,81,73,0.1)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                    >
+                      Deactivate Staff Member
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-                      <span style={{ fontSize: 'var(--text-sm)', color: '#f85149' }}>Are you sure?</span>
-                      <button onClick={handleToggleActive} style={{ padding: '8px 16px', background: '#f85149', border: 'none', color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
-                        Confirm {isActive ? 'Archive' : 'Activate'}
-                      </button>
-                      <button onClick={() => setConfirmToggleActive(false)} style={{ padding: '8px 16px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
-                        Cancel
-                      </button>
-                    </div>
+                    <button
+                      id="btn-reactivate-staff"
+                      onClick={handleToggleActive}
+                      style={{
+                        flexShrink: 0, padding: '9px 20px',
+                        background: '#1a7f37',
+                        border: 'none',
+                        color: '#fff',
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#2da44e'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#1a7f37'; }}
+                    >
+                      ✓ Reactivate Staff Member
+                    </button>
                   )}
                 </div>
 
-                <hr style={{ border: 'none', borderTop: '1px solid rgba(248,81,73,0.2)', margin: '4px 0' }} />
+                <hr style={{ border: 'none', borderTop: '1px solid rgba(248,81,73,0.15)', margin: '0' }} />
 
-                {/* Hard Delete */}
-                <div>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', marginBottom: 8, marginTop: 0 }}>
-                    Permanently delete this worker from your system. (Will fail if they have tasks assigned).
-                  </p>
+                {/* ── Secondary control: Permanent Delete ── */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>
+                      Permanently Delete
+                    </div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
+                      Removes all records permanently. Will fail if this staff member has assigned tasks. Use Deactivate instead unless permanent removal is required.
+                    </div>
+                  </div>
                   {!confirmDelete ? (
-                    <button onClick={() => setConfirmDelete(true)} style={{
-                      padding: '8px 20px', background: '#f85149', border: 'none',
-                      color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600,
-                    }}>
-                      Delete Staff Member
+                    <button
+                      id="btn-delete-staff"
+                      onClick={() => setConfirmDelete(true)}
+                      style={{
+                        flexShrink: 0, padding: '9px 20px',
+                        background: '#f85149', border: 'none',
+                        color: '#fff', borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Delete Permanently
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-                      <span style={{ fontSize: 'var(--text-sm)', color: '#f85149', fontWeight: 600 }}>WARNING: This is permanent!</span>
-                      <button onClick={handleDelete} style={{ padding: '8px 16px', background: '#f85149', border: '2px solid #b31d28', color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
-                        Yes, Hard Delete
+                    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexShrink: 0 }}>
+                      <button onClick={handleDelete} style={{ padding: '8px 14px', background: '#b31d28', border: '2px solid #b31d28', color: '#fff', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
+                        Yes, Delete
                       </button>
-                      <button onClick={() => setConfirmDelete(false)} style={{ padding: '8px 16px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
+                      <button onClick={() => setConfirmDelete(false)} style={{ padding: '8px 14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
                         Cancel
                       </button>
                     </div>
                   )}
                 </div>
+
               </div>
             </div>
+
+            {/* ── Deactivation Confirmation Modal — Phase 1061b ── */}
+            {showDeactivateModal && (
+              <div
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 9999,
+                  background: 'rgba(0,0,0,0.65)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: 'var(--space-4)',
+                }}
+                onClick={e => { if (e.target === e.currentTarget) setShowDeactivateModal(false); }}
+              >
+                <div style={{
+                  background: 'var(--color-surface)',
+                  border: '1px solid rgba(248,81,73,0.4)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: 'var(--space-5)',
+                  maxWidth: 480, width: '100%',
+                  boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+                }}>
+                  {/* Modal header */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                    <div style={{ fontSize: 28, lineHeight: 1 }}>⚠️</div>
+                    <div>
+                      <div style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
+                        Deactivate {fullName || 'this staff member'}?
+                      </div>
+                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
+                        This will immediately remove their login and app access.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* What will happen */}
+                  <div style={{ background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3)', marginBottom: 'var(--space-4)', fontSize: 'var(--text-sm)', lineHeight: 1.7 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>What happens when you deactivate:</div>
+                    <div style={{ color: 'var(--color-text-dim)' }}>✗ &nbsp;They lose all login and app access immediately</div>
+                    <div style={{ color: 'var(--color-text-dim)' }}>✗ &nbsp;Any active session will be blocked on the next request</div>
+                    <div style={{ color: 'var(--color-ok, #4A7C59)' }}>✓ &nbsp;Historical records and task history are preserved</div>
+                    <div style={{ color: 'var(--color-ok, #4A7C59)' }}>✓ &nbsp;This action is reversible — you can reactivate them later</div>
+                  </div>
+
+                  {/* Live warning data */}
+                  {!deactivateWarning.loaded ? (
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-3)' }}>Checking assignments and tasks…</div>
+                  ) : (deactivateWarning.assigned_properties > 0 || deactivateWarning.pending_tasks > 0 || deactivateWarning.active_tasks > 0) ? (
+                    <div style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.25)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3)', marginBottom: 'var(--space-4)', fontSize: 'var(--text-sm)' }}>
+                      <div style={{ fontWeight: 600, color: '#f85149', marginBottom: 6 }}>Active work to be aware of:</div>
+                      {deactivateWarning.assigned_properties > 0 && (
+                        <div style={{ color: 'var(--color-text-dim)' }}>• Assigned to {deactivateWarning.assigned_properties} propert{deactivateWarning.assigned_properties === 1 ? 'y' : 'ies'} — assignments remain but they cannot work them</div>
+                      )}
+                      {deactivateWarning.active_tasks > 0 && (
+                        <div style={{ color: '#f85149', fontWeight: 600 }}>• {deactivateWarning.active_tasks} task{deactivateWarning.active_tasks === 1 ? '' : 's'} currently IN PROGRESS — reassign before deactivating</div>
+                      )}
+                      {deactivateWarning.pending_tasks > 0 && (
+                        <div style={{ color: 'var(--color-text-dim)' }}>• {deactivateWarning.pending_tasks} pending/acknowledged task{deactivateWarning.pending_tasks === 1 ? '' : 's'} — will remain unworked until reassigned</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginBottom: 'var(--space-3)' }}>No active tasks or in-progress work detected.</div>
+                  )}
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => setShowDeactivateModal(false)}
+                      style={{ padding: '9px 20px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 500 }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      id="btn-confirm-deactivate"
+                      onClick={handleToggleActive}
+                      disabled={deactivateLoading}
+                      style={{
+                        padding: '9px 20px', background: '#f85149', border: 'none',
+                        color: '#fff', borderRadius: 'var(--radius-sm)',
+                        cursor: deactivateLoading ? 'not-allowed' : 'pointer',
+                        fontSize: 'var(--text-sm)', fontWeight: 700,
+                        opacity: deactivateLoading ? 0.7 : 1,
+                      }}
+                    >
+                      {deactivateLoading ? 'Deactivating…' : 'Yes, Deactivate Staff Member'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         {/* ── Tab 2: Role & Assignment ──────────────────────────────────── */}
