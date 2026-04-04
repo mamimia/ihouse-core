@@ -265,9 +265,11 @@ Guiding questions for future phases:
 ### Operational Usefulness group
 
 #### Guest Pre-Arrival / Check-In Intake
-- status: open
+- status: deferred
 - priority: low-medium
-- notes: Lightweight intake flow per reservation before arrival: guest contact, arrival time, ID upload, agreement confirmation, special notes, pre-arrival readiness status. Natural extension from booking ingestion into reservation operations.
+- deferred_reason: iCal-first constraint — no reliable guest email, phone, or trusted pre-arrival contact path in the majority of real bookings
+- full_spec: `docs/future/guest-pre-arrival-form.md`
+- notes: Lightweight intake flow per reservation before arrival: guest contact, arrival time, ID upload, agreement confirmation, special notes, pre-arrival readiness status. Viable only when OTA API access, OTA messaging integration, or richer guest identity exists. Interim path: staff-generated invite after verified contact established. See full spec for dependency map.
 
 #### Task Automation for Operations
 - status: open
@@ -882,3 +884,63 @@ All of it is invisible without Postman.
 
 The UI never reads Supabase directly. All data flows through FastAPI.
 Role scoping is enforced at the API layer, not the UI layer.
+
+---
+
+## Guest-Initiated Pre-Arrival Form
+
+- status: deferred
+- discovered_in: Item 9, active-fix stream (2026-04-04)
+- source_context: guest experience / pre-arrival product planning
+- priority: low-medium — not a current bug or missing build
+- full_spec: `docs/future/guest-pre-arrival-form.md`
+
+### Why it is deferred
+
+The system is currently **iCal-first** in most real bookings. iCal provides booking timing,
+property identity, and a partial booking reference — but it does not reliably provide
+guest email, guest phone, or any trusted pre-arrival contact path.
+
+Without guest identity confidence:
+- we cannot know we have the right guest before issuing a link
+- we have no reliable delivery path for the link
+- any response cannot be confidently associated with the correct stay
+
+This is not a gap in the implementation. It is a fundamental constraint of the iCal data model.
+
+### Why it is still strategically important
+
+- Pre-arrival data reduces check-in friction and operations load
+- Enriches the guest dossier: arrival time, contact, guest count, preferences, documents
+- Converts fragmented LINE/WhatsApp exchanges into structured, recorded intake
+- Premium hospitality signal at the right moment before arrival
+
+### What would make it viable
+
+| Dependency | Why it unlocks this |
+|---|---|
+| OTA API access (Airbnb, Booking.com) | Verified guest email available at booking confirmation |
+| OTA messaging integration | Existing message thread is a verified delivery path |
+| Direct booking channel with identity | Verified email at booking creation |
+| Manual invite after staff contact established | Staff can generate link once they have verified guest contact |
+
+### Intended future model
+
+When built:
+- Structured field form (arrival time, guest count, document confirmation, preferences)
+  — not free text, not a chat
+- Strong stay-scoped token (same GUEST_PORTAL / GUEST_CHECKOUT model)
+- Output flows into guest dossier and stay thread, visible to OM
+- Idempotent — re-opening shows summary if already submitted
+- Graceful expiry handling
+
+### Possible interim path (not active)
+
+A manual staff-generated invite flow — OM triggers "Send pre-arrival form" after
+a verified contact path already exists (e.g. WhatsApp / LINE), delivers link manually,
+guest fills in structured form, data flows into dossier. Does not solve the zero-contact
+problem but converts manual exchanges into recorded structured intake.
+
+**Not to be started unless explicitly requested.**
+
+> Full detail: `docs/future/guest-pre-arrival-form.md`
