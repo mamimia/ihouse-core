@@ -71,6 +71,33 @@ function getBookingId(b: Booking): string {
 
 type CheckoutStep = 'list' | 'inspection' | 'closing_meter' | 'issues' | 'deposit' | 'complete' | 'success';
 
+// Phase 1063: Derive the active step sequence from real baseline conditions.
+// Returns only the steps relevant to this specific booking/property.
+// - closing_meter: only if electricity_enabled AND opening_meter exists
+// - deposit: only if deposit_enabled AND actual deposit was collected
+// - issues: only shown if inspectionOk === false (routing logic unchanged;
+//   included in flow so back-navigation can reach it when it was visited)
+function computeStepFlow(baseline: {
+    opening_meter?: { meter_value: number | null } | null;
+    deposit?: { amount: number } | null;
+    charge_rules?: {
+        electricity_enabled?: boolean;
+        deposit_enabled?: boolean;
+    } | null;
+} | null): CheckoutStep[] {
+    const flow: CheckoutStep[] = ['inspection'];
+    const elecEnabled = baseline?.charge_rules?.electricity_enabled ?? false;
+    const hasOpeningMeter = (baseline?.opening_meter?.meter_value ?? null) !== null;
+    if (elecEnabled && hasOpeningMeter) flow.push('closing_meter');
+    // issues always in the flow — it is shown conditionally based on inspectionOk
+    flow.push('issues');
+    const depositEnabled = baseline?.charge_rules?.deposit_enabled ?? false;
+    const hasDeposit = (baseline?.deposit?.amount ?? 0) > 0;
+    if (depositEnabled || hasDeposit) flow.push('deposit');
+    flow.push('complete');
+    return flow;
+}
+
 // ========== Components ==========
 
 function StepHeader({ step, total, title, onBack }: { step: number; total: number; title: string; onBack: () => void }) {
@@ -291,11 +318,28 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
         checkin_meter_photos: Array<{ storage_path: string; room_label?: string }>;
         opening_meter: { id: string; meter_value: number | null; meter_unit: string; meter_photo_url: string | null; recorded_at: string | null } | null;
         deposit: { amount: number; currency: string } | null;
-        charge_rules: { electricity_rate_kwh: number | null; electricity_currency: string | null; electricity_enabled: boolean } | null;
+        // Phase 1063: expanded to include deposit_enabled + electricity_enabled for step gating
+        charge_rules: {
+            electricity_rate_kwh: number | null;
+            electricity_currency: string | null;
+            electricity_enabled: boolean;
+            deposit_enabled?: boolean;
+            deposit_amount?: number | null;
+            deposit_currency?: string | null;
+        } | null;
     };
     const [baseline, setBaseline] = useState<CheckoutBaseline | null>(null);
     const [baselineLoading, setBaselineLoading] = useState(false);
     const [baselineTab, setBaselineTab] = useState<'reference' | 'checkin' | 'checkout'>('checkout');
+
+    // Phase 1063: dynamic step sequence derived from baseline after load.
+    // While baseline is still loading, default to the full 5-step flow.
+    // Once baseline arrives, recompute to the minimal applicable flow.
+    const stepFlow: CheckoutStep[] = computeStepFlow(baselineLoading ? null : baseline);
+
+    // Helpers: position of a step in the active flow (1-indexed for UI display)
+    const stepNumber = (s: CheckoutStep) => stepFlow.indexOf(s) + 1;
+    const totalSteps = stepFlow.length;
 
     const showNotice = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(null), 3000); };
 
@@ -482,21 +526,28 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
         void loadBaseline(bookingId);
     };
 
+    // Phase 1063: goBack uses the dynamic stepFlow (not a hardcoded sequence)
     const goBack = () => {
-        const flow: CheckoutStep[] = ['list', 'inspection', 'closing_meter', 'issues', 'deposit', 'complete'];
+        const flow: CheckoutStep[] = ['list', ...stepFlow];
         const idx = flow.indexOf(step);
         if (idx <= 1) { setStep('list'); setSelected(null); }
         else setStep(flow[idx - 1]);
     };
 
-    // Phase 988: Save closing meter reading with OCR audit linkage
+    // Phase 1063: forward navigation — find next step in stepFlow after current
+    const goNext = (current: CheckoutStep): CheckoutStep => {
+        const idx = stepFlow.indexOf(current);
+        return (idx >= 0 && idx < stepFlow.length - 1) ? stepFlow[idx + 1] : 'complete';
+    };
+
+    // Phase 988 / Phase 1063: Save closing meter — next step from dynamic flow
     const saveClosingMeter = async (meterFields?: MeterFields) => {
-        if (!selected) { setStep('issues'); return; }
+        if (!selected) { setStep(goNext('closing_meter')); return; }
         const val = meterFields?.meter_value ?? closingMeterValue;
         const reading = parseFloat(val);
         if (isNaN(reading) || reading <= 0) {
-            // Skip silently if no valid reading
-            setStep(inspectionOk ? 'deposit' : 'issues');
+            // Skip silently if no valid reading — advance to next applicable step
+            setStep(inspectionOk ? goNext('closing_meter') : 'issues');
             return;
         }
         if (meterFields) {
@@ -517,7 +568,9 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
             // Non-blocking — meter failure must not block checkout
             showNotice('⚠️ Meter reading not saved — continue anyway');
         }
-        setStep(inspectionOk ? 'deposit' : 'issues');
+        // Phase 1063: if inspection had issues, go to issues step;
+        // otherwise advance to next step per dynamic flow
+        setStep(inspectionOk ? goNext('closing_meter') : 'issues');
     };
 
     // Phase 887c: Acknowledge — matches the behavior now present in Combined Tasks.
@@ -891,7 +944,8 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
             {/* ========== STEP 1: Inspection ========== */}
             {step === 'inspection' && selected && (
                 <div style={card}>
-                    <StepHeader step={1} total={5} title="Property Inspection" onBack={goBack} />
+                    {/* Phase 1063: step number and total are dynamic */}
+                    <StepHeader step={stepNumber('inspection')} total={totalSteps} title="Property Inspection" onBack={goBack} />
 
                     {/* Phase 1000: Early Checkout wizard context banner */}
                     {selectedTask?.is_early_checkout && (
@@ -1108,19 +1162,29 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
                     </div>
 
                     <div style={{ marginTop: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                        <ActionButton label={'Continue → Meter'} onClick={() => {
-                            void saveCheckoutInspection();
-                            setStep('closing_meter');
-                        }} disabled={Object.keys(failedCheckoutUploads).length > 0} />
+                        {/* Phase 1063: if meter step is not in flow, go straight to next applicable step */}
+                        <ActionButton
+                            label={stepFlow.includes('closing_meter') ? 'Continue → Meter' : (inspectionOk ? (stepFlow.includes('deposit') ? 'Continue → Deposit' : 'Continue → Summary') : 'Continue → Report Issues')}
+                            onClick={() => {
+                                void saveCheckoutInspection();
+                                if (stepFlow.includes('closing_meter')) {
+                                    setStep('closing_meter');
+                                } else {
+                                    setStep(inspectionOk ? goNext('inspection') : 'issues');
+                                }
+                            }}
+                            disabled={Object.keys(failedCheckoutUploads).length > 0}
+                        />
                         <ActionButton label="📍 Navigate to Property" onClick={() => navigateToProperty(selected.property_id)} variant="outline" />
                     </div>
                 </div>
             )}
 
-            {/* ========== STEP 2: Closing Meter Capture (Phase 988 OCR + Phase 994 baseline) ========== */}
-            {step === 'closing_meter' && selected && (
+            {/* ========== STEP 2: Closing Meter Capture (Phase 988/1063 — conditional) ========== */}
+            {/* Phase 1063: only rendered when stepFlow contains 'closing_meter' */}
+            {step === 'closing_meter' && selected && stepFlow.includes('closing_meter') && (
                 <div style={card}>
-                    <StepHeader step={2} total={5} title="Closing Meter" onBack={goBack} />
+                    <StepHeader step={stepNumber('closing_meter')} total={totalSteps} title="Closing Meter" onBack={goBack} />
 
                     {/* Phase 994: Show opening meter from check-in as baseline context */}
                     {baseline?.opening_meter && baseline.opening_meter.meter_value !== null && (
@@ -1180,15 +1244,15 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
                         onComplete={(fields) => {
                             void saveClosingMeter(fields as MeterFields);
                         }}
-                        onSkip={() => setStep(inspectionOk ? 'deposit' : 'issues')}
+                        onSkip={() => setStep(inspectionOk ? goNext('closing_meter') : 'issues')}
                     />
                 </div>
             )}
 
-            {/* ========== STEP 3: Issue Flagging ========== */}
+            {/* ========== STEP: Issue Flagging (Phase 1063 — reached only when inspectionOk=false) ========== */}
             {step === 'issues' && selected && (
                 <div style={card}>
-                    <StepHeader step={3} total={5} title="Report Issues" onBack={goBack} />
+                    <StepHeader step={stepNumber('issues')} total={totalSteps} title="Report Issues" onBack={goBack} />
 
                     {issues.length > 0 && (
                         <div style={{ marginBottom: 'var(--space-4)' }}>
@@ -1242,15 +1306,17 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
 
                     <div style={{ marginTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                         <ActionButton label="🚨 Report Issue" onClick={submitIssue} variant="danger" disabled={!issueDescription.trim()} />
-                        <ActionButton label="Continue → Deposit Resolution" onClick={() => setStep('deposit')} variant="outline" />
+                        {/* Phase 1063: advance to next step per dynamic flow */}
+                        <ActionButton label={stepFlow.includes('deposit') ? 'Continue → Deposit Resolution' : 'Continue → Summary'} onClick={() => setStep(goNext('issues'))} variant="outline" />
                     </div>
                 </div>
             )}
 
-            {/* ========== STEP 4: Deposit Resolution (Phase 989d — real settlement) ========== */}
-            {step === 'deposit' && selected && (
+            {/* ========== STEP: Deposit Resolution (Phase 989d / 1063 — conditional) ========== */}
+            {/* Phase 1063: only rendered when stepFlow contains 'deposit' */}
+            {step === 'deposit' && selected && stepFlow.includes('deposit') && (
                 <div style={card}>
-                    <StepHeader step={4} total={5} title="Deposit Resolution" onBack={goBack} />
+                    <StepHeader step={stepNumber('deposit')} total={totalSteps} title="Deposit Resolution" onBack={goBack} />
 
                     {selected.deposit_amount ? (
                         <>
@@ -1341,10 +1407,10 @@ export function CheckoutWizard({ onCompleted }: { onCompleted?: () => void }) {
                 </div>
             )}
 
-            {/* ========== STEP 5: Settlement Summary + Complete (Phase 989d) ========== */}
+            {/* ========== STEP: Settlement Summary + Complete (Phase 989d / 1063) ========== */}
             {step === 'complete' && selected && (
                 <div style={card}>
-                    <StepHeader step={5} total={5} title="Checkout Summary" onBack={goBack} />
+                    <StepHeader step={stepNumber('complete')} total={totalSteps} title="Checkout Summary" onBack={goBack} />
 
                     <div style={{
                         padding: 'var(--space-4)', textAlign: 'center',
