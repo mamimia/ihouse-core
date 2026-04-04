@@ -834,6 +834,97 @@ def _now_iso_portal() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
 
+def _generate_guest_checkout_url(db: Any, booking_state: dict, effective_checkout_date_str: str) -> Optional[str]:
+    """
+    Phase 1065B token fix.
+
+    Auto-generate a GUEST_CHECKOUT token for the given booking and return its
+    portal URL. Called only when self_checkout_eligible=True so the Self Check-Out
+    CTA in the guest portal links to the wizard with the correct token type.
+
+    The GUEST_PORTAL token the guest used to open the main portal is a DIFFERENT
+    token type and is rejected by _verify_guest_checkout_token in the wizard.
+    This function issues the correct type transparently, without requiring any
+    operator action.
+
+    Returns the full wizard URL, or None if generation fails (non-fatal — the CTA
+    will fall back gracefully in the frontend).
+    """
+    try:
+        from services.access_token_service import TokenType, issue_access_token, record_token
+
+        booking_id = booking_state.get("booking_id", "")
+        tenant_id  = booking_state.get("tenant_id", "")
+        guest_id   = booking_state.get("guest_id") or ""
+
+        # Compute TTL: same logic as _compute_token_ttl in guest_checkout_router.py
+        GRACE   = __import__("datetime").timedelta(hours=4)
+        MINIMUM = 3600
+        now     = datetime.now(tz=timezone.utc)
+
+        ttl_seconds: int = MINIMUM
+        # Path 1: precise effective_at
+        eff_at_raw = booking_state.get("early_checkout_effective_at")
+        if eff_at_raw and booking_state.get("early_checkout_approved"):
+            try:
+                eff = datetime.fromisoformat(str(eff_at_raw).replace("Z", "+00:00"))
+                if eff.tzinfo is None:
+                    eff = eff.replace(tzinfo=timezone.utc)
+                computed = max(int((eff + GRACE - now).total_seconds()), MINIMUM)
+                ttl_seconds = computed
+            except Exception:
+                pass
+        # Path 2: date string
+        if ttl_seconds == MINIMUM and effective_checkout_date_str:
+            try:
+                from datetime import date as _d
+                co = _d.fromisoformat(effective_checkout_date_str)
+                co_dt = datetime(co.year, co.month, co.day, 11, 0, 0, tzinfo=timezone.utc)
+                computed = max(int((co_dt + GRACE - now).total_seconds()), MINIMUM)
+                ttl_seconds = computed
+            except Exception:
+                pass
+
+        raw_token, exp = issue_access_token(
+            token_type=TokenType.GUEST_CHECKOUT,
+            entity_id=booking_id,
+            email=str(guest_id),
+            ttl_seconds=ttl_seconds,
+        )
+
+        import hashlib
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+        record_token(
+            tenant_id=tenant_id,
+            token_type=TokenType.GUEST_CHECKOUT,
+            entity_id=booking_id,
+            raw_token=raw_token,
+            exp=exp,
+            email=str(guest_id),
+            metadata={
+                "booking_id":    booking_id,
+                "generated_by":  "guest_portal_auto",
+                "auto_generated": True,
+            },
+            db=db,
+        )
+
+        try:
+            db.table("booking_state").update({
+                "guest_checkout_token_hash": token_hash,
+            }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
+        except Exception as exc:
+            logger.warning("guest_checkout_status: token_hash write failed (non-fatal): %s", exc)
+
+        base_url = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://domaniqo-staging.vercel.app").rstrip("/")
+        return f"{base_url}/guest-checkout/{raw_token}"
+
+    except Exception as exc:
+        logger.warning("guest_checkout_status: auto token generation failed (non-fatal): %s", exc)
+        return None
+
+
 def _effective_checkout_from_state(booking_state: dict) -> str:
     """
     Return the effective checkout date string (YYYY-MM-DD).
@@ -912,11 +1003,10 @@ async def guest_checkout_status(token: str, client: Optional[Any] = None) -> JSO
     try:
         db = client if client is not None else _get_supabase_client()
 
-        # booking_state: authoritative source for early checkout flags
         bs_res = (
             db.table("booking_state")
             .select(
-                "booking_id, check_in, check_out, status, "
+                "booking_id, tenant_id, guest_id, check_in, check_out, status, "
                 "early_checkout_approved, early_checkout_date, early_checkout_effective_at, "
                 "early_checkout_status, early_checkout_requested_at, "
                 "guest_checkout_confirmed_at"
@@ -935,21 +1025,17 @@ async def guest_checkout_status(token: str, client: Optional[Any] = None) -> JSO
         effective_at = bs.get("early_checkout_effective_at")
         ec_status = bs.get("early_checkout_status") or "none"
         is_early_approved = bool(bs.get("early_checkout_approved"))
-        request_pending = bool(bs.get("early_checkout_requested_at") and ec_status in ("requested", "none"))
         already_requested = ec_status in ("requested", "approved", "completed")
         self_eligible = _self_checkout_eligible(effective_checkout, effective_at)
         guest_confirmed = bool(bs.get("guest_checkout_confirmed_at"))
 
-        # Build the valid early request date range:
-        # today (or check_in if today < check_in) up to but NOT including original check_out
-        # Excludes the original checkout date itself — that's not an "early" departure.
+        # Valid early request dates: today up to (not including) original checkout
         valid_dates: list[str] = []
         try:
             today = date_type.today()
-            check_in_d = date_type.fromisoformat(str(bs.get("check_in") or "")[:10])
+            check_in_d  = date_type.fromisoformat(str(bs.get("check_in") or "")[:10])
             check_out_d = date_type.fromisoformat(original_checkout)
             start_d = max(today, check_in_d)
-            # Walk from start to the day BEFORE original checkout
             cur = start_d
             while cur < check_out_d:
                 valid_dates.append(cur.isoformat())
@@ -957,16 +1043,25 @@ async def guest_checkout_status(token: str, client: Optional[Any] = None) -> JSO
         except Exception:
             pass
 
+        # Phase 1065B token fix:
+        # Auto-generate a GUEST_CHECKOUT token when the window is open.
+        # The main portal runs on a GUEST_PORTAL token — a different type rejected
+        # by the wizard. Issue the correct type here so the CTA URL works.
+        checkout_portal_url: Optional[str] = None
+        if self_eligible and not guest_confirmed:
+            checkout_portal_url = _generate_guest_checkout_url(db, bs, effective_checkout)
+
         return JSONResponse(status_code=200, content={
-            "booking_id":                     booking_id,
-            "original_checkout_date":         original_checkout,
-            "effective_checkout_date":        effective_checkout,
-            "is_early_checkout_approved":     is_early_approved,
-            "early_checkout_status":          ec_status,
+            "booking_id":                       booking_id,
+            "original_checkout_date":           original_checkout,
+            "effective_checkout_date":          effective_checkout,
+            "is_early_checkout_approved":       is_early_approved,
+            "early_checkout_status":            ec_status,
             "already_requested_early_checkout": already_requested,
-            "self_checkout_eligible":         self_eligible,
-            "valid_early_request_dates":      valid_dates,
-            "guest_checkout_confirmed":       guest_confirmed,
+            "self_checkout_eligible":           self_eligible,
+            "valid_early_request_dates":        valid_dates,
+            "guest_checkout_confirmed":         guest_confirmed,
+            "checkout_portal_url":              checkout_portal_url,
         })
     except Exception as exc:
         logger.exception("guest_checkout_status error booking=%s: %s", booking_id, exc)
