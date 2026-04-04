@@ -319,13 +319,16 @@ function PortalHostBlock({ data }: { data: GuestPortalData }) {
 
 function HowThisHomeWorks({ token, apiBase }: { token: string; apiBase: string }) {
     const [info, setInfo] = useState<HouseInfo | null>(null);
+    // Phase 1064: track load completion to distinguish "not loaded yet" from "loaded with no content"
+    const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
         fetch(`${apiBase}/guest/${encodeURIComponent(token)}/house-info`)
             .then(r => r.ok ? r.json() : null)
             // Phase 1047A: backend wraps in { info: {...} } — unwrap before setting state
-            .then(d => d && setInfo(d.info ?? d))
-            .catch(() => {});
+            .then(d => { if (d) setInfo(d.info ?? d); })
+            .catch(() => {})
+            .finally(() => setLoaded(true));
     }, [token, apiBase]);
 
     const items: Array<{ icon: string; key: keyof HouseInfo; label: string }> = [
@@ -340,14 +343,15 @@ function HowThisHomeWorks({ token, apiBase }: { token: string; apiBase: string }
     ];
 
     const available = info ? items.filter(i => info[i.key]) : [];
-    if (!info || available.length === 0) return null;
+    // Phase 1064: hide until loaded; if loaded and nothing configured, hide entirely (not broken-looking)
+    if (!loaded || available.length === 0) return null;
 
     return (
         <>
             <SectionHeader emoji="🏠" label="How This Home Works" />
             <div style={{ background: SURFACE, borderRadius: RADIUS, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
                 {available.map(({ icon, key, label }) => (
-                    <HouseInfoItem key={key} icon={icon} label={label} value={info[key] as string} />
+                    <HouseInfoItem key={key} icon={icon} label={label} value={info![key] as string} />
                 ))}
             </div>
         </>
@@ -564,6 +568,23 @@ function NeedHelp({ token, apiBase }: { token: string; apiBase: string }) {
                             <div style={{ fontSize: 15, fontWeight: 600, color: '#25d366' }}>Open WhatsApp</div>
                         </div>
                     </a>
+                )}
+
+                {/* Phase 1064: no direct contact configured — reassure the guest to use the message box */}
+                {contact !== null && !contact?.phone && !contact?.whatsapp_link && (
+                    <div style={{
+                        background: SURFACE, border: `1px solid ${BORDER}`,
+                        borderRadius: RADIUS, padding: 16,
+                        display: 'flex', alignItems: 'center', gap: 12,
+                    }}>
+                        <span style={{ fontSize: 22, flexShrink: 0 }}>✉️</span>
+                        <div>
+                            <div style={{ fontSize: 12, color: DIM, marginBottom: 4, fontWeight: 600 }}>Contact your host</div>
+                            <div style={{ fontSize: 14, color: '#9ca3af', lineHeight: 1.5 }}>
+                                Use the message box below to reach your host directly.
+                            </div>
+                        </div>
+                    </div>
                 )}
                 <div style={{
                     background: SURFACE, border: `1px solid ${BORDER}`,
@@ -836,48 +857,83 @@ export default function GuestPortalPage() {
                 {/* Phase 1047B — Host Identity Block (renders only when portal_host_name is set) */}
                 <PortalHostBlock data={data} />
 
-                {/* Section 2 — Home Essentials */}
-                <SectionHeader emoji="🏡" label="Home Essentials" />
+                {/* Section 2 — Home Essentials
+                     Phase 1064: Guard — compute whether ANY essential content is present
+                     before rendering the section. If zero items configured, show a calm
+                     placeholder instead of a floating section header with nothing below it. */}
+                {(() => {
+                    const hasEssentials = !!(
+                        data.welcome_message ||
+                        data.wifi_name || data.wifi_password ||
+                        data.check_in_time || data.check_out_time ||
+                        data.emergency_contact ||
+                        (data.house_rules && data.house_rules.length > 0)
+                    );
+                    return (
+                        <>
+                            <SectionHeader emoji="🏡" label="Home Essentials" />
 
-                {/* Welcome message */}
-                {data.welcome_message && (
-                    <div style={{
-                        background: SURFACE, border: `1px solid ${BORDER}`,
-                        borderRadius: RADIUS, padding: 16, marginBottom: 12,
-                        fontSize: 15, color: '#e5e7eb', lineHeight: 1.6,
-                    }}>
-                        {data.welcome_message}
-                    </div>
-                )}
+                            {/* Welcome message */}
+                            {data.welcome_message && (
+                                <div style={{
+                                    background: SURFACE, border: `1px solid ${BORDER}`,
+                                    borderRadius: RADIUS, padding: 16, marginBottom: 12,
+                                    fontSize: 15, color: '#e5e7eb', lineHeight: 1.6,
+                                }}>
+                                    {data.welcome_message}
+                                </div>
+                            )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {data.wifi_name && <InfoCard icon="📶" label="Wi-Fi Network" value={data.wifi_name} mono />}
-                    {data.wifi_password && <InfoCard icon="🔑" label="Wi-Fi Password" value={data.wifi_password} mono />}
-                    {data.check_in_time && <InfoCard icon="🛬" label="Check-in Time" value={data.check_in_time} />}
-                    {data.check_out_time && <InfoCard icon="🛫" label="Check-out Time" value={data.check_out_time} />}
-                    {data.emergency_contact && <InfoCard icon="🆘" label="Emergency Contact" value={data.emergency_contact} />}
-                </div>
-
-                {/* House rules */}
-                {data.house_rules && data.house_rules.length > 0 && (
-                    <div style={{
-                        marginTop: 12, background: SURFACE,
-                        border: `1px solid ${BORDER}`, borderRadius: RADIUS, padding: 16,
-                    }}>
-                        <div style={{ fontSize: 11, color: DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-                            📋 House Rules
-                        </div>
-                        {data.house_rules.map((rule, i) => (
-                            <div key={i} style={{
-                                display: 'flex', alignItems: 'flex-start', gap: 8,
-                                marginBottom: 8, fontSize: 14, color: '#d1d5db', lineHeight: 1.5,
-                            }}>
-                                <span style={{ color: DIM, flexShrink: 0 }}>•</span>
-                                <span>{rule}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {data.wifi_name && <InfoCard icon="📶" label="Wi-Fi Network" value={data.wifi_name} mono />}
+                                {data.wifi_password && <InfoCard icon="🔑" label="Wi-Fi Password" value={data.wifi_password} mono />}
+                                {data.check_in_time && <InfoCard icon="🛬" label="Check-in Time" value={data.check_in_time} />}
+                                {data.check_out_time && <InfoCard icon="🛫" label="Check-out Time" value={data.check_out_time} />}
+                                {data.emergency_contact && <InfoCard icon="🆘" label="Emergency Contact" value={data.emergency_contact} />}
                             </div>
-                        ))}
-                    </div>
-                )}
+
+                            {/* House rules */}
+                            {data.house_rules && data.house_rules.length > 0 && (
+                                <div style={{
+                                    marginTop: 12, background: SURFACE,
+                                    border: `1px solid ${BORDER}`, borderRadius: RADIUS, padding: 16,
+                                }}>
+                                    <div style={{ fontSize: 11, color: DIM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                                        📋 House Rules
+                                    </div>
+                                    {data.house_rules.map((rule, i) => (
+                                        <div key={i} style={{
+                                            display: 'flex', alignItems: 'flex-start', gap: 8,
+                                            marginBottom: 8, fontSize: 14, color: '#d1d5db', lineHeight: 1.5,
+                                        }}>
+                                            <span style={{ color: DIM, flexShrink: 0 }}>•</span>
+                                            <span>{rule}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Phase 1064: empty state — shown only when zero essentials configured */}
+                            {!hasEssentials && (
+                                <div style={{
+                                    background: SURFACE, border: `1px solid ${BORDER}`,
+                                    borderRadius: RADIUS, padding: '20px 16px',
+                                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                                }}>
+                                    <span style={{ fontSize: 20, flexShrink: 0, opacity: 0.5 }}>🏡</span>
+                                    <div>
+                                        <div style={{ fontSize: 14, color: '#9ca3af', lineHeight: 1.6 }}>
+                                            Home information will be available here once your host has set it up.
+                                        </div>
+                                        <div style={{ fontSize: 12, color: FAINT, marginTop: 6, lineHeight: 1.5 }}>
+                                            If you need anything right away, use the message box below.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    );
+                })()}
 
                 {/* Section 3 — How This Home Works */}
                 <HowThisHomeWorks token={token} apiBase={API_BASE} />
@@ -885,10 +941,13 @@ export default function GuestPortalPage() {
                 {/* Section 4 — Need Help */}
                 <NeedHelp token={token} apiBase={API_BASE} />
 
-                {/* Section 5 — Around You */}
+                {/* Section 5 — Around You
+                     Phase 1064: AroundYou returns null when neither location nor extras are
+                     configured — intentional hide, not a broken empty state. */}
                 <AroundYou token={token} apiBase={API_BASE} />
 
-                {/* Section 6 — Your Stay */}
+                {/* Section 6 — Your Stay
+                     Phase 1064: YourStay returns null when nothing is set — intentional hide. */}
                 <YourStay data={data} />
 
                 {/* Footer */}
