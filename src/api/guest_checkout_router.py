@@ -306,24 +306,29 @@ def _verify_guest_checkout_token(
         return claims, None
 
     # --- Path 2: GUEST_PORTAL token fallback (Phase 1065B) ---
-    # This handles the case where the main portal CTA links directly with
-    # the guest portal token instead of a dedicated GUEST_CHECKOUT token.
+    # Diagnostic mode: each exit returns a unique prefix so the next error screen
+    # reveals exactly which step is failing.
     try:
         from services.guest_token import resolve_guest_token_context
         ctx = resolve_guest_token_context(token, db=db)
-        if ctx and ctx.booking_ref:
-            # Synthesise an equivalent claims dict
-            return {
-                "token_type": "guest_checkout",
-                "entity_id":  ctx.booking_ref,
-                "email":      ctx.guest_email or "",
-                "exp":        0,  # GUEST_PORTAL tokens handle their own expiry
-                "_via_portal_token": True,
-            }, None
-    except Exception:
-        pass
+        if ctx is None:
+            logger.warning("_verify_guest_checkout_token: path2 ctx=None")
+            return None, "[diag-P2A] Portal token HMAC or expiry check failed."
+        if not ctx.booking_ref:
+            logger.warning("_verify_guest_checkout_token: path2 booking_ref empty")
+            return None, "[diag-P2B] Portal token resolved but booking_ref is empty."
+        logger.info("_verify_guest_checkout_token: path2 success booking_ref=%s", ctx.booking_ref)
+        return {
+            "token_type": "guest_checkout",
+            "entity_id":  ctx.booking_ref,
+            "email":      ctx.guest_email or "",
+            "exp":        0,
+            "_via_portal_token": True,
+        }, None
+    except Exception as exc:
+        logger.exception("_verify_guest_checkout_token: path2 exception: %s", exc)
+        return None, f"[diag-P2C] {type(exc).__name__}: {exc}"
 
-    return None, "Token is invalid, expired, or has been revoked."
 
 
 
