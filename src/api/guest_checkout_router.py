@@ -311,12 +311,12 @@ def _verify_guest_checkout_token(
     try:
         from services.guest_token import resolve_guest_token_context
         ctx = resolve_guest_token_context(token, db=db)
-        if ctx and ctx.get("booking_ref"):
+        if ctx and ctx.booking_ref:
             # Synthesise an equivalent claims dict
             return {
                 "token_type": "guest_checkout",
-                "entity_id":  ctx["booking_ref"],
-                "email":      ctx.get("guest_email", ""),
+                "entity_id":  ctx.booking_ref,
+                "email":      ctx.guest_email or "",
                 "exp":        0,  # GUEST_PORTAL tokens handle their own expiry
                 "_via_portal_token": True,
             }, None
@@ -324,6 +324,7 @@ def _verify_guest_checkout_token(
         pass
 
     return None, "Token is invalid, expired, or has been revoked."
+
 
 
 
