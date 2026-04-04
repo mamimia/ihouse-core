@@ -238,6 +238,9 @@ app.include_router(financial_explainer_router)
 from api.financial_writer_router import router as financial_writer_router  # noqa: E402  # Phase 506
 app.include_router(financial_writer_router)
 
+from api.payout_router import router as payout_router  # noqa: E402  # Phase 1062
+app.include_router(payout_router)
+
 # LAST: catch-all /financial/{booking_id}
 from api.financial_router import router as financial_router  # noqa: E402
 app.include_router(financial_router)

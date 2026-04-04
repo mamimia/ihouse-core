@@ -115,57 +115,37 @@ def generate_payout_record(
     period_start: str,
     period_end: str,
     mgmt_fee_pct: float = 15.0,
+    actor_id: str = "system",
 ) -> Dict[str, Any]:
     """
-    Calculate an owner payout for a given property and period.
+    Calculate AND persist an owner payout for a given property and period.
 
-    IMPORTANT — CALCULATION ONLY, NOT PERSISTED:
-        This function reads from booking_financial_facts and returns a
-        calculated dict. It does NOT write to any database table.
-        No payout table exists yet. The returned payout_id is a unique
-        reference for this response only — it cannot be retrieved later
-        because it is never stored.
+    Phase 1062: This function now writes to owner_payouts via payout_service.
+    The returned payout_id is a stable UUID that can be retrieved later via
+    GET /admin/payouts/{payout_id}.
 
-        Full payout lifecycle (persist → approve → mark paid → query history)
-        is a deferred product feature that requires a dedicated payouts table,
-        status-transition endpoints, and a product decision on the approval
-        workflow before implementation.
+    Backward-compatible: callers that previously used status="calculated" will
+    now receive status="draft" — which is accurate (the payout is real but
+    not yet submitted for approval).
+
+    Args:
+        actor_id: The user_id initiating the payout. Pass from JWT identity.
+                  Defaults to "system" for programmatic callers.
     """
-    try:
-        facts_result = (
-            db.table("booking_financial_facts")
-            .select("booking_id, total_gross, net_to_property, management_fee")
-            .eq("property_id", property_id)
-            .gte("extracted_at", period_start)
-            .lt("extracted_at", period_end)
-            .execute()
-        )
-        facts = facts_result.data or []
-    except Exception as exc:
-        return {"error": str(exc)}
+    from services.payout_service import create_payout
 
-    total_gross = sum(float(f.get("total_gross", 0) or 0) for f in facts)
-    mgmt_fee = round(total_gross * mgmt_fee_pct / 100, 2)
-    net_payout = round(total_gross - mgmt_fee, 2)
+    result = create_payout(
+        db,
+        tenant_id=tenant_id,
+        property_id=property_id,
+        period_start=period_start,
+        period_end=period_end,
+        mgmt_fee_pct=mgmt_fee_pct,
+        actor_id=actor_id,
+        initial_status="draft",
+    )
 
-    payout = {
-        # NOTE: This payout_id is a session reference only.
-        # It is NOT stored in any database table and cannot be retrieved later.
-        "payout_id": f"payout_{uuid.uuid4().hex[:8]}",
-        "tenant_id": tenant_id,
-        "property_id": property_id,
-        "period_start": period_start,
-        "period_end": period_end,
-        "total_gross": round(total_gross, 2),
-        "management_fee": mgmt_fee,
-        "management_fee_pct": mgmt_fee_pct,
-        "net_payout": net_payout,
-        "bookings_count": len(facts),
-        # "calculated" = this is a point-in-time calculation, not a committed record.
-        # Do not display this as "pending" to operators — that implies a
-        # lifecycle (pending → approved → paid) that does not exist yet.
-        "status": "calculated",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-    }
+    if "error" in result:
+        logger.warning("generate_payout_record failed: %s", result["error"])
 
-    return payout
+    return result

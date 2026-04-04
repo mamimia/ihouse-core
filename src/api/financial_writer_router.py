@@ -110,14 +110,9 @@ async def record_manual_payment_endpoint(
 @router.post(
     "/admin/financial/payout",
     tags=["financial-writer"],
-    # ACCURACY NOTE: This endpoint calculates a payout — it does NOT persist it.
-    # "Generate owner payout calculation" is the accurate description.
-    # The response includes a payout_id and status="calculated" to indicate
-    # this is a point-in-time snapshot, not a committed payout record.
-    # Full payout persistence is a deferred feature (no payouts table exists yet).
-    summary="Calculate owner payout (Phase 506 — calculation only, not persisted)",
+    summary="Create and persist an owner payout (Phase 1062 — now persisted via owner_payouts table)",
     responses={
-        200: {"description": "Payout calculation returned (NOT persisted — session reference only)."},
+        200: {"description": "Payout created and persisted to owner_payouts."},
         401: {"description": "Missing or invalid JWT."},
         403: {"description": "CAPABILITY_DENIED — requires financial capability."},
         500: {"description": "Internal server error."},
@@ -127,12 +122,14 @@ async def record_manual_payment_endpoint(
 async def generate_payout_endpoint(
     body: PayoutRequest,
     tenant_id: str = Depends(jwt_auth),
+    identity: dict = Depends(jwt_identity),
     _cap: None = Depends(require_capability("financial")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     try:
         from services.financial_writer import generate_payout_record
 
+        actor_id = identity.get("user_id") or tenant_id
         db = client if client is not None else _get_supabase_client()
         result = generate_payout_record(
             db=db,
@@ -141,6 +138,7 @@ async def generate_payout_endpoint(
             period_start=body.period_start,
             period_end=body.period_end,
             mgmt_fee_pct=body.mgmt_fee_pct,
+            actor_id=actor_id,
         )
         if "error" in result:
             return JSONResponse(status_code=400, content=result)
