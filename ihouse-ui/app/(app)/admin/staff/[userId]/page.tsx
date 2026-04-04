@@ -1229,7 +1229,7 @@ export default function EditStaffPage() {
                         Deactivate {fullName || 'this staff member'}?
                       </div>
                       <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>
-                        This will immediately remove their login and app access.
+                        This will deactivate them immediately. Any current session will be blocked on the next request.
                       </div>
                     </div>
                   </div>
