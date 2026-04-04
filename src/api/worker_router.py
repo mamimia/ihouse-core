@@ -43,7 +43,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth, jwt_identity_simple as jwt_identity
+from api.auth import jwt_auth, jwt_auth_active, jwt_identity_simple as jwt_identity
 from api.capability_guard import require_capability
 from api.error_models import ErrorCode, make_error_response
 from services.audit_writer import write_audit_event
@@ -98,7 +98,7 @@ async def list_worker_tasks(
     date: Optional[str] = None,
     assigned_to: Optional[str] = None,
     limit: int = _DEFAULT_LIMIT,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
     user_id: Optional[str] = None,
 ) -> JSONResponse:
@@ -315,7 +315,7 @@ async def list_worker_tasks(
 )
 async def get_worker_booking(
     booking_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -373,7 +373,7 @@ async def get_worker_booking(
 )
 async def acknowledge_task(
     task_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -450,7 +450,7 @@ async def acknowledge_task(
 )
 async def start_task(
     task_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -526,7 +526,7 @@ async def start_task(
 async def complete_task(
     task_id: str,
     body: Optional[dict] = None,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -682,7 +682,7 @@ _SELECTABLE_CHANNELS = {"line", "whatsapp", "telegram"}  # UI-exposed channels
     openapi_extra={"security": [{"BearerAuth": []}]},
 )
 async def get_worker_preferences(
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
     user_id: Optional[str] = None,
 ) -> JSONResponse:
@@ -730,7 +730,7 @@ async def get_worker_preferences(
 )
 async def set_worker_preference(
     body: Optional[dict] = None,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
     user_id: Optional[str] = None,
 ) -> JSONResponse:
@@ -796,7 +796,7 @@ async def set_worker_preference(
 )
 async def delete_worker_preference(
     channel_type: str,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
     user_id: Optional[str] = None,
 ) -> JSONResponse:
@@ -857,7 +857,7 @@ _VALID_DELIVERY_STATUSES = {"sent", "failed"}
 async def list_worker_notifications(
     limit: int = _DEFAULT_NOTIFICATIONS,
     status: Optional[str] = None,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
     user_id: Optional[str] = None,
 ) -> JSONResponse:
@@ -930,7 +930,7 @@ async def list_worker_notifications(
 async def list_worker_assignments(
     user_id_filter: Optional[str] = None,
     property_id: Optional[str] = None,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
     user_id: Optional[str] = None,
 ) -> JSONResponse:
@@ -965,7 +965,7 @@ async def list_worker_assignments(
 )
 async def create_worker_assignment(
     body: Optional[dict] = None,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     _cap: None = Depends(require_capability("staffing")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
@@ -1014,7 +1014,7 @@ async def create_worker_assignment(
 )
 async def delete_worker_assignment(
     assignment_id: str,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     _cap: None = Depends(require_capability("staffing")),
     client: Optional[Any] = None,
 ) -> JSONResponse:
@@ -1043,7 +1043,7 @@ import asyncio
 )
 async def extract_document(
     body: dict,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
 ) -> JSONResponse:
     """
     Mock endpoint simulating an async call to an OCR/MRZ Provider (e.g. BlinkID / Azure).

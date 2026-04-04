@@ -34,7 +34,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from api.auth import jwt_auth
+from api.auth import jwt_auth, jwt_auth_active
 from api.error_models import ErrorCode, make_error_response
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ def _get_supabase_client() -> Any:
 )
 async def upload_document_image(
     body: dict,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
@@ -196,7 +196,7 @@ async def upload_document_image(
 )
 async def save_guest_identity(
     body: dict,
-    tenant_id: str = Depends(jwt_auth),
+    tenant_id: str = Depends(jwt_auth_active),
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """

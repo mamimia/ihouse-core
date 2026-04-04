@@ -55,6 +55,22 @@ logger = logging.getLogger(__name__)
 
 _bearer = HTTPBearer(auto_error=False)
 
+
+def _get_active_db():
+    """Return a Supabase client for jwt_auth_active is_active checks.
+    Module-level so tests can patch 'api.auth._get_active_db'.
+    Returns None if env vars are missing.
+    """
+    try:
+        from supabase import create_client as _cc
+        _url = os.environ.get("SUPABASE_URL", "")
+        _key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        if not _url or not _key:
+            return None
+        return _cc(_url, _key)
+    except Exception:
+        return None
+
 _ENV_SECRET = "IHOUSE_JWT_SECRET"
 _ENV_VAR = _ENV_SECRET  # backward-compat alias (used in older tests)
 _ENV_DEV_MODE = "IHOUSE_DEV_MODE"
@@ -366,6 +382,120 @@ def _make_bearer_dependency():
 
 # The canonical Depends-injectable for route use
 jwt_auth = _make_bearer_dependency()
+
+
+def _make_active_bearer_dependency():
+    """
+    Phase 1060 — Session Invalidation on Worker Deactivation.
+
+    Returns a Depends-compatible callable that:
+      1. Verifies the JWT (same crypto check as jwt_auth)
+      2. Performs a single DB read on tenant_permissions to check is_active
+      3. Returns 403 USER_DEACTIVATED immediately if is_active is False
+
+    This closes the gap where a deactivated worker with an unexpired JWT
+    could continue making API calls until the token's TTL expired (up to 1h).
+
+    Design decisions:
+      - Single SELECT (is_active, user_id) from tenant_permissions — minimal overhead
+      - is_active IS NULL is treated as ACTIVE (backward-compat: rows without the field)
+      - is_active = FALSE is the explicit deactivation signal set by admin
+      - DB failure is fail-open (non-blocking) to avoid auth outage on DB transient errors
+        Rationale: a brief DB connectivity failure should not lock all workers out.
+        The JWT itself is still validated cryptographically.
+      - Dev mode: skipped (same as jwt_auth)
+
+    Usage:
+        from api.auth import jwt_auth_active
+
+        @router.get("/worker/tasks")
+        async def list_tasks(
+            tenant_id: str = Depends(jwt_auth_active),
+        ): ...
+    """
+    from fastapi import Depends
+
+    async def _dep(
+        credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    ) -> str:
+        # Step 1: standard JWT verification
+        tenant_id = verify_jwt(credentials)
+
+        # Dev mode: skip DB check
+        if _is_dev_mode():
+            return tenant_id
+
+        # Step 2: extract user_id from token for DB lookup
+        # New-format tokens have user_id = sub. Legacy tokens have sub = tenant_id.
+        # We read sub from the token we already decoded — re-decode is lightweight.
+        import os as _os
+        secret = _os.environ.get(_ENV_SECRET, "")
+        if not secret or credentials is None:
+            return tenant_id  # already passed verify_jwt with a valid secret
+
+        try:
+            payload = jwt.decode(
+                credentials.credentials,
+                secret,
+                algorithms=[_ALGORITHM],
+                options={"verify_aud": False},
+            )
+            user_id = str(payload.get("sub", "")).strip() or tenant_id
+        except Exception:
+            return tenant_id  # crypto already validated above — let it through
+
+        # Step 3: DB is_active check
+        try:
+            db = _get_active_db()
+            if db is None:
+                return tenant_id  # DB not configured — fail-open
+
+            res = (
+                db.table("tenant_permissions")
+                .select("is_active")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            rows = res.data or []
+            if rows:
+                is_active = rows[0].get("is_active")
+                if is_active is False:  # explicit False only — NULL = active
+                    logger.warning(
+                        "jwt_auth_active: REJECTED deactivated user_id=%s tenant_id=%s",
+                        user_id, tenant_id,
+                    )
+                    from fastapi import HTTPException as _HTTPException
+                    raise _HTTPException(
+                        status_code=403,
+                        detail={
+                            "code": "USER_DEACTIVATED",
+                            "message": (
+                                "Your account has been deactivated. "
+                                "Contact your administrator to restore access."
+                            ),
+                        },
+                    )
+        except Exception as _check_exc:
+            # Re-raise HTTPException (deactivation rejection) — suppress only DB errors
+            from fastapi import HTTPException as _HTTPException2
+            if isinstance(_check_exc, _HTTPException2):
+                raise
+            logger.warning(
+                "jwt_auth_active: is_active DB check failed (fail-open) for user=%s: %s",
+                user_id, _check_exc,
+            )
+
+        return tenant_id
+
+    return _dep
+
+
+# Phase 1060: active-user guard — use on all worker-facing endpoints.
+# Identical to jwt_auth but also checks is_active from DB on each request.
+# Deactivated workers are rejected immediately (not bounded by JWT TTL).
+jwt_auth_active = _make_active_bearer_dependency()
+
 
 
 def _make_admin_only_dependency():
