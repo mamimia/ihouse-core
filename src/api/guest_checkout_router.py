@@ -53,31 +53,49 @@ router_portal   = APIRouter(tags=["guest-checkout"])  # Public, token-gated
 # Constants
 # ---------------------------------------------------------------------------
 
-# Steps presented to the guest in the checkout portal
+# Phase 1065B — Steps presented to the guest in the self checkout wizard
 _CHECKOUT_STEPS = [
     "confirm_departure",
+    "ac_lights",
+    "doors_locked",
     "key_handover",
+    "contact_confirm",
     "feedback",          # optional — never blocks completion
 ]
 
+_REQUIRED_FOR_COMPLETE = frozenset({"confirm_departure", "ac_lights", "doors_locked", "key_handover", "contact_confirm"})
+
 _STEP_LABELS = {
-    "confirm_departure": "Confirm Departure",
-    "key_handover":       "Key / Access Return",
-    "feedback":           "Leave Feedback (optional)",
+    "confirm_departure": "Ready to leave",
+    "ac_lights":          "AC, lights & appliances",
+    "doors_locked":       "Doors & windows",
+    "key_handover":       "Keys & access cards",
+    "contact_confirm":    "Follow-up contact",
+    "feedback":           "Any final notes? (optional)",
 }
 
 _STEP_INSTRUCTIONS = {
     "confirm_departure": (
-        "Please confirm that you and all guests have vacated the property "
-        "and all personal belongings have been collected."
+        "Please confirm that you and all guests have collected your belongings "
+        "and are ready to leave the property."
+    ),
+    "ac_lights": (
+        "Turn off the air conditioning, all lights, and any fans or appliances before you leave."
+    ),
+    "doors_locked": (
+        "Check that all doors and windows are closed and locked before you go."
     ),
     "key_handover": (
-        "Please confirm that you have returned all keys, key cards, or access devices "
-        "as instructed by the host."
+        "Return all keys, key cards, or access devices as your host instructed "
+        "(lockbox, reception counter, or leave with staff)."
+    ),
+    "contact_confirm": (
+        "Please leave a phone number or email so the team can reach you after checkout "
+        "for deposit return, electricity settlement, or any follow-up."
     ),
     "feedback": (
-        "We'd love to hear about your stay. Leave a short note or rating — "
-        "this is entirely optional."
+        "Anything you'd like to share about your stay? "
+        "A short note is very helpful — entirely optional."
     ),
 }
 
@@ -181,7 +199,9 @@ def _get_booking_for_portal(db: Any, booking_id: str) -> Optional[dict]:
                 "early_checkout_approved, early_checkout_date, early_checkout_effective_at, "
                 "early_checkout_status, "
                 "guest_checkout_initiated_at, guest_checkout_confirmed_at, "
-                "guest_checkout_steps_completed, guest_checkout_token_hash"
+                "guest_checkout_steps_completed, guest_checkout_token_hash, "
+                "used_guest_self_checkout, guest_checkout_contact_phone, guest_checkout_contact_email, "
+                "guest_checkout_summary, deposit_status, opening_meter"
             )
             .eq("booking_id", booking_id)
             .limit(1)
@@ -191,6 +211,30 @@ def _get_booking_for_portal(db: Any, booking_id: str) -> Optional[dict]:
         return rows[0] if rows else None
     except Exception:
         return None
+
+
+def _get_checkin_photos(db: Any, booking_id: str, limit: int = 4) -> list:
+    """
+    Phase 1065B: Fetch a small set of check-in reference photos for the proof-photo helper.
+    Shown to guests as reference so they can optionally take matching checkout photos
+    for their own records.
+    """
+    try:
+        res = (
+            db.table("booking_photos")
+            .select("photo_url, caption, taken_at, photo_type")
+            .eq("booking_id", booking_id)
+            .in_("photo_type", ["checkin", "check_in", "arrival", "opening"])
+            .order("taken_at", desc=False)
+            .limit(limit)
+            .execute()
+        )
+        return [
+            {"url": r.get("photo_url"), "caption": r.get("caption"), "taken_at": r.get("taken_at")}
+            for r in (res.data or []) if r.get("photo_url")
+        ]
+    except Exception:
+        return []
 
 
 def _get_property_for_portal(db: Any, property_id: str, tenant_id: str) -> Optional[dict]:
@@ -533,9 +577,15 @@ async def get_guest_checkout_portal(
     already_confirmed = bool(booking.get("guest_checkout_confirmed_at"))
     required_complete = all(
         steps_completed.get(k)
-        for k in _CHECKOUT_STEPS
-        if k != "feedback"   # feedback is optional
+        for k in _REQUIRED_FOR_COMPLETE
     )
+
+    # Phase 1065B: check-in reference photos for proof-photo helper
+    checkin_photos = _get_checkin_photos(db, booking_id)
+
+    # Financial honesty: what still needs review after guest checkout
+    deposit_status = booking.get("deposit_status") or "unknown"
+    has_opening_meter = bool(booking.get("opening_meter"))
 
     return JSONResponse(status_code=200, content={
         "booking": {
@@ -555,16 +605,21 @@ async def get_guest_checkout_portal(
             "country":           (prop or {}).get("country"),
             "checkout_time":     (prop or {}).get("checkout_time") or "11:00",
             "emergency_contact": (prop or {}).get("emergency_contact"),
-            "wifi_name":         (prop or {}).get("wifi_name"),
-            "wifi_password":     (prop or {}).get("wifi_password"),
         },
-        "steps":             steps,
-        "steps_completed":   steps_completed,
-        "required_complete": required_complete,
-        "already_confirmed": already_confirmed,
-        "confirmed_at":      str(booking.get("guest_checkout_confirmed_at") or ""),
-        "initiated_at":      str(booking.get("guest_checkout_initiated_at") or ""),
+        "steps":               steps,
+        "steps_completed":     steps_completed,
+        "required_complete":   required_complete,
+        "required_for_complete": list(_REQUIRED_FOR_COMPLETE),
+        "already_confirmed":   already_confirmed,
+        "confirmed_at":        str(booking.get("guest_checkout_confirmed_at") or ""),
+        "initiated_at":        str(booking.get("guest_checkout_initiated_at") or ""),
+        # Phase 1065B: proof-photo helper
+        "checkin_photos":      checkin_photos,
+        # Phase 1065B: financial honesty context
+        "deposit_status":      deposit_status,
+        "has_opening_meter":   has_opening_meter,
     })
+
 
 
 # ===========================================================================
@@ -622,6 +677,8 @@ async def submit_checkout_step(
 
     # Build step detail payload
     step_detail: dict = {"completed_at": now}
+    extra_booking_update: dict = {}  # Phase 1065B: additional booking_state fields
+
     if step_key == "feedback":
         rating = body.get("rating")
         comment = body.get("comment") or ""
@@ -639,14 +696,41 @@ async def submit_checkout_step(
     elif step_key == "key_handover":
         method = str(body.get("method") or "confirmed")
         step_detail["method"] = method[:50]
+    elif step_key == "ac_lights":
+        step_detail["confirmed"] = True
+        note = str(body.get("note") or "")[:200]
+        if note:
+            step_detail["note"] = note
+    elif step_key == "doors_locked":
+        step_detail["confirmed"] = True
+        note = str(body.get("note") or "")[:200]
+        if note:
+            step_detail["note"] = note
+    elif step_key == "contact_confirm":
+        phone = str(body.get("phone") or "").strip()[:50] or None
+        email = str(body.get("email") or "").strip()[:200] or None
+        if not phone and not email:
+            return make_error_response(
+                status_code=400, code="CONTACT_REQUIRED",
+                extra={"detail": "Please provide a phone number or email address for follow-up."},
+            )
+        step_detail["phone"] = phone
+        step_detail["email"] = email
+        if phone:
+            extra_booking_update["guest_checkout_contact_phone"] = phone
+        if email:
+            extra_booking_update["guest_checkout_contact_email"] = email
 
     steps[step_key] = step_detail
 
+    update_payload = {
+        "guest_checkout_steps_completed": steps,
+        "updated_at_ms": _now_ms(),
+        **extra_booking_update,
+    }
+
     try:
-        db.table("booking_state").update({
-            "guest_checkout_steps_completed": steps,
-            "updated_at_ms": _now_ms(),
-        }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
+        db.table("booking_state").update(update_payload).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
     except Exception as exc:
         logger.error("guest_checkout: step update failed: %s", exc)
         return make_error_response(status_code=500, code="SERVER_ERROR",
@@ -674,21 +758,21 @@ async def complete_guest_checkout(
     client: Optional[Any] = None,
 ) -> JSONResponse:
     """
-    Guest confirms departure and finalizes the checkout portal.
+    Finalize guest self checkout.
 
-    Requirements:
-    - confirm_departure step must be completed
-    - key_handover step must be completed
-    - feedback is always optional
+    Requirements (Phase 1065B):
+      confirm_departure, ac_lights, doors_locked, key_handover, contact_confirm
+      feedback is always optional.
 
     Effect:
-    - Writes guest_checkout_confirmed_at to booking_state
-    - Emits audit event GUEST_CHECKOUT_CONFIRMED
-    - Returns success payload with property name and confirmation timestamp
-    - Idempotent: re-calling returns the existing confirmation timestamp
+      - Writes guest_checkout_confirmed_at, used_guest_self_checkout=True,
+        guest_checkout_summary (structured JSONB) to booking_state
+      - Writes system-style chat message to guest_chat_messages (OM sees in stay thread)
+      - Emits audit event GUEST_CHECKOUT_CONFIRMED
+      - Returns: confirmed_at (exact UTC ISO timestamp), summary, pending_items, pending_notice
 
-    NOTE: This does NOT affect worker settlement or booking_state.checked_out_at.
-    Worker checkout proceeds independently via the ops checkout wizard.
+    Idempotent: re-calling returns existing confirmation payload.
+    Does NOT affect booking_state.checked_out_at (worker settlement path).
     """
     db = client or _get_db()
     claims, err = _verify_guest_checkout_token(token, db=db)
@@ -706,19 +790,24 @@ async def complete_guest_checkout(
                                    extra={"detail": "Booking not found."})
 
     tenant_id = booking["tenant_id"]
+    property_id = booking.get("property_id", "")
 
     # Idempotent: already confirmed
     existing_confirmed_at = booking.get("guest_checkout_confirmed_at")
     if existing_confirmed_at:
+        prop_info = _get_property_for_portal(db, property_id, tenant_id)
+        property_name = (prop_info or {}).get("display_name") or (prop_info or {}).get("name") or "your property"
         return JSONResponse(status_code=200, content={
-            "status":       "already_confirmed",
-            "confirmed_at": str(existing_confirmed_at),
-            "noop":         True,
+            "status":        "already_confirmed",
+            "confirmed_at":  str(existing_confirmed_at),
+            "property_name": property_name,
+            "noop":          True,
+            "summary":       booking.get("guest_checkout_summary"),
         })
 
     # Validate required steps
     steps = booking.get("guest_checkout_steps_completed") or {}
-    missing = [k for k in ("confirm_departure", "key_handover") if not steps.get(k)]
+    missing = [k for k in _REQUIRED_FOR_COMPLETE if not steps.get(k)]
     if missing:
         return make_error_response(
             status_code=409, code="STEPS_INCOMPLETE",
@@ -729,10 +818,51 @@ async def complete_guest_checkout(
         )
 
     now = _now_iso()
+    effective_date = _effective_checkout_date(booking)
+
+    # Financial honesty: what still needs team review after guest checkout
+    deposit_status = booking.get("deposit_status") or "unknown"
+    has_opening_meter = bool(booking.get("opening_meter"))
+    pending_items = []
+    if deposit_status not in ("returned", "waived", "na", "n/a", "none", "unknown"):
+        pending_items.append("deposit_review")
+    if has_opening_meter:
+        pending_items.append("electricity_settlement")
+    pending_items.append("property_inspection")
+
+    # Contact from contact_confirm step
+    contact_step = steps.get("contact_confirm") or {}
+    contact_phone = contact_step.get("phone") or booking.get("guest_checkout_contact_phone")
+    contact_email = contact_step.get("email") or booking.get("guest_checkout_contact_email")
+
+    # Structured summary JSONB
+    summary: dict = {
+        "confirmed_at":             now,
+        "effective_checkout_date":  effective_date,
+        "steps_confirmed": {
+            "confirmed_departure": bool(steps.get("confirm_departure")),
+            "ac_lights_off":       bool(steps.get("ac_lights")),
+            "doors_locked":        bool(steps.get("doors_locked")),
+            "keys_returned":       bool(steps.get("key_handover")),
+            "key_method":          (steps.get("key_handover") or {}).get("method"),
+        },
+        "contact_left": {
+            "phone": contact_phone,
+            "email": contact_email,
+        },
+        "feedback": {
+            "rating":  (steps.get("feedback") or {}).get("rating"),
+            "comment": (steps.get("feedback") or {}).get("comment"),
+        } if steps.get("feedback") else None,
+        "pending_items": pending_items,
+    }
+
     try:
         db.table("booking_state").update({
             "guest_checkout_confirmed_at": now,
-            "updated_at_ms": _now_ms(),
+            "used_guest_self_checkout":    True,
+            "guest_checkout_summary":      summary,
+            "updated_at_ms":              _now_ms(),
         }).eq("booking_id", booking_id).eq("tenant_id", tenant_id).execute()
     except Exception as exc:
         logger.error("guest_checkout: confirmed_at write failed: %s", exc)
@@ -742,23 +872,97 @@ async def complete_guest_checkout(
     _audit(db, booking_id, tenant_id, "GUEST_CHECKOUT_CONFIRMED",
            "guest",
            {
-               "confirmed_at": now,
-               "steps_completed": list(steps.keys()),
-               "effective_checkout_date": _effective_checkout_date(booking),
+               "confirmed_at":            now,
+               "effective_checkout_date": effective_date,
+               "steps_confirmed":         summary["steps_confirmed"],
+               "pending_items":           pending_items,
+               "contact_left":            {"phone": bool(contact_phone), "email": bool(contact_email)},
+               "used_guest_self_checkout": True,
            })
 
-    # Fetch property for the success message
-    prop = _get_booking_for_portal(db, booking_id)  # Reload for response
-    prop_info = _get_property_for_portal(db, booking.get("property_id", ""), tenant_id)
-    property_name = (prop_info or {}).get("display_name") or (prop_info or {}).get("name") or "your property"
+    # Phase 1065B: Write system chat message — OM sees full closure in stay thread
+    prop_info = _get_property_for_portal(db, property_id, tenant_id)
+    property_name = (prop_info or {}).get("display_name") or (prop_info or {}).get("name") or "the property"
+    guest_name = booking.get("guest_name") or "Guest"
+
+    checklist_lines = [
+        f"  \u2022 AC & lights off: {'✓' if summary['steps_confirmed']['ac_lights_off'] else '\u2013'}",
+        f"  \u2022 Doors locked:     {'✓' if summary['steps_confirmed']['doors_locked'] else '\u2013'}",
+        f"  \u2022 Keys returned:    {'✓' if summary['steps_confirmed']['keys_returned'] else '\u2013'}",
+    ]
+    if summary["steps_confirmed"].get("key_method"):
+        checklist_lines.append(f"  \u2022 Key method: {summary['steps_confirmed']['key_method']}")
+
+    contact_lines = []
+    if contact_phone:
+        contact_lines.append(f"  \u2022 Phone: {contact_phone}")
+    if contact_email:
+        contact_lines.append(f"  \u2022 Email: {contact_email}")
+
+    pending_readable = [p.replace("_", " ").title() for p in pending_items]
+    pending_text = f"\nPending review: {', '.join(pending_readable)}" if pending_items else ""
+
+    feedback_text = ""
+    if summary.get("feedback"):
+        fb = summary["feedback"]
+        if fb and (fb.get("rating") or fb.get("comment")):
+            feedback_text = "\nGuest feedback:"
+            if fb.get("rating"):
+                feedback_text += f" {'★' * fb['rating']}{'☆' * (5 - fb['rating'])}"
+            if fb.get("comment"):
+                feedback_text += f"\n  \u201c{str(fb['comment'])[:300]}\u201d"
+
+    chat_content = (
+        f"[Self Checkout Completed]\n"
+        f"{guest_name} confirmed departure from {property_name}.\n"
+        f"Completion time: {now}\n"
+        f"Effective checkout date: {effective_date}\n\n"
+        f"Guest confirmed:\n"
+        + "\n".join(checklist_lines)
+        + ("\n\nGuest follow-up contact:\n" + "\n".join(contact_lines) if contact_lines else "")
+        + pending_text
+        + feedback_text
+        + "\n\nThis stay used guest self checkout."
+    )
+
+    try:
+        from services.guest_messaging import resolve_conversation_owner
+        assigned_om_id = resolve_conversation_owner(db, property_id, tenant_id)
+    except Exception:
+        assigned_om_id = tenant_id
+
+    try:
+        db.table("guest_chat_messages").insert({
+            "booking_id":     booking_id,
+            "property_id":    property_id,
+            "tenant_id":      tenant_id,
+            "sender_type":    "system",
+            "message":        chat_content,
+            "assigned_om_id": assigned_om_id,
+        }).execute()
+    except Exception as exc:
+        logger.warning("guest_checkout: chat message write failed (non-blocking): %s", exc)
+
+    # Pending notice for guest-facing response
+    pending_notice = None
+    review_items = [p for p in pending_items if p != "property_inspection"]
+    if review_items:
+        pending_notice = (
+            "Our team will complete a final review including "
+            + ", ".join([p.replace("_", " ") for p in review_items])
+            + ". We'll contact you if anything needs clarifying."
+        )
 
     return JSONResponse(status_code=200, content={
-        "status":        "confirmed",
-        "confirmed_at":  now,
-        "guest_name":    booking.get("guest_name") or "Guest",
-        "property_name": property_name,
-        "message":       (
-            f"Thank you for confirming your checkout from {property_name}. "
-            "We hope you had a wonderful stay and look forward to welcoming you back."
+        "status":          "confirmed",
+        "confirmed_at":    now,
+        "guest_name":      guest_name,
+        "property_name":   property_name,
+        "summary":         summary,
+        "pending_items":   pending_items,
+        "pending_notice":  pending_notice,
+        "message":         (
+            f"Checkout confirmed. Thank you for a great stay at {property_name}!"
         ),
     })
+
