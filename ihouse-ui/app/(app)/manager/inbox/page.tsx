@@ -129,15 +129,28 @@ function ThreadDrawer({
                 if (!cancelled) {
                     setMessages(res.messages ?? []);
                 }
-                // Mark thread as read (best-effort, non-blocking)
-                if (conversation.unread_count > 0) {
-                    apiFetch(
-                        `/manager/guest-messages/${encodeURIComponent(conversation.booking_id)}/read`,
-                        { method: 'PATCH' }
-                    )
-                        .then(() => { if (!cancelled) onMarkedRead(conversation.booking_id); })
-                        .catch(() => {/* non-blocking */});
-                }
+                // Phase 1069 fix: always call PATCH /read on mount, unconditionally.
+                // The old guard (if unread_count > 0) was based on stale inbox-list state
+                // and caused missed mark-reads when the local optimistic state had already
+                // zeroed the count but DB still had unread rows — or vice versa.
+                // PATCH /read is idempotent: if nothing is unread it commits 0 rows cheaply.
+                apiFetch(
+                    `/manager/guest-messages/${encodeURIComponent(conversation.booking_id)}/read`,
+                    { method: 'PATCH' }
+                )
+                    .then(() => {
+                        if (cancelled) return;
+                        // Stamp read_at locally on all unread guest/system messages immediately
+                        // so the ✓ Read indicator flips without waiting for next poll.
+                        const nowIso = new Date().toISOString();
+                        setMessages(prev => prev.map(m =>
+                            (m.sender_type === 'guest' || m.sender_type === 'system') && !m.read_at
+                                ? { ...m, read_at: nowIso }
+                                : m
+                        ));
+                        onMarkedRead(conversation.booking_id);
+                    })
+                    .catch(() => {/* non-blocking */});
             } catch {
                 if (!cancelled) setError('Could not load thread. Please retry.');
             } finally {
@@ -565,14 +578,22 @@ export default function ManagerInboxPage() {
         };
     }, [load]);
 
-    // Mark as read in local state when a thread is opened
+    // Phase 1069: Mark as read — dual strategy:
+    //   1. Optimistic local patch → instant UI (unread_count = 0, badge clears)
+    //   2. Deferred reload 1.5s later → DB truth overwrites, prevents stale state
     const handleMarkedRead = useCallback((booking_id: string) => {
+        // Optimistic
         setConversations(prev =>
             prev.map(c => c.booking_id === booking_id ? { ...c, unread_count: 0 } : c)
         );
         // Sync nav badge immediately
         refreshBadge();
-    }, [refreshBadge]);
+        // Deferred DB-truth sync: re-fetch inbox after backend write settles
+        setTimeout(() => {
+            load();
+            refreshBadge();
+        }, 1500);
+    }, [refreshBadge, load]);
 
     // Update inbox row when a reply is sent (Phase 1052)
     const handleReplySent = useCallback((booking_id: string, message: string) => {

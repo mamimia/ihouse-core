@@ -366,9 +366,10 @@ function HowThisHomeWorks({ token, apiBase }: { token: string; apiBase: string }
 
 interface PortalMessage {
     id: string;
-    sender_type: string;   // 'guest' | 'host'
+    sender_type: string;   // 'guest' | 'host' | 'system'
     message: string;
     created_at: string | null;
+    is_deleted?: boolean;  // Phase 1069: set by guest delete within 30s window
 }
 
 function fmtMsgTime(iso: string | null): string {
@@ -383,6 +384,117 @@ function fmtMsgTime(iso: string | null): string {
         if (h < 24) return `${h}h ago`;
         return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch { return ''; }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1069 — DeleteCountdown: per-message countdown button for 30s window
+// ---------------------------------------------------------------------------
+
+const MSG_DELETE_WINDOW = 30; // seconds — must match backend WINDOW_SECONDS
+
+function DeleteCountdown({
+    message,
+    token,
+    apiBase,
+    onDeleted,
+}: {
+    message: PortalMessage;
+    token: string;
+    apiBase: string;
+    onDeleted: (id: string) => void;
+}) {
+    const [secondsLeft, setSecondsLeft] = useState(0);
+    const [deleting, setDeleting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Calculate age from created_at and remaining window
+    useEffect(() => {
+        const calcRemaining = () => {
+            if (!message.created_at) return 0;
+            const created = new Date(message.created_at).getTime();
+            const ageMs = Date.now() - created;
+            const remainingMs = MSG_DELETE_WINDOW * 1000 - ageMs;
+            return Math.max(0, Math.ceil(remainingMs / 1000));
+        };
+
+        // Initialize
+        const initial = calcRemaining();
+        setSecondsLeft(initial);
+        if (initial <= 0) return;
+
+        const interval = setInterval(() => {
+            const left = calcRemaining();
+            setSecondsLeft(left);
+            if (left <= 0) clearInterval(interval);
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [message.created_at]);
+
+    // Not within window or already deleted
+    if (secondsLeft <= 0 || message.is_deleted) return null;
+
+    const handleDelete = async () => {
+        if (deleting) return;
+        setDeleting(true);
+        setError(null);
+        try {
+            const resp = await fetch(
+                `${apiBase}/guest/${encodeURIComponent(token)}/messages/${encodeURIComponent(message.id)}`,
+                { method: 'DELETE' }
+            );
+            if (resp.ok) {
+                onDeleted(message.id);
+            } else {
+                const body = await resp.json().catch(() => ({}));
+                if (body?.error === 'WINDOW_EXPIRED') {
+                    setError('Too late — window expired.');
+                } else {
+                    setError('Could not delete. Try again.');
+                }
+            }
+        } catch {
+            setError('No connection.');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    // Urgency: red when ≤ 10s left
+    const isUrgent = secondsLeft <= 10;
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{
+                    background: 'transparent',
+                    border: `1px solid ${isUrgent ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.15)'}`,
+                    borderRadius: 6,
+                    padding: '2px 8px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: isUrgent ? '#f87171' : '#9ca3af',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    transition: 'all 0.15s',
+                    opacity: deleting ? 0.6 : 1,
+                }}
+                aria-label="Delete this message"
+            >
+                {deleting ? '…' : (
+                    <>
+                        <span>🗑</span>
+                        <span>{secondsLeft}s</span>
+                    </>
+                )}
+            </button>
+            {error && (
+                <span style={{ fontSize: 10, color: '#f87171' }}>{error}</span>
+            )}
+        </div>
+    );
 }
 
 function ConversationThread({ token, apiBase, newMsgSignal }: {
@@ -419,6 +531,13 @@ function ConversationThread({ token, apiBase, newMsgSignal }: {
         }
     }, [newMsgSignal, fetchMessages]);
 
+    // Phase 1069: optimistic local delete — flip is_deleted immediately
+    const handleLocalDelete = useCallback((id: string) => {
+        setMessages(prev => prev.map(m =>
+            m.id === id ? { ...m, is_deleted: true, message: '[Message deleted]' } : m
+        ));
+    }, []);
+
     // Null path — no messages yet
     if (!loaded || messages.length === 0) return null;
 
@@ -434,6 +553,7 @@ function ConversationThread({ token, apiBase, newMsgSignal }: {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {messages.map(msg => {
                     const isGuest = msg.sender_type === 'guest';
+                    const isDeleted = msg.is_deleted === true;
                     return (
                         <div
                             key={msg.id}
@@ -451,29 +571,54 @@ function ConversationThread({ token, apiBase, newMsgSignal }: {
                             }}>
                                 {isGuest ? 'You' : hostLabel}
                             </div>
-                            {/* Bubble */}
-                            <div style={{
-                                maxWidth: '82%',
-                                padding: '9px 13px',
-                                borderRadius: isGuest
-                                    ? '16px 4px 16px 16px'
-                                    : '4px 16px 16px 16px',
-                                background: isGuest
-                                    ? 'rgba(59,130,246,0.18)'
-                                    : 'rgba(255,255,255,0.06)',
-                                border: isGuest
-                                    ? '1px solid rgba(59,130,246,0.3)'
-                                    : `1px solid ${BORDER}`,
-                                fontSize: 14, color: TEXT,
-                                lineHeight: 1.55, wordBreak: 'break-word',
-                            }}>
-                                {msg.message}
-                            </div>
+                            {/* Bubble — tombstone style for deleted */}
+                            {isDeleted ? (
+                                <div style={{
+                                    maxWidth: '82%',
+                                    padding: '7px 12px',
+                                    borderRadius: '16px 4px 16px 16px',
+                                    background: 'transparent',
+                                    border: '1px dashed rgba(255,255,255,0.12)',
+                                    fontSize: 13,
+                                    color: '#6b7280',
+                                    fontStyle: 'italic',
+                                    lineHeight: 1.5,
+                                }}>
+                                    Message deleted
+                                </div>
+                            ) : (
+                                <div style={{
+                                    maxWidth: '82%',
+                                    padding: '9px 13px',
+                                    borderRadius: isGuest
+                                        ? '16px 4px 16px 16px'
+                                        : '4px 16px 16px 16px',
+                                    background: isGuest
+                                        ? 'rgba(59,130,246,0.18)'
+                                        : 'rgba(255,255,255,0.06)',
+                                    border: isGuest
+                                        ? '1px solid rgba(59,130,246,0.3)'
+                                        : `1px solid ${BORDER}`,
+                                    fontSize: 14, color: TEXT,
+                                    lineHeight: 1.55, wordBreak: 'break-word',
+                                }}>
+                                    {msg.message}
+                                </div>
+                            )}
                             {/* Timestamp */}
                             {msg.created_at && (
                                 <div style={{ fontSize: 10, color: FAINT, marginTop: 3 }}>
                                     {fmtMsgTime(msg.created_at)}
                                 </div>
+                            )}
+                            {/* Phase 1069: 30s delete window — only for own non-deleted messages */}
+                            {isGuest && !isDeleted && (
+                                <DeleteCountdown
+                                    message={msg}
+                                    token={token}
+                                    apiBase={apiBase}
+                                    onDeleted={handleLocalDelete}
+                                />
                             )}
                         </div>
                     );
